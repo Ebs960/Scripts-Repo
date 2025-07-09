@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using SpaceGraphicsToolkit;
+using SpaceGraphicsToolkit.Landscape;
 using TMPro;
 
 public class PlanetGenerator : MonoBehaviour
@@ -1249,6 +1250,33 @@ public class PlanetGenerator : MonoBehaviour
             loadingPanelController.SetStatus("Finishing up...");
         }
 
+        // Update Planet Forge sphere initializer with new textures
+        var initializer = GetComponent<PlanetForgeSphereInitializer>();
+        if (initializer != null)
+        {
+            initializer.heightTextures.Clear();
+            initializer.heightTextures.Add(Texture2D.whiteTexture);
+            initializer.gradientTextures = GenerateGradientTextures();
+            initializer.maskTextures = GenerateBiomeMaskTextures(w, h);
+            initializer.Setup();
+
+            // Remove existing biome children
+            foreach (var biome in initializer.GetComponentsInChildren<SgtLandscapeBiome>())
+            {
+                if (Application.isEditor)
+                    DestroyImmediate(biome.gameObject);
+                else
+                    Destroy(biome.gameObject);
+            }
+
+            int index = 0;
+            foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
+            {
+                initializer.AddBiome(b.ToString(), index, 0, index);
+                index++;
+            }
+        }
+
         // --- BIOME BLENDING: Generate blend weight and index maps for 4-way blending ---
         // Reduce resolution for faster generation
         const int blendTexSize = 512;
@@ -1516,6 +1544,51 @@ public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelCon
         }
         splatmap.Apply();
         return splatmap;
+    }
+
+    // Generate one grayscale mask texture per biome
+    List<Texture2D> GenerateBiomeMaskTextures(int width, int height)
+    {
+        var list = new List<Texture2D>();
+        foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
+        {
+            var tex = new Texture2D(width, height, TextureFormat.Alpha8, false)
+            { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float lat = Mathf.Lerp(90, -90, v);
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float lon = Mathf.Lerp(-180, 180, u);
+                    Vector3 dir = SphericalToCartesian(lat, lon);
+                    int tile = grid.GetTileAtPosition(dir);
+                    if (tile < 0) tile = 0;
+                    var td = GetHexTileData(tile);
+                    byte val = td.biome == b ? (byte)255 : (byte)0;
+                    tex.SetPixel(x, y, new Color32(val, val, val, 255));
+                }
+            }
+            tex.Apply();
+            list.Add(tex);
+        }
+        return list;
+    }
+
+    // Generate simple gradient textures from biomeColors
+    List<Texture2D> GenerateGradientTextures()
+    {
+        var list = new List<Texture2D>();
+        foreach (var col in biomeColors)
+        {
+            var tex = new Texture2D(1, 256, TextureFormat.RGBA32, false)
+            { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < 256; y++) tex.SetPixel(0, y, col);
+            tex.Apply();
+            list.Add(tex);
+        }
+        return list;
     }
 
     private List<int> FindPathGreedy(int startTileIndex, List<int> coastTiles, Dictionary<int, HexTileData> tileData, HashSet<int> existingRiverTiles) {
