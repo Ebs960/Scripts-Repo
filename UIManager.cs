@@ -89,7 +89,14 @@ public class UIManager : MonoBehaviour
     public void HideAllPanels()
     {
         foreach (var panel in panelDict.Values)
-            if (panel != null) panel.SetActive(false);
+        {
+            if (panel != null && panel != playerUI)
+                panel.SetActive(false);
+        }
+
+        // Always keep the main PlayerUI visible
+        if (playerUI != null)
+            playerUI.SetActive(true);
     }
 
     /// <summary>
@@ -192,4 +199,16 @@ public class UIManager : MonoBehaviour
         if (infoUI != null)
             infoUI.HidePanel();
         HidePanel("UnitInfoPanel");
-    }} 
+    }
+
+    /// <summary>
+    /// Deselect any currently selected unit and hide the unit info panel.
+    /// Convenience wrapper so UI buttons can deselect via UIManager.
+    /// </summary>
+    public void DeselectUnit()
+    {
+        if (UnitSelectionManager.Instance != null)
+            UnitSelectionManager.Instance.DeselectUnit();
+        HideUnitInfoPanel();
+    }
+}

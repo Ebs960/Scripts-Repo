@@ -222,9 +222,7 @@ public class TradePanel : MonoBehaviour
                 {
                     UpdateUIState();
                     if (UIManager.Instance != null)
-                    {
                         UIManager.Instance.ShowNotification($"Trade route cancelled between {route.sourceCity.cityName} and {route.destinationCity.cityName}");
-                    }
                 }
             });
         }
@@ -311,9 +309,7 @@ public class TradePanel : MonoBehaviour
             
             // Show notification
             if (UIManager.Instance != null)
-            {
                 UIManager.Instance.ShowNotification($"Trade route established from {sourceCity.cityName} to {destCity.cityName}");
-            }
         }
     }
 }

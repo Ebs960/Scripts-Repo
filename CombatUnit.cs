@@ -1220,10 +1220,9 @@ public class CombatUnit : MonoBehaviour
             {
                 UIManager.Instance.ShowUnitInfoPanelForUnit(this);
                 Debug.Log($"[CombatUnit] Requested UnitInfoPanel for {data.unitName}");
-                
+
                 // Fallback notification if UnitInfoPanel is not available
-                var unitInfoPanel = UIManager.Instance.GetPanel("UnitInfoPanel");
-                if (unitInfoPanel == null || !unitInfoPanel.activeInHierarchy)
+                if (UIManager.Instance.unitInfoPanel == null || !UIManager.Instance.unitInfoPanel.activeInHierarchy)
                 {
                     string msg = $"{data.unitName} (Combat)\nHealth: {currentHealth}/{MaxHealth}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}\nMove: {currentMovePoints}/{BaseMovePoints}";
                     UIManager.Instance.ShowNotification(msg);
@@ -1234,5 +1233,4 @@ public class CombatUnit : MonoBehaviour
                 Debug.LogError($"[CombatUnit] UIManager.Instance is null. Cannot show notification for {data.unitName}.");
             }
         }
-    }
-}
+    }}

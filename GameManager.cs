@@ -475,20 +475,11 @@ public class GameManager : MonoBehaviour
             int subdivisions; float radius;
             GetMapSizeParams(mapSize, out subdivisions, out radius);
 
-            // Set SGT planet radius
-            var sgtPlanet = planetGO.GetComponent<SgtTerrainPlanet>();
-            if (sgtPlanet != null)
+            // Set SphereLandscape radius if present
+            var sphereLandscape = planetGO.GetComponent<SgtSphereLandscape>();
+            if (sphereLandscape != null)
             {
-                sgtPlanet.Radius = radius;
-                // Assign the observer to the main camera (if already instantiated)
-                if (instantiatedCameraGO != null)
-                {
-                    sgtPlanet.Observer = instantiatedCameraGO.transform;
-                }
-                else if (Camera.main != null)
-                {
-                    sgtPlanet.Observer = Camera.main.transform;
-                }
+                sphereLandscape.Radius = radius;
             }
             // Generate grid data using the new IcoSphereGrid system
             if (planetGenerator != null)
@@ -643,11 +634,12 @@ public class GameManager : MonoBehaviour
         // --- Assign observer after camera is instantiated ---
         if (instantiatedCameraGO != null)
         {
-            foreach (var sgt in FindObjectsByType<SgtTerrainPlanet>(FindObjectsSortMode.None))
+            foreach (var landscape in FindObjectsByType<SgtSphereLandscape>(FindObjectsSortMode.None))
             {
-                if (sgt != null)
+                if (landscape != null)
                 {
-                    sgt.Observer = instantiatedCameraGO.transform;
+                    landscape.Observers.Clear();
+                    landscape.Observers.Add(instantiatedCameraGO.transform);
                 }
             }
         }

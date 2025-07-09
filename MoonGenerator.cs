@@ -54,8 +54,6 @@ public class MoonGenerator : MonoBehaviour
     public List<BiomeSettings> biomeSettings = new List<BiomeSettings>();
 
     // --------------------------- Private fields -----------------------------
-    IcoSphereGrid grid;
-    public IcoSphereGrid Grid => grid;
     Hexasphere hex;
     NoiseSampler noise; // Use the same NoiseSampler
     NoiseSampler cavePlacementNoise; // Separate noise for cave placement
@@ -66,10 +64,6 @@ public class MoonGenerator : MonoBehaviour
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
-        // Initialize the grid for this moon
-        grid = new IcoSphereGrid();
-        grid.Generate(subdivisions, 1f); // generate unit sphere grid
-        
         hex = GetComponent<Hexasphere>();
         // Disable Hexasphere input (rotation and zoom) as a backup
         if (hex != null)

@@ -84,9 +84,7 @@ public class DistrictPlacementController : MonoBehaviour
         
         // Notify player
         if (UIManager.Instance != null)
-        {
             UIManager.Instance.ShowNotification("Select a tile to place your " + district.districtName);
-        }
     }
     
     /// <summary>
@@ -263,9 +261,7 @@ public class DistrictPlacementController : MonoBehaviour
         
         // Notify player
         if (UIManager.Instance != null)
-        {
             UIManager.Instance.ShowNotification(districtData.districtName + " added to production queue");
-        }
     }
     
     /// <summary>
@@ -275,9 +271,7 @@ public class DistrictPlacementController : MonoBehaviour
     {
         // Notify player
         if (UIManager.Instance != null)
-        {
             UIManager.Instance.ShowNotification("District placement canceled");
-        }
         
         // End placement mode
         EndDistrictPlacement();

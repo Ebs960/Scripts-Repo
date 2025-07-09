@@ -500,10 +500,9 @@ public class WorkerUnit : MonoBehaviour
             {
                 UIManager.Instance.ShowUnitInfoPanelForUnit(this);
                 Debug.Log($"[WorkerUnit] Requested UnitInfoPanel for {data.unitName}");
-                
+
                 // Fallback notification if UnitInfoPanel is not available
-                var unitInfoPanel = UIManager.Instance.GetPanel("UnitInfoPanel");
-                if (unitInfoPanel == null || !unitInfoPanel.activeInHierarchy)
+                if (UIManager.Instance.unitInfoPanel == null || !UIManager.Instance.unitInfoPanel.activeInHierarchy)
                 {
                     string msg = $"{data.unitName} (Worker)\nHealth: {currentHealth}/{data.baseHealth}\nWork: {currentWorkPoints}/{data.baseWorkPoints}\nMove: {currentMovePoints}/{data.baseMovePoints}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}";
                     UIManager.Instance.ShowNotification(msg);

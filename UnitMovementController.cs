@@ -364,5 +364,4 @@ public class UnitMovementController : MonoBehaviour
         
         // Set rotation so unit stands upright on surface
         unitTransform.rotation = Quaternion.LookRotation(forward, surfaceNormal);
-    }
-}
+    }} 

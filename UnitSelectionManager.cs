@@ -232,15 +232,19 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         
         Debug.Log($"[UnitSelectionManager] Deselected unit: {GetUnitName(selectedUnit)}");
-        
+
         selectedUnit = null;
-        
+
         // Remove visual indicator
         if (selectionIndicator != null)
         {
             Destroy(selectionIndicator);
             selectionIndicator = null;
         }
+
+        // Hide the unit info panel when nothing is selected
+        if (UIManager.Instance != null)
+            UIManager.Instance.HideUnitInfoPanel();
     }
     
     /// <summary>

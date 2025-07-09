@@ -1517,3 +1517,4 @@ public class Civilization : MonoBehaviour
     public IcoSphereGrid planetGrid; // Add this field to store the main planet's grid
     public PlanetGenerator planetGenerator; // Add this field to store the main planet's generator
 }
+

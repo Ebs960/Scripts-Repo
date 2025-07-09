@@ -164,17 +164,14 @@ public class PlanetGenerator : MonoBehaviour
     // ──────────────────────────────────────────────────────────────────────────────
     //  VISUAL LAYER  (integrated, no extra script needed)
     // ──────────────────────────────────────────────────────────────────────────────
-    [Header("💠 SGT Terrain Planet")]
+    [Header("💠 SGT Sphere Landscape")]
     [SerializeField] int textureSize = 2048;
-    [SerializeField] SgtTerrain sgtTerrain;
-    [SerializeField] SgtTerrainPlanet sgtTerrainPlanet;
-    [SerializeField] SgtTerrainHeightmap sgtHeightmap;
-    [SerializeField] SgtTerrainAreas sgtTerrainAreas; // Optional, for biome blending
-    [SerializeField] SgtTerrainPlanetMaterial sgtPlanetMaterial; // Assign your SGT material here
+    [SerializeField] SgtSphereLandscape landscape;
 
     // Runtime-generated textures
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeTex;     // R8 - biome index
+    Texture2D biomeColorMap; // RGBA32 – biome colors
 
     static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
     static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
@@ -232,16 +229,7 @@ public class PlanetGenerator : MonoBehaviour
         noiseOffset = new Vector3(ox, oy, oz);
 
         // Force SGT to recognize the new textures and update the mesh
-        if (sgtHeightmap != null) sgtHeightmap.MarkAsDirty();
-        if (sgtPlanetMaterial != null) sgtPlanetMaterial.MarkAsDirty();
-        if (sgtTerrainPlanet != null) 
-        {
-            // Fix SGT tiling settings to prevent horizontal lines
-            sgtTerrainPlanet.BakedDetailTilingA = 1;     // Slightly increased from 1
-            sgtTerrainPlanet.BakedDetailTilingB = 16;    // Slightly increased from 16
-            sgtTerrainPlanet.BakedDetailTilingC = 64;    // Slightly increased from 64
-            sgtTerrainPlanet.MarkAsDirty();
-        }
+        if (landscape != null) landscape.MarkAsDirty();
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -1107,9 +1095,9 @@ public class PlanetGenerator : MonoBehaviour
     // Coroutine version with batching and progress bar
     System.Collections.IEnumerator BuildVisualMapsBatched(int batchSize = 16)
     {
-        if (sgtTerrain == null || sgtHeightmap == null || sgtPlanetMaterial == null)
+        if (landscape == null)
         {
-            Debug.LogError($"{name}: SGT components not assigned!");
+            Debug.LogError($"{name}: Landscape component not assigned!");
             yield break;
         }
 
@@ -1122,7 +1110,7 @@ public class PlanetGenerator : MonoBehaviour
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         int w = heightTex.width, h = heightTex.height;
         float minH = float.MaxValue, maxH = float.MinValue;
-        float planetRadius = sgtTerrainPlanet != null ? (float)sgtTerrainPlanet.Radius : 1.0f;
+        float planetRadius = landscape != null ? (float)landscape.Radius : 1.0f;
         float heightScale = heightFractionOfRadius * planetRadius;
         
         Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
@@ -1237,41 +1225,22 @@ public class PlanetGenerator : MonoBehaviour
         biomeIndexMap.SetPixels(biomePixels);
         biomeIndexMap.Apply(false, true);
 
-        // Assign the heightmap to the SGT Heightmap component
-        sgtHeightmap.Heightmap = heightTex;
+        // Create a simple color map using biome colors
+        biomeColorMap = GenerateBiomeColorMap(w, h);
 
-        // Assign biome arrays and index map to the SGT material
-        var mat = sgtPlanetMaterial.Material;
-        if (mat != null)
-        {
-            mat.SetTexture("_BiomeAlbedoArray", albedoArray);
-            mat.SetTexture("_BiomeNormalArray", normalArray);
-            mat.SetTexture("_BiomeIndexMap", biomeIndexMap);
-            mat.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
-            mat.SetFloat("_BiomeNormalArray_Depth", biomeCount);
-            
-            // Fix material properties for realistic terrain look
-            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.0f);      // Non-metallic terrain
-            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.2f);  // More rough surface
-            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.2f);  // Alternative smoothness property
-            if (mat.HasProperty("_NormalScale")) mat.SetFloat("_NormalScale", 0.7f); // Reduced normal map intensity to prevent harsh edges
-            if (mat.HasProperty("_BumpScale")) mat.SetFloat("_BumpScale", 0.7f);     // Alternative normal scale property
-            
-            // Ensure proper normal map space and format
-            if (mat.HasProperty("_NormalMapSpace")) mat.SetFloat("_NormalMapSpace", 0f); // Tangent space
-            if (mat.HasProperty("_NormalMapFormat")) mat.SetFloat("_NormalMapFormat", 1f); // Raw normal format
-        }
+        // Assign textures to the landscape
+        landscape.HeightTex = heightTex;
+        landscape.AlbedoTex = biomeColorMap;
+        landscape.HeightMidpoint = 0.5f;
+        landscape.HeightRange = 10f;
 
         // Force SGT to recognize the new textures and update the mesh
-        if (sgtHeightmap != null) sgtHeightmap.MarkAsDirty();
-        if (sgtPlanetMaterial != null) sgtPlanetMaterial.MarkAsDirty();
-        if (sgtTerrainPlanet != null) 
+        if (landscape != null) landscape.MarkAsDirty();
+
+        // After visuals are prepared, generate the biome index texture used by the shader
+        if (BiomeTextureManager.Instance != null)
         {
-            // Fix SGT tiling settings to prevent horizontal lines
-            sgtTerrainPlanet.BakedDetailTilingA = 1;     // Slightly increased from 1
-            sgtTerrainPlanet.BakedDetailTilingB = 16;    // Slightly increased from 16
-            sgtTerrainPlanet.BakedDetailTilingC = 64;    // Slightly increased from 64
-            sgtTerrainPlanet.MarkAsDirty();
+            BiomeTextureManager.Instance.GenerateBiomeIndexTexture(grid);
         }
 
         if (loadingPanelController != null)
@@ -1356,19 +1325,6 @@ public class PlanetGenerator : MonoBehaviour
             if (y % 16 == 0) yield return null;
         }
 
-        biomeBlendWeightMap.Apply();
-        biomeBlendIndexMap.Apply();
-
-        // Set the textures on the material
-        if (sgtPlanetMaterial != null && sgtPlanetMaterial.Material != null)
-        {
-            sgtPlanetMaterial.Material.SetTexture("_BiomeBlendWeightMap", biomeBlendWeightMap);
-            sgtPlanetMaterial.Material.SetTexture("_BiomeBlendIndexMap", biomeBlendIndexMap);
-        }
-        else
-        {
-            Debug.LogWarning("SGT Planet Material or Material is null - cannot set biome blend textures");
-        }
 
         // Removed SGT splatmap generation - using blend maps instead for better performance
         // Yield to ensure UI (loading panel) can update before finishing
@@ -1472,7 +1428,33 @@ public class PlanetGenerator : MonoBehaviour
         return BiomeHelper.GetBiome(isLand, temperature, moisture, coastDistance, useRainforest, useScorched, useInfernal, useDemonic);
     }
 
-    public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+
+    /// <summary>
+    /// Generates a simple biome color map using the current biomeColors array.
+    /// </summary>
+    public Texture2D GenerateBiomeColorMap(int width = 1024, int height = 512)
+    {
+        Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < width; x++)
+            {
+                float u = (x + 0.5f) / width;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+                int tileIndex = grid.GetTileAtPosition(dir);
+                if (tileIndex < 0) tileIndex = 0;
+                var tile = GetHexTileData(tileIndex);
+                Color c = biomeColors[(int)tile.biome];
+                tex.SetPixel(x, y, c);
+            }
+        }
+        tex.Apply();
+        return tex;
+    }
 
     [Header("SGT Heightmap Scaling")]
     [Tooltip("Maximum heightmap displacement as a fraction of planet radius (e.g. 0.02 = 2% of radius)")]
@@ -1533,11 +1515,6 @@ public class PlanetGenerator : MonoBehaviour
             }
         }
         splatmap.Apply();
-        // Assign to SGT planet's Areas/Splatmap field if available
-        if (sgtTerrainAreas != null)
-        {
-            sgtTerrainAreas.Texture = splatmap;
-        }
         return splatmap;
     }
 
@@ -1581,3 +1558,5 @@ public class PlanetGenerator : MonoBehaviour
         return null; // Path too long
     }
 }
+
+

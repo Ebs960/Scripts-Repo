@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using TMPro;
 using System.Text;
+using SpaceGraphicsToolkit.Landscape;
 
 /// <summary>
 /// Shows per-tile yields when the mouse hovers the planet mesh.
@@ -91,7 +92,7 @@ public class TileInfoDisplay : MonoBehaviour
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 1000f) &&
-                hit.collider.GetComponent<SpaceGraphicsToolkit.SgtTerrainPlanet>())
+                hit.collider.GetComponent<SpaceGraphicsToolkit.Landscape.SgtLandscapeCollider>())
             {
                 hovering = true;
                 var tile = GameManager.Instance.GetHexTileAtWorldPoint(hit.point);
