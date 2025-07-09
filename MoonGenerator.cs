@@ -1,10 +1,7 @@
 using UnityEngine;
-using HexasphereGrid;
 using System;
 using System.Collections.Generic;
 
-// Ensure this script is attached to the same GameObject as Hexasphere
-[RequireComponent(typeof(Hexasphere))]
 public class MoonGenerator : MonoBehaviour
 {
     [Header("Sphere Settings")]
@@ -54,7 +51,8 @@ public class MoonGenerator : MonoBehaviour
     public List<BiomeSettings> biomeSettings = new List<BiomeSettings>();
 
     // --------------------------- Private fields -----------------------------
-    Hexasphere hex;
+    IcoSphereGrid grid;
+    public IcoSphereGrid Grid => grid;
     NoiseSampler noise; // Use the same NoiseSampler
     NoiseSampler cavePlacementNoise; // Separate noise for cave placement
     readonly Dictionary<int, HexTileData> data = new Dictionary<int, HexTileData>();
@@ -64,16 +62,12 @@ public class MoonGenerator : MonoBehaviour
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
-        hex = GetComponent<Hexasphere>();
-        // Disable Hexasphere input (rotation and zoom) as a backup
-        if (hex != null)
-        {
-            hex.rotationEnabled = false;
-            hex.zoomEnabled = false;
-        }
+        // Initialize the grid for this moon
+        grid = new IcoSphereGrid();
+        grid.Generate(subdivisions, 1f); // generate unit sphere grid
+        
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
-        hex.numDivisions = subdivisions;
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
@@ -95,8 +89,6 @@ public class MoonGenerator : MonoBehaviour
         // Optional: Set different noise parameters for moon elevation if needed
         // noise.elevationNoise.SetFrequency(moonElevationFreq); // Example
 
-        hex.OnGeneration += HandleWorldGenerated;
-
         // if (generateOnAwake) // GameManager will control initialization
         // {
         // StartCoroutine(Initialise());
@@ -115,19 +107,6 @@ public class MoonGenerator : MonoBehaviour
     {
         for (int i = 0; i < Mathf.Max(1, initializationDelay); i++) yield return null;
         GenerateSurface();
-        hex.UpdateMaterialProperties(); // Ensure Hexasphere updates visuals
-    }
-
-    // Called when Hexasphere has finished generating its base mesh for the moon
-    private void HandleWorldGenerated(Hexasphere sender)
-    {
-        // Unsubscribe to prevent multiple calls if regeneration occurs
-        sender.OnGeneration -= HandleWorldGenerated;
-
-        // Add any moon-specific post-generation logic here if needed in the future
-        // For example, if you had moon-specific animals or features to spawn
-        // after the base mesh is ready but before GameManager fully takes over.
-        Debug.Log("Moon Hexasphere base mesh generated.");
     }
 
     // --------------------------- Surface Generation --------------------------
@@ -138,12 +117,12 @@ public class MoonGenerator : MonoBehaviour
     {
         data.Clear();
         tileElevation.Clear();
-        int tileCount = hex.tiles.Length;
+        int tileCount = grid.TileCount;
 
         // --- 1. Initial Dune Elevation and Biome Assignment ---
         for (int i = 0; i < tileCount; i++)
         {
-            Vector3 tileCenter = hex.GetTileCenter(i); // No noise offset needed for simple generation
+            Vector3 tileCenter = grid.tileCenters[i]; // No noise offset needed for simple generation
             float rawNoise = noise.GetElevation(tileCenter * moonElevationFreq); // Noise 0-1
             float noiseScale = Mathf.Max(0f, maxDuneElevation - baseDuneElevation);
             float elevation = baseDuneElevation + (rawNoise * noiseScale);
@@ -178,48 +157,27 @@ public class MoonGenerator : MonoBehaviour
             Biome biome = td.biome;
             float finalElevation = tileElevation[i]; // Use the stored final elevation
 
-            // --- Set Visuals (Texture or Color) ---
-            bool hasTexture = false;
-            if (lookup.TryGetValue(biome, out var bs) && bs.albedoTexture != null) {
-                if (hex.textures != null) {
-                    for (int t=0; t<hex.textures.Length; t++) {
-                        if (hex.textures[t] == bs.albedoTexture) {
-                            hex.SetTileTexture(i, t, Color.white);
-                            hasTexture = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Set color if no valid texture is assigned
-            if (!hasTexture) {
-                 Color tileColor = (biome == Biome.MoonCaves) ? moonCavesColor : moonDunesColor;
-                 hex.SetTileColor(i, tileColor);
-            }
-            // ----------------------------------------
-
-            // Set Extrusion
-            float finalExtrusionHeight = finalElevation * maxExtrusionHeight;
-            hex.SetTileExtrudeAmount(i, finalExtrusionHeight);
-
-             // Assign the final elevation back to the data struct (especially important for caves)
-            td.elevation = finalElevation;
-            data[i] = td;
-
             // --- Add Decorations ---
-            if (bs?.decorations != null && bs.decorations.Length > 0 && UnityEngine.Random.value < bs.spawnChance)
+            if (lookup.TryGetValue(biome, out var bs) && bs?.decorations != null && bs.decorations.Length > 0 && UnityEngine.Random.value < bs.spawnChance)
             {
                 GameObject prefab = bs.decorations[UnityEngine.Random.Range(0, bs.decorations.Length)];
                 if (prefab != null)
                 {
                     var go = Instantiate(prefab);
-                    // Adjust altitude based on tile extrusion
-                    // Use the finalExtrusionHeight calculated above
-                    hex.ParentAndAlignToTile(go, i, finalExtrusionHeight + 0.005f, true, true); 
+                    // Adjust altitude based on tile elevation
+                    float altitude = finalElevation * maxExtrusionHeight + 0.005f;
+                    Vector3 center = grid.tileCenters[i];
+                    Vector3 normal = center.normalized;
+                    go.transform.SetParent(transform, true);
+                    go.transform.localPosition = center + normal * altitude;
+                    go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.AngleAxis(UnityEngine.Random.Range(0,360), Vector3.up);
                 }
             }
             // -----------------------
+
+             // Assign the final elevation back to the data struct (especially important for caves)
+            td.elevation = finalElevation;
+            data[i] = td;
         }
         Debug.Log($"Generated Moon Surface with {tileCount} tiles.");
     }
@@ -236,7 +194,7 @@ public class MoonGenerator : MonoBehaviour
         {
             if (processedForCaves.Contains(i)) continue; // Skip if already processed
 
-            Vector3 tileCenter = hex.GetTileCenter(i);
+            Vector3 tileCenter = grid.tileCenters[i];
             float caveNoiseValue = cavePlacementNoise.GetElevation(tileCenter * cavePlacementFreq); // Use a noise function (0-1)
 
             if (caveNoiseValue > caveThreshold)
@@ -253,12 +211,12 @@ public class MoonGenerator : MonoBehaviour
                 {
                     int currentTile = floodQueue.Dequeue();
 
-                    foreach (int neighborIndex in hex.GetTileNeighbours(currentTile))
+                    foreach (int neighborIndex in grid.neighbors[currentTile])
                     {
                         if (!processedForCaves.Contains(neighborIndex) && clusterTiles.Count < maxCaveClusterSize)
                         {
                             // Check if neighbor *also* meets threshold (optional, makes caves sparser)
-                             Vector3 neighborCenter = hex.GetTileCenter(neighborIndex);
+                             Vector3 neighborCenter = grid.tileCenters[neighborIndex];
                              float neighborCaveNoise = cavePlacementNoise.GetElevation(neighborCenter * cavePlacementFreq);
                              if (neighborCaveNoise > caveThreshold) // Only cluster with other potential caves
                              {
@@ -394,30 +352,8 @@ public class MoonGenerator : MonoBehaviour
         
         data[tileIndex] = td;
         
-        // Update visuals
-        if (lookup.TryGetValue(newBiome, out var bs) && bs.albedoTexture != null)
-        {
-            bool textureSet = false;
-            if (hex.textures != null) {
-                for (int i=0; i<hex.textures.Length; i++) {
-                    if (hex.textures[i] == bs.albedoTexture) {
-                        hex.SetTileTexture(tileIndex, i, Color.white);
-                        textureSet = true;
-                        break;
-                    }
-                }
-            }
-            if (!textureSet) {
-                Color tileColor = (newBiome == Biome.MoonCaves) ? moonCavesColor : moonDunesColor;
-                hex.SetTileColor(tileIndex, tileColor);
-            }
-        }
-        else
-        {
-            // Use color fallback - determine which color to use
-            Color tileColor = (newBiome == Biome.MoonCaves) ? moonCavesColor : moonDunesColor;
-            hex.SetTileColor(tileIndex, tileColor);
-        }
+        // Update visuals - moon will use SGT landscape system like planet
+        // Color updates would be handled by regenerating moon surface maps if needed
     }
     
     /// <summary>
@@ -466,7 +402,7 @@ public class MoonGenerator : MonoBehaviour
             
             if (distance < range)
             {
-                foreach (int neighborIndex in hex.GetTileNeighbours(tileIndex))
+                foreach (int neighborIndex in grid.neighbors[tileIndex])
                 {
                     if (!visited.Contains(neighborIndex) && data.ContainsKey(neighborIndex))
                     {

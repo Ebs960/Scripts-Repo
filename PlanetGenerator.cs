@@ -230,7 +230,7 @@ public class PlanetGenerator : MonoBehaviour
         noiseOffset = new Vector3(ox, oy, oz);
 
         // Force SGT to recognize the new textures and update the mesh
-        if (landscape != null) landscape.MarkAsDirty();
+        if (landscape != null) landscape.MarkForRebuild();
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -1236,7 +1236,7 @@ public class PlanetGenerator : MonoBehaviour
         landscape.HeightRange = 10f;
 
         // Force SGT to recognize the new textures and update the mesh
-        if (landscape != null) landscape.MarkAsDirty();
+        if (landscape != null) landscape.MarkForRebuild();
 
         // After visuals are prepared, generate the biome index texture used by the shader
         if (BiomeTextureManager.Instance != null)
