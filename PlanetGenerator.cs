@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using SpaceGraphicsToolkit;
+using SpaceGraphicsToolkit.Landscape;
 using TMPro;
 
 public class PlanetGenerator : MonoBehaviour
@@ -1258,6 +1259,22 @@ public class PlanetGenerator : MonoBehaviour
             initializer.gradientTextures = GenerateGradientTextures();
             initializer.maskTextures = GenerateBiomeMaskTextures(w, h);
             initializer.Setup();
+
+            // Remove existing biome children
+            foreach (var biome in initializer.GetComponentsInChildren<SgtLandscapeBiome>())
+            {
+                if (Application.isEditor)
+                    DestroyImmediate(biome.gameObject);
+                else
+                    Destroy(biome.gameObject);
+            }
+
+            int index = 0;
+            foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
+            {
+                initializer.AddBiome(b.ToString(), index, 0, index);
+                index++;
+            }
         }
 
         // --- BIOME BLENDING: Generate blend weight and index maps for 4-way blending ---
