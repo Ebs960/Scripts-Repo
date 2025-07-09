@@ -464,6 +464,9 @@ public class GameManager : MonoBehaviour
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
 
+            // Ensure a PlanetForgeSphereInitializer exists
+            var initializer = planetGO.GetComponent<PlanetForgeSphereInitializer>() ?? planetGO.AddComponent<PlanetForgeSphereInitializer>();
+
             // Assign the loading panel controller if present
             var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
             if (planetGenerator != null && loadingPanelController != null)
@@ -474,6 +477,9 @@ public class GameManager : MonoBehaviour
             // --- Use map size preset ---
             int subdivisions; float radius;
             GetMapSizeParams(mapSize, out subdivisions, out radius);
+
+            initializer.radius = radius;
+            initializer.Setup();
 
             // Set SphereLandscape radius if present
             var sphereLandscape = planetGO.GetComponent<SgtSphereLandscape>();
