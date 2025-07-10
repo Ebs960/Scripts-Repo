@@ -22,11 +22,43 @@ Shader "Space Graphics Toolkit/Landscape"
       
 	[KeywordEnum(Square, Sphere)] _CW_Shape ("Shape", Float) = 0
 	
-	[Header(CLOUDS)]
-	[Toggle(_SGT_CLOUDS)] _SGT_Clouds("	Enable", Float) = 0
-	[HideInInspector] [NoScaleOffset] _SGT_CloudTex("", 2D) = "black" {}
-	[HideInInspector] _SGT_CloudOpacity("", Vector) = (0.0, 0.0, 0.0, 0.0)
-	[HideInInspector] _SGT_CloudWarp("", Float) = 0
+	        [Header(CLOUDS)]
+        [Toggle(_SGT_CLOUDS)] _SGT_Clouds("    Enable", Float) = 0
+        [HideInInspector] [NoScaleOffset] _SGT_CloudTex("", 2D) = "black" {}
+        [HideInInspector] _SGT_CloudOpacity("", Vector) = (0.0, 0.0, 0.0, 0.0)
+        [HideInInspector] _SGT_CloudWarp("", Float) = 0
+
+        [Header(BIOME TEXTURING)]
+        [NoScaleOffset]_BiomeAlbedoArray("Biome Albedo Array", 2DArray) = "" {}
+        [NoScaleOffset]_BiomeNormalArray("Biome Normal Array", 2DArray) = "" {}
+        [NoScaleOffset]_BiomeIndexMap("Biome Index Map", 2D) = "black" {}
+        _BiomeAlbedoArray_Depth("Biome Albedo Array Depth", Float) = 0
+        _BiomeNormalArray_Depth("Biome Normal Array Depth", Float) = 0
+
+        [Header(BIOME MASKS)]
+        [NoScaleOffset]_BiomeMask0("Biome Mask 0 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask1("Biome Mask 1 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask2("Biome Mask 2 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask3("Biome Mask 3 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask4("Biome Mask 4 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask5("Biome Mask 5 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask6("Biome Mask 6 (RGBA)", 2D) = "black" {}
+        [NoScaleOffset]_BiomeMask7("Biome Mask 7 (RGBA)", 2D) = "black" {}
+        _BiomeMaskCount("Biome Mask Count", Float) = 0
+
+        [Header(BIOME BLENDING)]
+        [Toggle(_USE_BIOME_BLENDING)] _UseBiomeBlending("Use Smooth Biome Blending", Float) = 1
+        _BiomeBlendSharpness("Biome Blend Sharpness", Range(0.1, 10.0)) = 2.0
+        _BiomeBlendContrast("Biome Blend Contrast", Range(0.5, 2.0)) = 1.0
+
+        [Header(TEXTURE SCALING)]
+        _GlobalTextureScale("Global Texture Scale", Range(0.1, 10.0)) = 1.0
+        _DetailTextureScale("Detail Texture Scale", Range(0.1, 50.0)) = 10.0
+
+        [Header(HEIGHTMAP)]
+        [NoScaleOffset]_HeightMap("Height Map", 2D) = "black" {}
+        _HeightScale("Height Scale", Range(0.0, 2.0)) = 1.0
+        _HeightOffset("Height Offset", Range(-1.0, 1.0)) = 0.0
 
 
    }
@@ -707,7 +739,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -743,9 +792,83 @@ ZWrite On
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
 		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
-	}
-	
-	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
+        }
+
+        float SampleBiomeMask(float2 uv, int biomeIndex)
+        {
+            int maskIndex = biomeIndex / 4;
+            int channel = biomeIndex % 4;
+            float4 mask = float4(0, 0, 0, 0);
+
+            if (maskIndex == 0) mask = tex2D(_BiomeMask0, uv);
+            else if (maskIndex == 1) mask = tex2D(_BiomeMask1, uv);
+            else if (maskIndex == 2) mask = tex2D(_BiomeMask2, uv);
+            else if (maskIndex == 3) mask = tex2D(_BiomeMask3, uv);
+            else if (maskIndex == 4) mask = tex2D(_BiomeMask4, uv);
+            else if (maskIndex == 5) mask = tex2D(_BiomeMask5, uv);
+            else if (maskIndex == 6) mask = tex2D(_BiomeMask6, uv);
+            else if (maskIndex == 7) mask = tex2D(_BiomeMask7, uv);
+
+            return mask[channel];
+        }
+
+        float4 BlendBiomes(float2 uv, float2 detailUV)
+        {
+            float4 finalColor = float4(0, 0, 0, 1);
+            float3 finalNormal = float3(0, 0, 1);
+            float totalWeight = 0;
+
+            float biomeIndex = tex2D(_BiomeIndexMap, uv).r * (_BiomeAlbedoArray_Depth - 1);
+            int primaryBiome = round(biomeIndex);
+
+#ifdef _USE_BIOME_BLENDING
+            float2 offsets[9] = {
+                float2(0, 0),
+                float2(1, 0) / 2048.0, float2(-1, 0) / 2048.0,
+                float2(0, 1) / 2048.0, float2(0, -1) / 2048.0,
+                float2(1, 1) / 2048.0, float2(-1, -1) / 2048.0,
+                float2(1, -1) / 2048.0, float2(-1, 1) / 2048.0
+            };
+
+            for (int i = 0; i < 9; i++)
+            {
+                float2 sampleUV = uv + offsets[i];
+                float sampleBiomeIndex = tex2D(_BiomeIndexMap, sampleUV).r * (_BiomeAlbedoArray_Depth - 1);
+                int sampleBiome = round(sampleBiomeIndex);
+
+                float weight = SampleBiomeMask(sampleUV, sampleBiome);
+                weight = pow(weight, _BiomeBlendSharpness);
+                weight *= _BiomeBlendContrast;
+
+                if (weight > 0.01)
+                {
+                    float3 albedoUVW = float3(detailUV * _DetailTextureScale, sampleBiome);
+                    float4 biomeColor = UNITY_SAMPLE_TEX2DARRAY(_BiomeAlbedoArray, albedoUVW);
+                    float3 biomeNormal = UNITY_SAMPLE_TEX2DARRAY(_BiomeNormalArray, albedoUVW).rgb;
+
+                    finalColor.rgb += biomeColor.rgb * weight;
+                    finalNormal += biomeNormal * weight;
+                    totalWeight += weight;
+                }
+            }
+#else
+            float weight = SampleBiomeMask(uv, primaryBiome);
+            float3 albedoUVW = float3(detailUV * _DetailTextureScale, primaryBiome);
+            finalColor = UNITY_SAMPLE_TEX2DARRAY(_BiomeAlbedoArray, albedoUVW);
+            finalNormal = UNITY_SAMPLE_TEX2DARRAY(_BiomeNormalArray, albedoUVW).rgb;
+            totalWeight = 1.0;
+#endif
+
+            if (totalWeight > 0.01)
+            {
+                finalColor.rgb /= totalWeight;
+                finalNormal /= totalWeight;
+            }
+
+            return finalColor;
+        }
+
+        void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
 	{
 		float vertexIndex = v.vertex.x;
 		float squareIndex = v.vertex.y;
@@ -2295,7 +2418,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -3778,7 +3918,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -5176,7 +5333,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -6570,7 +6744,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -7971,7 +8162,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
@@ -9393,7 +9601,24 @@ ZWrite On
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
-	float4x4 _SGT_CloudMatrix;
+        float4x4 _SGT_CloudMatrix;
+        TEXTURE2D_ARRAY(_BiomeAlbedoArray);
+        SAMPLER(sampler_BiomeAlbedoArray);
+        TEXTURE2D_ARRAY(_BiomeNormalArray);
+        SAMPLER(sampler_BiomeNormalArray);
+        TEXTURE2D(_BiomeIndexMap);
+        SAMPLER(sampler_BiomeIndexMap);
+        float _BiomeAlbedoArray_Depth;
+        float _BiomeNormalArray_Depth;
+        sampler2D _BiomeMask0;
+        sampler2D _BiomeMask1;
+        sampler2D _BiomeMask2;
+        sampler2D _BiomeMask3;
+        sampler2D _BiomeMask4;
+        sampler2D _BiomeMask5;
+        sampler2D _BiomeMask6;
+        sampler2D _BiomeMask7;
+        float _BiomeMaskCount;
 
 
 
