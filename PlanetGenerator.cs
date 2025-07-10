@@ -168,6 +168,15 @@ public class PlanetGenerator : MonoBehaviour
     [Header("💠 SGT Sphere Landscape")]
     [SerializeField] int textureSize = 2048;
     [SerializeField] SgtSphereLandscape landscape;
+    
+    public enum BiomeMaskQuality { Standard, Optimized, Blended }
+    
+    [Header("Biome Mask Generation")]
+    [Tooltip("Standard: Basic RGBA packing, Optimized: Better texture settings, Blended: Smooth transitions")]
+    public BiomeMaskQuality biomeMaskQuality = BiomeMaskQuality.Optimized;
+    [Range(1f, 5f)]
+    [Tooltip("Blend radius for smooth biome transitions (only used with Blended quality)")]
+    public float biomeBlendRadius = 2f;
 
     // Runtime-generated textures
     Texture2D heightTex;    // R16 – elevation 0‒1
@@ -1152,90 +1161,168 @@ public class PlanetGenerator : MonoBehaviour
             biomeToIndex[biomeSettings[i].biome] = i;
         }
 
-        // --- Generate individual biome mask textures ---
-        List<Texture2D> biomeMaskTextures = new List<Texture2D>();
-        List<Color[]> biomeMaskPixels = new List<Color[]>();
+        // --- Generate Biome Mask Textures (Choose Method Based on Quality Setting) ---
+        List<Texture2D> biomeMaskTextures;
+        List<Texture2D> packedBiomeMasks;
         
-        // Initialize mask textures for each biome
-        for (int i = 0; i < biomeCount; i++) {
-            var maskTex = new Texture2D(w, h, TextureFormat.Alpha8, false, true);
-            maskTex.wrapMode = TextureWrapMode.Repeat;
-            biomeMaskTextures.Add(maskTex);
-            biomeMaskPixels.Add(new Color[w * h]);
-        }
-
-        // --- RGBA-packed Biome Mask Generation (up to 32 biomes in 8 textures) ---
-        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
-        List<Texture2D> packedBiomeMasks = new List<Texture2D>();
-        List<Color[]> packedMaskPixels = new List<Color[]>();
-        for (int i = 0; i < packedMaskCount; i++) {
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false, true);
-            tex.wrapMode = TextureWrapMode.Repeat;
-            packedBiomeMasks.Add(tex);
-            packedMaskPixels.Add(new Color[w * h]);
-        }
-
-        // Generate biome index map (R channel = biome index normalized 0-1) - keep for compatibility
-        Texture2D biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
-        Color[] biomePixels = new Color[w * h]; // Pre-allocate for batch SetPixels
-
-        // Single pass for height, biome index, and packed biome masks
-        for (int y = 0; y < h; y++)
+        switch (biomeMaskQuality)
         {
-            float v = ((y + 0.5f) / h);
-            float lat = Mathf.Lerp(90, -90, v); // Fixed: removed -180f
-            for (int x = 0; x < w; x++)
-            {
-                float u = (x + 0.5f) / w;
-                float lon = Mathf.Lerp(-180, 180, u);
-                Vector3 dir = SphericalToCartesian(lat, lon);
-                int tileIdx = grid.GetTileAtPosition(dir);
-                if (tileIdx < 0) tileIdx = 0;
-                var tile = GetHexTileData(tileIdx);
-                if (tile == null)
-                {
-                    Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at lat {lat}, lon {lon}");
-                    continue;
+            case BiomeMaskQuality.Optimized:
+                packedBiomeMasks = GenerateOptimizedBiomeMasks(w, h);
+                // Generate individual masks for compatibility
+                biomeMaskTextures = GenerateBiomeMaskTextures(w, h);
+                break;
+            case BiomeMaskQuality.Blended:
+                packedBiomeMasks = GenerateBlendedBiomeMasks(w, h, biomeBlendRadius);
+                // Generate individual masks for compatibility
+                biomeMaskTextures = GenerateBiomeMaskTextures(w, h);
+                break;
+            default: // Standard
+                // Use the original method for standard quality
+                biomeMaskTextures = new List<Texture2D>();
+                packedBiomeMasks = new List<Texture2D>();
+                List<Color[]> biomeMaskPixels = new List<Color[]>();
+                List<Color[]> packedMaskPixels = new List<Color[]>();
+                
+                // Initialize mask textures for each biome
+                for (int i = 0; i < biomeCount; i++) {
+                    var maskTex = new Texture2D(w, h, TextureFormat.Alpha8, false, true);
+                    maskTex.wrapMode = TextureWrapMode.Repeat;
+                    biomeMaskTextures.Add(maskTex);
+                    biomeMaskPixels.Add(new Color[w * h]);
                 }
-                // HEIGHT MAP PROCESSING (unchanged)
-                float h01 = Mathf.InverseLerp(baseLandElevation, maxTotalElevation, tile.elevation);
-                if (h01 < minH) minH = h01;
-                if (h01 > maxH) maxH = h01;
-                int idx1d = y * w + x;
-                float scaledHeight = h01 * heightScale; // This is now in world units
-                byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
-                hPixels[idx1d] = new Color32(0, 0, 0, heightByte);
-                // BIOME INDEX MAP PROCESSING (keep for compatibility)
-                int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
-                float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
-                biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
-                // RGBA-packed BIOME MASK PROCESSING
-                int texIdx = biomeIdx / 4;
-                int channel = biomeIdx % 4;
-                Color col = packedMaskPixels[texIdx][idx1d];
-                float maskValue = 1f; // This pixel belongs to this biome
-                switch (channel)
-                {
-                    case 0: col.r = maskValue; break;
-                    case 1: col.g = maskValue; break;
-                    case 2: col.b = maskValue; break;
-                    case 3: col.a = maskValue; break;
+
+                // --- RGBA-packed Biome Mask Generation (up to 32 biomes in 8 textures) ---
+                int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
+                for (int i = 0; i < packedMaskCount; i++) {
+                    var tex = new Texture2D(w, h, TextureFormat.RGBA32, false, true);
+                    tex.wrapMode = TextureWrapMode.Repeat;
+                    packedBiomeMasks.Add(tex);
+                    packedMaskPixels.Add(new Color[w * h]);
                 }
-                packedMaskPixels[texIdx][idx1d] = col;
-            }
-            // Yield every 8 rows to keep UI responsive
-            if (y % 8 == 0)
-            {
-                float progress = (float)y / h;
-                if (loadingPanelController != null)
+
+                // Generate biome index map (R channel = biome index normalized 0-1) - keep for compatibility
+                Texture2D biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
+                Color[] biomePixels = new Color[w * h]; // Pre-allocate for batch SetPixels
+
+                // Single pass for height, biome index, and packed biome masks
+                for (int y = 0; y < h; y++)
                 {
-                    loadingPanelController.SetProgress(progress);
-                    loadingPanelController.SetStatus($"Building Height & Biome Maps... ({(progress*100):F0}%)");
+                    float v = ((y + 0.5f) / h);
+                    float lat = Mathf.Lerp(90, -90, v); // Fixed: removed -180f
+                    for (int x = 0; x < w; x++)
+                    {
+                        float u = (x + 0.5f) / w;
+                        float lon = Mathf.Lerp(-180, 180, u);
+                        Vector3 dir = SphericalToCartesian(lat, lon);
+                        int tileIdx = grid.GetTileAtPosition(dir);
+                        if (tileIdx < 0) tileIdx = 0;
+                        var tile = GetHexTileData(tileIdx);
+                        if (tile == null)
+                        {
+                            Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at lat {lat}, lon {lon}");
+                            continue;
+                        }
+                        // HEIGHT MAP PROCESSING (unchanged)
+                        float h01 = Mathf.InverseLerp(baseLandElevation, maxTotalElevation, tile.elevation);
+                        if (h01 < minH) minH = h01;
+                        if (h01 > maxH) maxH = h01;
+                        int idx1d = y * w + x;
+                        float scaledHeight = h01 * heightScale; // This is now in world units
+                        byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
+                        hPixels[idx1d] = new Color32(0, 0, 0, heightByte);
+                        // BIOME INDEX MAP PROCESSING (keep for compatibility)
+                        int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
+                        float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
+                        biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+                        
+                        // INDIVIDUAL BIOME MASK PROCESSING (for individual mask textures)
+                        for (int i = 0; i < biomeCount; i++) {
+                            float maskValue = (i == biomeIdx) ? 1f : 0f;
+                            biomeMaskPixels[i][idx1d] = new Color(maskValue, maskValue, maskValue, maskValue);
+                        }
+                        
+                        // RGBA-packed BIOME MASK PROCESSING (optimized)
+                        if (biomeIdx < biomeCount) {
+                            int texIdx = biomeIdx / 4;
+                            int channel = biomeIdx % 4;
+                            
+                            // Ensure we don't exceed our texture count
+                            if (texIdx < packedMaskCount) {
+                                Color col = packedMaskPixels[texIdx][idx1d];
+                                float maskValue = 1f; // This pixel belongs to this biome
+                                switch (channel)
+                                {
+                                    case 0: col.r = maskValue; break;
+                                    case 1: col.g = maskValue; break;
+                                    case 2: col.b = maskValue; break;
+                                    case 3: col.a = maskValue; break;
+                                }
+                                packedMaskPixels[texIdx][idx1d] = col;
+                            }
+                        }
+                    }
+                    // Yield every 8 rows to keep UI responsive
+                    if (y % 8 == 0)
+                    {
+                        float progress = (float)y / h;
+                        if (loadingPanelController != null)
+                        {
+                            loadingPanelController.SetProgress(progress);
+                            loadingPanelController.SetStatus($"Building Height & Biome Maps... ({(progress*100):F0}%)");
+                        }
+                        yield return null;
+                    }
                 }
-                yield return null;
-            }
+                
+                // Apply individual biome mask pixels to each texture
+                for (int i = 0; i < biomeCount; i++)
+                {
+                    biomeMaskTextures[i].SetPixels(biomeMaskPixels[i]);
+                    biomeMaskTextures[i].Apply(false, true);
+                }
+                
+                // Apply packed mask pixels to each packed mask texture
+                for (int i = 0; i < packedMaskCount; i++)
+                {
+                    packedBiomeMasks[i].SetPixels(packedMaskPixels[i]);
+                    packedBiomeMasks[i].Apply(false, true);
+                }
+                break;
         }
-        
+
+        // Generate biome index map (only if not already generated in standard mode)
+        Texture2D biomeIndexMap;
+        if (biomeMaskQuality != BiomeMaskQuality.Standard)
+        {
+            biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
+            Color[] biomePixels = new Color[w * h];
+            
+            for (int y = 0; y < h; y++)
+            {
+                float v = ((y + 0.5f) / h);
+                float lat = Mathf.Lerp(90, -90, v);
+                for (int x = 0; x < w; x++)
+                {
+                    float u = (x + 0.5f) / w;
+                    float lon = Mathf.Lerp(-180, 180, u);
+                    Vector3 dir = SphericalToCartesian(lat, lon);
+                    int tileIdx = grid.GetTileAtPosition(dir);
+                    if (tileIdx < 0) tileIdx = 0;
+                    var tile = GetHexTileData(tileIdx);
+                    if (tile == null) continue;
+                    
+                    int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
+                    float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
+                    int idx1d = y * w + x;
+                    biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+                }
+            }
+            
+            biomeIndexMap.SetPixels(biomePixels);
+            biomeIndexMap.Apply(false, true);
+        }
+
         Debug.Log($"[PlanetGenerator] Heightmap h01 min: {minH}, max: {maxH}, heightScale: {heightScale}");
         
         // Remap if all values are too close - but only once!
@@ -1252,16 +1339,6 @@ public class PlanetGenerator : MonoBehaviour
         heightTex.SetPixels32(hPixels); 
         heightTex.Apply(false, false);
         
-        // Apply biome pixels in batch (much faster than SetPixel calls)
-        biomeIndexMap.SetPixels(biomePixels);
-        biomeIndexMap.Apply(false, true);
-        // Apply packed mask pixels to each packed mask texture
-        for (int i = 0; i < packedMaskCount; i++)
-        {
-            packedBiomeMasks[i].SetPixels(packedMaskPixels[i]);
-            packedBiomeMasks[i].Apply(false, true);
-        }
-
         // Create a simple color map using biome colors
         biomeColorMap = GenerateBiomeColorMap(w, h);
 
@@ -1758,6 +1835,171 @@ public class PlanetGenerator : MonoBehaviour
         
         tex.Apply();
         return tex;
+    }
+
+    /// <summary>
+    /// Generates optimized biome mask textures with improved quality and performance
+    /// </summary>
+    private List<Texture2D> GenerateOptimizedBiomeMasks(int width, int height)
+    {
+        var biomeMasks = new List<Texture2D>();
+        int biomeCount = biomeSettings.Count;
+        
+        // Create packed RGBA mask textures (4 biomes per texture)
+        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
+        
+        for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
+        {
+            var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true) // Enable mipmaps and linear
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = 4 // Better quality for terrain textures
+            };
+            
+            Color[] pixels = new Color[width * height];
+            
+            // Generate mask data
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float lat = Mathf.Lerp(90, -90, v);
+                
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float lon = Mathf.Lerp(-180, 180, u);
+                    Vector3 dir = SphericalToCartesian(lat, lon);
+                    
+                    int tileIdx = grid.GetTileAtPosition(dir);
+                    if (tileIdx < 0) tileIdx = 0;
+                    
+                    var tile = GetHexTileData(tileIdx);
+                    if (tile == null) continue;
+                    
+                    int biomeIdx = (int)tile.biome;
+                    int pixelIndex = y * width + x;
+                    
+                    // Determine which biomes belong to this packed texture
+                    Color maskColor = Color.black;
+                    for (int channel = 0; channel < 4; channel++)
+                    {
+                        int targetBiomeIdx = maskIndex * 4 + channel;
+                        if (targetBiomeIdx < biomeCount && biomeIdx == targetBiomeIdx)
+                        {
+                            float maskValue = 1f;
+                            switch (channel)
+                            {
+                                case 0: maskColor.r = maskValue; break;
+                                case 1: maskColor.g = maskValue; break;
+                                case 2: maskColor.b = maskValue; break;
+                                case 3: maskColor.a = maskValue; break;
+                            }
+                        }
+                    }
+                    
+                    pixels[pixelIndex] = maskColor;
+                }
+            }
+            
+            maskTexture.SetPixels(pixels);
+            maskTexture.Apply(true, false); // Generate mipmaps but don't make read-only yet
+            biomeMasks.Add(maskTexture);
+        }
+        
+        Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} optimized RGBA biome mask textures for {biomeCount} biomes");
+        return biomeMasks;
+    }
+
+    /// <summary>
+    /// Generates smooth biome transition masks using distance-based blending
+    /// </summary>
+    private List<Texture2D> GenerateBlendedBiomeMasks(int width, int height, float blendRadius = 2f)
+    {
+        var biomeMasks = new List<Texture2D>();
+        int biomeCount = biomeSettings.Count;
+        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
+        
+        for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
+        {
+            var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = 4
+            };
+            
+            Color[] pixels = new Color[width * height];
+            
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float lat = Mathf.Lerp(90, -90, v);
+                
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float lon = Mathf.Lerp(-180, 180, u);
+                    Vector3 dir = SphericalToCartesian(lat, lon);
+                    
+                    Color maskColor = Color.black;
+                    
+                    // Sample multiple nearby tiles for smooth blending
+                    Vector3[] sampleOffsets = {
+                        Vector3.zero,
+                        new Vector3(blendRadius / width, 0, 0),
+                        new Vector3(-blendRadius / width, 0, 0),
+                        new Vector3(0, blendRadius / height, 0),
+                        new Vector3(0, -blendRadius / height, 0)
+                    };
+                    
+                    float[] biomeWeights = new float[4];
+                    float totalWeight = 0f;
+                    
+                    foreach (var offset in sampleOffsets)
+                    {
+                        Vector3 sampleDir = (dir + offset).normalized;
+                        int tileIdx = grid.GetTileAtPosition(sampleDir);
+                        if (tileIdx < 0) continue;
+                        
+                        var tile = GetHexTileData(tileIdx);
+                        if (tile == null) continue;
+                        
+                        int biomeIdx = (int)tile.biome;
+                        float weight = 1f / (1f + offset.magnitude * 10f); // Distance-based weight
+                        
+                        // Add weight to the appropriate channel
+                        for (int channel = 0; channel < 4; channel++)
+                        {
+                            int targetBiomeIdx = maskIndex * 4 + channel;
+                            if (targetBiomeIdx < biomeCount && biomeIdx == targetBiomeIdx)
+                            {
+                                biomeWeights[channel] += weight;
+                                totalWeight += weight;
+                            }
+                        }
+                    }
+                    
+                    // Normalize weights
+                    if (totalWeight > 0f)
+                    {
+                        maskColor.r = biomeWeights[0] / totalWeight;
+                        maskColor.g = biomeWeights[1] / totalWeight;
+                        maskColor.b = biomeWeights[2] / totalWeight;
+                        maskColor.a = biomeWeights[3] / totalWeight;
+                    }
+                    
+                    pixels[y * width + x] = maskColor;
+                }
+            }
+            
+            maskTexture.SetPixels(pixels);
+            maskTexture.Apply(true, false);
+            biomeMasks.Add(maskTexture);
+        }
+        
+        Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} blended RGBA biome mask textures");
+        return biomeMasks;
     }
 }
 
