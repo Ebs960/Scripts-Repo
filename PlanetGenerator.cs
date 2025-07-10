@@ -1116,7 +1116,7 @@ public class PlanetGenerator : MonoBehaviour
         
         Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
         
-        // --- MERGED: Height & Biome Index Maps in single pass ---
+        // --- MERGED: Height & Biome Mask generation in single pass ---
         int biomeCount = biomeSettings.Count;
         int texSize = 1024; // Reduced for faster generation - Unity auto-scales source textures
         
@@ -1152,11 +1152,34 @@ public class PlanetGenerator : MonoBehaviour
             biomeToIndex[biomeSettings[i].biome] = i;
         }
 
-        // Generate biome index map (R channel = biome index normalized 0-1)
+        // --- Generate individual biome mask textures ---
+        List<Texture2D> biomeMaskTextures = new List<Texture2D>();
+        List<Color[]> biomeMaskPixels = new List<Color[]>();
+        
+        // Initialize mask textures for each biome
+        for (int i = 0; i < biomeCount; i++) {
+            var maskTex = new Texture2D(w, h, TextureFormat.Alpha8, false, true);
+            maskTex.wrapMode = TextureWrapMode.Repeat;
+            biomeMaskTextures.Add(maskTex);
+            biomeMaskPixels.Add(new Color[w * h]);
+        }
+
+        // --- RGBA-packed Biome Mask Generation (up to 32 biomes in 8 textures) ---
+        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
+        List<Texture2D> packedBiomeMasks = new List<Texture2D>();
+        List<Color[]> packedMaskPixels = new List<Color[]>();
+        for (int i = 0; i < packedMaskCount; i++) {
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false, true);
+            tex.wrapMode = TextureWrapMode.Repeat;
+            packedBiomeMasks.Add(tex);
+            packedMaskPixels.Add(new Color[w * h]);
+        }
+
+        // Generate biome index map (R channel = biome index normalized 0-1) - keep for compatibility
         Texture2D biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
         Color[] biomePixels = new Color[w * h]; // Pre-allocate for batch SetPixels
-        
-        // Single pass for both height and biome index
+
+        // Single pass for height, biome index, and packed biome masks
         for (int y = 0; y < h; y++)
         {
             float v = ((y + 0.5f) / h);
@@ -1174,25 +1197,32 @@ public class PlanetGenerator : MonoBehaviour
                     Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at lat {lat}, lon {lon}");
                     continue;
                 }
-                
-                // HEIGHT MAP PROCESSING
+                // HEIGHT MAP PROCESSING (unchanged)
                 float h01 = Mathf.InverseLerp(baseLandElevation, maxTotalElevation, tile.elevation);
                 if (h01 < minH) minH = h01;
                 if (h01 > maxH) maxH = h01;
                 int idx1d = y * w + x;
-                // Set alpha to scaled height, RGB to 0
                 float scaledHeight = h01 * heightScale; // This is now in world units
-                // Don't clamp to 0-1 before converting to byte - use the actual scale
                 byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
                 hPixels[idx1d] = new Color32(0, 0, 0, heightByte);
-                
-                // BIOME INDEX MAP PROCESSING
-                // Fast lookup using pre-built dictionary
+                // BIOME INDEX MAP PROCESSING (keep for compatibility)
                 int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
                 float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
                 biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+                // RGBA-packed BIOME MASK PROCESSING
+                int texIdx = biomeIdx / 4;
+                int channel = biomeIdx % 4;
+                Color col = packedMaskPixels[texIdx][idx1d];
+                float maskValue = 1f; // This pixel belongs to this biome
+                switch (channel)
+                {
+                    case 0: col.r = maskValue; break;
+                    case 1: col.g = maskValue; break;
+                    case 2: col.b = maskValue; break;
+                    case 3: col.a = maskValue; break;
+                }
+                packedMaskPixels[texIdx][idx1d] = col;
             }
-            
             // Yield every 8 rows to keep UI responsive
             if (y % 8 == 0)
             {
@@ -1225,6 +1255,12 @@ public class PlanetGenerator : MonoBehaviour
         // Apply biome pixels in batch (much faster than SetPixel calls)
         biomeIndexMap.SetPixels(biomePixels);
         biomeIndexMap.Apply(false, true);
+        // Apply packed mask pixels to each packed mask texture
+        for (int i = 0; i < packedMaskCount; i++)
+        {
+            packedBiomeMasks[i].SetPixels(packedMaskPixels[i]);
+            packedBiomeMasks[i].Apply(false, true);
+        }
 
         // Create a simple color map using biome colors
         biomeColorMap = GenerateBiomeColorMap(w, h);
@@ -1235,8 +1271,35 @@ public class PlanetGenerator : MonoBehaviour
         landscape.HeightMidpoint = 0.5f;
         landscape.HeightRange = 10f;
 
+        // Assign texture arrays and masks to the landscape material
+        var landscapeMaterial = landscape.GetComponent<Renderer>()?.material;
+        if (landscapeMaterial != null)
+        {
+            // Set biome texture arrays
+            landscapeMaterial.SetTexture("_BiomeAlbedoArray", albedoArray);
+            landscapeMaterial.SetTexture("_BiomeNormalArray", normalArray);
+            landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
+            landscapeMaterial.SetFloat("_BiomeNormalArray_Depth", biomeCount);
+            // Set the biome index map for shader lookup
+            landscapeMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
+            // Assign packed RGBA biome mask textures
+            for (int i = 0; i < packedBiomeMasks.Count; i++)
+            {
+                landscapeMaterial.SetTexture($"_BiomeMask{i}", packedBiomeMasks[i]);
+            }
+            landscapeMaterial.SetFloat("_BiomeMaskCount", packedBiomeMasks.Count);
+            Debug.Log($"[PlanetGenerator] Assigned {biomeCount} biomes in {packedBiomeMasks.Count} RGBA mask textures to landscape material.");
+        }
+        else
+        {
+            Debug.LogWarning("[PlanetGenerator] Could not find landscape material to assign biome textures.");
+        }
+
         // Force SGT to recognize the new textures and update the mesh
         if (landscape != null) landscape.MarkForRebuild();
+
+        // Create SGT biome components programmatically
+        CreateSGTBiomeComponents(biomeMaskTextures);
 
         // After visuals are prepared, generate the biome index texture used by the shader
         if (BiomeTextureManager.Instance != null)
@@ -1248,33 +1311,6 @@ public class PlanetGenerator : MonoBehaviour
         {
             loadingPanelController.SetProgress(1f);
             loadingPanelController.SetStatus("Finishing up...");
-        }
-
-        // Update Planet Forge sphere initializer with new textures
-        var initializer = GetComponent<PlanetForgeSphereInitializer>();
-        if (initializer != null)
-        {
-            initializer.heightTextures.Clear();
-            initializer.heightTextures.Add(Texture2D.whiteTexture);
-            initializer.gradientTextures = GenerateGradientTextures();
-            initializer.maskTextures = GenerateBiomeMaskTextures(w, h);
-            initializer.Setup();
-
-            // Remove existing biome children
-            foreach (var biome in initializer.GetComponentsInChildren<SgtLandscapeBiome>())
-            {
-                if (Application.isEditor)
-                    DestroyImmediate(biome.gameObject);
-                else
-                    Destroy(biome.gameObject);
-            }
-
-            int index = 0;
-            foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
-            {
-                initializer.AddBiome(b.ToString(), index, 0, index);
-                index++;
-            }
         }
 
         // --- BIOME BLENDING: Generate blend weight and index maps for 4-way blending ---
@@ -1357,6 +1393,20 @@ public class PlanetGenerator : MonoBehaviour
         // Removed SGT splatmap generation - using blend maps instead for better performance
         // Yield to ensure UI (loading panel) can update before finishing
         yield return null;
+
+        // --- After all textures are generated, assign to PlanetForgeSphereInitializer and call Setup() ---
+        var initializer = GetComponent<PlanetForgeSphereInitializer>();
+        if (initializer != null)
+        {
+            initializer.heightTextures.Clear();
+            initializer.heightTextures.Add(heightTex); // Add main height texture
+            initializer.gradientTextures.Clear();
+            initializer.gradientTextures.AddRange(GenerateGradientTextures()); // Add all generated gradients
+            initializer.maskTextures.Clear();
+            initializer.maskTextures.AddRange(biomeMaskTextures); // Add all biome mask textures
+            initializer.Setup();
+            Debug.Log("PlanetForgeSphereInitializer: Setup() called with generated textures.");
+        }
     }
 
     // Public method to start the coroutine from outside
@@ -1456,7 +1506,8 @@ public class PlanetGenerator : MonoBehaviour
         return BiomeHelper.GetBiome(isLand, temperature, moisture, coastDistance, useRainforest, useScorched, useInfernal, useDemonic);
     }
 
-public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+    public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+    public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
     /// <summary>
     /// Generates a simple biome color map using the current biomeColors array.
@@ -1629,6 +1680,84 @@ public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelCon
             }
         }
         return null; // Path too long
+    }
+
+    /// <summary>
+    /// Creates SGT biome components programmatically with the generated mask textures
+    /// </summary>
+    private void CreateSGTBiomeComponents(List<Texture2D> biomeMaskTextures)
+    {
+        if (landscape == null || biomeSettings.Count == 0)
+        {
+            Debug.LogWarning("[PlanetGenerator] Cannot create SGT biome components - landscape or biome settings missing.");
+            return;
+        }
+
+        // Remove existing biome children first
+        var existingBiomes = landscape.GetComponentsInChildren<SgtLandscapeBiome>();
+        for (int i = 0; i < existingBiomes.Length; i++)
+        {
+            if (Application.isEditor)
+                DestroyImmediate(existingBiomes[i].gameObject);
+            else
+                Destroy(existingBiomes[i].gameObject);
+        }
+
+        // Create new biome components
+        for (int i = 0; i < biomeSettings.Count && i < biomeMaskTextures.Count; i++)
+        {
+            var biomeSetting = biomeSettings[i];
+            // var maskTexture = biomeMaskTextures[i]; // Not used directly
+
+            // Create biome GameObject
+            GameObject biomeObj = new GameObject($"Biome_{biomeSetting.biome}");
+            biomeObj.transform.SetParent(landscape.transform, false);
+
+            // Add and configure SgtLandscapeBiome component
+            var biomeComponent = biomeObj.AddComponent<SgtLandscapeBiome>();
+            
+            // Set up the biome component
+            biomeComponent.Mask = true;
+            biomeComponent.MaskIndex = i;
+            // biomeComponent.MaskTexture = maskTexture; // REMOVE: Not supported
+            // biomeComponent.MaskChannel = ...; // REMOVE: Not supported
+            // biomeComponent.MaskChannelType = ...; // REMOVE: Not supported
+            // If we have gradient textures, assign them by index
+            biomeComponent.GradientIndex = i;
+            // biomeComponent.GradientTexture = ...; // REMOVE: Not supported
+            // Add a default layer
+            var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
+            {
+                HeightIndex = 0,
+                HeightRange = 10f,
+                HeightMidpoint = 0.5f,
+                GlobalSize = 100f
+            };
+            biomeComponent.Layers.Add(layer);
+            biomeComponent.Space = SgtLandscapeBiome.SpaceType.Global;
+            Debug.Log($"[PlanetGenerator] Created SGT biome component for {biomeSetting.biome}");
+        }
+
+        Debug.Log($"[PlanetGenerator] Created {biomeSettings.Count} SGT biome components with mask textures.");
+    }
+
+    /// <summary>
+    /// Creates a simple gradient texture from a color
+    /// </summary>
+    private Texture2D CreateGradientTexture(Color color)
+    {
+        var tex = new Texture2D(1, 256, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp
+        };
+        
+        for (int y = 0; y < 256; y++)
+        {
+            tex.SetPixel(0, y, color);
+        }
+        
+        tex.Apply();
+        return tex;
     }
 }
 

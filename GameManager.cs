@@ -760,6 +760,19 @@ public class GameManager : MonoBehaviour
                 yield return null;
         }
         
+        // --- NEW: Scatter biome prefabs automatically ---
+        var scatterer = FindFirstObjectByType<BiomePrefabScatterer>();
+        if (scatterer != null)
+        {
+            // Pass the loading panel controller from planetGenerator
+            yield return StartCoroutine(scatterer.ScatterAllPrefabsCoroutine(planetGenerator.GetLoadingPanel()));
+            Debug.Log("BiomePrefabScatterer: Prefabs scattered after map generation.");
+        }
+        else
+        {
+            Debug.LogWarning("BiomePrefabScatterer not found in scene. No biome prefabs scattered.");
+        }
+
         Debug.Log("Map generation complete!");
     }
     

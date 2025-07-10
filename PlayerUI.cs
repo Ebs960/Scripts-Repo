@@ -40,7 +40,7 @@ public class PlayerUI : MonoBehaviour
 
     [Header("Turn Change Panel")]
     [SerializeField] private TextMeshProUGUI upcomingCivText;
-    [SerializeField] private TextMeshProUGUI upcomingRoundText;
+    [SerializeField] private Image upcomingCivIcon;
 
     private Civilization currentCiv;
 
@@ -366,8 +366,13 @@ public class PlayerUI : MonoBehaviour
     private void UpdateTurnChangePanel(Civilization civ, int round)
     {
         if (upcomingCivText != null) upcomingCivText.text = $"{civ.civData.civName}'s Turn";
-        int displayRound = (round <= 0) ? 1 : round;
-        if (upcomingRoundText != null) upcomingRoundText.text = $"Round {displayRound}";
+        if (upcomingCivIcon != null)
+        {
+            if (civ.civData.icon != null)
+                upcomingCivIcon.sprite = civ.civData.icon;
+            else
+                upcomingCivIcon.sprite = null; // Or assign a default icon if you have one
+        }
     }
 
     private void OnTechOrCultureStarted(TechData tech) { UpdatePlayerPanel(currentCiv, -1); }

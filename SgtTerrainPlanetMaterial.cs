@@ -45,6 +45,17 @@ namespace SpaceGraphicsToolkit
 		private static int _HasNight              = Shader.PropertyToID("_HasNight");
 		private static int _NightDirection        = Shader.PropertyToID("_NightDirection");
 
+		// --- RGBA-packed Biome Mask Helper ---
+		/// <summary>
+		/// Helper to get the correct channel from an RGBA-packed biome mask texture.
+		/// For biomeIdx, returns the channel index (0=R, 1=G, 2=B, 3=A) and the texture index (biomeIdx/4).
+		/// </summary>
+		public static void GetPackedMaskIndices(int biomeIdx, out int textureIndex, out int channelIndex)
+		{
+			textureIndex = biomeIdx / 4;
+			channelIndex = biomeIdx % 4;
+		}
+
 		public void MarkAsDirty()
 		{
 			if (cachedTerrain != null)

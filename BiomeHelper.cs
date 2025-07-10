@@ -33,6 +33,19 @@ public class BiomeSettings {
     public GameObject[] decorations;       // optional prefabs
     [Range(0f,1f)]
     public float spawnChance = 0.15f;
+
+    // --- SGT Feature/Detail Placement ---
+    [Header("SGT Feature Placement")] 
+    public GameObject[] featurePrefabs; // Prefabs to scatter as SGT features (e.g. cactus, pine tree)
+    [Range(0f, 1f)]
+    public float featureDensity = 0.05f; // How densely to scatter features (0 = none, 1 = max)
+    public Vector2 featureScaleRange = new Vector2(1f, 1.2f); // Min/max scale for features
+    public bool useDetails = false; // If true, use SGT LandscapeDetail for small/instanced objects
+    public GameObject[] detailPrefabs; // Prefabs for SGT details (e.g. grass, pebbles)
+    [Range(0f, 1f)]
+    public float detailDensity = 0.1f;
+    public Vector2 detailScaleRange = new Vector2(0.8f, 1.1f);
+    // You can add more SGT-specific settings as needed (random rotation, alignment, etc.)
 }
 
 public struct YieldValues {
