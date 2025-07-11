@@ -1164,6 +1164,7 @@ public class PlanetGenerator : MonoBehaviour
         // --- Generate Biome Mask Textures (Choose Method Based on Quality Setting) ---
         List<Texture2D> biomeMaskTextures;
         List<Texture2D> packedBiomeMasks;
+        Texture2D biomeIndexMap = null; // Declare at higher scope
         
         switch (biomeMaskQuality)
         {
@@ -1202,7 +1203,7 @@ public class PlanetGenerator : MonoBehaviour
                 }
 
                 // Generate biome index map (R channel = biome index normalized 0-1) - keep for compatibility
-                Texture2D biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
+                biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
                 Color[] biomePixels = new Color[w * h]; // Pre-allocate for batch SetPixels
 
                 // Single pass for height, biome index, and packed biome masks
@@ -1288,14 +1289,21 @@ public class PlanetGenerator : MonoBehaviour
                     packedBiomeMasks[i].SetPixels(packedMaskPixels[i]);
                     packedBiomeMasks[i].Apply(false, true);
                 }
+                
+                // Apply biome index map for Standard quality
+                if (biomeIndexMap != null)
+                {
+                    biomeIndexMap.SetPixels(biomePixels);
+                    biomeIndexMap.Apply(false, true);
+                }
                 break;
         }
 
         // Generate biome index map (only if not already generated in standard mode)
-        Texture2D biomeIndexMap;
+        Texture2D finalBiomeIndexMap = null;
         if (biomeMaskQuality != BiomeMaskQuality.Standard)
         {
-            biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
+            finalBiomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
             Color[] biomePixels = new Color[w * h];
             
             for (int y = 0; y < h; y++)
@@ -1319,8 +1327,8 @@ public class PlanetGenerator : MonoBehaviour
                 }
             }
             
-            biomeIndexMap.SetPixels(biomePixels);
-            biomeIndexMap.Apply(false, true);
+            finalBiomeIndexMap.SetPixels(biomePixels);
+            finalBiomeIndexMap.Apply(false, true);
         }
 
         Debug.Log($"[PlanetGenerator] Heightmap h01 min: {minH}, max: {maxH}, heightScale: {heightScale}");
@@ -1358,7 +1366,7 @@ public class PlanetGenerator : MonoBehaviour
             landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
             landscapeMaterial.SetFloat("_BiomeNormalArray_Depth", biomeCount);
             // Set the biome index map for shader lookup
-            landscapeMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
+            landscapeMaterial.SetTexture("_BiomeIndexMap", finalBiomeIndexMap ?? biomeIndexMap);
             // Assign packed RGBA biome mask textures
             for (int i = 0; i < packedBiomeMasks.Count; i++)
             {

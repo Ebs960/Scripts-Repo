@@ -550,6 +550,12 @@ public class GameManager : MonoBehaviour
             {
                 // Configure moon generator
                 moonGenerator.subdivisions = GameSetupData.moonSize;
+                // Assign loading panel controller if present
+                var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+                if (loadingPanelController != null)
+                {
+                    moonGenerator.SetLoadingPanel(loadingPanelController);
+                }
                 Debug.Log("MoonGenerator created and configured from prefab");
                 
                 // Notify TileDataHelper of the new generator
@@ -753,11 +759,8 @@ public class GameManager : MonoBehaviour
             Debug.Log("Generating moon...");
             // Wait a frame to ensure planet is fully initialized
             yield return null;
-            // Call GenerateSurface on the moon generator
-            moonGenerator.GenerateSurface();
-            // Wait a few frames for moon to complete (if needed)
-            for (int i = 0; i < 3; i++)
-                yield return null;
+            // Call GenerateSurface on the moon generator as a coroutine
+            yield return StartCoroutine(moonGenerator.GenerateSurface());
         }
         
         // --- NEW: Scatter biome prefabs automatically ---
