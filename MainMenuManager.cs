@@ -741,8 +741,34 @@ public class MainMenuManager : MonoBehaviour
         // Show civilization description
         if (selectedCivDescription != null)
         {
-            string description = CivDescriptionGenerator.GenerateDescription(civData, null);
-            selectedCivDescription.text = description;
+            // Show CivData.description, then bonuses
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            if (!string.IsNullOrWhiteSpace(civData.description))
+            {
+                sb.AppendLine(civData.description.Trim());
+            }
+            else
+            {
+                sb.AppendLine($"The {civData.civName} are a notable civilization.");
+            }
+
+            // List bonuses
+            var bonuses = new List<string>();
+            if (civData.productionModifier > 0) bonuses.Add($"+{civData.productionModifier:P0} Production");
+            if (civData.goldModifier > 0) bonuses.Add($"+{civData.goldModifier:P0} Gold");
+            if (civData.scienceModifier > 0) bonuses.Add($"+{civData.scienceModifier:P0} Science");
+            if (civData.cultureModifier > 0) bonuses.Add($"+{civData.cultureModifier:P0} Culture");
+            if (civData.faithModifier > 0) bonuses.Add($"+{civData.faithModifier:P0} Faith");
+            if (bonuses.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("<b>Bonuses:</b>");
+                foreach (var bonus in bonuses)
+                {
+                    sb.AppendLine("+ " + bonus);
+                }
+            }
+            selectedCivDescription.text = sb.ToString().Trim();
         }
         
         // Enable the select button
