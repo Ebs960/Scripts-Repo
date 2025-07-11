@@ -173,10 +173,21 @@ public class MoonGenerator : MonoBehaviour
                 isMoonTile = true // Mark as moon tile
             };
             data[i] = td;
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress((float)i / tileCount * 0.2f); // Progress 0% to 20%
+                    loadingPanelController.SetStatus("Sculpting moon dunes...");
+                }
+                yield return null;
+            }
         }
 
         // --- 2. Generate Moon Caves ---
-        GenerateCaves(tileCount);
+        yield return StartCoroutine(GenerateCaves(tileCount));
 
 
         // --- 3. Final Visual Update Pass ---
@@ -209,6 +220,17 @@ public class MoonGenerator : MonoBehaviour
              // Assign the final elevation back to the data struct (especially important for caves)
             td.elevation = finalElevation;
             data[i] = td;
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.4f + (float)i / tileCount * 0.1f); // Progress 40% to 50%
+                    loadingPanelController.SetStatus("Placing moon decorations...");
+                }
+                yield return null;
+            }
         }
         Debug.Log($"Generated Moon Surface with {tileCount} tiles.");
         
@@ -490,7 +512,7 @@ public class MoonGenerator : MonoBehaviour
     }
 
     // --- 2.1 Cave Generation Helper ---
-    void GenerateCaves(int tileCount)
+    System.Collections.IEnumerator GenerateCaves(int tileCount)
     {
         HashSet<int> processedForCaves = new HashSet<int>(); // Track tiles already part of a cave cluster
         List<int> clusterTiles = new List<int>(); // To hold tiles in the current potential cluster
@@ -561,6 +583,17 @@ public class MoonGenerator : MonoBehaviour
             }
              // Ensure even tiles that didn't start a cluster are marked processed if checked
              processedForCaves.Add(i);
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.2f + (float)i / tileCount * 0.2f); // Progress 20% to 40%
+                    loadingPanelController.SetStatus("Carving moon caves...");
+                }
+                yield return null;
+            }
         }
     }
 

@@ -465,8 +465,13 @@ public class GameManager : MonoBehaviour
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
 
-            // Ensure a PlanetForgeSphereInitializer exists
-            var initializer = planetGO.GetComponent<PlanetForgeSphereInitializer>() ?? planetGO.AddComponent<PlanetForgeSphereInitializer>();
+            // Ensure a PlanetForgeSphereInitializer exists, searching in children
+            var initializer = planetGO.GetComponentInChildren<PlanetForgeSphereInitializer>();
+            if (initializer == null)
+            {
+                Debug.LogWarning("PlanetForgeSphereInitializer not found on prefab or its children, adding it to the root.");
+                initializer = planetGO.AddComponent<PlanetForgeSphereInitializer>();
+            }
 
             // Assign the loading panel controller if present
             var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
@@ -482,17 +487,17 @@ public class GameManager : MonoBehaviour
             initializer.radius = radius;
             initializer.Setup();
 
-            // Set SphereLandscape radius if present
-            var sphereLandscape = planetGO.GetComponent<SgtSphereLandscape>();
+            // Set SphereLandscape radius if present, searching in children
+            var sphereLandscape = planetGO.GetComponentInChildren<SgtSphereLandscape>();
             if (sphereLandscape != null)
             {
                 sphereLandscape.Radius = radius;
             }
-            // Generate grid data using the new IcoSphereGrid system
+            // Generate grid data using the new IcoSphereGrid system with the correct radius
             if (planetGenerator != null)
             {
                 planetGenerator.subdivisions = subdivisions;
-                planetGenerator.Grid.Generate(subdivisions, 1f);
+                planetGenerator.Grid.Generate(subdivisions, radius);
             }
             
             // Configure planet generator with GameSetupData settings

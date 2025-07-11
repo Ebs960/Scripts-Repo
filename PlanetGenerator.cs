@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
@@ -197,6 +198,7 @@ public class PlanetGenerator : MonoBehaviour
     private Vector3 noiseOffset;
     // Cache elevation for river generation
     readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>();
+    private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     private LoadingPanelController loadingPanelController;
 
     // --------------------------- Unity lifecycle -----------------------------
@@ -270,12 +272,7 @@ public class PlanetGenerator : MonoBehaviour
         BuildVisualMaps();
     }
     
-    // This is no longer needed, generation happens on demand in GameManager
-    // System.Collections.IEnumerator Initialise() 
-    // {
-    //     for (int i = 0; i < Mathf.Max(1, initializationDelay); i++) yield return null;
-    //     GenerateSurface();
-    // }
+
 
     // --------------------------- Surface Generation --------------------------
     /// <summary>
@@ -289,6 +286,7 @@ public class PlanetGenerator : MonoBehaviour
         data.Clear();
         baseData.Clear();
         tileElevation.Clear();
+        landTilesGenerated = 0;
 
         // --- Validate Thresholds ---
         if (hillThreshold >= mountainThreshold) {
@@ -340,6 +338,7 @@ public class PlanetGenerator : MonoBehaviour
             tileLatLon[i] = new Vector2(latitude, longitude);
         }
 
+        int processedSeeds = 0;
         // Find the highest noise point within each seed's mask
         foreach (Vector3 seedPos in continentSeeds) {
             int currentPeakIndex = -1;
@@ -368,10 +367,18 @@ public class PlanetGenerator : MonoBehaviour
             } else {
                 Debug.LogWarning($"Seed at {seedPos} had no tiles within its mask or mask was empty of noise peaks.");
             }
+
+            // YIELD after processing each seed
+            processedSeeds++;
+            if (loadingPanelController != null)
+            {
+                loadingPanelController.SetProgress(0.05f + (float)processedSeeds / numberOfContinents * 0.05f); // Progress from 5% to 10%
+                loadingPanelController.SetStatus($"Analyzing continent {processedSeeds}/{numberOfContinents}...");
+            }
+            yield return null;
         }
 
         // ---------- 4. Generate Land: Guarantee Peaks + Fill Threshold ---------
-        int landTilesGenerated = 0;
         for (int i = 0; i < tileCount; i++) {
             isLandTile[i] = false; // Default to water
             Vector3 tilePos = grid.tileCenters[i].normalized;
@@ -406,15 +413,26 @@ public class PlanetGenerator : MonoBehaviour
                     }
                 }
             }
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.1f + (float)i / tileCount * 0.1f); // Progress 10% to 20%
+                    loadingPanelController.SetStatus("Raising continents...");
+                }
+                yield return null;
+            }
         }
 
         // ---------- 4.5. Generate Islands (NEW) ---------
         if (GameSetupData.generateIslands && GameSetupData.numberOfIslands > 0) {
-            landTilesGenerated += GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount);
+            yield return GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount);
         }
 
         // ---------- 4.6. Generate Polar Landmasses (NEW) ---------
-        landTilesGenerated += GeneratePolarLandmasses(isLandTile, tileLatLon, tileNoiseCache, tileCount);
+        this.landTilesGenerated += GeneratePolarLandmasses(isLandTile, tileLatLon, tileNoiseCache, tileCount);
 
         Debug.Log($"Generated {landTilesGenerated} land tiles. Method: Deterministic Seeds + Mask + Guaranteed Core + Islands. ({(float)landTilesGenerated / tileCount * 100:F1}% surface coverage)");
 
@@ -529,6 +547,17 @@ public class PlanetGenerator : MonoBehaviour
             };
             data[i] = td;
             baseData[i] = td; // Store base state
+
+            // BATCH YIELD
+            if (i > 0 && i % 250 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.3f + (float)i / tileCount * 0.2f); // Progress 30% to 50%
+                    loadingPanelController.SetStatus("Defining biomes and elevation...");
+                }
+                yield return null;
+            }
         }
 
 
@@ -568,12 +597,34 @@ public class PlanetGenerator : MonoBehaviour
                 data[i] = td;
                 baseData[i] = td;
             }
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.5f + (float)i / tileCount * 0.1f); // Progress 50% to 60%
+                    loadingPanelController.SetStatus("Forming coastlines...");
+                }
+                yield return null;
+            }
         }
 
         // Identify all coast tiles after the first pass
         HashSet<int> coastTiles = new HashSet<int>();
         for (int i = 0; i < tileCount; i++) {
             if (data.ContainsKey(i) && data[i].biome == Biome.Coast) coastTiles.Add(i);
+            
+            // BATCH YIELD
+            if (i > 0 && i % 1000 == 0) // Larger batch size for this simple operation
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.6f + (float)i / tileCount * 0.05f); // Progress 60% to 65%
+                    loadingPanelController.SetStatus("Identifying coastlines...");
+                }
+                yield return null;
+            }
         }
 
         // Convert Ocean tiles near Coast tiles into Seas
@@ -601,6 +652,17 @@ public class PlanetGenerator : MonoBehaviour
                     baseData[i] = td;
                 }
             }
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.65f + (float)i / tileCount * 0.05f); // Progress 65% to 70%
+                    loadingPanelController.SetStatus("Defining shallow seas...");
+                }
+                yield return null;
+            }
         }
 
         // ---------- 6.1 Set Fixed Coast Elevation (AFTER Coasts/Seas are determined) ----------
@@ -608,11 +670,22 @@ public class PlanetGenerator : MonoBehaviour
             if (data.ContainsKey(i) && data[i].biome == Biome.Coast) {
                 tileElevation[i] = coastElevation; // Fixed elevation for coasts 
             }
+
+            // BATCH YIELD
+            if (i > 0 && i % 1000 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.70f + (float)i / tileCount * 0.05f); // Progress 70% to 75%
+                    loadingPanelController.SetStatus("Setting coastline elevation...");
+                }
+                yield return null;
+            }
         }
 
         // ---------- 6.5 River Generation Pass (MOVED TO AFTER COAST/SEAS) ----
         if (enableRivers) {
-            GenerateRivers(isLandTile, data);
+            yield return GenerateRivers(isLandTile, data);
         }
 
         // Final Visual Update Pass - No longer setting tile colors directly
@@ -636,10 +709,21 @@ public class PlanetGenerator : MonoBehaviour
                     }
                 }
             }
+
+            // BATCH YIELD
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.95f + (float)i / tileCount * 0.05f); // Progress 95% to 100%
+                    loadingPanelController.SetStatus("Placing decorations...");
+                }
+                yield return null;
+            }
         }
 
         // --------------------------- River Generation ----------------------------
-        void GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
+        IEnumerator GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
         {
             Debug.Log("Generating Rivers...");
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
@@ -682,11 +766,11 @@ public class PlanetGenerator : MonoBehaviour
 
             if (validLandTiles.Count == 0) {
                 Debug.LogWarning("No valid interior land tiles found to start rivers.");
-                return;
+                yield break;
             }
             if (coastTilesList.Count == 0) {
                 Debug.LogWarning("No coast tiles found to end rivers.");
-                return;
+                yield break;
             }
 
             int targetRiverCount = riverRand.Next(minRiversPerContinent, maxRiversPerContinent + 1) * 7; // Estimate based on avg continents
@@ -753,6 +837,17 @@ public class PlanetGenerator : MonoBehaviour
 
                 // Remove start tile from valid list as it's now a river
                 validLandTiles.Remove(startTileIndex);
+
+                // BATCH YIELD
+                if (totalAttempts % 20 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        loadingPanelController.SetProgress(0.75f + (float)actualRiverCount / Mathf.Max(1, targetRiverCount) * 0.2f); // 75% to 95%
+                        loadingPanelController.SetStatus($"Carving rivers... ({actualRiverCount}/{targetRiverCount})");
+                    }
+                    yield return null;
+                }
             }
 
             Debug.Log($"Successfully generated {actualRiverCount} rivers using pathfinding. (Attempts: {totalAttempts})");
@@ -760,92 +855,7 @@ public class PlanetGenerator : MonoBehaviour
 
         // --------------------------- Helper Functions ----------------------------
 
-        List<Vector3> GenerateDeterministicSeeds(int count, int rndSeed) {
-            List<Vector3> seeds = new List<Vector3>();
-            System.Random rand = new System.Random(rndSeed);
-            System.Func<Vector3, Vector3> addOffset = (Vector3 v) => {
-                float range = seedPositionVariance * 2f;
-                float offsetX = (float)(rand.NextDouble() * range - seedPositionVariance);
-                float offsetY = (float)(rand.NextDouble() * range - seedPositionVariance);
-                float offsetZ = (float)(rand.NextDouble() * range - seedPositionVariance);
-                return (v + new Vector3(offsetX, offsetY, offsetZ)).normalized;
-            };
-            if (count <= 0) return seeds;
-            Vector3 northPole = Vector3.up;
-            Vector3 southPole = Vector3.down;
-            Vector3 equatorFwd = Vector3.forward;
-            Vector3 equatorBack = Vector3.back;
-            Vector3 equatorRight = Vector3.right;
-            Vector3 equatorLeft = Vector3.left;
-            seeds.Add(addOffset(northPole));
-            if (count == 1) return seeds;
-            seeds.Add(addOffset(southPole));
-            if (count == 2) return seeds;
-            if (count >= 3) seeds.Add(addOffset(equatorFwd));
-            if (count >= 4) seeds.Add(addOffset(equatorRight));
-            if (count >= 5) seeds.Add(addOffset(equatorBack));
-            if (count >= 6) seeds.Add(addOffset(equatorLeft));
-            if (count == 6) return seeds;
-            if (count >= 7) seeds.Add(addOffset(new Vector3(1, 1, 1).normalized));
-            if (count >= 8) seeds.Add(addOffset(new Vector3(-1, -1, -1).normalized));
-            if (count == 8) return seeds;
-            Debug.LogWarning($"Deterministic placement only defined up to 8 seeds. Adding remaining {count - seeds.Count} randomly.");
-            int guard = 0;
-            int maxTries = 5000;
-            float minAngle = 30f;
-            while (seeds.Count < count && guard < maxTries) {
-                guard++;
-                Vector3 candidate = UnityEngine.Random.insideUnitSphere.normalized;
-                if (candidate == Vector3.zero) candidate = Vector3.up;
-                bool ok = true;
-                foreach (var s in seeds) {
-                    if (Vector3.Angle(candidate, s) < minAngle) { ok = false; break; }
-                }
-                if (ok) seeds.Add(candidate);
-            }
-            return seeds;
-        }
-
-        bool IsTileInMask(Vector3 tilePosNormalized, Vector2 tileLatLon, Vector3 seedPosNormalized, float maxWidthDeg, float maxHeightDeg) {
-            Vector2 seedLatLon = GetLatLonFromVector(seedPosNormalized);
-            float latDiff = Mathf.Abs(tileLatLon.x - seedLatLon.x);
-            float lonDiff = Mathf.DeltaAngle(tileLatLon.y, seedLatLon.y);
-            float widthScale = Mathf.Cos(Mathf.Deg2Rad * tileLatLon.x);
-            float scaledLonDiff = Mathf.Abs(lonDiff * widthScale);
-            float latThreshold = maxHeightDeg / 2f;
-            float lonThreshold = maxWidthDeg / 2f;
-            if (latDiff > latThreshold * 1.5f || scaledLonDiff > lonThreshold * 1.5f) {
-                return false;
-            }
-            if (latDiff > latThreshold * 0.7f || scaledLonDiff > lonThreshold * 0.7f) {
-                float latFactor = Mathf.InverseLerp(latThreshold * 0.7f, latThreshold, latDiff);
-                float lonFactor = Mathf.InverseLerp(lonThreshold * 0.7f, lonThreshold, scaledLonDiff);
-                float edgeFactor = Mathf.Max(latFactor, lonFactor);
-                float edgeNoise = Mathf.PerlinNoise(
-                    tilePosNormalized.x * 3.7f + tilePosNormalized.z * 2.3f,
-                    tilePosNormalized.y * 4.1f + 0.5f
-                );
-                float ellipseFactor = (latFactor * latFactor + lonFactor * lonFactor) / 2f;
-                float finalFactor = edgeFactor * (0.7f + 0.3f * ellipseFactor);
-                if (edgeNoise < finalFactor) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        Vector2 GetLatLonFromVector(Vector3 v) {
-            float latitude = Mathf.Asin(v.y) * Mathf.Rad2Deg;
-            float longitude = Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
-            return new Vector2(latitude, longitude);
-        }
-
-        // ---------- NEW: Island Generation Methods ---------
-        
-        /// <summary>
-        /// Generates islands using a different approach than continents - smaller, scattered landmasses
-        /// </summary>
-        int GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
+        IEnumerator GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
                            Dictionary<int, float> tileNoiseCache, int tileCount) {
             
             Debug.Log($"Generating {GameSetupData.numberOfIslands} islands...");
@@ -859,8 +869,10 @@ public class PlanetGenerator : MonoBehaviour
             float islandNoiseFrequency = continentNoiseFrequency * 1.5f; // Higher frequency for more detail
             float islandThreshold = landThreshold - 0.08f; // LOWERED: Was -0.05f, now even easier to become land
             
-            int islandTilesGenerated = 0;
+            int localIslandTilesGenerated = 0;
             
+            // BATCH YIELD
+            int islandCheckCounter = 0;
             // Find noise peaks within each island mask
             Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)> islandPeaks = 
                 new Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)>();
@@ -892,6 +904,18 @@ public class PlanetGenerator : MonoBehaviour
                 if (currentPeakIndex != -1) {
                     islandPeaks[seedPos] = (currentPeakIndex, currentPeakValue);
                 }
+                
+                // BATCH YIELD
+                islandCheckCounter++;
+                if (islandCheckCounter % 5 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        loadingPanelController.SetProgress(0.2f + (float)islandCheckCounter / islandSeeds.Count * 0.05f); // 20% to 25%
+                        loadingPanelController.SetStatus($"Finding island locations...");
+                    }
+                    yield return null;
+                }
             }
             
             // Generate island land tiles
@@ -911,7 +935,7 @@ public class PlanetGenerator : MonoBehaviour
                         // Guarantee the peak tile is land
                         if (i == peakIndex) {
                             isLandTile[i] = true;
-                            islandTilesGenerated++;
+                            localIslandTilesGenerated++;
                             break;
                         }
                         
@@ -924,15 +948,26 @@ public class PlanetGenerator : MonoBehaviour
                         
                         if (noiseValue > islandThreshold) {
                             isLandTile[i] = true;
-                            islandTilesGenerated++;
+                            localIslandTilesGenerated++;
                             break;
                         }
                     }
                 }
+
+                // BATCH YIELD
+                if (i > 0 && i % 1000 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        loadingPanelController.SetProgress(0.25f + (float)i / tileCount * 0.05f); // 25% to 30%
+                        loadingPanelController.SetStatus("Raising islands...");
+                    }
+                    yield return null;
+                }
             }
             
-            Debug.Log($"Generated {islandTilesGenerated} island tiles from {islandSeeds.Count} island seeds.");
-            return islandTilesGenerated;
+            Debug.Log($"Generated {localIslandTilesGenerated} island tiles from {islandSeeds.Count} island seeds.");
+            this.landTilesGenerated += localIslandTilesGenerated;
         }
         
         /// <summary>
@@ -2008,6 +2043,87 @@ public class PlanetGenerator : MonoBehaviour
         
         Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} blended RGBA biome mask textures");
         return biomeMasks;
+    }
+
+    // --- Helper methods moved to class scope ---
+    private List<Vector3> GenerateDeterministicSeeds(int count, int rndSeed) {
+        List<Vector3> seeds = new List<Vector3>();
+        System.Random rand = new System.Random(rndSeed);
+        System.Func<Vector3, Vector3> addOffset = (Vector3 v) => {
+            float range = seedPositionVariance * 2f;
+            float offsetX = (float)(rand.NextDouble() * range - seedPositionVariance);
+            float offsetY = (float)(rand.NextDouble() * range - seedPositionVariance);
+            float offsetZ = (float)(rand.NextDouble() * range - seedPositionVariance);
+            return (v + new Vector3(offsetX, offsetY, offsetZ)).normalized;
+        };
+        if (count <= 0) return seeds;
+        Vector3 northPole = Vector3.up;
+        Vector3 southPole = Vector3.down;
+        Vector3 equatorFwd = Vector3.forward;
+        Vector3 equatorBack = Vector3.back;
+        Vector3 equatorRight = Vector3.right;
+        Vector3 equatorLeft = Vector3.left;
+        seeds.Add(addOffset(northPole));
+        if (count == 1) return seeds;
+        seeds.Add(addOffset(southPole));
+        if (count == 2) return seeds;
+        if (count >= 3) seeds.Add(addOffset(equatorFwd));
+        if (count >= 4) seeds.Add(addOffset(equatorRight));
+        if (count >= 5) seeds.Add(addOffset(equatorBack));
+        if (count >= 6) seeds.Add(addOffset(equatorLeft));
+        if (count == 6) return seeds;
+        if (count >= 7) seeds.Add(addOffset(new Vector3(1, 1, 1).normalized));
+        if (count >= 8) seeds.Add(addOffset(new Vector3(-1, -1, -1).normalized));
+        if (count == 8) return seeds;
+        Debug.LogWarning($"Deterministic placement only defined up to 8 seeds. Adding remaining {count - seeds.Count} randomly.");
+        int guard = 0;
+        int maxTries = 5000;
+        float minAngle = 30f;
+        while (seeds.Count < count && guard < maxTries) {
+            guard++;
+            Vector3 candidate = UnityEngine.Random.insideUnitSphere.normalized;
+            if (candidate == Vector3.zero) candidate = Vector3.up;
+            bool ok = true;
+            foreach (var s in seeds) {
+                if (Vector3.Angle(candidate, s) < minAngle) { ok = false; break; }
+            }
+            if (ok) seeds.Add(candidate);
+        }
+        return seeds;
+    }
+
+    private bool IsTileInMask(Vector3 tilePosNormalized, Vector2 tileLatLon, Vector3 seedPosNormalized, float maxWidthDeg, float maxHeightDeg) {
+        Vector2 seedLatLon = GetLatLonFromVector(seedPosNormalized);
+        float latDiff = Mathf.Abs(tileLatLon.x - seedLatLon.x);
+        float lonDiff = Mathf.DeltaAngle(tileLatLon.y, seedLatLon.y);
+        float widthScale = Mathf.Cos(Mathf.Deg2Rad * tileLatLon.x);
+        float scaledLonDiff = Mathf.Abs(lonDiff * widthScale);
+        float latThreshold = maxHeightDeg / 2f;
+        float lonThreshold = maxWidthDeg / 2f;
+        if (latDiff > latThreshold * 1.5f || scaledLonDiff > lonThreshold * 1.5f) {
+            return false;
+        }
+        if (latDiff > latThreshold * 0.7f || scaledLonDiff > lonThreshold * 0.7f) {
+            float latFactor = Mathf.InverseLerp(latThreshold * 0.7f, latThreshold, latDiff);
+            float lonFactor = Mathf.InverseLerp(lonThreshold * 0.7f, lonThreshold, scaledLonDiff);
+            float edgeFactor = Mathf.Max(latFactor, lonFactor);
+            float edgeNoise = Mathf.PerlinNoise(
+                tilePosNormalized.x * 3.7f + tilePosNormalized.z * 2.3f,
+                tilePosNormalized.y * 4.1f + 0.5f
+            );
+            float ellipseFactor = (latFactor * latFactor + lonFactor * lonFactor) / 2f;
+            float finalFactor = edgeFactor * (0.7f + 0.3f * ellipseFactor);
+            if (edgeNoise < finalFactor) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Vector2 GetLatLonFromVector(Vector3 v) {
+        float latitude = Mathf.Asin(v.y) * Mathf.Rad2Deg;
+        float longitude = Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
+        return new Vector2(latitude, longitude);
     }
 }
 

@@ -185,10 +185,10 @@ public class MainMenuManager : MonoBehaviour
 
     private readonly MoonSizePreset[] moonSizePresets = new[] {
         new MoonSizePreset { name = "None", subdivisions = 0 },
-        new MoonSizePreset { name = "Tiny", subdivisions = 8 },
-        new MoonSizePreset { name = "Small", subdivisions = 12 },
-        new MoonSizePreset { name = "Standard", subdivisions = 16 },
-        new MoonSizePreset { name = "Large", subdivisions = 20 }
+        new MoonSizePreset { name = "Tiny", subdivisions = 4 },
+        new MoonSizePreset { name = "Small", subdivisions = 6 },
+        new MoonSizePreset { name = "Standard", subdivisions = 8 },
+        new MoonSizePreset { name = "Large", subdivisions = 10 }
     };
 
     void Start()
@@ -447,7 +447,8 @@ public class MainMenuManager : MonoBehaviour
             
             if (subdivisions > 0)
             {
-                moonSizeText.text = $"Moon Size: {sizeDescription} ({subdivisions} subdivisions)";
+                // Only show the name, not subdivisions
+                moonSizeText.text = $"Moon Size: {sizeDescription}";
             }
             else
             {
@@ -810,7 +811,9 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.numberOfTribes = tribeCount;
         
         // Basic map settings
-        GameSetupData.moonSize = moonPreset;
+        GameSetupData.mapSize = (GameManager.MapSize)mapSizeDropdown.value;
+        GameSetupData.moonSize = moonSizePresets[moonPreset].subdivisions;
+        GameSetupData.generateMoon = moonSizePresets[moonPreset].subdivisions > 0;
         GameSetupData.animalPrevalence = selectedAnimalPrevalence;
 
         // Map generation settings
@@ -979,20 +982,43 @@ public class MainMenuManager : MonoBehaviour
         }
         if (selectedLeaderDescription != null)
         {
-            // Build a description string from leader bonuses
+            // Build a description string: biography, bonuses, then ability
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"<b>{leaderData.abilityName}</b>");
-            sb.AppendLine(leaderData.abilityDescription);
-            sb.AppendLine();
-            sb.AppendLine("<b>Bonuses:</b>");
-            if (leaderData.goldModifier != 0) sb.AppendLine($"- {leaderData.goldModifier:P0} Gold");
-            if (leaderData.scienceModifier != 0) sb.AppendLine($"- {leaderData.scienceModifier:P0} Science");
-            if (leaderData.productionModifier != 0) sb.AppendLine($"- {leaderData.productionModifier:P0} Production");
-            if (leaderData.foodModifier != 0) sb.AppendLine($"- {leaderData.foodModifier:P0} Food");
-            if (leaderData.cultureModifier != 0) sb.AppendLine($"- {leaderData.cultureModifier:P0} Culture");
-            if (leaderData.faithModifier != 0) sb.AppendLine($"- {leaderData.faithModifier:P0} Faith");
-            if (leaderData.militaryStrengthModifier != 0) sb.AppendLine($"- {leaderData.militaryStrengthModifier:P0} Military Strength");
-            selectedLeaderDescription.text = sb.ToString();
+            // 1. Biography/Description
+            if (!string.IsNullOrWhiteSpace(leaderData.biography))
+                sb.AppendLine(leaderData.biography.Trim());
+            else
+                sb.AppendLine($"{leaderData.leaderName} is a notable leader.");
+
+            // 2. Bonuses
+            var bonuses = new List<string>();
+            if (leaderData.goldModifier != 0) bonuses.Add($"{(leaderData.goldModifier > 0 ? "+" : "")}{leaderData.goldModifier:P0} Gold");
+            if (leaderData.scienceModifier != 0) bonuses.Add($"{(leaderData.scienceModifier > 0 ? "+" : "")}{leaderData.scienceModifier:P0} Science");
+            if (leaderData.productionModifier != 0) bonuses.Add($"{(leaderData.productionModifier > 0 ? "+" : "")}{leaderData.productionModifier:P0} Production");
+            if (leaderData.foodModifier != 0) bonuses.Add($"{(leaderData.foodModifier > 0 ? "+" : "")}{leaderData.foodModifier:P0} Food");
+            if (leaderData.cultureModifier != 0) bonuses.Add($"{(leaderData.cultureModifier > 0 ? "+" : "")}{leaderData.cultureModifier:P0} Culture");
+            if (leaderData.faithModifier != 0) bonuses.Add($"{(leaderData.faithModifier > 0 ? "+" : "")}{leaderData.faithModifier:P0} Faith");
+            if (leaderData.militaryStrengthModifier != 0) bonuses.Add($"{(leaderData.militaryStrengthModifier > 0 ? "+" : "")}{leaderData.militaryStrengthModifier:P0} Military Strength");
+            if (bonuses.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("<b>Bonuses:</b>");
+                foreach (var bonus in bonuses)
+                {
+                    sb.AppendLine("+ " + bonus);
+                }
+            }
+
+            // 3. Ability
+            if (!string.IsNullOrWhiteSpace(leaderData.abilityName) || !string.IsNullOrWhiteSpace(leaderData.abilityDescription))
+            {
+                sb.AppendLine();
+                if (!string.IsNullOrWhiteSpace(leaderData.abilityName))
+                    sb.AppendLine($"<b>{leaderData.abilityName}</b>");
+                if (!string.IsNullOrWhiteSpace(leaderData.abilityDescription))
+                    sb.AppendLine(leaderData.abilityDescription);
+            }
+            selectedLeaderDescription.text = sb.ToString().Trim();
         }
     }
 

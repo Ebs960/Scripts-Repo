@@ -11,8 +11,9 @@ public class BiomePrefabScatterer : MonoBehaviour
     [Header("References")]
     public PlanetGenerator planetGenerator;
     public SpaceGraphicsToolkit.Landscape.SgtSphereLandscape landscape;
-    [Tooltip("Number of scatter attempts per biome (higher = denser, but slower)")]
-    public int scatterAttemptsPerBiome = 2000;
+    [Tooltip("Global density multiplier for all scattered prefabs. Higher = more prefabs.")]
+    [Range(0.1f, 5.0f)]
+    public float globalDensity = 1.0f;
     [Tooltip("Random seed for scatter placement (0 = random)")]
     public int scatterSeed = 0;
     [Tooltip("Parent container for scattered prefabs (auto-created if null)")]
@@ -26,70 +27,83 @@ public class BiomePrefabScatterer : MonoBehaviour
     public IEnumerator ScatterAllPrefabsCoroutine(LoadingPanelController loadingPanel = null)
     {
         ClearAllPrefabs();
-        if (planetGenerator == null || landscape == null)
+        if (planetGenerator == null || planetGenerator.Grid == null || landscape == null)
         {
-            Debug.LogWarning("BiomePrefabScatterer: Missing references.");
+            Debug.LogWarning("BiomePrefabScatterer: Missing PlanetGenerator, Grid, or Landscape references.");
             yield break;
         }
-        var biomeSettings = planetGenerator.biomeSettings;
-        var biomeMaskTextures = GenerateBiomeMaskTexturesFromPlanet();
-        int biomeCount = Mathf.Min(biomeSettings.Count, biomeMaskTextures.Count);
+
         if (scatterContainer == null)
         {
             var containerObj = new GameObject("BiomePrefabScatterContainer");
             containerObj.transform.SetParent(transform, false);
             scatterContainer = containerObj.transform;
         }
-        System.Random rand = scatterSeed == 0 ? new System.Random() : new System.Random(scatterSeed);
+
+        System.Random rand = (scatterSeed == 0) ? new System.Random() : new System.Random(scatterSeed);
         float planetRadius = landscape.Radius;
-        int totalToScatter = 0;
-        for (int b = 0; b < biomeCount; b++)
+        int tileCount = planetGenerator.Grid.TileCount;
+        var biomeSettingsList = planetGenerator.biomeSettings;
+
+        // Create a fast lookup for biome settings
+        var biomeSettingsLookup = new Dictionary<Biome, BiomeSettings>();
+        foreach (var bs in biomeSettingsList)
         {
-            var bs = biomeSettings[b];
-            if (bs.featurePrefabs == null || bs.featurePrefabs.Length == 0) continue;
-            totalToScatter += Mathf.RoundToInt(bs.featureDensity * scatterAttemptsPerBiome);
-        }
-        int scattered = 0;
-        for (int b = 0; b < biomeCount; b++)
-        {
-            var bs = biomeSettings[b];
-            var maskTex = biomeMaskTextures[b];
-            if (bs.featurePrefabs == null || bs.featurePrefabs.Length == 0 || maskTex == null) continue;
-            int numToScatter = Mathf.RoundToInt(bs.featureDensity * scatterAttemptsPerBiome);
-            for (int i = 0; i < numToScatter; i++)
+            if (bs != null && !biomeSettingsLookup.ContainsKey(bs.biome))
             {
-                float theta = (float)(rand.NextDouble() * Mathf.PI * 2f);
-                float phi = (float)(Mathf.Acos(2f * (float)rand.NextDouble() - 1f));
-                Vector3 dir = new Vector3(
-                    Mathf.Sin(phi) * Mathf.Cos(theta),
-                    Mathf.Cos(phi),
-                    Mathf.Sin(phi) * Mathf.Sin(theta)
-                );
-                Vector3 worldPos = dir * planetRadius;
-                float u = 0.5f + Mathf.Atan2(dir.x, dir.z) / (2f * Mathf.PI);
-                float v = 0.5f - Mathf.Asin(dir.y) / Mathf.PI;
-                Color maskCol = maskTex.GetPixelBilinear(u, v);
-                if (maskCol.r < 0.5f) continue;
-                var prefab = bs.featurePrefabs[rand.Next(bs.featurePrefabs.Length)];
-                if (prefab == null) continue;
-                var go = Application.isPlaying ? Instantiate(prefab) : (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
-                go.transform.SetParent(scatterContainer, true);
-                go.transform.position = transform.TransformPoint(worldPos);
-                go.transform.up = (go.transform.position - transform.position).normalized;
-                go.transform.Rotate(Vector3.up, (float)(rand.NextDouble() * 360f), Space.Self);
-                float scale = Mathf.Lerp(bs.featureScaleRange.x, bs.featureScaleRange.y, (float)rand.NextDouble());
-                go.transform.localScale = Vector3.one * scale;
-                spawnedPrefabs.Add(go);
-                scattered++;
-                if (loadingPanel != null && scattered % 50 == 0)
-                {
-                    float progress = (float)scattered / Mathf.Max(1, totalToScatter);
-                    loadingPanel.SetProgress(progress);
-                    loadingPanel.SetStatus($"Scattering Biome Features... ({progress * 100f:F0}%)");
-                    yield return null;
-                }
+                biomeSettingsLookup.Add(bs.biome, bs);
             }
         }
+
+        // Iterate through every tile on the planet
+        for (int i = 0; i < tileCount; i++)
+        {
+            var tileData = planetGenerator.GetHexTileData(i);
+            if (tileData == null || !tileData.isLand) continue;
+
+            // Find the settings for this tile's biome
+            if (biomeSettingsLookup.TryGetValue(tileData.biome, out var bs))
+            {
+                // Check if this biome has features to scatter
+                if (bs.featurePrefabs != null && bs.featurePrefabs.Length > 0)
+                {
+                    // Use featureDensity as a probability to place an object
+                    if (rand.NextDouble() < bs.featureDensity * globalDensity)
+                    {
+                        var prefab = bs.featurePrefabs[rand.Next(bs.featurePrefabs.Length)];
+                        if (prefab == null) continue;
+
+                        var go = Application.isPlaying ? Instantiate(prefab) : (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+                        
+                        // Use the tile's actual world position
+                        Vector3 worldPos = planetGenerator.Grid.tileCenters[i];
+                        
+                        go.transform.SetParent(scatterContainer, false);
+                        go.transform.position = worldPos;
+                        go.transform.up = (go.transform.position - transform.position).normalized;
+                        go.transform.Rotate(Vector3.up, (float)(rand.NextDouble() * 360f), Space.Self);
+                        
+                        float scale = Mathf.Lerp(bs.featureScaleRange.x, bs.featureScaleRange.y, (float)rand.NextDouble());
+                        go.transform.localScale = Vector3.one * scale;
+                        
+                        spawnedPrefabs.Add(go);
+                    }
+                }
+            }
+
+            // Yield every so often to prevent freezing
+            if (i > 0 && i % 200 == 0)
+            {
+                if (loadingPanel != null)
+                {
+                    float progress = (float)i / tileCount;
+                    loadingPanel.SetProgress(progress);
+                    loadingPanel.SetStatus($"Scattering Biome Features... ({progress * 100f:F0}%)");
+                }
+                yield return null;
+            }
+        }
+
         if (loadingPanel != null)
         {
             loadingPanel.SetProgress(1f);
@@ -123,19 +137,5 @@ public class BiomePrefabScatterer : MonoBehaviour
             else DestroyImmediate(scatterContainer.gameObject);
             scatterContainer = null;
         }
-    }
-
-    // Helper to get the mask textures from the planet (assumes they are generated and available)
-    private List<Texture2D> GenerateBiomeMaskTexturesFromPlanet()
-    {
-        var result = new List<Texture2D>();
-        var mat = landscape.GetComponent<Renderer>()?.sharedMaterial;
-        if (mat == null) return result;
-        for (int i = 0; i < planetGenerator.biomeSettings.Count; i++)
-        {
-            var mask = mat.GetTexture($"_BiomeMask{i}") as Texture2D;
-            result.Add(mask);
-        }
-        return result;
     }
 } 
