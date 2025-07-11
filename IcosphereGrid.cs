@@ -2,6 +2,120 @@
 using System;
 using System.Collections.Generic;
 
+/// <summary>
+/// Octree node for spatial partitioning of tile centers
+/// </summary>
+public class OctreeNode
+{
+    public Vector3 center;
+    public float size;
+    public List<int> tileIndices = new List<int>();
+    public OctreeNode[] children = null;
+    public bool isLeaf => children == null;
+    
+    public OctreeNode(Vector3 center, float size)
+    {
+        this.center = center;
+        this.size = size;
+    }
+    
+    public void Insert(int tileIndex, Vector3 tilePosition, Vector3[] allTileCenters, int maxDepth = 6, int maxTilesPerNode = 8)
+    {
+        tileIndices.Add(tileIndex);
+        
+        // If we haven't exceeded limits, don't subdivide
+        if (tileIndices.Count <= maxTilesPerNode || maxDepth <= 0)
+            return;
+            
+        // Create children if needed
+        if (children == null)
+        {
+            children = new OctreeNode[8];
+            float childSize = size * 0.5f;
+            float offset = childSize * 0.5f;
+            
+            children[0] = new OctreeNode(center + new Vector3(-offset, -offset, -offset), childSize);
+            children[1] = new OctreeNode(center + new Vector3(offset, -offset, -offset), childSize);
+            children[2] = new OctreeNode(center + new Vector3(-offset, offset, -offset), childSize);
+            children[3] = new OctreeNode(center + new Vector3(offset, offset, -offset), childSize);
+            children[4] = new OctreeNode(center + new Vector3(-offset, -offset, offset), childSize);
+            children[5] = new OctreeNode(center + new Vector3(offset, -offset, offset), childSize);
+            children[6] = new OctreeNode(center + new Vector3(-offset, offset, offset), childSize);
+            children[7] = new OctreeNode(center + new Vector3(offset, offset, offset), childSize);
+            
+            // Redistribute existing tiles to children
+            var tilesToRedistribute = new List<int>(tileIndices);
+            tileIndices.Clear();
+            
+            foreach (int idx in tilesToRedistribute)
+            {
+                Vector3 pos = allTileCenters[idx];
+                int childIndex = GetChildIndex(pos);
+                children[childIndex].Insert(idx, pos, allTileCenters, maxDepth - 1, maxTilesPerNode);
+            }
+        }
+        else
+        {
+            // Already subdivided, insert into appropriate child
+            int childIndex = GetChildIndex(tilePosition);
+            children[childIndex].Insert(tileIndex, tilePosition, allTileCenters, maxDepth - 1, maxTilesPerNode);
+        }
+    }
+    
+    private int GetChildIndex(Vector3 position)
+    {
+        int index = 0;
+        if (position.x > center.x) index |= 1;
+        if (position.y > center.y) index |= 2;
+        if (position.z > center.z) index |= 4;
+        return index;
+    }
+    
+    public int FindNearestTile(Vector3 queryPosition, Vector3[] allTileCenters)
+    {
+        int bestIndex = -1;
+        float bestDot = -1f;
+        FindNearestTileRecursive(queryPosition.normalized, allTileCenters, ref bestIndex, ref bestDot);
+        return bestIndex;
+    }
+    
+    private void FindNearestTileRecursive(Vector3 queryDir, Vector3[] allTileCenters, ref int bestIndex, ref float bestDot)
+    {
+        if (isLeaf)
+        {
+            // Check all tiles in this leaf
+            foreach (int idx in tileIndices)
+            {
+                float dot = Vector3.Dot(queryDir, allTileCenters[idx].normalized);
+                if (dot > bestDot)
+                {
+                    bestDot = dot;
+                    bestIndex = idx;
+                }
+            }
+        }
+        else
+        {
+            // Sort children by distance to query point for more efficient searching
+            var childDistances = new (int childIdx, float distance)[8];
+            for (int i = 0; i < 8; i++)
+            {
+                float dist = Vector3.Distance(queryDir, children[i].center.normalized);
+                childDistances[i] = (i, dist);
+            }
+            
+            // Sort by distance (closest first)
+            System.Array.Sort(childDistances, (a, b) => a.distance.CompareTo(b.distance));
+            
+            // Search children in order of proximity
+            foreach (var (childIdx, _) in childDistances)
+            {
+                children[childIdx].FindNearestTileRecursive(queryDir, allTileCenters, ref bestIndex, ref bestDot);
+            }
+        }
+    }
+}
+
 public class IcoSphereGrid
 {
     public int TileCount => tileCenters.Length;
@@ -11,6 +125,7 @@ public class IcoSphereGrid
 
     private List<Vector3> vertices;          // All vertex positions during construction
     private List<int[]> faces;              // Triangle faces as index triples
+    private OctreeNode octreeRoot;           // Spatial partitioning for fast lookups
 
     /// <summary>Generate an icosphere-based hex tile grid.</summary>
     public void Generate(int subdivisions, float radius)
@@ -55,8 +170,32 @@ public class IcoSphereGrid
             neighbors[i] = new List<int>(uniq);
         }
 
-        // 6. Signal completion
+        // 6. Build octree for fast spatial queries
+        BuildOctree(radius);
+
+        // 7. Signal completion
         OnGeneration?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Build the octree spatial partitioning structure for fast tile lookups
+    /// </summary>
+    private void BuildOctree(float radius)
+    {
+        if (tileCenters == null || tileCenters.Length == 0)
+            return;
+            
+        // Create root node that encompasses the entire sphere
+        float octreeSize = radius * 2.5f; // Make it slightly larger than the sphere
+        octreeRoot = new OctreeNode(Vector3.zero, octreeSize);
+        
+        // Insert all tiles into the octree
+        for (int i = 0; i < tileCenters.Length; i++)
+        {
+            octreeRoot.Insert(i, tileCenters[i], tileCenters);
+        }
+        
+        Debug.Log($"[IcoSphereGrid] Built octree with {tileCenters.Length} tiles for fast spatial queries.");
     }
 
     /// Initialize base icosahedron geometry (12 vertices, 20 faces)
@@ -189,7 +328,7 @@ public class IcoSphereGrid
     }
 
     /// Get the tile index whose center is nearest to the given position/direction.
-    /// If `position` is a direction vector (unit or non-unit) from planet center, set localSpace = true.
+    /// Now uses fast octree search instead of brute-force iteration.
     public int GetTileAtPosition(Vector3 position, bool localSpace = false)
     {
         Vector3 dir = position;
@@ -200,12 +339,19 @@ public class IcoSphereGrid
             dir = position - Vector3.zero; // replace Vector3.zero with planet center if needed
         }
         dir.Normalize();
-        // Brute-force search for the tile with the maximal dot (smallest angle) to this direction
+        
+        // Use octree for fast spatial lookup
+        if (octreeRoot != null)
+        {
+            return octreeRoot.FindNearestTile(dir, tileCenters);
+        }
+        
+        // Fallback to brute-force if octree not built (shouldn't happen)
+        Debug.LogWarning("[IcoSphereGrid] Octree not available, falling back to brute-force search!");
         int nearestIndex = -1;
         float maxDot = -1f;
         for (int i = 0; i < tileCenters.Length; i++)
         {
-            // We can compare without normalizing tileCenters because all centers lie on the same sphere radius
             float d = Vector3.Dot(dir, tileCenters[i].normalized);
             if (d > maxDot)
             {

@@ -250,6 +250,35 @@ public class MoonGenerator : MonoBehaviour
             yield break;
         }
 
+        int w = textureSize;
+        int h = textureSize / 2;
+
+        // --- NEW: Pre-computation step for pixel-to-tile lookup ---
+        int[,] pixelToTileLookup = new int[w, h];
+        if (loadingPanelController != null) {
+            loadingPanelController.SetStatus("Building moon lookup table...");
+            loadingPanelController.SetProgress(0.5f); // Start halfway through moon gen
+        }
+        for (int y = 0; y < h; y++) {
+            float v = ((y + 0.5f) / h);
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < w; x++) {
+                float u = (x + 0.5f) / w;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+                int tileIdx = grid.GetTileAtPosition(dir);
+                if (tileIdx < 0) tileIdx = 0;
+                pixelToTileLookup[x, y] = tileIdx;
+            }
+            if (y % 32 == 0) {
+                if (loadingPanelController != null) {
+                    loadingPanelController.SetProgress(0.5f + (float)y / h * 0.1f); // 50% to 60%
+                }
+                yield return null;
+            }
+        }
+        // --- END Pre-computation ---
+
         // --- Heightmap: Output as Alpha8 (single channel) ---
         if (heightTex == null || heightTex.width != textureSize)
         {
@@ -257,7 +286,6 @@ public class MoonGenerator : MonoBehaviour
             { wrapMode = TextureWrapMode.Repeat };
         }
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
-        int w = heightTex.width, h = heightTex.height;
         float minH = float.MaxValue, maxH = float.MinValue;
         float moonRadius = moonLandscape != null ? (float)moonLandscape.Radius : 1.0f;
         float heightScale = heightFractionOfRadius * moonRadius;
@@ -323,15 +351,9 @@ public class MoonGenerator : MonoBehaviour
         // Single pass for height and biome data
         for (int y = 0; y < h; y++)
         {
-            float v = ((y + 0.5f) / h);
-            float lat = Mathf.Lerp(90, -90, v);
             for (int x = 0; x < w; x++)
             {
-                float u = (x + 0.5f) / w;
-                float lon = Mathf.Lerp(-180, 180, u);
-                Vector3 dir = SphericalToCartesian(lat, lon);
-                int tileIdx = grid.GetTileAtPosition(dir);
-                if (tileIdx < 0) tileIdx = 0;
+                int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
                 var tile = GetHexTileData(tileIdx);
                 if (tile == null) continue;
                 
@@ -362,7 +384,7 @@ public class MoonGenerator : MonoBehaviour
                 if (loadingPanelController != null)
                 {
                     float progress = (float)y / h;
-                    loadingPanelController.SetProgress(progress);
+                    loadingPanelController.SetProgress(0.6f + progress * 0.3f); // 60% to 90%
                     loadingPanelController.SetStatus($"Building Moon Maps... ({(progress*100):F0}%)");
                 }
                 yield return null;

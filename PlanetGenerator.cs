@@ -1146,6 +1146,35 @@ public class PlanetGenerator : MonoBehaviour
             yield break;
         }
 
+        int w = textureSize;
+        int h = textureSize / 2;
+
+        // --- NEW: Pre-computation step for pixel-to-tile lookup ---
+        int[,] pixelToTileLookup = new int[w, h];
+        if (loadingPanelController != null) {
+            loadingPanelController.SetStatus("Building lookup table...");
+            loadingPanelController.SetProgress(0);
+        }
+        for (int y = 0; y < h; y++) {
+            float v = ((y + 0.5f) / h);
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < w; x++) {
+                float u = (x + 0.5f) / w;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+                int tileIdx = grid.GetTileAtPosition(dir);
+                if (tileIdx < 0) tileIdx = 0;
+                pixelToTileLookup[x, y] = tileIdx;
+            }
+            if (y % 32 == 0) { // Update less frequently for this fast step
+                if (loadingPanelController != null) {
+                    loadingPanelController.SetProgress((float)y / h * 0.1f); // 0% to 10%
+                }
+                yield return null;
+            }
+        }
+        // --- END Pre-computation ---
+
         // --- Heightmap: Output as Alpha8 (single channel), not RGB ---
         if (heightTex == null || heightTex.width != textureSize)
         {
@@ -1153,7 +1182,6 @@ public class PlanetGenerator : MonoBehaviour
             { wrapMode = TextureWrapMode.Repeat };
         }
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
-        int w = heightTex.width, h = heightTex.height;
         float minH = float.MaxValue, maxH = float.MinValue;
         float planetRadius = landscape != null ? (float)landscape.Radius : 1.0f;
         float heightScale = heightFractionOfRadius * planetRadius;
@@ -1206,12 +1234,12 @@ public class PlanetGenerator : MonoBehaviour
             case BiomeMaskQuality.Optimized:
                 packedBiomeMasks = GenerateOptimizedBiomeMasks(w, h);
                 // Generate individual masks for compatibility
-                biomeMaskTextures = GenerateBiomeMaskTextures(w, h);
+                biomeMaskTextures = GenerateBiomeMaskTextures(w, h, pixelToTileLookup);
                 break;
             case BiomeMaskQuality.Blended:
                 packedBiomeMasks = GenerateBlendedBiomeMasks(w, h, biomeBlendRadius);
                 // Generate individual masks for compatibility
-                biomeMaskTextures = GenerateBiomeMaskTextures(w, h);
+                biomeMaskTextures = GenerateBiomeMaskTextures(w, h, pixelToTileLookup);
                 break;
             default: // Standard
                 // Use the original method for standard quality
@@ -1248,15 +1276,11 @@ public class PlanetGenerator : MonoBehaviour
                     float lat = Mathf.Lerp(90, -90, v); // Fixed: removed -180f
                     for (int x = 0; x < w; x++)
                     {
-                        float u = (x + 0.5f) / w;
-                        float lon = Mathf.Lerp(-180, 180, u);
-                        Vector3 dir = SphericalToCartesian(lat, lon);
-                        int tileIdx = grid.GetTileAtPosition(dir);
-                        if (tileIdx < 0) tileIdx = 0;
+                        int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
                         var tile = GetHexTileData(tileIdx);
                         if (tile == null)
                         {
-                            Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at lat {lat}, lon {lon}");
+                            Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at pixel ({x},{y})");
                             continue;
                         }
                         // HEIGHT MAP PROCESSING (unchanged)
@@ -1304,7 +1328,7 @@ public class PlanetGenerator : MonoBehaviour
                         float progress = (float)y / h;
                         if (loadingPanelController != null)
                         {
-                            loadingPanelController.SetProgress(progress);
+                            loadingPanelController.SetProgress(0.1f + progress * 0.4f); // 10% to 50%
                             loadingPanelController.SetStatus($"Building Height & Biome Maps... ({(progress*100):F0}%)");
                         }
                         yield return null;
@@ -1343,15 +1367,9 @@ public class PlanetGenerator : MonoBehaviour
             
             for (int y = 0; y < h; y++)
             {
-                float v = ((y + 0.5f) / h);
-                float lat = Mathf.Lerp(90, -90, v);
                 for (int x = 0; x < w; x++)
                 {
-                    float u = (x + 0.5f) / w;
-                    float lon = Mathf.Lerp(-180, 180, u);
-                    Vector3 dir = SphericalToCartesian(lat, lon);
-                    int tileIdx = grid.GetTileAtPosition(dir);
-                    if (tileIdx < 0) tileIdx = 0;
+                    int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
                     var tile = GetHexTileData(tileIdx);
                     if (tile == null) continue;
                     
@@ -1439,6 +1457,32 @@ public class PlanetGenerator : MonoBehaviour
         Texture2D biomeBlendWeightMap = new Texture2D(blendTexSize, blendTexSize, TextureFormat.RGBA32, false);
         Texture2D biomeBlendIndexMap  = new Texture2D(blendTexSize, blendTexSize, TextureFormat.RGBA32, false);
 
+        // --- NEW: Pre-computation for blend map lookup ---
+        int[,] blendPixelToTileLookup = new int[blendTexSize, blendTexSize];
+        if (loadingPanelController != null) {
+            loadingPanelController.SetStatus("Building blend map lookup...");
+            loadingPanelController.SetProgress(0.5f); // Start blend lookup at 50%
+        }
+        for (int y = 0; y < blendTexSize; y++) {
+            float v = (float)y / (blendTexSize - 1);
+            float latitude = v * 180f - 90f;
+            for (int x = 0; x < blendTexSize; x++) {
+                float u = (float)x / (blendTexSize - 1);
+                float longitude = u * 360f - 180f;
+                Vector3 dir = SphericalToCartesian(latitude, longitude);
+                int tileIdx = grid.GetTileAtPosition(dir);
+                if (tileIdx < 0) tileIdx = 0;
+                blendPixelToTileLookup[x, y] = tileIdx;
+            }
+            if (y % 32 == 0) { // Update less frequently
+                if (loadingPanelController != null) {
+                    loadingPanelController.SetProgress(0.5f + ((float)y / blendTexSize) * 0.1f); // 50% to 60%
+                }
+                yield return null;
+            }
+        }
+        // --- END Pre-computation ---
+
         // Helper to gather candidate tiles: start tile + 2 neighbour rings (<= 19 tiles)
         List<int> GetCandidateTiles(int start)
         {
@@ -1472,7 +1516,7 @@ public class PlanetGenerator : MonoBehaviour
                 float longitude = u * 360f - 180f;
                 Vector3 dir = SphericalToCartesian(latitude, longitude);
 
-                int baseTile = grid.GetTileAtPosition(dir);
+                int baseTile = blendPixelToTileLookup[x, y]; // USE LOOKUP
                 if (baseTile < 0) baseTile = 0;
 
                 List<int> candidates = GetCandidateTiles(baseTile);
@@ -1506,9 +1550,17 @@ public class PlanetGenerator : MonoBehaviour
             }
 
             // Yield every 16 rows to keep UI responsive
-            if (y % 16 == 0) yield return null;
+            if (y % 16 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    float progress = (float)y / blendTexSize;
+                    loadingPanelController.SetProgress(0.6f + progress * 0.35f); // 60% to 95%
+                    loadingPanelController.SetStatus($"Blending biomes... ({(progress * 100):F0}%)");
+                }
+                yield return null;
+            }
         }
-
 
         // Removed SGT splatmap generation - using blend maps instead for better performance
         // Yield to ensure UI (loading panel) can update before finishing
@@ -1718,7 +1770,7 @@ public class PlanetGenerator : MonoBehaviour
     }
 
     // Generate one grayscale mask texture per biome
-    List<Texture2D> GenerateBiomeMaskTextures(int width, int height)
+    List<Texture2D> GenerateBiomeMaskTextures(int width, int height, int[,] pixelToTileLookup)
     {
         var list = new List<Texture2D>();
         foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
@@ -1727,15 +1779,9 @@ public class PlanetGenerator : MonoBehaviour
             { wrapMode = TextureWrapMode.Clamp };
             for (int y = 0; y < height; y++)
             {
-                float v = (y + 0.5f) / height;
-                float lat = Mathf.Lerp(90, -90, v);
                 for (int x = 0; x < width; x++)
                 {
-                    float u = (x + 0.5f) / width;
-                    float lon = Mathf.Lerp(-180, 180, u);
-                    Vector3 dir = SphericalToCartesian(lat, lon);
-                    int tile = grid.GetTileAtPosition(dir);
-                    if (tile < 0) tile = 0;
+                    int tile = pixelToTileLookup[x, y]; // USE LOOKUP
                     var td = GetHexTileData(tile);
                     byte val = td.biome == b ? (byte)255 : (byte)0;
                     tex.SetPixel(x, y, new Color32(val, val, val, 255));
