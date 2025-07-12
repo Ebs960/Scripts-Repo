@@ -1558,6 +1558,41 @@ public class PlanetGenerator : MonoBehaviour
             initializer.gradientTextures.AddRange(GenerateGradientTextures()); // Add all generated gradients
             initializer.maskTextures.Clear();
             initializer.maskTextures.AddRange(biomeMaskTextures); // Add all biome mask textures
+
+            // --- Dynamically create SgtLandscapeBiome components ---
+            if (initializer.landscape != null)
+            {
+                // Clear existing biomes to prevent duplicates
+                var existingBiomes = initializer.landscape.GetComponentsInChildren<SgtLandscapeBiome>();
+                foreach (var biome in existingBiomes)
+                {
+                    if (Application.isPlaying)
+                        Destroy(biome.gameObject);
+                    else
+                        DestroyImmediate(biome.gameObject);
+                }
+
+                // Create a new biome component for each setting in the list
+                foreach (var biomeSetting in biomeSettings)
+                {
+                    if (biomeSetting == null) continue;
+
+                    int biomeId = (int)biomeSetting.biome;
+
+                    // The heightIndex is 0 because we generate one main heightmap.
+                    // The gradient and mask indices correspond to the biome's enum value,
+                    // which matches how the texture lists are generated.
+                    initializer.AddBiome(
+                        name: biomeSetting.biome.ToString(),
+                        gradientIndex: biomeId,
+                        heightIndex: 0,
+                        maskIndex: biomeId
+                    );
+                }
+                Debug.Log($"Dynamically created {biomeSettings.Count} SgtLandscapeBiome components.");
+            }
+            // --- End of dynamic biome creation ---
+
             initializer.Setup();
             Debug.Log("PlanetForgeSphereInitializer: Setup() called with generated textures.");
         }
@@ -1744,7 +1779,7 @@ public class PlanetGenerator : MonoBehaviour
                 nearest.Sort((a, b) => a.dist.CompareTo(b.dist));
                 int n = Mathf.Min(4, nearest.Count);
                 float[] weights = new float[4];
-                int[] biomeIndices = new int[4];
+                int[]   biomeIndices = new int[4];
                 float totalInvDist = 0f;
                 for (int i = 0; i < n; i++)
                 {
@@ -1802,13 +1837,36 @@ public class PlanetGenerator : MonoBehaviour
     List<Texture2D> GenerateGradientTextures()
     {
         var list = new List<Texture2D>();
-        foreach (var col in biomeColors)
+        var textureMap = new Dictionary<Biome, Texture2D>();
+
+        // Map albedo textures from the biomeSettings list
+        foreach (var setting in biomeSettings)
         {
-            var tex = new Texture2D(1, 256, TextureFormat.RGBA32, false)
-            { wrapMode = TextureWrapMode.Clamp };
-            for (int y = 0; y < 256; y++) tex.SetPixel(0, y, col);
-            tex.Apply();
-            list.Add(tex);
+            if (setting != null && setting.albedoTexture != null)
+            {
+                if (!textureMap.ContainsKey(setting.biome))
+                {
+                    textureMap.Add(setting.biome, setting.albedoTexture);
+                }
+            }
+        }
+
+        // Build the texture list in the correct order based on the Biome enum
+        foreach (Biome biome in System.Enum.GetValues(typeof(Biome)))
+        {
+            if (textureMap.TryGetValue(biome, out var texture))
+            {
+                list.Add(texture);
+            }
+            else
+            {
+                // If a biome is missing a texture in the settings, add a magenta fallback
+                var fallbackTex = new Texture2D(1, 1);
+                fallbackTex.SetPixel(0, 0, Color.magenta);
+                fallbackTex.Apply();
+                list.Add(fallbackTex);
+                Debug.LogWarning($"Biome '{biome}' is missing an albedo texture in biomeSettings. A fallback texture was used.");
+            }
         }
         return list;
     }

@@ -6,7 +6,7 @@ public class BiomeTextureManager : MonoBehaviour
 
     [Header("Biome Texture Settings")]
     public int textureResolution = 512;
-    public Texture2D biomeIndexTexture; // Each pixel = one tile’s biome
+    public Texture2D biomeIndexTexture; // Each pixel = one tile's biome
     public Material targetMaterial;     // Material that will use the shader
 
     private void Awake()
@@ -28,6 +28,11 @@ public class BiomeTextureManager : MonoBehaviour
         int width = Mathf.CeilToInt(Mathf.Sqrt(tileCount));
         int height = Mathf.CeilToInt(tileCount / (float)width);
 
+        if (biomeIndexTexture != null)
+        {
+            Destroy(biomeIndexTexture);
+        }
+
         biomeIndexTexture = new Texture2D(width, height, TextureFormat.R8, false);
         biomeIndexTexture.wrapMode = TextureWrapMode.Clamp;
         biomeIndexTexture.filterMode = FilterMode.Point;
@@ -44,11 +49,34 @@ public class BiomeTextureManager : MonoBehaviour
         biomeIndexTexture.SetPixels32(pixels);
         biomeIndexTexture.Apply();
 
-        if (targetMaterial != null)
+        UpdateMaterialTextures();
+    }
+
+    private void UpdateMaterialTextures()
+    {
+        if (targetMaterial != null && biomeIndexTexture != null)
         {
             targetMaterial.SetTexture("_BiomeIndexTex", biomeIndexTexture);
-            targetMaterial.SetFloat("_BiomeTexWidth", width);
-            targetMaterial.SetFloat("_BiomeTexHeight", height);
+            targetMaterial.SetFloat("_BiomeTexWidth", biomeIndexTexture.width);
+            targetMaterial.SetFloat("_BiomeTexHeight", biomeIndexTexture.height);
+            
+            // Make sure the material knows we're using biome textures
+            targetMaterial.EnableKeyword("_USE_BIOME_TEX");
+            
+            // Update the planet's SgtLandscapeBundle if it exists
+            var planetInitializer = FindObjectOfType<PlanetForgeSphereInitializer>();
+            if (planetInitializer != null && planetInitializer.bundle != null)
+            {
+                planetInitializer.Setup(); // Refresh the bundle setup
+            }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (biomeIndexTexture != null)
+        {
+            Destroy(biomeIndexTexture);
         }
     }
 }

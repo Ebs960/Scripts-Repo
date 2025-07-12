@@ -52,12 +52,29 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
         landscape.Material = surfaceMaterial;
         landscape.Bundle = bundle;
 
+        // Clear and reassign textures
         bundle.HeightTextures.Clear();
         bundle.HeightTextures.AddRange(heightTextures);
         bundle.GradientTextures.Clear();
         bundle.GradientTextures.AddRange(gradientTextures);
         bundle.MaskTextures.Clear();
         bundle.MaskTextures.AddRange(maskTextures);
+
+        // Force bundle to rebuild its texture atlases
+        if (surfaceMaterial != null)
+        {
+            // Set the biome atlas textures in the material
+            surfaceMaterial.SetTexture("_HeightTopologyAtlas", bundle.HeightTopologyAtlas);
+            surfaceMaterial.SetTexture("_GradientAtlas", bundle.GradientAtlas);
+            surfaceMaterial.SetTexture("_MaskTopologyAtlas", bundle.MaskTopologyAtlas);
+            
+            // Set the biome index texture if it exists
+            var biomeManager = FindObjectOfType<BiomeTextureManager>();
+            if (biomeManager != null && biomeManager.biomeIndexTexture != null)
+            {
+                surfaceMaterial.SetTexture("_BiomeIndexTex", biomeManager.biomeIndexTexture);
+            }
+        }
 
         if (addAtmosphere && GetComponentInChildren<SgtSky>() == null)
         {
@@ -74,7 +91,7 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Utility method to quickly add a biome child object with basic settings.
+    /// Utility method to quickly add a biome child object with enhanced settings.
     /// </summary>
     public SgtLandscapeBiome AddBiome(string name, int gradientIndex, int heightIndex, int maskIndex)
     {
@@ -84,7 +101,18 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
         var go = new GameObject(name);
         go.transform.SetParent(landscape.transform, false);
         var biome = go.AddComponent<SgtLandscapeBiome>();
+        
+        // Enhanced biome setup
         biome.GradientIndex = gradientIndex;
+        biome.Color = true; // Enable color blending
+        biome.Space = SgtLandscapeBiome.SpaceType.Global;
+        
+        // Configure mask
+        biome.Mask = true;
+        biome.MaskIndex = maskIndex;
+        biome.MaskSharpness = 2f; // Adjust for clearer biome boundaries
+        
+        // Add height layer
         var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
         {
             HeightIndex = heightIndex,
@@ -93,9 +121,7 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
             GlobalSize = 100f
         };
         biome.Layers.Add(layer);
-        biome.Mask = true;
-        biome.MaskIndex = maskIndex;
-        biome.Space = SgtLandscapeBiome.SpaceType.Global;
+
         return biome;
     }
 }
