@@ -737,7 +737,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -793,7 +794,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
         }
 
         float SampleBiomeMask(float2 uv, int biomeIndex)
@@ -2416,7 +2417,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -2472,7 +2474,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -3916,7 +3918,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -3972,7 +3975,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -5331,7 +5334,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -5387,7 +5391,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -6742,7 +6746,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -6798,7 +6803,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -8160,7 +8165,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -8216,7 +8222,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -9599,7 +9605,8 @@ ZWrite On
 	float4x4 _CwWorldToObject;
 	
 	// CLOUDS
-	sampler2D _SGT_CloudTex;
+        TEXTURE2D(_SGT_CloudTex);
+        SAMPLER(sampler_SGT_CloudTex);
 	float4    _SGT_CloudOpacity;
 	float     _SGT_CloudWarp;
 	
@@ -9655,7 +9662,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+               return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
