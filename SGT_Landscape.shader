@@ -771,6 +771,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -2462,6 +2463,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -3974,6 +3976,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -5401,6 +5404,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -6824,6 +6828,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -8254,6 +8259,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
@@ -9705,6 +9711,7 @@ ZWrite On
         TEXTURE2D(_BiomeMask7);
         SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
+        float _DetailTextureScale;
 
 
 
