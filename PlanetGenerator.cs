@@ -1213,16 +1213,18 @@ public class PlanetGenerator : MonoBehaviour
         
         switch (biomeMaskQuality)
         {
-            case BiomeMaskQuality.Optimized:
-                packedBiomeMasks = GenerateOptimizedBiomeMasks(w, h);
-                // Generate individual masks for compatibility
-                biomeMaskTextures = GenerateBiomeMaskTextures(w, h, pixelToTileLookup);
-                break;
-            case BiomeMaskQuality.Blended:
-                packedBiomeMasks = GenerateBlendedBiomeMasks(w, h, biomeBlendRadius);
-                // Generate individual masks for compatibility
-                biomeMaskTextures = GenerateBiomeMaskTextures(w, h, pixelToTileLookup);
-                break;
+                case BiomeMaskQuality.Optimized:
+                    packedBiomeMasks = new List<Texture2D>();
+                    yield return StartCoroutine(GenerateOptimizedBiomeMasks(w, h, packedBiomeMasks));
+                    biomeMaskTextures = new List<Texture2D>();
+                    yield return StartCoroutine(GenerateBiomeMaskTextures(w, h, pixelToTileLookup, biomeMaskTextures));
+                    break;
+                case BiomeMaskQuality.Blended:
+                    packedBiomeMasks = new List<Texture2D>();
+                    yield return StartCoroutine(GenerateBlendedBiomeMasks(w, h, biomeBlendRadius, packedBiomeMasks));
+                    biomeMaskTextures = new List<Texture2D>();
+                    yield return StartCoroutine(GenerateBiomeMaskTextures(w, h, pixelToTileLookup, biomeMaskTextures));
+                    break;
             default: // Standard
                 // Use the original method for standard quality
                 biomeMaskTextures = new List<Texture2D>();
@@ -1766,9 +1768,9 @@ public class PlanetGenerator : MonoBehaviour
     }
 
     // Generate one grayscale mask texture per biome
-    List<Texture2D> GenerateBiomeMaskTextures(int width, int height, int[,] pixelToTileLookup)
+    System.Collections.IEnumerator GenerateBiomeMaskTextures(int width, int height, int[,] pixelToTileLookup, List<Texture2D> result)
     {
-        var list = new List<Texture2D>();
+        result.Clear();
         foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
         {
             var tex = new Texture2D(width, height, TextureFormat.Alpha8, false)
@@ -1777,16 +1779,26 @@ public class PlanetGenerator : MonoBehaviour
             {
                 for (int x = 0; x < width; x++)
                 {
-                    int tile = pixelToTileLookup[x, y]; // USE LOOKUP
+                    int tile = pixelToTileLookup[x, y];
                     var td = GetHexTileData(tile);
                     byte val = td.biome == b ? (byte)255 : (byte)0;
                     tex.SetPixel(x, y, new Color32(val, val, val, 255));
                 }
+
+                if (y % 32 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        loadingPanelController.SetStatus("Finalizing terrain...");
+                        loadingPanelController.SetProgress(0.95f);
+                    }
+                    yield return null;
+                }
             }
             tex.Apply();
-            list.Add(tex);
+            result.Add(tex);
+            yield return null;
         }
-        return list;
     }
 
     // Generate simple gradient textures from biomeColors
@@ -1925,14 +1937,17 @@ public class PlanetGenerator : MonoBehaviour
     /// <summary>
     /// Generates optimized biome mask textures with improved quality and performance
     /// </summary>
-    private List<Texture2D> GenerateOptimizedBiomeMasks(int width, int height)
+    private System.Collections.IEnumerator GenerateOptimizedBiomeMasks(int width, int height, List<Texture2D> biomeMasks)
     {
-        var biomeMasks = new List<Texture2D>();
+        biomeMasks.Clear();
         int biomeCount = biomeSettings.Count;
         
         // Create packed RGBA mask textures (4 biomes per texture)
         int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
         
+        int totalRows = packedMaskCount * height;
+        int processedRows = 0;
+
         for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
         {
             var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true) // Enable mipmaps and linear
@@ -1941,7 +1956,7 @@ public class PlanetGenerator : MonoBehaviour
                 filterMode = FilterMode.Trilinear,
                 anisoLevel = 4 // Better quality for terrain textures
             };
-            
+
             Color[] pixels = new Color[width * height];
             
             // Generate mask data
@@ -1985,26 +2000,40 @@ public class PlanetGenerator : MonoBehaviour
                     
                     pixels[pixelIndex] = maskColor;
                 }
+
+                processedRows++;
+                if (y % 32 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        float progress = 0.95f + (processedRows / (float)totalRows) * 0.04f; // 95%→99%
+                        loadingPanelController.SetProgress(progress);
+                        loadingPanelController.SetStatus("Finalizing terrain...");
+                    }
+                    yield return null;
+                }
             }
-            
+
             maskTexture.SetPixels(pixels);
             maskTexture.Apply(true, false); // Generate mipmaps but don't make read-only yet
             biomeMasks.Add(maskTexture);
+            yield return null;
         }
-        
         Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} optimized RGBA biome mask textures for {biomeCount} biomes");
-        return biomeMasks;
     }
 
     /// <summary>
     /// Generates smooth biome transition masks using distance-based blending
     /// </summary>
-    private List<Texture2D> GenerateBlendedBiomeMasks(int width, int height, float blendRadius = 2f)
+    private System.Collections.IEnumerator GenerateBlendedBiomeMasks(int width, int height, float blendRadius, List<Texture2D> biomeMasks)
     {
-        var biomeMasks = new List<Texture2D>();
+        biomeMasks.Clear();
         int biomeCount = biomeSettings.Count;
         int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
-        
+
+        int totalRows = packedMaskCount * height;
+        int processedRows = 0;
+
         for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
         {
             var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true)
@@ -2076,15 +2105,26 @@ public class PlanetGenerator : MonoBehaviour
                     
                     pixels[y * width + x] = maskColor;
                 }
+
+                processedRows++;
+                if (y % 32 == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        float progress = 0.95f + (processedRows / (float)totalRows) * 0.04f; // 95%→99%
+                        loadingPanelController.SetProgress(progress);
+                        loadingPanelController.SetStatus("Finalizing terrain...");
+                    }
+                    yield return null;
+                }
             }
-            
+
             maskTexture.SetPixels(pixels);
             maskTexture.Apply(true, false);
             biomeMasks.Add(maskTexture);
+            yield return null;
         }
-        
         Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} blended RGBA biome mask textures");
-        return biomeMasks;
     }
 
     // --- Helper methods moved to class scope ---
