@@ -45,6 +45,11 @@ public class GameManager : MonoBehaviour
     [Tooltip("AnimalManager prefab for spawning and controlling animals")]
     public GameObject animalManagerPrefab;
 
+    [Header("SGT Volumetrics")]
+    [Tooltip("SGT Volume Manager prefab to instantiate for volumetric effects.")]
+    public GameObject sgtVolumeManagerPrefab;
+    private GameObject instantiatedSgtVolumeManagerGO;
+
     [Header("Game Settings")]
     public CivData selectedPlayerCivilizationData;
     public int numberOfCivilizations = 4;
@@ -651,6 +656,39 @@ public class GameManager : MonoBehaviour
             if (cameraManager != null)
             {
                 Debug.Log("GameManager: Refreshed camera references after instantiation.");
+            }
+
+            // --- SGT Volume Manager instantiation and observer assignment ---
+            if (sgtVolumeManagerPrefab != null)
+            {
+                var existingSgtVolumeManager = FindAnyObjectByType<SpaceGraphicsToolkit.Volumetrics.SgtVolumeManager>();
+                if (existingSgtVolumeManager == null)
+                {
+                    instantiatedSgtVolumeManagerGO = Instantiate(sgtVolumeManagerPrefab);
+                    instantiatedSgtVolumeManagerGO.name = "SgtVolumeManager";
+                    Debug.Log("GameManager: Instantiated SGT Volume Manager prefab.");
+                }
+                else
+                {
+                    instantiatedSgtVolumeManagerGO = existingSgtVolumeManager.gameObject;
+                }
+
+                // Assign the observer property to the camera's Camera component
+                var sgtVolumeManager = instantiatedSgtVolumeManagerGO.GetComponent<SpaceGraphicsToolkit.Volumetrics.SgtVolumeManager>();
+                var cameraComponent = instantiatedCameraGO.GetComponent<Camera>();
+                if (sgtVolumeManager != null && cameraComponent != null)
+                {
+                    sgtVolumeManager.Observer = cameraComponent;
+                    Debug.Log("GameManager: Assigned planetary camera as observer to SGT Volume Manager.");
+                }
+                else
+                {
+                    Debug.LogWarning("GameManager: Could not assign observer to SGT Volume Manager (missing component).");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("GameManager: sgtVolumeManagerPrefab not assigned!");
             }
         }
         else if (Camera.main != null)

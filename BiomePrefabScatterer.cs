@@ -9,7 +9,8 @@ using System.Collections.Generic;
 public class BiomePrefabScatterer : MonoBehaviour
 {
     [Header("References")]
-    public PlanetGenerator planetGenerator;
+    [Tooltip("Assign either a PlanetGenerator or MoonGenerator here.")]
+    public MonoBehaviour generator; // Can be PlanetGenerator or MoonGenerator
     public SpaceGraphicsToolkit.Landscape.SgtSphereLandscape landscape;
     [Tooltip("Global density multiplier for all scattered prefabs. Higher = more prefabs.")]
     [Range(0.1f, 5.0f)]
@@ -61,9 +62,41 @@ public class BiomePrefabScatterer : MonoBehaviour
     public IEnumerator ScatterAllPrefabsCoroutine(LoadingPanelController loadingPanel = null)
     {
         ClearAllPrefabs();
-        if (planetGenerator == null || planetGenerator.Grid == null || landscape == null)
+
+        // Support both PlanetGenerator and MoonGenerator
+        IcoSphereGrid grid = null;
+        List<BiomeSettings> biomeSettingsList = null;
+        System.Func<int, HexTileData> getHexTileData = null;
+        string generatorType = "";
+
+        if (generator is PlanetGenerator pg)
         {
-            Debug.LogWarning("BiomePrefabScatterer: Missing PlanetGenerator, Grid, or Landscape references.");
+            if (pg.Grid == null) { Debug.LogWarning("BiomePrefabScatterer: PlanetGenerator's Grid is null."); yield break; }
+            grid = pg.Grid;
+            biomeSettingsList = pg.biomeSettings;
+            getHexTileData = pg.GetHexTileData;
+            generatorType = "Planet";
+        }
+        else if (generator is MoonGenerator mg)
+        {
+            if (mg.Grid == null) { Debug.LogWarning("BiomePrefabScatterer: MoonGenerator's Grid is null."); yield break; }
+            grid = mg.Grid;
+            // Use reflection for private field if needed, but here we use the public API
+            // Assume biomeSettings is private, so add a public getter if needed
+            var biomeSettingsField = typeof(MoonGenerator).GetField("biomeSettings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            biomeSettingsList = (List<BiomeSettings>)biomeSettingsField?.GetValue(mg);
+            getHexTileData = mg.GetHexTileData;
+            generatorType = "Moon";
+        }
+        else
+        {
+            Debug.LogWarning("BiomePrefabScatterer: Generator must be a PlanetGenerator or MoonGenerator.");
+            yield break;
+        }
+
+        if (grid == null || biomeSettingsList == null || landscape == null)
+        {
+            Debug.LogWarning($"BiomePrefabScatterer: Missing {generatorType}Generator, Grid, BiomeSettings, or Landscape references.");
             yield break;
         }
 
@@ -75,9 +108,9 @@ public class BiomePrefabScatterer : MonoBehaviour
         }
 
         System.Random rand = (scatterSeed == 0) ? new System.Random() : new System.Random(scatterSeed);
-        float planetRadius = landscape.Radius;
-        int tileCount = planetGenerator.Grid.TileCount;
-        var biomeSettingsList = planetGenerator.biomeSettings;
+
+        float bodyRadius = landscape.Radius;
+        int tileCount = grid.TileCount;
 
         // Create a fast lookup for biome settings
         var biomeSettingsLookup = new Dictionary<Biome, BiomeSettings>();
@@ -90,9 +123,10 @@ public class BiomePrefabScatterer : MonoBehaviour
         }
 
         // Iterate through every tile on the planet
+
         for (int i = 0; i < tileCount; i++)
         {
-            var tileData = planetGenerator.GetHexTileData(i);
+            var tileData = getHexTileData(i);
             if (tileData == null || !tileData.isLand) continue;
 
             // Find the settings for this tile's biome
@@ -110,7 +144,7 @@ public class BiomePrefabScatterer : MonoBehaviour
                         var go = GetPooledObject(prefab);
                         
                         // Use the tile's actual world position
-                        Vector3 worldPos = planetGenerator.Grid.tileCenters[i];
+                        Vector3 worldPos = grid.tileCenters[i];
                         
                         go.transform.SetParent(scatterContainer, false);
                         go.transform.position = worldPos;
