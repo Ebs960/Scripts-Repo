@@ -727,9 +727,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -751,14 +754,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -2407,9 +2418,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -2431,14 +2445,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -3908,9 +3930,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -3932,14 +3957,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -5324,9 +5357,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -5348,14 +5384,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -6736,9 +6780,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -6760,14 +6807,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -8155,9 +8210,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -8179,14 +8237,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
@@ -9595,9 +9661,12 @@ ZWrite On
 	float4 _CwPositionsB[BATCH_CAPACITY];
 	float4 _CwPositionsC[BATCH_CAPACITY];
 	
-	sampler2D_float DataP;
-	sampler2D       DataA;
-	sampler2D       DataN;
+	TEXTURE2D(DataP);
+	SAMPLER(sampler_DataP);
+	TEXTURE2D(DataA);
+	SAMPLER(sampler_DataA);
+	TEXTURE2D(DataN);
+	SAMPLER(sampler_DataN);
 	
 	float3 _CwOffset;
 	
@@ -9619,14 +9688,22 @@ ZWrite On
         SAMPLER(sampler_BiomeIndexMap);
         float _BiomeAlbedoArray_Depth;
         float _BiomeNormalArray_Depth;
-        sampler2D _BiomeMask0;
-        sampler2D _BiomeMask1;
-        sampler2D _BiomeMask2;
-        sampler2D _BiomeMask3;
-        sampler2D _BiomeMask4;
-        sampler2D _BiomeMask5;
-        sampler2D _BiomeMask6;
-        sampler2D _BiomeMask7;
+        TEXTURE2D(_BiomeMask0);
+        SAMPLER(sampler_BiomeMask0);
+        TEXTURE2D(_BiomeMask1);
+        SAMPLER(sampler_BiomeMask1);
+        TEXTURE2D(_BiomeMask2);
+        SAMPLER(sampler_BiomeMask2);
+        TEXTURE2D(_BiomeMask3);
+        SAMPLER(sampler_BiomeMask3);
+        TEXTURE2D(_BiomeMask4);
+        SAMPLER(sampler_BiomeMask4);
+        TEXTURE2D(_BiomeMask5);
+        SAMPLER(sampler_BiomeMask5);
+        TEXTURE2D(_BiomeMask6);
+        SAMPLER(sampler_BiomeMask6);
+        TEXTURE2D(_BiomeMask7);
+        SAMPLER(sampler_BiomeMask7);
         float _BiomeMaskCount;
 
 
