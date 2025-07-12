@@ -97,52 +97,8 @@ public class MoonGenerator : MonoBehaviour
     private LoadingPanelController loadingPanelController;
     public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
 
-    // Object pooling for decorations
-    private Dictionary<GameObject, Queue<GameObject>> decorationPools = new();
-    private List<GameObject> activeDecorations = new();
-
-    private GameObject GetPooledObject(GameObject prefab)
-    {
-        if (!decorationPools.TryGetValue(prefab, out var pool))
-        {
-            pool = new Queue<GameObject>();
-            decorationPools[prefab] = pool;
-        }
-        if (pool.Count > 0)
-        {
-            var go = pool.Dequeue();
-            go.SetActive(true);
-            return go;
-        }
-        else
-        {
-            return Instantiate(prefab);
-        }
-    }
-
-    private void ReturnPooledObject(GameObject prefab, GameObject go)
-    {
-        go.SetActive(false);
-        if (!decorationPools.TryGetValue(prefab, out var pool))
-        {
-            pool = new Queue<GameObject>();
-            decorationPools[prefab] = pool;
-        }
-        pool.Enqueue(go);
-    }
-
-    public void ClearAllDecorations()
-    {
-        foreach (var go in activeDecorations)
-        {
-            if (go != null)
-            {
-                var prefab = go.name.Contains("(Clone)") ? go.name.Replace("(Clone)", "").Trim() : go.name;
-                ReturnPooledObject(go, go); // Pool by instance
-            }
-        }
-        activeDecorations.Clear();
-    }
+    // Decorations are now managed by SGT components. Old pooling logic has been
+    // removed to keep this generator focused solely on terrain data.
 
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
@@ -252,24 +208,7 @@ public class MoonGenerator : MonoBehaviour
             Biome biome = td.biome;
             float finalElevation = tileElevation[i]; // Use the stored final elevation
 
-            // --- Add Decorations ---
-            if (lookup.TryGetValue(biome, out var bs) && bs?.decorations != null && bs.decorations.Length > 0 && UnityEngine.Random.value < bs.spawnChance)
-            {
-                GameObject prefab = bs.decorations[UnityEngine.Random.Range(0, bs.decorations.Length)];
-                if (prefab != null)
-                {
-                    var go = GetPooledObject(prefab);
-                    // Adjust altitude based on tile elevation
-                    float altitude = finalElevation * maxExtrusionHeight + 0.005f;
-                    Vector3 center = grid.tileCenters[i];
-                    Vector3 normal = center.normalized;
-                    go.transform.SetParent(transform, true);
-                    go.transform.localPosition = center + normal * altitude;
-                    go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.AngleAxis(UnityEngine.Random.Range(0,360), Vector3.up);
-                    activeDecorations.Add(go);
-                }
-            }
-            // -----------------------
+            // Decorations are spawned by SGT systems; old code removed.
 
              // Assign the final elevation back to the data struct (especially important for caves)
             td.elevation = finalElevation;
@@ -281,7 +220,7 @@ public class MoonGenerator : MonoBehaviour
                 if (loadingPanelController != null)
                 {
                     loadingPanelController.SetProgress(0.4f + (float)i / tileCount * 0.1f); // Progress 40% to 50%
-                    loadingPanelController.SetStatus("Placing moon decorations...");
+                    loadingPanelController.SetStatus("Finalizing moon terrain...");
                 }
                 yield return null;
             }
