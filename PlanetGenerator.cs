@@ -201,9 +201,6 @@ public class PlanetGenerator : MonoBehaviour
     private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     private LoadingPanelController loadingPanelController;
 
-    // Decorations were previously spawned here but are now handled by
-    // Space Graphics Toolkit components, so all related pooling code has
-    // been removed.
 
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
