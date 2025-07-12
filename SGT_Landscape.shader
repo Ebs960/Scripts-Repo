@@ -543,8 +543,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -793,7 +793,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
         }
 
         float SampleBiomeMask(float2 uv, int biomeIndex)
@@ -802,14 +802,14 @@ ZWrite On
             int channel = biomeIndex % 4;
             float4 mask = float4(0, 0, 0, 0);
 
-            if (maskIndex == 0) mask = tex2D(_BiomeMask0, uv);
-            else if (maskIndex == 1) mask = tex2D(_BiomeMask1, uv);
-            else if (maskIndex == 2) mask = tex2D(_BiomeMask2, uv);
-            else if (maskIndex == 3) mask = tex2D(_BiomeMask3, uv);
-            else if (maskIndex == 4) mask = tex2D(_BiomeMask4, uv);
-            else if (maskIndex == 5) mask = tex2D(_BiomeMask5, uv);
-            else if (maskIndex == 6) mask = tex2D(_BiomeMask6, uv);
-            else if (maskIndex == 7) mask = tex2D(_BiomeMask7, uv);
+            if (maskIndex == 0) mask = SAMPLE_TEXTURE2D(_BiomeMask0, sampler_BiomeMask0, uv);
+            else if (maskIndex == 1) mask = SAMPLE_TEXTURE2D(_BiomeMask1, sampler_BiomeMask1, uv);
+            else if (maskIndex == 2) mask = SAMPLE_TEXTURE2D(_BiomeMask2, sampler_BiomeMask2, uv);
+            else if (maskIndex == 3) mask = SAMPLE_TEXTURE2D(_BiomeMask3, sampler_BiomeMask3, uv);
+            else if (maskIndex == 4) mask = SAMPLE_TEXTURE2D(_BiomeMask4, sampler_BiomeMask4, uv);
+            else if (maskIndex == 5) mask = SAMPLE_TEXTURE2D(_BiomeMask5, sampler_BiomeMask5, uv);
+            else if (maskIndex == 6) mask = SAMPLE_TEXTURE2D(_BiomeMask6, sampler_BiomeMask6, uv);
+            else if (maskIndex == 7) mask = SAMPLE_TEXTURE2D(_BiomeMask7, sampler_BiomeMask7, uv);
 
             return mask[channel];
         }
@@ -820,7 +820,7 @@ ZWrite On
             float3 finalNormal = float3(0, 0, 1);
             float totalWeight = 0;
 
-            float biomeIndex = tex2D(_BiomeIndexMap, uv).r * (_BiomeAlbedoArray_Depth - 1);
+            float biomeIndex = SAMPLE_TEXTURE2D(_BiomeIndexMap, sampler_BiomeIndexMap, uv).r * (_BiomeAlbedoArray_Depth - 1);
             int primaryBiome = round(biomeIndex);
 
 #ifdef _USE_BIOME_BLENDING
@@ -835,7 +835,7 @@ ZWrite On
             for (int i = 0; i < 9; i++)
             {
                 float2 sampleUV = uv + offsets[i];
-                float sampleBiomeIndex = tex2D(_BiomeIndexMap, sampleUV).r * (_BiomeAlbedoArray_Depth - 1);
+                float sampleBiomeIndex = SAMPLE_TEXTURE2D(_BiomeIndexMap, sampler_BiomeIndexMap, sampleUV).r * (_BiomeAlbedoArray_Depth - 1);
                 int sampleBiome = round(sampleBiomeIndex);
 
                 float weight = SampleBiomeMask(sampleUV, sampleBiome);
@@ -887,7 +887,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -917,8 +917,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -1363,11 +1363,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -2222,8 +2222,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -2472,7 +2472,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -2492,7 +2492,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -2522,8 +2522,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -2968,11 +2968,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -3722,8 +3722,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -3972,7 +3972,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -3992,7 +3992,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -4022,8 +4022,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -4468,11 +4468,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -5137,8 +5137,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -5387,7 +5387,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -5407,7 +5407,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -5437,8 +5437,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -5883,11 +5883,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -6548,8 +6548,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -6798,7 +6798,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -6818,7 +6818,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -6848,8 +6848,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -7294,11 +7294,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -7966,8 +7966,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -8216,7 +8216,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -8236,7 +8236,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -8266,8 +8266,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -8712,11 +8712,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
@@ -9405,8 +9405,8 @@ ZWrite On
                  #define UNITY_SAMPLE_TEX2D_LOD(tex,coord, lod) tex.SampleLevel (sampler##tex,coord, lod)
                  #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord, lod) tex.SampleLevel (sampler##samplertex,coord, lod)
               #else
-                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) tex2D (tex,coord,0,lod)
-                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) tex2D (tex,coord,0,lod)
+                 #define UNITY_SAMPLE_TEX2D_LOD(tex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##tex, coord, lod)
+                 #define UNITY_SAMPLE_TEX2D_SAMPLER_LOD(tex,samplertex,coord,lod) SAMPLE_TEXTURE2D_LOD(tex, sampler##samplertex, coord, lod)
               #endif
 
                #undef GetWorldToObjectMatrix()
@@ -9655,7 +9655,7 @@ ZWrite On
 		float2 w = float2(-p.x, p.y);
 		float2 z = normalize(w) * pow(length(w), 1.0f / (_SGT_CloudWarp + 1.0f));
 		
-		return saturate(dot(tex2D(_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
+		return saturate(dot(SAMPLE_TEXTURE2D(_SGT_CloudTex, sampler_SGT_CloudTex, z * 0.5f + 0.5f), _SGT_CloudOpacity));
 	}
 	
 	void Ext_ModifyVertex0 (inout VertexData v, inout ExtraV2F d)
@@ -9675,7 +9675,7 @@ ZWrite On
 		float2 coord    = _CwCoords[vertexIndex].xy; coord.x /= 3.0f;
 		float3 position = _CwPositionsA[batchIndex].xyz * weights.x + _CwPositionsB[batchIndex].xyz * weights.y + _CwPositionsC[batchIndex].xyz * weights.z;
 		
-		v.vertex.xyz = _CwOffset + origin + tex2Dlod(DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f)).xyz;
+		v.vertex.xyz = _CwOffset + origin + SAMPLE_TEXTURE2D_LOD(DataP, sampler_DataP, float4(vertexIndex * _CwSize.x, batchIndex * _CwSize.y, 0.0f, 0.0f), 0).xyz;
 		
 		#if _CW_SHAPE_SQUARE
 			v.normal  = float3(0,1,0);
@@ -9705,8 +9705,8 @@ ZWrite On
 
 	void Ext_SurfaceFunction0 (inout Surface o, inout ShaderData d)
 	{
-		float4 dataA = tex2Dlod(DataA, float4(d.texcoord0.xy,0,0));
-		float4 dataN = tex2Dlod(DataN, float4(d.texcoord0.xy,0,0)); dataN.xy = dataN.xy * 2.0f - 1.0f;
+		float4 dataA = SAMPLE_TEXTURE2D_LOD(DataA, sampler_DataA, float4(d.texcoord0.xy,0,0), 0);
+		float4 dataN = SAMPLE_TEXTURE2D_LOD(DataN, sampler_DataN, float4(d.texcoord0.xy,0,0), 0); dataN.xy = dataN.xy * 2.0f - 1.0f;
 		
 		o.Albedo     = dataA.xyz;
 		o.Occlusion  = dataA.w;
@@ -10151,11 +10151,11 @@ ZWrite On
          #if (_PASSMOTIONVECTOR || ((_PASSFORWARD || _PASSUNLIT) && defined(_WRITE_TRANSPARENT_MOTION_VECTOR)))
 
             #define GetWorldToViewMatrix()     _ViewMatrix
-            #define UNITY_MATRIX_I_V   _InvViewMatrix
+            //#define UNITY_MATRIX_I_V   _InvViewMatrix
             #define GetViewToHClipMatrix()     OptimizeProjectionMatrix(_ProjMatrix)
-            #define UNITY_MATRIX_I_P   _InvProjMatrix
+            //#define UNITY_MATRIX_I_P   _InvProjMatrix
             #define GetWorldToHClipMatrix()    _ViewProjMatrix
-            #define UNITY_MATRIX_I_VP  _InvViewProjMatrix
+            //#define UNITY_MATRIX_I_VP  _InvViewProjMatrix
             #define UNITY_MATRIX_UNJITTERED_VP _NonJitteredViewProjMatrix
             #define UNITY_MATRIX_PREV_VP _PrevViewProjMatrix
             #define UNITY_MATRIX_PREV_I_VP _PrevInvViewProjMatrix
