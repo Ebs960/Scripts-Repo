@@ -201,6 +201,53 @@ public class PlanetGenerator : MonoBehaviour
     private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     private LoadingPanelController loadingPanelController;
 
+    // Object pooling for decorations
+    private Dictionary<GameObject, Queue<GameObject>> decorationPools = new();
+    private List<GameObject> activeDecorations = new();
+
+    private GameObject GetPooledObject(GameObject prefab)
+    {
+        if (!decorationPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            decorationPools[prefab] = pool;
+        }
+        if (pool.Count > 0)
+        {
+            var go = pool.Dequeue();
+            go.SetActive(true);
+            return go;
+        }
+        else
+        {
+            return Instantiate(prefab);
+        }
+    }
+
+    private void ReturnPooledObject(GameObject prefab, GameObject go)
+    {
+        go.SetActive(false);
+        if (!decorationPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            decorationPools[prefab] = pool;
+        }
+        pool.Enqueue(go);
+    }
+
+    public void ClearAllDecorations()
+    {
+        foreach (var go in activeDecorations)
+        {
+            if (go != null)
+            {
+                var prefab = go.name.Contains("(Clone)") ? go.name.Replace("(Clone)", "").Trim() : go.name;
+                ReturnPooledObject(go, go); // Pool by instance
+            }
+        }
+        activeDecorations.Clear();
+    }
+
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
@@ -689,6 +736,8 @@ public class PlanetGenerator : MonoBehaviour
         }
 
         // Final Visual Update Pass - No longer setting tile colors directly
+        int batchSize = 200;
+        int batchCounter = 0;
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
             if (lookup.TryGetValue(data[i].biome, out var bs))
@@ -697,7 +746,7 @@ public class PlanetGenerator : MonoBehaviour
                 if (bs?.decorations != null && bs.decorations.Length > 0 && UnityEngine.Random.value < bs.spawnChance) {
                     GameObject prefab = bs.decorations[UnityEngine.Random.Range(0, bs.decorations.Length)];
                     if (prefab != null) {
-                        var go = Instantiate(prefab);
+                        var go = GetPooledObject(prefab);
                         // Adjust altitude based on tile extrusion
                         float elev = GetTileElevation(i);
                         float altitude = data[i].isLand ? elev * maxExtrusionHeight + 0.005f : 0.005f;
@@ -706,16 +755,17 @@ public class PlanetGenerator : MonoBehaviour
                         go.transform.SetParent(transform, true);
                         go.transform.localPosition = center + normal * altitude;
                         go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.AngleAxis(UnityEngine.Random.Range(0,360), Vector3.up);
+                        activeDecorations.Add(go);
                     }
                 }
             }
 
-            // BATCH YIELD
-            if (i > 0 && i % 500 == 0)
-            {
+            batchCounter++;
+            if (batchCounter >= batchSize) {
+                batchCounter = 0;
                 if (loadingPanelController != null)
                 {
-                    loadingPanelController.SetProgress(0.95f + (float)i / tileCount * 0.05f); // Progress 95% to 100%
+                    loadingPanelController.SetProgress(0.95f + (float)i / tileCount * 0.05f); // 95% to 100%
                     loadingPanelController.SetStatus("Placing decorations...");
                 }
                 yield return null;
@@ -1121,7 +1171,7 @@ public class PlanetGenerator : MonoBehaviour
         if (GameManager.Instance != null)
         {
             Debug.Log("[PlanetGenerator] Syncing tile grid and maps with GameManager...");
-            GameManager.Instance.GenerateTileGridAndMaps();
+            yield return GameManager.Instance.GenerateTileGridAndMaps();
         }
         else
         {
@@ -1149,13 +1199,9 @@ public class PlanetGenerator : MonoBehaviour
         int w = textureSize;
         int h = textureSize / 2;
 
-        // --- NEW: Pre-computation step for pixel-to-tile lookup ---
+        // --- PARALLEL: Direct mapping pixel-to-tile lookup (no flood fill) ---
         int[,] pixelToTileLookup = new int[w, h];
-        if (loadingPanelController != null) {
-            loadingPanelController.SetStatus("Building lookup table...");
-            loadingPanelController.SetProgress(0);
-        }
-        for (int y = 0; y < h; y++) {
+        System.Threading.Tasks.Parallel.For(0, h, y => {
             float v = ((y + 0.5f) / h);
             float lat = Mathf.Lerp(90, -90, v);
             for (int x = 0; x < w; x++) {
@@ -1166,14 +1212,13 @@ public class PlanetGenerator : MonoBehaviour
                 if (tileIdx < 0) tileIdx = 0;
                 pixelToTileLookup[x, y] = tileIdx;
             }
-            if (y % 32 == 0) { // Update less frequently for this fast step
-                if (loadingPanelController != null) {
-                    loadingPanelController.SetProgress((float)y / h * 0.1f); // 0% to 10%
-                }
-                yield return null;
-            }
+        });
+        // Yield once after the parallel loop to keep UI responsive
+        if (loadingPanelController != null) {
+            loadingPanelController.SetProgress(0.1f);
         }
-        // --- END Pre-computation ---
+        yield return null;
+        // --- END Parallel mapping ---
 
         // --- Heightmap: Output as Alpha8 (single channel), not RGB ---
         if (heightTex == null || heightTex.width != textureSize)
@@ -1410,10 +1455,11 @@ public class PlanetGenerator : MonoBehaviour
         landscape.HeightRange = 10f;
 
         // Assign texture arrays and masks to the landscape material
-        var landscapeMaterial = landscape.GetComponent<Renderer>()?.material;
+        var landscapeMaterial = landscape.Material;
         if (landscapeMaterial != null)
         {
             // Set biome texture arrays
+            landscapeMaterial.SetFloat("_UseBiomeBlending", 0.0f); // Disable blending for simpler debugging
             landscapeMaterial.SetTexture("_BiomeAlbedoArray", albedoArray);
             landscapeMaterial.SetTexture("_BiomeNormalArray", normalArray);
             landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
@@ -1436,8 +1482,8 @@ public class PlanetGenerator : MonoBehaviour
         // Force SGT to recognize the new textures and update the mesh
         if (landscape != null) landscape.MarkForRebuild();
 
-        // Create SGT biome components programmatically
-        CreateSGTBiomeComponents(biomeMaskTextures);
+        // Create SGT biome components programmatically - DISABLED as it conflicts with SGT's fixed array sizes
+        // CreateSGTBiomeComponents(biomeMaskTextures);
 
         // After visuals are prepared, generate the biome index texture used by the shader
         if (BiomeTextureManager.Instance != null)
@@ -1596,6 +1642,19 @@ public class PlanetGenerator : MonoBehaviour
         float y = Mathf.Sin(lat);
         float z = Mathf.Cos(lat) * Mathf.Sin(lon);
         return new Vector3(x, y, z);
+    }
+
+    // Helper: 3D direction vector -> 2D equirectangular texture coordinates
+    private static Vector2 WorldToEquirectangular(Vector3 direction, int textureWidth, int textureHeight)
+    {
+        direction.Normalize();
+        float longitude = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        float latitude = Mathf.Asin(direction.y) * Mathf.Rad2Deg;
+
+        float u = (longitude + 180f) / 360f;
+        float v = (180f - (latitude + 90f)) / 180f; // Invert V for texture space
+
+        return new Vector2(u * textureWidth, v * textureHeight);
     }
 
     // --------------------------- API for other systems -----------------------

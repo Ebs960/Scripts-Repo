@@ -19,6 +19,8 @@ Shader "Space Graphics Toolkit/Landscape"
       [HideInInspector][NoScaleOffset]unity_Lightmaps("unity_Lightmaps", 2DArray) = "" {}
       [HideInInspector][NoScaleOffset]unity_LightmapsInd("unity_LightmapsInd", 2DArray) = "" {}
       [HideInInspector][NoScaleOffset]unity_ShadowMasks("unity_ShadowMasks", 2DArray) = "" {}
+      [HideInInspector] _CwAtlas("CwAtlas", Vector) = (0,0,0,0)
+      [HideInInspector] _CwSize("CwSize", Vector) = (0,0,0,0)
       
 	[KeywordEnum(Square, Sphere)] _CW_Shape ("Shape", Float) = 0
 	

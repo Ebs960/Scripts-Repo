@@ -49,8 +49,15 @@ public class MoonGenerator : MonoBehaviour
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
     public int initializationDelay = 1;
 
-    [Header("Biome Textures")]
-    public List<BiomeSettings> biomeSettings = new List<BiomeSettings>();
+    private List<BiomeSettings> biomeSettings;
+    public void SetBiomeSettings(List<BiomeSettings> sharedBiomeSettings) { 
+        biomeSettings = sharedBiomeSettings;
+        if (biomeSettings == null) {
+            Debug.LogError("[MoonGenerator] SetBiomeSettings called with null list!");
+        } else {
+            Debug.Log($"[MoonGenerator] SetBiomeSettings called. Count: {biomeSettings.Count}");
+        }
+    }
 
     // ──────────────────────────────────────────────────────────────────────────────
     //  VISUAL LAYER (SGT Integration)
@@ -90,6 +97,53 @@ public class MoonGenerator : MonoBehaviour
     private LoadingPanelController loadingPanelController;
     public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
 
+    // Object pooling for decorations
+    private Dictionary<GameObject, Queue<GameObject>> decorationPools = new();
+    private List<GameObject> activeDecorations = new();
+
+    private GameObject GetPooledObject(GameObject prefab)
+    {
+        if (!decorationPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            decorationPools[prefab] = pool;
+        }
+        if (pool.Count > 0)
+        {
+            var go = pool.Dequeue();
+            go.SetActive(true);
+            return go;
+        }
+        else
+        {
+            return Instantiate(prefab);
+        }
+    }
+
+    private void ReturnPooledObject(GameObject prefab, GameObject go)
+    {
+        go.SetActive(false);
+        if (!decorationPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            decorationPools[prefab] = pool;
+        }
+        pool.Enqueue(go);
+    }
+
+    public void ClearAllDecorations()
+    {
+        foreach (var go in activeDecorations)
+        {
+            if (go != null)
+            {
+                var prefab = go.name.Contains("(Clone)") ? go.name.Replace("(Clone)", "").Trim() : go.name;
+                ReturnPooledObject(go, go); // Pool by instance
+            }
+        }
+        activeDecorations.Clear();
+    }
+
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
@@ -102,18 +156,15 @@ public class MoonGenerator : MonoBehaviour
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
-        // Populate Biome Settings if empty (for Moon biomes)
-        if (biomeSettings.Count == 0) {
-            biomeSettings.Add(new BiomeSettings { biome = Biome.MoonDunes });
-            biomeSettings.Add(new BiomeSettings { biome = Biome.MoonCaves });
-        }
-
-        // Build the lookup dictionary
-        foreach (var bs in biomeSettings) {
-            if (!lookup.ContainsKey(bs.biome)) {
-                lookup.Add(bs.biome, bs);
-            } else {
-                lookup[bs.biome] = bs; // Allow overriding defaults from Inspector
+        // Build the lookup dictionary from the shared biomeSettings
+        if (biomeSettings != null)
+        {
+            foreach (var bs in biomeSettings) {
+                if (!lookup.ContainsKey(bs.biome)) {
+                    lookup.Add(bs.biome, bs);
+                } else {
+                    lookup[bs.biome] = bs; // Allow overriding defaults from Inspector
+                }
             }
         }
 
@@ -191,6 +242,8 @@ public class MoonGenerator : MonoBehaviour
 
 
         // --- 3. Final Visual Update Pass ---
+        int batchSize = 200;
+        int batchCounter = 0;
         for (int i = 0; i < tileCount; i++)
         {
             if (!data.ContainsKey(i)) continue; // Should not happen
@@ -205,7 +258,7 @@ public class MoonGenerator : MonoBehaviour
                 GameObject prefab = bs.decorations[UnityEngine.Random.Range(0, bs.decorations.Length)];
                 if (prefab != null)
                 {
-                    var go = Instantiate(prefab);
+                    var go = GetPooledObject(prefab);
                     // Adjust altitude based on tile elevation
                     float altitude = finalElevation * maxExtrusionHeight + 0.005f;
                     Vector3 center = grid.tileCenters[i];
@@ -213,6 +266,7 @@ public class MoonGenerator : MonoBehaviour
                     go.transform.SetParent(transform, true);
                     go.transform.localPosition = center + normal * altitude;
                     go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.AngleAxis(UnityEngine.Random.Range(0,360), Vector3.up);
+                    activeDecorations.Add(go);
                 }
             }
             // -----------------------
@@ -221,9 +275,9 @@ public class MoonGenerator : MonoBehaviour
             td.elevation = finalElevation;
             data[i] = td;
 
-            // BATCH YIELD
-            if (i > 0 && i % 500 == 0)
-            {
+            batchCounter++;
+            if (batchCounter >= batchSize) {
+                batchCounter = 0;
                 if (loadingPanelController != null)
                 {
                     loadingPanelController.SetProgress(0.4f + (float)i / tileCount * 0.1f); // Progress 40% to 50%
@@ -253,13 +307,9 @@ public class MoonGenerator : MonoBehaviour
         int w = textureSize;
         int h = textureSize / 2;
 
-        // --- NEW: Pre-computation step for pixel-to-tile lookup ---
+        // --- PARALLEL: Direct mapping pixel-to-tile lookup (no flood fill) ---
         int[,] pixelToTileLookup = new int[w, h];
-        if (loadingPanelController != null) {
-            loadingPanelController.SetStatus("Building moon lookup table...");
-            loadingPanelController.SetProgress(0.5f); // Start halfway through moon gen
-        }
-        for (int y = 0; y < h; y++) {
+        System.Threading.Tasks.Parallel.For(0, h, y => {
             float v = ((y + 0.5f) / h);
             float lat = Mathf.Lerp(90, -90, v);
             for (int x = 0; x < w; x++) {
@@ -270,15 +320,19 @@ public class MoonGenerator : MonoBehaviour
                 if (tileIdx < 0) tileIdx = 0;
                 pixelToTileLookup[x, y] = tileIdx;
             }
-            if (y % 32 == 0) {
-                if (loadingPanelController != null) {
-                    loadingPanelController.SetProgress(0.5f + (float)y / h * 0.1f); // 50% to 60%
-                }
-                yield return null;
-            }
+        });
+        // Yield once after the parallel loop to keep UI responsive
+        if (loadingPanelController != null) {
+            loadingPanelController.SetProgress(0.1f);
         }
-        // --- END Pre-computation ---
-
+        yield return null;
+        // --- END Parallel mapping ---
+        
+        if (loadingPanelController != null) {
+            loadingPanelController.SetStatus("Building moon lookup table...");
+            loadingPanelController.SetProgress(0.5f); // Start halfway through moon gen
+        }
+        
         // --- Heightmap: Output as Alpha8 (single channel) ---
         if (heightTex == null || heightTex.width != textureSize)
         {
@@ -413,7 +467,7 @@ public class MoonGenerator : MonoBehaviour
         moonLandscape.HeightRange = 5f; // Smaller than planet
         
         // Assign texture arrays and masks to the landscape material
-        var landscapeMaterial = moonLandscape.GetComponent<Renderer>()?.material;
+        var landscapeMaterial = moonLandscape.Material;
         if (landscapeMaterial != null)
         {
             landscapeMaterial.SetTexture("_BiomeAlbedoArray", albedoArray);
@@ -433,8 +487,8 @@ public class MoonGenerator : MonoBehaviour
         // Force SGT to recognize the new textures and update the mesh
         if (moonLandscape != null) moonLandscape.MarkForRebuild();
         
-        // Create SGT biome components for moon
-        CreateMoonSGTBiomeComponents(biomeMaskTextures);
+        // Create SGT biome components for moon - DISABLED as it conflicts with SGT's fixed array sizes
+        // CreateMoonSGTBiomeComponents(biomeMaskTextures);
         
         if (loadingPanelController != null)
         {
@@ -453,6 +507,19 @@ public class MoonGenerator : MonoBehaviour
         float y = Mathf.Sin(lat);
         float z = Mathf.Cos(lat) * Mathf.Sin(lon);
         return new Vector3(x, y, z);
+    }
+
+    // Helper: 3D direction vector -> 2D equirectangular texture coordinates
+    private static Vector2 WorldToEquirectangular(Vector3 direction, int textureWidth, int textureHeight)
+    {
+        direction.Normalize();
+        float longitude = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        float latitude = Mathf.Asin(direction.y) * Mathf.Rad2Deg;
+
+        float u = (longitude + 180f) / 360f;
+        float v = (180f - (latitude + 90f)) / 180f; // Invert V for texture space
+
+        return new Vector2(u * textureWidth, v * textureHeight);
     }
 
     /// <summary>

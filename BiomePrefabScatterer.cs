@@ -21,6 +21,40 @@ public class BiomePrefabScatterer : MonoBehaviour
 
     private List<GameObject> spawnedPrefabs = new List<GameObject>();
 
+    // Object pooling for biome prefabs
+    private Dictionary<GameObject, Queue<GameObject>> prefabPools = new();
+    private List<GameObject> activePrefabs = new();
+
+    private GameObject GetPooledObject(GameObject prefab)
+    {
+        if (!prefabPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            prefabPools[prefab] = pool;
+        }
+        if (pool.Count > 0)
+        {
+            var go = pool.Dequeue();
+            go.SetActive(true);
+            return go;
+        }
+        else
+        {
+            return Application.isPlaying ? Instantiate(prefab) : (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+        }
+    }
+
+    private void ReturnPooledObject(GameObject prefab, GameObject go)
+    {
+        go.SetActive(false);
+        if (!prefabPools.TryGetValue(prefab, out var pool))
+        {
+            pool = new Queue<GameObject>();
+            prefabPools[prefab] = pool;
+        }
+        pool.Enqueue(go);
+    }
+
     /// <summary>
     /// Coroutine version: Scatters all prefabs and updates the loading panel if provided.
     /// </summary>
@@ -73,7 +107,7 @@ public class BiomePrefabScatterer : MonoBehaviour
                         var prefab = bs.featurePrefabs[rand.Next(bs.featurePrefabs.Length)];
                         if (prefab == null) continue;
 
-                        var go = Application.isPlaying ? Instantiate(prefab) : (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+                        var go = GetPooledObject(prefab);
                         
                         // Use the tile's actual world position
                         Vector3 worldPos = planetGenerator.Grid.tileCenters[i];
@@ -86,7 +120,7 @@ public class BiomePrefabScatterer : MonoBehaviour
                         float scale = Mathf.Lerp(bs.featureScaleRange.x, bs.featureScaleRange.y, (float)rand.NextDouble());
                         go.transform.localScale = Vector3.one * scale;
                         
-                        spawnedPrefabs.Add(go);
+                        activePrefabs.Add(go);
                     }
                 }
             }
@@ -109,7 +143,7 @@ public class BiomePrefabScatterer : MonoBehaviour
             loadingPanel.SetProgress(1f);
             loadingPanel.SetStatus("Finishing up biome features...");
         }
-        Debug.Log($"BiomePrefabScatterer: Scattered {spawnedPrefabs.Count} prefabs.");
+        Debug.Log($"BiomePrefabScatterer: Scattered {activePrefabs.Count} prefabs.");
     }
 
     /// <summary>
@@ -122,15 +156,15 @@ public class BiomePrefabScatterer : MonoBehaviour
 
     public void ClearAllPrefabs()
     {
-        foreach (var go in spawnedPrefabs)
+        foreach (var go in activePrefabs)
         {
             if (go != null)
             {
-                if (Application.isPlaying) Destroy(go);
-                else DestroyImmediate(go);
+                var prefab = go.name.Contains("(Clone)") ? go.name.Replace("(Clone)", "").Trim() : go.name;
+                ReturnPooledObject(go, go); // Pool by instance
             }
         }
-        spawnedPrefabs.Clear();
+        activePrefabs.Clear();
         if (scatterContainer != null && scatterContainer.childCount == 0)
         {
             if (Application.isPlaying) Destroy(scatterContainer.gameObject);

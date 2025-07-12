@@ -110,7 +110,7 @@ public class GameManager : MonoBehaviour
     public int biomeCount;
     
     // --- World generation: build tile grid and maps ---
-    public void GenerateTileGridAndMaps()
+    public IEnumerator GenerateTileGridAndMaps()
     {
         hexTiles.Clear();
         // Get biome count from Biome enum
@@ -120,7 +120,7 @@ public class GameManager : MonoBehaviour
         if (planetGenerator == null || planetGenerator.Grid == null)
         {
             Debug.LogError("[GameManager] planetGenerator or IcoSphereGrid missing!");
-            return;
+            yield break;
         }
         var grid = planetGenerator.Grid;
         int numTiles = grid.TileCount;
@@ -178,6 +178,11 @@ public class GameManager : MonoBehaviour
                 biomeIndexMap.SetPixel(x, y, new Color(biomeNorm, 0, 0, 1));
                 // Set heightmap (alpha channel)
                 heightMap.SetPixel(x, y, new Color(0, 0, 0, heightVal));
+            }
+
+            if (y % 10 == 0)
+            {
+                yield return null;
             }
         }
         biomeIndexMap.Apply();
@@ -464,6 +469,7 @@ public class GameManager : MonoBehaviour
         {
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
+            Debug.Log("[GameManager] PlanetGenerator instantiated.");
 
             // Ensure a PlanetForgeSphereInitializer exists, searching in children
             var initializer = planetGO.GetComponentInChildren<PlanetForgeSphereInitializer>();
@@ -546,6 +552,7 @@ public class GameManager : MonoBehaviour
         {
             GameObject moonGO = Instantiate(moonGeneratorPrefab);
             moonGenerator = moonGO.GetComponent<MoonGenerator>();
+            Debug.Log("[GameManager] MoonGenerator instantiated.");
             
             // Position the moon away from the planet
             moonGO.transform.position = new Vector3(15f, 40f, 0f); // offset position
@@ -560,6 +567,12 @@ public class GameManager : MonoBehaviour
                 if (loadingPanelController != null)
                 {
                     moonGenerator.SetLoadingPanel(loadingPanelController);
+                }
+                // Pass biome settings from planet generator
+                if (planetGenerator != null)
+                {
+                    moonGenerator.SetBiomeSettings(planetGenerator.biomeSettings);
+                    Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
                 Debug.Log("MoonGenerator created and configured from prefab");
                 
