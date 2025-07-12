@@ -201,52 +201,9 @@ public class PlanetGenerator : MonoBehaviour
     private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     private LoadingPanelController loadingPanelController;
 
-    // Object pooling for decorations
-    private Dictionary<GameObject, Queue<GameObject>> decorationPools = new();
-    private List<GameObject> activeDecorations = new();
-
-    private GameObject GetPooledObject(GameObject prefab)
-    {
-        if (!decorationPools.TryGetValue(prefab, out var pool))
-        {
-            pool = new Queue<GameObject>();
-            decorationPools[prefab] = pool;
-        }
-        if (pool.Count > 0)
-        {
-            var go = pool.Dequeue();
-            go.SetActive(true);
-            return go;
-        }
-        else
-        {
-            return Instantiate(prefab);
-        }
-    }
-
-    private void ReturnPooledObject(GameObject prefab, GameObject go)
-    {
-        go.SetActive(false);
-        if (!decorationPools.TryGetValue(prefab, out var pool))
-        {
-            pool = new Queue<GameObject>();
-            decorationPools[prefab] = pool;
-        }
-        pool.Enqueue(go);
-    }
-
-    public void ClearAllDecorations()
-    {
-        foreach (var go in activeDecorations)
-        {
-            if (go != null)
-            {
-                var prefab = go.name.Contains("(Clone)") ? go.name.Replace("(Clone)", "").Trim() : go.name;
-                ReturnPooledObject(go, go); // Pool by instance
-            }
-        }
-        activeDecorations.Clear();
-    }
+    // Decorations were previously spawned here but are now handled by
+    // Space Graphics Toolkit components, so all related pooling code has
+    // been removed.
 
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
@@ -735,42 +692,15 @@ public class PlanetGenerator : MonoBehaviour
             yield return GenerateRivers(isLandTile, data);
         }
 
-        // Final Visual Update Pass - No longer setting tile colors directly
-        int batchSize = 200;
-        int batchCounter = 0;
-        for (int i = 0; i < tileCount; i++) {
-            if (!data.ContainsKey(i)) continue;
-            if (lookup.TryGetValue(data[i].biome, out var bs))
-            {
-                // Add Decorations
-                if (bs?.decorations != null && bs.decorations.Length > 0 && UnityEngine.Random.value < bs.spawnChance) {
-                    GameObject prefab = bs.decorations[UnityEngine.Random.Range(0, bs.decorations.Length)];
-                    if (prefab != null) {
-                        var go = GetPooledObject(prefab);
-                        // Adjust altitude based on tile extrusion
-                        float elev = GetTileElevation(i);
-                        float altitude = data[i].isLand ? elev * maxExtrusionHeight + 0.005f : 0.005f;
-                        Vector3 center = grid.tileCenters[i];
-                        Vector3 normal = center.normalized;
-                        go.transform.SetParent(transform, true);
-                        go.transform.localPosition = center + normal * altitude;
-                        go.transform.localRotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.AngleAxis(UnityEngine.Random.Range(0,360), Vector3.up);
-                        activeDecorations.Add(go);
-                    }
-                }
-            }
-
-            batchCounter++;
-            if (batchCounter >= batchSize) {
-                batchCounter = 0;
-                if (loadingPanelController != null)
-                {
-                    loadingPanelController.SetProgress(0.95f + (float)i / tileCount * 0.05f); // 95% to 100%
-                    loadingPanelController.SetStatus("Placing decorations...");
-                }
-                yield return null;
-            }
+        // Decorations are now spawned by SGT features and external systems, so
+        // the old instantiation loop has been removed. Advance progress directly
+        // to the final stage.
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.95f);
+            loadingPanelController.SetStatus("Finalizing terrain...");
         }
+        yield return null;
 
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
@@ -1218,6 +1148,13 @@ public class PlanetGenerator : MonoBehaviour
             loadingPanelController.SetProgress(0.1f);
         }
         yield return null;
+        // Cache tile data in a dense array for faster pixel lookups
+        int tileCountLookup = grid.TileCount;
+        HexTileData[] tileDataArray = new HexTileData[tileCountLookup];
+        for (int i = 0; i < tileCountLookup; i++)
+        {
+            data.TryGetValue(i, out tileDataArray[i]);
+        }
         // --- END Parallel mapping ---
 
         // --- Heightmap: Output as Alpha8 (single channel), not RGB ---
@@ -1321,13 +1258,13 @@ public class PlanetGenerator : MonoBehaviour
                     float lat = Mathf.Lerp(90, -90, v); // Fixed: removed -180f
                     for (int x = 0; x < w; x++)
                     {
-                        int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
-                        var tile = GetHexTileData(tileIdx);
-                        if (tile == null)
-                        {
-                            Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at pixel ({x},{y})");
-                            continue;
-                        }
+                    int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
+                    HexTileData tile = tileDataArray[tileIdx];
+                    if (tile == null)
+                    {
+                        Debug.LogWarning($"[PlanetGenerator] Null tile data for tileIdx {tileIdx} at pixel ({x},{y})");
+                        continue;
+                    }
                         // HEIGHT MAP PROCESSING (unchanged)
                         float h01 = Mathf.InverseLerp(baseLandElevation, maxTotalElevation, tile.elevation);
                         if (h01 < minH) minH = h01;
@@ -1415,7 +1352,7 @@ public class PlanetGenerator : MonoBehaviour
                 for (int x = 0; x < w; x++)
                 {
                     int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
-                    var tile = GetHexTileData(tileIdx);
+                    HexTileData tile = tileDataArray[tileIdx];
                     if (tile == null) continue;
                     
                     int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
