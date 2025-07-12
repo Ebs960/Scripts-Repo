@@ -422,6 +422,12 @@ public class MoonGenerator : MonoBehaviour
         {
             Debug.LogWarning("[MoonGenerator] Could not find moon landscape material to assign biome textures.");
         }
+
+        // Register this grid/material pair with BiomeTextureManager
+        if (BiomeTextureManager.Instance != null && grid != null && landscapeMaterial != null)
+        {
+            BiomeTextureManager.Instance.RegisterTarget(grid, landscapeMaterial);
+        }
         
         // Force SGT to recognize the new textures and update the mesh
         if (moonLandscape != null) moonLandscape.MarkForRebuild();
@@ -435,6 +441,12 @@ public class MoonGenerator : MonoBehaviour
             loadingPanelController.SetStatus("Finishing up moon...");
         }
         yield return null;
+
+        // After visuals are prepared, generate the biome index texture used by the shader
+        if (BiomeTextureManager.Instance != null && grid != null)
+        {
+            BiomeTextureManager.Instance.GenerateBiomeIndexTexture(grid);
+        }
     }
 
     // Helper: lat/long (deg) → unit vector

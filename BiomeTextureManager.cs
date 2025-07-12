@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class BiomeTextureManager : MonoBehaviour
 {
@@ -6,8 +7,17 @@ public class BiomeTextureManager : MonoBehaviour
 
     [Header("Biome Texture Settings")]
     public int textureResolution = 512;
-    public Texture2D biomeIndexTexture; // Each pixel = one tile's biome
-    public Material targetMaterial;     // Material that will use the shader
+
+    // Holds per-target data
+    private class BiomeTarget
+    {
+        public IcoSphereGrid grid;
+        public Material material;
+        public Texture2D biomeIndexTexture;
+    }
+
+    // Registered targets: key is grid instance
+    private readonly Dictionary<IcoSphereGrid, BiomeTarget> targets = new();
 
     private void Awake()
     {
@@ -20,25 +30,47 @@ public class BiomeTextureManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Call this when the grid is ready and all tile biome info is known.
+    /// Register a (grid, material) pair as a biome target. Call this from planet/moon generators.
+    /// </summary>
+    public void RegisterTarget(IcoSphereGrid grid, Material material)
+    {
+        if (grid == null || material == null) return;
+        if (!targets.ContainsKey(grid))
+        {
+            targets[grid] = new BiomeTarget { grid = grid, material = material };
+        }
+        else
+        {
+            targets[grid].material = material;
+        }
+    }
+
+    /// <summary>
+    /// Generate and assign a biome index texture for the given grid/material pair.
     /// </summary>
     public void GenerateBiomeIndexTexture(IcoSphereGrid grid)
     {
+        if (grid == null || !targets.ContainsKey(grid))
+        {
+            Debug.LogWarning($"[BiomeTextureManager] Tried to generate biome index for unregistered grid.");
+            return;
+        }
+        var target = targets[grid];
         int tileCount = grid.TileCount;
         int width = Mathf.CeilToInt(Mathf.Sqrt(tileCount));
         int height = Mathf.CeilToInt(tileCount / (float)width);
 
-        if (biomeIndexTexture != null)
+        // Clean up old texture if present
+        if (target.biomeIndexTexture != null)
         {
-            Destroy(biomeIndexTexture);
+            Destroy(target.biomeIndexTexture);
         }
 
-        biomeIndexTexture = new Texture2D(width, height, TextureFormat.R8, false);
-        biomeIndexTexture.wrapMode = TextureWrapMode.Clamp;
-        biomeIndexTexture.filterMode = FilterMode.Point;
+        target.biomeIndexTexture = new Texture2D(width, height, TextureFormat.R8, false);
+        target.biomeIndexTexture.wrapMode = TextureWrapMode.Clamp;
+        target.biomeIndexTexture.filterMode = FilterMode.Point;
 
         Color32[] pixels = new Color32[width * height];
-
         for (int i = 0; i < tileCount; i++)
         {
             HexTileData tile = TileDataHelper.Instance.GetTileData(i).tileData;
@@ -46,37 +78,47 @@ public class BiomeTextureManager : MonoBehaviour
             pixels[i] = new Color32(biomeID, 0, 0, 255); // biome ID in Red channel
         }
 
-        biomeIndexTexture.SetPixels32(pixels);
-        biomeIndexTexture.Apply();
+        target.biomeIndexTexture.SetPixels32(pixels);
+        target.biomeIndexTexture.Apply();
 
-        UpdateMaterialTextures();
+        UpdateMaterialTextures(grid);
     }
 
-    private void UpdateMaterialTextures()
+    /// <summary>
+    /// Assign the biome index texture to the correct material for the given grid.
+    /// </summary>
+    private void UpdateMaterialTextures(IcoSphereGrid grid)
     {
-        if (targetMaterial != null && biomeIndexTexture != null)
+        if (!targets.ContainsKey(grid)) return;
+        var target = targets[grid];
+        if (target.material != null && target.biomeIndexTexture != null)
         {
-            targetMaterial.SetTexture("_BiomeIndexTex", biomeIndexTexture);
-            targetMaterial.SetFloat("_BiomeTexWidth", biomeIndexTexture.width);
-            targetMaterial.SetFloat("_BiomeTexHeight", biomeIndexTexture.height);
-            
-            // Make sure the material knows we're using biome textures
-            targetMaterial.EnableKeyword("_USE_BIOME_TEX");
-            
-            // Update the planet's SgtLandscapeBundle if it exists
-            var planetInitializer = FindObjectOfType<PlanetForgeSphereInitializer>();
-            if (planetInitializer != null && planetInitializer.bundle != null)
-            {
-                planetInitializer.Setup(); // Refresh the bundle setup
-            }
+            target.material.SetTexture("_BiomeIndexTex", target.biomeIndexTexture);
+            target.material.SetFloat("_BiomeTexWidth", target.biomeIndexTexture.width);
+            target.material.SetFloat("_BiomeTexHeight", target.biomeIndexTexture.height);
+            target.material.EnableKeyword("_USE_BIOME_TEX");
         }
+    }
+
+    /// <summary>
+    /// Get the biome index texture for a given grid (if needed elsewhere).
+    /// </summary>
+    public Texture2D GetBiomeIndexTexture(IcoSphereGrid grid)
+    {
+        if (targets.TryGetValue(grid, out var target))
+            return target.biomeIndexTexture;
+        return null;
     }
 
     private void OnDestroy()
     {
-        if (biomeIndexTexture != null)
+        foreach (var target in targets.Values)
         {
-            Destroy(biomeIndexTexture);
+            if (target.biomeIndexTexture != null)
+            {
+                Destroy(target.biomeIndexTexture);
+            }
         }
+        targets.Clear();
     }
 }

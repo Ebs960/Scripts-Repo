@@ -1415,14 +1415,20 @@ public class PlanetGenerator : MonoBehaviour
             Debug.LogWarning("[PlanetGenerator] Could not find landscape material to assign biome textures.");
         }
 
+        // Register this grid/material pair with BiomeTextureManager
+        if (BiomeTextureManager.Instance != null && grid != null && landscapeMaterial != null)
+        {
+            BiomeTextureManager.Instance.RegisterTarget(grid, landscapeMaterial);
+        }
+
         // Force SGT to recognize the new textures and update the mesh
         if (landscape != null) landscape.MarkForRebuild();
 
-        // Create SGT biome components programmatically - DISABLED as it conflicts with SGT's fixed array sizes
-        // CreateSGTBiomeComponents(biomeMaskTextures);
+        // Create SGT biome components programmatically
+        CreateSGTBiomeComponents(biomeMaskTextures);
 
         // After visuals are prepared, generate the biome index texture used by the shader
-        if (BiomeTextureManager.Instance != null)
+        if (BiomeTextureManager.Instance != null && grid != null)
         {
             BiomeTextureManager.Instance.GenerateBiomeIndexTexture(grid);
         }
@@ -1932,11 +1938,11 @@ public class PlanetGenerator : MonoBehaviour
                 Destroy(existingBiomes[i].gameObject);
         }
 
-        // Create new biome components
+        // Create new biome components for each biome setting
         for (int i = 0; i < biomeSettings.Count && i < biomeMaskTextures.Count; i++)
         {
             var biomeSetting = biomeSettings[i];
-            // var maskTexture = biomeMaskTextures[i]; // Not used directly
+            if (biomeSetting == null) continue;
 
             // Create biome GameObject
             GameObject biomeObj = new GameObject($"Biome_{biomeSetting.biome}");
@@ -1948,12 +1954,11 @@ public class PlanetGenerator : MonoBehaviour
             // Set up the biome component
             biomeComponent.Mask = true;
             biomeComponent.MaskIndex = i;
-            // biomeComponent.MaskTexture = maskTexture; // REMOVE: Not supported
-            // biomeComponent.MaskChannel = ...; // REMOVE: Not supported
-            // biomeComponent.MaskChannelType = ...; // REMOVE: Not supported
-            // If we have gradient textures, assign them by index
             biomeComponent.GradientIndex = i;
-            // biomeComponent.GradientTexture = ...; // REMOVE: Not supported
+            biomeComponent.Color = true;
+            biomeComponent.Space = SgtLandscapeBiome.SpaceType.Global;
+            biomeComponent.MaskSharpness = 2f;
+
             // Add a default layer
             var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
             {
@@ -1963,7 +1968,7 @@ public class PlanetGenerator : MonoBehaviour
                 GlobalSize = 100f
             };
             biomeComponent.Layers.Add(layer);
-            biomeComponent.Space = SgtLandscapeBiome.SpaceType.Global;
+
             Debug.Log($"[PlanetGenerator] Created SGT biome component for {biomeSetting.biome}");
         }
 

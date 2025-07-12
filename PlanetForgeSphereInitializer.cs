@@ -21,6 +21,12 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
     public SgtSphereLandscape landscape;
     public SgtLandscapeBundle bundle;
 
+    [Header("Biome References")]
+    [Tooltip("Assign the BiomeTextureManager that will provide the biome index texture.")]
+    public BiomeTextureManager biomeTextureManager;
+    [Tooltip("Assign the IcoSphereGrid instance used by your planet generator.")]
+    public IcoSphereGrid grid;
+
     [Header("Bundle Textures")]
     public List<Texture2D> heightTextures = new();
     public List<Texture2D> gradientTextures = new();
@@ -61,18 +67,24 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
         bundle.MaskTextures.AddRange(maskTextures);
 
         // Force bundle to rebuild its texture atlases
+        bundle.MarkAsDirty();
+        bundle.Regenerate();
+
         if (surfaceMaterial != null)
         {
             // Set the biome atlas textures in the material
             surfaceMaterial.SetTexture("_HeightTopologyAtlas", bundle.HeightTopologyAtlas);
             surfaceMaterial.SetTexture("_GradientAtlas", bundle.GradientAtlas);
             surfaceMaterial.SetTexture("_MaskTopologyAtlas", bundle.MaskTopologyAtlas);
-            
-            // Set the biome index texture if it exists
-            var biomeManager = FindObjectOfType<BiomeTextureManager>();
-            if (biomeManager != null && biomeManager.biomeIndexTexture != null)
+
+            // Apply biome index texture from the assigned BiomeTextureManager
+            if (biomeTextureManager != null && grid != null)
             {
-                surfaceMaterial.SetTexture("_BiomeIndexTex", biomeManager.biomeIndexTexture);
+                var biomeIndexTex = biomeTextureManager.GetBiomeIndexTexture(grid);
+                if (biomeIndexTex != null)
+                {
+                    surfaceMaterial.SetTexture("_BiomeIndexTex", biomeIndexTex);
+                }
             }
         }
 
@@ -101,17 +113,17 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
         var go = new GameObject(name);
         go.transform.SetParent(landscape.transform, false);
         var biome = go.AddComponent<SgtLandscapeBiome>();
-        
+
         // Enhanced biome setup
         biome.GradientIndex = gradientIndex;
         biome.Color = true; // Enable color blending
         biome.Space = SgtLandscapeBiome.SpaceType.Global;
-        
+
         // Configure mask
         biome.Mask = true;
         biome.MaskIndex = maskIndex;
         biome.MaskSharpness = 2f; // Adjust for clearer biome boundaries
-        
+
         // Add height layer
         var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
         {
