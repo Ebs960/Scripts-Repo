@@ -275,9 +275,20 @@ public class MoonGenerator : MonoBehaviour
         // --- Heightmap: Output as Alpha8 (single channel) ---
         if (heightTex == null || heightTex.width != textureSize)
         {
-            heightTex = new Texture2D(textureSize, textureSize / 2, TextureFormat.Alpha8, false)
-            { wrapMode = TextureWrapMode.Repeat };
+            heightTex = new Texture2D(textureSize, textureSize / 2, TextureFormat.R16, false, true)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
         }
+
+        // Create moon biome mask with correct format
+        var moonBiomeMask = new Texture2D(w, h, TextureFormat.R8, false, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear
+        };
+
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
         float moonRadius = moonLandscape != null ? (float)moonLandscape.Radius : 1.0f;
@@ -794,4 +805,4 @@ public class MoonGenerator : MonoBehaviour
         
         return result;
     }
-} 
+}

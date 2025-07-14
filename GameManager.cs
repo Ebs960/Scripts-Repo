@@ -55,44 +55,44 @@ public class GameManager : MonoBehaviour
     public int numberOfCivilizations = 4;
     public int numberOfCityStates = 2;
     public int numberOfTribes = 2;
-    
+
     // Animal prevalence: 0=dead, 1=sparse, 2=scarce, 3=normal, 4=lively, 5=bustling
-    [Range(0,5)]
+    [Range(0, 5)]
     public int animalPrevalence = 3;
-    
+
     public enum MapSize { Micro, Tiny, Small, Standard, Large, Huge, Gigantic }
     [Header("Map Settings")]
     public MapSize mapSize = MapSize.Standard;
     public int moonSize = 10;   // Moon subdivisions (if enabled)
     public bool generateMoon = true;
-    
+
     [Header("References")]
     public PlanetGenerator planetGenerator;
     public MoonGenerator moonGenerator;
     public CivilizationManager civilizationManager;
     public ClimateManager climateManager;
     public DiplomacyManager diplomacyManager;
-    
+
     [Header("Game State")]
     public bool gameInProgress = false;
     public bool gamePaused = false;
     public int currentTurn = 0;
-    
+
     // Events
     public event Action OnGameStarted;
     public event Action<bool> OnGamePaused;
     public event Action OnGameEnded;
-    
+
     // Manager references
     private TurnManager turnManager;
     private DiplomacyManager dipManager;
-    
+
     [Header("UI Prefabs")]
     public GameObject playerUIPrefab;
     public GameObject planetaryCameraPrefab; // Assign 'New Map Shit/Camera Controller.prefab'
-    
+
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
-    
+
     // --- SGT-compatible tile grid and lookup ---
     [System.Serializable]
     public class HexTileData
@@ -107,33 +107,35 @@ public class GameManager : MonoBehaviour
         public Vector3 centerUnitVector; // For fast 3D lookup
     }
 
+    // --- References to high-res planet textures and grid ---
+    public Texture2D planetHeightTex;
+    public Texture2D planetAlbedoTex;
+    public IcoSphereGrid planetGrid;
+
+    /// <summary>
+    /// Called by PlanetGenerator to provide the high-res textures and grid after generation.
+    /// </summary>
+    public void SetPlanetTextures(Texture2D height, Texture2D albedo, IcoSphereGrid grid)
+    {
+        planetHeightTex = height;
+        planetAlbedoTex = albedo;
+        planetGrid = grid;
+        Debug.Log($"[GameManager] SetPlanetTextures: height={height?.width}x{height?.height}, albedo={albedo?.width}x{albedo?.height}, grid tiles={grid?.TileCount}");
+    }
+
     public List<HexTileData> hexTiles = new List<HexTileData>();
     public Texture2D biomeIndexMap;
     public Texture2D heightMap;
     public int tileGridWidth;
     public int tileGridHeight;
     public int biomeCount;
-    
+
     // --- World generation: build tile grid and maps ---
     public IEnumerator GenerateTileGridAndMaps()
     {
-        hexTiles.Clear();
-        // Get biome count from Biome enum
-        biomeCount = System.Enum.GetValues(typeof(Biome)).Length;
-        Debug.Log($"[GameManager] biomeCount set to {biomeCount}");
-        // Ensure PlanetGenerator and grid exist
-        if (planetGenerator == null || planetGenerator.Grid == null)
-        {
-            Debug.LogError("[GameManager] planetGenerator or IcoSphereGrid missing!");
-            yield break;
-        }
-        var grid = planetGenerator.Grid;
-        int numTiles = grid.TileCount;
-        tileGridWidth = Mathf.CeilToInt(Mathf.Sqrt(numTiles));
-        tileGridHeight = tileGridWidth; // Make square for now, or use equirectangular if needed
-        Debug.Log($"[GameManager] tileGridWidth/Height set to {tileGridWidth}");
-        biomeIndexMap = new Texture2D(tileGridWidth, tileGridHeight, TextureFormat.RGBA32, false);
-        heightMap = new Texture2D(tileGridWidth, tileGridHeight, TextureFormat.RGBA32, false);
+        // This method is now a no-op. All grid and texture logic is handled by PlanetGenerator and SGT systems.
+        yield break;
+
         for (int y = 0; y < tileGridHeight; y++)
         {
             float v = (float)y / (tileGridHeight - 1);
@@ -142,46 +144,50 @@ public class GameManager : MonoBehaviour
             {
                 float u = (float)x / (tileGridWidth - 1);
                 float longitude = u * 360f - 180f;
-                // Find nearest tile in IcoSphereGrid
+                
                 Vector3 dir = LatLonToUnitVector(latitude, longitude);
                 int tileIdx = grid.GetTileAtPosition(dir);
-                if (tileIdx < 0 || tileIdx >= numTiles)
-                {
-                    Debug.LogWarning($"[GameManager] Invalid tileIdx {tileIdx} for lat {latitude}, lon {longitude}");
-                    continue;
-                }
-                // Retrieve tile data (HexTileData from PlanetGenerator's data)
-                var tileData = TileDataHelper.Instance != null ? TileDataHelper.Instance.GetTileData(tileIdx).tileData : null;
+
+                if (tileIdx < 0 || tileIdx >= numTiles) continue;
+                
+                // Get the most up-to-date tile data directly from the generator
+                var tileData = planetGenerator.GetHexTileData(tileIdx); 
                 if (tileData == null)
                 {
-                    Debug.LogWarning($"[GameManager] No HexTileData for tileIdx {tileIdx}");
+                    Debug.LogWarning($"[GameManager] No HexTileData in PlanetGenerator for tileIdx {tileIdx}");
                     continue;
                 }
+
                 int biomeIndex = (int)tileData.biome;
                 float heightVal = tileData.elevation;
                 var yields = BiomeHelper.Yields((Biome)biomeIndex);
-                var tile = new HexTileData
+
+                // The 2D texture projection can map multiple pixels to the same tile.
+                // Ensure we only add each unique tile to our logical list once.
+                if (hexTiles.All(t => t.tileIndex != tileIdx))
                 {
-                    tileIndex = tileIdx,
-                    latitude = latitude,
-                    longitude = longitude,
-                    u = u,
-                    v = v,
-                    biomeIndex = biomeIndex,
-                    height = heightVal,
-                    food = yields.food,
-                    production = yields.prod,
-                    gold = yields.gold,
-                    science = yields.sci,
-                    culture = yields.cult,
-                    name = ((Biome)biomeIndex).ToString(),
-                    centerUnitVector = dir
-                };
-                hexTiles.Add(tile);
-                // Set biome index map (red channel normalized by biomeCount-1)
+                    var tile = new HexTileData
+                    {
+                        tileIndex = tileIdx,
+                        latitude = latitude,
+                        longitude = longitude,
+                        u = u,
+                        v = v,
+                        biomeIndex = biomeIndex,
+                        height = heightVal,
+                        food = yields.food,
+                        production = yields.prod,
+                        gold = yields.gold,
+                        science = yields.sci,
+                        culture = yields.cult,
+                        name = ((Biome)biomeIndex).ToString(),
+                        centerUnitVector = dir
+                    };
+                    hexTiles.Add(tile);
+                }
+
                 float biomeNorm = biomeIndex / (float)(biomeCount - 1);
                 biomeIndexMap.SetPixel(x, y, new Color(biomeNorm, 0, 0, 1));
-                // Set heightmap (alpha channel)
                 heightMap.SetPixel(x, y, new Color(0, 0, 0, heightVal));
             }
 
@@ -190,9 +196,10 @@ public class GameManager : MonoBehaviour
                 yield return null;
             }
         }
+
         biomeIndexMap.Apply();
         heightMap.Apply();
-        Debug.Log("[GameManager] Finished GenerateTileGridAndMaps");
+        Debug.Log($"[GameManager] Finished GenerateTileGridAndMaps. Total unique tiles processed: {hexTiles.Count}");
     }
 
     // --- Fast nearest tile lookup (by 3D unit vector) ---
@@ -207,50 +214,8 @@ public class GameManager : MonoBehaviour
             if (dist < minDist)
             {
                 minDist = dist;
-                nearest = hexTiles[i];
-            }
-        }
-        return nearest;
-    }
-
-    // --- Utility: Convert lat/lon to unit vector ---
-    public static Vector3 LatLonToUnitVector(float latitude, float longitude)
-    {
-        float latRad = latitude * Mathf.Deg2Rad;
-        float lonRad = longitude * Mathf.Deg2Rad;
-        float x = Mathf.Cos(latRad) * Mathf.Sin(lonRad);
-        float y = Mathf.Sin(latRad);
-        float z = Mathf.Cos(latRad) * Mathf.Cos(lonRad);
-        return new Vector3(x, y, z).normalized;
-    }
-
-    // --- Public API: Get tile info at world point ---
-    public HexTileData GetHexTileAtWorldPoint(Vector3 worldPoint)
-    {
-        return GetNearestHexTile(worldPoint, this.transform);
-    }
-    
-    // Helper to get subdivisions and radius from preset
-    public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
-    {
-        switch (size)
-        {
-            case MapSize.Micro: subdivisions = 10; radius = 10.0f; break;
-            case MapSize.Tiny: subdivisions = 14; radius = 14.0f; break;
-            case MapSize.Small: subdivisions = 18; radius = 18.0f; break;
-            case MapSize.Standard: subdivisions = 21; radius = 21.0f; break;
-            case MapSize.Large: subdivisions = 24; radius = 24.0f; break;
-            case MapSize.Huge: subdivisions = 27; radius = 27.0f; break;
-            case MapSize.Gigantic: subdivisions = 30; radius = 30.0f; break;
-            default: subdivisions = 21; radius = 21.0f; break;
-        }
-    }
-    
-    private void Awake()
-    {
-        Debug.Log("[GameManager] Awake called.");
-        
-        // Singleton pattern
+        // This method is now a no-op. All grid and texture logic is handled by PlanetGenerator and SGT systems.
+        yield break;
         if (Instance == null)
         {
             Instance = this;
@@ -263,14 +228,14 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
         // Initialize GameSetupData with defaults if not already set
-        if (GameSetupData.selectedPlayerCivilizationData == null && string.IsNullOrEmpty(GameSetupData.mapTypeName)) 
+        if (GameSetupData.selectedPlayerCivilizationData == null && string.IsNullOrEmpty(GameSetupData.mapTypeName))
         {
             GameSetupData.InitializeDefaults();
             Debug.Log("GameSetupData initialized with default values");
         }
-        
+
         // Read civilization settings from GameSetupData
         selectedPlayerCivilizationData = GameSetupData.selectedPlayerCivilizationData;
         numberOfCivilizations = GameSetupData.numberOfCivilizations;
@@ -280,16 +245,16 @@ public class GameManager : MonoBehaviour
         moonSize = GameSetupData.moonSize;
         animalPrevalence = GameSetupData.animalPrevalence;
         generateMoon = GameSetupData.generateMoon;
-        
+
         Debug.Log("=== GameManager.Awake() COMPLETED ===");
     }
-    
+
     private void Start()
     {
         Debug.Log("[GameManager] Start called.");
         // ... existing code ...
     }
-    
+
     /// <summary>
     /// Finds and assigns references to core managers in the current scene.
     /// Creates managers if they don't exist.
@@ -312,7 +277,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: CivilizationManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create ClimateManager
         climateManager = FindAnyObjectByType<ClimateManager>();
         if (climateManager == null)
@@ -328,9 +293,9 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: ClimateManager not found and no prefab assigned!");
             }
         }
-        
+
         diplomacyManager = FindAnyObjectByType<DiplomacyManager>();
-        
+
         // Find or create TurnManager
         turnManager = FindAnyObjectByType<TurnManager>();
         if (turnManager == null)
@@ -346,7 +311,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: TurnManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create UnitSelectionManager
         var unitSelectionManager = FindAnyObjectByType<UnitSelectionManager>();
         if (unitSelectionManager == null)
@@ -364,7 +329,7 @@ public class GameManager : MonoBehaviour
                 unitSelectionManager = unitSelectionManagerGO.AddComponent<UnitSelectionManager>();
             }
         }
-        
+
         // Find or create UnitMovementController
         var unitMovementControllerObj = FindAnyObjectByType<UnitMovementController>();
         if (unitMovementControllerObj == null)
@@ -383,7 +348,7 @@ public class GameManager : MonoBehaviour
             }
         }
         // (We don't store unitMovementControllerObj in a public field here; we'll find it when needed)
-        
+
         // Find or create PolicyManager
         var policyManager = FindAnyObjectByType<PolicyManager>();
         if (policyManager == null)
@@ -399,7 +364,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: PolicyManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create DiplomacyManager
         diplomacyManager = FindAnyObjectByType<DiplomacyManager>();
         if (diplomacyManager == null)
@@ -415,7 +380,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: DiplomacyManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create ResourceManager
         var resourceManager = FindAnyObjectByType<ResourceManager>();
         if (resourceManager == null)
@@ -431,7 +396,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: ResourceManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create ReligionManager
         var religionManager = FindAnyObjectByType<ReligionManager>();
         if (religionManager == null)
@@ -447,7 +412,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: ReligionManager not found and no prefab assigned!");
             }
         }
-        
+
         // Find or create AnimalManager
         var animalManager = FindAnyObjectByType<AnimalManager>();
         if (animalManager == null)
@@ -510,37 +475,37 @@ public class GameManager : MonoBehaviour
                 planetGenerator.subdivisions = subdivisions;
                 planetGenerator.Grid.Generate(subdivisions, radius);
             }
-            
+
             // Configure planet generator with GameSetupData settings
             planetGenerator.SetMapTypeName(GameSetupData.mapTypeName);
-            
+
             // Climate settings
             planetGenerator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
             planetGenerator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
             planetGenerator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
-            
+
             // Moisture and temperature settings
             planetGenerator.moistureBias = GameSetupData.moistureBias;
             planetGenerator.temperatureBias = GameSetupData.temperatureBias;
-            
+
             // Land generation settings
             planetGenerator.landThreshold = GameSetupData.landThreshold;
             planetGenerator.maxContinentWidthDegrees = GameSetupData.maxContinentWidthDegrees;
             planetGenerator.maxContinentHeightDegrees = GameSetupData.maxContinentHeightDegrees;
             planetGenerator.seedPositionVariance = GameSetupData.seedPositionVariance;
             planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
-            
+
             // River settings
             planetGenerator.enableRivers = GameSetupData.enableRivers;
             planetGenerator.minRiversPerContinent = GameSetupData.riverCount;
             planetGenerator.maxRiversPerContinent = GameSetupData.riverCount + 1;
-            
+
             // Island generation settings
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
-            
+
             Debug.Log($"PlanetGenerator created and configured from prefab with continent size {planetGenerator.maxContinentWidthDegrees}x{planetGenerator.maxContinentHeightDegrees}");
-            
+
             // Notify TileDataHelper of the new generator
             if (TileDataHelper.Instance != null)
             {
@@ -551,18 +516,18 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogError("PlanetGenerator prefab is not assigned in GameManager!");
         }
-        
+
         // Instantiate MoonGenerator from prefab if moon generation is enabled
         if (generateMoon && moonGeneratorPrefab != null)
         {
             GameObject moonGO = Instantiate(moonGeneratorPrefab);
             moonGenerator = moonGO.GetComponent<MoonGenerator>();
             Debug.Log("[GameManager] MoonGenerator instantiated.");
-            
+
             // Position the moon away from the planet
             moonGO.transform.position = new Vector3(15f, 40f, 0f); // offset position
             Debug.Log("Moon positioned at distance from planet");
-            
+
             if (moonGenerator != null)
             {
                 // Configure moon generator
@@ -580,7 +545,7 @@ public class GameManager : MonoBehaviour
                     Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
                 Debug.Log("MoonGenerator created and configured from prefab");
-                
+
                 // Notify TileDataHelper of the new generator
                 if (TileDataHelper.Instance != null)
                 {
@@ -618,7 +583,7 @@ public class GameManager : MonoBehaviour
         CreateGenerators();
         // Ensure all core managers are present in the scene (after planet creation)
         FindCoreManagersInScene();
-        
+
         // Set references on UnitMovementController now that planet and managers exist
         var unitMovementController = FindAnyObjectByType<UnitMovementController>();
         if (unitMovementController != null && planetGenerator != null)
@@ -635,7 +600,7 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogWarning("GameManager: PlanetGenerator is null, cannot set UnitMovementController references!");
         }
-        
+
         // --- Camera instantiation ---
         if (planetaryCameraPrefab != null && Camera.main == null)
         {
@@ -650,7 +615,7 @@ public class GameManager : MonoBehaviour
                 instantiatedCameraGO.AddComponent<AudioListener>();
                 Debug.LogWarning("GameManager: Added missing AudioListener to the main camera.");
             }
-            
+
             // Ensure camera has latest generator references
             var cameraManager = instantiatedCameraGO.GetComponent<PlanetaryCameraManager>();
             if (cameraManager != null)
@@ -717,9 +682,9 @@ public class GameManager : MonoBehaviour
         currentTurn = 0;
         gameInProgress = true;
         gamePaused = false;
-        
+
         Debug.Log("=== STARTING MAP GENERATION ===");
-        
+
         // Generate the map (planet and optionally moon)
         if (planetGenerator != null)
         {
@@ -730,9 +695,9 @@ public class GameManager : MonoBehaviour
             Debug.LogError("PlanetGenerator not created. Can't start game.");
             yield break;
         }
-        
+
         Debug.Log("=== MAP GENERATION COMPLETE ===");
-        
+
         // Spawn civilizations
         if (civilizationManager != null)
         {
@@ -748,10 +713,10 @@ public class GameManager : MonoBehaviour
             Debug.Log($"GameManager passing to SpawnCivilizations - Player: {playerCivData?.civName ?? "NULL"}, AI Count: {numberOfCivilizations}, CS Count: {numberOfCityStates}, Tribe Count: {numberOfTribes}");
             civilizationManager.SpawnCivilizations(
                 playerCivData,
-                numberOfCivilizations, 
-                numberOfCityStates, 
+                numberOfCivilizations,
+                numberOfCityStates,
                 numberOfTribes);
-            
+
             // Initialize the music manager with the newly spawned civs
             if (MusicManager.Instance != null)
             {
@@ -775,17 +740,17 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogWarning("GameManager: AnimalManager or PlanetGenerator not found, cannot spawn initial animals.");
         }
-        
+
         Debug.Log("=== STARTING UI INITIALIZATION ===");
-        
+
         // Initialize UI after civilizations are spawned
         yield return new WaitForEndOfFrame(); // Give everything a frame to settle
         Debug.Log("[GameManager] Calling InitializeUI...");
         InitializeUI();
         Debug.Log("[GameManager] InitializeUI finished.");
-        
+
         Debug.Log("=== UI INITIALIZATION COMPLETE ===");
-        
+
         // Game is now ready
         OnGameStarted?.Invoke();
 
@@ -794,12 +759,12 @@ public class GameManager : MonoBehaviour
         {
             MusicManager.Instance.PlayMusic();
         }
-        
+
         Debug.Log("=== GameManager.StartNewGame() COMPLETED SUCCESSFULLY ===");
-        
+
         yield return null;
     }
-    
+
     /// <summary>
     /// Handles map generation process
     /// </summary>
@@ -808,7 +773,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("Generating planet...");
         // Use GenerateSurface as a coroutine and wait for all map generation to finish
         yield return StartCoroutine(planetGenerator.GenerateSurface());
-        
+
         // Generate moon if enabled
         if (generateMoon && moonGenerator != null)
         {
@@ -818,7 +783,7 @@ public class GameManager : MonoBehaviour
             // Call GenerateSurface on the moon generator as a coroutine
             yield return StartCoroutine(moonGenerator.GenerateSurface());
         }
-        
+
         // --- NEW: Scatter biome prefabs automatically ---
         var scatterer = FindFirstObjectByType<BiomePrefabScatterer>();
         if (scatterer != null)
@@ -834,7 +799,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("Map generation complete!");
     }
-    
+
     /// <summary>
     /// Public method to generate the world with a callback when finished
     /// </summary>
@@ -842,18 +807,18 @@ public class GameManager : MonoBehaviour
     {
         StartCoroutine(GenerateWorldRoutine(onComplete));
     }
-    
+
     /// <summary>
     /// Coroutine to handle world generation with callback
     /// </summary>
     public IEnumerator GenerateWorldRoutine(Action onComplete)
     {
         yield return StartCoroutine(GenerateMap());
-        
+
         // Map generation is complete, call the callback
         onComplete?.Invoke();
     }
-    
+
     /// <summary>
     /// Initialize UI components after game setup is complete
     /// </summary>
@@ -866,14 +831,14 @@ public class GameManager : MonoBehaviour
                 UIManager.Instance.playerUI.SetActive(true);
         }
     }
-    
+
     public void SetPaused(bool paused)
     {
         gamePaused = paused;
         Time.timeScale = paused ? 0f : 1f;
         OnGamePaused?.Invoke(paused);
     }
-    
+
     /// <summary>
     /// Ends the current game and returns to main menu
     /// </summary>
@@ -883,11 +848,11 @@ public class GameManager : MonoBehaviour
         gamePaused = false;
         Time.timeScale = 1f;
         OnGameEnded?.Invoke();
-        
+
         // Return to main menu scene
         SceneManager.LoadScene("MainMenu");
     }
-    
+
     /// <summary>
     /// Save the current game state
     /// </summary>
@@ -896,7 +861,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Saving game as {saveName}...");
         // Implement your save game logic here
     }
-    
+
     /// <summary>
     /// Load a saved game
     /// </summary>
@@ -913,5 +878,7 @@ public class GameManager : MonoBehaviour
         dipManager = FindAnyObjectByType<DiplomacyManager>();
         civilizationManager = FindAnyObjectByType<CivilizationManager>();
     }
+}
 
-} 
+
+
