@@ -335,22 +335,29 @@ public class MoonGenerator : MonoBehaviour
 
         // --- Generate Moon Biome Mask Textures ---
         List<Texture2D> biomeMaskTextures = new List<Texture2D>();
-        List<Texture2D> packedBiomeMasks = new List<Texture2D>();
         Texture2D biomeIndexMap = null;
-        
-        // Create one RGBA texture for 2 biomes (using R and G channels)
-        var packedMask = new Texture2D(w, h, TextureFormat.RGBA32, true, true)
+
+        // Create separate mask textures for each biome (R channel only)
+        var dunesMask = new Texture2D(w, h, TextureFormat.R8, true, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear,
             anisoLevel = 4
         };
-        packedBiomeMasks.Add(packedMask);
+        var cavesMask = new Texture2D(w, h, TextureFormat.R8, true, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear,
+            anisoLevel = 4
+        };
+        biomeMaskTextures.Add(dunesMask);
+        biomeMaskTextures.Add(cavesMask);
         
         // Create biome index map
         biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
         Color[] biomePixels = new Color[w * h];
-        Color[] packedPixels = new Color[w * h];
+        Color[] dunesPixels = new Color[w * h];
+        Color[] cavesPixels = new Color[w * h];
         
         // Single pass for height and biome data
         for (int y = 0; y < h; y++)
@@ -368,18 +375,16 @@ public class MoonGenerator : MonoBehaviour
                 int idx1d = y * w + x;
                 float scaledHeight = h01 * heightScale;
                 byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
-                hPixels[idx1d] = new Color32(0, 0, 0, heightByte);
+                hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
                 
                 // BIOME PROCESSING
                 int biomeIdx = tile.biome == Biome.MoonCaves ? 1 : 0;
                 float biomeNorm = biomeIdx / 1f; // 0 or 1 for 2 biomes
                 biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
                 
-                // PACKED BIOME MASK (R = MoonDunes, G = MoonCaves)
-                Color packedColor = Color.black;
-                if (biomeIdx == 0) packedColor.r = 1f; // MoonDunes in red channel
-                else packedColor.g = 1f; // MoonCaves in green channel
-                packedPixels[idx1d] = packedColor;
+                // Individual biome masks
+                dunesPixels[idx1d] = biomeIdx == 0 ? Color.red : Color.black;
+                cavesPixels[idx1d] = biomeIdx == 1 ? Color.red : Color.black;
             }
             
             // Yield every 8 rows to keep UI responsive
@@ -401,8 +406,10 @@ public class MoonGenerator : MonoBehaviour
         heightTex.SetPixels32(hPixels);
         heightTex.Apply(false, false);
         
-        packedMask.SetPixels(packedPixels);
-        packedMask.Apply(true, false);
+        dunesMask.SetPixels(dunesPixels);
+        dunesMask.Apply(true, false);
+        cavesMask.SetPixels(cavesPixels);
+        cavesMask.Apply(true, false);
         
         biomeIndexMap.SetPixels(biomePixels);
         biomeIndexMap.Apply(false, true);
@@ -425,8 +432,9 @@ public class MoonGenerator : MonoBehaviour
             landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
             landscapeMaterial.SetFloat("_BiomeNormalArray_Depth", biomeCount);
             landscapeMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
-            landscapeMaterial.SetTexture("_BiomeMask0", packedMask);
-            landscapeMaterial.SetFloat("_BiomeMaskCount", 1);
+            landscapeMaterial.SetTexture("_BiomeMask0", dunesMask);
+            landscapeMaterial.SetTexture("_BiomeMask1", cavesMask);
+            landscapeMaterial.SetFloat("_BiomeMaskCount", 2);
             Debug.Log($"[MoonGenerator] Assigned {biomeCount} moon biomes to landscape material.");
         }
         else
