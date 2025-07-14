@@ -89,14 +89,12 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
             surfaceMaterial.SetTexture("_MaskTopologyAtlas", bundle.MaskTopologyAtlas);
 
             // Apply biome index texture from the assigned BiomeTextureManager
+
             if (biomeTextureManager != null && grid != null)
             {
-                var biomeIndexTex = biomeTextureManager.GetBiomeIndexTexture(grid);
-                if (biomeIndexTex != null)
-                {
-                    surfaceMaterial.SetTexture("_BiomeIndexTex", biomeIndexTex);
-                }
+                biomeTextureManager.RegisterTarget(grid, surfaceMaterial);
             }
+
         }
 
         if (addAtmosphere && GetComponentInChildren<SgtSky>() == null)
