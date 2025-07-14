@@ -1211,10 +1211,21 @@ public class PlanetGenerator : MonoBehaviour
         normalArray.Apply();
 
         // Assign arrays to the landscape so the shader can read them
-        landscape.BiomeAlbedoArray = albedoArray;
-        landscape.BiomeNormalArray = normalArray;
-        landscape.BiomeAlbedoArrayDepth = biomeCount;
-        landscape.BiomeNormalArrayDepth = biomeCount;
+Material mat = landscape.GetComponent<Renderer>().material;
+
+if (mat != null)
+{
+    mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+    mat.SetTexture("_BiomeNormalArray", normalArray);
+
+    mat.SetInt("_BiomeAlbedoArray_Depth", biomeCount);
+    mat.SetInt("_BiomeNormalArray_Depth", biomeCount);
+}
+else
+{
+    Debug.LogError("Material not found on landscape's renderer!");
+}
+
 
         Debug.Log($"[PlanetGenerator] Created Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
 

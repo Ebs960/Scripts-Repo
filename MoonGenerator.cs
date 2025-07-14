@@ -351,11 +351,21 @@ public class MoonGenerator : MonoBehaviour
         albedoArray.Apply();
         normalArray.Apply();
 
-        // Assign arrays to landscape and set depths
-        moonLandscape.BiomeAlbedoArray = albedoArray;
-        moonLandscape.BiomeNormalArray = normalArray;
-        moonLandscape.BiomeAlbedoArrayDepth = biomeCount;
-        moonLandscape.BiomeNormalArrayDepth = biomeCount;
+Material mat = moonLandscape.GetComponent<Renderer>().material;
+
+if (mat != null)
+{
+    mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+    mat.SetTexture("_BiomeNormalArray", normalArray);
+
+    mat.SetInt("_BiomeAlbedoArray_Depth", biomeCount);
+    mat.SetInt("_BiomeNormalArray_Depth", biomeCount);
+}
+else
+{
+    Debug.LogError("Material not found on landscape's renderer!");
+}
+
 
         Debug.Log($"[MoonGenerator] Created Moon Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
 
