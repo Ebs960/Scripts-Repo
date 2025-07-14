@@ -1287,7 +1287,7 @@ public class PlanetGenerator : MonoBehaviour
                         int idx1d = y * w + x;
                         float scaledHeight = h01 * heightScale; // This is now in world units
                         byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
-                        hPixels[idx1d] = new Color32(0, 0, 0, heightByte);
+                        hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
                         // BIOME INDEX MAP PROCESSING (keep for compatibility)
                         int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
                         float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
@@ -1655,7 +1655,7 @@ public class PlanetGenerator : MonoBehaviour
         result.Clear();
         foreach (Biome b in System.Enum.GetValues(typeof(Biome)))
         {
-            var tex = new Texture2D(width, height, TextureFormat.Alpha8, false)
+            var tex = new Texture2D(width, height, TextureFormat.R8, false)
             { wrapMode = TextureWrapMode.Clamp };
             for (int y = 0; y < height; y++)
             {
@@ -1664,7 +1664,7 @@ public class PlanetGenerator : MonoBehaviour
                     int tile = pixelToTileLookup[x, y];
                     var td = GetHexTileData(tile);
                     byte val = td.biome == b ? (byte)255 : (byte)0;
-                    tex.SetPixel(x, y, new Color32(val, val, val, 255));
+                    tex.SetPixel(x, y, new Color32(val, 0, 0, 255));
                 }
 
                 if (y % 32 == 0)
@@ -1824,13 +1824,19 @@ public class PlanetGenerator : MonoBehaviour
     /// </summary>
     private Texture2D CreateGradientTexture(Color color)
     {
-        var tex = new Texture2D(1, 256, TextureFormat.R8, false, true)
+        // Create a simple vertical gradient from black to the provided color
+        var tex = new Texture2D(256, 256, TextureFormat.RGBA32, false, true)
         {
             wrapMode = TextureWrapMode.Clamp
         };
         for (int y = 0; y < 256; y++)
         {
-            tex.SetPixel(0, y, new Color(color.r, 0, 0, 1)); // Only red channel used
+            float t = y / 255f;
+            Color c = Color.Lerp(Color.black, color, t);
+            for (int x = 0; x < 256; x++)
+            {
+                tex.SetPixel(x, y, c);
+            }
         }
         tex.Apply(false, false);
         return tex;
@@ -1841,87 +1847,51 @@ public class PlanetGenerator : MonoBehaviour
     /// </summary>
     private System.Collections.IEnumerator GenerateOptimizedBiomeMasks(int width, int height, List<Texture2D> biomeMasks)
     {
+        // Create one R8 mask texture per biome
         biomeMasks.Clear();
         int biomeCount = biomeSettings.Count;
-        
-        // Create packed RGBA mask textures (4 biomes per texture)
-        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
-        
-        int totalRows = packedMaskCount * height;
-        int processedRows = 0;
 
-        for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
+        for (int i = 0; i < biomeCount; i++)
         {
-            var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true) // Enable mipmaps and linear
+            var maskTex = new Texture2D(width, height, TextureFormat.R8, true, true)
             {
                 wrapMode = TextureWrapMode.Repeat,
                 filterMode = FilterMode.Trilinear,
-                anisoLevel = 4 // Better quality for terrain textures
+                anisoLevel = 4
             };
 
             Color[] pixels = new Color[width * height];
-            
-            // Generate mask data
+
             for (int y = 0; y < height; y++)
             {
                 float v = (y + 0.5f) / height;
                 float lat = Mathf.Lerp(90, -90, v);
-                
+
                 for (int x = 0; x < width; x++)
                 {
                     float u = (x + 0.5f) / width;
                     float lon = Mathf.Lerp(-180, 180, u);
                     Vector3 dir = SphericalToCartesian(lat, lon);
-                    
+
                     int tileIdx = grid.GetTileAtPosition(dir);
                     if (tileIdx < 0) tileIdx = 0;
-                    
+
                     var tile = GetHexTileData(tileIdx);
                     if (tile == null) continue;
-                    
-                    int biomeIdx = (int)tile.biome;
-                    int pixelIndex = y * width + x;
-                    
-                    // Determine which biomes belong to this packed texture
-                    Color maskColor = Color.black;
-                    for (int channel = 0; channel < 4; channel++)
-                    {
-                        int targetBiomeIdx = maskIndex * 4 + channel;
-                        if (targetBiomeIdx < biomeCount && biomeIdx == targetBiomeIdx)
-                        {
-                            float maskValue = 1f;
-                            switch (channel)
-                            {
-                                case 0: maskColor.r = maskValue; break;
-                                case 1: maskColor.g = maskValue; break;
-                                case 2: maskColor.b = maskValue; break;
-                                case 3: maskColor.a = maskValue; break;
-                            }
-                        }
-                    }
-                    
-                    pixels[pixelIndex] = maskColor;
+
+                    float val = tile.biome == biomeSettings[i].biome ? 1f : 0f;
+                    pixels[y * width + x] = new Color(val, 0f, 0f, 1f);
                 }
 
-                processedRows++;
-                if (y % 32 == 0)
-                {
-                    if (loadingPanelController != null)
-                    {
-                        float progress = 0.95f + (processedRows / (float)totalRows) * 0.04f; // 95%→99%
-                        loadingPanelController.SetProgress(progress);
-                        loadingPanelController.SetStatus("Finalizing terrain...");
-                    }
-                    yield return null;
-                }
+                if (y % 32 == 0) yield return null;
             }
 
-            maskTexture.SetPixels(pixels);
-            maskTexture.Apply(true, false); // Generate mipmaps but don't make read-only yet
-            biomeMasks.Add(maskTexture);
+            maskTex.SetPixels(pixels);
+            maskTex.Apply(true, false);
+            biomeMasks.Add(maskTex);
             yield return null;
         }
-        Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} optimized RGBA biome mask textures for {biomeCount} biomes");
+        Debug.Log($"[PlanetGenerator] Generated {biomeCount} optimized R8 biome mask textures");
     }
 
     /// <summary>
