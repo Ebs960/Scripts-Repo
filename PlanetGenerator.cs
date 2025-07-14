@@ -1092,20 +1092,6 @@ public class PlanetGenerator : MonoBehaviour
             return polarTilesGenerated;
         }
 
-        // Register grid with BiomeTextureManager before any texture generation
-        if (BiomeTextureManager.Instance != null && grid != null)
-        {
-            if (landscape != null && landscape.Material != null)
-            {
-                BiomeTextureManager.Instance.RegisterTarget(grid, landscape.Material);
-                Debug.Log("[PlanetGenerator] Registered grid and material with BiomeTextureManager.");
-            }
-            else
-            {
-                Debug.LogWarning("[PlanetGenerator] Could not register grid with BiomeTextureManager: landscape or material missing.");
-            }
-        }
-
         // Build the visual maps for the high-poly sphere (high-res textures)
         yield return StartCoroutine(BuildVisualMapsBatched());
 
@@ -1439,10 +1425,9 @@ public class PlanetGenerator : MonoBehaviour
             Debug.LogError("[PlanetGenerator] No SgtLandscapeBundle found on landscape!");
         }
 
-        if (BiomeTextureManager.Instance != null && grid != null)
+        if (BiomeTextureManager.Instance != null && grid != null && landscape != null && landscape.Material != null)
         {
-            yield return new WaitForEndOfFrame();
-            BiomeTextureManager.Instance.GenerateBiomeIndexTexture(grid);
+            BiomeTextureManager.Instance.RegisterTarget(grid, landscape.Material);
         }
     }
 
