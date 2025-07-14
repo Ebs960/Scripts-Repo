@@ -1174,33 +1174,49 @@ public class PlanetGenerator : MonoBehaviour
 
         // --- MERGED: Height & Biome Mask generation in single pass ---
         int biomeCount = biomeSettings.Count;
-        int texSize = 1024; // Reduced for faster generation - Unity auto-scales source textures
-        
-        // Create both albedo and normal texture arrays
-        var albedoArray = new Texture2DArray(texSize, texSize, biomeCount, TextureFormat.RGBA32, true);
-        var normalArray = new Texture2DArray(texSize, texSize, biomeCount, TextureFormat.RGBA32, true);
-        
-        for (int i = 0; i < biomeCount; i++) {
-            // Set up albedo textures
-            var albedo = biomeSettings[i].albedoTexture;
-            if (albedo != null) albedoArray.SetPixels(albedo.GetPixels(), i);
-            else albedoArray.SetPixels(new Color[texSize * texSize], i);
-            
-            // Set up normal textures (no conversion, use Unity's normal map format directly)
-            var normal = biomeSettings[i].normalTexture;
-            if (normal != null) {
-                normalArray.SetPixels(normal.GetPixels(), i);
-            } else {
+        int textureWidth = biomeSettings[0].albedoTexture.width;
+        int textureHeight = biomeSettings[0].albedoTexture.height;
+
+        // Create both albedo and normal texture arrays using exact texture size
+        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear
+        };
+        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear
+        };
+
+        for (int i = 0; i < biomeCount; i++)
+        {
+            Graphics.CopyTexture(biomeSettings[i].albedoTexture, 0, 0, albedoArray, i, 0);
+            if (biomeSettings[i].normalTexture != null)
+            {
+                Graphics.CopyTexture(biomeSettings[i].normalTexture, 0, 0, normalArray, i, 0);
+            }
+            else
+            {
                 // Create flat normal map (0.5, 0.5, 1.0, 1.0 = no bump)
-                Color[] flatNormal = new Color[texSize * texSize];
-                for (int j = 0; j < flatNormal.Length; j++) {
-                    flatNormal[j] = new Color(0.5f, 0.5f, 1f, 1f); // Flat normal in tangent space
+                Color[] flatNormal = new Color[textureWidth * textureHeight];
+                for (int j = 0; j < flatNormal.Length; j++)
+                {
+                    flatNormal[j] = new Color(0.5f, 0.5f, 1f, 1f);
                 }
                 normalArray.SetPixels(flatNormal, i);
             }
         }
-        albedoArray.Apply(true); // Generate mipmaps
-        normalArray.Apply(true);
+        albedoArray.Apply();
+        normalArray.Apply();
+
+        // Assign arrays to the landscape so the shader can read them
+        landscape.BiomeAlbedoArray = albedoArray;
+        landscape.BiomeNormalArray = normalArray;
+        landscape.BiomeAlbedoArrayDepth = biomeCount;
+        landscape.BiomeNormalArrayDepth = biomeCount;
+
+        Debug.Log($"[PlanetGenerator] Created Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
 
         // Pre-build biome index lookup for faster access
         Dictionary<Biome, int> biomeToIndex = new Dictionary<Biome, int>();

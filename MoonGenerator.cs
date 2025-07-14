@@ -297,41 +297,67 @@ public class MoonGenerator : MonoBehaviour
         Debug.Log($"[MoonGenerator] Heightmap generation: moonRadius={moonRadius}, heightScale={heightScale}");
         
         // --- Moon has only 2 biomes, so simpler setup ---
-        int biomeCount = 2; // MoonDunes, MoonCaves
-        int texSize = 512; // Smaller than planet
-        
-        // Create texture arrays for moon biomes
-        var albedoArray = new Texture2DArray(texSize, texSize, biomeCount, TextureFormat.RGBA32, true);
-        var normalArray = new Texture2DArray(texSize, texSize, biomeCount, TextureFormat.RGBA32, true);
-        
+        int biomeCount = biomeSettings.Count;
+        int textureWidth = biomeSettings[0].albedoTexture.width;
+        int textureHeight = biomeSettings[0].albedoTexture.height;
+
+        // Create texture arrays for moon biomes using actual texture size
+        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear
+        };
+        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear
+        };
+
         // Set up moon biome textures
-        for (int i = 0; i < biomeCount; i++) {
-            if (i < biomeSettings.Count && biomeSettings[i].albedoTexture != null) {
-                albedoArray.SetPixels(biomeSettings[i].albedoTexture.GetPixels(), i);
-            } else {
+        for (int i = 0; i < biomeCount; i++)
+        {
+            if (i < biomeSettings.Count && biomeSettings[i].albedoTexture != null)
+            {
+                Graphics.CopyTexture(biomeSettings[i].albedoTexture, 0, 0, albedoArray, i, 0);
+            }
+            else
+            {
                 // Default colors for moon biomes
                 Color defaultColor = i == 0 ? moonDunesColor : moonCavesColor;
-                Color[] defaultPixels = new Color[texSize * texSize];
-                for (int j = 0; j < defaultPixels.Length; j++) {
+                Color[] defaultPixels = new Color[textureWidth * textureHeight];
+                for (int j = 0; j < defaultPixels.Length; j++)
+                {
                     defaultPixels[j] = defaultColor;
                 }
                 albedoArray.SetPixels(defaultPixels, i);
             }
-            
+
             // Set up normal textures
-            if (i < biomeSettings.Count && biomeSettings[i].normalTexture != null) {
-                normalArray.SetPixels(biomeSettings[i].normalTexture.GetPixels(), i);
-            } else {
+            if (i < biomeSettings.Count && biomeSettings[i].normalTexture != null)
+            {
+                Graphics.CopyTexture(biomeSettings[i].normalTexture, 0, 0, normalArray, i, 0);
+            }
+            else
+            {
                 // Create flat normal map
-                Color[] flatNormal = new Color[texSize * texSize];
-                for (int j = 0; j < flatNormal.Length; j++) {
+                Color[] flatNormal = new Color[textureWidth * textureHeight];
+                for (int j = 0; j < flatNormal.Length; j++)
+                {
                     flatNormal[j] = new Color(0.5f, 0.5f, 1f, 1f);
                 }
                 normalArray.SetPixels(flatNormal, i);
             }
         }
-        albedoArray.Apply(true);
-        normalArray.Apply(true);
+        albedoArray.Apply();
+        normalArray.Apply();
+
+        // Assign arrays to landscape and set depths
+        moonLandscape.BiomeAlbedoArray = albedoArray;
+        moonLandscape.BiomeNormalArray = normalArray;
+        moonLandscape.BiomeAlbedoArrayDepth = biomeCount;
+        moonLandscape.BiomeNormalArrayDepth = biomeCount;
+
+        Debug.Log($"[MoonGenerator] Created Moon Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
 
         // --- Generate Moon Biome Mask Textures ---
         List<Texture2D> biomeMaskTextures = new List<Texture2D>();
