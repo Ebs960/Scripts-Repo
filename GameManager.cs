@@ -84,8 +84,8 @@ public class GameManager : MonoBehaviour
     public event Action OnGameEnded;
 
     // Manager references
-    private TurnManager turnManager;
-    private DiplomacyManager dipManager;
+    public TurnManager turnManager;
+    public DiplomacyManager dipManager;
 
     [Header("UI Prefabs")]
     public GameObject playerUIPrefab;
@@ -124,83 +124,7 @@ public class GameManager : MonoBehaviour
     }
 
     public List<HexTileData> hexTiles = new List<HexTileData>();
-    public Texture2D biomeIndexMap;
-    public Texture2D heightMap;
-    public int tileGridWidth;
-    public int tileGridHeight;
-    public int biomeCount;
-
-    // --- World generation: build tile grid and maps ---
-    public IEnumerator GenerateTileGridAndMaps()
-    {
-        // This method is now a no-op. All grid and texture logic is handled by PlanetGenerator and SGT systems.
-        yield break;
-
-        for (int y = 0; y < tileGridHeight; y++)
-        {
-            float v = (float)y / (tileGridHeight - 1);
-            float latitude = v * 180f - 90f;
-            for (int x = 0; x < tileGridWidth; x++)
-            {
-                float u = (float)x / (tileGridWidth - 1);
-                float longitude = u * 360f - 180f;
-                
-                Vector3 dir = LatLonToUnitVector(latitude, longitude);
-                int tileIdx = grid.GetTileAtPosition(dir);
-
-                if (tileIdx < 0 || tileIdx >= numTiles) continue;
-                
-                // Get the most up-to-date tile data directly from the generator
-                var tileData = planetGenerator.GetHexTileData(tileIdx); 
-                if (tileData == null)
-                {
-                    Debug.LogWarning($"[GameManager] No HexTileData in PlanetGenerator for tileIdx {tileIdx}");
-                    continue;
-                }
-
-                int biomeIndex = (int)tileData.biome;
-                float heightVal = tileData.elevation;
-                var yields = BiomeHelper.Yields((Biome)biomeIndex);
-
-                // The 2D texture projection can map multiple pixels to the same tile.
-                // Ensure we only add each unique tile to our logical list once.
-                if (hexTiles.All(t => t.tileIndex != tileIdx))
-                {
-                    var tile = new HexTileData
-                    {
-                        tileIndex = tileIdx,
-                        latitude = latitude,
-                        longitude = longitude,
-                        u = u,
-                        v = v,
-                        biomeIndex = biomeIndex,
-                        height = heightVal,
-                        food = yields.food,
-                        production = yields.prod,
-                        gold = yields.gold,
-                        science = yields.sci,
-                        culture = yields.cult,
-                        name = ((Biome)biomeIndex).ToString(),
-                        centerUnitVector = dir
-                    };
-                    hexTiles.Add(tile);
-                }
-
-                float biomeNorm = biomeIndex / (float)(biomeCount - 1);
-                biomeIndexMap.SetPixel(x, y, new Color(biomeNorm, 0, 0, 1));
-                heightMap.SetPixel(x, y, new Color(0, 0, 0, heightVal));
-            }
-
-            if (y % 10 == 0)
-            {
-                yield return null;
-            }
-        }
-
-        biomeIndexMap.Apply();
-        heightMap.Apply();
-        Debug.Log($"[GameManager] Finished GenerateTileGridAndMaps. Total unique tiles processed: {hexTiles.Count}");
-    }
+    
 
     // --- Fast nearest tile lookup (by 3D unit vector) ---
     public HexTileData GetNearestHexTile(Vector3 worldPoint, Transform planetTransform)
@@ -220,8 +144,44 @@ public class GameManager : MonoBehaviour
         return nearest;
     }
 
+    // --- Utility: Convert lat/lon to unit vector ---
+    public static Vector3 LatLonToUnitVector(float latitude, float longitude)
+    {
+        float latRad = latitude * Mathf.Deg2Rad;
+        float lonRad = longitude * Mathf.Deg2Rad;
+        float x = Mathf.Cos(latRad) * Mathf.Sin(lonRad);
+        float y = Mathf.Sin(latRad);
+        float z = Mathf.Cos(latRad) * Mathf.Cos(lonRad);
+        return new Vector3(x, y, z).normalized;
+    }
+
+    // --- Public API: Get tile info at world point ---
+    public HexTileData GetHexTileAtWorldPoint(Vector3 worldPoint)
+    {
+        return GetNearestHexTile(worldPoint, this.transform);
+    }
+
+    // Helper to get subdivisions and radius from preset
+    public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
+    {
+        switch (size)
+        {
+            case MapSize.Micro: subdivisions = 10; radius = 10.0f; break;
+            case MapSize.Tiny: subdivisions = 14; radius = 14.0f; break;
+            case MapSize.Small: subdivisions = 18; radius = 18.0f; break;
+            case MapSize.Standard: subdivisions = 21; radius = 21.0f; break;
+            case MapSize.Large: subdivisions = 24; radius = 24.0f; break;
+            case MapSize.Huge: subdivisions = 27; radius = 27.0f; break;
+            case MapSize.Gigantic: subdivisions = 30; radius = 30.0f; break;
+            default: subdivisions = 21; radius = 21.0f; break;
+        }
+    }
+
     private void Awake()
     {
+        Debug.Log("[GameManager] Awake called.");
+
+        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;

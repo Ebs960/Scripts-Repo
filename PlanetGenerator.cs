@@ -1114,7 +1114,6 @@ public class PlanetGenerator : MonoBehaviour
         {
             Debug.Log("[PlanetGenerator] Syncing tile grid and maps with GameManager (after high-res texture generation)...");
             GameManager.Instance.SetPlanetTextures(heightTex, biomeColorMap, grid);
-            yield return GameManager.Instance.GenerateTileGridAndMaps();
         }
         else
         {

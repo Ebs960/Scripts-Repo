@@ -70,6 +70,17 @@ public class PlanetForgeSphereInitializer : MonoBehaviour
         bundle.MarkAsDirty();
         bundle.Regenerate();
 
+// 🔧 NEW: Automatically assign the BiomeTextureManager singleton
+    if (biomeTextureManager == null)
+    {
+        biomeTextureManager = BiomeTextureManager.Instance;
+        if (biomeTextureManager == null)
+        {
+            Debug.LogError("[PlanetForgeSphereInitializer] No BiomeTextureManager found in the scene!");
+        }
+    }
+
+
         if (surfaceMaterial != null)
         {
             // Set the biome atlas textures in the material
