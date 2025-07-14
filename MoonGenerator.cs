@@ -143,7 +143,7 @@ public class MoonGenerator : MonoBehaviour
 
     System.Collections.IEnumerator Initialise() // This can be called if manual generation outside GameManager is needed
     {
-        for (int i = 0; i < Mathf.Max(1, initializationDelay); i++) yield return null;
+        yield return null;
         GenerateSurface();
     }
 
@@ -189,7 +189,7 @@ public class MoonGenerator : MonoBehaviour
                     loadingPanelController.SetProgress((float)i / tileCount * 0.2f); // Progress 0% to 20%
                     loadingPanelController.SetStatus("Sculpting moon dunes...");
                 }
-                yield return null;
+        yield return null;
             }
         }
 
@@ -222,7 +222,7 @@ public class MoonGenerator : MonoBehaviour
                     loadingPanelController.SetProgress(0.4f + (float)i / tileCount * 0.1f); // Progress 40% to 50%
                     loadingPanelController.SetStatus("Finalizing moon terrain...");
                 }
-                yield return null;
+        yield return null;
             }
         }
         Debug.Log($"Generated Moon Surface with {tileCount} tiles.");
@@ -396,7 +396,7 @@ public class MoonGenerator : MonoBehaviour
                     loadingPanelController.SetProgress(0.6f + progress * 0.3f); // 60% to 90%
                     loadingPanelController.SetStatus($"Building Moon Maps... ({(progress*100):F0}%)");
                 }
-                yield return null;
+        yield return null;
             }
         }
         
@@ -461,13 +461,7 @@ public class MoonGenerator : MonoBehaviour
         }
         yield return null;
 
-        // After visuals are prepared, generate the biome index texture used by the shader
-        if (BiomeTextureManager.Instance != null && grid != null)
-        {
-            BiomeTextureManager.Instance.GenerateBiomeIndexTexture(grid);
-        }
     }
-
     // Helper: lat/long (deg) → unit vector
     static Vector3 SphericalToCartesian(float latDeg, float lonDeg)
     {
@@ -651,7 +645,7 @@ public class MoonGenerator : MonoBehaviour
                     loadingPanelController.SetProgress(0.2f + (float)i / tileCount * 0.2f); // Progress 20% to 40%
                     loadingPanelController.SetStatus("Carving moon caves...");
                 }
-                yield return null;
+        yield return null;
             }
         }
     }
