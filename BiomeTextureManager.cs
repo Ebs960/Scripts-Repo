@@ -109,18 +109,23 @@ public class BiomeTextureManager : MonoBehaviour
 
         Color[] albedoPixels = new Color[width * height];
 
+        var biomeList = FindObjectOfType<PlanetGenerator>()?.biomeSettings;
+
         for (int i = 0; i < tileCount; i++)
         {
             HexTileData tile = TileDataHelper.Instance.GetTileData(i).tileData;
             int biomeIndex = (int)tile.biome;
-            BiomeSettings biome = BiomeManager.Instance.GetBiomeSettings(biomeIndex);
 
-            // Default fallback color in case biome.albedoTex is null
+            // Default fallback color in case something's null
             Color sampledColor = Color.magenta;
 
-            if (biome != null && biome.albedoTex != null)
+            if (biomeList != null && biomeIndex >= 0 && biomeIndex < biomeList.Count)
             {
-                sampledColor = biome.albedoTex.GetPixelBilinear(0.5f, 0.5f);
+                var biome = biomeList[biomeIndex];
+                if (biome != null && biome.albedoTexture != null)
+                {
+                    sampledColor = biome.albedoTexture.GetPixelBilinear(0.5f, 0.5f);
+                }
             }
 
             albedoPixels[i] = sampledColor;
