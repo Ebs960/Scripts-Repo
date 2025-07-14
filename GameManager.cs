@@ -214,8 +214,14 @@ public class GameManager : MonoBehaviour
             if (dist < minDist)
             {
                 minDist = dist;
-        // This method is now a no-op. All grid and texture logic is handled by PlanetGenerator and SGT systems.
-        yield break;
+                nearest = hexTiles[i];
+            }
+        }
+        return nearest;
+    }
+
+    private void Awake()
+    {
         if (Instance == null)
         {
             Instance = this;
