@@ -433,7 +433,7 @@ public class MoonGenerator : MonoBehaviour
             if (biomeAlbedoArray == null)
                 biomeAlbedoArray = BuildBiomeAlbedoArray();
 
-            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeSettings.Count);
+            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
         }
         
         if (loadingPanelController != null)

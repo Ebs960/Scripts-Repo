@@ -220,7 +220,10 @@ public class PlanetGenerator : MonoBehaviour
         grid = new IcoSphereGrid();
         grid.Generate(subdivisions, 1f); // generate unit sphere grid
         if (hexasphereRenderer != null)
+        {
+            hexasphereRenderer.generator = this;
             hexasphereRenderer.BuildMesh(grid);
+        }
                 
         // Ensure BiomeSettings list has entries for all biomes if empty
         if (biomeSettings.Count == 0) {
@@ -321,7 +324,10 @@ public class PlanetGenerator : MonoBehaviour
             grid.Generate(subdivisions, 1f);
             tileCount = grid.TileCount;
             if (hexasphereRenderer != null)
+            {
+                hexasphereRenderer.generator = this;
                 hexasphereRenderer.BuildMesh(grid);
+            }
         }
 
         // ---------- 2. Generate Deterministic Continent Seeds ------------------
@@ -1111,7 +1117,8 @@ public class PlanetGenerator : MonoBehaviour
                 if (biomeAlbedoArray == null)
                     biomeAlbedoArray = BuildBiomeAlbedoArray();
 
-                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeSettings.Count);
+                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
+
             }
         }
         else
