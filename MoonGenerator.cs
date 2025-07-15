@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using SpaceGraphicsToolkit;
-using SpaceGraphicsToolkit.Landscape;
 
 public class MoonGenerator : MonoBehaviour
 {
@@ -81,9 +80,7 @@ public class MoonGenerator : MonoBehaviour
     // ──────────────────────────────────────────────────────────────────────────────
     //  VISUAL LAYER (SGT Integration)
     // ──────────────────────────────────────────────────────────────────────────────
-    [Header("💠 SGT Moon Landscape")]
     [SerializeField] int textureSize = 1024;
-    [SerializeField] SgtSphereLandscape moonLandscape;
     
     public enum BiomeMaskQuality { Standard, Optimized, Blended }
     
@@ -97,6 +94,8 @@ public class MoonGenerator : MonoBehaviour
     // Runtime-generated textures
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeColorMap; // RGBA32 – biome colors
+    Texture2D biomeIndexTex; // RFloat – biome lookup map
+    Texture2DArray biomeAlbedoArray; // array of biome albedos
 
 
 
@@ -251,12 +250,6 @@ public class MoonGenerator : MonoBehaviour
     // Coroutine version with batching and progress bar
     System.Collections.IEnumerator BuildMoonVisualMapsBatched(int batchSize = 16)
     {
-        if (moonLandscape == null)
-        {
-            Debug.LogError($"{name}: Moon Landscape component not assigned!");
-            yield break;
-        }
-
         int w = textureSize;
         int h = textureSize / 2;
 
@@ -298,7 +291,7 @@ public class MoonGenerator : MonoBehaviour
 
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
-        float moonRadius = moonLandscape != null ? (float)moonLandscape.Radius : 1.0f;
+        float moonRadius = 1.0f;
         float heightScale = heightFractionOfRadius * moonRadius;
         
         Debug.Log($"[MoonGenerator] Heightmap generation: moonRadius={moonRadius}, heightScale={heightScale}");
@@ -358,20 +351,7 @@ public class MoonGenerator : MonoBehaviour
         albedoArray.Apply();
         normalArray.Apply();
 
-Material mat = moonLandscape.GetComponent<Renderer>().material;
 
-if (mat != null)
-{
-    mat.SetTexture("_BiomeAlbedoArray", albedoArray);
-    mat.SetTexture("_BiomeNormalArray", normalArray);
-
-    mat.SetInt("_BiomeAlbedoArray_Depth", biomeCount);
-    mat.SetInt("_BiomeNormalArray_Depth", biomeCount);
-}
-else
-{
-    Debug.LogError("Material not found on landscape's renderer!");
-}
 
 
         Debug.Log($"[MoonGenerator] Created Moon Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
@@ -442,51 +422,17 @@ else
         // Create biome color map
         biomeColorMap = GenerateMoonBiomeColorMap(w, h);
         
-        // Assign textures to the moon landscape
-        moonLandscape.HeightTex = heightTex;
-        moonLandscape.AlbedoTex = biomeColorMap;
-        moonLandscape.HeightMidpoint = 0.5f;
-        moonLandscape.HeightRange = 5f; // Smaller than planet
-        
-        // Assign texture arrays and masks to the landscape material
-        var landscapeMaterial = moonLandscape.Material;
-        if (landscapeMaterial != null)
-        {
-            landscapeMaterial.SetTexture("_BiomeAlbedoArray", albedoArray);
-            landscapeMaterial.SetTexture("_BiomeNormalArray", normalArray);
-            landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
-            landscapeMaterial.SetFloat("_BiomeNormalArray_Depth", biomeCount);
-            landscapeMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
-            landscapeMaterial.SetTexture("_BiomeMask0", packedMask);
-            landscapeMaterial.SetFloat("_BiomeMaskCount", 1);
-            Debug.Log($"[MoonGenerator] Assigned {biomeCount} moon biomes to landscape material.");
-        }
-        else
-        {
-            Debug.LogWarning("[MoonGenerator] Could not find moon landscape material to assign biome textures.");
-        }
 
-        // Register this grid/material pair with BiomeTextureManager
-        if (BiomeTextureManager.Instance != null && grid != null && landscapeMaterial != null)
-        {
-            BiomeTextureManager.Instance.RegisterTarget(grid, landscapeMaterial);
-        }
-        
-        // Force SGT to recognize the new textures and update the mesh
-        if (moonLandscape != null) moonLandscape.MarkForRebuild();
-
-        // Now that the mask textures have been generated and assigned,
-        // create the SGT biome components so the shader can sample them.
-        CreateMoonSGTBiomeComponents(biomeMaskTextures);
+        biomeIndexTex = biomeIndexMap;
+        biomeAlbedoArray = albedoArray;
 
         if (hexasphereRenderer != null)
         {
             hexasphereRenderer.ApplyHeightDisplacement(1f);
-            Texture2D indexTex = null;
-            if (BiomeTextureManager.Instance != null)
-                indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
-            Texture2D albedoArray = BuildBiomeAlbedoArray();
-            hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+            Texture2D indexTex = biomeIndexTex;
+            if (biomeAlbedoArray == null)
+                biomeAlbedoArray = BuildBiomeAlbedoArray();
+            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeSettings.Count);
         }
         
         if (loadingPanelController != null)
@@ -547,59 +493,6 @@ else
         return tex;
     }
 
-    /// <summary>
-    /// Creates SGT biome components for the moon
-    /// </summary>
-    private void CreateMoonSGTBiomeComponents(List<Texture2D> biomeMaskTextures)
-    {
-        if (moonLandscape == null)
-        {
-            Debug.LogWarning("[MoonGenerator] Cannot create SGT biome components - moon landscape missing.");
-            return;
-        }
-
-        // Remove existing biome children first
-        var existingBiomes = moonLandscape.GetComponentsInChildren<SgtLandscapeBiome>();
-        for (int i = 0; i < existingBiomes.Length; i++)
-        {
-            if (Application.isEditor)
-                DestroyImmediate(existingBiomes[i].gameObject);
-            else
-                Destroy(existingBiomes[i].gameObject);
-        }
-
-        // Create biome components for MoonDunes and MoonCaves
-        string[] moonBiomeNames = { "MoonDunes", "MoonCaves" };
-        Biome[] moonBiomes = { Biome.MoonDunes, Biome.MoonCaves };
-        for (int i = 0; i < moonBiomes.Length; i++)
-        {
-            // Create biome GameObject
-            GameObject biomeObj = new GameObject($"MoonBiome_{moonBiomeNames[i]}");
-            biomeObj.transform.SetParent(moonLandscape.transform, false);
-
-            // Add and configure SgtLandscapeBiome component
-            var biomeComponent = biomeObj.AddComponent<SgtLandscapeBiome>();
-
-            biomeComponent.Mask = true;
-            biomeComponent.MaskIndex = i;
-            int gradientIndex = biomeToIndex.ContainsKey(moonBiomes[i]) ? biomeToIndex[moonBiomes[i]] : 0;
-            biomeComponent.GradientIndex = gradientIndex;
-            
-            // Add a default layer
-            var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
-            {
-                HeightIndex = 0,
-                HeightRange = 5f,
-                HeightMidpoint = 0.5f,
-                GlobalSize = 50f // Smaller features than planet
-            };
-            biomeComponent.Layers.Add(layer);
-            biomeComponent.Space = SgtLandscapeBiome.SpaceType.Global;
-            Debug.Log($"[MoonGenerator] Created SGT biome component for {moonBiomeNames[i]}");
-        }
-        
-        Debug.Log("[MoonGenerator] Created 2 SGT moon biome components.");
-    }
 
     // --- 2.1 Cave Generation Helper ---
     System.Collections.IEnumerator GenerateCaves(int tileCount)
@@ -845,7 +738,7 @@ else
         return result;
     }
 
-    Texture2D BuildBiomeAlbedoArray()
+    Texture2DArray BuildBiomeAlbedoArray()
     {
         int size = 512;
         int depth = biomeSettings.Count;
