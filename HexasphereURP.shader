@@ -1,0 +1,79 @@
+Shader "Custom/HexasphereURP"
+{
+    Properties
+    {
+        _BiomeAlbedoArray ("Biome Albedo Array", 2DArray) = "" {}
+        _BiomeIndexTex    ("Tile → Biome map", 2D) = "white" {}
+        _BiomeCount       ("BiomeCount", Float) = 1
+    }
+
+    SubShader
+    {
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalRenderPipeline" }
+
+        Pass
+        {
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
+
+            HLSLPROGRAM
+
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 4.5
+            #pragma require 2darray
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            // Declare textures and samplers manually
+            Texture2DArray _BiomeAlbedoArray;
+            SamplerState sampler_BiomeAlbedoArray;
+
+            Texture2D _BiomeIndexTex;
+            SamplerState sampler_BiomeIndexTex;
+
+            // Material data
+            CBUFFER_START(UnityPerMaterial)
+                float _BiomeCount;
+            CBUFFER_END
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct Varyings
+            {
+                float4 positionHCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            Varyings vert(Attributes IN)
+            {
+                Varyings OUT;
+                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.uv = IN.uv;
+                return OUT;
+            }
+
+            half4 frag(Varyings IN) : SV_Target
+            {
+                float2 uv = IN.uv;
+
+                // Get biome ID from red channel (0–1) scaled to 0–255
+                float biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r * 255.0;
+                int slice = clamp((int)biomeId, 0, (int)_BiomeCount - 1);
+
+                // Sample the texture array
+                float4 color = _BiomeAlbedoArray.SampleLevel(sampler_BiomeAlbedoArray, float3(uv, slice), 0);
+
+                return float4(color.rgb, 1.0);
+            }
+
+            ENDHLSL
+        }
+    }
+
+    FallBack Off
+}
