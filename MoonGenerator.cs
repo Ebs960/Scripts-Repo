@@ -294,13 +294,6 @@ public class MoonGenerator : MonoBehaviour
             };
         }
 
-        // Create moon biome mask with correct format
-        var moonBiomeMask = new Texture2D(w, h, TextureFormat.R8, false, true)
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear
-        };
-
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
         float moonRadius = moonLandscape != null ? (float)moonLandscape.Radius : 1.0f;
@@ -314,12 +307,12 @@ public class MoonGenerator : MonoBehaviour
         int textureHeight = biomeSettings[0].albedoTexture.height;
 
         // Create texture arrays for moon biomes using actual texture size
-        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
         };
-        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
@@ -385,69 +378,51 @@ else
         List<Texture2D> biomeMaskTextures = new List<Texture2D>();
         Texture2D biomeIndexMap = null;
 
-        // Create separate mask textures for each biome (R channel only)
-        var dunesMask = new Texture2D(w, h, TextureFormat.R8, true, true)
+        // Create packed mask texture (R = dunes, G = caves)
+        var packedMask = new Texture2D(w, h, TextureFormat.RGBA32, false, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear,
             anisoLevel = 4
         };
-        var cavesMask = new Texture2D(w, h, TextureFormat.R8, true, true)
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Trilinear,
-            anisoLevel = 4
-        };
-        biomeMaskTextures.Add(dunesMask);
-        biomeMaskTextures.Add(cavesMask);
+        biomeMaskTextures.Add(packedMask);
         
         // Create biome index map
         biomeIndexMap = new Texture2D(w, h, TextureFormat.RFloat, false, true);
         Color[] biomePixels = new Color[w * h];
-        Color[] dunesPixels = new Color[w * h];
-        Color[] cavesPixels = new Color[w * h];
+        Color[] maskPixels = new Color[w * h];
         
         // Single pass for height and biome data
-        for (int y = 0; y < h; y++)
+        System.Threading.Tasks.Parallel.For(0, h, y =>
         {
             for (int x = 0; x < w; x++)
             {
-                int tileIdx = pixelToTileLookup[x, y]; // USE LOOKUP
+                int tileIdx = pixelToTileLookup[x, y];
                 var tile = GetHexTileData(tileIdx);
                 if (tile == null) continue;
-                
-                // HEIGHT MAP PROCESSING
+
                 float h01 = Mathf.InverseLerp(baseDuneElevation, maxDuneElevation, tile.elevation);
-                if (h01 < minH) minH = h01;
-                if (h01 > maxH) maxH = h01;
                 int idx1d = y * w + x;
                 float scaledHeight = h01 * heightScale;
                 byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
                 hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
-                
-                // BIOME PROCESSING
+
                 int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
                 float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
                 biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
 
-                // Individual biome masks based on actual biome type
-                bool isDunes = tile.biome == Biome.MoonDunes;
-                bool isCaves = tile.biome == Biome.MoonCaves;
-                dunesPixels[idx1d] = isDunes ? Color.red : Color.black;
-                cavesPixels[idx1d] = isCaves ? Color.red : Color.black;
+                Color mp = maskPixels[idx1d];
+                if (tile.biome == Biome.MoonDunes) mp.r = 1f;
+                if (tile.biome == Biome.MoonCaves) mp.g = 1f;
+                maskPixels[idx1d] = mp;
             }
-            
-            // Yield every 8 rows to keep UI responsive
-            if (y % 8 == 0)
-            {
-                if (loadingPanelController != null)
-                {
-                    float progress = (float)y / h;
-                    loadingPanelController.SetProgress(0.6f + progress * 0.3f); // 60% to 90%
-                    loadingPanelController.SetStatus($"Building Moon Maps... ({(progress*100):F0}%)");
-                }
-        yield return null;
-            }
+        });
+
+        for (int i = 0; i < hPixels.Length; i++)
+        {
+            float val = hPixels[i].r / 255f;
+            if (val < minH) minH = val;
+            if (val > maxH) maxH = val;
         }
         
         Debug.Log($"[MoonGenerator] Heightmap h01 min: {minH}, max: {maxH}, heightScale: {heightScale}");
@@ -456,10 +431,8 @@ else
         heightTex.SetPixels32(hPixels);
         heightTex.Apply(false, false);
         
-        dunesMask.SetPixels(dunesPixels);
-        dunesMask.Apply(true, false);
-        cavesMask.SetPixels(cavesPixels);
-        cavesMask.Apply(true, false);
+        packedMask.SetPixels(maskPixels);
+        packedMask.Apply(true, false);
         
         biomeIndexMap.SetPixels(biomePixels);
         biomeIndexMap.Apply(false, true);
@@ -482,9 +455,8 @@ else
             landscapeMaterial.SetFloat("_BiomeAlbedoArray_Depth", biomeCount);
             landscapeMaterial.SetFloat("_BiomeNormalArray_Depth", biomeCount);
             landscapeMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
-            landscapeMaterial.SetTexture("_BiomeMask0", dunesMask);
-            landscapeMaterial.SetTexture("_BiomeMask1", cavesMask);
-            landscapeMaterial.SetFloat("_BiomeMaskCount", 2);
+            landscapeMaterial.SetTexture("_BiomeMask0", packedMask);
+            landscapeMaterial.SetFloat("_BiomeMaskCount", 1);
             Debug.Log($"[MoonGenerator] Assigned {biomeCount} moon biomes to landscape material.");
         }
         else

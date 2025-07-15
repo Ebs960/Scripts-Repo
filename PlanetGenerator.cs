@@ -1178,12 +1178,12 @@ public class PlanetGenerator : MonoBehaviour
         int textureHeight = biomeSettings[0].albedoTexture.height;
 
         // Create both albedo and normal texture arrays using exact texture size
-        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
         };
-        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
+        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
@@ -1241,14 +1241,12 @@ else
                 case BiomeMaskQuality.Optimized:
                     packedBiomeMasks = new List<Texture2D>();
                     yield return StartCoroutine(GenerateOptimizedBiomeMasks(w, h, packedBiomeMasks));
-                    biomeMaskTextures = new List<Texture2D>();
-                    yield return StartCoroutine(GenerateBiomeMaskTextures(w, h, pixelToTileLookup, biomeMaskTextures));
+                    biomeMaskTextures = packedBiomeMasks;
                     break;
                 case BiomeMaskQuality.Blended:
                     packedBiomeMasks = new List<Texture2D>();
                     yield return StartCoroutine(GenerateBlendedBiomeMasks(w, h, biomeBlendRadius, packedBiomeMasks));
-                    biomeMaskTextures = new List<Texture2D>();
-                    yield return StartCoroutine(GenerateBiomeMaskTextures(w, h, pixelToTileLookup, biomeMaskTextures));
+                    biomeMaskTextures = packedBiomeMasks;
                     break;
             default: // Standard
                 // Use the original method for standard quality
@@ -1450,7 +1448,7 @@ else
             // After regenerating the bundle and marking the landscape for
             // rebuild, create the SGT biome components so the shader has
             // mask data to sample.
-            CreateSGTBiomeComponents(biomeMaskTextures);
+            CreateSGTBiomeComponents();
         }
         else
         {
@@ -1780,7 +1778,7 @@ else
     /// <summary>
     /// Creates SGT biome components programmatically with the generated mask textures
     /// </summary>
-    private void CreateSGTBiomeComponents(List<Texture2D> biomeMaskTextures)
+    private void CreateSGTBiomeComponents()
     {
         if (landscape == null || biomeSettings.Count == 0)
         {
@@ -1799,7 +1797,7 @@ else
         }
 
         // Create new biome components for each biome setting
-        for (int i = 0; i < biomeSettings.Count && i < biomeMaskTextures.Count; i++)
+        for (int i = 0; i < biomeSettings.Count; i++)
         {
             var biomeSetting = biomeSettings[i];
             if (biomeSetting == null) continue;
@@ -1863,51 +1861,73 @@ else
     /// </summary>
     private System.Collections.IEnumerator GenerateOptimizedBiomeMasks(int width, int height, List<Texture2D> biomeMasks)
     {
-        // Create one R8 mask texture per biome
         biomeMasks.Clear();
         int biomeCount = biomeSettings.Count;
+        int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
 
-        for (int i = 0; i < biomeCount; i++)
+        for (int i = 0; i < packedMaskCount; i++)
         {
-            var maskTex = new Texture2D(width, height, TextureFormat.R8, true, true)
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
             {
                 wrapMode = TextureWrapMode.Repeat,
                 filterMode = FilterMode.Trilinear,
                 anisoLevel = 4
             };
-
-            Color[] pixels = new Color[width * height];
-
-            for (int y = 0; y < height; y++)
-            {
-                float v = (y + 0.5f) / height;
-                float lat = Mathf.Lerp(90, -90, v);
-
-                for (int x = 0; x < width; x++)
-                {
-                    float u = (x + 0.5f) / width;
-                    float lon = Mathf.Lerp(-180, 180, u);
-                    Vector3 dir = SphericalToCartesian(lat, lon);
-
-                    int tileIdx = grid.GetTileAtPosition(dir);
-                    if (tileIdx < 0) tileIdx = 0;
-
-                    var tile = GetHexTileData(tileIdx);
-                    if (tile == null) continue;
-
-                    float val = tile.biome == biomeSettings[i].biome ? 1f : 0f;
-                    pixels[y * width + x] = new Color(val, 0f, 0f, 1f);
-                }
-
-                if (y % 32 == 0) yield return null;
-            }
-
-            maskTex.SetPixels(pixels);
-            maskTex.Apply(true, false);
-            biomeMasks.Add(maskTex);
-            yield return null;
+            biomeMasks.Add(tex);
         }
-        Debug.Log($"[PlanetGenerator] Generated {biomeCount} optimized R8 biome mask textures");
+
+        var pixels = new Color[packedMaskCount][];
+        for (int i = 0; i < packedMaskCount; i++)
+        {
+            pixels[i] = new Color[width * height];
+        }
+
+        var biomeToIndex = new Dictionary<Biome, int>();
+        for (int i = 0; i < biomeSettings.Count; i++)
+        {
+            biomeToIndex[biomeSettings[i].biome] = i;
+        }
+
+        System.Threading.Tasks.Parallel.For(0, height, y =>
+        {
+            float v = (y + 0.5f) / height;
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < width; x++)
+            {
+                float u = (x + 0.5f) / width;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+
+                int tileIdx = grid.GetTileAtPosition(dir);
+                if (tileIdx < 0) tileIdx = 0;
+
+                var tile = GetHexTileData(tileIdx);
+                if (tile == null) continue;
+
+                int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
+                int texIdx = biomeIdx / 4;
+                int channel = biomeIdx % 4;
+                int idx1d = y * width + x;
+                Color col = pixels[texIdx][idx1d];
+                switch (channel)
+                {
+                    case 0: col.r = 1f; break;
+                    case 1: col.g = 1f; break;
+                    case 2: col.b = 1f; break;
+                    case 3: col.a = 1f; break;
+                }
+                pixels[texIdx][idx1d] = col;
+            }
+        });
+
+        for (int i = 0; i < packedMaskCount; i++)
+        {
+            biomeMasks[i].SetPixels(pixels[i]);
+            biomeMasks[i].Apply(true, false);
+        }
+
+        Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} optimized RGBA biome mask textures");
+        yield break;
     }
 
     /// <summary>
@@ -1919,100 +1939,94 @@ else
         int biomeCount = biomeSettings.Count;
         int packedMaskCount = Mathf.CeilToInt(biomeCount / 4f);
 
-        int totalRows = packedMaskCount * height;
-        int processedRows = 0;
-
-        for (int maskIndex = 0; maskIndex < packedMaskCount; maskIndex++)
+        for (int i = 0; i < packedMaskCount; i++)
         {
-            var maskTexture = new Texture2D(width, height, TextureFormat.RGBA32, true, true)
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
             {
                 wrapMode = TextureWrapMode.Repeat,
                 filterMode = FilterMode.Trilinear,
                 anisoLevel = 4
             };
-            
-            Color[] pixels = new Color[width * height];
-            
-            for (int y = 0; y < height; y++)
+            biomeMasks.Add(tex);
+        }
+
+        var pixels = new Color[packedMaskCount][];
+        for (int i = 0; i < packedMaskCount; i++) pixels[i] = new Color[width * height];
+
+        System.Threading.Tasks.Parallel.For(0, height, y =>
+        {
+            float v = (y + 0.5f) / height;
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < width; x++)
             {
-                float v = (y + 0.5f) / height;
-                float lat = Mathf.Lerp(90, -90, v);
-                
-                for (int x = 0; x < width; x++)
+                float u = (x + 0.5f) / width;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+
+                Vector3[] sampleOffsets = {
+                    Vector3.zero,
+                    new Vector3(blendRadius / width, 0, 0),
+                    new Vector3(-blendRadius / width, 0, 0),
+                    new Vector3(0, blendRadius / height, 0),
+                    new Vector3(0, -blendRadius / height, 0)
+                };
+
+                float[] biomeWeights = new float[4];
+                float totalWeight = 0f;
+
+                foreach (var offset in sampleOffsets)
                 {
-                    float u = (x + 0.5f) / width;
-                    float lon = Mathf.Lerp(-180, 180, u);
-                    Vector3 dir = SphericalToCartesian(lat, lon);
-                    
-                    Color maskColor = Color.black;
-                    
-                    // Sample multiple nearby tiles for smooth blending
-                    Vector3[] sampleOffsets = {
-                        Vector3.zero,
-                        new Vector3(blendRadius / width, 0, 0),
-                        new Vector3(-blendRadius / width, 0, 0),
-                        new Vector3(0, blendRadius / height, 0),
-                        new Vector3(0, -blendRadius / height, 0)
-                    };
-                    
-                    float[] biomeWeights = new float[4];
-                    float totalWeight = 0f;
-                    
-                    foreach (var offset in sampleOffsets)
+                    Vector3 sampleDir = (dir + offset).normalized;
+                    int tileIdx = grid.GetTileAtPosition(sampleDir);
+                    if (tileIdx < 0) continue;
+
+                    var tile = GetHexTileData(tileIdx);
+                    if (tile == null) continue;
+
+                    int biomeIdx = (int)tile.biome;
+                    float weight = 1f / (1f + offset.magnitude * 10f);
+
+                    int texIdx = biomeIdx / 4;
+                    int channel = biomeIdx % 4;
+                    if (texIdx < packedMaskCount)
                     {
-                        Vector3 sampleDir = (dir + offset).normalized;
-                        int tileIdx = grid.GetTileAtPosition(sampleDir);
-                        if (tileIdx < 0) continue;
-                        
-                        var tile = GetHexTileData(tileIdx);
-                        if (tile == null) continue;
-                        
-                        int biomeIdx = (int)tile.biome;
-                        float weight = 1f / (1f + offset.magnitude * 10f); // Distance-based weight
-                        
-                        // Add weight to the appropriate channel
-                        for (int channel = 0; channel < 4; channel++)
-                        {
-                            int targetBiomeIdx = maskIndex * 4 + channel;
-                            if (targetBiomeIdx < biomeCount && biomeIdx == targetBiomeIdx)
-                            {
-                                biomeWeights[channel] += weight;
-                                totalWeight += weight;
-                            }
-                        }
+                        biomeWeights[channel] += weight;
+                        totalWeight += weight;
                     }
-                    
-                    // Normalize weights
-                    if (totalWeight > 0f)
-                    {
-                        maskColor.r = biomeWeights[0] / totalWeight;
-                        maskColor.g = biomeWeights[1] / totalWeight;
-                        maskColor.b = biomeWeights[2] / totalWeight;
-                        maskColor.a = biomeWeights[3] / totalWeight;
-                    }
-                    
-                    pixels[y * width + x] = maskColor;
                 }
 
-                processedRows++;
-                if (y % 32 == 0)
+                if (totalWeight > 0f)
                 {
-                    if (loadingPanelController != null)
+                    int idx1d = y * width + x;
+                    for (int c = 0; c < 4; c++)
                     {
-                        float progress = 0.95f + (processedRows / (float)totalRows) * 0.04f; // 95%→99%
-                        loadingPanelController.SetProgress(progress);
-                        loadingPanelController.SetStatus("Finalizing terrain...");
+                        int biomeIdx = c;
+                        int texIdx = biomeIdx / 4;
+                        int channel = biomeIdx % 4;
+                        if (texIdx >= packedMaskCount) continue;
+                        Color col = pixels[texIdx][idx1d];
+                        float val = biomeWeights[channel] / totalWeight;
+                        switch (channel)
+                        {
+                            case 0: col.r = val; break;
+                            case 1: col.g = val; break;
+                            case 2: col.b = val; break;
+                            case 3: col.a = val; break;
+                        }
+                        pixels[texIdx][idx1d] = col;
                     }
-                    yield return null;
                 }
             }
+        });
 
-            maskTexture.SetPixels(pixels);
-            maskTexture.Apply(true, false);
-            biomeMasks.Add(maskTexture);
-            yield return null;
+        for (int i = 0; i < packedMaskCount; i++)
+        {
+            biomeMasks[i].SetPixels(pixels[i]);
+            biomeMasks[i].Apply(true, false);
         }
+
         Debug.Log($"[PlanetGenerator] Generated {packedMaskCount} blended RGBA biome mask textures");
+        yield break;
     }
 
     // --- Helper methods moved to class scope ---
