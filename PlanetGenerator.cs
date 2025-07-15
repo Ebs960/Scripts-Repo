@@ -182,6 +182,8 @@ public class PlanetGenerator : MonoBehaviour
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeTex;     // R8 - biome index
     Texture2D biomeColorMap; // RGBA32 – biome colors
+    Texture2D biomeIndexTex; // RFloat – biome lookup map
+    Texture2DArray biomeAlbedoArray; // array of biome albedos
 
     static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
     static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
@@ -1105,11 +1107,10 @@ public class PlanetGenerator : MonoBehaviour
             if (hexasphereRenderer != null)
             {
                 hexasphereRenderer.ApplyHeightDisplacement(1f);
-                Texture2D indexTex = null;
-                if (BiomeTextureManager.Instance != null)
-                    indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
-                Texture2D albedoArray = BuildBiomeAlbedoArray();
-                hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+                Texture2D indexTex = biomeIndexTex;
+                if (biomeAlbedoArray == null)
+                    biomeAlbedoArray = BuildBiomeAlbedoArray();
+                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
             }
         }
         else
@@ -1405,10 +1406,10 @@ public class PlanetGenerator : MonoBehaviour
             filterMode = FilterMode.Bilinear
         };
 
-        if (BiomeTextureManager.Instance != null && grid != null && hexasphereRenderer != null)
-        {
-            BiomeTextureManager.Instance.RegisterTarget(grid, hexasphereRenderer.planetMaterial);
-        }
+
+        biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
+        biomeAlbedoArray = albedoArray;
+
     }
 
     // Public method to start the coroutine from outside
@@ -2003,7 +2004,7 @@ public class PlanetGenerator : MonoBehaviour
         return new Vector2(latitude, longitude);
     }
 
-    Texture2D BuildBiomeAlbedoArray()
+    Texture2DArray BuildBiomeAlbedoArray()
     {
         int size = 512;
         int depth = biomeSettings.Count;

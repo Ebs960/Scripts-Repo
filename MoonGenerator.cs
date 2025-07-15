@@ -94,6 +94,8 @@ public class MoonGenerator : MonoBehaviour
     // Runtime-generated textures
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeColorMap; // RGBA32 – biome colors
+    Texture2D biomeIndexTex; // RFloat – biome lookup map
+    Texture2DArray biomeAlbedoArray; // array of biome albedos
 
 
 
@@ -421,22 +423,19 @@ public class MoonGenerator : MonoBehaviour
         biomeColorMap = GenerateMoonBiomeColorMap(w, h);
         
 
-        // Register this grid/material pair with BiomeTextureManager
-        if (BiomeTextureManager.Instance != null && grid != null && hexasphereRenderer != null)
-        {
-            BiomeTextureManager.Instance.RegisterTarget(grid, hexasphereRenderer.planetMaterial);
-        }
+        biomeIndexTex = biomeIndexMap;
+        biomeAlbedoArray = albedoArray;
+
 
 
 
         if (hexasphereRenderer != null)
         {
             hexasphereRenderer.ApplyHeightDisplacement(1f);
-            Texture2D indexTex = null;
-            if (BiomeTextureManager.Instance != null)
-                indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
-            Texture2D albedoArray = BuildBiomeAlbedoArray();
-            hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+            Texture2D indexTex = biomeIndexTex;
+            if (biomeAlbedoArray == null)
+                biomeAlbedoArray = BuildBiomeAlbedoArray();
+            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
         }
         
         if (loadingPanelController != null)
@@ -742,7 +741,7 @@ public class MoonGenerator : MonoBehaviour
         return result;
     }
 
-    Texture2D BuildBiomeAlbedoArray()
+    Texture2DArray BuildBiomeAlbedoArray()
     {
         int size = 512;
         int depth = biomeSettings.Count;
