@@ -6,6 +6,7 @@ using SpaceGraphicsToolkit.Landscape;
 
 public class MoonGenerator : MonoBehaviour
 {
+    public HexasphereRenderer hexasphereRenderer;   // assign in inspector
     [Header("Sphere Settings")]
     public int subdivisions = 4;
     public bool randomSeed = true;
@@ -123,6 +124,8 @@ public class MoonGenerator : MonoBehaviour
         // Initialize the grid for this moon
         grid = new IcoSphereGrid();
         grid.Generate(subdivisions, 1f); // generate unit sphere grid
+        if (hexasphereRenderer != null)
+            hexasphereRenderer.BuildMesh(grid);
         
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -475,6 +478,16 @@ else
         // Now that the mask textures have been generated and assigned,
         // create the SGT biome components so the shader can sample them.
         CreateMoonSGTBiomeComponents(biomeMaskTextures);
+
+        if (hexasphereRenderer != null)
+        {
+            hexasphereRenderer.ApplyHeightDisplacement(1f);
+            Texture2D indexTex = null;
+            if (BiomeTextureManager.Instance != null)
+                indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
+            Texture2D albedoArray = BuildBiomeAlbedoArray();
+            hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+        }
         
         if (loadingPanelController != null)
         {
@@ -830,5 +843,20 @@ else
         }
         
         return result;
+    }
+
+    Texture2D BuildBiomeAlbedoArray()
+    {
+        int size = 512;
+        int depth = biomeSettings.Count;
+        var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
+        Texture2D fallback = Texture2D.blackTexture;
+        for (int i = 0; i < depth; i++)
+        {
+            Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
+            Graphics.CopyTexture(src, 0, 0, array, i, 0);
+        }
+        array.Apply();
+        return array;
     }
 }

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using HexasphereGrid;
 
 public class TransportUIManager : MonoBehaviour
 {
@@ -25,7 +24,8 @@ public class TransportUIManager : MonoBehaviour
     private CombatUnit selectedUnitToUnload;
     private bool isInLoadMode = false;
     private bool isInDeployMode = false;
-    private Hexasphere hex;
+    private IcoSphereGrid grid;
+    private PlanetGenerator planet;
     private Dictionary<int, GameObject> tileHighlights = new Dictionary<int, GameObject>();
 
     void Awake()
@@ -35,7 +35,8 @@ public class TransportUIManager : MonoBehaviour
         else
             Destroy(gameObject);
         
-        hex = FindAnyObjectByType<Hexasphere>();
+        planet = FindAnyObjectByType<PlanetGenerator>();
+        grid = planet != null ? planet.Grid : null;
     }
 
     void Start()
@@ -287,7 +288,7 @@ public class TransportUIManager : MonoBehaviour
     {
         ClearAllHighlights();
         
-        if (selectedTransport == null || hex == null)
+        if (selectedTransport == null || grid == null)
             return;
             
         // Get current and adjacent tiles
@@ -334,7 +335,7 @@ public class TransportUIManager : MonoBehaviour
     {
         ClearAllHighlights();
         
-        if (selectedTransport == null || hex == null || unitToUnload == null)
+        if (selectedTransport == null || grid == null || unitToUnload == null)
             return;
             
         // Get current and adjacent tiles
@@ -358,17 +359,17 @@ public class TransportUIManager : MonoBehaviour
 
     private void HighlightTile(int tileIndex, Color color)
     {
-        if (hex == null)
+        if (grid == null || planet == null)
             return;
-            
+
         // Create a highlight object if it doesn't exist
         if (!tileHighlights.ContainsKey(tileIndex))
         {
             GameObject highlightObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
             highlightObj.name = $"TileHighlight_{tileIndex}";
-            
+
             // Position at tile center, slightly above
-            Vector3 tileCenter = hex.GetTileCenter(tileIndex);
+            Vector3 tileCenter = planet.transform.TransformPoint(grid.tileCenters[tileIndex]);
             highlightObj.transform.position = tileCenter + Vector3.up * 0.05f;
             
             // Scale the highlight to match tile size

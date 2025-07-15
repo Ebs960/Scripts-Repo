@@ -50,7 +50,7 @@ public class UnitSelectionManager : MonoBehaviour
             
         var moonGen = FindAnyObjectByType<MoonGenerator>();
         if (moonGen != null)
-            moonGrid = null; // moon currently uses Hexasphere
+            moonGrid = moonGen.Grid;
     }
     
     void Update()
