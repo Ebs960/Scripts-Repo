@@ -23,8 +23,8 @@ public class HexasphereRenderer : MonoBehaviour
             mc.sharedMesh = mf.sharedMesh;
     }
 
-    /// <summary>Push a lookup texture & tile count into the shader.</summary>
-    public void PushBiomeLookups(Texture2D biomeIndex, Texture2D biomeAlbedoArray)
+    /// <summary>Push lookup textures into the shader.</summary>
+    public void PushBiomeLookups(Texture2D biomeIndex, Texture2DArray biomeAlbedoArray)
     {
         planetMaterial.SetTexture("_BiomeIndexTex", biomeIndex);
         planetMaterial.SetTexture("_BiomeAlbedoArray", biomeAlbedoArray);

@@ -1409,7 +1409,6 @@ public class PlanetGenerator : MonoBehaviour
 
         biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
         biomeAlbedoArray = albedoArray;
-
     }
 
     // Public method to start the coroutine from outside
