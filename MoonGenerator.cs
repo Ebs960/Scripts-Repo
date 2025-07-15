@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using SpaceGraphicsToolkit;
+using System.Threading.Tasks;
 
 public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 {
@@ -745,7 +746,13 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     Texture2DArray BuildBiomeAlbedoArray()
     {
-        int size = 512;
+        // Determine the size from the first available texture, or use a default
+        int size = 2048; // Default size
+        if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
+        {
+            size = biomeSettings[0].albedoTexture.width;
+        }
+        
         int depth = biomeSettings.Count;
         var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
         Texture2D fallback = Texture2D.blackTexture;

@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Linq;
 using SpaceGraphicsToolkit;
 using TMPro;
+using System.Threading.Tasks;
 
 public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
@@ -1103,6 +1104,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return polarTilesGenerated;
         }
 
+        // Generate visual textures for the new HexasphereRenderer system
+        yield return StartCoroutine(BuildPlanetVisualMapsBatched());
+
         // Now sync tile grid and maps with GameManager, passing the high-res textures
         if (GameManager.Instance != null)
         {
@@ -1392,9 +1396,126 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         return new Vector2(latitude, longitude);
     }
 
+    // Coroutine version with batching and progress bar for planet visual maps
+    System.Collections.IEnumerator BuildPlanetVisualMapsBatched(int batchSize = 16)
+    {
+        int w = textureSize;
+        int h = textureSize / 2;
+
+        // --- PARALLEL: Direct mapping pixel-to-tile lookup (no flood fill) ---
+        int[,] pixelToTileLookup = new int[w, h];
+        System.Threading.Tasks.Parallel.For(0, h, y => {
+            float v = ((y + 0.5f) / h);
+            float lat = Mathf.Lerp(90, -90, v);
+            for (int x = 0; x < w; x++) {
+                float u = (x + 0.5f) / w;
+                float lon = Mathf.Lerp(-180, 180, u);
+                Vector3 dir = SphericalToCartesian(lat, lon);
+                int tileIdx = grid.GetTileAtPosition(dir);
+                if (tileIdx < 0) tileIdx = 0;
+                pixelToTileLookup[x, y] = tileIdx;
+            }
+        });
+        // Yield once after the parallel loop to keep UI responsive
+        if (loadingPanelController != null) {
+            loadingPanelController.SetProgress(0.8f);
+            loadingPanelController.SetStatus("Building planet lookup table...");
+        }
+        yield return null;
+        // --- END Parallel mapping ---
+        
+        // --- Heightmap: Output as R16 (single channel) ---
+        if (heightTex == null || heightTex.width != textureSize)
+        {
+            heightTex = new Texture2D(textureSize, textureSize / 2, TextureFormat.R16, false, true)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+        }
+
+        Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
+        float minH = float.MaxValue, maxH = float.MinValue;
+        float planetRadius = 1.0f;
+        float heightScale = heightFractionOfRadius * planetRadius;
+        
+        Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
+        
+        // --- Generate Biome Index Map ---
+        int biomeCount = biomeSettings.Count;
+        biomeIndexTex = new Texture2D(w, h, TextureFormat.RFloat, false, true);
+        Color[] biomePixels = new Color[w * h];
+        
+        // Single pass for height and biome data
+        System.Threading.Tasks.Parallel.For(0, h, y =>
+        {
+            for (int x = 0; x < w; x++)
+            {
+                int tileIdx = pixelToTileLookup[x, y];
+                var tile = GetHexTileData(tileIdx);
+                if (tile == null) continue;
+
+                // Height calculation
+                float h01 = Mathf.InverseLerp(0f, maxTotalElevation, tile.elevation);
+                int idx1d = y * w + x;
+                float scaledHeight = h01 * heightScale;
+                byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
+                hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
+
+                // Biome index calculation
+                int biomeIdx = 0; // Default to first biome
+                for (int i = 0; i < biomeSettings.Count; i++)
+                {
+                    if (biomeSettings[i].biome == tile.biome)
+                    {
+                        biomeIdx = i;
+                        break;
+                    }
+                }
+                float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
+                biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+            }
+        });
+
+        for (int i = 0; i < hPixels.Length; i++)
+        {
+            float val = hPixels[i].r / 255f;
+            if (val < minH) minH = val;
+            if (val > maxH) maxH = val;
+        }
+        
+        Debug.Log($"[PlanetGenerator] Heightmap h01 min: {minH}, max: {maxH}, heightScale: {heightScale}");
+        
+        // Apply textures
+        heightTex.SetPixels32(hPixels);
+        heightTex.Apply(false, false);
+        
+        biomeIndexTex.SetPixels(biomePixels);
+        biomeIndexTex.Apply(false, true);
+        
+        // Create biome color map
+        biomeColorMap = GenerateBiomeColorMap(w, h);
+        
+        // Build biome albedo array
+        biomeAlbedoArray = BuildBiomeAlbedoArray();
+
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.95f);
+            loadingPanelController.SetStatus("Finalizing planet textures...");
+        }
+        yield return null;
+    }
+
     private Texture2DArray BuildBiomeAlbedoArray()
     {
-        int size = 512;
+        // Determine the size from the first available texture, or use a default
+        int size = 2048; // Default size
+        if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
+        {
+            size = biomeSettings[0].albedoTexture.width;
+        }
+        
         int depth = biomeSettings.Count;
         var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
         Texture2D fallback = Texture2D.blackTexture;
