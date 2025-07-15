@@ -5,7 +5,6 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Linq;
 using SpaceGraphicsToolkit;
-using SpaceGraphicsToolkit.Landscape;
 using System.Collections.Generic;
 
 /// <summary>
@@ -429,12 +428,6 @@ public class GameManager : MonoBehaviour
             initializer.radius = radius;
             initializer.Setup();
 
-            // Set SphereLandscape radius if present, searching in children
-            var sphereLandscape = planetGO.GetComponentInChildren<SgtSphereLandscape>();
-            if (sphereLandscape != null)
-            {
-                sphereLandscape.Radius = radius;
-            }
             // Generate grid data using the new IcoSphereGrid system with the correct radius
             if (planetGenerator != null)
             {
@@ -632,17 +625,7 @@ public class GameManager : MonoBehaviour
         }
 
         // --- Assign observer after camera is instantiated ---
-        if (instantiatedCameraGO != null)
-        {
-            foreach (var landscape in FindObjectsByType<SgtSphereLandscape>(FindObjectsSortMode.None))
-            {
-                if (landscape != null)
-                {
-                    landscape.Observers.Clear();
-                    landscape.Observers.Add(instantiatedCameraGO.transform);
-                }
-            }
-        }
+
 
         // Reset game state
         currentTurn = 0;
