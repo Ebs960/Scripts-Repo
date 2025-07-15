@@ -1406,8 +1406,10 @@ public class PlanetGenerator : MonoBehaviour
             filterMode = FilterMode.Bilinear
         };
 
+
         biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
         biomeAlbedoArray = albedoArray;
+
     }
 
     // Public method to start the coroutine from outside

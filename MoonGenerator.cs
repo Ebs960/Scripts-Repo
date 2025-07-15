@@ -426,6 +426,9 @@ public class MoonGenerator : MonoBehaviour
         biomeIndexTex = biomeIndexMap;
         biomeAlbedoArray = albedoArray;
 
+
+
+
         if (hexasphereRenderer != null)
         {
             hexasphereRenderer.ApplyHeightDisplacement(1f);
