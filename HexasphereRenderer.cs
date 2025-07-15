@@ -1,80 +1,96 @@
-// HexasphereRenderer.cs
+// Assets/Scripts/Hexasphere/HexasphereRenderer.cs
 using UnityEngine;
 
 /// <summary>
-/// Generates the visible planet/moon mesh and pushes biome textures to its material.
-/// Works with any component that implements <see cref="IHexasphereGenerator"/>
-/// (e.g. PlanetGenerator, MoonGenerator, …).
+/// Renders a procedurally generated hex‑sphere.  Works with any component
+/// that implements <see cref="IHexasphereGenerator"/> (PlanetGenerator,
+/// MoonGenerator, etc.).
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class HexasphereRenderer : MonoBehaviour
 {
+    // ───────────────────────────────────── Inspector Slots ─────────────────────────────────────
+    [Header("Render Components  (drag‑assign or leave blank)")]
+    [SerializeField] private MeshFilter   meshFilter;
+    [SerializeField] private MeshRenderer meshRenderer;
+
     [Header("Material")]
-    [Tooltip("Material that uses HexasphereShader. If left null, the existing material on the MeshRenderer is used.")]
+    [Tooltip("If set, this material will replace the MeshRenderer's material in Awake().")]
     public Material planetMaterial;
 
     [Header("Generator Source")]
     [Tooltip("Drag a PlanetGenerator, MoonGenerator, or any MonoBehaviour that implements IHexasphereGenerator.")]
-    [SerializeField] public MonoBehaviour generatorSource;   // <-- Unity shows this slot
+    [SerializeField] public  MonoBehaviour generatorSource;   // Unity‑serialised, editable
 
-    // helper cast – returns null if the dragged component doesn't implement the interface
+    [Header("Optional UI")]
+    public LoadingPanelController loadingPanel;
+
+    // ───────────────────────────────────── Helpers ─────────────────────────────────────
+    private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
+    private MeshRenderer MR => meshRenderer != null ? meshRenderer : (meshRenderer = GetComponent<MeshRenderer>());
+
     private IHexasphereGenerator Generator => generatorSource as IHexasphereGenerator;
 
-    // cached components
-    MeshFilter   mf;
-    MeshRenderer mr;
-
-    public void Awake()
+    // ───────────────────────────────────── Unity ───────────────────────────────────────
+    void Awake()
     {
-        mf = GetComponent<MeshFilter>();
-        mr = GetComponent<MeshRenderer>();
+        // Ensure references exist even if not drag‑assigned
+        _ = MF; _ = MR;
 
-        // Assign material if provided
+        // Apply override material if provided
         if (planetMaterial != null)
-            mr.sharedMaterial = planetMaterial;
+            MR.sharedMaterial = planetMaterial;
 
-        // Auto‑detect a generator on the same GameObject if the field is still empty
-       if (generatorSource == null)
+        // Auto‑detect a generator on same GO if slot empty
+        if (generatorSource == null)
         {
-     // Try to find a component on this GO that implements the interface
-     var gen = GetComponent<IHexasphereGenerator>();
-    generatorSource = gen as MonoBehaviour;   // cast back to MonoBehaviour
-    }
+            var gen = GetComponent<IHexasphereGenerator>();
+            generatorSource = gen as MonoBehaviour;
+        }
     }
 
-    /// <summary>Builds the planetary mesh and stores it in the MeshFilter.</summary>
+    // ───────────────────────────────────── Public API ───────────────────────────────────
+    /// <summary>Build and assign the planet/moon mesh.</summary>
     public void BuildMesh(IcoSphereGrid grid)
     {
-        mf.sharedMesh = HexTileMeshBuilder.Build(grid, out _);
+        Report(0.05f, "Building mesh…");
+        MF.sharedMesh = HexTileMeshBuilder.Build(grid, out _);   // uv array unused here
     }
 
-    /// <summary>
-    /// Pushes the per‑tile biome index map and the biome albedo Texture2DArray to the material.
-    /// </summary>
-    public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray)
-    {
-        var mat = mr.sharedMaterial;
-
-        if (indexTex   != null) mat.SetTexture("_BiomeIndexTex",    indexTex);
-        if (albedoArray != null) mat.SetTexture("_BiomeAlbedoArray", albedoArray);
-
-        int biomeCount =
-            Generator != null ? Generator.GetBiomeSettings().Count :
-            albedoArray != null ? albedoArray.depth :
-            0;
-
-        mat.SetInt("_BiomeCount", biomeCount);
-    }
-
-    /// <summary>Simple radial displacement – call after you know each tile's height.</summary>
+    /// <summary>Radially displace vertices (add elevation later if needed).</summary>
     public void ApplyHeightDisplacement(float radius)
     {
-        Mesh mesh = mf.sharedMesh;
-        var verts = mesh.vertices;
-        for (int i = 0; i < verts.Length; i++)
-            verts[i] = verts[i].normalized * radius;     // TODO add per‑vertex elevation here
-        mesh.vertices = verts;
-        mesh.RecalculateNormals();
-        mf.sharedMesh = mesh;
+        Report(0.35f, "Applying elevation…");
+
+        Mesh m = MF.sharedMesh;
+        var v  = m.vertices;
+        for (int i = 0; i < v.Length; i++)
+            v[i] = v[i].normalized * radius;     // TODO add per‑vertex height
+        m.vertices = v;
+        m.RecalculateNormals();
+    }
+
+    /// <summary>Bind biome lookup textures to the material.</summary>
+    public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray)
+    {
+        Report(0.65f, "Uploading textures…");
+
+        var mat = MR.sharedMaterial;
+        if (indexTex    != null) mat.SetTexture("_BiomeIndexTex",    indexTex);
+        if (albedoArray != null) mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+
+        int count = Generator != null ? Generator.GetBiomeSettings().Count
+                                      : albedoArray != null ? albedoArray.depth : 0;
+        mat.SetInt("_BiomeCount", count);
+
+        Report(1f, "Planet ready!");
+    }
+
+    // ───────────────────────────────────── Helpers ─────────────────────────────────────
+    void Report(float pct, string msg)
+    {
+        if (loadingPanel == null) return;
+        loadingPanel.SetProgress(pct);
+        loadingPanel.SetStatus(msg);
     }
 }

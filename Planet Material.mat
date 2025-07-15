@@ -160,7 +160,7 @@ Material:
     - _BiomeAlbedoArray_Depth: 32
     - _BiomeBlendContrast: 1
     - _BiomeBlendSharpness: 2
-    - _BiomeCount: 1
+    - _BiomeCount: 32
     - _BiomeMaskCount: 2
     - _BiomeNormalArray_Depth: 32
     - _Blend: 0
