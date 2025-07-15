@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using SpaceGraphicsToolkit;
-using SpaceGraphicsToolkit.Landscape;
 using TMPro;
 
 public class PlanetGenerator : MonoBehaviour
@@ -168,9 +167,7 @@ public class PlanetGenerator : MonoBehaviour
     // ──────────────────────────────────────────────────────────────────────────────
     //  VISUAL LAYER  (integrated, no extra script needed)
     // ──────────────────────────────────────────────────────────────────────────────
-    [Header("💠 SGT Sphere Landscape")]
     [SerializeField] int textureSize = 2048;
-    [SerializeField] SgtSphereLandscape landscape;
     
     public enum BiomeMaskQuality { Standard, Optimized, Blended }
     
@@ -185,6 +182,8 @@ public class PlanetGenerator : MonoBehaviour
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeTex;     // R8 - biome index
     Texture2D biomeColorMap; // RGBA32 – biome colors
+    Texture2D biomeIndexTex; // RFloat – biome lookup map
+    Texture2DArray biomeAlbedoArray; // array of biome albedos
 
     static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
     static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
@@ -245,8 +244,7 @@ public class PlanetGenerator : MonoBehaviour
         float oz = (float)(rand.NextDouble() * 2000.0 - 1000.0);
         noiseOffset = new Vector3(ox, oy, oz);
 
-        // Force SGT to recognize the new textures and update the mesh
-        if (landscape != null) landscape.MarkForRebuild();
+
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -1109,11 +1107,10 @@ public class PlanetGenerator : MonoBehaviour
             if (hexasphereRenderer != null)
             {
                 hexasphereRenderer.ApplyHeightDisplacement(1f);
-                Texture2D indexTex = null;
-                if (BiomeTextureManager.Instance != null)
-                    indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
-                Texture2D albedoArray = BuildBiomeAlbedoArray();
-                hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+                Texture2D indexTex = biomeIndexTex;
+                if (biomeAlbedoArray == null)
+                    biomeAlbedoArray = BuildBiomeAlbedoArray();
+                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
             }
         }
         else
@@ -1131,16 +1128,10 @@ public class PlanetGenerator : MonoBehaviour
     // Coroutine version with batching and progress bar
     System.Collections.IEnumerator BuildVisualMapsBatched(int batchSize = 16)
     {
-        if (landscape == null)
-        {
-            Debug.LogError($"{name}: Landscape component not assigned!");
-            yield break;
-        }
-
         int w = textureSize;
         int h = textureSize / 2;
         float minH = float.MaxValue, maxH = float.MinValue;
-        float heightScale = heightFractionOfRadius * (landscape != null ? (float)landscape.Radius : 1.0f);
+        float heightScale = heightFractionOfRadius * 1.0f;
         Color32[] hPixels = new Color32[w * h];
 
         // --- PARALLEL: Direct mapping pixel-to-tile lookup (no flood fill) ---
@@ -1225,21 +1216,7 @@ public class PlanetGenerator : MonoBehaviour
         albedoArray.Apply();
         normalArray.Apply();
 
-        // Assign arrays to the landscape so the shader can read them
-Material mat = landscape.GetComponent<Renderer>().material;
 
-if (mat != null)
-{
-    mat.SetTexture("_BiomeAlbedoArray", albedoArray);
-    mat.SetTexture("_BiomeNormalArray", normalArray);
-
-    mat.SetInt("_BiomeAlbedoArray_Depth", biomeCount);
-    mat.SetInt("_BiomeNormalArray_Depth", biomeCount);
-}
-else
-{
-    Debug.LogError("Material not found on landscape's renderer!");
-}
 
 
         Debug.Log($"[PlanetGenerator] Created Biome Albedo Array with depth = {albedoArray.depth}, size = {textureWidth}x{textureHeight}");
@@ -1429,50 +1406,8 @@ else
             filterMode = FilterMode.Bilinear
         };
 
-        // Assign textures to SGT
-        var bundle = landscape.Bundle;
-        if (bundle != null)
-        {
-            bundle.HeightTextures.Clear();
-            bundle.MaskTextures.Clear();
-            bundle.GradientTextures.Clear();
-
-            landscape.HeightTex = heightTex;
-            Debug.Log($"[PlanetGenerator] Assigned heightTex to SGT landscape and bundle. Size: {heightTex.width}x{heightTex.height}");
-
-            foreach (var mask in biomeMaskTextures)
-            {
-                bundle.MaskTextures.Add(mask);
-            }
-            Debug.Log($"[PlanetGenerator] Assigned {biomeMaskTextures.Count} mask textures to SGT bundle.");
-
-            foreach (var grad in GenerateGradientTextures())
-            {
-                bundle.GradientTextures.Add(grad);
-            }
-            Debug.Log($"[PlanetGenerator] Assigned gradient textures to SGT bundle.");
-
-            landscape.AlbedoTex = biomeColorMap;
-            Debug.Log($"[PlanetGenerator] Assigned biomeColorMap as AlbedoTex. Size: {biomeColorMap.width}x{biomeColorMap.height}");
-
-            bundle.MarkAsDirty();
-            bundle.Regenerate();
-            landscape.MarkForRebuild();
-
-            // After regenerating the bundle and marking the landscape for
-            // rebuild, create the SGT biome components so the shader has
-            // mask data to sample.
-            CreateSGTBiomeComponents();
-        }
-        else
-        {
-            Debug.LogError("[PlanetGenerator] No SgtLandscapeBundle found on landscape!");
-        }
-
-        if (BiomeTextureManager.Instance != null && grid != null && landscape != null && landscape.Material != null)
-        {
-            BiomeTextureManager.Instance.RegisterTarget(grid, landscape.Material);
-        }
+        biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
+        biomeAlbedoArray = albedoArray;
     }
 
     // Public method to start the coroutine from outside
@@ -1789,63 +1724,6 @@ else
         return null; // Path too long
     }
 
-    /// <summary>
-    /// Creates SGT biome components programmatically with the generated mask textures
-    /// </summary>
-    private void CreateSGTBiomeComponents()
-    {
-        if (landscape == null || biomeSettings.Count == 0)
-        {
-            Debug.LogWarning("[PlanetGenerator] Cannot create SGT biome components - landscape or biome settings missing.");
-            return;
-        }
-
-        // Remove existing biome children first
-        var existingBiomes = landscape.GetComponentsInChildren<SgtLandscapeBiome>();
-        for (int i = 0; i < existingBiomes.Length; i++)
-        {
-            if (Application.isEditor)
-                DestroyImmediate(existingBiomes[i].gameObject);
-            else
-                Destroy(existingBiomes[i].gameObject);
-        }
-
-        // Create new biome components for each biome setting
-        for (int i = 0; i < biomeSettings.Count; i++)
-        {
-            var biomeSetting = biomeSettings[i];
-            if (biomeSetting == null) continue;
-
-            // Create biome GameObject
-            GameObject biomeObj = new GameObject($"Biome_{biomeSetting.biome}");
-            biomeObj.transform.SetParent(landscape.transform, false);
-
-            // Add and configure SgtLandscapeBiome component
-            var biomeComponent = biomeObj.AddComponent<SgtLandscapeBiome>();
-            
-            // Set up the biome component
-            biomeComponent.Mask = true;
-            biomeComponent.MaskIndex = i;
-            biomeComponent.GradientIndex = i;
-            biomeComponent.Color = true;
-            biomeComponent.Space = SgtLandscapeBiome.SpaceType.Global;
-            biomeComponent.MaskSharpness = 2f;
-
-            // Add a default layer
-            var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
-            {
-                HeightIndex = 0,
-                HeightRange = 10f,
-                HeightMidpoint = 0.5f,
-                GlobalSize = 100f
-            };
-            biomeComponent.Layers.Add(layer);
-
-            Debug.Log($"[PlanetGenerator] Created SGT biome component for {biomeSetting.biome}");
-        }
-
-        Debug.Log($"[PlanetGenerator] Created {biomeSettings.Count} SGT biome components with mask textures.");
-    }
 
     /// <summary>
     /// Creates a simple gradient texture from a color
@@ -2124,7 +2002,7 @@ else
         return new Vector2(latitude, longitude);
     }
 
-    Texture2D BuildBiomeAlbedoArray()
+    Texture2DArray BuildBiomeAlbedoArray()
     {
         int size = 512;
         int depth = biomeSettings.Count;
