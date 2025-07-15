@@ -50,12 +50,30 @@ public class MoonGenerator : MonoBehaviour
     public int initializationDelay = 1;
 
     private List<BiomeSettings> biomeSettings;
-    public void SetBiomeSettings(List<BiomeSettings> sharedBiomeSettings) { 
+    private readonly Dictionary<Biome, int> biomeToIndex = new Dictionary<Biome, int>();
+
+    public void SetBiomeSettings(List<BiomeSettings> sharedBiomeSettings)
+    {
         biomeSettings = sharedBiomeSettings;
-        if (biomeSettings == null) {
-            Debug.LogError("[MoonGenerator] SetBiomeSettings called with null list!");
-        } else {
-            Debug.Log($"[MoonGenerator] SetBiomeSettings called. Count: {biomeSettings.Count}");
+        BuildBiomeLookup();
+    }
+
+    private void BuildBiomeLookup()
+    {
+        lookup.Clear();
+        biomeToIndex.Clear();
+
+        if (biomeSettings == null)
+        {
+            Debug.LogError("[MoonGenerator] Biome settings list is null!");
+            return;
+        }
+
+        for (int i = 0; i < biomeSettings.Count; i++)
+        {
+            var bs = biomeSettings[i];
+            lookup[bs.biome] = bs;
+            biomeToIndex[bs.biome] = i;
         }
     }
 
@@ -112,16 +130,10 @@ public class MoonGenerator : MonoBehaviour
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
-        // Build the lookup dictionary from the shared biomeSettings
+        // Build biome lookup tables if biome settings were provided via inspector
         if (biomeSettings != null)
         {
-            foreach (var bs in biomeSettings) {
-                if (!lookup.ContainsKey(bs.biome)) {
-                    lookup.Add(bs.biome, bs);
-                } else {
-                    lookup[bs.biome] = bs; // Allow overriding defaults from Inspector
-                }
-            }
+            BuildBiomeLookup();
         }
 
         // Optional: Set different noise parameters for moon elevation if needed
@@ -414,13 +426,15 @@ else
                 hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
                 
                 // BIOME PROCESSING
-                int biomeIdx = tile.biome == Biome.MoonCaves ? 1 : 0;
-                float biomeNorm = biomeIdx / 1f; // 0 or 1 for 2 biomes
+                int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
+                float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
                 biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
-                
-                // Individual biome masks
-                dunesPixels[idx1d] = biomeIdx == 0 ? Color.red : Color.black;
-                cavesPixels[idx1d] = biomeIdx == 1 ? Color.red : Color.black;
+
+                // Individual biome masks based on actual biome type
+                bool isDunes = tile.biome == Biome.MoonDunes;
+                bool isCaves = tile.biome == Biome.MoonCaves;
+                dunesPixels[idx1d] = isDunes ? Color.red : Color.black;
+                cavesPixels[idx1d] = isCaves ? Color.red : Color.black;
             }
             
             // Yield every 8 rows to keep UI responsive
@@ -571,7 +585,8 @@ else
 
         // Create biome components for MoonDunes and MoonCaves
         string[] moonBiomeNames = { "MoonDunes", "MoonCaves" };
-        for (int i = 0; i < 2; i++)
+        Biome[] moonBiomes = { Biome.MoonDunes, Biome.MoonCaves };
+        for (int i = 0; i < moonBiomes.Length; i++)
         {
             // Create biome GameObject
             GameObject biomeObj = new GameObject($"MoonBiome_{moonBiomeNames[i]}");
@@ -579,10 +594,11 @@ else
 
             // Add and configure SgtLandscapeBiome component
             var biomeComponent = biomeObj.AddComponent<SgtLandscapeBiome>();
-            
+
             biomeComponent.Mask = true;
             biomeComponent.MaskIndex = i;
-            biomeComponent.GradientIndex = i;
+            int gradientIndex = biomeToIndex.ContainsKey(moonBiomes[i]) ? biomeToIndex[moonBiomes[i]] : 0;
+            biomeComponent.GradientIndex = gradientIndex;
             
             // Add a default layer
             var layer = new SgtLandscapeBiome.SgtLandscapeBiomeLayer
