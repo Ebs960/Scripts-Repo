@@ -116,6 +116,12 @@ public class OctreeNode
     }
 }
 
+public struct Face
+{
+    public int v0, v1, v2;          // indices into vertices
+    public int tileIndex;           // hex tile ID this face belongs to
+}
+
 public class IcoSphereGrid
 {
     public int TileCount => tileCenters.Length;
@@ -124,7 +130,11 @@ public class IcoSphereGrid
     public event Action<IcoSphereGrid> OnGeneration;  // Event fired when generation is complete
 
     private List<Vector3> vertices;          // All vertex positions during construction
-    private List<int[]> faces;              // Triangle faces as index triples
+    private List<Face> faces;              // Triangle faces as index triples
+
+    // Expose generated geometry
+    public List<Vector3> Vertices => vertices;
+    public List<Face> Faces => faces;
     private OctreeNode octreeRoot;           // Spatial partitioning for fast lookups
 
     /// <summary>Generate an icosphere-based hex tile grid.</summary>
@@ -154,10 +164,10 @@ public class IcoSphereGrid
         {
             neighbors[i] = new List<int>();
         }
-        foreach (int[] tri in faces)
+        foreach (Face tri in faces)
         {
             // For each triangle, add adjacency relations (undirected)
-            int a = tri[0], b = tri[1], c = tri[2];
+            int a = tri.v0, b = tri.v1, c = tri.v2;
             AddNeighbor(a, b); AddNeighbor(a, c);
             AddNeighbor(b, a); AddNeighbor(b, c);
             AddNeighbor(c, a); AddNeighbor(c, b);
@@ -202,7 +212,7 @@ public class IcoSphereGrid
     private void InitializeIcosahedron(float radius)
     {
         vertices = new List<Vector3>();
-        faces = new List<int[]>();
+        faces = new List<Face>();
 
         // Icosahedron vertices (radius-scale). The golden ratio φ for coordinates.
         float t = (1.0f + Mathf.Sqrt(5.0f)) / 2.0f;
@@ -221,26 +231,26 @@ public class IcoSphereGrid
         vertices.Add(new Vector3(-t, 0, 1).normalized * radius);
 
         // Icosahedron faces (20 triangles, each defined by three vertex indices)
-        faces.Add(new int[] { 0, 11, 5 });
-        faces.Add(new int[] { 0, 5, 1 });
-        faces.Add(new int[] { 0, 1, 7 });
-        faces.Add(new int[] { 0, 7, 10 });
-        faces.Add(new int[] { 0, 10, 11 });
-        faces.Add(new int[] { 1, 5, 9 });
-        faces.Add(new int[] { 5, 11, 4 });
-        faces.Add(new int[] { 11, 10, 2 });
-        faces.Add(new int[] { 10, 7, 6 });
-        faces.Add(new int[] { 7, 1, 8 });
-        faces.Add(new int[] { 3, 9, 4 });
-        faces.Add(new int[] { 3, 4, 2 });
-        faces.Add(new int[] { 3, 2, 6 });
-        faces.Add(new int[] { 3, 6, 8 });
-        faces.Add(new int[] { 3, 8, 9 });
-        faces.Add(new int[] { 4, 9, 5 });
-        faces.Add(new int[] { 2, 4, 11 });
-        faces.Add(new int[] { 6, 2, 10 });
-        faces.Add(new int[] { 8, 6, 7 });
-        faces.Add(new int[] { 9, 8, 1 });
+        faces.Add(new Face { v0 = 0, v1 = 11, v2 = 5 });
+        faces.Add(new Face { v0 = 0, v1 = 5, v2 = 1 });
+        faces.Add(new Face { v0 = 0, v1 = 1, v2 = 7 });
+        faces.Add(new Face { v0 = 0, v1 = 7, v2 = 10 });
+        faces.Add(new Face { v0 = 0, v1 = 10, v2 = 11 });
+        faces.Add(new Face { v0 = 1, v1 = 5, v2 = 9 });
+        faces.Add(new Face { v0 = 5, v1 = 11, v2 = 4 });
+        faces.Add(new Face { v0 = 11, v1 = 10, v2 = 2 });
+        faces.Add(new Face { v0 = 10, v1 = 7, v2 = 6 });
+        faces.Add(new Face { v0 = 7, v1 = 1, v2 = 8 });
+        faces.Add(new Face { v0 = 3, v1 = 9, v2 = 4 });
+        faces.Add(new Face { v0 = 3, v1 = 4, v2 = 2 });
+        faces.Add(new Face { v0 = 3, v1 = 2, v2 = 6 });
+        faces.Add(new Face { v0 = 3, v1 = 6, v2 = 8 });
+        faces.Add(new Face { v0 = 3, v1 = 8, v2 = 9 });
+        faces.Add(new Face { v0 = 4, v1 = 9, v2 = 5 });
+        faces.Add(new Face { v0 = 2, v1 = 4, v2 = 11 });
+        faces.Add(new Face { v0 = 6, v1 = 2, v2 = 10 });
+        faces.Add(new Face { v0 = 8, v1 = 6, v2 = 7 });
+        faces.Add(new Face { v0 = 9, v1 = 8, v2 = 1 });
     }
 
     /// Subdivide each triangle face into smaller triangles according to frequency nu.
@@ -252,10 +262,10 @@ public class IcoSphereGrid
         // Use a cache to avoid duplicating vertices on shared edges
         Dictionary<long, int[]> edgeDivisionCache = new Dictionary<long, int[]>();
 
-        List<int[]> newFaces = new List<int[]>();
-        foreach (int[] tri in faces)
+        List<Face> newFaces = new List<Face>();
+        foreach (Face tri in faces)
         {
-            int v0 = tri[0], v1 = tri[1], v2 = tri[2];
+            int v0 = tri.v0, v1 = tri.v1, v2 = tri.v2;
             // Generate interior points for this face using barycentric subdivision
             // We create grid of points: (i,j,k) with i+j+k = nu, on this triangle.
             // Ensure edges are shared via cache:
@@ -275,16 +285,16 @@ public class IcoSphereGrid
                     int a = edge20[i];          // point along v2->v0
                     int b = edge20[i + 1];      // next point along v2->v0
                     int c = edge01[j + i + 1];  // point along v0->v1 one step down (i+j+1)
-                    newFaces.Add(new int[] { a, c, b });
+                    newFaces.Add(new Face { v0 = a, v1 = c, v2 = b });
                     if (j < nu - i - 1)
                     {
                         // Second triangle (lower-right oriented) in the grid square
                         int d = edge01[j + i + 2];    // next point along v0->v1
                         int e = edge12[j + 1 + i];    // point along v1->v2 (offset by i on that edge)
                         int f = edge12[j + i];        // current point along v1->v2
-                        newFaces.Add(new int[] { b, d, c });
-                        newFaces.Add(new int[] { c, d, e });
-                        newFaces.Add(new int[] { c, e, f });
+                        newFaces.Add(new Face { v0 = b, v1 = d, v2 = c });
+                        newFaces.Add(new Face { v0 = c, v1 = d, v2 = e });
+                        newFaces.Add(new Face { v0 = c, v1 = e, v2 = f });
                     }
                 }
             }
@@ -325,6 +335,36 @@ public class IcoSphereGrid
     {
         if (!neighbors[i].Contains(j))
             neighbors[i].Add(j);
+    }
+
+    /// <summary>
+    /// Returns the neighboring vertex indices of the given tile ordered around
+    /// the tile center. Used for building per-tile meshes.
+    /// </summary>
+    public int[] GetCornersOfTile(int tileIndex)
+    {
+        var neigh = neighbors[tileIndex];
+        Vector3 center = tileCenters[tileIndex];
+        Vector3 normal = center.normalized;
+        Vector3 axisX = Vector3.Cross(normal, Vector3.up);
+        if (axisX.sqrMagnitude < 1e-6f)
+            axisX = Vector3.Cross(normal, Vector3.right);
+        axisX.Normalize();
+        Vector3 axisY = Vector3.Cross(normal, axisX);
+
+        List<(float angle, int idx)> list = new();
+        foreach (int n in neigh)
+        {
+            Vector3 dir = (tileCenters[n] - center).normalized;
+            float x = Vector3.Dot(dir, axisX);
+            float y = Vector3.Dot(dir, axisY);
+            float ang = Mathf.Atan2(y, x);
+            list.Add((ang, n));
+        }
+        list.Sort((a, b) => a.angle.CompareTo(b.angle));
+        int[] result = new int[list.Count];
+        for (int i = 0; i < list.Count; i++) result[i] = list[i].idx;
+        return result;
     }
 
     /// Get the tile index whose center is nearest to the given position/direction.
