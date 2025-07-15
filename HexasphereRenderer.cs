@@ -37,9 +37,26 @@ public class HexasphereRenderer : MonoBehaviour
         // Ensure references exist even if not drag‑assigned
         _ = MF; _ = MR;
 
-        // Apply override material if provided
+        // Apply override material if provided, or create a default material
         if (planetMaterial != null)
+        {
             MR.sharedMaterial = planetMaterial;
+        }
+        else if (MR.sharedMaterial == null)
+        {
+            // Create a default material with the HexasphereURP shader
+            var shader = Shader.Find("Custom/HexasphereURP");
+            if (shader != null)
+            {
+                planetMaterial = new Material(shader);
+                MR.sharedMaterial = planetMaterial;
+                Debug.Log("[HexasphereRenderer] Created default material with HexasphereURP shader");
+            }
+            else
+            {
+                Debug.LogError("[HexasphereRenderer] Could not find Custom/HexasphereURP shader!");
+            }
+        }
 
         // Auto‑detect a generator on same GO if slot empty
         if (generatorSource == null)
@@ -76,12 +93,38 @@ public class HexasphereRenderer : MonoBehaviour
         Report(0.65f, "Uploading textures…");
 
         var mat = MR.sharedMaterial;
-        if (indexTex    != null) mat.SetTexture("_BiomeIndexTex",    indexTex);
-        if (albedoArray != null) mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+        if (mat == null)
+        {
+            Debug.LogError("[HexasphereRenderer] No material assigned to MeshRenderer!");
+            return;
+        }
+
+        Debug.Log($"[HexasphereRenderer] Pushing textures to material: indexTex={indexTex?.width}x{indexTex?.height}, albedoArray={albedoArray?.width}x{albedoArray?.height}x{albedoArray?.depth}");
+        
+        if (indexTex != null) 
+        {
+            mat.SetTexture("_BiomeIndexTex", indexTex);
+            Debug.Log("[HexasphereRenderer] Set _BiomeIndexTex");
+        }
+        else
+        {
+            Debug.LogWarning("[HexasphereRenderer] indexTex is null!");
+        }
+        
+        if (albedoArray != null) 
+        {
+            mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+            Debug.Log("[HexasphereRenderer] Set _BiomeAlbedoArray");
+        }
+        else
+        {
+            Debug.LogWarning("[HexasphereRenderer] albedoArray is null!");
+        }
 
         int count = Generator != null ? Generator.GetBiomeSettings().Count
                                       : albedoArray != null ? albedoArray.depth : 0;
         mat.SetInt("_BiomeCount", count);
+        Debug.Log($"[HexasphereRenderer] Set _BiomeCount = {count}");
 
         Report(1f, "Planet ready!");
     }

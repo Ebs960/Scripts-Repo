@@ -1476,8 +1476,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         break;
                     }
                 }
-                float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
-                biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+                float biomeR = biomeCount > 1 ? biomeIdx / 255f : 0f; // Range: 0..1 for 0..255
+                biomePixels[idx1d] = new Color(biomeR, 0, 0, 1);
+                
+                // Debug: Log some biome indices to see what's being generated
+                if (x == 0 && y == 0)
+                {
+                    Debug.Log($"[PlanetGenerator] Sample biome: {tile.biome}, biomeIdx: {biomeIdx}, biomeR: {biomeR}");
+                }
             }
         });
 
@@ -1515,18 +1521,40 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     {
         // Determine the size from the first available texture, or use a default
         int size = 2048; // Default size
+        
         if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
         {
             size = biomeSettings[0].albedoTexture.width;
+            Debug.Log($"[PlanetGenerator] Source texture format: {biomeSettings[0].albedoTexture.format} ({(int)biomeSettings[0].albedoTexture.format})");
         }
         
+        // Always use RGBA32 for the texture array
         int depth = biomeSettings.Count;
         var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
         Texture2D fallback = Texture2D.blackTexture;
+        
         for (int i = 0; i < depth; i++)
         {
             Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
-            Graphics.CopyTexture(src, 0, 0, array, i, 0);
+            
+            // Convert texture to RGBA32 if needed
+            if (src.format != TextureFormat.RGBA32)
+            {
+                // Create a temporary RGBA32 texture and copy the pixels
+                var convertedTex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+                convertedTex.SetPixels(src.GetPixels());
+                convertedTex.Apply();
+                
+                Graphics.CopyTexture(convertedTex, 0, 0, array, i, 0);
+                
+                // Clean up the temporary texture
+                DestroyImmediate(convertedTex);
+                Debug.Log($"[PlanetGenerator] Converted texture {i} from {src.format} to RGBA32");
+            }
+            else
+            {
+                Graphics.CopyTexture(src, 0, 0, array, i, 0);
+            }
         }
         array.Apply();
         return array;

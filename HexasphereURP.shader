@@ -61,9 +61,9 @@ Shader "Custom/HexasphereURP"
             {
                 float2 uv = IN.uv;
 
-                // Get biome ID from red channel (0–1) scaled to 0–255
-                float biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r * 255.0;
-                int slice = clamp((int)biomeId, 0, (int)_BiomeCount - 1);
+                // Get biome ID from red channel (0–1) and scale to array index
+                float biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
+                int slice = clamp((int)(biomeId * (_BiomeCount - 1)), 0, (int)_BiomeCount - 1);
 
                 // Sample the texture array
                 float4 color = _BiomeAlbedoArray.SampleLevel(sampler_BiomeAlbedoArray, float3(uv, slice), 0);

@@ -311,12 +311,13 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         int textureHeight = biomeSettings[0].albedoTexture.height;
 
         // Create texture arrays for moon biomes using actual texture size
-        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
+        // Always use RGBA32 for consistency
+        var albedoArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
         };
-        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.R8, true)
+        var normalArray = new Texture2DArray(textureWidth, textureHeight, biomeCount, TextureFormat.RGBA32, true)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear
@@ -327,7 +328,20 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         {
             if (i < biomeSettings.Count && biomeSettings[i].albedoTexture != null)
             {
-                Graphics.CopyTexture(biomeSettings[i].albedoTexture, 0, 0, albedoArray, i, 0);
+                // Convert texture to RGBA32 if needed
+                var src = biomeSettings[i].albedoTexture;
+                if (src.format != TextureFormat.RGBA32)
+                {
+                    var convertedTex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+                    convertedTex.SetPixels(src.GetPixels());
+                    convertedTex.Apply();
+                    Graphics.CopyTexture(convertedTex, 0, 0, albedoArray, i, 0);
+                    DestroyImmediate(convertedTex);
+                }
+                else
+                {
+                    Graphics.CopyTexture(src, 0, 0, albedoArray, i, 0);
+                }
             }
             else
             {
@@ -344,7 +358,20 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             // Set up normal textures
             if (i < biomeSettings.Count && biomeSettings[i].normalTexture != null)
             {
-                Graphics.CopyTexture(biomeSettings[i].normalTexture, 0, 0, normalArray, i, 0);
+                // Convert texture to RGBA32 if needed
+                var src = biomeSettings[i].normalTexture;
+                if (src.format != TextureFormat.RGBA32)
+                {
+                    var convertedTex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+                    convertedTex.SetPixels(src.GetPixels());
+                    convertedTex.Apply();
+                    Graphics.CopyTexture(convertedTex, 0, 0, normalArray, i, 0);
+                    DestroyImmediate(convertedTex);
+                }
+                else
+                {
+                    Graphics.CopyTexture(src, 0, 0, normalArray, i, 0);
+                }
             }
             else
             {
@@ -399,8 +426,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
 
                 int biomeIdx = biomeToIndex.ContainsKey(tile.biome) ? biomeToIndex[tile.biome] : 0;
-                float biomeNorm = biomeCount > 1 ? (float)biomeIdx / (biomeCount - 1) : 0f;
-                biomePixels[idx1d] = new Color(biomeNorm, 0, 0, 1);
+                float biomeR = biomeCount > 1 ? biomeIdx / 255f : 0f; // Range: 0..1 for 0..255
+                biomePixels[idx1d] = new Color(biomeR, 0, 0, 1);
 
                 Color mp = maskPixels[idx1d];
                 if (tile.biome == Biome.MoonDunes) mp.r = 1f;
@@ -755,18 +782,40 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     {
         // Determine the size from the first available texture, or use a default
         int size = 2048; // Default size
+        
         if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
         {
             size = biomeSettings[0].albedoTexture.width;
+            Debug.Log($"[MoonGenerator] Source texture format: {biomeSettings[0].albedoTexture.format} ({(int)biomeSettings[0].albedoTexture.format})");
         }
         
+        // Always use RGBA32 for the texture array
         int depth = biomeSettings.Count;
         var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
         Texture2D fallback = Texture2D.blackTexture;
+        
         for (int i = 0; i < depth; i++)
         {
             Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
-            Graphics.CopyTexture(src, 0, 0, array, i, 0);
+            
+            // Convert texture to RGBA32 if needed
+            if (src.format != TextureFormat.RGBA32)
+            {
+                // Create a temporary RGBA32 texture and copy the pixels
+                var convertedTex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+                convertedTex.SetPixels(src.GetPixels());
+                convertedTex.Apply();
+                
+                Graphics.CopyTexture(convertedTex, 0, 0, array, i, 0);
+                
+                // Clean up the temporary texture
+                DestroyImmediate(convertedTex);
+                Debug.Log($"[MoonGenerator] Converted texture {i} from {src.format} to RGBA32");
+            }
+            else
+            {
+                Graphics.CopyTexture(src, 0, 0, array, i, 0);
+            }
         }
         array.Apply();
         return array;
