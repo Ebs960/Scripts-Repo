@@ -136,10 +136,16 @@ public class IcoSphereGrid
     public List<Vector3> Vertices => vertices;
     public List<Face> Faces => faces;
     private OctreeNode octreeRoot;           // Spatial partitioning for fast lookups
+    
+    // Store the radius for later access
+    public float Radius { get; private set; }
 
     /// <summary>Generate an icosphere-based hex tile grid.</summary>
     public void Generate(int subdivisions, float radius)
     {
+        // Store the radius for later access
+        Radius = radius;
+        
         // 1. Start with a regular icosahedron (12 vertices, 20 faces)
         InitializeIcosahedron(radius);
 

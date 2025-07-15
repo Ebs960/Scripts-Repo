@@ -60,6 +60,24 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         BuildBiomeLookup();
     }
 
+    /// <summary>
+    /// Configure the moon generator with the correct radius and build the mesh
+    /// </summary>
+    public void ConfigureMoon(float radius)
+    {
+        // Generate the grid with the correct radius
+        grid.Generate(subdivisions, radius);
+        
+        // Build the mesh
+        if (hexasphereRenderer != null)
+        {
+            hexasphereRenderer.generatorSource = this;
+            hexasphereRenderer.BuildMesh(grid);
+        }
+        
+        Debug.Log($"[MoonGenerator] Configured with radius: {radius}");
+    }
+
     private void BuildBiomeLookup()
     {
         lookup.Clear();
@@ -122,14 +140,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
-        // Initialize the grid for this moon
+        // Initialize the grid for this moon (will be configured by GameManager)
         grid = new IcoSphereGrid();
-        grid.Generate(subdivisions, 1f); // generate unit sphere grid
-        if (hexasphereRenderer != null)
-        {
-            hexasphereRenderer.generatorSource = this;
-            hexasphereRenderer.BuildMesh(grid);
-        }
         
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -141,14 +153,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         {
             BuildBiomeLookup();
         }
-
-        // Optional: Set different noise parameters for moon elevation if needed
-        // noise.elevationNoise.SetFrequency(moonElevationFreq); // Example
-
-        // if (generateOnAwake) // GameManager will control initialization
-        // {
-        // StartCoroutine(Initialise());
-        // }
     }
 
     void Start()
@@ -296,7 +300,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
-        float moonRadius = 1.0f;
+        float moonRadius = grid.Radius;
         float heightScale = heightFractionOfRadius * moonRadius;
         
         Debug.Log($"[MoonGenerator] Heightmap generation: moonRadius={moonRadius}, heightScale={heightScale}");
@@ -433,7 +437,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         if (hexasphereRenderer != null)
         {
-            hexasphereRenderer.ApplyHeightDisplacement(1f);
+            // Get the actual moon radius from the grid for height displacement
+            float displacementRadius = grid.Radius;
+            Debug.Log($"[MoonGenerator] Applying height displacement with moon radius: {displacementRadius}");
+            hexasphereRenderer.ApplyHeightDisplacement(displacementRadius);
             Texture2D indexTex = biomeIndexTex;
             if (biomeAlbedoArray == null)
                 biomeAlbedoArray = BuildBiomeAlbedoArray();

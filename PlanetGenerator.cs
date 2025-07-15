@@ -17,6 +17,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int subdivisions = 4;
     public bool randomSeed = true;
     public int seed = 12345;
+    public float radius = 21f; // Default radius, will be overridden by GameManager
 
     // Public property to access the seed
     public int Seed => seed;
@@ -323,7 +324,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
         int tileCount = grid.TileCount;
         if (tileCount == 0) {
-            grid.Generate(subdivisions, 1f);
+            grid.Generate(subdivisions, radius);
             tileCount = grid.TileCount;
             if (hexasphereRenderer != null)
             {
@@ -1114,7 +1115,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             GameManager.Instance.SetPlanetTextures(heightTex, biomeColorMap, grid);
             if (hexasphereRenderer != null)
             {
-                hexasphereRenderer.ApplyHeightDisplacement(1f);
+                // Get the actual planet radius from the grid
+                float planetRadius = grid.Radius;
+                Debug.Log($"[PlanetGenerator] Applying height displacement with planet radius: {planetRadius}");
+                hexasphereRenderer.ApplyHeightDisplacement(planetRadius);
                 Texture2D indexTex = biomeIndexTex;
                 if (biomeAlbedoArray == null)
                     biomeAlbedoArray = BuildBiomeAlbedoArray();
@@ -1436,7 +1440,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
-        float planetRadius = 1.0f;
+        float planetRadius = grid.Radius;
         float heightScale = heightFractionOfRadius * planetRadius;
         
         Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");

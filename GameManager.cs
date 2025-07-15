@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviour
     [Header("Map Settings")]
     public MapSize mapSize = MapSize.Standard;
     public int moonSize = 10;   // Moon subdivisions (if enabled)
+    public float moonRadius = 5f; // Moon radius (smaller than planet)
     public bool generateMoon = true;
 
     [Header("References")]
@@ -423,6 +424,7 @@ public class GameManager : MonoBehaviour
             if (planetGenerator != null)
             {
                 planetGenerator.subdivisions = subdivisions;
+                planetGenerator.radius = radius; // Set the radius property
                 planetGenerator.Grid.Generate(subdivisions, radius);
             }
 
@@ -494,7 +496,10 @@ public class GameManager : MonoBehaviour
                     moonGenerator.SetBiomeSettings(planetGenerator.biomeSettings);
                     Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
-                Debug.Log("MoonGenerator created and configured from prefab");
+                
+                // Configure moon with correct radius
+                moonGenerator.ConfigureMoon(moonRadius);
+                Debug.Log($"[GameManager] MoonGenerator configured with radius: {moonRadius}");
 
                 // Notify TileDataHelper of the new generator
                 if (TileDataHelper.Instance != null)
