@@ -1267,6 +1267,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     /// </summary>
     private List<int> FindPathGreedy(int startTileIndex, List<int> coastTiles, Dictionary<int, HexTileData> tileData, HashSet<int> existingRiverTiles)
     {
+
         List<int> path = new List<int>();
         path.Add(startTileIndex);
         HashSet<int> pathSet = new HashSet<int> { startTileIndex };
