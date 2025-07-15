@@ -6,7 +6,7 @@ using System.Linq;
 using SpaceGraphicsToolkit;
 using TMPro;
 
-public class PlanetGenerator : MonoBehaviour
+public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
 
@@ -136,6 +136,8 @@ public class PlanetGenerator : MonoBehaviour
         new Color(0.8f, 0.7f, 0.7f)   // Steam - misty white (NEW)
     };
     public List<BiomeSettings> biomeSettings = new();
+
+    public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
     [Tooltip("Wait this many frames before initial generation so IcoSphereGrid has finished generating.")]
     public int initializationDelay = 1;
     [Header("Extrusion Settings")] public float maxExtrusionHeight = 0.04f;
