@@ -27,6 +27,7 @@ Material:
   m_ValidKeywords:
   - _CW_SHAPE_SPHERE
   m_InvalidKeywords:
+  - _USE_ALBEDO_TEX
   - _USE_BIOME_TEX
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -152,11 +153,11 @@ Material:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
-    - _BiomeAlbedoArray_Depth: 2
+    - _BiomeAlbedoArray_Depth: 32
     - _BiomeBlendContrast: 1
     - _BiomeBlendSharpness: 2
-    - _BiomeMaskCount: 1
-    - _BiomeNormalArray_Depth: 2
+    - _BiomeMaskCount: 2
+    - _BiomeNormalArray_Depth: 32
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1

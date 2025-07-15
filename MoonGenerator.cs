@@ -97,8 +97,7 @@ public class MoonGenerator : MonoBehaviour
     Texture2D heightTex;    // R16 – elevation 0‒1
     Texture2D biomeColorMap; // RGBA32 – biome colors
 
-    static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
-    static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
+
 
     [Header("SGT Heightmap Scaling")]
     [Tooltip("Maximum heightmap displacement as a fraction of moon radius")]

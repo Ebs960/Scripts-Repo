@@ -1422,7 +1422,6 @@ else
             bundle.MaskTextures.Clear();
             bundle.GradientTextures.Clear();
 
-            bundle.HeightTextures.Add(heightTex);
             landscape.HeightTex = heightTex;
             Debug.Log($"[PlanetGenerator] Assigned heightTex to SGT landscape and bundle. Size: {heightTex.width}x{heightTex.height}");
 
