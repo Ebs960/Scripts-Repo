@@ -1406,6 +1406,7 @@ public class PlanetGenerator : MonoBehaviour
             filterMode = FilterMode.Bilinear
         };
 
+
         biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
         biomeAlbedoArray = albedoArray;
     }
