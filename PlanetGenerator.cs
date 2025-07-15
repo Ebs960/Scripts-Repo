@@ -1110,6 +1110,7 @@ public class PlanetGenerator : MonoBehaviour
                 Texture2D indexTex = biomeIndexTex;
                 if (biomeAlbedoArray == null)
                     biomeAlbedoArray = BuildBiomeAlbedoArray();
+
                 hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeSettings.Count);
             }
         }

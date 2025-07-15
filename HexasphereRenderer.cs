@@ -23,6 +23,7 @@ public class HexasphereRenderer : MonoBehaviour
     }
 
     /// <summary>Push lookup textures into the shader.</summary>
+
     public void PushBiomeLookups(Texture2D biomeIndex, Texture2DArray biomeAlbedoArray, int biomeCount)
     {
         planetMaterial.SetTexture("_BiomeIndexTex", biomeIndex);
