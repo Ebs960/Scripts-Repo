@@ -1110,7 +1110,8 @@ public class PlanetGenerator : MonoBehaviour
                 Texture2D indexTex = biomeIndexTex;
                 if (biomeAlbedoArray == null)
                     biomeAlbedoArray = BuildBiomeAlbedoArray();
-                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
+
+                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeSettings.Count);
             }
         }
         else
@@ -1405,7 +1406,6 @@ public class PlanetGenerator : MonoBehaviour
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Bilinear
         };
-
 
         biomeIndexTex = finalBiomeIndexMap != null ? finalBiomeIndexMap : biomeIndexMap;
         biomeAlbedoArray = albedoArray;
