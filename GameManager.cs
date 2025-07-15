@@ -5,7 +5,6 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Linq;
 using SpaceGraphicsToolkit;
-using SpaceGraphicsToolkit.Landscape;
 using System.Collections.Generic;
 
 /// <summary>
@@ -407,13 +406,6 @@ public class GameManager : MonoBehaviour
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
             Debug.Log("[GameManager] PlanetGenerator instantiated.");
 
-            // Ensure a PlanetForgeSphereInitializer exists, searching in children
-            var initializer = planetGO.GetComponentInChildren<PlanetForgeSphereInitializer>();
-            if (initializer == null)
-            {
-                Debug.LogWarning("PlanetForgeSphereInitializer not found on prefab or its children, adding it to the root.");
-                initializer = planetGO.AddComponent<PlanetForgeSphereInitializer>();
-            }
 
             // Assign the loading panel controller if present
             var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
@@ -426,15 +418,7 @@ public class GameManager : MonoBehaviour
             int subdivisions; float radius;
             GetMapSizeParams(mapSize, out subdivisions, out radius);
 
-            initializer.radius = radius;
-            initializer.Setup();
 
-            // Set SphereLandscape radius if present, searching in children
-            var sphereLandscape = planetGO.GetComponentInChildren<SgtSphereLandscape>();
-            if (sphereLandscape != null)
-            {
-                sphereLandscape.Radius = radius;
-            }
             // Generate grid data using the new IcoSphereGrid system with the correct radius
             if (planetGenerator != null)
             {
@@ -632,17 +616,7 @@ public class GameManager : MonoBehaviour
         }
 
         // --- Assign observer after camera is instantiated ---
-        if (instantiatedCameraGO != null)
-        {
-            foreach (var landscape in FindObjectsByType<SgtSphereLandscape>(FindObjectsSortMode.None))
-            {
-                if (landscape != null)
-                {
-                    landscape.Observers.Clear();
-                    landscape.Observers.Add(instantiatedCameraGO.transform);
-                }
-            }
-        }
+
 
         // Reset game state
         currentTurn = 0;
@@ -748,19 +722,6 @@ public class GameManager : MonoBehaviour
             yield return null;
             // Call GenerateSurface on the moon generator as a coroutine
             yield return StartCoroutine(moonGenerator.GenerateSurface());
-        }
-
-        // --- NEW: Scatter biome prefabs automatically ---
-        var scatterer = FindFirstObjectByType<BiomePrefabScatterer>();
-        if (scatterer != null)
-        {
-            // Pass the loading panel controller from planetGenerator
-            yield return StartCoroutine(scatterer.ScatterAllPrefabsCoroutine(planetGenerator.GetLoadingPanel()));
-            Debug.Log("BiomePrefabScatterer: Prefabs scattered after map generation.");
-        }
-        else
-        {
-            Debug.LogWarning("BiomePrefabScatterer not found in scene. No biome prefabs scattered.");
         }
 
         Debug.Log("Map generation complete!");
