@@ -1446,6 +1446,11 @@ else
             bundle.MarkAsDirty();
             bundle.Regenerate();
             landscape.MarkForRebuild();
+
+            // After regenerating the bundle and marking the landscape for
+            // rebuild, create the SGT biome components so the shader has
+            // mask data to sample.
+            CreateSGTBiomeComponents(biomeMaskTextures);
         }
         else
         {

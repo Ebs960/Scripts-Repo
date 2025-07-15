@@ -500,9 +500,10 @@ else
         
         // Force SGT to recognize the new textures and update the mesh
         if (moonLandscape != null) moonLandscape.MarkForRebuild();
-        
-        // Create SGT biome components for moon - DISABLED as it conflicts with SGT's fixed array sizes
-        // CreateMoonSGTBiomeComponents(biomeMaskTextures);
+
+        // Now that the mask textures have been generated and assigned,
+        // create the SGT biome components so the shader can sample them.
+        CreateMoonSGTBiomeComponents(biomeMaskTextures);
         
         if (loadingPanelController != null)
         {
