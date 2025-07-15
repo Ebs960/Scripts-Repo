@@ -223,7 +223,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         grid.Generate(subdivisions, 1f); // generate unit sphere grid
         if (hexasphereRenderer != null)
         {
-            hexasphereRenderer.generator = this;
+            hexasphereRenderer.generatorSource = this;
             hexasphereRenderer.BuildMesh(grid);
         }
                 
@@ -327,7 +327,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             tileCount = grid.TileCount;
             if (hexasphereRenderer != null)
             {
-                hexasphereRenderer.generator = this;
+                hexasphereRenderer.generatorSource = this;
                 hexasphereRenderer.BuildMesh(grid);
             }
         }
