@@ -11,6 +11,8 @@ public class PlanetGenerator : MonoBehaviour
 {
     public static PlanetGenerator Instance { get; private set; }
 
+    public HexasphereRenderer hexasphereRenderer;   // assign in inspector
+
     [Header("Sphere Settings")] 
     public int subdivisions = 4;
     public bool randomSeed = true;
@@ -218,6 +220,8 @@ public class PlanetGenerator : MonoBehaviour
         // Initialize the grid for this planet
         grid = new IcoSphereGrid();
         grid.Generate(subdivisions, 1f); // generate unit sphere grid
+        if (hexasphereRenderer != null)
+            hexasphereRenderer.BuildMesh(grid);
                 
         // Ensure BiomeSettings list has entries for all biomes if empty
         if (biomeSettings.Count == 0) {
@@ -318,6 +322,8 @@ public class PlanetGenerator : MonoBehaviour
         if (tileCount == 0) {
             grid.Generate(subdivisions, 1f);
             tileCount = grid.TileCount;
+            if (hexasphereRenderer != null)
+                hexasphereRenderer.BuildMesh(grid);
         }
 
         // ---------- 2. Generate Deterministic Continent Seeds ------------------
@@ -1100,6 +1106,15 @@ public class PlanetGenerator : MonoBehaviour
         {
             Debug.Log("[PlanetGenerator] Syncing tile grid and maps with GameManager (after high-res texture generation)...");
             GameManager.Instance.SetPlanetTextures(heightTex, biomeColorMap, grid);
+            if (hexasphereRenderer != null)
+            {
+                hexasphereRenderer.ApplyHeightDisplacement(1f);
+                Texture2D indexTex = null;
+                if (BiomeTextureManager.Instance != null)
+                    indexTex = BiomeTextureManager.Instance.GetBiomeIndexTexture(grid);
+                Texture2D albedoArray = BuildBiomeAlbedoArray();
+                hexasphereRenderer.PushBiomeLookups(indexTex, albedoArray);
+            }
         }
         else
         {
@@ -2107,6 +2122,21 @@ else
         float latitude = Mathf.Asin(v.y) * Mathf.Rad2Deg;
         float longitude = Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
         return new Vector2(latitude, longitude);
+    }
+
+    Texture2D BuildBiomeAlbedoArray()
+    {
+        int size = 512;
+        int depth = biomeSettings.Count;
+        var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
+        Texture2D fallback = Texture2D.blackTexture;
+        for (int i = 0; i < depth; i++)
+        {
+            Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
+            Graphics.CopyTexture(src, 0, 0, array, i, 0);
+        }
+        array.Apply();
+        return array;
     }
 }
 
