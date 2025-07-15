@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using SpaceGraphicsToolkit;
 
-public class MoonGenerator : MonoBehaviour
+public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public HexasphereRenderer hexasphereRenderer;   // assign in inspector
     [Header("Sphere Settings")]
@@ -50,6 +50,7 @@ public class MoonGenerator : MonoBehaviour
     public int initializationDelay = 1;
 
     private List<BiomeSettings> biomeSettings;
+    public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
     private readonly Dictionary<Biome, int> biomeToIndex = new Dictionary<Biome, int>();
 
     public void SetBiomeSettings(List<BiomeSettings> sharedBiomeSettings)
@@ -124,7 +125,10 @@ public class MoonGenerator : MonoBehaviour
         grid = new IcoSphereGrid();
         grid.Generate(subdivisions, 1f); // generate unit sphere grid
         if (hexasphereRenderer != null)
+        {
+            hexasphereRenderer.generator = this;
             hexasphereRenderer.BuildMesh(grid);
+        }
         
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
