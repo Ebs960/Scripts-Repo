@@ -155,6 +155,38 @@ public class TileDataHelper : MonoBehaviour
         return Vector3.Distance(GetTileCenter(index1), GetTileCenter(index2));
     }
 
+    /// <summary>
+    /// Returns all tile indices within the specified number of steps from the
+    /// start tile using breadth-first traversal of neighbor links.
+    /// </summary>
+    public List<int> GetTilesWithinSteps(int startIndex, int steps)
+    {
+        var result = new List<int>();
+        if (steps <= 0)
+            return result;
+
+        HashSet<int> visited = new() { startIndex };
+        Queue<(int idx, int depth)> queue = new();
+        queue.Enqueue((startIndex, 0));
+
+        while (queue.Count > 0)
+        {
+            var (idx, depth) = queue.Dequeue();
+            if (depth >= steps) continue;
+
+            foreach (int neigh in GetTileNeighbors(idx))
+            {
+                if (visited.Add(neigh))
+                {
+                    result.Add(neigh);
+                    queue.Enqueue((neigh, depth + 1));
+                }
+            }
+        }
+
+        return result;
+    }
+
     public void ClearAllCaches()
     {
         tileDataCache.Clear();

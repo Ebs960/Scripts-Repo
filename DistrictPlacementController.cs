@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using HexasphereGrid;
+
 
 public class DistrictPlacementController : MonoBehaviour
 {
@@ -8,19 +8,18 @@ public class DistrictPlacementController : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private Material validTileMaterial;
-    [SerializeField] private Material invalidTileMaterial;
-    [SerializeField] private float hoverEffectHeight = 0.02f;
+    [SerializeField] private GameObject highlightPrefab;
     
     // State tracking
     private bool isPlacingDistrict = false;
     private City sourceCity;
     private DistrictData districtData;
     private List<int> validTileIndices = new List<int>();
-    private Dictionary<int, Material> originalTileMaterials = new Dictionary<int, Material>();
+    private Dictionary<int, GameObject> tileHighlights = new();
     private int currentHoveredTileIndex = -1;
-    
+
     // Components references
-    private Hexasphere hex;
+    private IcoSphereGrid grid;
     private PlanetGenerator planet;
     
     void Awake()
@@ -28,8 +27,8 @@ public class DistrictPlacementController : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
         
-        hex = FindAnyObjectByType<Hexasphere>();
         planet = FindAnyObjectByType<PlanetGenerator>();
+        grid = planet != null ? planet.Grid : null;
     }
     
     void Update()
@@ -98,7 +97,7 @@ public class DistrictPlacementController : MonoBehaviour
         int centerTileIndex = sourceCity.centerTileIndex;
         int radius = sourceCity.TerritoryRadius;
         
-        var tilesInRange = hex.GetTilesWithinSteps(centerTileIndex, radius);
+        var tilesInRange = TileDataHelper.Instance.GetTilesWithinSteps(centerTileIndex, radius);
         if (tilesInRange == null) return;
         
         foreach (int tileIndex in tilesInRange)
@@ -203,7 +202,9 @@ public class DistrictPlacementController : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
-            return hex.GetTileAtPosition(hit.point);
+            if (grid == null) return -1;
+            Vector3 localDir = (hit.point - planet.transform.position).normalized;
+            return grid.GetTileAtPosition(localDir, true);
         }
         return -1;
     }
@@ -213,18 +214,11 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void HighlightValidTiles()
     {
-        originalTileMaterials.Clear();
-        
-        // Save original materials and highlight valid tiles
+        ClearAllHighlights();
+        Color color = validTileMaterial != null ? validTileMaterial.color : new Color(0, 1, 0, 0.3f);
         foreach (int tileIndex in validTileIndices)
         {
-            // Find tile GameObject through the hex renderer
-            var renderer = hex.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                originalTileMaterials[tileIndex] = hex.GetComponent<Renderer>().sharedMaterial;
-                hex.SetTileMaterial(tileIndex, validTileMaterial, true);
-            }
+            HighlightTile(tileIndex, color);
         }
     }
     
@@ -233,9 +227,11 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void HighlightHoveredTile(int tileIndex)
     {
-        // Apply an extrusion effect to show hovering
-        float originalExtrusion = hex.GetTileExtrudeAmount(tileIndex);
-        hex.SetTileExtrudeAmount(tileIndex, originalExtrusion + hoverEffectHeight);
+        if (tileHighlights.TryGetValue(tileIndex, out var obj))
+        {
+            var mr = obj.GetComponent<MeshRenderer>();
+            if (mr != null) mr.material.color = Color.yellow;
+        }
     }
     
     /// <summary>
@@ -243,9 +239,47 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void ResetTileHighlight(int tileIndex)
     {
-        // Reset extrusion to original value
-        float originalExtrusion = planet.GetTileElevation(tileIndex) * planet.maxExtrusionHeight;
-        hex.SetTileExtrudeAmount(tileIndex, originalExtrusion);
+        if (tileHighlights.TryGetValue(tileIndex, out var obj))
+        {
+            var mr = obj.GetComponent<MeshRenderer>();
+            if (mr != null)
+                mr.material.color = validTileMaterial != null ? validTileMaterial.color : new Color(0,1,0,0.3f);
+        }
+    }
+
+    private void HighlightTile(int tileIndex, Color color)
+    {
+        if (grid == null || planet == null) return;
+
+        if (!tileHighlights.ContainsKey(tileIndex))
+        {
+            GameObject highlightObj = highlightPrefab != null ?
+                Instantiate(highlightPrefab) : GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            highlightObj.name = $"TileHighlight_{tileIndex}";
+
+            Vector3 worldPos = planet.transform.TransformPoint(grid.tileCenters[tileIndex]);
+            highlightObj.transform.position = worldPos + Vector3.up * 0.05f;
+            float tileSize = 0.2f;
+            highlightObj.transform.localScale = new Vector3(tileSize, tileSize, tileSize);
+
+            var mat = new Material(Shader.Find("Standard")) { color = color };
+            var rend = highlightObj.GetComponent<MeshRenderer>();
+            rend.material = mat;
+
+            tileHighlights[tileIndex] = highlightObj;
+        }
+        else
+        {
+            var rend = tileHighlights[tileIndex].GetComponent<MeshRenderer>();
+            rend.material.color = color;
+        }
+    }
+
+    private void ClearAllHighlights()
+    {
+        foreach (var obj in tileHighlights.Values)
+            Destroy(obj);
+        tileHighlights.Clear();
     }
     
     /// <summary>
@@ -282,24 +316,13 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void EndDistrictPlacement()
     {
-        // Reset all tile highlights
-        foreach (int tileIndex in validTileIndices)
-        {
-            ResetTileHighlight(tileIndex);
-            
-            // Restore original material
-            if (originalTileMaterials.ContainsKey(tileIndex))
-            {
-                hex.SetTileMaterial(tileIndex, originalTileMaterials[tileIndex], true);
-            }
-        }
-        
+        ClearAllHighlights();
+
         // Reset state
         isPlacingDistrict = false;
         sourceCity = null;
         districtData = null;
         validTileIndices.Clear();
-        originalTileMaterials.Clear();
         currentHoveredTileIndex = -1;
     }
-} 
+}

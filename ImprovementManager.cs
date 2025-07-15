@@ -1,7 +1,6 @@
 // Assets/Scripts/Managers/ImprovementManager.cs
 using System.Collections.Generic;
 using UnityEngine;
-using HexasphereGrid;
 
 public class ImprovementManager : MonoBehaviour
 {
