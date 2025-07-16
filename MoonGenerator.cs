@@ -3,12 +3,14 @@ using System;
 using System.Collections.Generic;
 using SpaceGraphicsToolkit;
 using System.Threading.Tasks;
+using System.Linq;
 
 public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public HexasphereRenderer hexasphereRenderer;   // assign in inspector
     [Header("Sphere Settings")]
     public int subdivisions = 6;
+    public int moonSize = 4; // Moon size for tile count calculation
     public bool randomSeed = true;
     public int seed = 98765;
 
@@ -65,8 +67,11 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     /// </summary>
     public void ConfigureMoon(float radius)
     {
+        // Calculate target tile count based on moon size (smaller than planet)
+        int targetTileCount = 10 * moonSize * moonSize + 2;
+        
         // Generate the grid with the correct radius
-        grid.Generate(subdivisions, radius);
+        grid.Generate(targetTileCount, radius);
         
         // Build the mesh
         if (hexasphereRenderer != null)
@@ -75,7 +80,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             hexasphereRenderer.BuildMesh(grid);
         }
         
-        Debug.Log($"[MoonGenerator] Configured with radius: {radius}");
+        Debug.Log($"[MoonGenerator] Configured with radius: {radius}, target tiles: {targetTileCount}");
     }
 
     private void BuildBiomeLookup()
@@ -124,8 +129,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     public float heightFractionOfRadius = 0.01f; // Smaller than planet
 
     // --------------------------- Private fields -----------------------------
-    IcoSphereGrid grid;
-    public IcoSphereGrid Grid => grid;
+    SphericalHexGrid grid;
+    public SphericalHexGrid Grid => grid;
     NoiseSampler noise; // Use the same NoiseSampler
     NoiseSampler cavePlacementNoise; // Separate noise for cave placement
     readonly Dictionary<int, HexTileData> data = new Dictionary<int, HexTileData>();
@@ -141,7 +146,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     void Awake()
     {
         // Initialize the grid for this moon (will be configured by GameManager)
-        grid = new IcoSphereGrid();
+        grid = new SphericalHexGrid();
         
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -251,6 +256,49 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         
         // NEW: Build visual textures for SGT
         yield return StartCoroutine(BuildMoonVisualMapsBatched());
+        
+        // Debug: List biome quantities
+        LogBiomeQuantities();
+    }
+
+    /// <summary>
+    /// Debug method to log the quantity of each biome on the moon
+    /// </summary>
+    private void LogBiomeQuantities()
+    {
+        Dictionary<Biome, int> biomeCounts = new Dictionary<Biome, int>();
+        
+        // Count tiles for each biome
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            if (data.ContainsKey(i))
+            {
+                Biome biome = data[i].biome;
+                if (!biomeCounts.ContainsKey(biome))
+                    biomeCounts[biome] = 0;
+                biomeCounts[biome]++;
+            }
+        }
+        
+        // Log the results
+        Debug.Log("=== MOON BIOME QUANTITY SUMMARY ===");
+        Debug.Log($"Total moon tiles: {grid.TileCount}");
+        Debug.Log($"Moon tiles with data: {data.Count}");
+        
+        foreach (var kvp in biomeCounts.OrderByDescending(x => x.Value))
+        {
+            float percentage = (float)kvp.Value / grid.TileCount * 100f;
+            Debug.Log($"Moon Biome {kvp.Key}: {kvp.Value} tiles ({percentage:F1}%)");
+        }
+        
+        // Check for any tiles without data
+        int tilesWithoutData = grid.TileCount - data.Count;
+        if (tilesWithoutData > 0)
+        {
+            Debug.LogWarning($"Warning: {tilesWithoutData} moon tiles have no biome data assigned!");
+        }
+        
+        Debug.Log("=== END MOON BIOME QUANTITY SUMMARY ===");
     }
 
     // Build the visual maps for the high-poly moon sphere

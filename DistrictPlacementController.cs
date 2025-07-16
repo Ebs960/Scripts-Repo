@@ -19,7 +19,7 @@ public class DistrictPlacementController : MonoBehaviour
     private int currentHoveredTileIndex = -1;
 
     // Components references
-    private IcoSphereGrid grid;
+    private SphericalHexGrid grid;
     private PlanetGenerator planet;
     
     void Awake()

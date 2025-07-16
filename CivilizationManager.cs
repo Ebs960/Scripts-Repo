@@ -1,8 +1,13 @@
 // Assets/Scripts/Civs/CivilizationManager.cs
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+using System;
 using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+using System.Linq;
+using SpaceGraphicsToolkit;
+using System.Collections.Generic;
+
 
 public class CivilizationManager : MonoBehaviour
 {
@@ -259,7 +264,7 @@ public class CivilizationManager : MonoBehaviour
             // Consider diplomatic actions based on agenda
             if (leader.primaryAgenda == LeaderAgenda.Diplomatic && currentRelation == DiplomaticState.Peace)
             {
-                if (reputation > 20f && trustLevel >= 6 && Random.value < 0.3f)
+                if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < 0.3f)
                 {
                     // Propose alliance
                     DiplomacyManager.Instance.ProposeDeal(civ, otherCiv, DealType.Alliance);
@@ -270,7 +275,7 @@ public class CivilizationManager : MonoBehaviour
                 if (reputation < -30f && ComputeMilitaryStrength(civ) > ComputeMilitaryStrength(otherCiv) * 1.3f)
                 {
                     // Consider war declaration
-                    if (Random.value < 0.2f)
+                    if (UnityEngine.Random.value < 0.2f)
                     {
                         DiplomacyManager.Instance.ProposeDeal(civ, otherCiv, DealType.War);
                     }
@@ -588,7 +593,7 @@ public class CivilizationManager : MonoBehaviour
         var grid  = planet != null ? planet.Grid : null;
         if (grid == null)
         {
-            Debug.LogError("SpawnOneCivilization: IcoSphereGrid not found!");
+            Debug.LogError("SpawnOneCivilization: SphericalHexGrid not found!");
             return;
         }
         
@@ -643,7 +648,7 @@ public class CivilizationManager : MonoBehaviour
             // For AI, pick a random available leader
             if (data.availableLeaders != null && data.availableLeaders.Count > 0)
             {
-                chosenLeader = data.availableLeaders[Random.Range(0, data.availableLeaders.Count)];
+                chosenLeader = data.availableLeaders[UnityEngine.Random.Range(0, data.availableLeaders.Count)];
             }
         }
 
@@ -727,7 +732,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         return candidates.Count > 0
-            ? candidates[Random.Range(0, candidates.Count)]
+            ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
             : -1;
     }
 
@@ -738,7 +743,7 @@ public class CivilizationManager : MonoBehaviour
     {
         for (int i = list.Count - 1; i > 0; i--)
         {
-            int j = Random.Range(0, i + 1);
+            int j = UnityEngine.Random.Range(0, i + 1);
             (list[i], list[j]) = (list[j], list[i]);
         }
     }

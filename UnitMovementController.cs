@@ -7,7 +7,7 @@ using System.Linq;
 public class UnitMovementController : MonoBehaviour
 {
     public static UnitMovementController Instance { get; private set; }
-    private IcoSphereGrid grid;
+    private SphericalHexGrid grid;
     private PlanetGenerator planet;
     private MoonGenerator moon;
     
@@ -39,7 +39,7 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Set references from GameManager after generators are created
     /// </summary>
-    public void SetReferences(IcoSphereGrid icoGrid, PlanetGenerator planetGen, MoonGenerator moonGen)
+    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, MoonGenerator moonGen)
     {
         grid = icoGrid;
         planet = planetGen;
@@ -53,7 +53,7 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public void FindReferencesInCurrentScene()
     {
-        // Find IcoSphereGrid directly in the current scene via PlanetGenerator
+        // Find SphericalHexGrid directly in the current scene via PlanetGenerator
         if (grid == null)
         {
             var pg = FindAnyObjectByType<PlanetGenerator>();
@@ -78,7 +78,7 @@ public class UnitMovementController : MonoBehaviour
         if (grid == null && planet != null)
         {
             grid = planet.Grid;
-            Debug.Log($"[UnitMovementController] Got IcoSphereGrid from PlanetGenerator: {grid != null}");
+            Debug.Log($"[UnitMovementController] Got SphericalHexGrid from PlanetGenerator: {grid != null}");
         }
     }
 
@@ -98,10 +98,10 @@ public class UnitMovementController : MonoBehaviour
             return null;
         }
 
-        IcoSphereGrid currentGrid = grid;
+        SphericalHexGrid currentGrid = grid;
         if (currentGrid == null)
         {
-            Debug.LogError("[UnitMovementController] IcoSphereGrid reference is null for pathfinding!");
+            Debug.LogError("[UnitMovementController] SphericalHexGrid reference is null for pathfinding!");
             return null;
         }
 
@@ -244,7 +244,7 @@ public class UnitMovementController : MonoBehaviour
             
             // Calculate positions including extrusion
             Vector3 startPosition = unitTransform.position;
-            IcoSphereGrid currentGrid = grid;
+            SphericalHexGrid currentGrid = grid;
             Vector3 endPosition = TileDataHelper.Instance.GetTileCenter(targetTileIndex);
             Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;
 
@@ -336,7 +336,7 @@ public class UnitMovementController : MonoBehaviour
         var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
         if (tileData == null) return;
 
-        IcoSphereGrid currentGrid = grid;
+        SphericalHexGrid currentGrid = grid;
 
         // Get the extruded center of the tile. This is the new correct surface position.
         Vector3 surfacePosition = TileDataHelper.Instance.GetTileCenter(tileIndex);
@@ -364,4 +364,5 @@ public class UnitMovementController : MonoBehaviour
         
         // Set rotation so unit stands upright on surface
         unitTransform.rotation = Quaternion.LookRotation(forward, surfaceNormal);
-    }} 
+    }
+} 

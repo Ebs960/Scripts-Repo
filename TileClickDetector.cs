@@ -28,8 +28,8 @@ public class TileClickDetector : MonoBehaviour
     public static event Action OnTileExited; // When mouse leaves all tiles
     
     // Private references
-    private IcoSphereGrid planetGrid;
-    private IcoSphereGrid moonGrid;
+    private SphericalHexGrid planetGrid;
+    private SphericalHexGrid moonGrid;
     private int lastHoveredTileIndex = -1;
     private bool lastHoverWasMoon = false;
     private GameObject currentHighlight;
@@ -151,7 +151,7 @@ public class TileClickDetector : MonoBehaviour
     /// <summary>
     /// Perform raycast and get hit information
     /// </summary>
-    private (bool hit, Vector3 worldPosition, IcoSphereGrid grid, Transform transform, bool isMoon) GetMouseHitInfo()
+    private (bool hit, Vector3 worldPosition, SphericalHexGrid grid, Transform transform, bool isMoon) GetMouseHitInfo()
     {
         if (mainCamera == null)
             return (false, Vector3.zero, null, null, false);
@@ -198,7 +198,7 @@ public class TileClickDetector : MonoBehaviour
     /// <summary>
     /// Get the tile index at a world position
     /// </summary>
-    private int GetTileIndexAtPosition(Vector3 worldPosition, IcoSphereGrid grid, Transform planetTransform)
+    private int GetTileIndexAtPosition(Vector3 worldPosition, SphericalHexGrid grid, Transform planetTransform)
     {
         if (grid == null || planetTransform == null)
             return -1;

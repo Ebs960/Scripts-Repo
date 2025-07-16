@@ -26,6 +26,10 @@ public class HexasphereRenderer : MonoBehaviour
     [Header("Optional UI")]
     public LoadingPanelController loadingPanel;
 
+    [Header("Mesh Quality")]
+    [Tooltip("Use separate vertices for each tile to ensure clear boundaries. Trades memory for visual clarity.")]
+    public bool useSeparateVertices = false;
+
     // ───────────────────────────────────── Helpers ─────────────────────────────────────
     private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
     private MeshRenderer MR => meshRenderer != null ? meshRenderer : (meshRenderer = GetComponent<MeshRenderer>());
@@ -72,10 +76,20 @@ public class HexasphereRenderer : MonoBehaviour
 
     // ───────────────────────────────────── Public API ───────────────────────────────────
     /// <summary>Build and assign the planet/moon mesh.</summary>
-    public void BuildMesh(IcoSphereGrid grid)
+    public void BuildMesh(SphericalHexGrid grid)
     {
         Report(0.05f, "Building mesh…");
-        MF.sharedMesh = HexTileMeshBuilder.Build(grid, out _, out vertexToTiles);   // Get vertex-to-tile mapping
+        
+        if (useSeparateVertices)
+        {
+            MF.sharedMesh = HexTileMeshBuilder.BuildWithSeparateVertices(grid, out _, out vertexToTiles);
+            Debug.Log("[HexasphereRenderer] Using separate vertex mesh for clear tile boundaries");
+        }
+        else
+        {
+            MF.sharedMesh = HexTileMeshBuilder.Build(grid, out _, out vertexToTiles);
+            Debug.Log("[HexasphereRenderer] Using shared vertex mesh for memory efficiency");
+        }
     }
 
     /// <summary>Radially displace vertices with smooth per-vertex elevation based on tile data.</summary>
@@ -176,7 +190,29 @@ public class HexasphereRenderer : MonoBehaviour
         mat.SetInt("_BiomeCount", count);
         Debug.Log($"[HexasphereRenderer] Set _BiomeCount = {count}");
 
+        // Enable sharp boundaries if using separate vertices
+        if (useSeparateVertices)
+        {
+            mat.SetFloat("_SharpBoundaries", 1.0f);
+            Debug.Log("[HexasphereRenderer] Enabled sharp biome boundaries");
+        }
+        else
+        {
+            mat.SetFloat("_SharpBoundaries", 0.0f);
+        }
+
         Report(1f, "Planet ready!");
+    }
+
+    /// <summary>Enable or disable sharp biome boundaries in the material.</summary>
+    public void SetSharpBoundaries(bool enabled)
+    {
+        var mat = MR.sharedMaterial;
+        if (mat != null)
+        {
+            mat.SetFloat("_SharpBoundaries", enabled ? 1.0f : 0.0f);
+            Debug.Log($"[HexasphereRenderer] Sharp boundaries {(enabled ? "enabled" : "disabled")}");
+        }
     }
 
     // ───────────────────────────────────── Helpers ─────────────────────────────────────

@@ -5,6 +5,7 @@ Shader "Custom/HexasphereURP"
         _BiomeAlbedoArray ("Biome Albedo Array", 2DArray) = "" {}
         _BiomeIndexTex    ("Tile → Biome map", 2D) = "white" {}
         _BiomeCount       ("BiomeCount", Float) = 1
+        [Toggle] _SharpBoundaries ("Sharp Biome Boundaries", Float) = 0
     }
 
     SubShader
@@ -35,6 +36,7 @@ Shader "Custom/HexasphereURP"
             // Material data
             CBUFFER_START(UnityPerMaterial)
                 float _BiomeCount;
+                float _SharpBoundaries;
             CBUFFER_END
 
             struct Attributes
@@ -62,12 +64,33 @@ Shader "Custom/HexasphereURP"
                 float2 uv = IN.uv;
 
                 // Get biome ID from red channel (0–1) and scale to array index
-                float biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
+                float biomeId;
+                if (_SharpBoundaries > 0.5)
+                {
+                    // Use point sampling for sharp boundaries
+                    biomeId = _BiomeIndexTex.SampleLevel(sampler_BiomeIndexTex, uv, 0).r;
+                }
+                else
+                {
+                    // Use bilinear sampling for smooth boundaries
+                    biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
+                }
+                
                 float rawIndex = biomeId * (_BiomeCount - 1);
                 int slice = clamp((int)round(rawIndex), 0, (int)_BiomeCount - 1);
 
                 // Sample the texture array
-                float4 color = _BiomeAlbedoArray.SampleLevel(sampler_BiomeAlbedoArray, float3(uv, slice), 0);
+                float4 color;
+                if (_SharpBoundaries > 0.5)
+                {
+                    // Use point sampling for sharp boundaries
+                    color = _BiomeAlbedoArray.SampleLevel(sampler_BiomeAlbedoArray, float3(uv, slice), 0);
+                }
+                else
+                {
+                    // Use bilinear sampling for smooth boundaries
+                    color = _BiomeAlbedoArray.Sample(sampler_BiomeAlbedoArray, float3(uv, slice));
+                }
 
                 return float4(color.rgb, 1.0);
             }

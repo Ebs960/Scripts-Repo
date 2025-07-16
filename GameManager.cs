@@ -110,12 +110,12 @@ public class GameManager : MonoBehaviour
     // --- References to high-res planet textures and grid ---
     public Texture2D planetHeightTex;
     public Texture2D planetAlbedoTex;
-    public IcoSphereGrid planetGrid;
+    public SphericalHexGrid planetGrid;
 
     /// <summary>
     /// Called by PlanetGenerator to provide the high-res textures and grid after generation.
     /// </summary>
-    public void SetPlanetTextures(Texture2D height, Texture2D albedo, IcoSphereGrid grid)
+    public void SetPlanetTextures(Texture2D height, Texture2D albedo, SphericalHexGrid grid)
     {
         planetHeightTex = height;
         planetAlbedoTex = albedo;
@@ -161,19 +161,19 @@ public class GameManager : MonoBehaviour
         return GetNearestHexTile(worldPoint, this.transform);
     }
 
-    // Helper to get subdivisions and radius from preset
-    public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
+    // Helper to get target tile count and radius from preset
+    public static void GetMapSizeParams(MapSize size, out int targetTileCount, out float radius)
     {
         switch (size)
         {
-            case MapSize.Micro: subdivisions = 4; radius = 40.0f; break;      // ~160 tiles
-            case MapSize.Tiny: subdivisions = 5; radius = 48.0f; break;       // ~320 tiles
-            case MapSize.Small: subdivisions = 6; radius = 56.0f; break;      // ~640 tiles
-            case MapSize.Standard: subdivisions = 7; radius = 72.0f; break;   // ~1,280 tiles
-            case MapSize.Large: subdivisions = 8; radius = 88.0f; break;      // ~2,560 tiles
-            case MapSize.Huge: subdivisions = 9; radius = 104.0f; break;      // ~5,120 tiles
-            case MapSize.Gigantic: subdivisions = 10; radius = 120.0f; break; // ~10,240 tiles
-            default: subdivisions = 7; radius = 72.0f; break;
+            case MapSize.Micro: targetTileCount = 162; radius = 40.0f; break;      // ~160 tiles
+            case MapSize.Tiny: targetTileCount = 322; radius = 48.0f; break;       // ~320 tiles
+            case MapSize.Small: targetTileCount = 642; radius = 56.0f; break;      // ~640 tiles
+            case MapSize.Standard: targetTileCount = 1282; radius = 72.0f; break;   // ~1,280 tiles
+            case MapSize.Large: targetTileCount = 2562; radius = 88.0f; break;      // ~2,560 tiles
+            case MapSize.Huge: targetTileCount = 5122; radius = 104.0f; break;      // ~5,120 tiles
+            case MapSize.Gigantic: targetTileCount = 10242; radius = 120.0f; break; // ~10,240 tiles
+            default: targetTileCount = 1282; radius = 72.0f; break;
         }
     }
 
@@ -416,22 +416,22 @@ public class GameManager : MonoBehaviour
             }
 
             // --- Use map size preset ---
-            int subdivisions; float radius;
-            GetMapSizeParams(mapSize, out subdivisions, out radius);
+            int targetTileCount; float radius;
+            GetMapSizeParams(mapSize, out targetTileCount, out radius);
 
 
-            // Generate grid data using the new IcoSphereGrid system with the correct radius
+            // Generate grid data using the new SphericalHexGrid system with the correct radius
             if (planetGenerator != null)
             {
-                Debug.Log($"[GameManager] Configuring planet: subdivisions={subdivisions}, radius={radius}");
-                planetGenerator.subdivisions = subdivisions;
+                Debug.Log($"[GameManager] Configuring planet: targetTileCount={targetTileCount}, radius={radius}");
                 planetGenerator.radius = radius; // Set the radius property
-                planetGenerator.Grid.Generate(subdivisions, radius);
+                planetGenerator.Grid.Generate(targetTileCount, radius);
                 Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
                 
                 // Rebuild the mesh with the new grid
                 if (planetGenerator.hexasphereRenderer != null)
                 {
+                    planetGenerator.hexasphereRenderer.generatorSource = planetGenerator;
                     planetGenerator.hexasphereRenderer.BuildMesh(planetGenerator.Grid);
                     Debug.Log($"[GameManager] Planet mesh rebuilt with new grid");
                 }
@@ -513,6 +513,7 @@ public class GameManager : MonoBehaviour
                 // Rebuild moon mesh with correct radius
                 if (moonGenerator.hexasphereRenderer != null)
                 {
+                    moonGenerator.hexasphereRenderer.generatorSource = moonGenerator;
                     moonGenerator.hexasphereRenderer.BuildMesh(moonGenerator.Grid);
                     Debug.Log($"[GameManager] Moon mesh rebuilt with radius {moonRadius}");
                 }

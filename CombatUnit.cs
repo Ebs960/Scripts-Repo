@@ -37,7 +37,7 @@ public class CombatUnit : MonoBehaviour
     protected EquipmentData equippedArmor;
     protected EquipmentData equippedMiscellaneous;
     
-    IcoSphereGrid grid;
+    SphericalHexGrid grid;
     PlanetGenerator planet;
     Animator animator;
 
@@ -305,7 +305,7 @@ public class CombatUnit : MonoBehaviour
     public void MoveAlongPath(List<int> path)
     {
         var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(path[0]);
-        IcoSphereGrid currentGrid = grid;
+        SphericalHexGrid currentGrid = grid;
 
         foreach (int idx in path)
         {
@@ -617,7 +617,8 @@ public class CombatUnit : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"CombatUnit {gameObject.name} could not find IcoSphereGrid to position itself on tile {tileIndex}.");
+            Debug.LogError($"CombatUnit {gameObject.name} could not find SphericalHexGrid to position itself on tile {tileIndex}.");
+            return null;
         }
         return this;
     }
@@ -625,11 +626,11 @@ public class CombatUnit : MonoBehaviour
     /// <summary>
     /// Properly positions and orients the unit on the planet surface
     /// </summary>
-    public void PositionUnitOnSurface(IcoSphereGrid G, int tileIndex) // Renamed parameter to avoid conflict
+    public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
         if (G == null)
         {
-            Debug.LogError("IcoSphereGrid reference is null in PositionUnitOnSurface.");
+            Debug.LogError("SphericalHexGrid reference is null in PositionUnitOnSurface.");
             return;
         }
 
@@ -782,7 +783,7 @@ public class CombatUnit : MonoBehaviour
         var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
         if (tileData == null) return 0;
 
-        IcoSphereGrid currentGrid = grid;
+        SphericalHexGrid currentGrid = grid;
         if (currentGrid == null) return 0;
 
         int[] neighbours = TileDataHelper.Instance.GetTileNeighbors(tileIndex);
@@ -857,7 +858,7 @@ public class CombatUnit : MonoBehaviour
         else
         {
             var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-            IcoSphereGrid currentGrid = grid;
+            SphericalHexGrid currentGrid = grid;
             int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(currentTileIndex);
             foreach (int neighbor in neighbors)
             {
@@ -910,7 +911,7 @@ public class CombatUnit : MonoBehaviour
         else
         {
             var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-            IcoSphereGrid currentGrid = grid;
+            SphericalHexGrid currentGrid = grid;
             int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(currentTileIndex);
             foreach (int neighbor in neighbors)
             {
@@ -940,7 +941,7 @@ public class CombatUnit : MonoBehaviour
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
         var (targetTileData, isTargetMoon) = TileDataHelper.Instance.GetTileData(targetTileIndex);
-        IcoSphereGrid targetGrid = grid;
+        SphericalHexGrid targetGrid = grid;
         unit.transform.position = targetGrid.tileCenters[targetTileIndex];
         unit.currentTileIndex = targetTileIndex;
         
@@ -1233,4 +1234,5 @@ public class CombatUnit : MonoBehaviour
                 Debug.LogError($"[CombatUnit] UIManager.Instance is null. Cannot show notification for {data.unitName}.");
             }
         }
-    }}
+    }
+}

@@ -13,7 +13,7 @@ public class ResourceManager : MonoBehaviour
     private readonly List<ResourceInstance> spawnedResources = new List<ResourceInstance>();
 
     private PlanetGenerator planetGenerator;
-    private IcoSphereGrid grid;
+    private SphericalHexGrid grid;
 
     void Awake()
     {

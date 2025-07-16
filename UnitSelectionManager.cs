@@ -18,8 +18,8 @@ public class UnitSelectionManager : MonoBehaviour
     private GameObject selectionIndicator;
     
     // References
-    private IcoSphereGrid planetGrid;
-    private IcoSphereGrid moonGrid;
+    private SphericalHexGrid planetGrid;
+    private SphericalHexGrid moonGrid;
     private Camera mainCamera;
     
     void Awake()
@@ -130,7 +130,7 @@ public class UnitSelectionManager : MonoBehaviour
     /// <summary>
     /// Get mouse raycast hit information
     /// </summary>
-    private (bool hit, Vector3 worldPosition, IcoSphereGrid grid) GetMouseHitInfo()
+    private (bool hit, Vector3 worldPosition, SphericalHexGrid grid) GetMouseHitInfo()
     {
         if (mainCamera == null)
             return (false, Vector3.zero, null);
@@ -158,7 +158,7 @@ public class UnitSelectionManager : MonoBehaviour
     /// <summary>
     /// Get the tile index at a world position
     /// </summary>
-    private int GetTileIndexAtPosition(Vector3 worldPosition, IcoSphereGrid grid)
+    private int GetTileIndexAtPosition(Vector3 worldPosition, SphericalHexGrid grid)
     {
         if (grid == null)
             return -1;

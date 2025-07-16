@@ -20,7 +20,7 @@ public class DemonManager : MonoBehaviour
     private List<CombatUnit> activeDemonUnits = new List<CombatUnit>();
     private int turnsSinceLastSpawn;
 
-    private IcoSphereGrid grid;
+    private SphericalHexGrid grid;
     private PlanetGenerator planet;
 
     void Awake()
@@ -67,7 +67,7 @@ public class DemonManager : MonoBehaviour
     {
         if (grid == null)
         {
-            Debug.LogError("DemonManager cannot spawn demons, IcoSphereGrid not found!");
+            Debug.LogError("DemonManager cannot spawn demons, SphericalHexGrid not found!");
             return;
         }
         // Find valid spawn locations
@@ -113,4 +113,5 @@ public class DemonManager : MonoBehaviour
         {
             activeDemonUnits.Remove(demonUnit);
         }
-    }} 
+    }
+} 

@@ -1343,7 +1343,7 @@ public class Civilization : MonoBehaviour
     /// This is now the primary method for founding cities.
     /// </summary>
     /// <param name="tileIndex">The tile where the city will be founded.</param>
-    public void FoundNewCity(int tileIndex, IcoSphereGrid gridOverride = null, PlanetGenerator planetOverride = null)
+    public void FoundNewCity(int tileIndex, SphericalHexGrid gridOverride = null, PlanetGenerator planetOverride = null)
     {
         Debug.Log($"[FoundNewCity] Called for civ {civData?.civName ?? "NULL"} at tile {tileIndex}. cityPrefab={(cityPrefab != null ? cityPrefab.name : "NULL")}");
         if (cityPrefab == null)
@@ -1377,7 +1377,7 @@ public class Civilization : MonoBehaviour
         Debug.Log($"[FoundNewCity] City component found on prefab: {newCity}");
 
         // Set references for correct world context
-        IcoSphereGrid gridToUse = gridOverride ?? planetGrid;
+        SphericalHexGrid gridToUse = gridOverride ?? planetGrid;
         PlanetGenerator planetToUse = planetOverride ?? planetGenerator;
         if (gridToUse == null)
             gridToUse = FindAnyObjectByType<PlanetGenerator>()?.Grid;
@@ -1477,7 +1477,7 @@ public class Civilization : MonoBehaviour
         return maxAge;
     }
 
-    public void Initialize(CivData data, LeaderData leaderData, bool isPlayer, IcoSphereGrid grid = null, PlanetGenerator planet = null)
+    public void Initialize(CivData data, LeaderData leaderData, bool isPlayer, SphericalHexGrid grid = null, PlanetGenerator planet = null)
     {
         civData = data;
         leader = leaderData; // Set the leader for this civilization instance
@@ -1514,7 +1514,7 @@ public class Civilization : MonoBehaviour
         }
     }
 
-    public IcoSphereGrid planetGrid; // Add this field to store the main planet's grid
+    public SphericalHexGrid planetGrid; // Add this field to store the main planet's grid
     public PlanetGenerator planetGenerator; // Add this field to store the main planet's generator
 }
 

@@ -6,7 +6,7 @@ using TMPro;
 [RequireComponent(typeof(Animator))]
 public class WorkerUnit : MonoBehaviour
 {
-    [SerializeField] IcoSphereGrid grid;
+    [SerializeField] SphericalHexGrid grid;
     PlanetGenerator planet;
     Animator animator;
 
@@ -114,7 +114,7 @@ public class WorkerUnit : MonoBehaviour
     /// <summary>
     /// Properly positions and orients the unit on the planet surface
     /// </summary>
-    private void PositionUnitOnSurface(IcoSphereGrid G, int tileIndex)
+    private void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex)
     {
         // Get the extruded center of the tile in world space
         Vector3 tileSurfaceCenter = G.tileCenters[tileIndex];

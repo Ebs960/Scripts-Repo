@@ -2,12 +2,12 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Converts IcoSphereGrid tiles into a single mesh where each hex tile has
+/// Converts SphericalHexGrid tiles into a single mesh where each hex tile has
 /// unique vertex indices (so we can assign unique UVs & textures per tile).
 /// </summary>
 public static class HexTileMeshBuilder
 {
-    public static Mesh Build(IcoSphereGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
+    public static Mesh Build(SphericalHexGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
@@ -90,6 +90,72 @@ public static class HexTileMeshBuilder
         m.RecalculateNormals();
         
         Debug.Log($"[HexTileMeshBuilder] Built mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
+        return m;
+    }
+
+    /// <summary>
+    /// Alternative mesh building method that creates separate vertices for each tile to ensure clear boundaries.
+    /// This trades memory for visual clarity.
+    /// </summary>
+    public static Mesh BuildWithSeparateVertices(SphericalHexGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
+    {
+        int tileCount = grid.TileCount;
+        List<Vector3> verts = new();
+        List<Vector2> uvs = new();
+        List<int> tris = new();
+        perTileUV = new Vector2[tileCount];   // center-UV for lookup
+        vertexToTiles = new Dictionary<int, List<int>>();
+
+        // Create separate vertices for each tile to ensure clear boundaries
+        // This will use more memory but provide sharper tile boundaries
+        
+        for (int tile = 0; tile < tileCount; tile++)
+        {
+            var cornerIdx = grid.GetCornersOfTile(tile);
+            Vector3 center = grid.tileCenters[tile];
+            Vector2 uvCenter = EquirectUV(center);
+            perTileUV[tile] = uvCenter;
+
+            // Add center vertex (unique per tile)
+            int centerVertexIdx = verts.Count;
+            verts.Add(center);
+            uvs.Add(EquirectUV(center));
+
+            // Add corner vertices (separate for each tile)
+            int[] cornerVertexIndices = new int[cornerIdx.Length];
+            for (int c = 0; c < cornerIdx.Length; c++)
+            {
+                Vector3 cornerPos = grid.Vertices[cornerIdx[c]];
+                cornerVertexIndices[c] = verts.Count;
+                verts.Add(cornerPos);
+                uvs.Add(EquirectUV(cornerPos));
+            }
+
+            // Create triangles from center to each edge
+            for (int c = 0; c < cornerIdx.Length; c++)
+            {
+                int corner1Idx = cornerVertexIndices[c];
+                int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
+
+                tris.Add(centerVertexIdx);
+                tris.Add(corner1Idx);
+                tris.Add(corner2Idx);
+
+                // Track which tiles use each mesh vertex (each vertex belongs to exactly one tile)
+                vertexToTiles[centerVertexIdx] = new List<int> { tile };
+                vertexToTiles[corner1Idx] = new List<int> { tile };
+                vertexToTiles[corner2Idx] = new List<int> { tile };
+            }
+        }
+
+        Mesh m = new();
+        m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        m.SetVertices(verts);
+        m.SetUVs(0, uvs);
+        m.SetTriangles(tris, 0);
+        m.RecalculateNormals();
+        
+        Debug.Log($"[HexTileMeshBuilder] Built separate-vertex mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
         return m;
     }
 
