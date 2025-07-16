@@ -62,8 +62,8 @@ public class GameManager : MonoBehaviour
     public enum MapSize { Micro, Tiny, Small, Standard, Large, Huge, Gigantic }
     [Header("Map Settings")]
     public MapSize mapSize = MapSize.Standard;
-    public int moonSize = 10;   // Moon subdivisions (if enabled)
-    public float moonRadius = 5f; // Moon radius (smaller than planet)
+    public int moonSize = 4;   // Moon subdivisions (if enabled) - smaller than planet
+    public float moonRadius = 20f; // Moon radius (smaller than planet) - quadrupled
     public bool generateMoon = true;
 
     [Header("References")]
@@ -166,14 +166,14 @@ public class GameManager : MonoBehaviour
     {
         switch (size)
         {
-            case MapSize.Micro: subdivisions = 10; radius = 10.0f; break;
-            case MapSize.Tiny: subdivisions = 14; radius = 14.0f; break;
-            case MapSize.Small: subdivisions = 18; radius = 18.0f; break;
-            case MapSize.Standard: subdivisions = 21; radius = 21.0f; break;
-            case MapSize.Large: subdivisions = 24; radius = 24.0f; break;
-            case MapSize.Huge: subdivisions = 27; radius = 27.0f; break;
-            case MapSize.Gigantic: subdivisions = 30; radius = 30.0f; break;
-            default: subdivisions = 21; radius = 21.0f; break;
+            case MapSize.Micro: subdivisions = 4; radius = 40.0f; break;      // ~160 tiles
+            case MapSize.Tiny: subdivisions = 5; radius = 48.0f; break;       // ~320 tiles
+            case MapSize.Small: subdivisions = 6; radius = 56.0f; break;      // ~640 tiles
+            case MapSize.Standard: subdivisions = 7; radius = 72.0f; break;   // ~1,280 tiles
+            case MapSize.Large: subdivisions = 8; radius = 88.0f; break;      // ~2,560 tiles
+            case MapSize.Huge: subdivisions = 9; radius = 104.0f; break;      // ~5,120 tiles
+            case MapSize.Gigantic: subdivisions = 10; radius = 120.0f; break; // ~10,240 tiles
+            default: subdivisions = 7; radius = 72.0f; break;
         }
     }
 
@@ -423,9 +423,18 @@ public class GameManager : MonoBehaviour
             // Generate grid data using the new IcoSphereGrid system with the correct radius
             if (planetGenerator != null)
             {
+                Debug.Log($"[GameManager] Configuring planet: subdivisions={subdivisions}, radius={radius}");
                 planetGenerator.subdivisions = subdivisions;
                 planetGenerator.radius = radius; // Set the radius property
                 planetGenerator.Grid.Generate(subdivisions, radius);
+                Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
+                
+                // Rebuild the mesh with the new grid
+                if (planetGenerator.hexasphereRenderer != null)
+                {
+                    planetGenerator.hexasphereRenderer.BuildMesh(planetGenerator.Grid);
+                    Debug.Log($"[GameManager] Planet mesh rebuilt with new grid");
+                }
             }
 
             // Configure planet generator with GameSetupData settings
@@ -500,6 +509,13 @@ public class GameManager : MonoBehaviour
                 // Configure moon with correct radius
                 moonGenerator.ConfigureMoon(moonRadius);
                 Debug.Log($"[GameManager] MoonGenerator configured with radius: {moonRadius}");
+                
+                // Rebuild moon mesh with correct radius
+                if (moonGenerator.hexasphereRenderer != null)
+                {
+                    moonGenerator.hexasphereRenderer.BuildMesh(moonGenerator.Grid);
+                    Debug.Log($"[GameManager] Moon mesh rebuilt with radius {moonRadius}");
+                }
 
                 // Notify TileDataHelper of the new generator
                 if (TileDataHelper.Instance != null)

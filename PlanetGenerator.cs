@@ -14,7 +14,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public HexasphereRenderer hexasphereRenderer;   // assign in inspector
 
     [Header("Sphere Settings")] 
-    public int subdivisions = 4;
+    public int subdivisions = 8;
     public bool randomSeed = true;
     public int seed = 12345;
     public float radius = 21f; // Default radius, will be overridden by GameManager
@@ -220,9 +220,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             Destroy(gameObject);
         }
 
-        // Initialize the grid for this planet
+        // Initialize the grid for this planet (will be configured by GameManager)
         grid = new IcoSphereGrid();
-        grid.Generate(subdivisions, 1f); // generate unit sphere grid
+        Debug.Log($"[PlanetGenerator] Awake: Grid initialized, will be configured by GameManager");
         if (hexasphereRenderer != null)
         {
             hexasphereRenderer.generatorSource = this;
@@ -240,6 +240,21 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 lookup.Add(bs.biome, bs);
             else
                 lookup[bs.biome] = bs; // Allow overriding default settings
+                
+        // Debug: Log biome settings order to verify indices
+        Debug.Log($"[PlanetGenerator] Biome settings count: {biomeSettings.Count}");
+        for (int i = 0; i < Mathf.Min(biomeSettings.Count, 15); i++) // Log first 15
+        {
+            Debug.Log($"[PlanetGenerator] Biome {i}: {biomeSettings[i].biome}");
+        }
+        
+        // Also log the expected enum order for comparison
+        Debug.Log("[PlanetGenerator] Expected enum order:");
+        Biome[] enumValues = (Biome[])Enum.GetValues(typeof(Biome));
+        for (int i = 0; i < Mathf.Min(enumValues.Length, 15); i++)
+        {
+            Debug.Log($"[PlanetGenerator] Expected {i}: {enumValues[i]}");
+        }
                 
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -1240,31 +1255,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
-    /// <summary>
-    /// Generates a simple biome color map using the current biomeColors array.
-    /// </summary>
-    public Texture2D GenerateBiomeColorMap(int width = 1024, int height = 512)
-    {
-        Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float lat = Mathf.Lerp(90, -90, v);
-            for (int x = 0; x < width; x++)
-            {
-                float u = (x + 0.5f) / width;
-                float lon = Mathf.Lerp(-180, 180, u);
-                Vector3 dir = SphericalToCartesian(lat, lon);
-                int tileIndex = grid.GetTileAtPosition(dir);
-                if (tileIndex < 0) tileIndex = 0;
-                var tile = GetHexTileData(tileIndex);
-                Color c = biomeColors[(int)tile.biome];
-                tex.SetPixel(x, y, c);
-            }
-        }
-        tex.Apply();
-        return tex;
-    }
+
 
     [Header("SGT Heightmap Scaling")]
     [Tooltip("Maximum heightmap displacement as a fraction of planet radius (e.g. 0.02 = 2% of radius)")]
@@ -1349,7 +1340,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (count >= 7) seeds.Add(addOffset(new Vector3(1, 1, 1).normalized));
         if (count >= 8) seeds.Add(addOffset(new Vector3(-1, -1, -1).normalized));
         if (count == 8) return seeds;
-        Debug.LogWarning($"Deterministic placement only defined up to 8 seeds. Adding remaining {count - seeds.Count} randomly.");
+                    // Debug.LogWarning($"Deterministic placement only defined up to 8 seeds. Adding remaining {count - seeds.Count} randomly.");
         int guard = 0;
         int maxTries = 5000;
         float minAngle = 30f;
@@ -1437,6 +1428,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 filterMode = FilterMode.Bilinear
             };
         }
+        
+        // --- Generate Biome Index Map ---
+        int biomeCount = biomeSettings.Count;
+        biomeIndexTex = new Texture2D(w, h, TextureFormat.RFloat, false, false) // Make readable
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear
+        };
+        Color[] biomePixels = new Color[w * h];
+        
+        // Create biome color map array
+        Color[] colorMapPixels = new Color[w * h];
 
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
@@ -1445,12 +1448,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         
         Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
         
-        // --- Generate Biome Index Map ---
-        int biomeCount = biomeSettings.Count;
-        biomeIndexTex = new Texture2D(w, h, TextureFormat.RFloat, false, true);
-        Color[] biomePixels = new Color[w * h];
-        
-        // Single pass for height and biome data
+        // Single pass for height, biome index, and color map data
         System.Threading.Tasks.Parallel.For(0, h, y =>
         {
             for (int x = 0; x < w; x++)
@@ -1476,13 +1474,17 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         break;
                     }
                 }
-                float biomeR = biomeCount > 1 ? biomeIdx / 255f : 0f; // Range: 0..1 for 0..255
+                float biomeR = (float)biomeIdx / (biomeCount - 1); // Normalize to 0..1 range for shader
                 biomePixels[idx1d] = new Color(biomeR, 0, 0, 1);
+                
+                // Biome color map calculation (reuse the same tile data)
+                Color biomeColor = biomeColors[(int)tile.biome];
+                colorMapPixels[idx1d] = biomeColor;
                 
                 // Debug: Log some biome indices to see what's being generated
                 if (x == 0 && y == 0)
                 {
-                    Debug.Log($"[PlanetGenerator] Sample biome: {tile.biome}, biomeIdx: {biomeIdx}, biomeR: {biomeR}");
+                    Debug.Log($"[PlanetGenerator] Sample biome: {tile.biome}, biomeIdx: {biomeIdx}/{biomeCount-1}, biomeR: {biomeR:F3}, rawIndex: {biomeR * (biomeCount-1):F1}, color: {biomeColor}");
                 }
             }
         });
@@ -1501,10 +1503,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         heightTex.Apply(false, false);
         
         biomeIndexTex.SetPixels(biomePixels);
-        biomeIndexTex.Apply(false, true);
+        biomeIndexTex.Apply(false, false);
         
-        // Create biome color map
-        biomeColorMap = GenerateBiomeColorMap(w, h);
+        // Create biome color map from pre-calculated data
+        biomeColorMap = new Texture2D(w, h, TextureFormat.RGBA32, false, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear
+        };
+        biomeColorMap.SetPixels(colorMapPixels);
+        biomeColorMap.Apply(false, false);
         
         // Build biome albedo array
         biomeAlbedoArray = BuildBiomeAlbedoArray();
@@ -1519,13 +1527,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     private Texture2DArray BuildBiomeAlbedoArray()
     {
-        // Determine the size from the first available texture, or use a default
-        int size = 2048; // Default size
+        // Use the same size as the biome index texture for consistency
+        int size = textureSize; // Use the same size as the index texture
         
         if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
         {
-            size = biomeSettings[0].albedoTexture.width;
-            Debug.Log($"[PlanetGenerator] Source texture format: {biomeSettings[0].albedoTexture.format} ({(int)biomeSettings[0].albedoTexture.format})");
+            // Scale the source texture to match the index texture size
+            size = textureSize;
+            Debug.Log($"[PlanetGenerator] Using texture size {size} to match index texture, source texture format: {biomeSettings[0].albedoTexture.format} ({(int)biomeSettings[0].albedoTexture.format})");
         }
         
         // Always use RGBA32 for the texture array
@@ -1537,19 +1546,31 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
             
-            // Convert texture to RGBA32 if needed
-            if (src.format != TextureFormat.RGBA32)
+            // Resize and convert texture to match array size and format
+            if (src.width != size || src.height != size || src.format != TextureFormat.RGBA32)
             {
-                // Create a temporary RGBA32 texture and copy the pixels
-                var convertedTex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
-                convertedTex.SetPixels(src.GetPixels());
-                convertedTex.Apply();
+                // Create a temporary RGBA32 texture at the correct size
+                var resizedTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
                 
-                Graphics.CopyTexture(convertedTex, 0, 0, array, i, 0);
+                // Use RenderTexture for high-quality resizing
+                var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(src, rt);
                 
-                // Clean up the temporary texture
-                DestroyImmediate(convertedTex);
-                Debug.Log($"[PlanetGenerator] Converted texture {i} from {src.format} to RGBA32");
+                // Read the resized pixels
+                var prevRT = RenderTexture.active;
+                RenderTexture.active = rt;
+                resizedTex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+                resizedTex.Apply();
+                RenderTexture.active = prevRT;
+                
+                // Copy to array
+                Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
+                
+                // Clean up
+                RenderTexture.ReleaseTemporary(rt);
+                DestroyImmediate(resizedTex);
+                
+                // Debug.Log($"[PlanetGenerator] Resized and converted texture {i} from {src.width}x{src.height} {src.format} to {size}x{size} RGBA32");
             }
             else
             {

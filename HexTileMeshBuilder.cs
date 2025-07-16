@@ -7,44 +7,89 @@ using System.Collections.Generic;
 /// </summary>
 public static class HexTileMeshBuilder
 {
-    public static Mesh Build(IcoSphereGrid grid, out Vector2[] perTileUV)
+    public static Mesh Build(IcoSphereGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
+        List<Vector2> uvs = new();
         List<int> tris = new();
         perTileUV = new Vector2[tileCount];   // center-UV for lookup
+        vertexToTiles = new Dictionary<int, List<int>>();
 
-        // 1. Each tile = one hex/pent. Grab its perimeter vertices.
+        // Create a proper mesh where tiles share vertices at boundaries
+        // This prevents the "bunched up" appearance from overlapping geometry
+        
+        // First, create a vertex lookup to avoid duplicates
+        Dictionary<Vector3, int> vertexLookup = new Dictionary<Vector3, int>();
+        
         for (int tile = 0; tile < tileCount; tile++)
         {
-            var cornerIdx = grid.GetCornersOfTile(tile); // returns int[6] or [5]
+            var cornerIdx = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
             Vector2 uvCenter = EquirectUV(center);
             perTileUV[tile] = uvCenter;
 
-            int vStart = verts.Count;
-            // Fan triangulate center → edge pairs
+            // Add center vertex (unique per tile)
+            int centerVertexIdx;
+            if (!vertexLookup.ContainsKey(center))
+            {
+                centerVertexIdx = verts.Count;
+                verts.Add(center);
+                uvs.Add(EquirectUV(center));
+                vertexLookup[center] = centerVertexIdx;
+            }
+            else
+            {
+                centerVertexIdx = vertexLookup[center];
+            }
+
+            // Add corner vertices (shared between tiles)
+            int[] cornerVertexIndices = new int[cornerIdx.Length];
             for (int c = 0; c < cornerIdx.Length; c++)
             {
-                int a = cornerIdx[c];
-                int b = cornerIdx[(c + 1) % cornerIdx.Length];
+                Vector3 cornerPos = grid.Vertices[cornerIdx[c]];
+                if (!vertexLookup.ContainsKey(cornerPos))
+                {
+                    cornerVertexIndices[c] = verts.Count;
+                    verts.Add(cornerPos);
+                    uvs.Add(EquirectUV(cornerPos));
+                    vertexLookup[cornerPos] = cornerVertexIndices[c];
+                }
+                else
+                {
+                    cornerVertexIndices[c] = vertexLookup[cornerPos];
+                }
+            }
 
-                verts.Add(center);
-                verts.Add(grid.Vertices[a]);
-                verts.Add(grid.Vertices[b]);
+            // Create triangles from center to each edge
+            for (int c = 0; c < cornerIdx.Length; c++)
+            {
+                int corner1Idx = cornerVertexIndices[c];
+                int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
 
-                tris.Add(vStart); tris.Add(vStart + 1); tris.Add(vStart + 2);
-                vStart += 3;
+                tris.Add(centerVertexIdx);
+                tris.Add(corner1Idx);
+                tris.Add(corner2Idx);
+
+                // Track which tiles use each mesh vertex
+                if (!vertexToTiles.ContainsKey(centerVertexIdx)) vertexToTiles[centerVertexIdx] = new List<int>();
+                if (!vertexToTiles.ContainsKey(corner1Idx)) vertexToTiles[corner1Idx] = new List<int>();
+                if (!vertexToTiles.ContainsKey(corner2Idx)) vertexToTiles[corner2Idx] = new List<int>();
+                
+                vertexToTiles[centerVertexIdx].Add(tile);
+                vertexToTiles[corner1Idx].Add(tile);
+                vertexToTiles[corner2Idx].Add(tile);
             }
         }
 
         Mesh m = new();
         m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         m.SetVertices(verts);
+        m.SetUVs(0, uvs);
         m.SetTriangles(tris, 0);
-
-        // simple normals – later you’ll displace verts for height
         m.RecalculateNormals();
+        
+        Debug.Log($"[HexTileMeshBuilder] Built mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
         return m;
     }
 
