@@ -400,7 +400,6 @@ public class GameManager : MonoBehaviour
         {
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
-            Debug.Log("[GameManager] PlanetGenerator instantiated.");
 
 
             // Assign the loading panel controller if present
@@ -418,10 +417,8 @@ public class GameManager : MonoBehaviour
             // Generate grid data using the new proper geodesic hexasphere system with the correct radius
             if (planetGenerator != null)
             {
-                Debug.Log($"[GameManager] Configuring planet: subdivisions={(int)subdivisions}, radius={radius}");
-                planetGenerator.radius = radius; // Set the radius property
+                    planetGenerator.radius = radius; // Set the radius property
                 planetGenerator.Grid.GenerateFromSubdivision(subdivisions, radius);
-                Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
                 
                 // Configure the hexasphere renderer for the new system
                 if (planetGenerator.hexasphereRenderer != null)
@@ -429,7 +426,6 @@ public class GameManager : MonoBehaviour
                     planetGenerator.hexasphereRenderer.generatorSource = planetGenerator;
                     planetGenerator.hexasphereRenderer.usePerTileBiomeData = true;
                     planetGenerator.hexasphereRenderer.useSeparateVertices = true;
-                    Debug.Log($"[GameManager] Planet hexasphere renderer configured for per-tile biome data");
                 }
             }
 
@@ -461,7 +457,7 @@ public class GameManager : MonoBehaviour
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
 
-            Debug.Log($"PlanetGenerator created and configured from prefab with continent size {planetGenerator.maxContinentWidthDegrees}x{planetGenerator.maxContinentHeightDegrees}");
+
 
             // Notify TileDataHelper of the new generator
             if (TileDataHelper.Instance != null)
@@ -479,11 +475,9 @@ public class GameManager : MonoBehaviour
         {
             GameObject moonGO = Instantiate(moonGeneratorPrefab);
             moonGenerator = moonGO.GetComponent<MoonGenerator>();
-            Debug.Log("[GameManager] MoonGenerator instantiated.");
 
             // Position the moon away from the planet
             moonGO.transform.position = new Vector3(15f, 40f, 0f); // offset position
-            Debug.Log("Moon positioned at distance from planet");
 
             if (moonGenerator != null)
             {
@@ -501,19 +495,16 @@ public class GameManager : MonoBehaviour
                 if (planetGenerator != null)
                 {
                     moonGenerator.SetBiomeSettings(planetGenerator.biomeSettings);
-                    Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
                 
                 // Configure moon with correct radius and subdivisions
                 moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
-                Debug.Log($"[GameManager] MoonGenerator configured with radius: {moonRadius}");
                 
                 // Rebuild moon mesh with correct radius
                 if (moonGenerator.hexasphereRenderer != null)
                 {
                     moonGenerator.hexasphereRenderer.generatorSource = moonGenerator;
                     moonGenerator.hexasphereRenderer.BuildMesh(moonGenerator.Grid);
-                    Debug.Log($"[GameManager] Moon mesh rebuilt with radius {moonRadius}");
                 }
 
                 // Notify TileDataHelper of the new generator
@@ -632,11 +623,6 @@ public class GameManager : MonoBehaviour
             {
                 Debug.LogWarning("No player civilization selected in GameSetupData. CivilizationManager will select a default.");
             }
-            else
-            {
-                Debug.Log($"Spawning civilizations with player as: {playerCivData.civName}");
-            }
-            Debug.Log($"GameManager passing to SpawnCivilizations - Player: {playerCivData?.civName ?? "NULL"}, AI Count: {numberOfCivilizations}, CS Count: {numberOfCityStates}, Tribe Count: {numberOfTribes}");
             civilizationManager.SpawnCivilizations(
                 playerCivData,
                 numberOfCivilizations,

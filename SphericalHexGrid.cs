@@ -110,103 +110,6 @@ public class SphericalHexGrid
     }
 
     /// <summary>
-    /// Generate the hexasphere from target tile count (internally calculates proper subdivision level)
-    /// </summary>
-    /// <param name="targetTileCount">Target number of tiles to generate</param>
-    /// <param name="radius">Radius of the sphere</param>
-    public void Generate(int targetTileCount, float radius)
-    {
-        Radius = radius;
-
-        int subdivision = CalculateSubdivisions(targetTileCount);
-        Debug.Log($"Target tiles: {targetTileCount}, Subdivision chosen: {subdivision}, Will actually generate: {10 * subdivision * subdivision + 2} tiles.");
-
-        // Step 1: Build subdivided icosahedron mesh (returns vertices and faces)
-        List<Vector3> meshVertices;
-        List<int[]> meshFaces;
-        BuildSubdividedIcosahedron(subdivision, out meshVertices, out meshFaces);
-        
-        // Build the rest of the grid using the same dual graph approach as GenerateFromSubdivision
-        // Step 2: Build dual graph - each unique vertex becomes a tile
-        Dictionary<int, List<int>> vertexToFaces = new Dictionary<int, List<int>>();
-        for (int f = 0; f < meshFaces.Count; f++)
-        {
-            foreach (int v in meshFaces[f])
-            {
-                if (!vertexToFaces.ContainsKey(v)) vertexToFaces[v] = new List<int>();
-                vertexToFaces[v].Add(f);
-            }
-        }
-
-        int tileCount = meshVertices.Count;
-        tileCenters = new Vector3[tileCount];
-        neighbors = new List<int>[tileCount];
-        tileCorners = new List<int>[tileCount];
-        Vertices = new List<Vector3>();
-        pentagonIndices = new HashSet<int>();
-
-        // Step 3: For each tile (vertex), assign center, corners, neighbors
-        Dictionary<Vector3, int> cornerLookup = new Dictionary<Vector3, int>(new Vector3EqualityComparer(1e-5f));
-
-        for (int t = 0; t < tileCount; t++)
-        {
-            Vector3 center = meshVertices[t].normalized * Radius;
-            tileCenters[t] = center;
-
-            // -- Corners: for each face incident to this vertex, use face center as a corner
-            var incidentFaces = vertexToFaces[t];
-            var corners = new List<int>();
-            var faceCenters = incidentFaces.Select(fIdx =>
-            {
-                var f = meshFaces[fIdx];
-                Vector3 fc = (meshVertices[f[0]] + meshVertices[f[1]] + meshVertices[f[2]]) / 3f;
-                return fc.normalized * Radius;
-            }).ToList();
-
-            // Sort corners clockwise around tile center for mesh consistency
-            List<Vector3> sortedCorners = SortCornersAroundCenter(faceCenters, center);
-
-            foreach (var fc in sortedCorners)
-            {
-                int cornerIdx;
-                if (!cornerLookup.TryGetValue(fc, out cornerIdx))
-                {
-                    cornerIdx = Vertices.Count;
-                    Vertices.Add(fc);
-                    cornerLookup[fc] = cornerIdx;
-                }
-                corners.Add(cornerIdx);
-            }
-            tileCorners[t] = corners;
-
-            // -- Neighbors: for each edge connected to this vertex, find the other vertex and create neighbor relationship
-            neighbors[t] = new List<int>();
-            HashSet<int> neighborSet = new HashSet<int>();
-            foreach (int fIdx in incidentFaces)
-            {
-                var f = meshFaces[fIdx];
-                for (int i = 0; i < 3; i++)
-                {
-                    if (f[i] == t)
-                    {
-                        int prev = f[(i + 2) % 3];
-                        int next = f[(i + 1) % 3];
-                        if (prev != t) neighborSet.Add(prev);
-                        if (next != t) neighborSet.Add(next);
-                    }
-                }
-            }
-            neighbors[t] = neighborSet.ToList();
-
-            // -- Identify pentagons: if this vertex is an original icosahedron vertex, it's a pentagon
-            if (incidentFaces.Count == 5)
-                pentagonIndices.Add(t);
-        }
-
-        Debug.Log($"[SphericalHexGrid] Tiles: {tileCount} | Hexagons: {tileCount - pentagonIndices.Count} | Pentagons: {pentagonIndices.Count}");
-    }
-
-    /// <summary>
     /// Helper for approximate Vector3 key matching in dictionaries
     /// </summary>
     private class Vector3EqualityComparer : IEqualityComparer<Vector3>
@@ -341,13 +244,5 @@ public class SphericalHexGrid
             }
         }
         return bestIdx;
-    }
-
-    // Calculate the required subdivision level to achieve a target tile count
-    private int CalculateSubdivisions(int targetTileCount)
-    {
-        // Inverse of the tile count formula: 10 * n^2 + 2 = targetTileCount
-        // Solve for n using quadratic formula: n = sqrt((targetTileCount - 2) / 10)
-        return Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt((targetTileCount - 2) / 10f)));
     }
 }
