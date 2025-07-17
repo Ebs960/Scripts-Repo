@@ -72,7 +72,7 @@ Shader "Custom/HexasphereURP"
                 }
                 else
                 {
-                    // Use bilinear sampling for smooth boundaries
+                    // Use trilinear sampling for smooth boundaries
                     biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
                 }
                 
@@ -88,7 +88,7 @@ Shader "Custom/HexasphereURP"
                 }
                 else
                 {
-                    // Use bilinear sampling for smooth boundaries
+                    // Use trilinear sampling for smooth boundaries
                     color = _BiomeAlbedoArray.Sample(sampler_BiomeAlbedoArray, float3(uv, slice));
                 }
 

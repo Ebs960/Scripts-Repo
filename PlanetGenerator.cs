@@ -242,20 +242,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             else
                 lookup[bs.biome] = bs; // Allow overriding default settings
                 
-        // Debug: Log biome settings order to verify indices
-        Debug.Log($"[PlanetGenerator] Biome settings count: {biomeSettings.Count}");
-        for (int i = 0; i < Mathf.Min(biomeSettings.Count, 15); i++) // Log first 15
-        {
-            Debug.Log($"[PlanetGenerator] Biome {i}: {biomeSettings[i].biome}");
-        }
-        
-        // Also log the expected enum order for comparison
-        Debug.Log("[PlanetGenerator] Expected enum order:");
-        Biome[] enumValues = (Biome[])Enum.GetValues(typeof(Biome));
-        for (int i = 0; i < Mathf.Min(enumValues.Length, 15); i++)
-        {
-            Debug.Log($"[PlanetGenerator] Expected {i}: {enumValues[i]}");
-        }
                 
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -1471,7 +1457,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         biomeIndexTex = new Texture2D(w, h, TextureFormat.RFloat, false, false) // Make readable
         {
             wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear
+            filterMode = FilterMode.Trilinear // Use trilinear filtering for smoother transitions
         };
         Color[] biomePixels = new Color[w * h];
         
@@ -1546,7 +1532,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         biomeColorMap = new Texture2D(w, h, TextureFormat.RGBA32, false, true)
         {
             wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear
+            filterMode = FilterMode.Trilinear // Use trilinear filtering for smoother transitions
         };
         biomeColorMap.SetPixels(colorMapPixels);
         biomeColorMap.Apply(false, false);

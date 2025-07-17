@@ -11,6 +11,7 @@ public static class GameSetupData
     public static int moonSize;
     public static int animalPrevalence;
     public static GameManager.MapSize mapSize = GameManager.MapSize.Standard;
+    public static GameManager.MapSize moonMapSize = GameManager.MapSize.Standard; // Moon map size
     public static bool generateMoon = true;
     
     // Map Generation Settings
@@ -60,16 +61,17 @@ public static class GameSetupData
     /// </summary>
     public static void InitializeDefaults()
     {
-        // Set default civilization settings
+        // Civilization settings
         selectedPlayerCivilizationData = null;
         numberOfCivilizations = 4;
         numberOfCityStates = 2;
         numberOfTribes = 2;
         
-        // Set default map settings
+        // Map settings
+        mapSize = GameManager.MapSize.Standard;
+        moonMapSize = GameManager.MapSize.Standard; // Moon uses same size as planet by default
         moonSize = 3;
         animalPrevalence = 3;
-        mapSize = GameManager.MapSize.Standard;
         generateMoon = true;
         
         // Set default generation settings

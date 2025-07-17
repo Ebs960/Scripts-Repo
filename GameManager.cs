@@ -44,11 +44,6 @@ public class GameManager : MonoBehaviour
     [Tooltip("AnimalManager prefab for spawning and controlling animals")]
     public GameObject animalManagerPrefab;
 
-    [Header("SGT Volumetrics")]
-    [Tooltip("SGT Volume Manager prefab to instantiate for volumetric effects.")]
-    public GameObject sgtVolumeManagerPrefab;
-    private GameObject instantiatedSgtVolumeManagerGO;
-
     [Header("Game Settings")]
     public CivData selectedPlayerCivilizationData;
     public int numberOfCivilizations = 4;
@@ -162,18 +157,19 @@ public class GameManager : MonoBehaviour
     }
 
     // Helper to get target tile count and radius from preset
+    // Each map size has a fixed number of tiles with consistent hex tile area
     public static void GetMapSizeParams(MapSize size, out int targetTileCount, out float radius)
     {
         switch (size)
         {
-            case MapSize.Micro: targetTileCount = 162; radius = 40.0f; break;      // ~160 tiles
-            case MapSize.Tiny: targetTileCount = 322; radius = 48.0f; break;       // ~320 tiles
-            case MapSize.Small: targetTileCount = 642; radius = 56.0f; break;      // ~640 tiles
-            case MapSize.Standard: targetTileCount = 1282; radius = 72.0f; break;   // ~1,280 tiles
-            case MapSize.Large: targetTileCount = 2562; radius = 88.0f; break;      // ~2,560 tiles
-            case MapSize.Huge: targetTileCount = 5122; radius = 104.0f; break;      // ~5,120 tiles
-            case MapSize.Gigantic: targetTileCount = 10242; radius = 120.0f; break; // ~10,240 tiles
-            default: targetTileCount = 1282; radius = 72.0f; break;
+            case MapSize.Micro: targetTileCount = 240; radius = 35.0f; break;      // ~240 tiles (12 subdivisions)
+            case MapSize.Tiny: targetTileCount = 500; radius = 50.0f; break;       // ~500 tiles (16 subdivisions)
+            case MapSize.Small: targetTileCount = 980; radius = 70.0f; break;      // ~980 tiles (22 subdivisions)
+            case MapSize.Standard: targetTileCount = 2000; radius = 100.0f; break; // ~2000 tiles (32 subdivisions)
+            case MapSize.Large: targetTileCount = 3920; radius = 140.0f; break;    // ~3920 tiles (44 subdivisions)
+            case MapSize.Huge: targetTileCount = 5120; radius = 200.0f; break;     // ~5120 tiles (50 subdivisions)
+            case MapSize.Gigantic: targetTileCount = 5780; radius = 280.0f; break; // ~5780 tiles (54 subdivisions)
+            default: targetTileCount = 2000; radius = 100.0f; break;
         }
     }
 
@@ -491,7 +487,8 @@ public class GameManager : MonoBehaviour
 
             if (moonGenerator != null)
             {
-                // Configure moon generator
+                // Configure moon generator with the same map size as planet
+                moonGenerator.moonMapSize = (MoonGenerator.MoonMapSize)GameSetupData.moonMapSize;
                 moonGenerator.subdivisions = GameSetupData.moonSize;
                 // Assign loading panel controller if present
                 var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
@@ -506,7 +503,7 @@ public class GameManager : MonoBehaviour
                     Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
                 
-                // Configure moon with correct radius
+                // Configure moon with correct radius (will be calculated by moon generator)
                 moonGenerator.ConfigureMoon(moonRadius);
                 Debug.Log($"[GameManager] MoonGenerator configured with radius: {moonRadius}");
                 
@@ -593,39 +590,6 @@ public class GameManager : MonoBehaviour
             if (cameraManager != null)
             {
                 Debug.Log("GameManager: Refreshed camera references after instantiation.");
-            }
-
-            // --- SGT Volume Manager instantiation and observer assignment ---
-            if (sgtVolumeManagerPrefab != null)
-            {
-                var existingSgtVolumeManager = FindAnyObjectByType<SpaceGraphicsToolkit.Volumetrics.SgtVolumeManager>();
-                if (existingSgtVolumeManager == null)
-                {
-                    instantiatedSgtVolumeManagerGO = Instantiate(sgtVolumeManagerPrefab);
-                    instantiatedSgtVolumeManagerGO.name = "SgtVolumeManager";
-                    Debug.Log("GameManager: Instantiated SGT Volume Manager prefab.");
-                }
-                else
-                {
-                    instantiatedSgtVolumeManagerGO = existingSgtVolumeManager.gameObject;
-                }
-
-                // Assign the observer property to the camera's Camera component
-                var sgtVolumeManager = instantiatedSgtVolumeManagerGO.GetComponent<SpaceGraphicsToolkit.Volumetrics.SgtVolumeManager>();
-                var cameraComponent = instantiatedCameraGO.GetComponent<Camera>();
-                if (sgtVolumeManager != null && cameraComponent != null)
-                {
-                    sgtVolumeManager.Observer = cameraComponent;
-                    Debug.Log("GameManager: Assigned planetary camera as observer to SGT Volume Manager.");
-                }
-                else
-                {
-                    Debug.LogWarning("GameManager: Could not assign observer to SGT Volume Manager (missing component).");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("GameManager: sgtVolumeManagerPrefab not assigned!");
             }
         }
         else if (Camera.main != null)

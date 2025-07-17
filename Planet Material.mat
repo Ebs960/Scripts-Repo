@@ -36,7 +36,7 @@ Material:
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
-  m_LockedProperties: _BiomeMaskCount
+  m_LockedProperties: :m_DoubleSidedGI _BiomeMaskCount
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -191,6 +191,7 @@ Material:
     - _ReceiveShadows: 1
     - _SGT_CloudWarp: 0
     - _SGT_Clouds: 0
+    - _SharpBoundaries: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1

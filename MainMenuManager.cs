@@ -55,7 +55,7 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Controls the planet's hexasphere subdivision level. Higher values increase the number of tiles and map size.")]
     public TextMeshProUGUI planetSizeText;
     public TMP_Dropdown mapSizeDropdown; // NEW: Dropdown for map size
-    public TMP_Dropdown moonSizeDropdown;
+    public TMP_Dropdown moonMapSizeDropdown; // NEW: Dropdown for moon map size
     public TextMeshProUGUI moonSizeText;
     
     // Land Mass settings
@@ -426,15 +426,25 @@ public class MainMenuManager : MonoBehaviour
 
     private int EstimateHexTiles(int subdivisions)
     {
-        // Approximate formula for number of hex tiles on a geodesic sphere
-        return 10 * subdivisions * subdivisions + 2;
+        // Geodesic tile counts for each map size (approximate)
+        switch ((GameManager.MapSize)subdivisions)
+        {
+            case GameManager.MapSize.Micro: return 240;    // ~240 tiles (12 subdivisions)
+            case GameManager.MapSize.Tiny: return 500;     // ~500 tiles (16 subdivisions)
+            case GameManager.MapSize.Small: return 980;    // ~980 tiles (22 subdivisions)
+            case GameManager.MapSize.Standard: return 2000; // ~2000 tiles (32 subdivisions)
+            case GameManager.MapSize.Large: return 3920;   // ~3920 tiles (44 subdivisions)
+            case GameManager.MapSize.Huge: return 5120;    // ~5120 tiles (50 subdivisions)
+            case GameManager.MapSize.Gigantic: return 5780; // ~5780 tiles (54 subdivisions)
+            default: return 2000;
+        }
     }
     
     private void OnMoonSizeChanged(int value)
     {
         moonPreset = value;
-        GameSetupData.moonSize = moonSizePresets[value].subdivisions;
-        GameSetupData.generateMoon = GameSetupData.moonSize > 0;
+        GameSetupData.moonMapSize = (GameManager.MapSize)value;
+        GameSetupData.generateMoon = true; // Always generate moon if a size is selected
         UpdateMoonSizeText();
     }
     
@@ -442,18 +452,8 @@ public class MainMenuManager : MonoBehaviour
     {
         if (moonSizeText != null)
         {
-            string sizeDescription = moonSizePresets[moonPreset].name;
-            int subdivisions = moonSizePresets[moonPreset].subdivisions;
-            
-            if (subdivisions > 0)
-            {
-                // Only show the name, not subdivisions
-                moonSizeText.text = $"Moon Size: {sizeDescription}";
-            }
-            else
-            {
-                moonSizeText.text = "Moon: None";
-            }
+            string sizeDescription = GetMapSizeDisplayName((GameManager.MapSize)moonPreset);
+            moonSizeText.text = $"Moon Size: {sizeDescription} (1/5th scale)";
         }
     }
     
@@ -812,8 +812,8 @@ public class MainMenuManager : MonoBehaviour
         
         // Basic map settings
         GameSetupData.mapSize = (GameManager.MapSize)mapSizeDropdown.value;
-        GameSetupData.moonSize = moonSizePresets[moonPreset].subdivisions;
-        GameSetupData.generateMoon = moonSizePresets[moonPreset].subdivisions > 0;
+        GameSetupData.moonMapSize = (GameManager.MapSize)moonMapSizeDropdown.value;
+        GameSetupData.generateMoon = true; // Always generate moon if a size is selected
         GameSetupData.animalPrevalence = selectedAnimalPrevalence;
 
         // Map generation settings
@@ -1058,15 +1058,15 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeMoonSizeDropdown()
     {
-        moonSizeDropdown.ClearOptions();
+        moonMapSizeDropdown.ClearOptions();
         var options = new List<string>();
-        foreach (var preset in moonSizePresets)
+        foreach (GameManager.MapSize size in System.Enum.GetValues(typeof(GameManager.MapSize)))
         {
-            options.Add(preset.name);
+            options.Add(GetMapSizeDisplayName(size));
         }
-        moonSizeDropdown.AddOptions(options);
-        moonSizeDropdown.value = moonPreset;
-        moonSizeDropdown.onValueChanged.AddListener(OnMoonSizeChanged);
+        moonMapSizeDropdown.AddOptions(options);
+        moonMapSizeDropdown.value = (int)GameSetupData.moonMapSize; // Use moon map size from GameSetupData
+        moonMapSizeDropdown.onValueChanged.AddListener(OnMoonSizeChanged);
         UpdateMoonSizeText();
     }
 } 

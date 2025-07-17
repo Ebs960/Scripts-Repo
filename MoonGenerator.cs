@@ -14,6 +14,11 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     public bool randomSeed = true;
     public int seed = 98765;
 
+    // Moon map size - same as planet but scaled down
+    public enum MoonMapSize { Micro, Tiny, Small, Standard, Large, Huge, Gigantic }
+    [Header("Moon Map Settings")]
+    public MoonMapSize moonMapSize = MoonMapSize.Standard;
+
     [Header("Moon Surface Settings")]
     [Tooltip("Noise frequency for the main moon surface elevation.")]
     public float moonElevationFreq = 2.5f;
@@ -67,8 +72,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     /// </summary>
     public void ConfigureMoon(float radius)
     {
-        // Calculate target tile count based on moon size (smaller than planet)
-        int targetTileCount = 10 * moonSize * moonSize + 2;
+        // Get moon tile count and radius using the same system as planets but scaled down
+        int targetTileCount; float moonRadius;
+        GetMoonMapSizeParams(moonMapSize, out targetTileCount, out moonRadius);
         
         // Generate the grid with the correct radius
         grid.Generate(targetTileCount, radius);
@@ -81,6 +87,27 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         }
         
         Debug.Log($"[MoonGenerator] Configured with radius: {radius}, target tiles: {targetTileCount}");
+    }
+
+    /// <summary>
+    /// Get moon map size parameters - same as planets but scaled down to 1/5th
+    /// </summary>
+    private void GetMoonMapSizeParams(MoonMapSize size, out int targetTileCount, out float radius)
+    {
+        // Moon sizes are 1/5th of planet sizes (both tile count and radius)
+        switch (size)
+        {
+            case MoonMapSize.Micro: targetTileCount = 48; radius = 7.0f; break;      // ~48 tiles (1/5th of 240)
+            case MoonMapSize.Tiny: targetTileCount = 100; radius = 10.0f; break;     // ~100 tiles (1/5th of 500)
+            case MoonMapSize.Small: targetTileCount = 196; radius = 14.0f; break;    // ~196 tiles (1/5th of 980)
+            case MoonMapSize.Standard: targetTileCount = 400; radius = 20.0f; break; // ~400 tiles (1/5th of 2000)
+            case MoonMapSize.Large: targetTileCount = 784; radius = 28.0f; break;    // ~784 tiles (1/5th of 3920)
+            case MoonMapSize.Huge: targetTileCount = 1024; radius = 40.0f; break;    // ~1024 tiles (1/5th of 5120)
+            case MoonMapSize.Gigantic: targetTileCount = 1156; radius = 56.0f; break; // ~1156 tiles (1/5th of 5780)
+            default: targetTileCount = 400; radius = 20.0f; break;
+        }
+        
+        Debug.Log($"[MoonGenerator] Moon map size {size}: {targetTileCount} tiles (1/5th of planet's {targetTileCount * 5}), radius {radius} (1/5th of planet's {radius * 5})");
     }
 
     private void BuildBiomeLookup()
