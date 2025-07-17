@@ -396,6 +396,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void CreateGenerators()
     {
+        Debug.Log($"[CreateGenerators] incoming mapSize = {mapSize}  ({(int)mapSize})");
         if (planetGeneratorPrefab != null)
         {
             GameObject planetGO = Instantiate(planetGeneratorPrefab);

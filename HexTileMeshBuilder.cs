@@ -71,8 +71,8 @@ public static class HexTileMeshBuilder
                 int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
 
                 tris.Add(centerVertexIdx);
+                tris.Add(corner2Idx);   // swapped for outward winding
                 tris.Add(corner1Idx);
-                tris.Add(corner2Idx);
 
                 // Track which tiles use each mesh vertex
                 if (!vertexToTiles.ContainsKey(centerVertexIdx)) vertexToTiles[centerVertexIdx] = new List<int>();
@@ -141,8 +141,8 @@ public static class HexTileMeshBuilder
                 int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
 
                 tris.Add(centerVertexIdx);
+                tris.Add(corner2Idx);   // swapped for outward winding
                 tris.Add(corner1Idx);
-                tris.Add(corner2Idx);
 
                 // Track which tiles use each mesh vertex (each vertex belongs to exactly one tile)
                 vertexToTiles[centerVertexIdx] = new List<int> { tile };
@@ -209,8 +209,8 @@ public static class HexTileMeshBuilder
                 int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
 
                 tris.Add(centerVertexIdx);
+                tris.Add(corner2Idx);   // swapped for outward winding
                 tris.Add(corner1Idx);
-                tris.Add(corner2Idx);
 
                 // Track which tiles use each mesh vertex (each vertex belongs to exactly one tile)
                 vertexToTiles[centerVertexIdx] = new List<int> { tile };
