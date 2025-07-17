@@ -2,242 +2,183 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Converts SphericalHexGrid tiles into a single mesh with proper topology.
-/// Stores biome data per-tile instead of relying on UV-based texture sampling.
+/// Converts SphericalHexGrid tiles into meshes.  When using
+/// BuildWithPerTileBiomeData (…) each tile’s biome index is stored in the
+/// vertex‑color red channel, normalised by (biomeCount‑1) so the shader can
+/// recover the exact slice.
 /// </summary>
 public static class HexTileMeshBuilder
 {
-    /// <summary>
-    /// Build mesh with shared vertices for memory efficiency
-    /// </summary>
-    public static Mesh Build(SphericalHexGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
+    /* ───────────────────────── Shared‑vertex build ───────────────────────── */
+    public static Mesh Build(SphericalHexGrid grid,
+                             out Vector2[]           perTileUV,
+                             out Dictionary<int,List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
-        List<Vector2> uvs = new();
-        List<int> tris = new();
-        perTileUV = new Vector2[tileCount];   // center-UV for lookup
-        vertexToTiles = new Dictionary<int, List<int>>();
+        List<Vector2> uvs   = new();
+        List<int>     tris  = new();
+        perTileUV     = new Vector2[tileCount];
+        vertexToTiles = new();
 
-        // Create a proper mesh where tiles share vertices at boundaries
-        // This prevents the "bunched up" appearance from overlapping geometry
-        
-        // First, create a vertex lookup to avoid duplicates
-        Dictionary<Vector3, int> vertexLookup = new Dictionary<Vector3, int>();
-        
+        Dictionary<Vector3,int> vLookup = new();
+
         for (int tile = 0; tile < tileCount; tile++)
         {
-            var cornerIdx = grid.GetCornersOfTile(tile);
+            int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
-            Vector2 uvCenter = EquirectUV(center);
-            perTileUV[tile] = uvCenter;
 
-            // Add center vertex (unique per tile)
-            int centerVertexIdx;
-            if (!vertexLookup.ContainsKey(center))
+            int cIdx = GetOrAdd(center,   vLookup, verts, uvs);
+            perTileUV[tile] = EquirectUV(center);
+
+            int[] cornerV = new int[corners.Length];
+            for (int i = 0; i < corners.Length; i++)
+                cornerV[i] = GetOrAdd(grid.Vertices[corners[i]], vLookup, verts, uvs);
+
+            for (int i = 0; i < corners.Length; i++)
             {
-                centerVertexIdx = verts.Count;
-                verts.Add(center);
-                uvs.Add(EquirectUV(center));
-                vertexLookup[center] = centerVertexIdx;
-            }
-            else
-            {
-                centerVertexIdx = vertexLookup[center];
-            }
+                int v1 = cornerV[(i+1)%corners.Length];
+                int v2 = cornerV[i];
 
-            // Add corner vertices (shared between tiles)
-            int[] cornerVertexIndices = new int[cornerIdx.Length];
-            for (int c = 0; c < cornerIdx.Length; c++)
-            {
-                Vector3 cornerPos = grid.Vertices[cornerIdx[c]];
-                if (!vertexLookup.ContainsKey(cornerPos))
-                {
-                    cornerVertexIndices[c] = verts.Count;
-                    verts.Add(cornerPos);
-                    uvs.Add(EquirectUV(cornerPos));
-                    vertexLookup[cornerPos] = cornerVertexIndices[c];
-                }
-                else
-                {
-                    cornerVertexIndices[c] = vertexLookup[cornerPos];
-                }
-            }
+                tris.Add(cIdx); tris.Add(v1); tris.Add(v2);
 
-            // Create triangles from center to each edge
-            for (int c = 0; c < cornerIdx.Length; c++)
-            {
-                int corner1Idx = cornerVertexIndices[c];
-                int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
-
-                tris.Add(centerVertexIdx);
-                tris.Add(corner2Idx);   // swapped for outward winding
-                tris.Add(corner1Idx);
-
-                // Track which tiles use each mesh vertex
-                if (!vertexToTiles.ContainsKey(centerVertexIdx)) vertexToTiles[centerVertexIdx] = new List<int>();
-                if (!vertexToTiles.ContainsKey(corner1Idx)) vertexToTiles[corner1Idx] = new List<int>();
-                if (!vertexToTiles.ContainsKey(corner2Idx)) vertexToTiles[corner2Idx] = new List<int>();
-                
-                vertexToTiles[centerVertexIdx].Add(tile);
-                vertexToTiles[corner1Idx].Add(tile);
-                vertexToTiles[corner2Idx].Add(tile);
+                AddRef(vertexToTiles, cIdx, tile);
+                AddRef(vertexToTiles, v1,  tile);
+                AddRef(vertexToTiles, v2,  tile);
             }
         }
-
-        Mesh m = new();
-        m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        m.SetVertices(verts);
-        m.SetUVs(0, uvs);
-        m.SetTriangles(tris, 0);
-        m.RecalculateNormals();
-        
-        Debug.Log($"[HexTileMeshBuilder] Built mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
-        return m;
+        return ToMesh("Shared‑Vertex", verts, uvs, null, tris, tileCount);
     }
 
-    /// <summary>
-    /// Build mesh with separate vertices for each tile to ensure clear boundaries.
-    /// This trades memory for visual clarity and proper biome boundaries.
-    /// </summary>
-    public static Mesh BuildWithSeparateVertices(SphericalHexGrid grid, out Vector2[] perTileUV, out Dictionary<int, List<int>> vertexToTiles)
+    /* ────────────── Separate‑vertex build (sharp edges) ────────────── */
+    public static Mesh BuildWithSeparateVertices(SphericalHexGrid grid,
+                                                 out Vector2[]           perTileUV,
+                                                 out Dictionary<int,List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
-        List<Vector2> uvs = new();
-        List<int> tris = new();
-        perTileUV = new Vector2[tileCount];   // center-UV for lookup
-        vertexToTiles = new Dictionary<int, List<int>>();
+        List<Vector2> uvs   = new();
+        List<int>     tris  = new();
+        perTileUV     = new Vector2[tileCount];
+        vertexToTiles = new();
 
-        // Create separate vertices for each tile to ensure clear boundaries
-        // This will use more memory but provide sharper tile boundaries
-        
         for (int tile = 0; tile < tileCount; tile++)
         {
-            var cornerIdx = grid.GetCornersOfTile(tile);
+            int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
-            Vector2 uvCenter = EquirectUV(center);
-            perTileUV[tile] = uvCenter;
 
-            // Add center vertex (unique per tile)
-            int centerVertexIdx = verts.Count;
-            verts.Add(center);
-            uvs.Add(EquirectUV(center));
+            int cIdx = Add(center, verts, uvs);
+            perTileUV[tile] = EquirectUV(center);
 
-            // Add corner vertices (separate for each tile)
-            int[] cornerVertexIndices = new int[cornerIdx.Length];
-            for (int c = 0; c < cornerIdx.Length; c++)
+            int[] cornerV = new int[corners.Length];
+            for (int i = 0; i < corners.Length; i++)
+                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs);
+
+            for (int i = 0; i < corners.Length; i++)
             {
-                Vector3 cornerPos = grid.Vertices[cornerIdx[c]];
-                cornerVertexIndices[c] = verts.Count;
-                verts.Add(cornerPos);
-                uvs.Add(EquirectUV(cornerPos));
-            }
+                int v1 = cornerV[(i+1)%corners.Length];
+                int v2 = cornerV[i];
+                tris.Add(cIdx); tris.Add(v1); tris.Add(v2);
 
-            // Create triangles from center to each edge
-            for (int c = 0; c < cornerIdx.Length; c++)
-            {
-                int corner1Idx = cornerVertexIndices[c];
-                int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
-
-                tris.Add(centerVertexIdx);
-                tris.Add(corner2Idx);   // swapped for outward winding
-                tris.Add(corner1Idx);
-
-                // Track which tiles use each mesh vertex (each vertex belongs to exactly one tile)
-                vertexToTiles[centerVertexIdx] = new List<int> { tile };
-                vertexToTiles[corner1Idx] = new List<int> { tile };
-                vertexToTiles[corner2Idx] = new List<int> { tile };
+                vertexToTiles[cIdx] = new() { tile };
+                vertexToTiles[v1]   = new() { tile };
+                vertexToTiles[v2]   = new() { tile };
             }
         }
-
-        Mesh m = new();
-        m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        m.SetVertices(verts);
-        m.SetUVs(0, uvs);
-        m.SetTriangles(tris, 0);
-        m.RecalculateNormals();
-        
-        Debug.Log($"[HexTileMeshBuilder] Built separate-vertex mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
-        return m;
+        return ToMesh("Separate‑Vertex", verts, uvs, null, tris, tileCount);
     }
 
-    /// <summary>
-    /// Build mesh with per-tile biome data stored as vertex colors instead of UV-based texture sampling.
-    /// This provides more accurate biome mapping for the hexasphere.
-    /// </summary>
-    public static Mesh BuildWithPerTileBiomeData(SphericalHexGrid grid, Dictionary<int, int> tileBiomeIndices, out Dictionary<int, List<int>> vertexToTiles)
+    /* ─────── Per‑tile‑biome build (vertex colours store biome id) ─────── */
+    public static Mesh BuildWithPerTileBiomeData(SphericalHexGrid grid,
+                                                 Dictionary<int,int> tileBiome,
+                                                 int biomeCount,
+                                                 out Dictionary<int,List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
-        List<Vector3> verts = new();
-        List<Vector2> uvs = new();
-        List<Color> colors = new(); // Store biome indices as vertex colors
-        List<int> tris = new();
-        vertexToTiles = new Dictionary<int, List<int>>();
+        List<Vector3> verts  = new();
+        List<Vector2> uvs    = new();
+        List<Color>   colors = new();
+        List<int>     tris   = new();
+        vertexToTiles        = new();
 
-        // Create separate vertices for each tile to ensure proper biome boundaries
+        float normaliser = 1f / Mathf.Max(1, biomeCount - 1);
+
         for (int tile = 0; tile < tileCount; tile++)
         {
-            var cornerIdx = grid.GetCornersOfTile(tile);
+            int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
-            
-            // Get biome index for this tile (default to 0 if not found)
-            int biomeIndex = tileBiomeIndices.ContainsKey(tile) ? tileBiomeIndices[tile] : 0;
-            Color biomeColor = new Color(biomeIndex / 255f, 0, 0, 1); // Store as red channel
 
-            // Add center vertex (unique per tile)
-            int centerVertexIdx = verts.Count;
-            verts.Add(center);
-            uvs.Add(EquirectUV(center));
-            colors.Add(biomeColor);
+            int biomeIdx   = tileBiome.TryGetValue(tile, out int b) ? b : 0;
+            Color biomeCol = new(biomeIdx * normaliser, 0, 0, 1);
 
-            // Add corner vertices (separate for each tile)
-            int[] cornerVertexIndices = new int[cornerIdx.Length];
-            for (int c = 0; c < cornerIdx.Length; c++)
+            int cIdx = Add(center, verts, uvs, colors, biomeCol);
+
+            int[] cornerV = new int[corners.Length];
+            for (int i = 0; i < corners.Length; i++)
+                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs, colors, biomeCol);
+
+            for (int i = 0; i < corners.Length; i++)
             {
-                Vector3 cornerPos = grid.Vertices[cornerIdx[c]];
-                cornerVertexIndices[c] = verts.Count;
-                verts.Add(cornerPos);
-                uvs.Add(EquirectUV(cornerPos));
-                colors.Add(biomeColor); // Same biome for all vertices of this tile
-            }
+                int v1 = cornerV[(i+1)%corners.Length];
+                int v2 = cornerV[i];
+                tris.Add(cIdx); tris.Add(v1); tris.Add(v2);
 
-            // Create triangles from center to each edge
-            for (int c = 0; c < cornerIdx.Length; c++)
-            {
-                int corner1Idx = cornerVertexIndices[c];
-                int corner2Idx = cornerVertexIndices[(c + 1) % cornerIdx.Length];
-
-                tris.Add(centerVertexIdx);
-                tris.Add(corner2Idx);   // swapped for outward winding
-                tris.Add(corner1Idx);
-
-                // Track which tiles use each mesh vertex (each vertex belongs to exactly one tile)
-                vertexToTiles[centerVertexIdx] = new List<int> { tile };
-                vertexToTiles[corner1Idx] = new List<int> { tile };
-                vertexToTiles[corner2Idx] = new List<int> { tile };
+                vertexToTiles[cIdx] = new() { tile };
+                vertexToTiles[v1]   = new() { tile };
+                vertexToTiles[v2]   = new() { tile };
             }
         }
+        return ToMesh("Per‑Tile‑Biome", verts, uvs, colors, tris, tileCount);
+    }
 
-        Mesh m = new();
-        m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        m.SetVertices(verts);
-        m.SetUVs(0, uvs);
-        m.SetColors(colors); // Set vertex colors for biome data
-        m.SetTriangles(tris, 0);
+    /* ─────────────────────────── Helpers ─────────────────────────── */
+    static int GetOrAdd(Vector3 pos, Dictionary<Vector3,int> lut,
+                        List<Vector3> v, List<Vector2> u)
+    {
+        if (lut.TryGetValue(pos, out int idx)) return idx;
+        idx = v.Count;
+        v.Add(pos);
+        u.Add(EquirectUV(pos));
+        lut[pos] = idx;
+        return idx;
+    }
+
+    static int Add(Vector3 pos, List<Vector3> v, List<Vector2> u) =>
+        Add(pos, v, u, null, Color.white);
+
+    static int Add(Vector3 pos, List<Vector3> v, List<Vector2> u,
+                   List<Color> c, Color col)
+    {
+        int idx = v.Count;
+        v.Add(pos);
+        u.Add(EquirectUV(pos));
+        c?.Add(col);
+        return idx;
+    }
+
+    static void AddRef(Dictionary<int,List<int>> map, int vert, int tile)
+    {
+        if (!map.TryGetValue(vert, out var list)) map[vert] = list = new();
+        list.Add(tile);
+    }
+
+    static Mesh ToMesh(string label, List<Vector3> v, List<Vector2> u,
+                       List<Color> c, List<int> t, int tileCount)
+    {
+        Mesh m = new() { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+        m.SetVertices(v);
+        m.SetUVs(0, u);
+        if (c != null) m.SetColors(c);
+        m.SetTriangles(t, 0);
         m.RecalculateNormals();
-        
-        Debug.Log($"[HexTileMeshBuilder] Built per-tile biome mesh with {verts.Count} vertices, {tris.Count/3} triangles for {tileCount} tiles");
+        Debug.Log($"[HexTileMeshBuilder] {label} mesh – verts:{v.Count} tris:{t.Count/3} tiles:{tileCount}");
         return m;
     }
 
-    /// <summary>
-    /// Convert 3D direction to equirectangular UV coordinates
-    /// </summary>
     static Vector2 EquirectUV(Vector3 n)
     {
-        float u = (Mathf.Atan2(n.x, n.z) / Mathf.PI + 1) * 0.5f;
-        float v = (Mathf.Asin(n.y) / Mathf.PI) + 0.5f;
-        return new Vector2(u, v);
+        float u = (Mathf.Atan2(n.x, n.z) / Mathf.PI + 1f) * 0.5f;
+        float v = Mathf.Asin(n.y) / Mathf.PI + 0.5f;
+        return new(u, v);
     }
 }

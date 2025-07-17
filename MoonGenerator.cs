@@ -68,14 +68,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     {
         // Generate the grid with the correct radius and subdivisions
         grid.GenerateFromSubdivision(subdivisions, radius);
-        
-        // Build the mesh
-        if (hexasphereRenderer != null)
-        {
-            hexasphereRenderer.generatorSource = this;
-            hexasphereRenderer.BuildMesh(grid);
-        }
-        
+        // Mesh build moved after biomes are assigned
         Debug.Log($"[MoonGenerator] Configured with subdivisions: {subdivisions}, radius: {radius}");
     }
 
@@ -236,7 +229,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
             // Decorations are spawned by SGT systems; old code removed.
 
-             // Assign the final elevation back to the data struct (especially important for caves)
+            // Assign the final elevation back to the data struct (especially important for caves)
             td.elevation = finalElevation;
             data[i] = td;
 
@@ -248,14 +241,22 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                     loadingPanelController.SetProgress(0.4f + (float)i / tileCount * 0.1f); // Progress 40% to 50%
                     loadingPanelController.SetStatus("Finalizing moon terrain...");
                 }
-        yield return null;
+                yield return null;
             }
         }
         Debug.Log($"Generated Moon Surface with {tileCount} tiles.");
-        
+
+        // Build mesh after biomes are assigned
+        if (hexasphereRenderer != null)
+        {
+            hexasphereRenderer.generatorSource = this;
+            hexasphereRenderer.BuildMesh(grid);
+            hexasphereRenderer.ApplyHeightDisplacement(grid.Radius);
+        }
+
         // NEW: Build visual textures for SGT
         yield return StartCoroutine(BuildMoonVisualMapsBatched());
-        
+
         // Debug: List biome quantities
         LogBiomeQuantities();
     }

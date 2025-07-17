@@ -477,17 +477,12 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         
-        Debug.Log($"Total CivData available: {allCivDatas.Length}");
 
         // Partition CivData pools
         var normalPool    = allCivDatas.Where(d => !d.isTribe && !d.isCityState).ToList();
         var tribePool     = allCivDatas.Where(d => d.isTribe).ToList();
         var cityStatePool = allCivDatas.Where(d => d.isCityState).ToList();
 
-        Debug.Log($"Pool sizes - Normal: {normalPool.Count}, Tribes: {tribePool.Count}, CityStates: {cityStatePool.Count}");
-        foreach(var cData in normalPool) Debug.Log($"Normal Pool Contains: {cData.civName}");
-        foreach(var cData in tribePool) Debug.Log($"Tribe Pool Contains: {cData.civName}");
-        foreach(var cData in cityStatePool) Debug.Log($"CityState Pool Contains: {cData.civName}");
 
         // 1) Player civ
         if (playerCivData == null)

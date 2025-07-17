@@ -54,7 +54,7 @@ public class GameManager : MonoBehaviour
     [Range(0, 5)]
     public int animalPrevalence = 3;
 
-    public enum MapSize { Small = 3, Standard = 4, Large = 5 }
+    public enum MapSize { Small, Standard, Large }   // 0,1,2
     [Header("Map Settings")]
     public MapSize mapSize = MapSize.Standard;
     public bool generateMoon = true;
@@ -157,20 +157,19 @@ public class GameManager : MonoBehaviour
     // Helper to get subdivisions and radius from preset
     public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
     {
-        subdivisions = (int)size;
         switch (size)
         {
-            case MapSize.Small: radius = 20f; break;
-            case MapSize.Standard: radius = 25f; break;
-            case MapSize.Large: radius = 30f; break;
-            default: radius = 25f; break;
+            case MapSize.Small:    subdivisions = 3; radius = 20f; break;   // 162 tiles
+            case MapSize.Standard: subdivisions = 4; radius = 25f; break;   // 642 tiles
+            case MapSize.Large:    subdivisions = 5; radius = 30f; break;   // 2 562 tiles
+            default:               subdivisions = 4; radius = 25f; break;
         }
     }
 
     public static float GetMoonRadius(MapSize size)
     {
         GetMapSizeParams(size, out _, out float planetRadius);
-        return planetRadius / 3f;
+        return planetRadius / 5f;
     }
 
     private void Awake()
@@ -483,8 +482,8 @@ public class GameManager : MonoBehaviour
             if (moonGenerator != null)
             {
                 // Configure moon generator with the same subdivision as planet
-                int moonSubdivisions = (int)mapSize;
-                float moonRadius = GetMoonRadius(mapSize);
+                GetMapSizeParams(mapSize, out int moonSubdivisions, out float planetRadius);
+                float moonRadius = planetRadius / 5f;
 
                 // Assign loading panel controller if present
                 var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
