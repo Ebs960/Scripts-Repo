@@ -1,68 +1,76 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// Test script to verify the new proper hexasphere system using subdivision count only.
-/// </summary>
+/// <summary>Quick test harness for the geodesic grid.</summary>
 public class HexasphereTest : MonoBehaviour
 {
+    /* ─────────────────────────  STATIC DATA  ──────────────────────────
+       "Depth" = how many recursive edge‑splits you ask the generator for.
+       The tile totals follow  tiles = 10*(2^(depth‑1))² + 2 .
+       We pre‑compute once so nobody ever hand‑types a number.             */
+    private static readonly int[] TilesPerDepth;
+
+    static HexasphereTest()
+    {
+        const int MAX_DEPTH = 20;                 // slider upper‑bound
+        TilesPerDepth       = new int[MAX_DEPTH + 1];
+        for (int d = 1; d <= MAX_DEPTH; d++)
+        {
+            int f = 1 << (d - 1);                 // 2^(d‑1)
+            TilesPerDepth[d] = 10 * f * f + 2;
+        }
+    }
+
+    /* ─────────────────────────  INSPECTOR FIELDS  ────────────────────*/
     [Header("Test Settings")]
-    [Range(1, 20)]
-    public int subdivisions = 3; // Now directly set subdivision
-    public float testRadius = 50f;
-    public bool runTestOnStart = true;
+    [Range(1, 20)] public int  subdivisions = 3;
+    public float  testRadius  = 50f;
+    public bool   runTestOnStart = true;
 
-    [Header("Debug Visualization")]
-    public bool showTileCenters = true;
-    public bool showNeighbors = true;
-    public bool showCorners = true;
-    public Color tileCenterColor = Color.white;
+    [Header("Debug Visualisation")]
+    public bool showTileCenters = true, showNeighbors = true, showCorners = true;
+    public Color tileCenterColor   = Color.white;
     public Color neighborLineColor = Color.yellow;
-    public Color cornerColor = Color.red;
+    public Color cornerColor       = Color.red;
 
-    private SphericalHexGrid testGrid;
-    private List<GameObject> debugObjects = new List<GameObject>();
+    /* ─────────────────────────  INTERNAL STATE  ──────────────────────*/
+    private SphericalHexGrid   testGrid;
+    private readonly List<GameObject> debugObjects = new();
 
-    void Start()
+    /* ─────────────────────────  LIFECYCLE  ───────────────────────────*/
+    private void Start()
     {
-        if (runTestOnStart)
-        {
-            RunTest();
-        }
+        if (runTestOnStart) RunTest();
     }
 
-    [ContextMenu("Show Valid Subdivisions")]
-    public void ShowValidSubdivisions()
-    {
-        Debug.Log("[HexasphereTest] Valid subdivisions:");
-        for (int n = 1; n <= 20; n++)
-        {
-            int tiles = 10 * n * n + 2;
-            Debug.Log($"Subdivision {n}: {tiles} tiles");
-        }
-    }
-
+    /* ─────────────────────────  MAIN ENTRY  ──────────────────────────*/
     [ContextMenu("Run Hexasphere Test")]
     public void RunTest()
     {
-        Debug.Log($"[HexasphereTest] Starting hexasphere test with subdivisions={subdivisions} (estimated tiles={10 * subdivisions * subdivisions + 2})...");
+        int estimated = TilesPerDepth[subdivisions];
+        Debug.Log($"[HexasphereTest] Starting hexasphere test " +
+                  $"with subdivisions={subdivisions} (≈{estimated} tiles)…");
 
         ClearDebugObjects();
 
-        // Create and generate test grid
         testGrid = new SphericalHexGrid();
         testGrid.GenerateFromSubdivision(subdivisions, testRadius);
 
         Debug.Log($"[HexasphereTest] Generated grid with {testGrid.TileCount} tiles");
         Debug.Log($"[HexasphereTest] Pentagons: {testGrid.pentagonIndices.Count}");
-        Debug.Log($"[HexasphereTest] Hexagons: {testGrid.TileCount - testGrid.pentagonIndices.Count}");
-        Debug.Log($"[HexasphereTest] Vertices: {testGrid.Vertices.Count}");
+        Debug.Log($"[HexasphereTest] Hexagons:  {testGrid.TileCount - testGrid.pentagonIndices.Count}");
+        Debug.Log($"[HexasphereTest] Vertices:  {testGrid.Vertices.Count}");
 
         ValidateGrid();
+        CreateDebugVisualization();
+    }
 
-        // Create debug visualization
-        if (showTileCenters || showNeighbors || showCorners)
-            CreateDebugVisualization();
+    /* ─────────────────────────  UTILITIES  ───────────────────────────*/
+    [ContextMenu("Show Valid Subdivisions")]
+    public void ShowValidSubdivisions()
+    {
+        for (int d = 1; d < TilesPerDepth.Length; d++)
+            Debug.Log($"Depth {d} → {TilesPerDepth[d]} tiles");
     }
 
     private void ValidateGrid()
