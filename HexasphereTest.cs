@@ -82,6 +82,9 @@ public class HexasphereTest : MonoBehaviour
 
         ValidateGrid();
         CreateDebugVisualization();
+
+        // Build the visual mesh using HexasphereRenderer
+        BuildRenderer();
     }
 
     /* ─────────────────────────  UTILITIES  ───────────────────────────*/
@@ -203,6 +206,40 @@ public class HexasphereTest : MonoBehaviour
                 debugObjects.Add(cornerObj);
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Hexasphere Rendering
+    // ------------------------------------------------------------------
+    private void BuildRenderer()
+    {
+        HexasphereRenderer renderer = GetComponent<HexasphereRenderer>();
+        if (renderer == null)
+            renderer = gameObject.AddComponent<HexasphereRenderer>();
+
+        float radius = testRadius;
+
+        // Generate simple perlin-based elevations
+        float[] elev = new float[testGrid.TileCount];
+        for (int i = 0; i < testGrid.TileCount; i++)
+        {
+            Vector3 p = testGrid.tileCenters[i].normalized * 4f;
+            float noise = Mathf.PerlinNoise(p.x + 0.5f, p.y + 0.5f);
+            elev[i] = noise * 0.1f;
+        }
+
+        // 1) Spawn the dummy generator and give it the elevation array
+        var dummy = gameObject.AddComponent<DummyElevationGenerator>();
+        dummy.elevations = elev;
+
+        // 2) Point the renderer at it
+        renderer.generatorSource = dummy;
+
+        // 3) Build mesh and apply displacement
+        renderer.BuildMesh(testGrid);
+        renderer.ApplyHeightDisplacement(radius);
+
+        Debug.Log("[HexasphereTest] DummyElevationGenerator attached, mesh built, displacement applied.");
     }
 
     private void ClearDebugObjects()
