@@ -34,7 +34,7 @@ public class HexasphereTest : MonoBehaviour
     [ContextMenu("Show Valid Subdivisions")]
     public void ShowValidSubdivisions()
     {
-        Debug.Log("[HexasphereTest] Valid subdivisions and tile counts:");
+        Debug.Log("[HexasphereTest] Valid subdivisions:");
         for (int n = 1; n <= 20; n++)
         {
             int tiles = 10 * n * n + 2;
@@ -45,7 +45,7 @@ public class HexasphereTest : MonoBehaviour
     [ContextMenu("Run Hexasphere Test")]
     public void RunTest()
     {
-        Debug.Log($"[HexasphereTest] Starting hexasphere test with subdivisions={subdivisions} (tiles={10 * subdivisions * subdivisions + 2})...");
+        Debug.Log($"[HexasphereTest] Starting hexasphere test with subdivisions={subdivisions} (estimated tiles={10 * subdivisions * subdivisions + 2})...");
 
         ClearDebugObjects();
 

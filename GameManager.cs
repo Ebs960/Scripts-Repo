@@ -54,11 +54,9 @@ public class GameManager : MonoBehaviour
     [Range(0, 5)]
     public int animalPrevalence = 3;
 
-    public enum MapSize { Micro, Tiny, Small, Standard, Large, Huge, Gigantic }
+    public enum MapSize { Small = 3, Standard = 4, Large = 5 }
     [Header("Map Settings")]
     public MapSize mapSize = MapSize.Standard;
-    public int moonSize = 4;   // Moon subdivisions (if enabled) - smaller than planet
-    public float moonRadius = 20f; // Moon radius (smaller than planet) - quadrupled
     public bool generateMoon = true;
 
     [Header("References")]
@@ -156,21 +154,23 @@ public class GameManager : MonoBehaviour
         return GetNearestHexTile(worldPoint, this.transform);
     }
 
-    // Helper to get target tile count and radius from preset
-    // Each map size has a fixed number of tiles with consistent hex tile area
-    public static void GetMapSizeParams(MapSize size, out int targetTileCount, out float radius)
+    // Helper to get subdivisions and radius from preset
+    public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
     {
+        subdivisions = (int)size;
         switch (size)
         {
-            case MapSize.Micro: targetTileCount = 240; radius = 35.0f; break;      // ~240 tiles (12 subdivisions)
-            case MapSize.Tiny: targetTileCount = 500; radius = 50.0f; break;       // ~500 tiles (16 subdivisions)
-            case MapSize.Small: targetTileCount = 980; radius = 70.0f; break;      // ~980 tiles (22 subdivisions)
-            case MapSize.Standard: targetTileCount = 2000; radius = 100.0f; break; // ~2000 tiles (32 subdivisions)
-            case MapSize.Large: targetTileCount = 3920; radius = 140.0f; break;    // ~3920 tiles (44 subdivisions)
-            case MapSize.Huge: targetTileCount = 5120; radius = 200.0f; break;     // ~5120 tiles (50 subdivisions)
-            case MapSize.Gigantic: targetTileCount = 5780; radius = 280.0f; break; // ~5780 tiles (54 subdivisions)
-            default: targetTileCount = 2000; radius = 100.0f; break;
+            case MapSize.Small: radius = 20f; break;
+            case MapSize.Standard: radius = 25f; break;
+            case MapSize.Large: radius = 30f; break;
+            default: radius = 25f; break;
         }
+    }
+
+    public static float GetMoonRadius(MapSize size)
+    {
+        GetMapSizeParams(size, out _, out float planetRadius);
+        return planetRadius / 3f;
     }
 
     private void Awake()
@@ -204,7 +204,6 @@ public class GameManager : MonoBehaviour
         numberOfCityStates = GameSetupData.numberOfCityStates;
         numberOfTribes = GameSetupData.numberOfTribes;
         mapSize = GameSetupData.mapSize;
-        moonSize = GameSetupData.moonSize;
         animalPrevalence = GameSetupData.animalPrevalence;
         generateMoon = GameSetupData.generateMoon;
 
@@ -412,16 +411,16 @@ public class GameManager : MonoBehaviour
             }
 
             // --- Use map size preset ---
-            int targetTileCount; float radius;
-            GetMapSizeParams(mapSize, out targetTileCount, out radius);
+            int subdivisions; float radius;
+            GetMapSizeParams(mapSize, out subdivisions, out radius);
 
 
             // Generate grid data using the new proper geodesic hexasphere system with the correct radius
             if (planetGenerator != null)
             {
-                Debug.Log($"[GameManager] Configuring planet: targetTileCount={targetTileCount}, radius={radius}");
+                Debug.Log($"[GameManager] Configuring planet: subdivisions={(int)subdivisions}, radius={radius}");
                 planetGenerator.radius = radius; // Set the radius property
-                planetGenerator.Grid.GenerateFromSubdivision(targetTileCount, radius);
+                planetGenerator.Grid.GenerateFromSubdivision(subdivisions, radius);
                 Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
                 
                 // Configure the hexasphere renderer for the new system
@@ -488,9 +487,10 @@ public class GameManager : MonoBehaviour
 
             if (moonGenerator != null)
             {
-                // Configure moon generator with the same map size as planet
-                moonGenerator.moonMapSize = (MoonGenerator.MoonMapSize)GameSetupData.moonMapSize;
-                moonGenerator.subdivisions = GameSetupData.moonSize;
+                // Configure moon generator with the same subdivision as planet
+                int moonSubdivisions = (int)mapSize;
+                float moonRadius = GetMoonRadius(mapSize);
+
                 // Assign loading panel controller if present
                 var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
                 if (loadingPanelController != null)
@@ -504,8 +504,8 @@ public class GameManager : MonoBehaviour
                     Debug.Log("[GameManager] MoonGenerator biomeSettings set from PlanetGenerator.");
                 }
                 
-                // Configure moon with correct radius (will be calculated by moon generator)
-                moonGenerator.ConfigureMoon(moonRadius);
+                // Configure moon with correct radius and subdivisions
+                moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
                 Debug.Log($"[GameManager] MoonGenerator configured with radius: {moonRadius}");
                 
                 // Rebuild moon mesh with correct radius
@@ -543,7 +543,6 @@ public class GameManager : MonoBehaviour
         numberOfCityStates = GameSetupData.numberOfCityStates;
         numberOfTribes = GameSetupData.numberOfTribes;
         mapSize = GameSetupData.mapSize;
-        moonSize = GameSetupData.moonSize;
         animalPrevalence = GameSetupData.animalPrevalence;
         generateMoon = GameSetupData.generateMoon;
         Debug.Log($"GameManager.StartNewGame() - Refreshed Counts: AI: {numberOfCivilizations}, CS: {numberOfCityStates}, Tribes: {numberOfTribes}");
