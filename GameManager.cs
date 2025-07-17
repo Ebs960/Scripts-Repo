@@ -421,7 +421,7 @@ public class GameManager : MonoBehaviour
             {
                 Debug.Log($"[GameManager] Configuring planet: targetTileCount={targetTileCount}, radius={radius}");
                 planetGenerator.radius = radius; // Set the radius property
-                planetGenerator.Grid.Generate(targetTileCount, radius);
+                planetGenerator.Grid.GenerateFromSubdivision(targetTileCount, radius);
                 Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
                 
                 // Configure the hexasphere renderer for the new system

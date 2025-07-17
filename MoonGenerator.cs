@@ -77,7 +77,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         GetMoonMapSizeParams(moonMapSize, out targetTileCount, out moonRadius);
         
         // Generate the grid with the correct radius
-        grid.Generate(targetTileCount, radius);
+        grid.GenerateFromSubdivision(targetTileCount, radius);
         
         // Build the mesh
         if (hexasphereRenderer != null)

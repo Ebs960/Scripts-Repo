@@ -207,7 +207,7 @@ public class TileClickDetector : MonoBehaviour
         Vector3 planetCenter = planetTransform.position;
         Vector3 localDirection = (worldPosition - planetCenter).normalized;
         
-        return grid.GetTileAtPosition(localDirection, true);
+        return grid.GetTileAtPosition(localDirection);
     }
     
     /// <summary>

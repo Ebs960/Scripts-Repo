@@ -3,568 +3,246 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Generates a proper geodesic hexasphere using RedBlobGames' approach.
-/// Creates a true hex grid on a sphere with proper topology and corner generation.
+/// Generates a true geodesic hexasphere (dual of subdivided icosahedron).
+/// Each tile is centered at a vertex of the subdivided sphere mesh.
+/// Tiles are pentagons (12, at icosahedron vertices) or hexagons (everywhere else).
 /// </summary>
 public class SphericalHexGrid
 {
     public int TileCount => tileCenters.Length;
-    public Vector3[] tileCenters;             // Center point of each tile (on sphere surface)
+    public Vector3[] tileCenters;            // Center point of each tile (on sphere surface)
     public List<int>[] neighbors;            // Neighbor indices for each tile
-    public event System.Action<SphericalHexGrid> OnGeneration;  // Event fired when generation is complete
-
-    // Expose generated geometry for mesh building
-    public List<Vector3> Vertices { get; private set; }
-    public List<int>[] tileCorners;          // Corner vertex indices for each tile
-    
-    // Store the radius for later access
+    public List<int>[] tileCorners;          // For each tile: list of indices (into Vertices) for corners (polygon, sorted)
+    public List<Vector3> Vertices { get; private set; }  // List of all corner positions
     public float Radius { get; private set; }
-    
-    // Track pentagon tiles (icosahedron vertices)
-    public HashSet<int> pentagonIndices { get; private set; }
-
-    // Internal data structures for proper geodesic generation
-    private List<Vector3> icosahedronVertices;
-    private List<int[]> icosahedronFaces;
-    private List<Vector3> subdividedVertices;
-    private List<int[]> subdividedFaces;
-    private Dictionary<Vector3, int> vertexToIndex;
+    public HashSet<int> pentagonIndices { get; private set; } // Indices of 12 pentagon tiles
 
     /// <summary>
-    /// Generate a proper geodesic hexasphere with correct topology
+    /// Main generation method: create the hexasphere by subdivision level.
     /// </summary>
-    /// <param name="targetTileCount">Target number of tiles to generate</param>
-    /// <param name="radius">Radius of the sphere</param>
-    public void Generate(int targetTileCount, float radius)
+    public void GenerateFromSubdivision(int subdivision, float radius)
     {
         Radius = radius;
-        Debug.Log($"[SphericalHexGrid] Generating proper geodesic hexasphere, target={targetTileCount}, radius={radius}");
 
-        // Calculate the number of icosahedron subdivisions needed
-        int subdivisions = CalculateSubdivisions(targetTileCount);
-        Debug.Log($"[SphericalHexGrid] Using {subdivisions} icosahedron subdivisions");
+        // Step 1: Build subdivided icosahedron mesh (returns vertices and faces)
+        List<Vector3> meshVertices;
+        List<int[]> meshFaces;
+        BuildSubdividedIcosahedron(subdivision, out meshVertices, out meshFaces);
 
-        // Step 1: Generate icosahedron
-        GenerateIcosahedron();
-
-        // Step 2: Subdivide icosahedron faces
-        SubdivideIcosahedron(subdivisions);
-
-        // Step 3: Generate hex centers from face centers (RedBlobGames method)
-        GenerateHexCentersFromFaces();
-
-        // Step 4: Build proper neighbor relationships using dual graph
-        BuildNeighborsFromDualGraph();
-
-        // Step 5: Detect the 12 pentagon tiles (original icosahedron vertices)
-        DetectPentagons();
-
-        // Step 6: Build proper corner vertices
-        BuildTileCorners();
-
-        Debug.Log($"[SphericalHexGrid] Generated {tileCenters.Length} tiles with proper topology");
-        Debug.Log($"[SphericalHexGrid] Pentagons: {pentagonIndices.Count}, Hexagons: {tileCenters.Length - pentagonIndices.Count}");
-
-        // Signal completion
-        OnGeneration?.Invoke(this);
-    }
-
-    /// <summary>
-    /// Get valid tile counts for different icosahedron subdivision levels
-    /// </summary>
-    public static int[] GetValidTileCounts()
-    {
-        List<int> validCounts = new List<int>();
-        for (int subdivisions = 1; subdivisions <= 10; subdivisions++)
+        // Step 2: Build dual graph - each unique vertex becomes a tile
+        // Build: - For each vertex, list of incident faces
+        Dictionary<int, List<int>> vertexToFaces = new Dictionary<int, List<int>>();
+        for (int f = 0; f < meshFaces.Count; f++)
         {
-            int faces = 20 * (subdivisions + 1) * (subdivisions + 1);
-            validCounts.Add(faces);
-        }
-        return validCounts.ToArray();
-    }
-
-    /// <summary>
-    /// Get the closest valid tile count to the target
-    /// </summary>
-    public static int GetClosestValidTileCount(int targetTileCount)
-    {
-        int[] validCounts = GetValidTileCounts();
-        int closest = validCounts[0];
-        int minDiff = Mathf.Abs(targetTileCount - closest);
-        
-        foreach (int count in validCounts)
-        {
-            int diff = Mathf.Abs(targetTileCount - count);
-            if (diff < minDiff)
+            foreach (int v in meshFaces[f])
             {
-                minDiff = diff;
-                closest = count;
+                if (!vertexToFaces.ContainsKey(v)) vertexToFaces[v] = new List<int>();
+                vertexToFaces[v].Add(f);
             }
         }
-        
-        return closest;
-    }
 
-    /// <summary>
-    /// Calculate the number of icosahedron subdivisions needed for target tile count
-    /// </summary>
-    private int CalculateSubdivisions(int targetTileCount)
-    {
-        // Each icosahedron face generates (subdivisions + 1)^2 faces
-        int subdivisions = Mathf.RoundToInt(Mathf.Sqrt(targetTileCount / 20f) - 1);
-        subdivisions = Mathf.Max(1, subdivisions);
+        int tileCount = meshVertices.Count;
+        tileCenters = new Vector3[tileCount];
+        neighbors = new List<int>[tileCount];
+        tileCorners = new List<int>[tileCount];
+        Vertices = new List<Vector3>();
+        pentagonIndices = new HashSet<int>();
 
-        int actualFaces = 20 * (subdivisions + 1) * (subdivisions + 1);
-        Debug.Log($"[SphericalHexGrid] Target: {targetTileCount}, Subdivisions: {subdivisions}, Actual faces: {actualFaces}");
-        return subdivisions;
-    }
+        // Step 3: For each tile (vertex), assign center, corners, neighbors
+        Dictionary<Vector3, int> cornerLookup = new Dictionary<Vector3, int>(new Vector3EqualityComparer(1e-5f));
 
-    /// <summary>
-    /// Generate icosahedron vertices and faces
-    /// </summary>
-    private void GenerateIcosahedron()
-    {
-        icosahedronVertices = new List<Vector3>();
-        icosahedronFaces = new List<int[]>();
-
-        float phi = (1f + Mathf.Sqrt(5f)) / 2f; // Golden ratio
-        float a = 1f;
-        float b = 1f / phi;
-
-        // Generate 12 icosahedron vertices
-        icosahedronVertices.Add(new Vector3(0, a, b));
-        icosahedronVertices.Add(new Vector3(0, a, -b));
-        icosahedronVertices.Add(new Vector3(0, -a, b));
-        icosahedronVertices.Add(new Vector3(0, -a, -b));
-        icosahedronVertices.Add(new Vector3(a, b, 0));
-        icosahedronVertices.Add(new Vector3(a, -b, 0));
-        icosahedronVertices.Add(new Vector3(-a, b, 0));
-        icosahedronVertices.Add(new Vector3(-a, -b, 0));
-        icosahedronVertices.Add(new Vector3(b, 0, a));
-        icosahedronVertices.Add(new Vector3(-b, 0, a));
-        icosahedronVertices.Add(new Vector3(b, 0, -a));
-        icosahedronVertices.Add(new Vector3(-b, 0, -a));
-
-        // Normalize all vertices to unit sphere
-        for (int i = 0; i < icosahedronVertices.Count; i++)
+        for (int t = 0; t < tileCount; t++)
         {
-            icosahedronVertices[i] = icosahedronVertices[i].normalized;
-        }
+            Vector3 center = meshVertices[t].normalized * Radius;
+            tileCenters[t] = center;
 
-        // Define 20 icosahedron faces (triangles)
-        int[,] faceIndices = {
-            {0, 8, 4}, {0, 4, 1}, {0, 1, 9}, {0, 9, 2}, {0, 2, 8},
-            {1, 4, 10}, {1, 10, 3}, {1, 3, 9}, {2, 9, 3}, {2, 3, 11},
-            {2, 11, 8}, {3, 10, 11}, {4, 8, 5}, {4, 5, 10}, {5, 8, 11},
-            {5, 11, 7}, {5, 7, 6}, {5, 6, 4}, {6, 7, 9}, {6, 9, 1}
-        };
-
-        for (int i = 0; i < 20; i++)
-        {
-            icosahedronFaces.Add(new int[] { faceIndices[i, 0], faceIndices[i, 1], faceIndices[i, 2] });
-        }
-    }
-
-    /// <summary>
-    /// Subdivide icosahedron faces using geodesic subdivision
-    /// </summary>
-    private void SubdivideIcosahedron(int subdivisions)
-    {
-        subdividedVertices = new List<Vector3>(icosahedronVertices);
-        subdividedFaces = new List<int[]>();
-        vertexToIndex = new Dictionary<Vector3, int>();
-
-        // Initialize vertex lookup for original icosahedron vertices
-        for (int i = 0; i < icosahedronVertices.Count; i++)
-        {
-            vertexToIndex[icosahedronVertices[i]] = i;
-        }
-
-        // Subdivide each icosahedron face
-        foreach (int[] face in icosahedronFaces)
-        {
-            SubdivideFace(face, subdivisions);
-        }
-
-        // Normalize all subdivided vertices to unit sphere
-        for (int i = 0; i < subdividedVertices.Count; i++)
-        {
-            subdividedVertices[i] = subdividedVertices[i].normalized;
-        }
-    }
-
-    /// <summary>
-    /// Subdivide a single triangular face
-    /// </summary>
-    private void SubdivideFace(int[] face, int subdivisions)
-    {
-        Vector3 v0 = icosahedronVertices[face[0]];
-        Vector3 v1 = icosahedronVertices[face[1]];
-        Vector3 v2 = icosahedronVertices[face[2]];
-
-        // Create vertices using proper triangular barycentric coordinates
-        // For each subdivision level, we create vertices at barycentric coordinates
-        // where i + j + k = subdivisions (i, j, k are non-negative integers)
-        
-        // Generate all vertices first
-        Dictionary<string, int> barycentricToVertex = new Dictionary<string, int>();
-        
-        for (int i = 0; i <= subdivisions; i++)
-        {
-            for (int j = 0; j <= subdivisions - i; j++)
+            // -- Corners: for each face incident to this vertex, use face center as a corner
+            var incidentFaces = vertexToFaces[t];
+            var corners = new List<int>();
+            var faceCenters = incidentFaces.Select(fIdx =>
             {
-                int k = subdivisions - i - j;
-                
-                // Calculate barycentric coordinates (normalized)
-                float u = (float)i / subdivisions;
-                float v = (float)j / subdivisions;
-                float w = (float)k / subdivisions;
-                
-                // Ensure barycentric coordinates sum to 1
-                float sum = u + v + w;
-                u /= sum;
-                v /= sum;
-                w /= sum;
-                
-                // Convert to 3D position
-                Vector3 point = u * v0 + v * v1 + w * v2;
-                point = point.normalized;
-                
-                // Create unique key for this barycentric coordinate
-                string key = $"{i},{j},{k}";
-                barycentricToVertex[key] = GetOrCreateVertex(point);
-            }
-        }
-        
-        // Create triangles from the barycentric grid
-        for (int i = 0; i < subdivisions; i++)
-        {
-            for (int j = 0; j < subdivisions - i; j++)
+                var f = meshFaces[fIdx];
+                Vector3 fc = (meshVertices[f[0]] + meshVertices[f[1]] + meshVertices[f[2]]) / 3f;
+                return fc.normalized * Radius;
+            }).ToList();
+
+            // Sort corners clockwise around tile center for mesh consistency
+            faceCenters = SortCornersAroundCenter(faceCenters, center);
+
+            foreach (var fc in faceCenters)
             {
-                int k = subdivisions - i - j;
-                
-                // Get the four vertices of this subdivision cell
-                string v00_key = $"{i},{j},{k}";
-                string v10_key = $"{i+1},{j},{k-1}";
-                string v01_key = $"{i},{j+1},{k-1}";
-                string v11_key = $"{i+1},{j+1},{k-2}";
-                
-                // Create first triangle
-                subdividedFaces.Add(new int[] { 
-                    barycentricToVertex[v00_key], 
-                    barycentricToVertex[v10_key], 
-                    barycentricToVertex[v01_key] 
-                });
-                
-                // Create second triangle (if k-2 >= 0, meaning we're not at the edge)
-                if (k > 1)
+                int cornerIdx;
+                if (!cornerLookup.TryGetValue(fc, out cornerIdx))
                 {
-                    subdividedFaces.Add(new int[] { 
-                        barycentricToVertex[v10_key], 
-                        barycentricToVertex[v11_key], 
-                        barycentricToVertex[v01_key] 
-                    });
+                    cornerIdx = Vertices.Count;
+                    Vertices.Add(fc);
+                    cornerLookup[fc] = cornerIdx;
                 }
+                corners.Add(cornerIdx);
             }
-        }
-    }
+            tileCorners[t] = corners;
 
-    /// <summary>
-    /// Get or create a vertex index for the given position
-    /// </summary>
-    private int GetOrCreateVertex(Vector3 position)
-    {
-        Vector3 normalized = position.normalized;
-        
-        // Check if vertex already exists (with tolerance)
-        foreach (var kvp in vertexToIndex)
-        {
-            if (Vector3.Distance(kvp.Key, normalized) < 0.001f)
+            // -- Neighbors: for each edge connected to this vertex, find the other vertex and create neighbor relationship
+            neighbors[t] = new List<int>();
+            HashSet<int> neighborSet = new HashSet<int>();
+            foreach (int fIdx in incidentFaces)
             {
-                return kvp.Value;
-            }
-        }
-        
-        // Create new vertex
-        int index = subdividedVertices.Count;
-        subdividedVertices.Add(normalized);
-        vertexToIndex[normalized] = index;
-        return index;
-    }
-
-    /// <summary>
-    /// Generate hex centers from the centers of subdivided faces
-    /// </summary>
-    private void GenerateHexCentersFromFaces()
-    {
-        List<Vector3> centers = new List<Vector3>();
-
-        // Each subdivided face becomes a hex tile center
-        foreach (int[] face in subdividedFaces)
-        {
-            Vector3 v0 = subdividedVertices[face[0]];
-            Vector3 v1 = subdividedVertices[face[1]];
-            Vector3 v2 = subdividedVertices[face[2]];
-
-            Vector3 faceCenter = (v0 + v1 + v2).normalized;
-            centers.Add(faceCenter);
-        }
-
-        tileCenters = centers.Select(v => v * Radius).ToArray();
-
-        Debug.Log($"[SphericalHexGrid] Generated {tileCenters.Length} hex centers from face centers");
-    }
-
-    /// <summary>
-    /// Build neighbor relationships using the dual graph (faces sharing edges)
-    /// </summary>
-    private void BuildNeighborsFromDualGraph()
-    {
-        neighbors = new List<int>[tileCenters.Length];
-
-        for (int i = 0; i < tileCenters.Length; i++)
-        {
-            neighbors[i] = new List<int>();
-        }
-
-        Dictionary<string, List<int>> edgeToFaces = new Dictionary<string, List<int>>();
-
-        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
-        {
-            int[] face = subdividedFaces[faceIndex];
-
-            for (int edge = 0; edge < 3; edge++)
-            {
-                int v1 = face[edge];
-                int v2 = face[(edge + 1) % 3];
-
-                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
-
-                if (!edgeToFaces.ContainsKey(edgeKey))
+                var f = meshFaces[fIdx];
+                for (int i = 0; i < 3; i++)
                 {
-                    edgeToFaces[edgeKey] = new List<int>();
-                }
-                edgeToFaces[edgeKey].Add(faceIndex);
-            }
-        }
-
-        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
-        {
-            int[] face = subdividedFaces[faceIndex];
-
-            for (int edge = 0; edge < 3; edge++)
-            {
-                int v1 = face[edge];
-                int v2 = face[(edge + 1) % 3];
-
-                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
-
-                if (edgeToFaces.ContainsKey(edgeKey))
-                {
-                    foreach (int neighborFace in edgeToFaces[edgeKey])
+                    if (f[i] == t)
                     {
-                        if (neighborFace != faceIndex)
-                        {
-                            neighbors[faceIndex].Add(neighborFace);
-                        }
+                        int prev = f[(i + 2) % 3];
+                        int next = f[(i + 1) % 3];
+                        if (prev != t) neighborSet.Add(prev);
+                        if (next != t) neighborSet.Add(next);
                     }
                 }
             }
+            neighbors[t] = neighborSet.ToList();
+
+            // -- Identify pentagons: if this vertex is an original icosahedron vertex, it's a pentagon
+            if (incidentFaces.Count == 5)
+                pentagonIndices.Add(t);
         }
 
-        for (int i = 0; i < neighbors.Length; i++)
-        {
-            neighbors[i] = neighbors[i].Distinct().OrderBy(j => Vector3.Distance(tileCenters[i], tileCenters[j])).ToList();
-        }
-
-        Debug.Log($"[SphericalHexGrid] Built neighbor relationships for {tileCenters.Length} tiles using dual graph");
+        Debug.Log($"[SphericalHexGrid] Tiles: {tileCount} | Hexagons: {tileCount - pentagonIndices.Count} | Pentagons: {pentagonIndices.Count}");
     }
 
     /// <summary>
-    /// Detect pentagon tiles (faces that include original icosahedron vertices)
+    /// Helper for approximate Vector3 key matching in dictionaries
     /// </summary>
-    private void DetectPentagons()
+    private class Vector3EqualityComparer : IEqualityComparer<Vector3>
     {
-        pentagonIndices = new HashSet<int>();
-
-        // Find faces that contain original icosahedron vertices
-        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
-        {
-            int[] face = subdividedFaces[faceIndex];
-
-            bool containsOriginalVertex = false;
-            for (int v = 0; v < 3; v++)
-            {
-                if (face[v] < icosahedronVertices.Count)
-                {
-                    containsOriginalVertex = true;
-                    break;
-                }
-            }
-
-            if (containsOriginalVertex)
-            {
-                pentagonIndices.Add(faceIndex);
-            }
-        }
-
-        Debug.Log($"[SphericalHexGrid] Detected {pentagonIndices.Count} pentagon tiles");
+        private readonly float epsilon;
+        public Vector3EqualityComparer(float epsilon) { this.epsilon = epsilon; }
+        public bool Equals(Vector3 a, Vector3 b) => Vector3.SqrMagnitude(a - b) < epsilon * epsilon;
+        public int GetHashCode(Vector3 obj) => obj.GetHashCode();
     }
 
-    /// <summary>
-    /// Build proper corner vertices for each tile
-    /// </summary>
-    private void BuildTileCorners()
+    // Subdivision mesh construction
+    private void BuildSubdividedIcosahedron(int n, out List<Vector3> outVerts, out List<int[]> outFaces)
     {
-        Vertices = new List<Vector3>();
-        tileCorners = new List<int>[tileCenters.Length];
-
-        for (int i = 0; i < tileCenters.Length; i++)
+        // Adapted from https://github.com/daniman/Hexasphere-Unity (MIT) and RedBlobGames
+        outVerts = new List<Vector3>();
+        outFaces = new List<int[]>();
+        // Build icosahedron
+        float t = (1f + Mathf.Sqrt(5f)) / 2f;
+        var rawVerts = new Vector3[]
         {
-            Vector3 center = tileCenters[i].normalized;
-            var neighborCenters = neighbors[i].Select(idx => tileCenters[idx].normalized).ToList();
-            
-            // Sort neighbors clockwise around the center
-            neighborCenters.Sort((a, b) =>
+            new Vector3(-1,  t, 0), new Vector3(1,  t, 0), new Vector3(-1, -t, 0), new Vector3(1, -t, 0),
+            new Vector3(0, -1,  t), new Vector3(0,  1,  t), new Vector3(0, -1, -t), new Vector3(0,  1, -t),
+            new Vector3( t, 0, -1), new Vector3( t, 0,  1), new Vector3(-t, 0, -1), new Vector3(-t, 0,  1)
+        };
+        for (int i = 0; i < rawVerts.Length; i++) rawVerts[i] = rawVerts[i].normalized;
+
+        int[][] rawFaces = new int[][]
+        {
+            new []{0,11,5}, new []{0,5,1}, new []{0,1,7}, new []{0,7,10}, new []{0,10,11},
+            new []{1,5,9}, new []{5,11,4}, new []{11,10,2}, new []{10,7,6}, new []{7,1,8},
+            new []{3,9,4}, new []{3,4,2}, new []{3,2,6}, new []{3,6,8}, new []{3,8,9},
+            new []{4,9,5}, new []{2,4,11}, new []{6,2,10}, new []{8,6,7}, new []{9,8,1}
+        };
+
+        // Subdivide each face
+        Dictionary<(int,int), int> midpointCache = new();
+        List<Vector3> verts = rawVerts.ToList();
+        List<int[]> faces = new List<int[]>();
+        foreach (var f in rawFaces)
+            SubdivideFace(f[0], f[1], f[2], n, verts, faces, midpointCache);
+
+        // Remove duplicate vertices and build index map
+        List<Vector3> finalVerts = new List<Vector3>();
+        Dictionary<Vector3, int> vertMap = new Dictionary<Vector3, int>(new Vector3EqualityComparer(1e-6f));
+        int[] oldToNew = new int[verts.Count];
+        for (int i = 0; i < verts.Count; i++)
+        {
+            Vector3 v = verts[i].normalized;
+            if (!vertMap.TryGetValue(v, out int idx))
             {
-                Vector3 ca = (a - center).normalized;
-                Vector3 cb = (b - center).normalized;
-                return Vector3.SignedAngle(ca, cb, center) > 0 ? 1 : -1;
-            });
-
-            var corners = new List<int>();
-            int neighborCount = neighborCenters.Count;
-
-            // Generate corners between consecutive neighbors
-            for (int n = 0; n < neighborCount; n++)
-            {
-                Vector3 neighbor1 = neighborCenters[n];
-                Vector3 neighbor2 = neighborCenters[(n + 1) % neighborCount];
-                
-                // Calculate corner position as the intersection of the three great circles
-                Vector3 cornerPos = CalculateCornerPosition(center, neighbor1, neighbor2);
-                cornerPos = cornerPos.normalized * Radius;
-
-                // Find or create vertex
-                int vertexIndex = FindOrCreateVertex(cornerPos);
-                corners.Add(vertexIndex);
+                idx = finalVerts.Count;
+                finalVerts.Add(v);
+                vertMap[v] = idx;
             }
-
-            tileCorners[i] = corners;
+            oldToNew[i] = idx;
         }
+        List<int[]> finalFaces = new List<int[]>();
+        foreach (var f in faces)
+            finalFaces.Add(new[] { oldToNew[f[0]], oldToNew[f[1]], oldToNew[f[2]] });
+
+        outVerts = finalVerts;
+        outFaces = finalFaces;
     }
 
-    /// <summary>
-    /// Calculate proper corner position using spherical geometry
-    /// </summary>
-    private Vector3 CalculateCornerPosition(Vector3 center, Vector3 neighbor1, Vector3 neighbor2)
+    private void SubdivideFace(int v0, int v1, int v2, int depth, List<Vector3> verts, List<int[]> faces, Dictionary<(int,int), int> midpointCache)
     {
-        // Use spherical trigonometry to find the corner position
-        // The corner is the intersection of the great circles defined by center-neighbor1 and center-neighbor2
-        
-        // Calculate the great circle intersection using spherical trigonometry
-        // The corner should be equidistant from all three points
-        
-        // Method 1: Use the circumcenter of the spherical triangle
-        // This is the point equidistant from all three vertices
-        Vector3 corner = (center + neighbor1 + neighbor2).normalized;
-        
-        // Method 2: Use the intersection of the perpendicular bisectors
-        // Calculate the midpoint of the arc between neighbor1 and neighbor2
-        Vector3 midPoint = (neighbor1 + neighbor2).normalized;
-        
-        // The corner should be on the great circle perpendicular to the center-midpoint line
-        Vector3 perpendicular = Vector3.Cross(center, midPoint).normalized;
-        
-        // The corner is the intersection of the great circle through center and perpendicular
-        // with the great circle through neighbor1 and neighbor2
-        Vector3 greatCircle1 = Vector3.Cross(center, perpendicular).normalized;
-        Vector3 greatCircle2 = Vector3.Cross(neighbor1, neighbor2).normalized;
-        
-        // The intersection is the cross product of the two great circle normals
-        Vector3 intersection = Vector3.Cross(greatCircle1, greatCircle2).normalized;
-        
-        // Choose the intersection point that's closest to our center
-        if (Vector3.Dot(intersection, center) < 0)
+        if (depth == 1)
         {
-            intersection = -intersection;
+            faces.Add(new int[] { v0, v1, v2 });
+            return;
         }
-        
-        // Use a weighted average of the two methods for better results
-        corner = (corner + intersection).normalized;
-        
-        return corner;
+        int a = GetMidpoint(v0, v1, verts, midpointCache);
+        int b = GetMidpoint(v1, v2, verts, midpointCache);
+        int c = GetMidpoint(v2, v0, verts, midpointCache);
+        SubdivideFace(v0, a, c, depth - 1, verts, faces, midpointCache);
+        SubdivideFace(a, v1, b, depth - 1, verts, faces, midpointCache);
+        SubdivideFace(c, b, v2, depth - 1, verts, faces, midpointCache);
+        SubdivideFace(a, b, c, depth - 1, verts, faces, midpointCache);
     }
 
-    /// <summary>
-    /// Find or create a vertex for the given position
-    /// </summary>
-    private int FindOrCreateVertex(Vector3 position)
+    private int GetMidpoint(int i0, int i1, List<Vector3> verts, Dictionary<(int,int), int> cache)
     {
-        float tolerance = Radius * 0.001f; // Very small tolerance for vertex matching
-        
-        // Check if vertex already exists
-        for (int i = 0; i < Vertices.Count; i++)
-        {
-            if (Vector3.Distance(Vertices[i], position) < tolerance)
-            {
-                return i;
-            }
-        }
-        
-        // Create new vertex
-        int index = Vertices.Count;
-        Vertices.Add(position);
-        return index;
+        var key = i0 < i1 ? (i0, i1) : (i1, i0);
+        if (cache.TryGetValue(key, out int idx)) return idx;
+        Vector3 mid = ((verts[i0] + verts[i1]) * 0.5f).normalized;
+        idx = verts.Count;
+        verts.Add(mid);
+        cache[key] = idx;
+        return idx;
     }
 
-    /// <summary>
-    /// Get the corner vertex indices for a specific tile
-    /// </summary>
+    // Utility: Sort corners in order around the center, for correct polygon winding
+    private List<Vector3> SortCornersAroundCenter(List<Vector3> corners, Vector3 center)
+    {
+        // Project onto tangent plane, then sort by angle
+        Vector3 north = center.normalized;
+        Vector3 refRight = Vector3.Cross(north, Vector3.up).normalized;
+        if (refRight == Vector3.zero)
+            refRight = Vector3.Cross(north, Vector3.forward).normalized;
+        Vector3 refForward = Vector3.Cross(refRight, north).normalized;
+
+        return corners.OrderBy(corner =>
+        {
+            Vector3 rel = (corner - center).normalized;
+            float x = Vector3.Dot(rel, refRight);
+            float y = Vector3.Dot(rel, refForward);
+            return Mathf.Atan2(y, x);
+        }).ToList();
+    }
+
+    // ----- API for mesh builder -----
+
     public int[] GetCornersOfTile(int tileIndex)
     {
-        if (tileIndex >= 0 && tileIndex < tileCorners.Length)
-        {
-            return tileCorners[tileIndex].ToArray();
-        }
-        return new int[0];
+        if (tileIndex < 0 || tileIndex >= tileCorners.Length)
+            return new int[0];
+        return tileCorners[tileIndex].ToArray();
     }
 
-    /// <summary>
-    /// Get the tile index whose center is nearest to the given position
-    /// </summary>
-    public int GetTileAtPosition(Vector3 position, bool localSpace = false)
+    public int GetTileAtPosition(Vector3 position)
     {
-        Vector3 dir = position;
-        if (!localSpace)
-        {
-            dir = (position - Vector3.zero).normalized;
-        }
-
-        int nearestIndex = -1;
-        float maxDot = -1f;
-
+        Vector3 dir = position.normalized;
+        float maxDot = -2f;
+        int bestIdx = -1;
         for (int i = 0; i < tileCenters.Length; i++)
         {
-            float dot = Vector3.Dot(dir, tileCenters[i].normalized);
-            if (dot > maxDot)
+            float d = Vector3.Dot(dir, tileCenters[i].normalized);
+            if (d > maxDot)
             {
-                maxDot = dot;
-                nearestIndex = i;
+                maxDot = d;
+                bestIdx = i;
             }
         }
-
-        return nearestIndex;
+        return bestIdx;
     }
-
-    /// <summary>
-    /// Get latitude/longitude (in degrees) of the given tile index
-    /// </summary>
-    public Vector2 GetTileLatLon(int tileIndex)
-    {
-        Vector3 p = tileCenters[tileIndex].normalized;
-        float latitude = Mathf.Asin(p.y) * Mathf.Rad2Deg;
-        float longitude = Mathf.Atan2(p.x, p.z) * Mathf.Rad2Deg;
-        return new Vector2(latitude, longitude);
-    }
-} 
+}

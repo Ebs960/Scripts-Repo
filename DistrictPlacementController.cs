@@ -204,7 +204,7 @@ public class DistrictPlacementController : MonoBehaviour
         {
             if (grid == null) return -1;
             Vector3 localDir = (hit.point - planet.transform.position).normalized;
-            return grid.GetTileAtPosition(localDir, true);
+            return grid.GetTileAtPosition(localDir);
         }
         return -1;
     }

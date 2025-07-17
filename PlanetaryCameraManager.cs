@@ -140,7 +140,7 @@ public class PlanetaryCameraManager : MonoBehaviour
                 RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
             {
                 Vector3 localDir = (hitPoint - planet.transform.position).normalized;
-                tileIndex = planet.Grid.GetTileAtPosition(localDir, true);
+                tileIndex = planet.Grid.GetTileAtPosition(localDir);
             }
 
             if (tileIndex >= 0)

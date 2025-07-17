@@ -170,7 +170,7 @@ public class UnitSelectionManager : MonoBehaviour
             planetCenter = GameManager.Instance.moonGenerator.transform.position;
 
         Vector3 localDirection = (worldPosition - planetCenter).normalized;
-        return grid.GetTileAtPosition(localDirection, true);
+        return grid.GetTileAtPosition(localDirection);
     }
     
     /// <summary>
