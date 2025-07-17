@@ -8,10 +8,8 @@ public static class GameSetupData
     public static int numberOfTribes;
     
     // Basic Map Settings
-    public static int moonSize;
     public static int animalPrevalence;
     public static GameManager.MapSize mapSize = GameManager.MapSize.Standard;
-    public static GameManager.MapSize moonMapSize = GameManager.MapSize.Standard; // Moon map size
     public static bool generateMoon = true;
     
     // Map Generation Settings
@@ -69,8 +67,6 @@ public static class GameSetupData
         
         // Map settings
         mapSize = GameManager.MapSize.Standard;
-        moonMapSize = GameManager.MapSize.Standard; // Moon uses same size as planet by default
-        moonSize = 3;
         animalPrevalence = 3;
         generateMoon = true;
         

@@ -54,9 +54,7 @@ public class MainMenuManager : MonoBehaviour
     [Header("Map Settings")]
     [Tooltip("Controls the planet's hexasphere subdivision level. Higher values increase the number of tiles and map size.")]
     public TextMeshProUGUI planetSizeText;
-    public TMP_Dropdown mapSizeDropdown; // NEW: Dropdown for map size
-    public TMP_Dropdown moonMapSizeDropdown; // NEW: Dropdown for moon map size
-    public TextMeshProUGUI moonSizeText;
+    public TMP_Dropdown mapSizeDropdown; // Dropdown for map size
     
     // Land Mass settings
     [Header("Land Mass Settings")]
@@ -103,7 +101,6 @@ public class MainMenuManager : MonoBehaviour
     private int aiCount = 4;
     private int cityStateCount = 2;
     private int tribeCount = 2;
-    private int moonPreset = 2;
     
     // Advanced settings
     private bool enableRivers = true;
@@ -176,20 +173,6 @@ public class MainMenuManager : MonoBehaviour
         public float minHeight, maxHeight;
     }
 
-    [System.Serializable]
-    public struct MoonSizePreset
-    {
-        public string name;
-        public int subdivisions;
-    }
-
-    private readonly MoonSizePreset[] moonSizePresets = new[] {
-        new MoonSizePreset { name = "None", subdivisions = 0 },
-        new MoonSizePreset { name = "Tiny", subdivisions = 4 },
-        new MoonSizePreset { name = "Small", subdivisions = 6 },
-        new MoonSizePreset { name = "Standard", subdivisions = 8 },
-        new MoonSizePreset { name = "Large", subdivisions = 10 }
-    };
 
     void Start()
     {
@@ -327,8 +310,6 @@ public class MainMenuManager : MonoBehaviour
         UpdateTribeCountText();
 
 
-        // Initialize moon size slider
-        InitializeMoonSizeDropdown();
 
         
         // River Settings
@@ -413,49 +394,13 @@ public class MainMenuManager : MonoBehaviour
     {
         switch (size)
         {
-            case GameManager.MapSize.Micro: return "Micro";
-            case GameManager.MapSize.Tiny: return "Tiny";
             case GameManager.MapSize.Small: return "Small";
             case GameManager.MapSize.Standard: return "Standard";
             case GameManager.MapSize.Large: return "Large";
-            case GameManager.MapSize.Huge: return "Huge";
-            case GameManager.MapSize.Gigantic: return "Gigantic";
             default: return size.ToString();
         }
     }
-
-    private int EstimateHexTiles(int subdivisions)
-    {
-        // Geodesic tile counts for each map size (approximate)
-        switch ((GameManager.MapSize)subdivisions)
-        {
-            case GameManager.MapSize.Micro: return 240;    // ~240 tiles (12 subdivisions)
-            case GameManager.MapSize.Tiny: return 500;     // ~500 tiles (16 subdivisions)
-            case GameManager.MapSize.Small: return 980;    // ~980 tiles (22 subdivisions)
-            case GameManager.MapSize.Standard: return 2000; // ~2000 tiles (32 subdivisions)
-            case GameManager.MapSize.Large: return 3920;   // ~3920 tiles (44 subdivisions)
-            case GameManager.MapSize.Huge: return 5120;    // ~5120 tiles (50 subdivisions)
-            case GameManager.MapSize.Gigantic: return 5780; // ~5780 tiles (54 subdivisions)
-            default: return 2000;
-        }
-    }
     
-    private void OnMoonSizeChanged(int value)
-    {
-        moonPreset = value;
-        GameSetupData.moonMapSize = (GameManager.MapSize)value;
-        GameSetupData.generateMoon = true; // Always generate moon if a size is selected
-        UpdateMoonSizeText();
-    }
-    
-    private void UpdateMoonSizeText()
-    {
-        if (moonSizeText != null)
-        {
-            string sizeDescription = GetMapSizeDisplayName((GameManager.MapSize)moonPreset);
-            moonSizeText.text = $"Moon Size: {sizeDescription} (1/5th scale)";
-        }
-    }
     
     
     // River Settings
@@ -812,8 +757,7 @@ public class MainMenuManager : MonoBehaviour
         
         // Basic map settings
         GameSetupData.mapSize = (GameManager.MapSize)mapSizeDropdown.value;
-        GameSetupData.moonMapSize = (GameManager.MapSize)moonMapSizeDropdown.value;
-        GameSetupData.generateMoon = true; // Always generate moon if a size is selected
+        GameSetupData.generateMoon = true;
         GameSetupData.animalPrevalence = selectedAnimalPrevalence;
 
         // Map generation settings
@@ -873,13 +817,9 @@ public class MainMenuManager : MonoBehaviour
         float scale = 1.0f;
         switch (GameSetupData.mapSize)
         {
-            case GameManager.MapSize.Micro: scale = 0.7f; break;
-            case GameManager.MapSize.Tiny: scale = 0.8f; break;
             case GameManager.MapSize.Small: scale = 0.9f; break;
             case GameManager.MapSize.Standard: scale = 1.0f; break;
             case GameManager.MapSize.Large: scale = 1.15f; break;
-            case GameManager.MapSize.Huge: scale = 1.3f; break;
-            case GameManager.MapSize.Gigantic: scale = 1.5f; break;
         }
         GameSetupData.maxContinentWidthDegrees = width * scale;
         GameSetupData.maxContinentHeightDegrees = height * scale;
@@ -1056,17 +996,4 @@ public class MainMenuManager : MonoBehaviour
         UpdatePlanetSizeText();
     }
 
-    private void InitializeMoonSizeDropdown()
-    {
-        moonMapSizeDropdown.ClearOptions();
-        var options = new List<string>();
-        foreach (GameManager.MapSize size in System.Enum.GetValues(typeof(GameManager.MapSize)))
-        {
-            options.Add(GetMapSizeDisplayName(size));
-        }
-        moonMapSizeDropdown.AddOptions(options);
-        moonMapSizeDropdown.value = (int)GameSetupData.moonMapSize; // Use moon map size from GameSetupData
-        moonMapSizeDropdown.onValueChanged.AddListener(OnMoonSizeChanged);
-        UpdateMoonSizeText();
-    }
 } 
