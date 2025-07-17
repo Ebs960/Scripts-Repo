@@ -416,7 +416,7 @@ public class GameManager : MonoBehaviour
             GetMapSizeParams(mapSize, out targetTileCount, out radius);
 
 
-            // Generate grid data using the new SphericalHexGrid system with the correct radius
+            // Generate grid data using the new proper geodesic hexasphere system with the correct radius
             if (planetGenerator != null)
             {
                 Debug.Log($"[GameManager] Configuring planet: targetTileCount={targetTileCount}, radius={radius}");
@@ -424,12 +424,13 @@ public class GameManager : MonoBehaviour
                 planetGenerator.Grid.Generate(targetTileCount, radius);
                 Debug.Log($"[GameManager] Planet grid regenerated: TileCount={planetGenerator.Grid.TileCount}");
                 
-                // Rebuild the mesh with the new grid
+                // Configure the hexasphere renderer for the new system
                 if (planetGenerator.hexasphereRenderer != null)
                 {
                     planetGenerator.hexasphereRenderer.generatorSource = planetGenerator;
-                    planetGenerator.hexasphereRenderer.BuildMesh(planetGenerator.Grid);
-                    Debug.Log($"[GameManager] Planet mesh rebuilt with new grid");
+                    planetGenerator.hexasphereRenderer.usePerTileBiomeData = true;
+                    planetGenerator.hexasphereRenderer.useSeparateVertices = true;
+                    Debug.Log($"[GameManager] Planet hexasphere renderer configured for per-tile biome data");
                 }
             }
 

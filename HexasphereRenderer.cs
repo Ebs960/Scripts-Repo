@@ -29,6 +29,10 @@ public class HexasphereRenderer : MonoBehaviour
     [Header("Mesh Quality")]
     [Tooltip("Use separate vertices for each tile to ensure clear boundaries. Trades memory for visual clarity.")]
     public bool useSeparateVertices = false;
+    
+    [Header("Biome Data")]
+    [Tooltip("Use per-tile biome data instead of UV-based texture sampling for more accurate biome mapping.")]
+    public bool usePerTileBiomeData = true;
 
     // ───────────────────────────────────── Helpers ─────────────────────────────────────
     private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
@@ -80,7 +84,30 @@ public class HexasphereRenderer : MonoBehaviour
     {
         Report(0.05f, "Building mesh…");
         
-        if (useSeparateVertices)
+        if (usePerTileBiomeData)
+        {
+            // Build mesh with per-tile biome data
+            Dictionary<int, int> tileBiomeIndices = new Dictionary<int, int>();
+            
+            // Get biome indices from the generator if available
+            if (Generator != null)
+            {
+                for (int i = 0; i < grid.TileCount; i++)
+                {
+                    var tileData = Generator.GetHexTileData(i);
+                    if (tileData != null)
+                    {
+                        // Convert biome enum to index
+                        int biomeIndex = (int)tileData.biome;
+                        tileBiomeIndices[i] = biomeIndex;
+                    }
+                }
+            }
+            
+            MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(grid, tileBiomeIndices, out vertexToTiles);
+            Debug.Log("[HexasphereRenderer] Built mesh with per-tile biome data");
+        }
+        else if (useSeparateVertices)
         {
             MF.sharedMesh = HexTileMeshBuilder.BuildWithSeparateVertices(grid, out _, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Using separate vertex mesh for clear tile boundaries");
@@ -190,6 +217,10 @@ public class HexasphereRenderer : MonoBehaviour
         mat.SetInt("_BiomeCount", count);
         Debug.Log($"[HexasphereRenderer] Set _BiomeCount = {count}");
 
+        // Set biome data mode
+        mat.SetFloat("_UsePerTileBiomeData", usePerTileBiomeData ? 1.0f : 0.0f);
+        Debug.Log($"[HexasphereRenderer] Set _UsePerTileBiomeData = {usePerTileBiomeData}");
+
         // Enable sharp boundaries if using separate vertices
         if (useSeparateVertices)
         {
@@ -212,6 +243,18 @@ public class HexasphereRenderer : MonoBehaviour
         {
             mat.SetFloat("_SharpBoundaries", enabled ? 1.0f : 0.0f);
             Debug.Log($"[HexasphereRenderer] Sharp boundaries {(enabled ? "enabled" : "disabled")}");
+        }
+    }
+
+    /// <summary>Enable or disable per-tile biome data mode.</summary>
+    public void SetPerTileBiomeData(bool enabled)
+    {
+        usePerTileBiomeData = enabled;
+        var mat = MR.sharedMaterial;
+        if (mat != null)
+        {
+            mat.SetFloat("_UsePerTileBiomeData", enabled ? 1.0f : 0.0f);
+            Debug.Log($"[HexasphereRenderer] Per-tile biome data {(enabled ? "enabled" : "disabled")}");
         }
     }
 

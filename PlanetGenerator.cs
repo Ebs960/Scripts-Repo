@@ -1113,13 +1113,23 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 // Get the actual planet radius from the grid
                 float planetRadius = grid.Radius;
                 Debug.Log($"[PlanetGenerator] Applying height displacement with planet radius: {planetRadius}");
+                
+                // Configure the hexasphere renderer to use per-tile biome data
+                hexasphereRenderer.usePerTileBiomeData = true;
+                hexasphereRenderer.useSeparateVertices = true; // Use separate vertices for clear biome boundaries
+                
+                // Build the mesh with the new proper hexasphere system
+                hexasphereRenderer.BuildMesh(grid);
+                
+                // Apply height displacement
                 hexasphereRenderer.ApplyHeightDisplacement(planetRadius);
-                Texture2D indexTex = biomeIndexTex;
+                
+                // Build biome albedo array for texture sampling
                 if (biomeAlbedoArray == null)
                     biomeAlbedoArray = BuildBiomeAlbedoArray();
 
-                hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
-
+                // Push biome lookups (indexTex can be null since we're using per-tile data)
+                hexasphereRenderer.PushBiomeLookups(null, biomeAlbedoArray);
             }
         }
         else

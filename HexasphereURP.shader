@@ -3,9 +3,10 @@ Shader "Custom/HexasphereURP"
     Properties
     {
         _BiomeAlbedoArray ("Biome Albedo Array", 2DArray) = "" {}
-        _BiomeIndexTex    ("Tile → Biome map", 2D) = "white" {}
+        _BiomeIndexTex    ("Tile → Biome map (Legacy)", 2D) = "white" {}
         _BiomeCount       ("BiomeCount", Float) = 1
         [Toggle] _SharpBoundaries ("Sharp Biome Boundaries", Float) = 0
+        [Toggle] _UsePerTileBiomeData ("Use Per-Tile Biome Data", Float) = 1
     }
 
     SubShader
@@ -37,18 +38,21 @@ Shader "Custom/HexasphereURP"
             CBUFFER_START(UnityPerMaterial)
                 float _BiomeCount;
                 float _SharpBoundaries;
+                float _UsePerTileBiomeData;
             CBUFFER_END
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR; // Biome index stored in red channel
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR; // Pass biome data to fragment shader
             };
 
             Varyings vert(Attributes IN)
@@ -56,24 +60,33 @@ Shader "Custom/HexasphereURP"
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.uv = IN.uv;
+                OUT.color = IN.color;
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
                 float2 uv = IN.uv;
-
-                // Get biome ID from red channel (0–1) and scale to array index
                 float biomeId;
-                if (_SharpBoundaries > 0.5)
+
+                if (_UsePerTileBiomeData > 0.5)
                 {
-                    // Use point sampling for sharp boundaries
-                    biomeId = _BiomeIndexTex.SampleLevel(sampler_BiomeIndexTex, uv, 0).r;
+                    // Use per-tile biome data from vertex colors
+                    biomeId = IN.color.r;
                 }
                 else
                 {
-                    // Use trilinear sampling for smooth boundaries
-                    biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
+                    // Legacy: Use UV-based texture sampling
+                    if (_SharpBoundaries > 0.5)
+                    {
+                        // Use point sampling for sharp boundaries
+                        biomeId = _BiomeIndexTex.SampleLevel(sampler_BiomeIndexTex, uv, 0).r;
+                    }
+                    else
+                    {
+                        // Use trilinear sampling for smooth boundaries
+                        biomeId = _BiomeIndexTex.Sample(sampler_BiomeIndexTex, uv).r;
+                    }
                 }
                 
                 float rawIndex = biomeId * (_BiomeCount - 1);

@@ -27,6 +27,8 @@ Material:
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _CW_SHAPE_SPHERE
+  - _SHARPBOUNDARIES_ON
+  - _USEPERTILEBIOMEDATA_ON
   - _USE_ALBEDO_TEX
   - _USE_BIOME_TEX
   m_LightmapFlags: 4
@@ -191,7 +193,7 @@ Material:
     - _ReceiveShadows: 1
     - _SGT_CloudWarp: 0
     - _SGT_Clouds: 0
-    - _SharpBoundaries: 0
+    - _SharpBoundaries: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
@@ -199,6 +201,7 @@ Material:
     - _SrcBlendAlpha: 1
     - _Surface: 0
     - _UseBiomeBlending: 0
+    - _UsePerTileBiomeData: 1
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
