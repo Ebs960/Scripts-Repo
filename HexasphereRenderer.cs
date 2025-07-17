@@ -42,6 +42,9 @@ public class HexasphereRenderer : MonoBehaviour
     
     // Store vertex-to-tile mapping for height displacement
     private Dictionary<int, List<int>> vertexToTiles;
+    
+    // Store custom elevation data for testing
+    private float[] customElevations;
 
     // ───────────────────────────────────── Unity ───────────────────────────────────────
     void Awake()
@@ -148,7 +151,7 @@ public class HexasphereRenderer : MonoBehaviour
                 
                 foreach (int tileIndex in vertexToTiles[i])
                 {
-                    float tileElevation = Generator.GetTileElevation(tileIndex);
+                    float tileElevation = GetTileElevation(tileIndex);
                     totalElevation += tileElevation;
                     tileCount++;
                 }
@@ -256,6 +259,31 @@ public class HexasphereRenderer : MonoBehaviour
             mat.SetFloat("_UsePerTileBiomeData", enabled ? 1.0f : 0.0f);
             Debug.Log($"[HexasphereRenderer] Per-tile biome data {(enabled ? "enabled" : "disabled")}");
         }
+    }
+
+    /// <summary>Set custom elevation data for testing purposes.</summary>
+    public void SetCustomElevations(float[] elevations)
+    {
+        customElevations = elevations;
+        Debug.Log($"[HexasphereRenderer] Set custom elevations for {elevations?.Length ?? 0} tiles");
+    }
+
+    /// <summary>Get tile elevation, preferring custom data if available.</summary>
+    public float GetTileElevation(int tileIndex)
+    {
+        // Use custom elevations if available
+        if (customElevations != null && tileIndex >= 0 && tileIndex < customElevations.Length)
+        {
+            return customElevations[tileIndex];
+        }
+        
+        // Fall back to generator if available
+        if (Generator != null)
+        {
+            return Generator.GetTileElevation(tileIndex);
+        }
+        
+        return 0f;
     }
 
     // ───────────────────────────────────── Helpers ─────────────────────────────────────

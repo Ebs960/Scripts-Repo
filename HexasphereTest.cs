@@ -33,6 +33,11 @@ public class HexasphereTest : MonoBehaviour
     public Color neighborLineColor = Color.yellow;
     public Color cornerColor       = Color.red;
 
+    [Header("Elevation test")]
+    public float noiseFrequency = 3f;
+    public float maxTestElevation = 0.12f;   // 12 % of radius
+    private FastNoiseLite noise = new FastNoiseLite(12345);
+
     /* ─────────────────────────  INTERNAL STATE  ──────────────────────*/
     private SphericalHexGrid   testGrid;
     private readonly List<GameObject> debugObjects = new();
@@ -60,6 +65,20 @@ public class HexasphereTest : MonoBehaviour
         Debug.Log($"[HexasphereTest] Pentagons: {testGrid.pentagonIndices.Count}");
         Debug.Log($"[HexasphereTest] Hexagons:  {testGrid.TileCount - testGrid.pentagonIndices.Count}");
         Debug.Log($"[HexasphereTest] Vertices:  {testGrid.Vertices.Count}");
+
+        // Generate test elevation data using noise
+        float[] testElevation = new float[testGrid.TileCount];
+        for (int i = 0; i < testGrid.TileCount; i++)
+        {
+            Vector3 p = testGrid.tileCenters[i].normalized * noiseFrequency;
+            testElevation[i] = noise.GetNoise(p.x, p.y, p.z) * maxTestElevation; // 0‑max
+        }
+
+        // Build a HexasphereRenderer next to the grid and feed it the elevation data
+        var renderer = gameObject.AddComponent<HexasphereRenderer>();
+        renderer.BuildMesh(testGrid);
+        renderer.SetCustomElevations(testElevation);   // Use our custom elevation data
+        renderer.ApplyHeightDisplacement(testRadius);
 
         ValidateGrid();
         CreateDebugVisualization();
