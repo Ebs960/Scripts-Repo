@@ -19,6 +19,9 @@ public class SphericalHexGrid
     
     // Store the radius for later access
     public float Radius { get; private set; }
+    
+    // Track pentagon tiles (icosahedron vertices)
+    public HashSet<int> pentagonIndices { get; private set; }
 
     /// <summary>
     /// Generate a spherical hex grid with fixed hex tile area.
@@ -58,6 +61,17 @@ public class SphericalHexGrid
 
         // Build neighbor relationships using spherical distance
         BuildNeighborsFromSphericalDistance();
+
+        // Detect pentagon tiles (icosahedron vertices)
+        pentagonIndices = new HashSet<int>();
+        for (int i = 0; i < neighbors.Length; i++) 
+        {
+            if (neighbors[i].Count == 5) 
+            {
+                pentagonIndices.Add(i);
+            }
+        }
+        Debug.Log($"[SphericalHexGrid] Pentagons: {pentagonIndices.Count}, Hexagons: {tileCenters.Length - pentagonIndices.Count}");
 
         // Build corner vertices for each tile
         BuildTileCorners();
@@ -215,49 +229,60 @@ public class SphericalHexGrid
     }
 
     /// <summary>
-    /// Build corner vertices for each tile
+    /// Build corner vertices for each tile using proper circumcenters
     /// </summary>
     private void BuildTileCorners()
     {
         Vertices = new List<Vector3>();
         tileCorners = new List<int>[tileCenters.Length];
+        Dictionary<string, int> cornerLookup = new Dictionary<string, int>();
 
+        // Create corners at triangle circumcenters
         for (int tileIndex = 0; tileIndex < tileCenters.Length; tileIndex++)
         {
             Vector3 center = tileCenters[tileIndex];
+            List<int> neighborIndices = neighbors[tileIndex];
             List<int> cornerIndices = new List<int>();
 
-            // Get neighboring tile centers
-            List<Vector3> neighborCenters = new List<Vector3>();
-            foreach (int neighborIndex in neighbors[tileIndex])
+            for (int i = 0; i < neighborIndices.Count; i++)
             {
-                neighborCenters.Add(tileCenters[neighborIndex]);
+                int next = (i + 1) % neighborIndices.Count;
+                int n1 = neighborIndices[i];
+                int n2 = neighborIndices[next];
+
+                // Create unique key for this corner triplet (sorted order)
+                int a = tileIndex, b = n1, c = n2;
+                int min = Mathf.Min(a, Mathf.Min(b, c));
+                int max = Mathf.Max(a, Mathf.Max(b, c));
+                int mid = a + b + c - min - max;
+                string cornerKey = $"{min}-{mid}-{max}";
+
+                if (!cornerLookup.TryGetValue(cornerKey, out int cornerIndex))
+                {
+                    Vector3 p1 = tileCenters[tileIndex];
+                    Vector3 p2 = tileCenters[n1];
+                    Vector3 p3 = tileCenters[n2];
+                    // Calculate circumcenter on sphere surface
+                    Vector3 circumCenter = Vector3.Cross(p2 - p1, p3 - p1).normalized;
+                    if (Vector3.Dot(circumCenter, p1) < 0) circumCenter = -circumCenter;
+                    circumCenter = circumCenter.normalized * Radius;
+                    cornerIndex = Vertices.Count;
+                    Vertices.Add(circumCenter);
+                    cornerLookup[cornerKey] = cornerIndex;
+                }
+                cornerIndices.Add(cornerIndex);
             }
 
-            // Generate corner vertices at the midpoint between this tile and each neighbor
-            for (int i = 0; i < neighborCenters.Count; i++)
+            // Sort corners angularly around center
+            if (cornerIndices.Count > 0)
             {
-                Vector3 neighbor = neighborCenters[i];
-                Vector3 corner = (center + neighbor).normalized * Radius;
-                
-                // Check if this corner already exists
-                int cornerIndex = -1;
-                for (int j = 0; j < Vertices.Count; j++)
-                {
-                    if (Vector3.Distance(Vertices[j], corner) < Radius * 0.01f)
-                    {
-                        cornerIndex = j;
-                        break;
-                    }
-                }
-
-                if (cornerIndex == -1)
-                {
-                    cornerIndex = Vertices.Count;
-                    Vertices.Add(corner);
-                }
-
-                cornerIndices.Add(cornerIndex);
+                cornerIndices = cornerIndices
+                    .OrderBy(idx => Vector3.SignedAngle(
+                        Vertices[cornerIndices[0]] - center,
+                        Vertices[idx] - center,
+                        center
+                    ))
+                    .ToList();
             }
 
             tileCorners[tileIndex] = cornerIndices;
