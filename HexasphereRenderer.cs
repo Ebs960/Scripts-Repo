@@ -3,14 +3,14 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Renders a procedurally generated hex‑sphere.  Works with any component
-/// that implements <see cref="IHexasphereGenerator"/> (PlanetGenerator,
-/// MoonGenerator, etc.).
+/// Renders a procedurally generated hex‑sphere. Works with any component that
+/// implements <see cref="IHexasphereGenerator"/> (PlanetGenerator, MoonGenerator, etc.),
+/// OR with a plain float[] supplied through <see cref="SetCustomElevations"/>.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class HexasphereRenderer : MonoBehaviour
 {
-    // ───────────────────────────────────── Inspector Slots ─────────────────────────────────────
+    // ─────────────────────────── Inspector Slots ───────────────────────────
     [Header("Render Components  (drag‑assign or leave blank)")]
     [SerializeField] private MeshFilter   meshFilter;
     [SerializeField] private MeshRenderer meshRenderer;
@@ -21,7 +21,7 @@ public class HexasphereRenderer : MonoBehaviour
 
     [Header("Generator Source")]
     [Tooltip("Drag a PlanetGenerator, MoonGenerator, or any MonoBehaviour that implements IHexasphereGenerator.")]
-    [SerializeField] public  MonoBehaviour generatorSource;   // Unity‑serialised, editable
+    [SerializeField] public  MonoBehaviour generatorSource;
 
     [Header("Optional UI")]
     public LoadingPanelController loadingPanel;
@@ -31,144 +31,136 @@ public class HexasphereRenderer : MonoBehaviour
     public bool useSeparateVertices = false;
     
     [Header("Biome Data")]
-    [Tooltip("Use per-tile biome data instead of UV-based texture sampling for more accurate biome mapping.")]
+    [Tooltip("Use per‑tile biome data instead of UV‑based texture sampling for more accurate biome mapping.")]
     public bool usePerTileBiomeData = true;
 
-    // ───────────────────────────────────── Helpers ─────────────────────────────────────
+    // ─────────────────────────── Helpers ───────────────────────────
     private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
     private MeshRenderer MR => meshRenderer != null ? meshRenderer : (meshRenderer = GetComponent<MeshRenderer>());
 
     private IHexasphereGenerator Generator => generatorSource as IHexasphereGenerator;
-    
-    // Store vertex-to-tile mapping for height displacement
-    private Dictionary<int, List<int>> vertexToTiles;
-    
-    // Store custom elevation data for testing
+
+    // Fallback array when no IHexasphereGenerator is present
     private float[] customElevations;
 
-    // ───────────────────────────────────── Unity ───────────────────────────────────────
+    // Maps a mesh‑vertex index to all tiles that share it (set by HexTileMeshBuilder)
+    private Dictionary<int, List<int>> vertexToTiles;
+
+    // ─────────────────────────── Unity ───────────────────────────
     void Awake()
     {
-        // Ensure references exist even if not drag‑assigned
-        _ = MF; _ = MR;
+        _ = MF; _ = MR;                           // ensure refs
 
-        // Apply override material if provided, or create a default material
+        // Material setup
         if (planetMaterial != null)
-        {
             MR.sharedMaterial = planetMaterial;
-        }
         else if (MR.sharedMaterial == null)
         {
-            // Create a default material with the HexasphereURP shader
             var shader = Shader.Find("Custom/HexasphereURP");
             if (shader != null)
             {
-                planetMaterial = new Material(shader);
+                planetMaterial  = new Material(shader);
                 MR.sharedMaterial = planetMaterial;
                 Debug.Log("[HexasphereRenderer] Created default material with HexasphereURP shader");
             }
             else
-            {
                 Debug.LogError("[HexasphereRenderer] Could not find Custom/HexasphereURP shader!");
-            }
         }
 
-        // Auto‑detect a generator on same GO if slot empty
+        // Auto‑detect generator on same GO if slot empty
         if (generatorSource == null)
-        {
-            var gen = GetComponent<IHexasphereGenerator>();
-            generatorSource = gen as MonoBehaviour;
-        }
+            generatorSource = GetComponent<IHexasphereGenerator>() as MonoBehaviour;
     }
 
-    // ───────────────────────────────────── Public API ───────────────────────────────────
+    // ─────────────────────────── Public API ───────────────────────────
+    /// <summary>
+    /// Inject a plain per‑tile elevation array (0‑1).  Call *before* ApplyHeightDisplacement.
+    /// </summary>
+    public void SetCustomElevations(float[] elevations)
+    {
+        customElevations = elevations;
+        Debug.Log($"[HexasphereRenderer] Set custom elevations for {customElevations?.Length ?? 0} tiles");
+    }
+
     /// <summary>Build and assign the planet/moon mesh.</summary>
     public void BuildMesh(SphericalHexGrid grid)
     {
         Report(0.05f, "Building mesh…");
-        
+
         if (usePerTileBiomeData)
         {
-            // Build mesh with per-tile biome data
-            Dictionary<int, int> tileBiomeIndices = new Dictionary<int, int>();
-            
-            // Get biome indices from the generator if available
+            // Build mesh with per‑tile biome data (uses Generator if present)
+            var tileBiomeIndices = new Dictionary<int, int>();
+
             if (Generator != null)
             {
                 for (int i = 0; i < grid.TileCount; i++)
                 {
                     var tileData = Generator.GetHexTileData(i);
-                    if (tileData != null)
-                    {
-                        // Convert biome enum to index
-                        int biomeIndex = (int)tileData.biome;
-                        tileBiomeIndices[i] = biomeIndex;
-                    }
+                    if (tileData != null) tileBiomeIndices[i] = (int)tileData.biome;
                 }
             }
-            
-            MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(grid, tileBiomeIndices, out vertexToTiles);
-            Debug.Log("[HexasphereRenderer] Built mesh with per-tile biome data");
+
+            MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(
+                grid, tileBiomeIndices, out vertexToTiles);
+            Debug.Log("[HexasphereRenderer] Built mesh with per‑tile biome data");
         }
         else if (useSeparateVertices)
         {
-            MF.sharedMesh = HexTileMeshBuilder.BuildWithSeparateVertices(grid, out _, out vertexToTiles);
+            MF.sharedMesh = HexTileMeshBuilder.BuildWithSeparateVertices(
+                grid, out _, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Using separate vertex mesh for clear tile boundaries");
         }
         else
         {
-            MF.sharedMesh = HexTileMeshBuilder.Build(grid, out _, out vertexToTiles);
+            MF.sharedMesh = HexTileMeshBuilder.Build(
+                grid, out _, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Using shared vertex mesh for memory efficiency");
         }
     }
 
-    /// <summary>Radially displace vertices with smooth per-vertex elevation based on tile data.</summary>
+    /// <summary>Radially displace vertices based on per‑tile elevation.</summary>
     public void ApplyHeightDisplacement(float radius)
     {
         Report(0.35f, "Applying elevation…");
 
         Mesh m = MF.sharedMesh;
-        var v = m.vertices;
-        
-        // Get the generator to access tile elevation data
-        if (Generator == null)
+        var  v = m.vertices;
+
+        if (Generator == null && customElevations == null)
         {
-            Debug.LogError("[HexasphereRenderer] No generator found for height displacement!");
+            Debug.LogError("[HexasphereRenderer] No generator *or* custom elevation array found for height displacement!");
             return;
         }
-        
-        // Apply smooth per-vertex elevation displacement
+
         for (int i = 0; i < v.Length; i++)
         {
-            Vector3 originalVertex = v[i];
-            float elevationOffset = 0f;
-            
-            // Calculate average elevation from all tiles that share this vertex
-            if (vertexToTiles != null && vertexToTiles.ContainsKey(i))
+            Vector3 original = v[i];
+            float   elevationOffset = 0f;
+
+            if (vertexToTiles != null && vertexToTiles.TryGetValue(i, out var tileList))
             {
-                float totalElevation = 0f;
-                int tileCount = 0;
-                
-                foreach (int tileIndex in vertexToTiles[i])
+                float total = 0f;
+                foreach (int tileIndex in tileList)
                 {
-                    float tileElevation = GetTileElevation(tileIndex);
-                    totalElevation += tileElevation;
-                    tileCount++;
+                    float tileElev = 0f;
+
+                    if (Generator != null)
+                        tileElev = Generator.GetTileElevation(tileIndex);
+                    else if (customElevations != null && tileIndex < customElevations.Length)
+                        tileElev = customElevations[tileIndex];
+
+                    total += tileElev;
                 }
-                
-                if (tileCount > 0)
-                {
-                    elevationOffset = (totalElevation / tileCount) * radius;
-                }
+                elevationOffset = (total / tileList.Count) * radius;
             }
-            
-            // Apply the elevation offset along the vertex normal (radial direction)
-            v[i] = originalVertex.normalized * (radius + elevationOffset);
+
+            v[i] = original.normalized * (radius + elevationOffset);
         }
-        
+
         m.vertices = v;
         m.RecalculateNormals();
-        
+
         Debug.Log($"[HexasphereRenderer] Applied height displacement with radius {radius}, vertex count: {v.Length}");
     }
 
@@ -176,7 +168,6 @@ public class HexasphereRenderer : MonoBehaviour
     public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray)
     {
         Report(0.65f, "Uploading textures…");
-
         var mat = MR.sharedMaterial;
         if (mat == null)
         {
@@ -184,113 +175,25 @@ public class HexasphereRenderer : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[HexasphereRenderer] Pushing textures to material: indexTex={indexTex?.width}x{indexTex?.height}, albedoArray={albedoArray?.width}x{albedoArray?.height}x{albedoArray?.depth}");
-        
-        if (indexTex != null) 
-        {
-            mat.SetTexture("_BiomeIndexTex", indexTex);
-            Debug.Log("[HexasphereRenderer] Set _BiomeIndexTex");
-            
-            // Debug: Sample a few pixels from the index texture
-            if (indexTex.width > 0 && indexTex.height > 0)
-            {
-                Color sample1 = indexTex.GetPixel(0, 0);
-                Color sample2 = indexTex.GetPixel(indexTex.width/2, indexTex.height/2);
-                Color sample3 = indexTex.GetPixel(indexTex.width-1, indexTex.height-1);
-                Debug.Log($"[HexasphereRenderer] Index texture samples - Center: {sample1.r:F3}, Middle: {sample2.r:F3}, Corner: {sample3.r:F3}");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[HexasphereRenderer] indexTex is null!");
-        }
-        
-        if (albedoArray != null) 
-        {
-            mat.SetTexture("_BiomeAlbedoArray", albedoArray);
-            Debug.Log("[HexasphereRenderer] Set _BiomeAlbedoArray");
-        }
-        else
-        {
-            Debug.LogWarning("[HexasphereRenderer] albedoArray is null!");
-        }
+        if (indexTex != null)  mat.SetTexture("_BiomeIndexTex",  indexTex);
+        if (albedoArray != null) mat.SetTexture("_BiomeAlbedoArray", albedoArray);
 
         int count = Generator != null ? Generator.GetBiomeSettings().Count
                                       : albedoArray != null ? albedoArray.depth : 0;
         mat.SetInt("_BiomeCount", count);
-        Debug.Log($"[HexasphereRenderer] Set _BiomeCount = {count}");
-
-        // Set biome data mode
-        mat.SetFloat("_UsePerTileBiomeData", usePerTileBiomeData ? 1.0f : 0.0f);
-        Debug.Log($"[HexasphereRenderer] Set _UsePerTileBiomeData = {usePerTileBiomeData}");
-
-        // Enable sharp boundaries if using separate vertices
-        if (useSeparateVertices)
-        {
-            mat.SetFloat("_SharpBoundaries", 1.0f);
-            Debug.Log("[HexasphereRenderer] Enabled sharp biome boundaries");
-        }
-        else
-        {
-            mat.SetFloat("_SharpBoundaries", 0.0f);
-        }
+        mat.SetFloat("_UsePerTileBiomeData", usePerTileBiomeData ? 1f : 0f);
+        mat.SetFloat("_SharpBoundaries",      useSeparateVertices ? 1f : 0f);
 
         Report(1f, "Planet ready!");
     }
 
-    /// <summary>Enable or disable sharp biome boundaries in the material.</summary>
-    public void SetSharpBoundaries(bool enabled)
+    // ─────────────────────────── Helpers ───────────────────────────
+    private void Report(float pct, string msg)
     {
-        var mat = MR.sharedMaterial;
-        if (mat != null)
+        if (loadingPanel != null)
         {
-            mat.SetFloat("_SharpBoundaries", enabled ? 1.0f : 0.0f);
-            Debug.Log($"[HexasphereRenderer] Sharp boundaries {(enabled ? "enabled" : "disabled")}");
+            loadingPanel.SetProgress(pct);
+            loadingPanel.SetStatus(msg);
         }
-    }
-
-    /// <summary>Enable or disable per-tile biome data mode.</summary>
-    public void SetPerTileBiomeData(bool enabled)
-    {
-        usePerTileBiomeData = enabled;
-        var mat = MR.sharedMaterial;
-        if (mat != null)
-        {
-            mat.SetFloat("_UsePerTileBiomeData", enabled ? 1.0f : 0.0f);
-            Debug.Log($"[HexasphereRenderer] Per-tile biome data {(enabled ? "enabled" : "disabled")}");
-        }
-    }
-
-    /// <summary>Set custom elevation data for testing purposes.</summary>
-    public void SetCustomElevations(float[] elevations)
-    {
-        customElevations = elevations;
-        Debug.Log($"[HexasphereRenderer] Set custom elevations for {elevations?.Length ?? 0} tiles");
-    }
-
-    /// <summary>Get tile elevation, preferring custom data if available.</summary>
-    public float GetTileElevation(int tileIndex)
-    {
-        // Use custom elevations if available
-        if (customElevations != null && tileIndex >= 0 && tileIndex < customElevations.Length)
-        {
-            return customElevations[tileIndex];
-        }
-        
-        // Fall back to generator if available
-        if (Generator != null)
-        {
-            return Generator.GetTileElevation(tileIndex);
-        }
-        
-        return 0f;
-    }
-
-    // ───────────────────────────────────── Helpers ─────────────────────────────────────
-    void Report(float pct, string msg)
-    {
-        if (loadingPanel == null) return;
-        loadingPanel.SetProgress(pct);
-        loadingPanel.SetStatus(msg);
     }
 }
