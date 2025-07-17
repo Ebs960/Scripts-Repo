@@ -4,8 +4,7 @@ using System.Linq;
 
 /// <summary>
 /// Generates a proper geodesic hexasphere using RedBlobGames' approach.
-/// Tile centers are taken from the vertices of a subdivided icosahedron and
-/// neighbor relationships are derived from the triangle mesh topology.
+/// Creates a true hex grid on a sphere with proper topology and corner generation.
 /// </summary>
 public class SphericalHexGrid
 {
@@ -41,21 +40,21 @@ public class SphericalHexGrid
         Radius = radius;
         Debug.Log($"[SphericalHexGrid] Generating proper geodesic hexasphere, target={targetTileCount}, radius={radius}");
 
-        // Calculate the icosahedron subdivision frequency
-        int frequency = CalculateFrequency(targetTileCount);
-        Debug.Log($"[SphericalHexGrid] Using frequency {frequency}");
+        // Calculate the number of icosahedron subdivisions needed
+        int subdivisions = CalculateSubdivisions(targetTileCount);
+        Debug.Log($"[SphericalHexGrid] Using {subdivisions} icosahedron subdivisions");
 
         // Step 1: Generate icosahedron
         GenerateIcosahedron();
 
         // Step 2: Subdivide icosahedron faces
-        SubdivideIcosahedron(frequency);
+        SubdivideIcosahedron(subdivisions);
 
-        // Step 3: Generate tile centers from vertices of the subdivided mesh
-        GenerateTileCentersFromVertices();
+        // Step 3: Generate hex centers from face centers (RedBlobGames method)
+        GenerateHexCentersFromFaces();
 
-        // Step 4: Build neighbor relationships from triangle topology
-        BuildVertexNeighbors();
+        // Step 4: Build proper neighbor relationships using dual graph
+        BuildNeighborsFromDualGraph();
 
         // Step 5: Detect the 12 pentagon tiles (original icosahedron vertices)
         DetectPentagons();
@@ -76,10 +75,10 @@ public class SphericalHexGrid
     public static int[] GetValidTileCounts()
     {
         List<int> validCounts = new List<int>();
-        for (int freq = 1; freq <= 10; freq++)
+        for (int subdivisions = 1; subdivisions <= 10; subdivisions++)
         {
-            int tiles = 10 * freq * freq + 2;
-            validCounts.Add(tiles);
+            int faces = 20 * (subdivisions + 1) * (subdivisions + 1);
+            validCounts.Add(faces);
         }
         return validCounts.ToArray();
     }
@@ -109,13 +108,15 @@ public class SphericalHexGrid
     /// <summary>
     /// Calculate the number of icosahedron subdivisions needed for target tile count
     /// </summary>
-    private int CalculateFrequency(int targetTileCount)
+    private int CalculateSubdivisions(int targetTileCount)
     {
-        int freq = Mathf.RoundToInt(Mathf.Sqrt((targetTileCount - 2) / 10f));
-        freq = Mathf.Max(1, freq);
-        int actualTiles = 10 * freq * freq + 2;
-        Debug.Log($"[SphericalHexGrid] Target: {targetTileCount}, Frequency: {freq}, Actual tiles: {actualTiles}");
-        return freq;
+        // Each icosahedron face generates (subdivisions + 1)^2 faces
+        int subdivisions = Mathf.RoundToInt(Mathf.Sqrt(targetTileCount / 20f) - 1);
+        subdivisions = Mathf.Max(1, subdivisions);
+
+        int actualFaces = 20 * (subdivisions + 1) * (subdivisions + 1);
+        Debug.Log($"[SphericalHexGrid] Target: {targetTileCount}, Subdivisions: {subdivisions}, Actual faces: {actualFaces}");
+        return subdivisions;
     }
 
     /// <summary>
@@ -292,64 +293,121 @@ public class SphericalHexGrid
     }
 
     /// <summary>
-    /// Generate tile centers from the vertices of the subdivided icosahedron
+    /// Generate hex centers from the centers of subdivided faces
     /// </summary>
-    private void GenerateTileCentersFromVertices()
+    private void GenerateHexCentersFromFaces()
     {
-        tileCenters = subdividedVertices.Select(v => v * Radius).ToArray();
-        Debug.Log($"[SphericalHexGrid] Generated {tileCenters.Length} tile centers from vertices");
+        List<Vector3> centers = new List<Vector3>();
+
+        // Each subdivided face becomes a hex tile center
+        foreach (int[] face in subdividedFaces)
+        {
+            Vector3 v0 = subdividedVertices[face[0]];
+            Vector3 v1 = subdividedVertices[face[1]];
+            Vector3 v2 = subdividedVertices[face[2]];
+
+            Vector3 faceCenter = (v0 + v1 + v2).normalized;
+            centers.Add(faceCenter);
+        }
+
+        tileCenters = centers.Select(v => v * Radius).ToArray();
+
+        Debug.Log($"[SphericalHexGrid] Generated {tileCenters.Length} hex centers from face centers");
     }
 
     /// <summary>
-    /// Build neighbor relationships between vertices of the subdivided mesh
+    /// Build neighbor relationships using the dual graph (faces sharing edges)
     /// </summary>
-    private void BuildVertexNeighbors()
+    private void BuildNeighborsFromDualGraph()
     {
-        int count = subdividedVertices.Count;
-        neighbors = new List<int>[count];
-        for (int i = 0; i < count; i++)
+        neighbors = new List<int>[tileCenters.Length];
+
+        for (int i = 0; i < tileCenters.Length; i++)
         {
             neighbors[i] = new List<int>();
         }
 
-        foreach (int[] face in subdividedFaces)
+        Dictionary<string, List<int>> edgeToFaces = new Dictionary<string, List<int>>();
+
+        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
         {
-            int a = face[0];
-            int b = face[1];
-            int c = face[2];
+            int[] face = subdividedFaces[faceIndex];
 
-            neighbors[a].Add(b); neighbors[a].Add(c);
-            neighbors[b].Add(a); neighbors[b].Add(c);
-            neighbors[c].Add(a); neighbors[c].Add(b);
-        }
-
-        for (int i = 0; i < count; i++)
-        {
-            neighbors[i] = neighbors[i].Distinct().ToList();
-
-            // Sort neighbors clockwise around the vertex for consistent ordering
-            neighbors[i].Sort((p, q) =>
+            for (int edge = 0; edge < 3; edge++)
             {
-                Vector3 ca = (subdividedVertices[p] - subdividedVertices[i]).normalized;
-                Vector3 cb = (subdividedVertices[q] - subdividedVertices[i]).normalized;
-                return Vector3.SignedAngle(ca, cb, subdividedVertices[i]) > 0 ? 1 : -1;
-            });
+                int v1 = face[edge];
+                int v2 = face[(edge + 1) % 3];
+
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+
+                if (!edgeToFaces.ContainsKey(edgeKey))
+                {
+                    edgeToFaces[edgeKey] = new List<int>();
+                }
+                edgeToFaces[edgeKey].Add(faceIndex);
+            }
         }
 
-        Debug.Log($"[SphericalHexGrid] Built neighbor relationships for {count} tiles");
+        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
+        {
+            int[] face = subdividedFaces[faceIndex];
+
+            for (int edge = 0; edge < 3; edge++)
+            {
+                int v1 = face[edge];
+                int v2 = face[(edge + 1) % 3];
+
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+
+                if (edgeToFaces.ContainsKey(edgeKey))
+                {
+                    foreach (int neighborFace in edgeToFaces[edgeKey])
+                    {
+                        if (neighborFace != faceIndex)
+                        {
+                            neighbors[faceIndex].Add(neighborFace);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < neighbors.Length; i++)
+        {
+            neighbors[i] = neighbors[i].Distinct().OrderBy(j => Vector3.Distance(tileCenters[i], tileCenters[j])).ToList();
+        }
+
+        Debug.Log($"[SphericalHexGrid] Built neighbor relationships for {tileCenters.Length} tiles using dual graph");
     }
 
     /// <summary>
-    /// Detect pentagon tiles (at original icosahedron vertices)
-    /// These are the faces that contain original icosahedron vertices
+    /// Detect pentagon tiles (faces that include original icosahedron vertices)
     /// </summary>
     private void DetectPentagons()
     {
         pentagonIndices = new HashSet<int>();
-        for (int i = 0; i < icosahedronVertices.Count; i++)
+
+        // Find faces that contain original icosahedron vertices
+        for (int faceIndex = 0; faceIndex < subdividedFaces.Count; faceIndex++)
         {
-            pentagonIndices.Add(i);
+            int[] face = subdividedFaces[faceIndex];
+
+            bool containsOriginalVertex = false;
+            for (int v = 0; v < 3; v++)
+            {
+                if (face[v] < icosahedronVertices.Count)
+                {
+                    containsOriginalVertex = true;
+                    break;
+                }
+            }
+
+            if (containsOriginalVertex)
+            {
+                pentagonIndices.Add(faceIndex);
+            }
         }
+
         Debug.Log($"[SphericalHexGrid] Detected {pentagonIndices.Count} pentagon tiles");
     }
 
