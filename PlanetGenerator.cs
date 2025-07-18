@@ -45,7 +45,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float elevationFreq = 2f, moistureFreq = 4f;
     [Range(0.2f, 0.8f)]
     [Tooltip("Noise threshold for filling land *around* the guaranteed core within masks. Lower = more land.")]
-    public float landThreshold = 0.5f;
+    public float landThreshold = 0.4f;
 
     [Tooltip("Frequency multiplier for the continent noise function.")]
     public float continentNoiseFrequency = 20f;
