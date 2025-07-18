@@ -34,6 +34,11 @@ public class HexasphereRenderer : MonoBehaviour
     [Tooltip("Use per‑tile biome data instead of UV‑based texture sampling for more accurate biome mapping.")]
     public bool usePerTileBiomeData = true;
 
+    [Header("Height Displacement")]
+    [Range(0f, 1f)]
+    [Tooltip("Scale factor for vertex displacement based on tile elevation")] 
+    public float heightDisplacementScale = 0.3f;
+
     // ─────────────────────────── Helpers ───────────────────────────
     private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
     private MeshRenderer MR => meshRenderer != null ? meshRenderer : (meshRenderer = GetComponent<MeshRenderer>());
@@ -101,8 +106,9 @@ public class HexasphereRenderer : MonoBehaviour
                 }
             }
 
+            int biomeCount = Generator != null ? Generator.GetBiomeSettings().Count : 0;
             MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(
-                grid, tileBiomeIndices, out vertexToTiles);
+                grid, tileBiomeIndices, biomeCount, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Built mesh with per‑tile biome data");
         }
         else if (useSeparateVertices)
@@ -152,7 +158,7 @@ public class HexasphereRenderer : MonoBehaviour
 
                     total += tileElev;
                 }
-                elevationOffset = (total / tileList.Count) * radius;
+                elevationOffset = (total / tileList.Count) * radius * heightDisplacementScale;
             }
 
             v[i] = original.normalized * (radius + elevationOffset);

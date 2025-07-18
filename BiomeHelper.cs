@@ -55,11 +55,11 @@ public struct YieldValues {
 /// ---------- HELPER LOGIC ----------
 public static class BiomeHelper {
 
-    public static Biome GetBiome(bool isLand, float temperature, float moisture, float coastDistance = 0f, bool isRainforestMapType = false, bool isScorchedMapType = false, bool isInfernalMapType = false, bool isDemonicMapType = false) 
+    public static Biome GetBiome(bool isLand, float temperature, float moisture,
+        bool isRainforestMapType = false, bool isScorchedMapType = false,
+        bool isInfernalMapType = false, bool isDemonicMapType = false)
     {
         if (!isLand) {
-            if (coastDistance < 0.1f) return Biome.Coast;
-            if (coastDistance < 0.3f) return Biome.Seas;
             return Biome.Ocean;
         }
 
