@@ -36,8 +36,15 @@ public class HexasphereRenderer : MonoBehaviour
 
     [Header("Height Displacement")]
     [Range(0f, 1f)]
-    [Tooltip("Scale factor for vertex displacement based on tile elevation")] 
+    [Tooltip("Scale factor for vertex displacement based on tile elevation")]
     public float heightDisplacementScale = 0.3f;
+
+    [Header("Atmosphere")]
+    public bool generateAtmosphere = true;
+    [Tooltip("Extra shell thickness in *planet-radius* units (0.02 \u2248 2% )")]
+    [Range(0.005f, 0.05f)]
+    public float atmosphereThickness = 0.02f;
+    public Material atmosphereMaterial;
 
     // ─────────────────────────── Helpers ───────────────────────────
     private MeshFilter   MF => meshFilter   != null ? meshFilter   : (meshFilter   = GetComponent<MeshFilter>());
@@ -126,6 +133,30 @@ public class HexasphereRenderer : MonoBehaviour
             MF.sharedMesh = HexTileMeshBuilder.Build(
                 grid, out _, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Using shared vertex mesh for memory efficiency");
+        }
+
+        if (generateAtmosphere && atmosphereMaterial != null)
+        {
+            float baseRadius = grid.Radius;
+            Mesh shell = HexTileMeshBuilder.BuildAtmosphereShell(
+                                grid,
+                                baseRadius,
+                                atmosphereThickness * baseRadius);
+
+            GameObject atm = new GameObject("AtmosphereShell");
+            atm.transform.SetParent(this.transform, false);
+            atm.layer = this.gameObject.layer;
+
+            var mf = atm.AddComponent<MeshFilter>();
+            var mr = atm.AddComponent<MeshRenderer>();
+
+            mf.sharedMesh     = shell;
+            mr.sharedMaterial = atmosphereMaterial;
+
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows    = false;
+            mr.sharedMaterial.renderQueue =
+                (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
     }
 

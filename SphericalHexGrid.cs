@@ -12,8 +12,10 @@ public class SphericalHexGrid
     public int TileCount => tileCenters.Length;
     public Vector3[] tileCenters;            // Center point of each tile (on sphere surface)
     public List<int>[] neighbors;            // Neighbor indices for each tile
-    public List<int>[] tileCorners;          // For each tile: list of indices (into Vertices) for corners (polygon, sorted)
-    public List<Vector3> Vertices { get; private set; }  // List of all corner positions
+    public List<int>[] tileCorners;          // For each tile: list of indices (into CornerVertices) for corners (polygon, sorted)
+    public List<Vector3> Vertices { get; private set; }        // Deduped icosphere vertices
+    public List<int>     Triangles { get; private set; }       // Icosphere topology
+    public List<Vector3> CornerVertices { get; private set; }  // List of all corner positions
     public float Radius { get; private set; }
     public HashSet<int> pentagonIndices { get; private set; } // Indices of 12 pentagon tiles
 
@@ -42,10 +44,12 @@ public class SphericalHexGrid
         }
 
         int tileCount = meshVertices.Count;
-        tileCenters = new Vector3[tileCount];
-        neighbors = new List<int>[tileCount];
-        tileCorners = new List<int>[tileCount];
-        Vertices = new List<Vector3>();
+        tileCenters     = new Vector3[tileCount];
+        neighbors       = new List<int>[tileCount];
+        tileCorners     = new List<int>[tileCount];
+        Vertices        = meshVertices;              // icosphere verts
+        Triangles       = meshFaces.SelectMany(f => f).ToList();
+        CornerVertices  = new List<Vector3>();
         pentagonIndices = new HashSet<int>();
 
         // Step 3: For each tile (vertex), assign center, corners, neighbors
@@ -74,8 +78,8 @@ public class SphericalHexGrid
                 int cornerIdx;
                 if (!cornerLookup.TryGetValue(fc, out cornerIdx))
                 {
-                    cornerIdx = Vertices.Count;
-                    Vertices.Add(fc);
+                    cornerIdx = CornerVertices.Count;
+                    CornerVertices.Add(fc);
                     cornerLookup[fc] = cornerIdx;
                 }
                 corners.Add(cornerIdx);

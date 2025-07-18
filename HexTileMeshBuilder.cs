@@ -34,7 +34,7 @@ public static class HexTileMeshBuilder
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = GetOrAdd(grid.Vertices[corners[i]], vLookup, verts, uvs, uvs1);
+                cornerV[i] = GetOrAdd(grid.CornerVertices[corners[i]], vLookup, verts, uvs, uvs1);
 
             // ── planar UVs for this tile ──
             Vector3 centre = grid.tileCenters[tile];
@@ -43,7 +43,7 @@ public static class HexTileMeshBuilder
             uvs1[cIdx] = new Vector2(0.5f, 0.5f);
             for (int c = 0; c < cornerV.Length; c++)
             {
-                Vector3 corner = grid.Vertices[corners[c]];
+                Vector3 corner = grid.CornerVertices[corners[c]];
                 Vector3 local  = corner - centre;
                 float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
                 float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
@@ -87,7 +87,7 @@ public static class HexTileMeshBuilder
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs, uvs1);
+                cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1);
 
             Vector3 centre = grid.tileCenters[tile];
             Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
@@ -95,7 +95,7 @@ public static class HexTileMeshBuilder
             uvs1[cIdx] = new Vector2(0.5f, 0.5f);
             for (int c = 0; c < cornerV.Length; c++)
             {
-                Vector3 corner = grid.Vertices[corners[c]];
+                Vector3 corner = grid.CornerVertices[corners[c]];
                 Vector3 local  = corner - centre;
                 float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
                 float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
@@ -149,7 +149,7 @@ public static class HexTileMeshBuilder
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs, uvs1, colors, edgeCol);
+                cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1, colors, edgeCol);
 
             Vector3 centre = grid.tileCenters[tile];
             Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
@@ -157,7 +157,7 @@ public static class HexTileMeshBuilder
             uvs1[cIdx] = new Vector2(0.5f, 0.5f);
             for (int c = 0; c < cornerV.Length; c++)
             {
-                Vector3 corner = grid.Vertices[corners[c]];
+                Vector3 corner = grid.CornerVertices[corners[c]];
                 Vector3 local  = corner - centre;
                 float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
                 float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
@@ -223,6 +223,29 @@ public static class HexTileMeshBuilder
         m.SetTriangles(t, 0);
         m.RecalculateNormals();
         Debug.Log($"[HexTileMeshBuilder] {label} mesh – verts:{v.Count} tris:{t.Count/3} tiles:{tileCount}");
+        return m;
+    }
+
+    // ----------------------------------------------------------------------
+    // Atmosphere shell builder
+    public static Mesh BuildAtmosphereShell(SphericalHexGrid grid,
+                                            float radius,
+                                            float thickness = 0.02f)
+    {
+        var verts = new List<Vector3>();
+        var tris  = new List<int>();
+
+        verts.AddRange(grid.Vertices);     // deduped icosphere vertices
+        tris.AddRange(grid.Triangles);     // original topology
+
+        for (int i = 0; i < verts.Count; i++)
+            verts[i] = verts[i].normalized * (radius + thickness);
+
+        Mesh m = new Mesh { name = "AtmosphereShell",
+                            indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+        m.SetVertices(verts);
+        m.SetTriangles(tris, 0);
+        m.RecalculateNormals();
         return m;
     }
 
