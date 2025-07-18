@@ -424,8 +424,6 @@ public class GameManager : MonoBehaviour
                 if (planetGenerator.hexasphereRenderer != null)
                 {
                     planetGenerator.hexasphereRenderer.generatorSource = planetGenerator;
-                    planetGenerator.hexasphereRenderer.usePerTileBiomeData = true;
-                    planetGenerator.hexasphereRenderer.useSeparateVertices = true;
                 }
             }
 

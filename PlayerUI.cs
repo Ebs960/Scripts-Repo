@@ -1,5 +1,6 @@
 // Assets/Scripts/UI/PlayerUI.cs
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
