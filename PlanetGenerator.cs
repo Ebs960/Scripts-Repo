@@ -483,10 +483,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 finalElevation = baseLandElevation + (noiseElevation * noiseScale); // Scale noise contribution
                 
 
-                float coastDist = 1.0f; 
-
-
-                biome = GetBiomeForTile(i, true, temperature, moisture, coastDist);
+                biome = GetBiomeForTile(i, true, temperature, moisture);
 
                 // Override polar land areas with frozen biomes
                 if (absLatitude >= polarLatitudeThreshold) {
@@ -512,8 +509,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
             } else { // Water Biomes
                  finalElevation = 0f; // Water elevation is 0
-                 // Let BiomeHelper determine water biomes (Ocean, Seas, Coast, Glacier)
-                 // Pass coastDistance = 0f for water tiles as they are the water body itself.
+                 // Classify polar water tiles as glaciers, everything else as ocean
                  if (absLatitude >= polarLatitudeThreshold) {
                     biome = Biome.Glacier;
                  } else {
@@ -1261,16 +1257,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         isDemonicMapType = mapTypeName.Contains("Demonic");
     }
 
-    private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture, float coastDistance)
+    private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
         // Use debug/override flags if enabled
         bool useRainforest = overrideMapTypeFlags ? debugIsRainforestMapType : isRainforestMapType;
         bool useScorched = overrideMapTypeFlags ? debugIsScorchedMapType : isScorchedMapType;
         bool useInfernal = overrideMapTypeFlags ? debugIsInfernalMapType : isInfernalMapType;
         bool useDemonic = overrideMapTypeFlags ? debugIsDemonicMapType : isDemonicMapType;
-        
 
-        return BiomeHelper.GetBiome(isLand, temperature, moisture, coastDistance, useRainforest, useScorched, useInfernal, useDemonic);
+        return BiomeHelper.GetBiome(isLand, temperature, moisture, useRainforest, useScorched, useInfernal, useDemonic);
     }
 
     public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
