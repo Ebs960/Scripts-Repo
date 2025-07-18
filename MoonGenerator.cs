@@ -129,6 +129,11 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>(); // Store final elevation
     readonly Dictionary<Biome, BiomeSettings> lookup = new Dictionary<Biome, BiomeSettings>(); // Lookup for settings
     private LoadingPanelController loadingPanelController;
+    /// <summary>
+    /// List holding the final HexTileData objects for all moon tiles.
+    /// Populated after surface generation completes.
+    /// </summary>
+    public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
     public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
 
     // Decorations are now managed by SGT components. Old pooling logic has been
@@ -174,6 +179,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     {
         data.Clear();
         tileElevation.Clear();
+        Tiles.Clear();
         int tileCount = grid.TileCount;
 
         // --- 1. Initial Dune Elevation and Biome Assignment ---
@@ -256,6 +262,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         // NEW: Build visual textures for SGT
         yield return StartCoroutine(BuildMoonVisualMapsBatched());
+
+        // Populate the public tile list with the final tile data
+        Tiles = data.Values.ToList();
 
         // Debug: List biome quantities
         LogBiomeQuantities();

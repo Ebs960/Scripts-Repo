@@ -205,6 +205,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     // Cache elevation for river generation
     readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>();
     private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
+    /// <summary>
+    /// Public list containing the final HexTileData for every tile on the planet.
+    /// This is rebuilt after surface generation completes.
+    /// </summary>
+    public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
     private LoadingPanelController loadingPanelController;
 
 
@@ -293,6 +298,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         data.Clear();
         baseData.Clear();
         tileElevation.Clear();
+        Tiles.Clear();
         landTilesGenerated = 0;
 
         // --- Validate Thresholds ---
@@ -1119,6 +1125,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             Debug.LogError("[PlanetGenerator] GameManager.Instance is null! Cannot sync tile grid.");
         }
+
+        // Populate the public tile list with the final tile data
+        Tiles = data.Values.ToList();
 
         // Debug: List biome quantities
         LogBiomeQuantities();
