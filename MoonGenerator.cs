@@ -6,9 +6,6 @@ using System.Threading.Tasks;
 using System.Linq;
 
 public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
-    [Header("Inspector: Tile Data (Read-Only)")]
-    [SerializeField] private List<MoonTileInspectorInfo> inspectorTiles = new List<MoonTileInspectorInfo>();
-    public List<MoonTileInspectorInfo> InspectorTiles => inspectorTiles;
 {
     public HexasphereRenderer hexasphereRenderer;   // assign in inspector
     [Header("Sphere Settings")]
@@ -179,23 +176,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     /// Generates the moon's surface
     /// </summary>
     public System.Collections.IEnumerator GenerateSurface()
-        // --- Inspector: Populate inspectorTiles for debugging ---
-        inspectorTiles.Clear();
-        for (int i = 0; i < grid.TileCount; i++)
-        {
-            if (data.TryGetValue(i, out var td))
-            {
-                var info = new MoonTileInspectorInfo {
-                    tileIndex = i,
-                    biome = td.biome,
-                    height = td.elevation,
-                    moisture = td.moisture,
-                    temperature = td.temperature,
-                    position = grid.tileCenters[i]
-                };
-                inspectorTiles.Add(info);
-            }
-        }
     {
         data.Clear();
         tileElevation.Clear();
@@ -352,20 +332,17 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 if (tileIdx < 0) tileIdx = 0;
                 pixelToTileLookup[x, y] = tileIdx;
             }
-    // Inspector-friendly tile info for Unity Inspector
-    [Serializable]
-    public class MoonTileInspectorInfo {
-        public int tileIndex;
-        public Biome biome;
-        public float height;
-        public float moisture;
-        public float temperature;
-        public Vector3 position;
-    }
-
-    [Header("Inspector: Tile Data (Read-Only)")]
-    [SerializeField] private List<MoonTileInspectorInfo> inspectorTiles = new List<MoonTileInspectorInfo>();
-    public List<MoonTileInspectorInfo> InspectorTiles => inspectorTiles;
+        });
+        // Yield once after the parallel loop to keep UI responsive
+        if (loadingPanelController != null) {
+            loadingPanelController.SetProgress(0.1f);
+        }
+        yield return null;
+        // --- END Parallel mapping ---
+        
+        if (loadingPanelController != null) {
+            loadingPanelController.SetStatus("Building moon lookup table...");
+            loadingPanelController.SetProgress(0.5f); // Start halfway through moon gen
         }
         
         // --- Heightmap: Output as Alpha8 (single channel) ---
