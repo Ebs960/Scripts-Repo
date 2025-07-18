@@ -43,6 +43,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private Image upcomingCivIcon;
 
     private Civilization currentCiv;
+    private Coroutine waitForTurnManagerCoroutine; // used to delay subscription until TurnManager exists
 
     void Start()
     {
@@ -164,29 +165,39 @@ public class PlayerUI : MonoBehaviour
 
     void OnEnable()
     {
-        // Subscribe to turn manager events with null checks
-        if (TurnManager.Instance != null)
+        // Delay setup until the game has actually started so that TurnManager
+        // and civilizations are available
+        if (GameManager.Instance != null)
         {
-            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
-            Debug.Log("PlayerUI: Subscribed to TurnManager events");
+            GameManager.Instance.OnGameStarted += SetupAfterGameStart;
+
+            // If the game is already in progress (e.g. UI re-enabled mid game)
+            // immediately perform setup
+            if (GameManager.Instance.gameInProgress)
+            {
+                SetupAfterGameStart();
+            }
         }
         else
         {
-            Debug.LogWarning("PlayerUI: TurnManager.Instance is null during OnEnable");
-        }
-        if (currentCiv != null)
-        {
-            currentCiv.OnTechStarted += OnTechOrCultureStarted;
-            currentCiv.OnCultureStarted += OnTechOrCultureStarted;
-            currentCiv.OnTechResearched += OnTechOrCultureStarted;
-            currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
+            // Fallback: just wait for TurnManager directly
+            waitForTurnManagerCoroutine = StartCoroutine(WaitForTurnManager());
         }
     }
 
     void OnDisable()
     {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGameStarted -= SetupAfterGameStart;
+
         if (TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+
+        if (waitForTurnManagerCoroutine != null)
+        {
+            StopCoroutine(waitForTurnManagerCoroutine);
+            waitForTurnManagerCoroutine = null;
+        }
         if (currentCiv != null)
         {
             currentCiv.OnTechStarted -= OnTechOrCultureStarted;
@@ -194,6 +205,49 @@ public class PlayerUI : MonoBehaviour
             currentCiv.OnTechResearched -= OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted -= OnTechOrCultureStarted;
         }
+    }
+
+    private void SetupAfterGameStart()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnGameStarted -= SetupAfterGameStart;
+
+        if (waitForTurnManagerCoroutine != null)
+        {
+            StopCoroutine(waitForTurnManagerCoroutine);
+            waitForTurnManagerCoroutine = null;
+        }
+
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+
+            // Initialize immediately using current turn info if available
+            var civ = TurnManager.Instance.GetCurrentCivilization();
+            int round = TurnManager.Instance.round;
+            if (civ != null)
+                HandleTurnChanged(civ, round);
+        }
+        else
+        {
+            // If TurnManager still isn't ready, wait for it
+            waitForTurnManagerCoroutine = StartCoroutine(WaitForTurnManager());
+        }
+    }
+
+    private IEnumerator WaitForTurnManager()
+    {
+        while (TurnManager.Instance == null)
+            yield return null;
+
+        TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+
+        var civ = TurnManager.Instance.GetCurrentCivilization();
+        int round = TurnManager.Instance.round;
+        if (civ != null)
+            HandleTurnChanged(civ, round);
+
+        waitForTurnManagerCoroutine = null;
     }
 
     private void HandleTurnChanged(Civilization civ, int round)
