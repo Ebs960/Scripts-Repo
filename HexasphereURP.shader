@@ -54,6 +54,7 @@ Shader "Custom/HexasphereURP"
                 float2 uv          : TEXCOORD0;
                 float  biomeId     : TEXCOORD1; // pass as scalar
                 float  yPos        : TEXCOORD2; // world‑space Y for latitude tint
+                float  radius      : TEXCOORD3; // object radius in world units
             };
 
             Varyings vert (Attributes IN)
@@ -64,6 +65,7 @@ Shader "Custom/HexasphereURP"
                 OUT.uv      = IN.uv;
                 OUT.biomeId = IN.color.r;
                 OUT.yPos    = posWS.y;          // capture Y in world units
+                OUT.radius  = length(posWS);     // sphere radius
                 return OUT;
             }
 
@@ -89,7 +91,7 @@ Shader "Custom/HexasphereURP"
 
                 /* ──── latitude tint ──── */
                 // World Y mapped to 0…1 where 0 = equator, 1 = pole
-                float lat01 = saturate(abs(IN.yPos) / (_WorldSpaceCameraPos.w)); // radius in .w
+                float lat01 = saturate(abs(IN.yPos) / IN.radius);
                 float3 latCol = _LatTintTex.Sample(sampler_LatTintTex, float2(lat01,0.5)).rgb;
 
                 biomeCol = lerp(biomeCol, latCol, _LatTintStrength);
