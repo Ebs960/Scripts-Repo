@@ -9,6 +9,7 @@ Shader "Custom/HexasphereURP"
         _BiomeCount       ("BiomeCount", Float) = 1
         [Toggle] _SharpBoundaries ("Sharp Biome Boundaries", Float) = 0
         [Toggle] _UsePerTileBiomeData ("Use Per‑Tile Biome Data", Float) = 1
+        _SphereRadius     ("Sphere Radius", Float) = 1.0              // <‑ new
     }
 
     SubShader
@@ -39,6 +40,7 @@ Shader "Custom/HexasphereURP"
                 float _SharpBoundaries;
                 float _UsePerTileBiomeData;
                 float _LatTintStrength;
+                float _SphereRadius;
             CBUFFER_END
 
             struct Attributes
@@ -89,7 +91,7 @@ Shader "Custom/HexasphereURP"
 
                 /* ──── latitude tint ──── */
                 // World Y mapped to 0…1 where 0 = equator, 1 = pole
-                float lat01 = saturate(abs(IN.yPos) / (_WorldSpaceCameraPos.w)); // radius in .w
+                float lat01 = saturate(abs(IN.yPos) / _SphereRadius); // use property for radius
                 float3 latCol = _LatTintTex.Sample(sampler_LatTintTex, float2(lat01,0.5)).rgb;
 
                 biomeCol = lerp(biomeCol, latCol, _LatTintStrength);
