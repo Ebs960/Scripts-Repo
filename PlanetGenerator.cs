@@ -674,8 +674,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // ---------- 6.1 Set Fixed Coast Elevation (AFTER Coasts/Seas are determined) ----------
         for (int i = 0; i < tileCount; i++) {
-            if (data.ContainsKey(i) && data[i].biome == Biome.Coast) {
-                tileElevation[i] = coastElevation; // Fixed elevation for coasts 
+            if (data.ContainsKey(i)) {
+                Biome b = data[i].biome;
+                if (b == Biome.Coast || b == Biome.Seas || b == Biome.Ocean) {
+                    tileElevation[i] = coastElevation; // Fixed elevation for coasts, seas & ocean
+                }
             }
 
             // BATCH YIELD
@@ -689,6 +692,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 yield return null;
             }
         }
+
+        int landNow = data.Values.Count(d => d.isLand && d.biome != Biome.Glacier);
+        Debug.Log($"Post-coast true-land tiles: {landNow}");
 
         // ---------- 6.5 River Generation Pass (MOVED TO AFTER COAST/SEAS) ----
         if (enableRivers) {
