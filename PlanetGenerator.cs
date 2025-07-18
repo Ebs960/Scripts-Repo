@@ -28,12 +28,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Min(1)]
     public int numberOfContinents = 6;
 
+
     [Tooltip("Maximum longitudinal extent (width) of a continent mask in degrees.")]
-    [Range(10f, 180f)]
+    [Range(10f, 237.6f)]
     public float maxContinentWidthDegrees = 70f; 
 
     [Tooltip("Maximum latitudinal extent (height) of a continent mask in degrees.")]
-    [Range(10f, 180f)]
+    [Range(10f, 237.6f)]
     public float maxContinentHeightDegrees = 60f; 
     
     [Tooltip("Maximum random offset applied to deterministic seed positions (0 = no offset, higher = more variance).")]
@@ -1095,8 +1096,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (hexasphereRenderer != null)
         {
             hexasphereRenderer.generatorSource = this;
-            hexasphereRenderer.usePerTileBiomeData = true;
-            hexasphereRenderer.useSeparateVertices = true;
             hexasphereRenderer.BuildMesh(grid);
             hexasphereRenderer.ApplyHeightDisplacement(grid.Radius);
         }
