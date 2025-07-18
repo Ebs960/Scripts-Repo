@@ -96,19 +96,23 @@ public class HexasphereRenderer : MonoBehaviour
         {
             // Build mesh with per‑tile biome data (uses Generator if present)
             var tileBiomeIndices = new Dictionary<int, int>();
+            var tileElev         = new Dictionary<int, float>();
 
             if (Generator != null)
             {
                 for (int i = 0; i < grid.TileCount; i++)
                 {
-                    var tileData = Generator.GetHexTileData(i);
-                    if (tileData != null) tileBiomeIndices[i] = (int)tileData.biome;
+                    var td = Generator.GetHexTileData(i);
+                    if (td != null) {
+                        tileBiomeIndices[i] = (int)td.biome;
+                        tileElev[i]         = td.elevation;   // 0‑1 already
+                    }
                 }
             }
 
             int biomeCount = Generator != null ? Generator.GetBiomeSettings().Count : 0;
             MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(
-                grid, tileBiomeIndices, biomeCount, out vertexToTiles);
+                grid, tileBiomeIndices, tileElev, biomeCount, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Built mesh with per‑tile biome data");
         }
         else if (useSeparateVertices)
@@ -131,7 +135,8 @@ public class HexasphereRenderer : MonoBehaviour
         Report(0.35f, "Applying elevation…");
 
         Mesh m = MF.sharedMesh;
-        var  v = m.vertices;
+        var  v      = m.vertices;
+        var  colors = m.colors;
 
         if (Generator == null && customElevations == null)
         {
@@ -161,7 +166,8 @@ public class HexasphereRenderer : MonoBehaviour
                 elevationOffset = (total / tileList.Count) * radius * heightDisplacementScale;
             }
 
-            v[i] = original.normalized * (radius + elevationOffset);
+            float weight = colors.Length > 0 ? colors[i].b : 1f;  // 0=edge,1=center
+            v[i] = original.normalized * (radius + elevationOffset * weight);
         }
 
         m.vertices = v;

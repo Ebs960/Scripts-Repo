@@ -90,8 +90,9 @@ public static class HexTileMeshBuilder
 
     /* ─────── Per‑tile‑biome build (vertex colours store biome id) ─────── */
     public static Mesh BuildWithPerTileBiomeData(SphericalHexGrid grid,
-                                                 Dictionary<int,int> tileBiome,
-                                                 int biomeCount,
+                                                 Dictionary<int,int>   tileBiome,
+                                                 Dictionary<int,float> tileElevation,
+                                                 int                   biomeCount,
                                                  out Dictionary<int,List<int>> vertexToTiles)
     {
         int tileCount = grid.TileCount;
@@ -108,14 +109,18 @@ public static class HexTileMeshBuilder
             int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
 
-            int biomeIdx   = tileBiome.TryGetValue(tile, out int b) ? b : 0;
-            Color biomeCol = new(biomeIdx * normaliser, 0, 0, 1);
+            int biomeIdx = tileBiome.TryGetValue(tile, out int b) ? b : 0;
+            // g = normalised elevation, b = edge weight
+            float elevNorm = tileElevation.TryGetValue(tile, out var h) ? h : 0f;
 
-            int cIdx = Add(center, verts, uvs, colors, biomeCol);
+            Color centreCol = new(biomeIdx * normaliser, elevNorm, 1f, 1f); // centre: weight=1
+            Color edgeCol   = new(biomeIdx * normaliser, elevNorm, 0f, 1f); // edges: weight=0
+
+            int cIdx = Add(center, verts, uvs, colors, centreCol);
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs, colors, biomeCol);
+                cornerV[i] = Add(grid.Vertices[corners[i]], verts, uvs, colors, edgeCol);
 
             for (int i = 0; i < corners.Length; i++)
             {
