@@ -124,7 +124,7 @@ public class AnimalManager : MonoBehaviour
         if (candidates.Count == 0) return;
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        Vector3 pos = TileDataHelper.Instance.GetTileCenter(chosenIndex);
+        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(chosenIndex, 0.5f);
 
         var go = Instantiate(rule.unitData.prefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();

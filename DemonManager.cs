@@ -91,7 +91,7 @@ public class DemonManager : MonoBehaviour
 
         // Pick random spawn location
         int spawnTileIndex = validTiles[Random.Range(0, validTiles.Count)];
-        Vector3 spawnPos = TileDataHelper.Instance.GetTileCenter(spawnTileIndex);
+        Vector3 spawnPos = TileDataHelper.Instance.GetTileSurfacePosition(spawnTileIndex, 0.5f);
 
         // Pick random demon type
         DemonUnitData demonType = demonUnits[Random.Range(0, demonUnits.Length)];

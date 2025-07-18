@@ -117,7 +117,7 @@ public class WorkerUnit : MonoBehaviour
     private void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex)
     {
         // Get the extruded center of the tile in world space
-        Vector3 tileSurfaceCenter = G.tileCenters[tileIndex];
+        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
         
         // Set unit position directly on the surface
         transform.position = tileSurfaceCenter;
