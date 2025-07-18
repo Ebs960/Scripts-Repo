@@ -118,8 +118,8 @@ public class UnitMovementController : MonoBehaviour
 
         startNode.gCost = 0;
         startNode.hCost = Vector3.Distance(
-            TileDataHelper.Instance.GetTileCenter(startIndex),
-            TileDataHelper.Instance.GetTileCenter(endIndex));
+            TileDataHelper.Instance.GetTileSurfacePosition(startIndex),
+            TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
 
 
         while (openList.Count > 0)
@@ -167,8 +167,8 @@ public class UnitMovementController : MonoBehaviour
                     neighborNode.parent = currentNode;
                     neighborNode.gCost = tentativeGCost;
                     neighborNode.hCost = Vector3.Distance(
-                        TileDataHelper.Instance.GetTileCenter(neighborIndex),
-                        TileDataHelper.Instance.GetTileCenter(endIndex));
+                        TileDataHelper.Instance.GetTileSurfacePosition(neighborIndex),
+                        TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
                     
                     if (!openList.Contains(neighborNode))
                     {
@@ -245,7 +245,7 @@ public class UnitMovementController : MonoBehaviour
             // Calculate positions including extrusion
             Vector3 startPosition = unitTransform.position;
             SphericalHexGrid currentGrid = grid;
-            Vector3 endPosition = TileDataHelper.Instance.GetTileCenter(targetTileIndex);
+            Vector3 endPosition = TileDataHelper.Instance.GetTileSurfacePosition(targetTileIndex, 0f);
             Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;
 
             // Get normals and radii for spherical interpolation
@@ -339,7 +339,7 @@ public class UnitMovementController : MonoBehaviour
         SphericalHexGrid currentGrid = grid;
 
         // Get the extruded center of the tile. This is the new correct surface position.
-        Vector3 surfacePosition = TileDataHelper.Instance.GetTileCenter(tileIndex);
+        Vector3 surfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
         unitTransform.position = surfacePosition;
 
         Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;

@@ -677,7 +677,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // Instantiate pioneer
-        Vector3 pos = planet.Grid.tileCenters[tile];
+        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(tile, 0.5f);
         var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         if (wgo == null)
         {

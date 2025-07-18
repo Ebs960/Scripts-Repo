@@ -635,7 +635,7 @@ public class CombatUnit : MonoBehaviour
         }
 
         // Get the extruded center of the tile in world space. This is the new surface position.
-        Vector3 tileSurfaceCenter = G.tileCenters[tileIndex];
+        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
         
         // Set unit position directly on the surface. Any small visual offset (like for unit height)
         // should ideally be handled by the model's pivot point within the prefab itself.

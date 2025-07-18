@@ -136,6 +136,35 @@ public class TileDataHelper : MonoBehaviour
         return pos;
     }
 
+    /// <summary>
+    /// Returns the world position of a tile taking height displacement into account.
+    /// An optional offset can be supplied to place objects slightly above the surface.
+    /// </summary>
+    public Vector3 GetTileSurfacePosition(int tileIndex, float unitOffset = 0f)
+    {
+        var (tileData, isMoon) = GetTileData(tileIndex);
+
+        if (isMoon && moon != null)
+        {
+            var tileDir = moon.Grid.tileCenters[tileIndex].normalized;
+            float radius = moon.Grid.Radius;
+            float elevation = moon.GetTileElevation(tileIndex);
+            float displacedRadius = radius + (elevation * radius * moon.hexasphereRenderer.heightDisplacementScale);
+            return moon.transform.TransformPoint(tileDir * displacedRadius + tileDir * unitOffset);
+        }
+        else if (planet != null)
+        {
+            var tileDir = planet.Grid.tileCenters[tileIndex].normalized;
+            float radius = planet.Grid.Radius;
+            float elevation = planet.GetTileElevation(tileIndex);
+            float displacedRadius = radius + (elevation * radius * planet.hexasphereRenderer.heightDisplacementScale);
+            return planet.transform.TransformPoint(tileDir * displacedRadius + tileDir * unitOffset);
+        }
+
+        // Fallback to default center if no generator references exist
+        return GetTileCenter(tileIndex);
+    }
+
     public bool IsTileAccessible(int tileIndex, bool mustBeLand, int movePoints, int unitID, bool allowMoon = false)
     {
         var (data, isMoon) = GetTileData(tileIndex);
