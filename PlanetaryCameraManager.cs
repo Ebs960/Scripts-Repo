@@ -8,6 +8,11 @@ public class PlanetaryCameraManager : MonoBehaviour
     public Material earthSkybox;
     private Skybox cameraSkybox;
 
+    [Header("Sun Billboard")]
+    public GameObject sunBillboardPrefab;   // assign in inspector
+    public Light      sceneSun;             // drag your Directional Light
+    private SunBillboard _sunBB;
+
     [Header("Quaternion Orbit Camera")]
     public Vector3 planetCenter = Vector3.zero;
     public Vector3 moonCenter = new Vector3(20f, 0f, 0f);
@@ -45,17 +50,18 @@ public class PlanetaryCameraManager : MonoBehaviour
         cameraRotation = Quaternion.identity;
         currentOrbitCenter = planetCenter;
 
-        Light existingLight = GetComponentInChildren<Light>();
-        if (existingLight == null)
+        if (!_sunBB && sunBillboardPrefab && sceneSun)
         {
-            GameObject cameraLightGO = new GameObject("CameraDirectionalLight");
-            cameraLightGO.transform.SetParent(transform);
-            cameraLightGO.transform.localPosition = Vector3.zero;
-            cameraLightGO.transform.localRotation = Quaternion.identity;
-            Light cameraLight = cameraLightGO.AddComponent<Light>();
-            cameraLight.type = LightType.Directional;
-            cameraLight.intensity = 1.5f;
-            cameraLight.shadows = LightShadows.None;
+            GameObject go = Instantiate(sunBillboardPrefab, transform);
+            go.name = "SunBillboard";
+            _sunBB = go.GetComponent<SunBillboard>();
+
+            // pass references / planet radius
+            _sunBB.sun       = sceneSun;
+            _sunBB.targetCam = GetComponent<Camera>();
+            _sunBB.baseRadius = PlanetGenerator.Instance ?
+                                PlanetGenerator.Instance.radius :
+                                25f;              // fallback
         }
     }
 
