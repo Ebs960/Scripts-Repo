@@ -101,8 +101,9 @@ public class HexasphereRenderer : MonoBehaviour
                 }
             }
 
+            int biomeCount = Generator != null ? Generator.GetBiomeSettings().Count : 0;
             MF.sharedMesh = HexTileMeshBuilder.BuildWithPerTileBiomeData(
-                grid, tileBiomeIndices, out vertexToTiles);
+                grid, tileBiomeIndices, biomeCount, out vertexToTiles);
             Debug.Log("[HexasphereRenderer] Built mesh with per‑tile biome data");
         }
         else if (useSeparateVertices)
