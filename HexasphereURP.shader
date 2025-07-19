@@ -180,7 +180,7 @@ Shader "Custom/HexasphereURP"
                 float InsideFactor    : SV_InsideTessFactor;
             };
 
-            HS_CONSTANT_OUT hull (InputPatch<Varyings,3> patch, uint pid : SV_PrimitiveID)
+            HS_CONSTANT_OUT HullConstant (InputPatch<Varyings,3> patch, uint pid : SV_PrimitiveID)
             {
                 HS_CONSTANT_OUT o;
                 float tess = _TessFactor;
@@ -192,7 +192,7 @@ Shader "Custom/HexasphereURP"
             // pass-through hull function
             [domain("tri")] [partitioning("integer")] [outputtopology("triangle_cw")]
             [outputcontrolpoints(3)]
-            [patchconstantfunc("hull")]
+            [patchconstantfunc("HullConstant")]
             Varyings hull (InputPatch<Varyings,3> patch, uint i : SV_OutputControlPointID)
             {
                 return patch[i];
