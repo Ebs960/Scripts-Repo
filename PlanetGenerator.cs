@@ -193,6 +193,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Optional micro detail height texture (greyscale)")]
     public Texture2D detailNoiseTex;
 
+    // compute buffers for GPU operations
+    ComputeBuffer pixelLookupBuffer;
+    ComputeBuffer riverIDBuffer;
+
     static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
     static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
     static readonly int WaterColID    = Shader.PropertyToID("_WaterColor");
@@ -280,6 +284,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             ClimateManager.Instance.OnSeasonChanged -= HandleSeasonChange;
         }
+
+        pixelLookupBuffer?.Release();
+        pixelLookupBuffer = null;
+        riverIDBuffer?.Release();
+        riverIDBuffer = null;
     }
 
     private void HandleSeasonChange(Season newSeason)
@@ -1117,6 +1126,42 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Generate visual textures for the new HexasphereRenderer system
         yield return StartCoroutine(BuildPlanetVisualMapsBatched());
 
+        // --- GPU river carving ---
+        List<int> riverTiles = new();
+        for (int i = 0; i < grid.TileCount; i++)
+            if (data[i].biome == Biome.River)
+                riverTiles.Add(i);
+
+        if (riverTiles.Count > 0 && pixelLookupBuffer != null)
+        {
+            var carveCS  = (ComputeShader)Resources.Load("RiverCarve");
+            int kernel   = carveCS.FindKernel("CSMain");
+
+            RenderTexture heightRT = new RenderTexture(1024, 512, 0,
+                                                       RenderTextureFormat.RHalf)
+            {
+                enableRandomWrite = true
+            };
+            Graphics.Blit(heightTex, heightRT);
+
+            riverIDBuffer?.Release();
+            riverIDBuffer = new ComputeBuffer(riverTiles.Count, sizeof(int));
+            riverIDBuffer.SetData(riverTiles);
+
+            carveCS.SetTexture(kernel, "_HeightMap", heightRT);
+            carveCS.SetBuffer (kernel, "_PixelLookup", pixelLookupBuffer);
+            carveCS.SetBuffer (kernel, "_RiverTileIDs", riverIDBuffer);
+            carveCS.SetInt    ("_TileIDCount", riverTiles.Count);
+
+            carveCS.Dispatch(kernel, 1024/8, 512/8, 1);
+
+            RenderTexture.active = heightRT;
+            heightTex.ReadPixels(new Rect(0,0,1024,512), 0, 0);
+            heightTex.Apply();
+            RenderTexture.active = null;
+            heightRT.Release();
+        }
+
         // Now sync tile grid and maps with GameManager, passing the high-res textures
         if (GameManager.Instance != null)
         {
@@ -1448,6 +1493,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 pixelToTileLookup[x, y] = tileIdx;
             }
         });
+
+        // Flatten lookup for GPU and upload once
+        var lookup1D = new Vector2Int[w * h];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                lookup1D[y * w + x] = new Vector2Int(pixelToTileLookup[x, y], 0);
+        pixelLookupBuffer?.Release();
+        pixelLookupBuffer = new ComputeBuffer(lookup1D.Length, sizeof(int) * 2);
+        pixelLookupBuffer.SetData(lookup1D);
         // Yield once after the parallel loop to keep UI responsive
         if (loadingPanelController != null) {
             loadingPanelController.SetProgress(0.8f);
