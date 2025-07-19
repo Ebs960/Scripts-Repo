@@ -190,6 +190,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     Texture2D biomeIndexTex; // RFloat – biome lookup map
     Texture2DArray biomeAlbedoArray; // array of biome albedos
     Texture2DArray biomeNormalArray; // array of biome normals
+    [Tooltip("Optional micro detail height texture (greyscale)")]
+    public Texture2D detailNoiseTex;
 
     static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
     static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
@@ -1110,7 +1112,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             hexasphereRenderer.generatorSource = this;
             hexasphereRenderer.BuildMesh(grid);
-            hexasphereRenderer.ApplyHeightDisplacement(grid.Radius);
         }
 
         // Generate visual textures for the new HexasphereRenderer system
@@ -1128,6 +1129,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (biomeNormalArray == null)
                     biomeNormalArray = BuildBiomeNormalArray();
                 hexasphereRenderer.PushBiomeLookups(null, biomeAlbedoArray, biomeNormalArray);
+
+                hexasphereRenderer.PushHeightData(heightTex, detailNoiseTex, 0.35f, 0.06f, 32.0f);
             }
         }
         else

@@ -262,6 +262,31 @@ public class HexasphereRenderer : MonoBehaviour
         Report(1f, "Planet ready!");
     }
 
+    /// <summary>
+    /// Upload height map and displacement parameters to the material.
+    /// Call this after high‑res textures are generated.
+    /// </summary>
+    public void PushHeightData(Texture2D heightTex, Texture2D detailNoiseTex,
+                              float heightAmp, float detailAmp, float detailFreq)
+    {
+        var mat = MR.sharedMaterial;
+        if (mat == null)
+        {
+            Debug.LogError("[HexasphereRenderer] No material assigned to MeshRenderer!");
+            return;
+        }
+
+        if (heightTex != null)
+            mat.SetTexture("_HeightMapTex", heightTex);
+
+        if (detailNoiseTex != null)
+            mat.SetTexture("_DetailHeightTex", detailNoiseTex);
+
+        mat.SetFloat("_HeightAmp",  heightAmp);
+        mat.SetFloat("_DetailAmp",  detailAmp);
+        mat.SetFloat("_DetailFreq", detailFreq);
+    }
+
     // ─────────────────────────── Helpers ───────────────────────────
     private void Report(float pct, string msg)
     {

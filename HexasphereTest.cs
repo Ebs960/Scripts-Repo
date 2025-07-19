@@ -91,7 +91,6 @@ public class HexasphereTest : MonoBehaviour
 
         // Build mesh & displace vertices
         renderer.BuildMesh(grid);
-        renderer.ApplyHeightDisplacement(radius);
     }
 
     /* ───────────────────── OPTIONAL DEBUG VISUALS ───────────── */

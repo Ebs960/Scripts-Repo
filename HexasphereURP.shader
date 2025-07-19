@@ -14,6 +14,12 @@ Shader "Custom/HexasphereURP"
         [Toggle] _SharpBoundaries ("Sharp Biome Boundaries", Float) = 0
         [Toggle] _UsePerTileBiomeData ("Use Per‑Tile Biome Data", Float) = 1
         _SphereRadius     ("Sphere Radius", Float) = 1.0              // <‑ new
+        _HeightMapTex     ("Height Map", 2D)    = "black" {}
+        _DetailHeightTex  ("Detail Height", 2D) = "grey"  {}
+        _HeightAmp        ("Height Amp", Range(0,1)) = 0.3
+        _DetailAmp        ("Detail Amp", Range(0,0.2)) = 0.06
+        _DetailFreq       ("Detail Freq", Float) = 32.0
+        _NoiseSeed        ("Noise Seed", Float) = 0.0
     }
 
     SubShader
@@ -40,6 +46,8 @@ Shader "Custom/HexasphereURP"
             Texture2D     _BiomeIndexTex;       SamplerState sampler_BiomeIndexTex;
             Texture2D     _BiomeDetail;         SamplerState sampler_BiomeDetail;
             Texture2D     _LatTintTex;          SamplerState sampler_LatTintTex;
+            Texture2D     _HeightMapTex;        SamplerState sampler_HeightMapTex;
+            Texture2D     _DetailHeightTex;     SamplerState sampler_DetailHeightTex;
 
             /* ───── material params ───── */
             CBUFFER_START(UnityPerMaterial)
@@ -50,6 +58,10 @@ Shader "Custom/HexasphereURP"
                 float _DetailStrength;
                 float _NormalStrength;
                 float _SphereRadius;
+                float _HeightAmp;
+                float _DetailAmp;
+                float _DetailFreq;
+                float _NoiseSeed;
             CBUFFER_END
 
             struct Attributes
@@ -58,8 +70,52 @@ Shader "Custom/HexasphereURP"
                 float3 normalOS   : NORMAL;
                 float2 uv         : TEXCOORD0;
                 float2 uv1        : TEXCOORD1;
-                float4 color      : COLOR;      // biome index in .r
+            float4 color      : COLOR;      // biome index in .r
             };
+
+            // ----- 3D value noise -----
+            float hash(float3 p)
+            {
+                p = frac(p * 0.3183099 + 0.1);
+                p *= 17.0;
+                return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
+            }
+
+            float valueNoise(float3 p)
+            {
+                float3 i = floor(p);
+                float3 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+
+                float n000 = hash(i);
+                float n100 = hash(i + float3(1,0,0));
+                float n010 = hash(i + float3(0,1,0));
+                float n110 = hash(i + float3(1,1,0));
+                float n001 = hash(i + float3(0,0,1));
+                float n101 = hash(i + float3(1,0,1));
+                float n011 = hash(i + float3(0,1,1));
+                float n111 = hash(i + float3(1,1,1));
+
+                float n00 = lerp(n000, n100, f.x);
+                float n10 = lerp(n010, n110, f.x);
+                float n01 = lerp(n001, n101, f.x);
+                float n11 = lerp(n011, n111, f.x);
+                float n0 = lerp(n00, n10, f.y);
+                float n1 = lerp(n01, n11, f.y);
+                return lerp(n0, n1, f.z);
+            }
+
+            float fbm(float3 p, int octaves = 3, float lacunarity = 2.0, float gain = 0.5)
+            {
+                float a = 0.0; float f = 1.0; float amp = 0.5;
+                for (int i = 0; i < octaves; i++)
+                {
+                    a  += amp * valueNoise(p * f);
+                    f  *= lacunarity;
+                    amp*= gain;
+                }
+                return a;
+            }
 
             struct Varyings
             {
@@ -74,7 +130,27 @@ Shader "Custom/HexasphereURP"
             Varyings vert (Attributes IN)
             {
                 Varyings OUT;
-                float3 world = TransformObjectToWorld(IN.positionOS.xyz);
+                float3 dirOS = normalize(IN.positionOS.xyz);
+
+                float2 hUV;
+                hUV.x = (atan2(dirOS.x, dirOS.z) / PI + 1.0) * 0.5;
+                hUV.y = asin(dirOS.y) / PI + 0.5;
+
+                float hMacro = _HeightMapTex.SampleLevel(sampler_HeightMapTex, hUV, 0).r;
+
+                float hMicro;
+#ifdef _USE_TEXTURE_DETAIL
+                hMicro = _DetailHeightTex.Sample(sampler_DetailHeightTex, hUV).r;
+#else
+                hMicro = fbm(dirOS * _DetailFreq + _NoiseSeed);
+#endif
+
+                float h = hMacro + (hMicro - 0.5) * 2.0 * _DetailAmp;
+                float disp = h * _HeightAmp * _SphereRadius;
+
+                float3 displaced = dirOS * (_SphereRadius + disp);
+
+                float3 world = TransformObjectToWorld(displaced);
                 OUT.positionHCS = TransformWorldToHClip(world);
                 OUT.uv0   = IN.uv;
                 OUT.uvLat = IN.uv1;

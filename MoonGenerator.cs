@@ -114,6 +114,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     Texture2D biomeIndexTex; // RFloat – biome lookup map
     Texture2DArray biomeAlbedoArray; // array of biome albedos
     Texture2DArray biomeNormalArray; // array of biome normals
+    [Tooltip("Optional micro detail height texture (greyscale)")]
+    public Texture2D detailNoiseTex;
 
 
 
@@ -262,7 +264,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         {
             hexasphereRenderer.generatorSource = this;
             hexasphereRenderer.BuildMesh(grid);
-            hexasphereRenderer.ApplyHeightDisplacement(grid.Radius);
         }
 
         // NEW: Build visual textures for SGT
@@ -479,9 +480,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             // Get the actual moon radius from the grid for height displacement
             float displacementRadius = grid.Radius;
             Debug.Log($"[MoonGenerator] Applying height displacement with moon radius: {displacementRadius}");
-            hexasphereRenderer.ApplyHeightDisplacement(displacementRadius);
             Texture2D indexTex = biomeIndexTex;
             hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeNormalArray);
+
+            hexasphereRenderer.PushHeightData(heightTex, detailNoiseTex, 0.35f, 0.06f, 32.0f);
         }
         
         if (loadingPanelController != null)
