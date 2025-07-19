@@ -231,7 +231,7 @@ public class HexasphereRenderer : MonoBehaviour
     }
 
     /// <summary>Bind biome lookup textures to the material.</summary>
-    public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray)
+    public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray, Texture2DArray normalArray)
     {
         if (loadingPanel == null && generatorSource != null)
         {
@@ -250,6 +250,7 @@ public class HexasphereRenderer : MonoBehaviour
 
         if (indexTex != null)  mat.SetTexture("_BiomeIndexTex",  indexTex);
         if (albedoArray != null) mat.SetTexture("_BiomeAlbedoArray", albedoArray);
+        if (normalArray != null) mat.SetTexture("_BiomeNormalArray", normalArray);
 
         int count = Generator != null ? Generator.GetBiomeSettings().Count
                                       : albedoArray != null ? albedoArray.depth : 0;

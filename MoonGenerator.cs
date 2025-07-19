@@ -113,6 +113,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     Texture2D biomeColorMap; // RGBA32 – biome colors
     Texture2D biomeIndexTex; // RFloat – biome lookup map
     Texture2DArray biomeAlbedoArray; // array of biome albedos
+    Texture2DArray biomeNormalArray; // array of biome normals
 
 
 
@@ -374,8 +375,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         int textureWidth = textureSize; // Use the same size as the index texture
         int textureHeight = textureSize;
 
-        // Build biome albedo array using the same approach as planet generator
+        // Build biome albedo and normal arrays using the same approach as planet generator
         biomeAlbedoArray = BuildBiomeAlbedoArray();
+        biomeNormalArray = BuildBiomeNormalArray();
 
 
 
@@ -482,7 +484,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             Debug.Log($"[MoonGenerator] Applying height displacement with moon radius: {displacementRadius}");
             hexasphereRenderer.ApplyHeightDisplacement(displacementRadius);
             Texture2D indexTex = biomeIndexTex;
-            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray);
+            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeNormalArray);
         }
         
         if (loadingPanelController != null)
@@ -810,6 +812,40 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 DestroyImmediate(resizedTex);
                 
                 // Debug.Log($"[MoonGenerator] Resized and converted texture {i} from {src.width}x{src.height} {src.format} to {size}x{size} RGBA32");
+            }
+            else
+            {
+                Graphics.CopyTexture(src, 0, 0, array, i, 0);
+            }
+        }
+        array.Apply();
+        return array;
+    }
+
+    Texture2DArray BuildBiomeNormalArray()
+    {
+        int size = textureSize;
+        int depth = biomeSettings.Count;
+        var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
+        Texture2D fallback = Texture2D.normalTexture;
+
+        for (int i = 0; i < depth; i++)
+        {
+            Texture2D src = biomeSettings[i].normalTexture != null ? biomeSettings[i].normalTexture : fallback;
+
+            if (src.width != size || src.height != size || src.format != TextureFormat.RGBA32)
+            {
+                var resizedTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(src, rt);
+                var prevRT = RenderTexture.active;
+                RenderTexture.active = rt;
+                resizedTex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
+                resizedTex.Apply();
+                RenderTexture.active = prevRT;
+                Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
+                RenderTexture.ReleaseTemporary(rt);
+                DestroyImmediate(resizedTex);
             }
             else
             {
