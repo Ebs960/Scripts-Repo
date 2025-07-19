@@ -1,0 +1,31 @@
+#pragma kernel CSMain
+// texture size is 1024 × 512 for now – expose if you change it
+#define WIDTH  1024
+#define HEIGHT 512
+
+RWTexture2D<float> _HeightMap;        // R16 height texture
+StructuredBuffer<int> _RiverTileIDs;  // tile indices (flat list)
+int                  _TileIDCount;
+StructuredBuffer<int2> _PixelLookup;  // maps pixel → tile index (filled once)
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= WIDTH || id.y >= HEIGHT) return;
+
+    int  pixIndex  = id.y * WIDTH + id.x;
+    int  tileIdx   = _PixelLookup[pixIndex].x;   // previously baked lookup
+    bool isRiver   = false;
+
+    // very small loop:  ≤ 128 river tiles in normal maps
+    [unroll] for (int i = 0; i < _TileIDCount; i++)
+    {
+        if (tileIdx == _RiverTileIDs[i]) { isRiver = true; break; }
+    }
+
+    if (!isRiver) return;
+
+    float h = _HeightMap[id.xy];
+    // carve 15% of planet height‑range – tweak if needed
+    _HeightMap[id.xy] = max(h - 0.15f, 0.0f);
+}

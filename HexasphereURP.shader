@@ -20,6 +20,7 @@ Shader "Custom/HexasphereURP"
         _DetailAmp        ("Detail Amp", Range(0,0.2)) = 0.06
         _DetailFreq       ("Detail Freq", Float) = 32.0
         _NoiseSeed        ("Noise Seed", Float) = 0.0
+        _TessFactor       ("Tessellation", Range(1,64)) = 8
     }
 
     SubShader
@@ -36,6 +37,9 @@ Shader "Custom/HexasphereURP"
             #pragma fragment frag
             #pragma target   4.5
             #pragma require  2darray
+            #pragma hull     hull
+            #pragma domain   domain
+            #pragma tessfactor 8
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -62,6 +66,7 @@ Shader "Custom/HexasphereURP"
                 float _DetailAmp;
                 float _DetailFreq;
                 float _NoiseSeed;
+                float _TessFactor;
             CBUFFER_END
 
             struct Attributes
@@ -124,12 +129,20 @@ Shader "Custom/HexasphereURP"
                 float2 uvLat       : TEXCOORD1;
                 float3 nWS         : NORMAL;
                 float3 wPos        : TEXCOORD2;
+                float3 positionOS  : TEXCOORD3;
                 float4 col         : COLOR;
             };
 
             Varyings vert (Attributes IN)
             {
                 Varyings OUT;
+                OUT.uv0   = IN.uv;
+                OUT.uvLat = IN.uv1;
+                OUT.nWS = TransformObjectToWorldNormal(IN.normalOS);
+                OUT.positionOS = IN.positionOS.xyz;
+                OUT.col = IN.color;
+
+#ifndef UNITY_DOMAIN_SHADER
                 float3 dirOS = normalize(IN.positionOS.xyz);
 
                 float2 hUV;
@@ -152,12 +165,72 @@ Shader "Custom/HexasphereURP"
 
                 float3 world = TransformObjectToWorld(displaced);
                 OUT.positionHCS = TransformWorldToHClip(world);
-                OUT.uv0   = IN.uv;
-                OUT.uvLat = IN.uv1;
-                OUT.nWS = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.wPos = world;
-                OUT.col = IN.color;
+#else
+                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.wPos = TransformObjectToWorld(IN.positionOS.xyz);
+#endif
                 return OUT;
+            }
+
+            // constant hull – same tess factor for all 3 verts
+            struct HS_CONSTANT_OUT { float TessFactor[3] : SV_TessFactor; };
+
+            HS_CONSTANT_OUT hull (InputPatch<Varyings,3> patch, uint pid : SV_PrimitiveID)
+            {
+                HS_CONSTANT_OUT o;
+                float tess = _TessFactor;
+                o.TessFactor[0] = o.TessFactor[1] = o.TessFactor[2] = tess;
+                return o;
+            }
+
+            // pass-through hull function
+            [domain("tri")] [partitioning("integer")] [outputtopology("triangle_cw")]
+            [patchconstantfunc("hull")]
+            void hull (inout InputPatch<Varyings,3> patch, uint i : SV_OutputControlPointID,
+                       out Varyings o)
+            {
+                o = patch[i];
+            }
+
+            [domain("tri")]
+            Varyings domain (HS_CONSTANT_OUT pc,
+                             const OutputPatch<Varyings,3> patch,
+                             float3 bary : SV_DomainLocation)
+            {
+                Varyings v;
+                v.positionOS = patch[0].positionOS * bary.x +
+                               patch[1].positionOS * bary.y +
+                               patch[2].positionOS * bary.z;
+
+                float3 dirOS = normalize(v.positionOS.xyz);
+
+                float2 hUV;
+                hUV.x = (atan2(dirOS.x, dirOS.z) / PI + 1.0) * 0.5;
+                hUV.y = asin(dirOS.y) / PI + 0.5;
+
+                float hMacro = _HeightMapTex.SampleLevel(sampler_HeightMapTex, hUV, 0).r;
+
+                float hMicro;
+#ifdef _USE_TEXTURE_DETAIL
+                hMicro = _DetailHeightTex.Sample(sampler_DetailHeightTex, hUV).r;
+#else
+                hMicro = fbm(dirOS * _DetailFreq + _NoiseSeed);
+#endif
+
+                float h = hMacro + (hMicro - 0.5) * 2.0 * _DetailAmp;
+                float disp = h * _HeightAmp * _SphereRadius;
+
+                float3 displaced = dirOS * (_SphereRadius + disp);
+
+                float3 world = TransformObjectToWorld(displaced);
+                v.positionHCS = TransformWorldToHClip(world);
+                v.wPos = world;
+                v.uv0   = patch[0].uv0   * bary.x + patch[1].uv0   * bary.y + patch[2].uv0   * bary.z;
+                v.uvLat = patch[0].uvLat * bary.x + patch[1].uvLat * bary.y + patch[2].uvLat * bary.z;
+                v.nWS = normalize(patch[0].nWS * bary.x + patch[1].nWS * bary.y + patch[2].nWS * bary.z);
+                v.col = patch[0].col * bary.x + patch[1].col * bary.y + patch[2].col * bary.z;
+                return v;
             }
 
             half4 frag (Varyings IN) : SV_Target
