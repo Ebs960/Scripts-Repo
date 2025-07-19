@@ -64,8 +64,8 @@ Shader "Custom/HexasphereURP"
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
-                float2 uv0         : TEXCOORD0;
-                float2 uv1         : TEXCOORD1;
+                float2 uv0         : TEXCOORD0;   // tile-local 0-1
+                float2 uvLat       : TEXCOORD1;   // planet-wide equirectangular
                 float3 nWS         : NORMAL;
                 float3 wPos        : TEXCOORD2;
                 float4 col         : COLOR;
@@ -76,8 +76,8 @@ Shader "Custom/HexasphereURP"
                 Varyings OUT;
                 float3 world = TransformObjectToWorld(IN.positionOS.xyz);
                 OUT.positionHCS = TransformWorldToHClip(world);
-                OUT.uv0 = IN.uv;
-                OUT.uv1 = IN.uv1;
+                OUT.uv0   = IN.uv;
+                OUT.uvLat = IN.uv1;
                 OUT.nWS = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.wPos = world;
                 OUT.col = IN.color;
@@ -113,12 +113,12 @@ Shader "Custom/HexasphereURP"
                 half3 N = normalize(nTex.x * T + nTex.y * B + nTex.z * IN.nWS);
 
                 /* 2️⃣ per-tile planar detail overlay */
-                half detail = _BiomeDetail.Sample(sampler_BiomeDetail, IN.uv1).r;
+                half detail = _BiomeDetail.Sample(sampler_BiomeDetail, IN.uv0).r;
                 col = lerp(col, col * detail, _DetailStrength);
 
                 /* 3️⃣ latitude tint (latitude = n.y) */
-                float lat = IN.nWS.y * 0.5 + 0.5;
-                half3 latTint = _LatTintTex.Sample(sampler_LatTintTex, float2(lat,0)).rgb;
+                float latU = IN.uvLat.y;
+                half3 latTint = _LatTintTex.Sample(sampler_LatTintTex, float2(latU,0)).rgb;
                 col = lerp(col, latTint, _LatTintStrength);
 
                 // Basic Lambert lighting using main light
