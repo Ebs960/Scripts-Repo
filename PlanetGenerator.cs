@@ -1282,7 +1282,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         return BiomeHelper.GetBiome(isLand, temperature, moisture, useRainforest, useScorched, useInfernal, useDemonic);
     }
 
-    public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+    public void SetLoadingPanel(LoadingPanelController controller)
+    {
+        loadingPanelController = controller;
+        if (hexasphereRenderer != null)
+            hexasphereRenderer.loadingPanel = controller;
+    }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
 

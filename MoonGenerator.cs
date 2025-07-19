@@ -134,7 +134,14 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     /// Populated after surface generation completes.
     /// </summary>
     public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
-    public void SetLoadingPanel(LoadingPanelController controller) { loadingPanelController = controller; }
+    public void SetLoadingPanel(LoadingPanelController controller)
+    {
+        loadingPanelController = controller;
+        if (hexasphereRenderer != null)
+            hexasphereRenderer.loadingPanel = controller;
+    }
+
+    public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
     // Decorations are now managed by SGT components. Old pooling logic has been
     // removed to keep this generator focused solely on terrain data.
