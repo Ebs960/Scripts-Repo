@@ -39,7 +39,8 @@ Shader "Custom/HexasphereURP"
             #pragma require  2darray
             #pragma hull     hull
             #pragma domain   domain
-            #pragma tessfactor 8
+            // Tessellation shaders require explicit hardware support
+            #pragma require  tessellation tessHW
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -174,18 +175,23 @@ Shader "Custom/HexasphereURP"
             }
 
             // constant hull – same tess factor for all 3 verts
-            struct HS_CONSTANT_OUT { float TessFactor[3] : SV_TessFactor; };
+            struct HS_CONSTANT_OUT {
+                float TessFactor[3]   : SV_TessFactor;
+                float InsideFactor    : SV_InsideTessFactor;
+            };
 
             HS_CONSTANT_OUT hull (InputPatch<Varyings,3> patch, uint pid : SV_PrimitiveID)
             {
                 HS_CONSTANT_OUT o;
                 float tess = _TessFactor;
                 o.TessFactor[0] = o.TessFactor[1] = o.TessFactor[2] = tess;
+                o.InsideFactor = tess;
                 return o;
             }
 
             // pass-through hull function
             [domain("tri")] [partitioning("integer")] [outputtopology("triangle_cw")]
+            [outputcontrolpoints(3)]
             [patchconstantfunc("hull")]
             void hull (inout InputPatch<Varyings,3> patch, uint i : SV_OutputControlPointID,
                        out Varyings o)
