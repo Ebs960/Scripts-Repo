@@ -48,6 +48,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _BiomeDetail:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _BiomeIndexMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -178,6 +182,7 @@ Material:
     - _DaySideCutoff: 0.15
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
+    - _DetailStrength: 0.189
     - _DetailTextureScale: 10
     - _DstBlend: 0
     - _DstBlendAlpha: 0
@@ -188,7 +193,7 @@ Material:
     - _GlossyReflections: 0
     - _HeightOffset: 0
     - _HeightScale: 1
-    - _LatTintStrength: 0.35
+    - _LatTintStrength: 0.117
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005

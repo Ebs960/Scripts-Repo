@@ -117,9 +117,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
 
 
-    [Header("SGT Heightmap Scaling")]
-    [Tooltip("Maximum heightmap displacement as a fraction of moon radius")]
-    public float heightFractionOfRadius = 0.01f; // Smaller than planet
 
     // --------------------------- Private fields -----------------------------
     SphericalHexGrid grid;
@@ -366,7 +363,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
         float moonRadius = grid.Radius;
-        float heightScale = heightFractionOfRadius * moonRadius;
+        float heightScale = 1.0f; // Use raw elevation, no scaling
         
         Debug.Log($"[MoonGenerator] Heightmap generation: moonRadius={moonRadius}, heightScale={heightScale}");
         

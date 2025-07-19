@@ -41,9 +41,9 @@ public class HexasphereRenderer : MonoBehaviour
 
     [Header("Atmosphere")]
     public bool generateAtmosphere = true;
-    [Tooltip("Extra shell thickness in *planet-radius* units (0.02 \u2248 2% )")]
-    [Range(0.005f, 0.05f)]
-    public float atmosphereThickness = 0.02f;
+    [Tooltip("Extra shell thickness in *planet-radius* units (0.2 = 20%)")]
+    [Range(0.01f, 0.5f)]
+    public float atmosphereThickness = 0.2f;
     public Material atmosphereMaterial;
 
     // ─────────────────────────── Helpers ───────────────────────────
@@ -154,10 +154,11 @@ public class HexasphereRenderer : MonoBehaviour
         if (generateAtmosphere && atmosphereMaterial != null)
         {
             float baseRadius = grid.Radius;
+            float shellThickness = 0.2f * baseRadius; // Always 20% bigger
             Mesh shell = HexTileMeshBuilder.BuildAtmosphereShell(
                                 grid,
                                 baseRadius,
-                                atmosphereThickness * baseRadius);
+                                shellThickness);
 
             GameObject atm = new GameObject("AtmosphereShell");
             atm.transform.SetParent(this.transform, false);

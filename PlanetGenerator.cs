@@ -1295,10 +1295,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
 
 
-    [Header("SGT Heightmap Scaling")]
-    [Tooltip("Maximum heightmap displacement as a fraction of planet radius (e.g. 0.02 = 2% of radius)")]
-    public float heightFractionOfRadius = 0.02f;
-
     /// <summary>
     /// Finds a path from start tile to coast using greedy descent algorithm
     /// </summary>
@@ -1482,7 +1478,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
         float minH = float.MaxValue, maxH = float.MinValue;
         float planetRadius = grid.Radius;
-        float heightScale = heightFractionOfRadius * planetRadius;
+        float heightScale = 1.0f; // Use raw elevation, no scaling
         
         Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
         
