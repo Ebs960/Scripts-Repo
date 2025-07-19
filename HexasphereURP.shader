@@ -193,10 +193,9 @@ Shader "Custom/HexasphereURP"
             [domain("tri")] [partitioning("integer")] [outputtopology("triangle_cw")]
             [outputcontrolpoints(3)]
             [patchconstantfunc("hull")]
-            void hull (inout InputPatch<Varyings,3> patch, uint i : SV_OutputControlPointID,
-                       out Varyings o)
+            Varyings hull (InputPatch<Varyings,3> patch, uint i : SV_OutputControlPointID)
             {
-                o = patch[i];
+                return patch[i];
             }
 
             [domain("tri")]
