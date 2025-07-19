@@ -73,6 +73,7 @@ public static class HexTileMeshBuilder
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
         List<Vector2> uvs   = new();
+        List<Vector2> uvs1  = new();
         List<int>     tris  = new();
         perTileUV     = new Vector2[tileCount];
         vertexToTiles = new();

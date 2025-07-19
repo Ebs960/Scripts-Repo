@@ -9,9 +9,8 @@ public class PlanetaryCameraManager : MonoBehaviour
     private Skybox cameraSkybox;
 
     [Header("Sun Billboard")]
-    public GameObject sunBillboardPrefab;   // assign in inspector
-    public Light      sceneSun;             // drag your Directional Light
     private SunBillboard _sunBB;
+    private Light sceneSun;
 
     [Header("Quaternion Orbit Camera")]
     public Vector3 planetCenter = Vector3.zero;
@@ -50,18 +49,19 @@ public class PlanetaryCameraManager : MonoBehaviour
         cameraRotation = Quaternion.identity;
         currentOrbitCenter = planetCenter;
 
-        if (!_sunBB && sunBillboardPrefab && sceneSun)
+        // Find the SunBillboard and Directional Light in the scene
+        _sunBB = FindAnyObjectByType<SunBillboard>();
+        sceneSun = FindAnyObjectByType<Light>();
+        if (_sunBB != null && sceneSun != null)
         {
-            GameObject go = Instantiate(sunBillboardPrefab, transform);
-            go.name = "SunBillboard";
-            _sunBB = go.GetComponent<SunBillboard>();
+            _sunBB.sun = sceneSun;
+            // Camera assignment will be handled by SunBillboard itself or after planet creation
+        }
 
-            // pass references / planet radius
-            _sunBB.sun       = sceneSun;
-            _sunBB.targetCam = GetComponent<Camera>();
-            _sunBB.baseRadius = PlanetGenerator.Instance ?
-                                PlanetGenerator.Instance.radius :
-                                25f;              // fallback
+        // Optionally, assign the camera if SunBillboard exists
+        if (_sunBB != null)
+        {
+            _sunBB.AssignCamera(GetComponent<Camera>());
         }
     }
 
@@ -167,6 +167,11 @@ public class PlanetaryCameraManager : MonoBehaviour
         UpdateCameraPosition();
         HandleClickDetection();
         UpdateSkybox();
+        // Optionally, re-assign camera if needed (e.g., after planet creation)
+        if (_sunBB != null && _sunBB.targetCam == null)
+        {
+            _sunBB.AssignCamera(GetComponent<Camera>());
+        }
     }
 
     void UpdateSkybox()
@@ -194,5 +199,14 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (t < 0f) return false;
         hitPoint = ray.origin + t * ray.direction;
         return true;
+    }
+
+    // Public method to assign the camera to the SunBillboard after planet creation
+    public void AssignSunBillboardCamera()
+    {
+        if (_sunBB != null)
+        {
+            _sunBB.AssignCamera(GetComponent<Camera>());
+        }
     }
 }

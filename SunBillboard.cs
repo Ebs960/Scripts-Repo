@@ -1,10 +1,10 @@
 
 using UnityEngine;
-[ExecuteAlways]
 public class SunBillboard : MonoBehaviour
 {
     // runtime assigned references
     public Light   sun;         // directional light in the scene
+    [HideInInspector]
     public Camera  targetCam;   // camera to face
 
     // distance from the planet centre the flare should sit at
@@ -27,5 +27,29 @@ public class SunBillboard : MonoBehaviour
         float dist = Vector3.Distance(transform.position, targetCam.transform.position);
         float size = dist * 0.05f;   // tune 0.05-0.1
         transform.localScale = Vector3.one * size;
+    }
+
+    // Assign the camera reference
+    public void AssignCamera(Camera cam)
+    {
+        targetCam = cam;
+    }
+
+    void Awake()
+    {
+        // Try to auto-assign the camera if not set
+        if (targetCam == null)
+        {
+            targetCam = Camera.main;
+        }
+    }
+
+    void OnEnable()
+    {
+        // Try to auto-assign the camera if not set
+        if (targetCam == null)
+        {
+            targetCam = Camera.main;
+        }
     }
 }
