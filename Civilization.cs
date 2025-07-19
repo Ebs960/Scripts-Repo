@@ -155,14 +155,14 @@ public class Civilization : MonoBehaviour
     {
         if (governor == null || city == null) return false;
         // Remove from any previous city
-        foreach (var c in governors.SelectMany(g => g.Cities).ToList())
+        foreach (var c in governor.Cities.ToList())
         {
-            if (c == city)
+            if (c != null)
             {
                 c.governor = null;
-                governor.Cities.Remove(c);
             }
         }
+        governor.Cities.Clear();
         // Assign
         city.governor = governor;
         if (!governor.Cities.Contains(city))
