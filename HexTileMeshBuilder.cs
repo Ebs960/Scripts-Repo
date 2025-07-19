@@ -16,8 +16,8 @@ public static class HexTileMeshBuilder
     {
         int tileCount = grid.TileCount;
         List<Vector3> verts = new();
-        List<Vector2> uvs   = new();
-        List<Vector2> uvs1  = new();
+        List<Vector2> uvs   = new();     // tile-local UVs
+        List<Vector2> uvs1  = new();     // equirectangular UVs
         List<int>     tris  = new();
         perTileUV     = new Vector2[tileCount];
         vertexToTiles = new();
@@ -36,18 +36,13 @@ public static class HexTileMeshBuilder
             for (int i = 0; i < corners.Length; i++)
                 cornerV[i] = GetOrAdd(grid.CornerVertices[corners[i]], vLookup, verts, uvs, uvs1);
 
-            // ── planar UVs for this tile ──
+            // ── UVs for this tile ──
             Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
+            uvs[cIdx] = LocalUV(center, centre, grid.Radius);
             for (int c = 0; c < cornerV.Length; c++)
             {
                 Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
+                uvs[cornerV[c]] = LocalUV(corner, centre, grid.Radius);
             }
 
             for (int i = 0; i < corners.Length; i++)
@@ -91,16 +86,11 @@ public static class HexTileMeshBuilder
                 cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1);
 
             Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
+            uvs[cIdx] = LocalUV(center, centre, grid.Radius);
             for (int c = 0; c < cornerV.Length; c++)
             {
                 Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
+                uvs[cornerV[c]] = LocalUV(corner, centre, grid.Radius);
             }
 
             for (int i = 0; i < corners.Length; i++)
@@ -153,16 +143,11 @@ public static class HexTileMeshBuilder
                 cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1, colors, edgeCol);
 
             Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
+            uvs[cIdx] = LocalUV(center, centre, grid.Radius);
             for (int c = 0; c < cornerV.Length; c++)
             {
                 Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
+                uvs[cornerV[c]] = LocalUV(corner, centre, grid.Radius);
             }
 
             for (int i = 0; i < corners.Length; i++)
@@ -186,8 +171,8 @@ public static class HexTileMeshBuilder
         if (lut.TryGetValue(pos, out int idx)) return idx;
         idx = v.Count;
         v.Add(pos);
-        u0.Add(EquirectUV(pos));
-        u1.Add(Vector2.zero);
+        u0.Add(Vector2.zero);         // filled in per-tile
+        u1.Add(EquirectUV(pos));
         lut[pos] = idx;
         return idx;
     }
@@ -200,8 +185,8 @@ public static class HexTileMeshBuilder
     {
         int idx = v.Count;
         v.Add(pos);
-        u0.Add(EquirectUV(pos));
-        u1.Add(Vector2.zero);
+        u0.Add(Vector2.zero);
+        u1.Add(EquirectUV(pos));
         c?.Add(col);
         return idx;
     }
@@ -255,5 +240,20 @@ public static class HexTileMeshBuilder
         float u = (Mathf.Atan2(n.x, n.z) / Mathf.PI + 1f) * 0.5f;
         float v = Mathf.Asin(n.y) / Mathf.PI + 0.5f;
         return new(u, v);
+    }
+
+    static Vector2 LocalUV(Vector3 vertex, Vector3 center, float radius)
+    {
+        Vector3 n = center.normalized;
+        Vector3 t = Vector3.Normalize(Vector3.Cross(Vector3.up, n));
+        if (t.sqrMagnitude < 1e-4f)
+            t = Vector3.Normalize(Vector3.Cross(Vector3.right, n));
+        Vector3 b = Vector3.Cross(n, t);
+
+        Vector3 p = vertex - center;
+        float  s = radius * 0.9f;
+        float  u = Vector3.Dot(p, t) / (2f * s) + 0.5f;
+        float  v = Vector3.Dot(p, b) / (2f * s) + 0.5f;
+        return new Vector2(u, v);
     }
 }
