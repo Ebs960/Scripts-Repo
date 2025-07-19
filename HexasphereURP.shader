@@ -3,11 +3,13 @@ Shader "Custom/HexasphereURP"
     Properties
     {
         _BiomeAlbedoArray ("Biome Albedo Array", 2DArray) = "" {}
+        _BiomeNormalArray ("Biome Normal Array", 2DArray) = "" {}
         _BiomeIndexTex    ("Tile → Biome map (Legacy)", 2D) = "white" {}
         _BiomeDetail      ("Biome Detail", 2D) = "white" {}
         _LatTintTex       ("Lat Tint Tex", 2D) = "white" {}
         _LatTintStrength  ("Lat Tint Strength", Range(0,1)) = 0.35
         _DetailStrength   ("Detail Strength", Range(0,1)) = 0.4
+        _NormalStrength   ("Normal Strength", Range(0,2)) = 1
         _BiomeCount       ("BiomeCount", Float) = 1
         [Toggle] _SharpBoundaries ("Sharp Biome Boundaries", Float) = 0
         [Toggle] _UsePerTileBiomeData ("Use Per‑Tile Biome Data", Float) = 1
@@ -30,9 +32,11 @@ Shader "Custom/HexasphereURP"
             #pragma require  2darray
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             /* ───── sampler declarations ───── */
             Texture2DArray _BiomeAlbedoArray;   SamplerState sampler_BiomeAlbedoArray;
+            Texture2DArray _BiomeNormalArray;   SamplerState sampler_BiomeNormalArray;
             Texture2D     _BiomeIndexTex;       SamplerState sampler_BiomeIndexTex;
             Texture2D     _BiomeDetail;         SamplerState sampler_BiomeDetail;
             Texture2D     _LatTintTex;          SamplerState sampler_LatTintTex;
@@ -44,6 +48,7 @@ Shader "Custom/HexasphereURP"
                 float _UsePerTileBiomeData;
                 float _LatTintStrength;
                 float _DetailStrength;
+                float _NormalStrength;
                 float _SphereRadius;
             CBUFFER_END
 
@@ -98,6 +103,15 @@ Shader "Custom/HexasphereURP"
                                     sampler_BiomeAlbedoArray,
                                     float3(IN.uv0, slice)).rgb;
 
+                // Sample normal map and compute world normal
+                half3 nTex = _BiomeNormalArray.Sample(
+                                    sampler_BiomeNormalArray,
+                                    float3(IN.uv0, slice)).xyz * 2 - 1;
+                nTex.xy *= _NormalStrength;
+                half3 T = normalize(float3(-IN.nWS.z, 0, IN.nWS.x));
+                half3 B = normalize(cross(IN.nWS, T));
+                half3 N = normalize(nTex.x * T + nTex.y * B + nTex.z * IN.nWS);
+
                 /* 2️⃣ per-tile planar detail overlay */
                 half detail = _BiomeDetail.Sample(sampler_BiomeDetail, IN.uv1).r;
                 col = lerp(col, col * detail, _DetailStrength);
@@ -107,7 +121,13 @@ Shader "Custom/HexasphereURP"
                 half3 latTint = _LatTintTex.Sample(sampler_LatTintTex, float2(lat,0)).rgb;
                 col = lerp(col, latTint, _LatTintStrength);
 
-                return half4(col, 1);
+                // Basic Lambert lighting using main light
+                float3 lightDir = normalize(_MainLightPosition.xyz);
+                float3 lightColor = _MainLightColor.rgb;
+                half NdotL = saturate(dot(N, lightDir));
+                half3 litCol = col * (lightColor * NdotL + lightColor * 0.2);
+
+                return half4(litCol, 1);
             }
             ENDHLSL
         }
