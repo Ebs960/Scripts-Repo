@@ -82,6 +82,15 @@ public class HexasphereRenderer : MonoBehaviour
         // Auto‑detect generator on same GO if slot empty
         if (generatorSource == null)
             generatorSource = GetComponent<IHexasphereGenerator>() as MonoBehaviour;
+
+        // Try to get loading panel from generator if none assigned
+        if (loadingPanel == null && generatorSource != null)
+        {
+            if (generatorSource is PlanetGenerator pg)
+                loadingPanel = pg.GetLoadingPanel();
+            else if (generatorSource is MoonGenerator mg)
+                loadingPanel = mg.GetLoadingPanel();
+        }
     }
 
     // ─────────────────────────── Public API ───────────────────────────
@@ -97,6 +106,13 @@ public class HexasphereRenderer : MonoBehaviour
     /// <summary>Build and assign the planet/moon mesh.</summary>
     public void BuildMesh(SphericalHexGrid grid)
     {
+        if (loadingPanel == null && generatorSource != null)
+        {
+            if (generatorSource is PlanetGenerator pg)
+                loadingPanel = pg.GetLoadingPanel();
+            else if (generatorSource is MoonGenerator mg)
+                loadingPanel = mg.GetLoadingPanel();
+        }
         Report(0.05f, "Building mesh…");
 
         if (usePerTileBiomeData)
@@ -163,6 +179,13 @@ public class HexasphereRenderer : MonoBehaviour
     /// <summary>Radially displace vertices based on per‑tile elevation.</summary>
     public void ApplyHeightDisplacement(float radius)
     {
+        if (loadingPanel == null && generatorSource != null)
+        {
+            if (generatorSource is PlanetGenerator pg)
+                loadingPanel = pg.GetLoadingPanel();
+            else if (generatorSource is MoonGenerator mg)
+                loadingPanel = mg.GetLoadingPanel();
+        }
         Report(0.35f, "Applying elevation…");
 
         Mesh m = MF.sharedMesh;
@@ -210,6 +233,13 @@ public class HexasphereRenderer : MonoBehaviour
     /// <summary>Bind biome lookup textures to the material.</summary>
     public void PushBiomeLookups(Texture2D indexTex, Texture2DArray albedoArray)
     {
+        if (loadingPanel == null && generatorSource != null)
+        {
+            if (generatorSource is PlanetGenerator pg)
+                loadingPanel = pg.GetLoadingPanel();
+            else if (generatorSource is MoonGenerator mg)
+                loadingPanel = mg.GetLoadingPanel();
+        }
         Report(0.65f, "Uploading textures…");
         var mat = MR.sharedMaterial;
         if (mat == null)
