@@ -29,26 +29,13 @@ public static class HexTileMeshBuilder
             int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
 
-            int cIdx = GetOrAdd(center,   vLookup, verts, uvs, uvs1);
+            int cIdx = GetOrAdd(center, center, grid.Radius, vLookup, verts, uvs, uvs1);
             perTileUV[tile] = EquirectUV(center);
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = GetOrAdd(grid.CornerVertices[corners[i]], vLookup, verts, uvs, uvs1);
+                cornerV[i] = GetOrAdd(grid.CornerVertices[corners[i]], center, grid.Radius, vLookup, verts, uvs, uvs1);
 
-            // ── planar UVs for this tile ──
-            Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
-            for (int c = 0; c < cornerV.Length; c++)
-            {
-                Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
-            }
 
             for (int i = 0; i < corners.Length; i++)
             {
@@ -83,25 +70,12 @@ public static class HexTileMeshBuilder
             int[] corners = grid.GetCornersOfTile(tile);
             Vector3 center = grid.tileCenters[tile];
 
-            int cIdx = Add(center, verts, uvs, uvs1);
+            int cIdx = Add(center, center, grid.Radius, verts, uvs, uvs1);
             perTileUV[tile] = EquirectUV(center);
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1);
-
-            Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
-            for (int c = 0; c < cornerV.Length; c++)
-            {
-                Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
-            }
+                cornerV[i] = Add(grid.CornerVertices[corners[i]], center, grid.Radius, verts, uvs, uvs1);
 
             for (int i = 0; i < corners.Length; i++)
             {
@@ -146,24 +120,11 @@ public static class HexTileMeshBuilder
             Color centreCol = new(biomeIdx * normaliser, elevNorm, 1f, 1f); // centre: weight=1
             Color edgeCol   = new(biomeIdx * normaliser, elevNorm, 0f, 1f); // edges: weight=0
 
-            int cIdx = Add(center, verts, uvs, uvs1, colors, centreCol);
+            int cIdx = Add(center, center, grid.Radius, verts, uvs, uvs1, colors, centreCol);
 
             int[] cornerV = new int[corners.Length];
             for (int i = 0; i < corners.Length; i++)
-                cornerV[i] = Add(grid.CornerVertices[corners[i]], verts, uvs, uvs1, colors, edgeCol);
-
-            Vector3 centre = grid.tileCenters[tile];
-            Vector3 xAxis  = Vector3.Normalize(Vector3.Cross(Vector3.up, centre));
-            Vector3 yAxis  = Vector3.Cross(centre, xAxis);
-            uvs1[cIdx] = new Vector2(0.5f, 0.5f);
-            for (int c = 0; c < cornerV.Length; c++)
-            {
-                Vector3 corner = grid.CornerVertices[corners[c]];
-                Vector3 local  = corner - centre;
-                float u = Vector3.Dot(local, xAxis) * 0.5f + 0.5f;
-                float v = Vector3.Dot(local, yAxis) * 0.5f + 0.5f;
-                uvs1[cornerV[c]] = new Vector2(u, v);
-            }
+                cornerV[i] = Add(grid.CornerVertices[corners[i]], center, grid.Radius, verts, uvs, uvs1, colors, edgeCol);
 
             for (int i = 0; i < corners.Length; i++)
             {
@@ -180,28 +141,31 @@ public static class HexTileMeshBuilder
     }
 
     /* ─────────────────────────── Helpers ─────────────────────────── */
-    static int GetOrAdd(Vector3 pos, Dictionary<Vector3,int> lut,
+    static int GetOrAdd(Vector3 pos, Vector3 center, float radius,
+                        Dictionary<Vector3,int> lut,
                         List<Vector3> v, List<Vector2> u0, List<Vector2> u1)
     {
         if (lut.TryGetValue(pos, out int idx)) return idx;
         idx = v.Count;
         v.Add(pos);
-        u0.Add(EquirectUV(pos));
-        u1.Add(Vector2.zero);
+        u0.Add(LocalUV(pos, center, radius));
+        u1.Add(EquirectUV(pos));
         lut[pos] = idx;
         return idx;
     }
 
-    static int Add(Vector3 pos, List<Vector3> v, List<Vector2> u0, List<Vector2> u1) =>
-        Add(pos, v, u0, u1, null, Color.white);
+    static int Add(Vector3 pos, Vector3 center, float radius,
+                   List<Vector3> v, List<Vector2> u0, List<Vector2> u1) =>
+        Add(pos, center, radius, v, u0, u1, null, Color.white);
 
-    static int Add(Vector3 pos, List<Vector3> v, List<Vector2> u0, List<Vector2> u1,
+    static int Add(Vector3 pos, Vector3 center, float radius,
+                   List<Vector3> v, List<Vector2> u0, List<Vector2> u1,
                    List<Color> c, Color col)
     {
         int idx = v.Count;
         v.Add(pos);
-        u0.Add(EquirectUV(pos));
-        u1.Add(Vector2.zero);
+        u0.Add(LocalUV(pos, center, radius));
+        u1.Add(EquirectUV(pos));
         c?.Add(col);
         return idx;
     }
@@ -248,6 +212,21 @@ public static class HexTileMeshBuilder
         m.SetTriangles(tris, 0);
         m.RecalculateNormals();
         return m;
+    }
+
+    static Vector2 LocalUV(Vector3 vertex, Vector3 center, float radius)
+    {
+        Vector3 n = center.normalized;
+        Vector3 t = Vector3.Normalize(Vector3.Cross(Vector3.up, n));
+        if (t.sqrMagnitude < 1e-4f)
+            t = Vector3.Normalize(Vector3.Cross(Vector3.right, n));
+        Vector3 b = Vector3.Cross(n, t);
+
+        Vector3 p = vertex - center;
+        float s = radius * 0.9f;
+        float u = Vector3.Dot(p, t) / (2 * s) + 0.5f;
+        float v = Vector3.Dot(p, b) / (2 * s) + 0.5f;
+        return new Vector2(u, v);
     }
 
     static Vector2 EquirectUV(Vector3 n)
