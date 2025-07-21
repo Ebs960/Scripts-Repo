@@ -22,7 +22,8 @@ public enum Biome {
     Frozen,       // New biome for polar land areas
     Arctic,       // New biome - the coldest of all polar biomes
     Steppe,
-    PineForest
+    PineForest,
+    Any
 }
 
 [Serializable]                 // keep Serializable so it shows in Inspector
