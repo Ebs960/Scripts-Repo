@@ -94,6 +94,7 @@ public class CombatUnit : MonoBehaviour
         animator = GetComponent<Animator>();
         planet = FindAnyObjectByType<PlanetGenerator>();
         if (planet != null) grid = planet.Grid;
+        UnitRegistry.Register(gameObject);
     }
 
     void OnDestroy()
@@ -110,6 +111,8 @@ public class CombatUnit : MonoBehaviour
         GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
         GameEventManager.Instance.OnCombatStarted -= HandleCombatStarted;
         GameEventManager.Instance.OnDamageApplied -= HandleDamageApplied;
+
+        UnitRegistry.Unregister(gameObject);
     }
 
     public void Initialize(CombatUnitData unitData, Civilization unitOwner)
@@ -798,8 +801,7 @@ public class CombatUnit : MonoBehaviour
                     int occupantId = neighborTileData.occupantId;
                     if (occupantId != 0)
                     {
-                        // Find GameObject with this instance ID
-                        var objectWithId = FindObjectFromInstanceID(occupantId);
+                        var objectWithId = UnitRegistry.GetObject(occupantId);
                         if (objectWithId != null)
                         {
                             CombatUnit unit = objectWithId.GetComponent<CombatUnit>();
@@ -815,18 +817,7 @@ public class CombatUnit : MonoBehaviour
         return count;
     }
     
-    // Helper method to find GameObject from instance ID
-    private GameObject FindObjectFromInstanceID(int instanceID)
-    {
-        // Try to find among all active objects in scene
-        var allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        foreach (var obj in allObjects)
-        {
-            if (obj.GetInstanceID() == instanceID)
-                return obj;
-        }
-        return null;
-    }
+
 
     // Transport System Methods
 

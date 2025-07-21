@@ -16,7 +16,7 @@ public class UnitMovementController : MonoBehaviour
     [SerializeField] private float rotationSpeed = 10f;
     [SerializeField] private AnimationCurve movementCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-    private class PathNode
+    private class PathNode : System.IComparable<PathNode>
     {
         public int tileIndex;
         public float gCost; // cost from start
@@ -25,6 +25,14 @@ public class UnitMovementController : MonoBehaviour
         public PathNode parent;
 
         public PathNode(int tileIndex) { this.tileIndex = tileIndex; }
+
+        public int CompareTo(PathNode other)
+        {
+            int cmp = FCost.CompareTo(other.FCost);
+            if (cmp == 0) cmp = hCost.CompareTo(other.hCost);
+            if (cmp == 0) cmp = tileIndex.CompareTo(other.tileIndex);
+            return cmp;
+        }
     }
 
     void Awake()
@@ -108,7 +116,7 @@ public class UnitMovementController : MonoBehaviour
         PathNode startNode = new PathNode(startIndex);
         PathNode endNode = new PathNode(endIndex);
 
-        List<PathNode> openList = new List<PathNode> { startNode };
+        SortedSet<PathNode> openSet = new SortedSet<PathNode> { startNode };
         HashSet<int> closedSet = new HashSet<int>();
 
         Dictionary<int, PathNode> allNodes = new Dictionary<int, PathNode>
@@ -122,23 +130,16 @@ public class UnitMovementController : MonoBehaviour
             TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
 
 
-        while (openList.Count > 0)
+        while (openSet.Count > 0)
         {
-            PathNode currentNode = openList[0];
-            for (int i = 1; i < openList.Count; i++)
-            {
-                if (openList[i].FCost < currentNode.FCost || openList[i].FCost == currentNode.FCost && openList[i].hCost < currentNode.hCost)
-                {
-                    currentNode = openList[i];
-                }
-            }
+            PathNode currentNode = openSet.Min;
 
             if (currentNode.tileIndex == endIndex)
             {
                 return RetracePath(startNode, currentNode);
             }
 
-            openList.Remove(currentNode);
+            openSet.Remove(currentNode);
             closedSet.Add(currentNode.tileIndex);
 
             foreach (int neighborIndex in TileDataHelper.Instance.GetTileNeighbors(currentNode.tileIndex))
@@ -170,10 +171,9 @@ public class UnitMovementController : MonoBehaviour
                         TileDataHelper.Instance.GetTileSurfacePosition(neighborIndex),
                         TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
                     
-                    if (!openList.Contains(neighborNode))
-                    {
-                        openList.Add(neighborNode);
-                    }
+                    if (openSet.Contains(neighborNode))
+                        openSet.Remove(neighborNode);
+                    openSet.Add(neighborNode);
                 }
             }
         }

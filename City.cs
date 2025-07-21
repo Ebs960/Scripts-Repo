@@ -1298,8 +1298,10 @@ public class City : MonoBehaviour
         List<City> citiesInRange = new List<City>();
         int tradeRange = 10; // Default trade range, could be modified by technology/civics
         
-        // Find all civilizations in the game
-        var allCivs = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+        // Get civilizations without scanning the scene if possible
+        List<Civilization> allCivs = CivilizationManager.Instance != null
+            ? CivilizationManager.Instance.GetAllCivs()
+            : new List<Civilization>(FindObjectsByType<Civilization>(FindObjectsSortMode.None));
         
         foreach (var civ in allCivs)
         {

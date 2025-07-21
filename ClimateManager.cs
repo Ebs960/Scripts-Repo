@@ -132,7 +132,7 @@ public class ClimateManager : MonoBehaviour
 
     private void ApplyWinterMovementPenalty()
     {
-        foreach (var unit in FindObjectsByType<CombatUnit>(FindObjectsSortMode.None))
+        foreach (var unit in UnitRegistry.GetCombatUnits())
         {
             if (!unit.hasWinterPenalty)
             {
@@ -141,7 +141,7 @@ public class ClimateManager : MonoBehaviour
             }
         }
 
-        foreach (var worker in FindObjectsByType<WorkerUnit>(FindObjectsSortMode.None))
+        foreach (var worker in UnitRegistry.GetWorkerUnits())
         {
             if (!worker.hasWinterPenalty)
             {
@@ -153,12 +153,12 @@ public class ClimateManager : MonoBehaviour
 
     private void RemoveWinterMovementPenalty()
     {
-        foreach (var unit in FindObjectsByType<CombatUnit>(FindObjectsSortMode.None))
+        foreach (var unit in UnitRegistry.GetCombatUnits())
         {
             unit.hasWinterPenalty = false;
         }
 
-        foreach (var worker in FindObjectsByType<WorkerUnit>(FindObjectsSortMode.None))
+        foreach (var worker in UnitRegistry.GetWorkerUnits())
         {
             worker.hasWinterPenalty = false;
         }
