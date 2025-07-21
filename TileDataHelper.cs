@@ -33,9 +33,16 @@ public class TileDataHelper : MonoBehaviour
 
     void Start() => UpdateReferences();
 
+    private float nextReferenceCheckTime = 0f;
+    private const float REFERENCE_CHECK_INTERVAL = 1f;
+
     void Update()
     {
-        if (planet == null) UpdateReferences();
+        if ((planet == null || moon == null) && Time.time >= nextReferenceCheckTime)
+        {
+            nextReferenceCheckTime = Time.time + REFERENCE_CHECK_INTERVAL;
+            UpdateReferences();
+        }
     }
 
     public void UpdateReferences()

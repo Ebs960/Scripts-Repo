@@ -163,11 +163,11 @@ public class TransportUIManager : MonoBehaviour
         
         if (tileData != null && tileData.occupantId != 0)
         {
-            unitObj = FindObjectFromInstanceID(tileData.occupantId);
+            unitObj = UnitRegistry.GetObject(tileData.occupantId);
         }
         else if (isMoonTile && tileData != null && tileData.occupantId != 0)
         {
-            unitObj = FindObjectFromInstanceID(tileData.occupantId);
+            unitObj = UnitRegistry.GetObject(tileData.occupantId);
         }
         
         if (unitObj != null)
@@ -309,14 +309,14 @@ public class TransportUIManager : MonoBehaviour
             
             GameObject unitObj = null;
             var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-            
+
             if (tileData != null && tileData.occupantId != 0)
             {
-                unitObj = FindObjectFromInstanceID(tileData.occupantId);
+                unitObj = UnitRegistry.GetObject(tileData.occupantId);
             }
             else if (isMoonTile && tileData != null && tileData.occupantId != 0)
             {
-                unitObj = FindObjectFromInstanceID(tileData.occupantId);
+                unitObj = UnitRegistry.GetObject(tileData.occupantId);
             }
             
             if (unitObj != null)
@@ -428,15 +428,4 @@ public class TransportUIManager : MonoBehaviour
         PopulateTransportedUnitsList();
     }
 
-    private GameObject FindObjectFromInstanceID(int instanceID)
-    {
-        // Try to find among all active objects in scene
-        var allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        foreach (var obj in allObjects)
-        {
-            if (obj.GetInstanceID() == instanceID)
-                return obj;
-        }
-        return null;
-    }
 } 

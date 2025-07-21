@@ -52,12 +52,14 @@ public class WorkerUnit : MonoBehaviour
         planet = FindAnyObjectByType<PlanetGenerator>();
         if (planet != null) grid = planet.Grid;
         unitAnimator = GetComponent<Animator>();
+        UnitRegistry.Register(gameObject);
     }
 
     void OnDestroy()
     {
         // Unsubscribe from events
         GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
+        UnitRegistry.Unregister(gameObject);
     }
 
     public void Initialize(WorkerUnitData unitData, Civilization unitOwner)
