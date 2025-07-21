@@ -97,10 +97,25 @@ public class TileInfoDisplay : MonoBehaviour
                 {
                     hovering = true;
                     int index = holder.tileIndex;
-                    if (index >= 0 && index < PlanetGenerator.Instance.Tiles.Count)
-                    {
-                        var tile = PlanetGenerator.Instance.Tiles[index];
 
+                    HexTileData tile = null;
+                    MoonGenerator moon = GameManager.Instance?.moonGenerator;
+
+                    // Determine if this holder belongs to the moon or the planet
+                    bool isMoonTile = moon != null && holder.transform.IsChildOf(moon.transform);
+
+                    if (isMoonTile)
+                    {
+                        if (index >= 0 && index < moon.Tiles.Count)
+                            tile = moon.Tiles[index];
+                    }
+                    else if (index >= 0 && index < PlanetGenerator.Instance.Tiles.Count)
+                    {
+                        tile = PlanetGenerator.Instance.Tiles[index];
+                    }
+
+                    if (tile != null)
+                    {
                         highlightMarker.transform.position = holder.transform.position;
                         highlightMarker.transform.up = holder.transform.up;
                         highlightMarker.SetActive(true);
