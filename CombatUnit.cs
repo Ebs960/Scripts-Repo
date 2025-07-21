@@ -307,6 +307,8 @@ public class CombatUnit : MonoBehaviour
         var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(path[0]);
         SphericalHexGrid currentGrid = grid;
 
+        int startTileIndex = currentTileIndex;
+
         foreach (int idx in path)
         {
             var (currentTileData, _) = TileDataHelper.Instance.GetTileData(idx);
@@ -326,7 +328,7 @@ public class CombatUnit : MonoBehaviour
         // Raise movement completed event
         if (path.Count > 0)
         {
-            GameEventManager.Instance.RaiseMovementCompletedEvent(this, path[0], path[path.Count - 1], path.Count);
+            GameEventManager.Instance.RaiseMovementCompletedEvent(this, startTileIndex, path[path.Count - 1], path.Count);
         }
     }
 

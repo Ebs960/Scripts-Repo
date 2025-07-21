@@ -216,7 +216,8 @@ public class UnitMovementController : MonoBehaviour
         int currentTileIndex = combatUnit != null ? combatUnit.currentTileIndex : workerUnit.currentTileIndex;
         Transform unitTransform = unit.transform;
         
-        // Track the previous tile for movement cost calculation
+        // Track the starting and previous tile for event reporting
+        int startTileIndex = currentTileIndex;
         int previousTileIndex = currentTileIndex;
         
         // Set unit to moving state
@@ -322,8 +323,8 @@ public class UnitMovementController : MonoBehaviour
         else
             workerUnit.UpdateWalkingState(false);
         
-        // Fire movement completed event
-        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[path.Count - 1], path.Count);
+        // Fire movement completed event using the actual starting tile index
+        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, startTileIndex, path[path.Count - 1], path.Count);
     }
 
     /// <summary>
