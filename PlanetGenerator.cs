@@ -1169,10 +1169,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             carveCS.Dispatch(kernel, 1024/8, 512/8, 1);
 
-            RenderTexture.active = heightRT;
-            heightTex.ReadPixels(new Rect(0,0,1024,512), 0, 0);
-            heightTex.Apply();
-            RenderTexture.active = null;
+            yield return StartCoroutine(TextureUtils.ReadPixelsAsync(heightRT, heightTex, 4));
             heightRT.Release();
         }
 
@@ -1655,11 +1652,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 Graphics.Blit(src, rt);
                 
                 // Read the resized pixels
-                var prevRT = RenderTexture.active;
-                RenderTexture.active = rt;
-                resizedTex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
-                resizedTex.Apply();
-                RenderTexture.active = prevRT;
+                yield return StartCoroutine(TextureUtils.ReadPixelsAsync(rt, resizedTex, 4));
                 
                 // Copy to array
                 Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
@@ -1696,11 +1689,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 var resizedTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
                 var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32);
                 Graphics.Blit(src, rt);
-                var prevRT = RenderTexture.active;
-                RenderTexture.active = rt;
-                resizedTex.ReadPixels(new Rect(0, 0, size, size), 0, 0);
-                resizedTex.Apply();
-                RenderTexture.active = prevRT;
+                yield return StartCoroutine(TextureUtils.ReadPixelsAsync(rt, resizedTex, 4));
                 Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
                 RenderTexture.ReleaseTemporary(rt);
                 DestroyImmediate(resizedTex);
