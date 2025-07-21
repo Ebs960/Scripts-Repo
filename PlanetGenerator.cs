@@ -1744,24 +1744,39 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
-        float originalRadius = GetBoundingSphereRadius(go);
-        if (originalRadius > 0f)
+        float prefabRadius = GetPrefabBoundingRadius(go);
+        float correctRadius = GetExpectedTileRadius(grid);
+        if (prefabRadius > 0f && correctRadius > 0f)
         {
-            float scaleFactor = tileRadius / originalRadius;
+            float scaleFactor = correctRadius / prefabRadius;
             go.transform.localScale = Vector3.one * scaleFactor;
         }
 
         return go;
     }
 
-    private float GetBoundingSphereRadius(GameObject go)
+    private float GetPrefabBoundingRadius(GameObject go)
     {
         Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
         if (renderers.Length == 0) return 0f;
         Bounds bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
         foreach (var r in renderers)
             bounds.Encapsulate(r.bounds);
-        return bounds.extents.magnitude;
+        float radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
+        return radius;
+    }
+
+    private float GetExpectedTileRadius(SphericalHexGrid grid)
+    {
+        if (grid == null || grid.TileCount == 0) return 0f;
+
+        Vector3 c0 = grid.tileCenters[0];
+        int neighborIdx = grid.neighbors[0][0];
+        Vector3 c1 = grid.tileCenters[neighborIdx];
+
+        float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
+        float arcRadius = grid.Radius * angle * 0.5f;
+        return arcRadius;
     }
 
     private void SpawnAllTilePrefabs()
