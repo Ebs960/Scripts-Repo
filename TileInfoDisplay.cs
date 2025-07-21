@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using TMPro;
 using System.Text;
 
@@ -86,47 +86,41 @@ public class TileInfoDisplay : MonoBehaviour
 
         bool hovering = false;
 
-        // Ray-cast against tile colliders
+        // Ray-cast against the planet collider
         if (GameManager.Instance?.planetGenerator != null && Camera.main != null)
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out var hit, 1000f))
+            if (Physics.Raycast(ray, out var hit, 1000f) && hit.collider &&
+                hit.collider.GetComponent<TileIndexHolder>())
             {
-                var holder = hit.collider.GetComponentInParent<TileIndexHolder>();
-                if (holder != null)
+                hovering = true;
+                var tile = GameManager.Instance.GetHexTileAtWorldPoint(hit.point);
+                if (tile != null)
                 {
-                    hovering = true;
-                    int index = holder.tileIndex;
+                    // move highlight ring
+                    Transform planetTransform = GameManager.Instance.planetGenerator.transform;
+                    Vector3 planetCenter = planetTransform.position;
+                    float distanceToSurface = Vector3.Distance(hit.point, planetCenter);
 
-                    HexTileData tile = null;
-                    MoonGenerator moon = GameManager.Instance?.moonGenerator;
+                    highlightMarker.transform.position = planetCenter + tile.centerUnitVector * distanceToSurface;
+                    highlightMarker.transform.up = tile.centerUnitVector;
+                    highlightMarker.SetActive(true);
 
-                    // Determine if this holder belongs to the moon or the planet
-                    bool isMoonTile = moon != null && holder.transform.IsChildOf(moon.transform);
-
-                    if (isMoonTile)
+                    // update info
+                    sb.Clear();
+                    int tileIndex = -1;
+                    if (hit.collider != null)
                     {
-                        if (index >= 0 && index < moon.Tiles.Count)
-                            tile = moon.Tiles[index];
+                        var tih = hit.collider.GetComponent<TileIndexHolder>();
+                        if (tih != null) tileIndex = tih.tileIndex;
                     }
-                    else if (index >= 0 && index < PlanetGenerator.Instance.Tiles.Count)
-                    {
-                        tile = PlanetGenerator.Instance.Tiles[index];
-                    }
-
-                    if (tile != null)
-                    {
-                        highlightMarker.transform.position = holder.transform.position;
-                        highlightMarker.transform.up = holder.transform.up;
-                        highlightMarker.SetActive(true);
-
-                        sb.Clear();
-                        sb.AppendLine($"  Biome Index: {tile.biomeIndex}   Height: {tile.height:F2}");
-                        sb.AppendLine($"  Food: {tile.food}   Prod: {tile.production}");
-                        sb.AppendLine($"  Gold: {tile.gold}   Sci: {tile.science}");
-                        sb.AppendLine($"  Culture: {tile.culture}");
-                        infoText.text = sb.ToString();
-                    }
+                    string indexStr = tileIndex >= 0 ? $"Index: {tileIndex}" : "";
+                    string biomeName = System.Enum.GetName(typeof(Biome), tile.biomeIndex) ?? $"Biome {tile.biomeIndex}";
+                    sb.AppendLine($"  Biome: {biomeName}   Height: {tile.height:F2}");
+                    sb.AppendLine($"  Food: {tile.food}   Prod: {tile.production}");
+                    sb.AppendLine($"  Gold: {tile.gold}   Sci: {tile.science}");
+                    sb.AppendLine($"  Culture: {tile.culture}");
+                    infoText.text = sb.ToString();
                 }
             }
         }
