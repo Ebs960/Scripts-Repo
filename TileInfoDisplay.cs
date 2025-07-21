@@ -86,33 +86,32 @@ public class TileInfoDisplay : MonoBehaviour
 
         bool hovering = false;
 
-        // Ray-cast against the planet collider
+        // Ray-cast against tile colliders
         if (GameManager.Instance?.planetGenerator != null && Camera.main != null)
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out var hit, 1000f) && hit.collider &&
-                hit.collider.GetComponent<HexasphereRenderer>())
+            if (Physics.Raycast(ray, out var hit, 1000f))
             {
-                hovering = true;
-                var tile = GameManager.Instance.GetHexTileAtWorldPoint(hit.point);
-                if (tile != null)
+                var holder = hit.collider.GetComponentInParent<TileIndexHolder>();
+                if (holder != null)
                 {
-                    // move highlight ring
-                    Transform planetTransform = GameManager.Instance.planetGenerator.transform;
-                    Vector3 planetCenter = planetTransform.position;
-                    float distanceToSurface = Vector3.Distance(hit.point, planetCenter);
+                    hovering = true;
+                    int index = holder.tileIndex;
+                    if (index >= 0 && index < PlanetGenerator.Instance.Tiles.Count)
+                    {
+                        var tile = PlanetGenerator.Instance.Tiles[index];
 
-                    highlightMarker.transform.position = planetCenter + tile.centerUnitVector * distanceToSurface;
-                    highlightMarker.transform.up = tile.centerUnitVector;
-                    highlightMarker.SetActive(true);
+                        highlightMarker.transform.position = holder.transform.position;
+                        highlightMarker.transform.up = holder.transform.up;
+                        highlightMarker.SetActive(true);
 
-                    // update info
-                    sb.Clear();
-                    sb.AppendLine($"  Biome Index: {tile.biomeIndex}   Height: {tile.height:F2}");
-                    sb.AppendLine($"  Food: {tile.food}   Prod: {tile.production}");
-                    sb.AppendLine($"  Gold: {tile.gold}   Sci: {tile.science}");
-                    sb.AppendLine($"  Culture: {tile.culture}");
-                    infoText.text = sb.ToString();
+                        sb.Clear();
+                        sb.AppendLine($"  Biome Index: {tile.biomeIndex}   Height: {tile.height:F2}");
+                        sb.AppendLine($"  Food: {tile.food}   Prod: {tile.production}");
+                        sb.AppendLine($"  Gold: {tile.gold}   Sci: {tile.science}");
+                        sb.AppendLine($"  Culture: {tile.culture}");
+                        infoText.text = sb.ToString();
+                    }
                 }
             }
         }

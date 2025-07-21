@@ -18,8 +18,6 @@ public class UnitSelectionManager : MonoBehaviour
     private GameObject selectionIndicator;
     
     // References
-    private SphericalHexGrid planetGrid;
-    private SphericalHexGrid moonGrid;
     private Camera mainCamera;
     
     void Awake()
@@ -43,14 +41,6 @@ public class UnitSelectionManager : MonoBehaviour
         if (mainCamera == null)
             mainCamera = FindAnyObjectByType<Camera>();
             
-        // Find grids
-        var planetGen = FindAnyObjectByType<PlanetGenerator>();
-        if (planetGen != null)
-            planetGrid = planetGen.Grid;
-            
-        var moonGen = FindAnyObjectByType<MoonGenerator>();
-        if (moonGen != null)
-            moonGrid = moonGen.Grid;
     }
     
     void Update()
@@ -116,12 +106,9 @@ public class UnitSelectionManager : MonoBehaviour
         var hitInfo = GetMouseHitInfo();
         if (hitInfo.hit)
         {
-            // Get the tile index at the clicked position
-            int targetTileIndex = GetTileIndexAtPosition(hitInfo.worldPosition, hitInfo.grid);
-            
+            int targetTileIndex = hitInfo.tileIndex;
             if (targetTileIndex >= 0)
             {
-                // Issue move command to selected unit
                 MoveSelectedUnitToTile(targetTileIndex);
             }
         }
@@ -130,48 +117,23 @@ public class UnitSelectionManager : MonoBehaviour
     /// <summary>
     /// Get mouse raycast hit information
     /// </summary>
-    private (bool hit, Vector3 worldPosition, SphericalHexGrid grid) GetMouseHitInfo()
+    private (bool hit, Vector3 worldPosition, int tileIndex) GetMouseHitInfo()
     {
         if (mainCamera == null)
-            return (false, Vector3.zero, null);
-        
+            return (false, Vector3.zero, -1);
+
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        
+
         if (Physics.Raycast(ray, out RaycastHit hitInfo))
         {
-            var planetGenerator = GameManager.Instance.planetGenerator;
-            var moonGenerator = GameManager.Instance.moonGenerator;
-
-            if (planetGenerator != null && hitInfo.transform == planetGenerator.transform)
-            {
-                return (true, hitInfo.point, planetGrid);
-            }
-            if (moonGenerator != null && hitInfo.transform == moonGenerator.transform)
-            {
-                 return (true, hitInfo.point, moonGrid);
-            }
+            var holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
+            if (holder != null)
+                return (true, hitInfo.point, holder.tileIndex);
         }
-        
-        return (false, Vector3.zero, null);
+
+        return (false, Vector3.zero, -1);
     }
     
-    /// <summary>
-    /// Get the tile index at a world position
-    /// </summary>
-    private int GetTileIndexAtPosition(Vector3 worldPosition, SphericalHexGrid grid)
-    {
-        if (grid == null)
-            return -1;
-
-        Vector3 planetCenter = Vector3.zero;
-        if (grid == planetGrid && GameManager.Instance.planetGenerator != null)
-            planetCenter = GameManager.Instance.planetGenerator.transform.position;
-        else if (grid == moonGrid && GameManager.Instance.moonGenerator != null)
-            planetCenter = GameManager.Instance.moonGenerator.transform.position;
-
-        Vector3 localDirection = (worldPosition - planetCenter).normalized;
-        return grid.GetTileAtPosition(localDirection);
-    }
     
     /// <summary>
     /// Find a unit at the given world position

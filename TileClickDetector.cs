@@ -79,37 +79,27 @@ public class TileClickDetector : MonoBehaviour
         var hitInfo = GetMouseHitInfo();
         if (hitInfo.hit)
         {
-            int tileIndex = GetTileIndexAtPosition(hitInfo.worldPosition, hitInfo.grid, hitInfo.transform);
-            
+            int tileIndex = hitInfo.tileIndex;
             if (tileIndex >= 0)
             {
-                Debug.Log($"[TileClickDetector] Clicked tile {tileIndex} at {hitInfo.worldPosition}");
-                
-                // Get tile data for debug info
-                var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
+                Debug.Log($"[TileClickDetector] Clicked tile {tileIndex} at {hitInfo.tileTransform.position}");
+
+                var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
                 if (tileData != null)
-                {
                     Debug.Log($"[TileClickDetector] Tile Data - Biome: {tileData.biome}, Elevation: {tileData.elevation:F2}");
-                }
-                
-                // Fire the click event
-                OnTileClicked?.Invoke(tileIndex, hitInfo.worldPosition, hitInfo.isMoon);
-                
-                // Update highlight
+
+                OnTileClicked?.Invoke(tileIndex, hitInfo.tileTransform.position, hitInfo.isMoon);
+
                 if (tileHighlightPrefab != null)
                 {
-                    Vector3 worldPos = hitInfo.transform.TransformPoint(hitInfo.grid.tileCenters[tileIndex]);
+                    Vector3 worldPos = hitInfo.tileTransform.position;
 
                     if (currentHighlight == null)
-                    {
                         currentHighlight = Instantiate(tileHighlightPrefab, worldPos, Quaternion.identity);
-                    }
                     else
-                    {
                         currentHighlight.transform.position = worldPos;
-                    }
 
-                    currentHighlight.transform.up = (currentHighlight.transform.position - hitInfo.transform.position).normalized;
+                    currentHighlight.transform.up = hitInfo.tileTransform.up;
                 }
             }
         }
@@ -121,24 +111,21 @@ public class TileClickDetector : MonoBehaviour
     private void HandleTileHover()
     {
         var hitInfo = GetMouseHitInfo();
-        
+
         if (hitInfo.hit)
         {
-            int tileIndex = GetTileIndexAtPosition(hitInfo.worldPosition, hitInfo.grid, hitInfo.transform);
-            
-            // Check if we're hovering over a different tile
+            int tileIndex = hitInfo.tileIndex;
+
             if (tileIndex >= 0 && (tileIndex != lastHoveredTileIndex || hitInfo.isMoon != lastHoverWasMoon))
             {
                 lastHoveredTileIndex = tileIndex;
                 lastHoverWasMoon = hitInfo.isMoon;
-                
-                // Fire hover event
-                OnTileHovered?.Invoke(tileIndex, hitInfo.worldPosition, hitInfo.isMoon);
+
+                OnTileHovered?.Invoke(tileIndex, hitInfo.tileTransform.position, hitInfo.isMoon);
             }
         }
         else
         {
-            // Not hovering over any tile
             if (lastHoveredTileIndex >= 0)
             {
                 lastHoveredTileIndex = -1;
@@ -151,29 +138,24 @@ public class TileClickDetector : MonoBehaviour
     /// <summary>
     /// Perform raycast and get hit information
     /// </summary>
-    private (bool hit, Vector3 worldPosition, SphericalHexGrid grid, Transform transform, bool isMoon) GetMouseHitInfo()
+    private (bool hit, int tileIndex, Transform tileTransform, bool isMoon) GetMouseHitInfo()
     {
         if (mainCamera == null)
-            return (false, Vector3.zero, null, null, false);
-        
+            return (false, -1, null, false);
+
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        
+
         if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, planetLayerMask))
         {
-            // Check if we hit the planet
-            if (planetGenerator != null && IsPartOfObject(hitInfo.transform, planetGenerator.transform))
+            TileIndexHolder holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
+            if (holder != null)
             {
-                return (true, hitInfo.point, planetGrid, planetGenerator.transform, false);
-            }
-            
-            // Check if we hit the moon
-            if (moonGenerator != null && IsPartOfObject(hitInfo.transform, moonGenerator.transform))
-            {
-                return (true, hitInfo.point, moonGrid, moonGenerator.transform, true);
+                bool isMoonTile = moonGenerator != null && IsPartOfObject(holder.transform, moonGenerator.transform);
+                return (true, holder.tileIndex, holder.transform, isMoonTile);
             }
         }
-        
-        return (false, Vector3.zero, null, null, false);
+
+        return (false, -1, null, false);
     }
     
     /// <summary>
@@ -195,20 +177,6 @@ public class TileClickDetector : MonoBehaviour
         return false;
     }
     
-    /// <summary>
-    /// Get the tile index at a world position
-    /// </summary>
-    private int GetTileIndexAtPosition(Vector3 worldPosition, SphericalHexGrid grid, Transform planetTransform)
-    {
-        if (grid == null || planetTransform == null)
-            return -1;
-        
-        // Convert world position to local direction from planet center
-        Vector3 planetCenter = planetTransform.position;
-        Vector3 localDirection = (worldPosition - planetCenter).normalized;
-        
-        return grid.GetTileAtPosition(localDirection);
-    }
     
     /// <summary>
     /// Public method to manually trigger a tile click (for testing or external systems)

@@ -933,7 +933,14 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
             Vector3 pos = grid.tileCenters[i];
             pos = transform.TransformPoint(pos);
-            InstantiateTilePrefab(td, pos, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
+            if (tileGO != null)
+            {
+                var indexHolder = tileGO.GetComponent<TileIndexHolder>();
+                if (indexHolder == null)
+                    indexHolder = tileGO.AddComponent<TileIndexHolder>();
+                indexHolder.tileIndex = i;
+            }
         }
     }
 }
