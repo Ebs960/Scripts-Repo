@@ -23,4 +23,17 @@ public static class TextureUtils
         dest.Apply();
         RenderTexture.active = prev;
     }
+
+    /// <summary>
+    /// Immediately read the entire RenderTexture into the destination Texture2D.
+    /// Ensures the correct render target is active while reading pixels.
+    /// </summary>
+    public static void ReadPixelsImmediate(RenderTexture src, Texture2D dest)
+    {
+        RenderTexture prev = RenderTexture.active;
+        RenderTexture.active = src;
+        dest.ReadPixels(new Rect(0, 0, dest.width, dest.height), 0, 0);
+        dest.Apply();
+        RenderTexture.active = prev;
+    }
 }
