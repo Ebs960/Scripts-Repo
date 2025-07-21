@@ -1394,17 +1394,9 @@ public class Civilization : MonoBehaviour
             Vector3 surfaceNormal = (tileCenter - planetCenter).normalized;
             float planetRadius = planetToUse.transform.localScale.x * 0.5f;
             
-            // Get extrusion amount from TileData instead of directly from the grid component
-            float extrusion = 0f;
-            var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
-            if (tileData != null)
-            {
-                extrusion = tileData.elevation * planetToUse.maxExtrusionHeight;
-            }
-
+            // Extrusion logic removed: surface position now uses only radius and baseOffset
             float baseOffset = 0.1f; // Slightly above surface
-            float surfaceOffset = baseOffset + extrusion;
-            Vector3 surfacePosition = planetCenter + surfaceNormal * (planetRadius + surfaceOffset);
+            Vector3 surfacePosition = planetCenter + surfaceNormal * (planetRadius + baseOffset);
             cityGO.transform.position = surfacePosition;
             Debug.Log($"[FoundNewCity] City positioned at {surfacePosition}");
 

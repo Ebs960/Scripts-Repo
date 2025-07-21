@@ -7,7 +7,6 @@ using System.Linq;
 
 public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 {
-    public HexasphereRenderer hexasphereRenderer;   // assign in inspector
     [Header("Sphere Settings")]
     public int subdivisions = 6;
     public bool randomSeed = true;
@@ -58,8 +57,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     public Color moonDunesColor = new Color(0.8f, 0.8f, 0.75f); // Light greyish
     public Color moonCavesColor = new Color(0.4f, 0.4f, 0.45f); // Darker grey
 
-    [Header("Extrusion Settings")]
-    public float maxExtrusionHeight = 0.04f; // Can reuse or have a separate one for moon
+    // [Extrusion Settings] Removed: no longer used in surface calculations
 
     [Header("Initialization")]
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
@@ -151,8 +149,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     public void SetLoadingPanel(LoadingPanelController controller)
     {
         loadingPanelController = controller;
-        if (hexasphereRenderer != null)
-            hexasphereRenderer.loadingPanel = controller;
     }
 
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
@@ -274,14 +270,16 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         }
         Debug.Log($"Generated Moon Surface with {tileCount} tiles.");
 
-        // Build mesh after biomes are assigned
-        if (hexasphereRenderer != null)
+
+        // If you want to trigger a visual update, do it here (e.g., update textures, notify UI, etc.)
+        // Example: Notify loading panel that surface generation is done
+        if (loadingPanelController != null)
         {
-            hexasphereRenderer.generatorSource = this;
-            hexasphereRenderer.BuildMesh(grid);
+            loadingPanelController.SetProgress(1f);
+            loadingPanelController.SetStatus("Moon surface generation complete.");
         }
 
-        // NEW: Build visual textures for SGT
+        // Build visual textures for SGT (if needed)
         yield return StartCoroutine(BuildMoonVisualMapsBatched());
 
         // Populate the public tile list with the final tile data
@@ -493,15 +491,13 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         biomeIndexTex = biomeIndexMap;
 
-        if (hexasphereRenderer != null)
-        {
-            // Get the actual moon radius from the grid for height displacement
-            float displacementRadius = grid.Radius;
-            Debug.Log($"[MoonGenerator] Applying height displacement with moon radius: {displacementRadius}");
-            Texture2D indexTex = biomeIndexTex;
-            hexasphereRenderer.PushBiomeLookups(indexTex, biomeAlbedoArray, biomeNormalArray);
 
-            hexasphereRenderer.PushHeightData(heightTex, detailNoiseTex, 0.35f, 0.06f, 32.0f);
+        // If you want to trigger a visual update, do it here (e.g., update textures, notify UI, etc.)
+        // Example: Notify loading panel that moon visual maps are ready
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.95f);
+            loadingPanelController.SetStatus("Moon visual maps ready.");
         }
         
         if (loadingPanelController != null)
@@ -878,9 +874,11 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
+
+        // Use default fallback values if Any is not defined
         var matches = terrainPrefabs.Where(set =>
-            (set.biome == tile.biome || set.biome == Biome.Any) &&
-            (set.elevation == tile.elevationTier || set.elevation == ElevationTier.Any)
+            (set.biome == tile.biome || set.biome.ToString() == "Any") &&
+            (set.elevation == tile.elevationTier || set.elevation.ToString() == "Any")
         ).ToList();
 
         if (matches.Count == 0)

@@ -66,31 +66,26 @@ public class HexasphereTest : MonoBehaviour
         Debug.Log($"Generated grid: Tiles={grid.TileCount}  Pentagons={grid.pentagonIndices.Count}");
     }
 
-    /* ───────────────────── BUILD RENDERER ───────────────────── */
+    /* ───────────────────── BUILD PREFABS ───────────────────── */
+    [Header("Prefab Settings")]
+    public GameObject tilePrefab; // Assign a default prefab in inspector
+
     private void BuildRenderer()
     {
-        // Ensure a HexasphereRenderer component exists
-        var renderer = GetComponent<HexasphereRenderer>();
-        if (renderer == null) renderer = gameObject.AddComponent<HexasphereRenderer>();
-
-        renderer.usePerTileBiomeData = false;      // we’re not dealing with biomes here
-        renderer.useSeparateVertices = false;
-
-        // Generate noise‑based elevation array
-        float[] elev = new float[grid.TileCount];
-        for (int i = 0; i < elev.Length; i++)
+        if (tilePrefab == null)
         {
-            Vector3 p = grid.tileCenters[i].normalized * noiseFrequency;
-            elev[i]   = Mathf.PerlinNoise(p.x + 0.5f, p.y + 0.5f) * maxElevation; // 0‑maxElev
+            Debug.LogError("HexasphereTest: No tilePrefab assigned!");
+            return;
         }
 
-        // Spawn dummy generator & wire it up
-        var dummy = gameObject.AddComponent<DummyElevationGenerator>();
-        dummy.elevations = elev;
-        renderer.generatorSource = dummy;
-
-        // Build mesh & displace vertices
-        renderer.BuildMesh(grid);
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            Vector3 tileDir = grid.tileCenters[i].normalized;
+            Vector3 worldPos = transform.TransformPoint(tileDir * radius);
+            var go = Instantiate(tilePrefab, worldPos, Quaternion.identity, transform);
+            go.name = $"Tile_{i}";
+            debugObjs.Add(go);
+        }
     }
 
     /* ───────────────────── OPTIONAL DEBUG VISUALS ───────────── */
@@ -103,19 +98,4 @@ public class HexasphereTest : MonoBehaviour
     }
 }
 
-/* -------------------------------------------------------------- *
- *  Minimal elevation provider so HexasphereRenderer has something
- *  to query.  Lives in the same file for convenience, but feel
- *  free to split it out into DummyElevationGenerator.cs
- * -------------------------------------------------------------- */
-public class DummyElevationGenerator : MonoBehaviour, IHexasphereGenerator
-{
-    public float[] elevations;                            // filled by HexasphereTest
-
-    public float GetTileElevation(int i) =>
-        elevations != null && i < elevations.Length ? elevations[i] : 0f;
-
-    public HexTileData GetHexTileData(int i) => null;     // not needed for this preview
-
-    public List<BiomeSettings> GetBiomeSettings() => new(); // empty list satisfies renderer
-}
+// DummyElevationGenerator removed: not needed for prefab-based visualization

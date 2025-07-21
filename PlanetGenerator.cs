@@ -11,7 +11,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
 
-    public HexasphereRenderer hexasphereRenderer;   // assign in inspector
 
     [Header("Sphere Settings")] 
     public int subdivisions = 8;
@@ -157,7 +156,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
     [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
     public int initializationDelay = 1;
-    [Header("Extrusion Settings")] public float maxExtrusionHeight = 0.04f;
+    // [Extrusion Settings] Removed: no longer used in surface calculations
     [Header("Climate Settings")]
     [Range(0.65f, 0.95f)]
     [Tooltip("Controls the size of polar regions. Lower values = larger polar regions (0.7=63° latitude, 0.8=72° latitude)")]
@@ -1136,13 +1135,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return polarTilesGenerated;
         }
 
-        // Build mesh after biomes are assigned
-        if (hexasphereRenderer != null)
-        {
-            hexasphereRenderer.generatorSource = this;
-            hexasphereRenderer.BuildMesh(grid);
-        }
-
         // Generate visual textures for the new HexasphereRenderer system
         yield return StartCoroutine(BuildPlanetVisualMapsBatched());
 
@@ -1187,16 +1179,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             Debug.Log("[PlanetGenerator] Syncing tile grid and maps with GameManager (after high-res texture generation)...");
             GameManager.Instance.SetPlanetTextures(heightTex, biomeColorMap, grid);
-            if (hexasphereRenderer != null)
-            {
-                if (biomeAlbedoArray == null)
-                    biomeAlbedoArray = BuildBiomeAlbedoArray();
-                if (biomeNormalArray == null)
-                    biomeNormalArray = BuildBiomeNormalArray();
-                hexasphereRenderer.PushBiomeLookups(null, biomeAlbedoArray, biomeNormalArray);
-
-                hexasphereRenderer.PushHeightData(heightTex, detailNoiseTex, 0.35f, 0.06f, 32.0f);
-            }
         }
         else
         {
@@ -1360,8 +1342,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public void SetLoadingPanel(LoadingPanelController controller)
     {
         loadingPanelController = controller;
-        if (hexasphereRenderer != null)
-            hexasphereRenderer.loadingPanel = controller;
     }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
@@ -1737,8 +1717,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     private GameObject GetPrefabForTile(HexTileData tile)
     {
         var matches = terrainPrefabs.Where(set =>
-            (set.biome == tile.biome || set.biome == Biome.Any) &&
-            (set.elevation == tile.elevationTier || set.elevation == ElevationTier.Any)
+            (set.biome == tile.biome || set.biome.Equals(Biome.Any)) &&
+            (set.elevation == tile.elevationTier || set.elevation.Equals(ElevationTier.Any))
         ).ToList();
 
         if (matches.Count == 0)

@@ -27,6 +27,8 @@ Material:
   m_ValidKeywords: []
   m_InvalidKeywords:
   - _CW_SHAPE_SPHERE
+  - _SHARPBOUNDARIES_ON
+  - _USEPERTILEBIOMEDATA_ON
   - _USE_ALBEDO_TEX
   - _USE_BIOME_TEX
   m_LightmapFlags: 4
@@ -104,6 +106,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _DetailHeightTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DetailMask:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -117,6 +123,10 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _HeightMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _HeightMapTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -181,8 +191,10 @@ Material:
     - _Cutoff: 0.5
     - _DaySideCutoff: 0.15
     - _DetailAlbedoMapScale: 1
+    - _DetailAmp: 0.06
+    - _DetailFreq: 32
     - _DetailNormalMapScale: 1
-    - _DetailStrength: 0.189
+    - _DetailStrength: 0.241
     - _DetailTextureScale: 10
     - _DstBlend: 0
     - _DstBlendAlpha: 0
@@ -191,10 +203,13 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
+    - _HeightAmp: 0.35
     - _HeightOffset: 0
     - _HeightScale: 1
     - _LatTintStrength: 0.117
     - _Metallic: 0
+    - _NoiseSeed: 0
+    - _NormalStrength: 0.7
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueControl: -1
@@ -204,7 +219,7 @@ Material:
     - _RimPower: 4
     - _SGT_CloudWarp: 0
     - _SGT_Clouds: 0
-    - _SharpBoundaries: 0
+    - _SharpBoundaries: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
@@ -212,8 +227,9 @@ Material:
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
+    - _TessFactor: 8
     - _UseBiomeBlending: 0
-    - _UsePerTileBiomeData: 0
+    - _UsePerTileBiomeData: 1
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:

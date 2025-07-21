@@ -417,14 +417,9 @@ public class GameManager : MonoBehaviour
             // Generate grid data using the new proper geodesic hexasphere system with the correct radius
             if (planetGenerator != null)
             {
-                    planetGenerator.radius = radius; // Set the radius property
+                planetGenerator.radius = radius; // Set the radius property
                 planetGenerator.Grid.GenerateFromSubdivision(subdivisions, radius);
-                
-                // Configure the hexasphere renderer for the new system
-                if (planetGenerator.hexasphereRenderer != null)
-                {
-                    planetGenerator.hexasphereRenderer.generatorSource = planetGenerator;
-                }
+                // No more hexasphereRenderer setup needed
             }
 
             // Configure planet generator with GameSetupData settings
@@ -498,12 +493,7 @@ public class GameManager : MonoBehaviour
                 // Configure moon with correct radius and subdivisions
                 moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
                 
-                // Rebuild moon mesh with correct radius
-                if (moonGenerator.hexasphereRenderer != null)
-                {
-                    moonGenerator.hexasphereRenderer.generatorSource = moonGenerator;
-                    moonGenerator.hexasphereRenderer.BuildMesh(moonGenerator.Grid);
-                }
+                // No more hexasphereRenderer setup needed for moon
 
                 // Notify TileDataHelper of the new generator
                 if (TileDataHelper.Instance != null)

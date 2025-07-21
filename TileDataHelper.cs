@@ -144,21 +144,18 @@ public class TileDataHelper : MonoBehaviour
     {
         var (tileData, isMoon) = GetTileData(tileIndex);
 
+
         if (isMoon && moon != null)
         {
             var tileDir = moon.Grid.tileCenters[tileIndex].normalized;
             float radius = moon.Grid.Radius;
-            float elevation = moon.GetTileElevation(tileIndex);
-            float displacedRadius = radius + (elevation * radius * moon.hexasphereRenderer.heightDisplacementScale);
-            return moon.transform.TransformPoint(tileDir * displacedRadius + tileDir * unitOffset);
+            return moon.transform.TransformPoint(tileDir * (radius + unitOffset));
         }
         else if (planet != null)
         {
             var tileDir = planet.Grid.tileCenters[tileIndex].normalized;
             float radius = planet.Grid.Radius;
-            float elevation = planet.GetTileElevation(tileIndex);
-            float displacedRadius = radius + (elevation * radius * planet.hexasphereRenderer.heightDisplacementScale);
-            return planet.transform.TransformPoint(tileDir * displacedRadius + tileDir * unitOffset);
+            return planet.transform.TransformPoint(tileDir * (radius + unitOffset));
         }
 
         // Fallback to default center if no generator references exist
