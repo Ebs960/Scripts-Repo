@@ -925,10 +925,21 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     private float GetExpectedTileRadius(SphericalHexGrid grid)
     {
-        if (grid == null || grid.TileCount == 0) return 0f;
+        if (grid == null || grid.TileCount == 0)
+            return 0f;
+
+        if (grid.neighbors == null || grid.neighbors.Length == 0)
+            return 0f;
+
+        var firstNeighbors = grid.neighbors[0];
+        if (firstNeighbors == null || firstNeighbors.Count == 0)
+            return 0f;
+
+        int neighborIdx = firstNeighbors[0];
+        if (neighborIdx < 0 || neighborIdx >= grid.tileCenters.Length)
+            return 0f;
 
         Vector3 c0 = grid.tileCenters[0];
-        int neighborIdx = grid.neighbors[0][0];
         Vector3 c1 = grid.tileCenters[neighborIdx];
 
         float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
