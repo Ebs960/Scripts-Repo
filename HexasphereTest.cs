@@ -1,5 +1,6 @@
 // Assets/Scripts/Hexasphere/HexasphereTest.cs
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -53,7 +54,7 @@ public class HexasphereTest : MonoBehaviour
 
         ClearDebug();
         BuildGrid();
-        BuildRenderer();
+        StartCoroutine(BuildRenderer());
         // optional: CreateDebugGeometry();
     }
 
@@ -67,15 +68,16 @@ public class HexasphereTest : MonoBehaviour
     }
 
     /* ───────────────────── BUILD PREFABS ───────────────────── */
-    [Header("Prefab Settings")]
-    public GameObject tilePrefab; // Assign a default prefab in inspector
+[Header("Prefab Settings")]
+public GameObject tilePrefab; // Assign a default prefab in inspector
+public int batchSize = 100;
 
-    private void BuildRenderer()
+    private System.Collections.IEnumerator BuildRenderer()
     {
         if (tilePrefab == null)
         {
             Debug.LogError("HexasphereTest: No tilePrefab assigned!");
-            return;
+            yield break;
         }
 
         for (int i = 0; i < grid.TileCount; i++)
@@ -85,6 +87,9 @@ public class HexasphereTest : MonoBehaviour
             var go = Instantiate(tilePrefab, worldPos, Quaternion.identity, transform);
             go.name = $"Tile_{i}";
             debugObjs.Add(go);
+
+            if (i % batchSize == 0)
+                yield return null;
         }
     }
 
