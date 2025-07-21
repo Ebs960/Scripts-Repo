@@ -1170,7 +1170,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             carveCS.Dispatch(kernel, 1024/8, 512/8, 1);
 
             RenderTexture.active = heightRT;
-            heightTex.ReadPixels(new Rect(0,0,1024,512), 0, 0);
+            for (int y = 0; y < heightTex.height; y += 4)
+            {
+                int rows = Mathf.Min(4, heightTex.height - y);
+                heightTex.ReadPixels(new Rect(0, y, heightTex.width, rows), 0, y);
+                if (y % 16 == 0)
+                    yield return null;
+            }
             heightTex.Apply();
             RenderTexture.active = null;
             heightRT.Release();
