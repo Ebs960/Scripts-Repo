@@ -114,6 +114,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Noise threshold for island generation (higher = smaller islands)")]
     public float islandThreshold = 0.05f;
 
+    // --- Terrain Prefab Support ---
+    [System.Serializable]
+    public class TerrainPrefabSet {
+        public Biome biome;
+        public ElevationTier elevation;
+        public List<GameObject> prefabs;
+    }
+
+    [Header("Tile Prefabs")]
+    public List<TerrainPrefabSet> terrainPrefabs = new();
+
+    [Header("Tile Sizing")]
+    public float tileRadius = 1.5f;
+
     // ... Biome Visuals, Extrusion, Climate Settings ... (Keep these)
     [Header("Biome Visuals")] public Color[] biomeColors = new Color[]
     {
@@ -241,7 +255,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Ensure BiomeSettings list has entries for all biomes if empty
         if (biomeSettings.Count == 0) {
             foreach (Biome b in Enum.GetValues(typeof(Biome))) {
-                biomeSettings.Add(new BiomeSettings { biome = b }); 
+                if (b == Biome.Any) continue;
+                biomeSettings.Add(new BiomeSettings { biome = b });
             }
         }
         foreach (var bs in biomeSettings)
@@ -551,13 +566,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             // Create HexTileData
             var y = BiomeHelper.Yields(biome);
             int moveCost = BiomeHelper.GetMovementCost(biome);
-            var td = new HexTileData { 
+            ElevationTier elevTier = ElevationTier.Flat;
+            if (finalElevation > mountainThreshold) elevTier = ElevationTier.Mountain;
+            else if (finalElevation > hillThreshold) elevTier = ElevationTier.Hill;
+
+            var td = new HexTileData {
                 biome = biome,
                 food = y.food, production = y.prod, gold = y.gold, science = y.sci, culture = y.cult,
-                occupantId = 0, 
+                occupantId = 0,
                 isLand = isLand, // Use the original isLand status (false for glaciers)
                 isHill = isHill, // Assign hill status
                 elevation = finalElevation, // Store calculated elevation
+                elevationTier = elevTier,
                 temperature = temperature, // Store calculated temperature
                 moisture = moisture, // Store calculated moisture
                 movementCost = moveCost,
@@ -1188,6 +1208,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Debug: List biome quantities
         LogBiomeQuantities();
+
+        // Spawn visual prefabs if any are defined
+        if (terrainPrefabs.Count > 0)
+            SpawnAllTilePrefabs();
     }
 
     /// <summary>
@@ -1705,6 +1729,75 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
         array.Apply();
         return array;
+    }
+
+    // ------------------------------------------------------------------
+    //  Prefab Helpers
+    // ------------------------------------------------------------------
+    private GameObject GetPrefabForTile(HexTileData tile)
+    {
+        var matches = terrainPrefabs.Where(set =>
+            (set.biome == tile.biome || set.biome == Biome.Any) &&
+            (set.elevation == tile.elevationTier || set.elevation == ElevationTier.Any)
+        ).ToList();
+
+        if (matches.Count == 0)
+        {
+            Debug.LogWarning($"No prefab found for biome={tile.biome}, elevation={tile.elevationTier}");
+            return null;
+        }
+
+        var set = matches[UnityEngine.Random.Range(0, matches.Count)];
+        if (set.prefabs == null || set.prefabs.Count == 0)
+            return null;
+
+        return set.prefabs[UnityEngine.Random.Range(0, set.prefabs.Count)];
+    }
+
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    {
+        GameObject prefab = GetPrefabForTile(tileData);
+        if (prefab == null) return null;
+
+        Vector3 up = position.normalized;
+        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
+
+        GameObject go = Instantiate(prefab, position, rotation, parent);
+
+        float originalRadius = GetBoundingSphereRadius(go);
+        if (originalRadius > 0f)
+        {
+            float scaleFactor = tileRadius / originalRadius;
+            go.transform.localScale = Vector3.one * scaleFactor;
+        }
+
+        return go;
+    }
+
+    private float GetBoundingSphereRadius(GameObject go)
+    {
+        Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return 0f;
+        Bounds bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
+        foreach (var r in renderers)
+            bounds.Encapsulate(r.bounds);
+        return bounds.extents.magnitude;
+    }
+
+    private void SpawnAllTilePrefabs()
+    {
+        GameObject parent = new GameObject("TilePrefabs");
+        parent.transform.SetParent(this.transform, false);
+
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            if (!data.TryGetValue(i, out var td))
+                continue;
+
+            Vector3 pos = grid.tileCenters[i];
+            pos = transform.TransformPoint(pos);
+            InstantiateTilePrefab(td, pos, parent.transform);
+        }
     }
 }
 

@@ -39,6 +39,20 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Maximum size of a cave cluster.")]
     public int maxCaveClusterSize = 6;
 
+    // --- Terrain Prefab Support ---
+    [System.Serializable]
+    public class TerrainPrefabSet {
+        public Biome biome;
+        public ElevationTier elevation;
+        public List<GameObject> prefabs;
+    }
+
+    [Header("Tile Prefabs")]
+    public List<TerrainPrefabSet> terrainPrefabs = new();
+
+    [Header("Tile Sizing")]
+    public float tileRadius = 1.5f;
+
 
     [Header("Visuals")]
     public Color moonDunesColor = new Color(0.8f, 0.8f, 0.75f); // Light greyish
@@ -209,6 +223,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 isLand = true, // All moon tiles are land conceptually
                 isHill = false, // No hills initially
                 elevation = elevation,
+                elevationTier = ElevationTier.Flat,
                 isMoonTile = true // Mark as moon tile
             };
             data[i] = td;
@@ -274,6 +289,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Debug: List biome quantities
         LogBiomeQuantities();
+
+        if (terrainPrefabs.Count > 0)
+            SpawnAllTilePrefabs();
     }
 
     /// <summary>
@@ -853,5 +871,71 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         }
         array.Apply();
         return array;
+    }
+
+    // ------------------------------------------------------------------
+    //  Prefab Helpers
+    // ------------------------------------------------------------------
+    private GameObject GetPrefabForTile(HexTileData tile)
+    {
+        var matches = terrainPrefabs.Where(set =>
+            (set.biome == tile.biome || set.biome == Biome.Any) &&
+            (set.elevation == tile.elevationTier || set.elevation == ElevationTier.Any)
+        ).ToList();
+
+        if (matches.Count == 0)
+            return null;
+
+        var set = matches[UnityEngine.Random.Range(0, matches.Count)];
+        if (set.prefabs == null || set.prefabs.Count == 0)
+            return null;
+
+        return set.prefabs[UnityEngine.Random.Range(0, set.prefabs.Count)];
+    }
+
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    {
+        GameObject prefab = GetPrefabForTile(tileData);
+        if (prefab == null) return null;
+
+        Vector3 up = position.normalized;
+        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
+
+        GameObject go = Instantiate(prefab, position, rotation, parent);
+
+        float originalRadius = GetBoundingSphereRadius(go);
+        if (originalRadius > 0f)
+        {
+            float scaleFactor = tileRadius / originalRadius;
+            go.transform.localScale = Vector3.one * scaleFactor;
+        }
+
+        return go;
+    }
+
+    private float GetBoundingSphereRadius(GameObject go)
+    {
+        Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return 0f;
+        Bounds bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
+        foreach (var r in renderers)
+            bounds.Encapsulate(r.bounds);
+        return bounds.extents.magnitude;
+    }
+
+    private void SpawnAllTilePrefabs()
+    {
+        GameObject parent = new GameObject("MoonTilePrefabs");
+        parent.transform.SetParent(this.transform, false);
+
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            if (!data.TryGetValue(i, out var td))
+                continue;
+
+            Vector3 pos = grid.tileCenters[i];
+            pos = transform.TransformPoint(pos);
+            InstantiateTilePrefab(td, pos, parent.transform);
+        }
     }
 }

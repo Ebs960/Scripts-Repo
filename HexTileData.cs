@@ -15,6 +15,7 @@ public class HexTileData
     // --- Core Map Properties (existing) ---
     public Biome biome;
     public float elevation;        // 0–1
+    public ElevationTier elevationTier = ElevationTier.Flat;
     public bool isLand;
     public bool isPassable;
     public int movementCost;
