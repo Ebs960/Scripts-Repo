@@ -124,7 +124,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Header("Tile Prefabs")]
     public List<TerrainPrefabSet> terrainPrefabs = new();
     [Tooltip("Number of tile prefabs to spawn each frame")]
-    public int tileSpawnBatchSize = 100;
+    public int tileSpawnBatchSize = 8;
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
