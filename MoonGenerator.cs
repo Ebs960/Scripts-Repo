@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using SpaceGraphicsToolkit;
 using System.Threading.Tasks;
@@ -48,6 +49,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Header("Tile Prefabs")]
     public List<TerrainPrefabSet> terrainPrefabs = new();
+    [Tooltip("Number of tile prefabs to spawn each frame")]
+    public int tileSpawnBatchSize = 100;
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
@@ -289,7 +292,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         LogBiomeQuantities();
 
         if (terrainPrefabs.Count > 0)
-            SpawnAllTilePrefabs();
+            StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
     }
 
     /// <summary>
@@ -390,8 +393,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         int textureHeight = textureSize;
 
         // Build biome albedo and normal arrays using the same approach as planet generator
-        biomeAlbedoArray = BuildBiomeAlbedoArray();
-        biomeNormalArray = BuildBiomeNormalArray();
+        yield return StartCoroutine(BuildBiomeAlbedoArray(tileSpawnBatchSize));
+        yield return StartCoroutine(BuildBiomeNormalArray(tileSpawnBatchSize));
 
 
 
@@ -779,7 +782,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         return result;
     }
 
-    Texture2DArray BuildBiomeAlbedoArray()
+    System.Collections.IEnumerator BuildBiomeAlbedoArray(int batchSize = 4)
     {
         // Use the same size as the biome index texture for consistency
         int size = textureSize; // Use the same size as the index texture
@@ -823,19 +826,20 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 // Clean up
                 RenderTexture.ReleaseTemporary(rt);
                 DestroyImmediate(resizedTex);
-                
-                // Debug.Log($"[MoonGenerator] Resized and converted texture {i} from {src.width}x{src.height} {src.format} to {size}x{size} RGBA32");
             }
             else
             {
                 Graphics.CopyTexture(src, 0, 0, array, i, 0);
             }
+
+            if (i % batchSize == 0)
+                yield return null;
         }
         array.Apply();
-        return array;
+        biomeAlbedoArray = array;
     }
 
-    Texture2DArray BuildBiomeNormalArray()
+    System.Collections.IEnumerator BuildBiomeNormalArray(int batchSize = 4)
     {
         int size = textureSize;
         int depth = biomeSettings.Count;
@@ -864,9 +868,12 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             {
                 Graphics.CopyTexture(src, 0, 0, array, i, 0);
             }
+
+            if (i % batchSize == 0)
+                yield return null;
         }
         array.Apply();
-        return array;
+        biomeNormalArray = array;
     }
 
     // ------------------------------------------------------------------
@@ -936,7 +943,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         return arcRadius;
     }
 
-    private void SpawnAllTilePrefabs()
+    private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
         GameObject parent = new GameObject("MoonTilePrefabs");
         parent.transform.SetParent(this.transform, false);
@@ -956,6 +963,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                     indexHolder = tileGO.AddComponent<TileIndexHolder>();
                 indexHolder.tileIndex = i;
             }
+
+            if (i % batchSize == 0)
+                yield return null;
         }
     }
 }
