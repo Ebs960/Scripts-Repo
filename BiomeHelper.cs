@@ -135,9 +135,12 @@ public static class BiomeHelper {
         }
 
         // Frozen climates
-        if (moisture < 0.1f) return Biome.Tundra;
-        if (moisture < 0.6f) return Biome.Snow;
-        return Biome.Glacier;
+        if (temperature > 0.08f) {
+            if (moisture < 0.35f) return Biome.Frozen;
+            if (moisture < 0.75f) return Biome.Tundra;
+            return Biome.Snow;
+        }
+        return Biome.Arctic;
     }
 
 
