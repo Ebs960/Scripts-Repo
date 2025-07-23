@@ -185,10 +185,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public bool debugIsScorchedMapType = false;
     public bool debugIsRainforestMapType = false;
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    //  VISUAL LAYER  (integrated, no extra script needed)
-    // ──────────────────────────────────────────────────────────────────────────────
-    [SerializeField] int textureSize = 2048;
     
     public enum BiomeMaskQuality { Standard, Optimized, Blended }
     
@@ -207,13 +203,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     SphericalHexGrid grid;
     public SphericalHexGrid Grid => grid;
     NoiseSampler noise;
-    readonly Dictionary<int, HexTileData> data = new();
-    readonly Dictionary<int, HexTileData> baseData = new();
-    readonly Dictionary<Biome, BiomeSettings> lookup = new();
+    public Dictionary<int, HexTileData> data = new();
+    public Dictionary<int, HexTileData> baseData = new();
+    public Dictionary<Biome, BiomeSettings> lookup = new();
     private Vector3 noiseOffset;
     // Cache elevation for river generation
-    readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>();
-    private int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
+    public Dictionary<int, float> tileElevation = new Dictionary<int, float>();
+    public int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     /// <summary>
     /// Public list containing the final HexTileData for every tile on the planet.
     /// This is rebuilt after surface generation completes.

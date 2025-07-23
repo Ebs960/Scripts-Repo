@@ -110,26 +110,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    //  VISUAL LAYER (SGT Integration)
-    // ──────────────────────────────────────────────────────────────────────────────
-    [SerializeField] int textureSize = 1024;
-    
-    public enum BiomeMaskQuality { Standard, Optimized, Blended }
-    
-    [Header("Moon Biome Mask Generation")]
-    [Tooltip("Standard: Basic RGBA packing, Optimized: Better texture settings, Blended: Smooth transitions")]
-    public BiomeMaskQuality biomeMaskQuality = BiomeMaskQuality.Optimized;
-    [Range(1f, 5f)]
-    [Tooltip("Blend radius for smooth biome transitions (only used with Blended quality)")]
-    public float biomeBlendRadius = 2f;
 
-    // Runtime-generated textures removed in prefab approach
-
-
-
-
-    // --------------------------- Private fields -----------------------------
     SphericalHexGrid grid;
     public SphericalHexGrid Grid => grid;
     NoiseSampler noise; // Use the same NoiseSampler
