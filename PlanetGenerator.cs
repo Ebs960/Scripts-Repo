@@ -115,16 +115,17 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     // --- Terrain Prefab Support ---
     [System.Serializable]
-    public class TerrainPrefabSet {
+    public struct BiomePrefabEntry {
         public Biome biome;
-        public ElevationTier elevation;
-        public List<GameObject> prefabs;
+        public GameObject prefab;
     }
 
     [Header("Tile Prefabs")]
-    public List<TerrainPrefabSet> terrainPrefabs = new();
+    public List<BiomePrefabEntry> biomePrefabList = new();
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 8;
+
+    private Dictionary<Biome, GameObject> biomePrefabs = new();
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
@@ -198,23 +199,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Blend radius for smooth biome transitions (only used with Blended quality)")]
     public float biomeBlendRadius = 2f;
 
-    // Runtime-generated textures
-    Texture2D heightTex;    // R16 – elevation 0‒1
-    Texture2D biomeTex;     // R8 - biome index
-    Texture2D biomeColorMap; // RGBA32 – biome colors
-    Texture2D biomeIndexTex; // RFloat – biome lookup map
-    Texture2DArray biomeAlbedoArray; // array of biome albedos
-    Texture2DArray biomeNormalArray; // array of biome normals
-    [Tooltip("Optional micro detail height texture (greyscale)")]
-    public Texture2D detailNoiseTex;
+    // Runtime-generated textures no longer used
 
-    // compute buffers for GPU operations
-    ComputeBuffer pixelLookupBuffer;
-    ComputeBuffer riverIDBuffer;
-
-    static readonly int HeightMapID   = Shader.PropertyToID("_HeightMap");
-    static readonly int BiomeMapID    = Shader.PropertyToID("_BiomeMap");
-    static readonly int WaterColID    = Shader.PropertyToID("_WaterColor");
+    // compute buffers retained for compatibility (unused)
 
     // --------------------------- Private fields -----------------------------
     SphericalHexGrid grid;
@@ -277,7 +264,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float oz = (float)(rand.NextDouble() * 2000.0 - 1000.0);
         noiseOffset = new Vector3(ox, oy, oz);
 
-
+        // Build biome prefab lookup dictionary
+        biomePrefabs.Clear();
+        foreach (var entry in biomePrefabList)
+        {
+            if (entry.prefab != null)
+                biomePrefabs[entry.biome] = entry.prefab;
+        }
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -301,10 +294,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             ClimateManager.Instance.OnSeasonChanged -= HandleSeasonChange;
         }
 
-        pixelLookupBuffer?.Release();
-        pixelLookupBuffer = null;
-        riverIDBuffer?.Release();
-        riverIDBuffer = null;
     }
 
     private void HandleSeasonChange(Season newSeason)
@@ -1137,8 +1126,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return polarTilesGenerated;
         }
 
-        // Generate visual textures for the new HexasphereRenderer system
-        yield return StartCoroutine(BuildPlanetVisualMapsBatched());
+        // Visual textures no longer generated; tiles are represented by prefabs
 
         // --- GPU river carving ---
         List<int> riverTiles = new();
@@ -1146,43 +1134,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             if (data[i].biome == Biome.River)
                 riverTiles.Add(i);
 
-        if (riverTiles.Count > 0 && pixelLookupBuffer != null)
-        {
-            var carveCS  = (ComputeShader)Resources.Load("RiverCarve");
-            int kernel   = carveCS.FindKernel("CSMain");
+        // River carving step removed in simplified prefab-based system
 
-            RenderTexture heightRT = new RenderTexture(1024, 512, 0,
-                                                       RenderTextureFormat.RHalf)
-            {
-                enableRandomWrite = true
-            };
-            Graphics.Blit(heightTex, heightRT);
-
-            riverIDBuffer?.Release();
-            riverIDBuffer = new ComputeBuffer(riverTiles.Count, sizeof(int));
-            riverIDBuffer.SetData(riverTiles);
-
-            carveCS.SetTexture(kernel, "_HeightMap", heightRT);
-            carveCS.SetBuffer (kernel, "_PixelLookup", pixelLookupBuffer);
-            carveCS.SetBuffer (kernel, "_RiverTileIDs", riverIDBuffer);
-            carveCS.SetInt    ("_TileIDCount", riverTiles.Count);
-
-            carveCS.Dispatch(kernel, 1024/8, 512/8, 1);
-
-            TextureUtils.ReadPixelsImmediate(heightRT, heightTex);
-            heightRT.Release();
-        }
-
-        // Now sync tile grid and maps with GameManager, passing the high-res textures
-        if (GameManager.Instance != null)
-        {
-            Debug.Log("[PlanetGenerator] Syncing tile grid and maps with GameManager (after high-res texture generation)...");
-            GameManager.Instance.SetPlanetTextures(heightTex, biomeColorMap, grid);
-        }
-        else
-        {
-            Debug.LogError("[PlanetGenerator] GameManager.Instance is null! Cannot sync tile grid.");
-        }
+        // Tile grid is ready; textures are no longer generated at runtime
 
         // Populate the public tile list with the final tile data
         Tiles = data.Values.ToList();
@@ -1191,7 +1145,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         LogBiomeQuantities();
 
         // Spawn visual prefabs if any are defined
-        if (terrainPrefabs.Count > 0)
+        if (biomePrefabs.Count > 0)
             StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
     }
 
@@ -1476,257 +1430,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         return new Vector2(latitude, longitude);
     }
 
-    // Coroutine version with batching and progress bar for planet visual maps
-    System.Collections.IEnumerator BuildPlanetVisualMapsBatched(int batchSize = 16)
-    {
-        int w = textureSize;
-        int h = textureSize / 2;
-
-        // --- PARALLEL: Direct mapping pixel-to-tile lookup (no flood fill) ---
-        int[,] pixelToTileLookup = new int[w, h];
-        System.Threading.Tasks.Parallel.For(0, h, y => {
-            float v = ((y + 0.5f) / h);
-            float lat = Mathf.Lerp(90, -90, v);
-            for (int x = 0; x < w; x++) {
-                float u = (x + 0.5f) / w;
-                float lon = Mathf.Lerp(-180, 180, u);
-                Vector3 dir = SphericalToCartesian(lat, lon);
-                int tileIdx = grid.GetTileAtPosition(dir);
-                if (tileIdx < 0) tileIdx = 0;
-                pixelToTileLookup[x, y] = tileIdx;
-            }
-        });
-
-        // Flatten lookup for GPU and upload once
-        var lookup1D = new Vector2Int[w * h];
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-                lookup1D[y * w + x] = new Vector2Int(pixelToTileLookup[x, y], 0);
-        pixelLookupBuffer?.Release();
-        pixelLookupBuffer = new ComputeBuffer(lookup1D.Length, sizeof(int) * 2);
-        pixelLookupBuffer.SetData(lookup1D);
-        // Yield once after the parallel loop to keep UI responsive
-        if (loadingPanelController != null) {
-            loadingPanelController.SetProgress(0.8f);
-            loadingPanelController.SetStatus("Building planet lookup table...");
-        }
-        yield return null;
-        // --- END Parallel mapping ---
-        
-        // --- Heightmap: Output as R16 (single channel) ---
-        if (heightTex == null || heightTex.width != textureSize)
-        {
-            heightTex = new Texture2D(textureSize, textureSize / 2, TextureFormat.R16, false, true)
-            {
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Bilinear
-            };
-        }
-        
-        // --- Generate Biome Index Map ---
-        int biomeCount = biomeSettings.Count;
-        biomeIndexTex = new Texture2D(w, h, TextureFormat.RFloat, false, false) // Make readable
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Trilinear // Use trilinear filtering for smoother transitions
-        };
-        Color[] biomePixels = new Color[w * h];
-        
-        // Create biome color map array
-        Color[] colorMapPixels = new Color[w * h];
-
-        Color32[] hPixels = new Color32[heightTex.width * heightTex.height];
-        float minH = float.MaxValue, maxH = float.MinValue;
-        float planetRadius = grid.Radius;
-        float heightScale = 1.0f; // Use raw elevation, no scaling
-        
-        Debug.Log($"[PlanetGenerator] Heightmap generation: planetRadius={planetRadius}, heightScale={heightScale}");
-        
-        // Single pass for height, biome index, and color map data
-        System.Threading.Tasks.Parallel.For(0, h, y =>
-        {
-            for (int x = 0; x < w; x++)
-            {
-                int tileIdx = pixelToTileLookup[x, y];
-                var tile = GetHexTileData(tileIdx);
-                if (tile == null) continue;
-
-                // Height calculation
-                float h01 = Mathf.InverseLerp(0f, maxTotalElevation, tile.elevation);
-                int idx1d = y * w + x;
-                float scaledHeight = h01 * heightScale;
-                byte heightByte = (byte)Mathf.RoundToInt(Mathf.Clamp(scaledHeight * 255f / heightScale, 0f, 255f));
-                hPixels[idx1d] = new Color32(heightByte, 0, 0, 255);
-
-                // Biome index calculation
-                int biomeIdx = 0; // Default to first biome
-                for (int i = 0; i < biomeSettings.Count; i++)
-                {
-                    if (biomeSettings[i].biome == tile.biome)
-                    {
-                        biomeIdx = i;
-                        break;
-                    }
-                }
-                float biomeR = (float)biomeIdx / (biomeCount - 1); // Normalize to 0..1 range for shader
-                biomePixels[idx1d] = new Color(biomeR, 0, 0, 1);
-                
-                // Biome color map calculation (reuse the same tile data)
-                Color biomeColor = biomeColors[(int)tile.biome];
-                colorMapPixels[idx1d] = biomeColor;
-                
-                // Debug: Log some biome indices to see what's being generated
-                if (x == 0 && y == 0)
-                {
-                    Debug.Log($"[PlanetGenerator] Sample biome: {tile.biome}, biomeIdx: {biomeIdx}/{biomeCount-1}, biomeR: {biomeR:F3}, rawIndex: {biomeR * (biomeCount-1):F1}, color: {biomeColor}");
-                }
-            }
-        });
-
-        for (int i = 0; i < hPixels.Length; i++)
-        {
-            float val = hPixels[i].r / 255f;
-            if (val < minH) minH = val;
-            if (val > maxH) maxH = val;
-        }
-        
-        Debug.Log($"[PlanetGenerator] Heightmap h01 min: {minH}, max: {maxH}, heightScale: {heightScale}");
-        
-        // Apply textures
-        heightTex.SetPixels32(hPixels);
-        heightTex.Apply(false, false);
-        
-        biomeIndexTex.SetPixels(biomePixels);
-        biomeIndexTex.Apply(false, false);
-        
-        // Create biome color map from pre-calculated data
-        biomeColorMap = new Texture2D(w, h, TextureFormat.RGBA32, false, true)
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Trilinear // Use trilinear filtering for smoother transitions
-        };
-        biomeColorMap.SetPixels(colorMapPixels);
-        biomeColorMap.Apply(false, false);
-        
-        // Build biome albedo and normal arrays in batches
-        yield return StartCoroutine(BuildBiomeAlbedoArray(tileSpawnBatchSize));
-        yield return StartCoroutine(BuildBiomeNormalArray(tileSpawnBatchSize));
-
-        if (loadingPanelController != null)
-        {
-            loadingPanelController.SetProgress(0.95f);
-            loadingPanelController.SetStatus("Finalizing planet textures...");
-        }
-        yield return null;
-    }
-
-    private System.Collections.IEnumerator BuildBiomeAlbedoArray(int batchSize = 4)
-    {
-        // Use the same size as the biome index texture for consistency
-        int size = textureSize; // Use the same size as the index texture
-        
-        if (biomeSettings.Count > 0 && biomeSettings[0].albedoTexture != null)
-        {
-            // Scale the source texture to match the index texture size
-            size = textureSize;
-            Debug.Log($"[PlanetGenerator] Using texture size {size} to match index texture, source texture format: {biomeSettings[0].albedoTexture.format} ({(int)biomeSettings[0].albedoTexture.format})");
-        }
-        
-        // Always use RGBA32 for the texture array
-        int depth = biomeSettings.Count;
-        var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
-        Texture2D fallback = Texture2D.blackTexture;
-        
-        for (int i = 0; i < depth; i++)
-        {
-            Texture2D src = biomeSettings[i].albedoTexture != null ? biomeSettings[i].albedoTexture : fallback;
-            
-            // Resize and convert texture to match array size and format
-            if (src.width != size || src.height != size || src.format != TextureFormat.RGBA32)
-            {
-                // Create a temporary RGBA32 texture at the correct size
-                var resizedTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-                
-                // Use RenderTexture for high-quality resizing
-                var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(src, rt);
-                
-                // Read the resized pixels on the main thread
-                TextureUtils.ReadPixelsImmediate(rt, resizedTex);
-                
-                // Copy to array
-                Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
-                
-                // Clean up
-                RenderTexture.ReleaseTemporary(rt);
-                DestroyImmediate(resizedTex);
-            }
-            else
-            {
-                Graphics.CopyTexture(src, 0, 0, array, i, 0);
-            }
-
-            if (i % batchSize == 0)
-                yield return null;
-        }
-        array.Apply();
-        biomeAlbedoArray = array;
-    }
-
-    private System.Collections.IEnumerator BuildBiomeNormalArray(int batchSize = 4)
-    {
-        int size = textureSize;
-        int depth = biomeSettings.Count;
-        var array = new Texture2DArray(size, size, depth, TextureFormat.RGBA32, true, false);
-        Texture2D fallback = Texture2D.normalTexture;
-
-        for (int i = 0; i < depth; i++)
-        {
-            Texture2D src = biomeSettings[i].normalTexture != null ? biomeSettings[i].normalTexture : fallback;
-
-            if (src.width != size || src.height != size || src.format != TextureFormat.RGBA32)
-            {
-                var resizedTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-                var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(src, rt);
-                TextureUtils.ReadPixelsImmediate(rt, resizedTex);
-                Graphics.CopyTexture(resizedTex, 0, 0, array, i, 0);
-                RenderTexture.ReleaseTemporary(rt);
-                DestroyImmediate(resizedTex);
-            }
-            else
-            {
-                Graphics.CopyTexture(src, 0, 0, array, i, 0);
-            }
-
-            if (i % batchSize == 0)
-                yield return null;
-        }
-        array.Apply();
-        biomeNormalArray = array;
-    }
 
     // ------------------------------------------------------------------
     //  Prefab Helpers
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        var matches = terrainPrefabs.Where(set =>
-            (set.biome == tile.biome || set.biome.Equals(Biome.Any)) &&
-            (set.elevation == tile.elevationTier || set.elevation.Equals(ElevationTier.Any))
-        ).ToList();
+        if (biomePrefabs.TryGetValue(tile.biome, out var prefab))
+            return prefab;
 
-        if (matches.Count == 0)
-        {
-            Debug.LogWarning($"No prefab found for biome={tile.biome}, elevation={tile.elevationTier}");
-            return null;
-        }
+        if (biomePrefabs.TryGetValue(Biome.Any, out var anyPrefab))
+            return anyPrefab;
 
-        var set = matches[UnityEngine.Random.Range(0, matches.Count)];
-        if (set.prefabs == null || set.prefabs.Count == 0)
-            return null;
-
-        return set.prefabs[UnityEngine.Random.Range(0, set.prefabs.Count)];
+        Debug.LogWarning($"No prefab found for biome={tile.biome}");
+        return null;
     }
 
     private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
