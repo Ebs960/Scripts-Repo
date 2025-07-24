@@ -133,6 +133,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
+    [Range(0.8f, 1.2f)]
+    [Tooltip("Multiplier to fine-tune tile prefab scaling for perfect fit (1.0 = auto, <1 = tighter, >1 = looser)")]
+    public float tileRadiusMultiplier = 1.0f;
 
     // ... Biome Visuals, Extrusion, Climate Settings ... (Keep these)
     [Header("Biome Visuals")] public Color[] biomeColors = new Color[]
@@ -1482,7 +1485,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
         float prefabRadius = GetPrefabBoundingRadius(go);
-        float correctRadius = GetExpectedTileRadius(grid);
+        float correctRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
         if (prefabRadius > 0f && correctRadius > 0f)
         {
             float scaleFactor = correctRadius / prefabRadius;
@@ -1511,9 +1514,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int neighborIdx = grid.neighbors[0][0];
         Vector3 c1 = grid.tileCenters[neighborIdx];
 
+        // Angle between centers in radians
         float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
-        float arcRadius = grid.Radius * angle * 0.5f;
-        return arcRadius;
+        // Arc length between centers (true distance on sphere)
+        float arcLength = grid.Radius * angle;
+        return arcLength;
     }
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
