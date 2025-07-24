@@ -1156,7 +1156,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         LogBiomeQuantities();
 
         // Spawn visual prefabs if any are defined
-        if (biomePrefabs.Count > 0)
+        // Only spawn prefabs if any flat or hill prefabs are present
+        if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
             StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
     }
 
