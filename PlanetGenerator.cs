@@ -117,7 +117,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [System.Serializable]
     public struct BiomePrefabEntry {
         public Biome biome;
-        public GameObject prefab;
+        public GameObject[] flatPrefabs; // Prefabs for flat tiles
+        public GameObject[] hillPrefabs; // Prefabs for hill tiles
     }
 
     [Header("Tile Prefabs")]
@@ -126,6 +127,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int tileSpawnBatchSize = 8;
 
     private Dictionary<Biome, GameObject> biomePrefabs = new();
+    // New: Dictionaries for flat and hill prefabs
+    private Dictionary<Biome, GameObject[]> flatBiomePrefabs = new();
+    private Dictionary<Biome, GameObject[]> hillBiomePrefabs = new();
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
@@ -233,6 +237,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         else if (Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        // Build prefab lookup dictionaries for flat and hill tiles
+        flatBiomePrefabs = new Dictionary<Biome, GameObject[]>();
+        hillBiomePrefabs = new Dictionary<Biome, GameObject[]>();
+        foreach (var entry in biomePrefabList)
+        {
+            if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+                flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
+            if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+                hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
         }
 
         // Initialize the grid for this planet (will be configured by GameManager)
@@ -266,11 +282,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // Build biome prefab lookup dictionary
         biomePrefabs.Clear();
-        foreach (var entry in biomePrefabList)
-        {
-            if (entry.prefab != null)
-                biomePrefabs[entry.biome] = entry.prefab;
-        }
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
@@ -1436,12 +1447,25 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        if (biomePrefabs.TryGetValue(tile.biome, out var prefab))
-            return prefab;
-
-        if (biomePrefabs.TryGetValue(Biome.Any, out var anyPrefab))
-            return anyPrefab;
-
+        // Prefer hill prefab if tile is a hill
+        if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
+        {
+            return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
+        }
+        // Otherwise, use flat prefab
+        if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
+        {
+            return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
+        }
+        // Fallback: any biome
+        if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
+        {
+            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
+        }
+        if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
+        {
+            return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
+        }
         Debug.LogWarning($"No prefab found for biome={tile.biome}");
         return null;
     }

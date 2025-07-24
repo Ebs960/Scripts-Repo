@@ -43,7 +43,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     [System.Serializable]
     public struct BiomePrefabEntry {
         public Biome biome;
-        public GameObject prefab;
+        public GameObject[] flatPrefabs; // Prefabs for flat tiles
+        public GameObject[] hillPrefabs; // Prefabs for hill tiles
     }
 
     [Header("Tile Prefabs")]
@@ -51,7 +52,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 100;
 
-    private Dictionary<Biome, GameObject> biomePrefabs = new();
+    // Dictionaries for flat and hill prefabs
+    private Dictionary<Biome, GameObject[]> flatBiomePrefabs = new();
+    private Dictionary<Biome, GameObject[]> hillBiomePrefabs = new();
 
     [Header("Tile Sizing")]
     public float tileRadius = 1.5f;
@@ -151,11 +154,14 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             BuildBiomeLookup();
         }
 
-        biomePrefabs.Clear();
+        flatBiomePrefabs.Clear();
+        hillBiomePrefabs.Clear();
         foreach (var entry in biomePrefabList)
         {
-            if (entry.prefab != null)
-                biomePrefabs[entry.biome] = entry.prefab;
+            if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+                flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
+            if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+                hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
         }
     }
 
@@ -272,7 +278,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Debug: List biome quantities
         LogBiomeQuantities();
 
-        if (biomePrefabs.Count > 0)
+        // Only spawn prefabs if any flat or hill prefabs are present
+        if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
             StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
     }
 
@@ -593,12 +600,25 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        if (biomePrefabs.TryGetValue(tile.biome, out var prefab))
-            return prefab;
-
-        if (biomePrefabs.TryGetValue(Biome.Any, out var anyPrefab))
-            return anyPrefab;
-
+        // Hill prefab selection
+        if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
+        {
+            return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
+        }
+        // Flat prefab selection
+        if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
+        {
+            return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
+        }
+        // Fallback: Any biome
+        if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
+        {
+            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
+        }
+        if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
+        {
+            return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
+        }
         return null;
     }
 
