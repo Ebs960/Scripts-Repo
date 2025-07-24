@@ -665,7 +665,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 pos = grid.tileCenters[i];
+            Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
             pos = transform.TransformPoint(pos);
             GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
             if (tileGO != null)
