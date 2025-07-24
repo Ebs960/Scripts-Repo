@@ -23,6 +23,8 @@ public enum Biome {
     Arctic,       // New biome - the coldest of all polar biomes
     Steppe,
     PineForest,
+    IcicleField,  // Ice World exclusive biome
+    CryoForest,   // Ice World exclusive biome
     Any
 }
 
@@ -35,18 +37,6 @@ public class BiomeSettings {
     [Range(0f,1f)]
     public float spawnChance = 0.15f;
 
-    // --- SGT Feature/Detail Placement ---
-    [Header("SGT Feature Placement")] 
-    public GameObject[] featurePrefabs; // Prefabs to scatter as SGT features (e.g. cactus, pine tree)
-    [Range(0f, 1f)]
-    public float featureDensity = 0.05f; // How densely to scatter features (0 = none, 1 = max)
-    public Vector2 featureScaleRange = new Vector2(1f, 1.2f); // Min/max scale for features
-    public bool useDetails = false; // If true, use SGT LandscapeDetail for small/instanced objects
-    public GameObject[] detailPrefabs; // Prefabs for SGT details (e.g. grass, pebbles)
-    [Range(0f, 1f)]
-    public float detailDensity = 0.1f;
-    public Vector2 detailScaleRange = new Vector2(0.8f, 1.1f);
-    // You can add more SGT-specific settings as needed (random rotation, alignment, etc.)
 }
 
 public struct YieldValues {
@@ -58,17 +48,28 @@ public static class BiomeHelper {
 
     public static Biome GetBiome(bool isLand, float temperature, float moisture,
         bool isRainforestMapType = false, bool isScorchedMapType = false,
-        bool isInfernalMapType = false, bool isDemonicMapType = false)
+        bool isInfernalMapType = false, bool isDemonicMapType = false,
+        bool isIceWorldMapType = false, bool isMonsoonMapType = false)
     {
         if (!isLand) {
             return Biome.Ocean;
         }
 
+        // ICE WORLD: Exclusive biomes
+        if (isIceWorldMapType)
+        {
+            if (temperature < 0.25f && moisture > 0.7f)
+                return Biome.CryoForest; // Wettest, coldest = CryoForest
+            if (temperature < 0.25f && moisture > 0.45f)
+                return Biome.IcicleField; // Drier, cold = IcicleField
+            // fallback to normal cold/frozen logic below
+        }
+
         // DEMONIC WORLD: Coherent, characteristic-based logic
         if (isDemonicMapType && temperature > 0.7f) {
             if (temperature > 0.85f) {
-                if (moisture < 0.3f) return Biome.Hellscape; // Extremely hot and dry
-                return Biome.Brimstone; // Extremely hot and wet
+                if (moisture < 0.3f) return Biome.Brimstone; // Extremely hot and dry
+                return Biome.Hellscape; // Extremely hot and wet
             }
             if (temperature > 0.7f) {
                 if (moisture < 0.2f) return Biome.Scorched; // Very hot, very dry
@@ -97,6 +98,15 @@ public static class BiomeHelper {
         if (isRainforestMapType && temperature > 0.7f && moisture > 0.6f) {
             return Biome.Rainforest;
         }
+
+        // MONSOON MAP TYPE: Unique biome
+        if (isMonsoonMapType && temperature > 0.4f && temperature < 0.8f && moisture > 0.8f)
+        {
+            return Biome.Floodlands;
+        }
+    // --- ICE WORLD FEATURES ---
+    // Permafrost Cracks: impassable terrain feature, can be checked elsewhere by biome and map type
+    // Frost Geysers: hazardous feature, can be checked elsewhere by biome and map type
 
         // Hot climates
         if (temperature > 0.8f) {

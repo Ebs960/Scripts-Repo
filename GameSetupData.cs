@@ -25,6 +25,7 @@ public static class GameSetupData
     public static bool isScorchedWorld;          // For Ashlands/CharredForest biomes
     public static bool isRainforestWorld;        // For enhanced rainforest generation
     public static bool isMonsoonWorld;           // For Floodlands biome
+    public static bool isIceWorld;               // For Ice World biomes
     
     // Continent Settings
     public static int numberOfContinents;
@@ -83,6 +84,7 @@ public static class GameSetupData
         isScorchedWorld = false;
         isRainforestWorld = false;
         isMonsoonWorld = false;
+        isIceWorld = false;
         
         // Set default continent and island settings (Standard preset)
         numberOfContinents = 4;

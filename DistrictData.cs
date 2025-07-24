@@ -1,5 +1,4 @@
 using UnityEngine;
-using HexasphereGrid;
 
 [CreateAssetMenu(menuName="CivGame/Districts/District")]
 public class DistrictData : ScriptableObject

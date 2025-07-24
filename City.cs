@@ -1,7 +1,6 @@
 // Assets/Scripts/Cities/City.cs
 using System.Collections.Generic;
 using UnityEngine;
-using HexasphereGrid;
 using System.Linq;
 
 public class City : MonoBehaviour

@@ -152,7 +152,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         new Color(0.5f, 0.4f, 0.3f), // Mountain - brown (NEW)
         new Color(0.3f, 0.5f, 0.9f),  // River - lighter blue (NEW)
         new Color(0.5f, 0.1f, 0.1f),  // Volcanic - dark red (NEW)
-        new Color(0.8f, 0.7f, 0.7f)   // Steam - misty white (NEW)
+        new Color(0.8f, 0.7f, 0.7f),  // Steam - misty white (NEW)
+        new Color(0.7f, 0.9f, 1.0f),  // IcicleField - icy blue
+        new Color(0.6f, 0.95f, 1.0f)  // CryoForest - frosty cyan
     };
     public List<BiomeSettings> biomeSettings = new();
 
@@ -173,10 +175,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Header("Map Type")]
     public string currentMapTypeName = ""; // The current map type name
-    public bool isRainforestMapType = false; // Whether this is a rainforest map type (determined from map name)
-    public bool isScorchedMapType = false; // Whether this is a scorched map type
-    public bool isInfernalMapType = false; // Whether this is an infernal map type
-    public bool isDemonicMapType = false; // Add this field
+public bool isRainforestMapType = false; // Whether this is a rainforest map type (determined from map name)
+public bool isScorchedMapType = false; // Whether this is a scorched map type
+public bool isInfernalMapType = false; // Whether this is an infernal map type
+public bool isDemonicMapType = false; // Add this field
+public bool isIceWorldMapType = false; // Whether this is an ice world map type
+public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     [Header("Debug/Override Map Types")]
     public bool overrideMapTypeFlags = false;
