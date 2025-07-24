@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using SpaceGraphicsToolkit;
 using TMPro;
 using System.Threading.Tasks;
 
@@ -131,38 +130,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     private Dictionary<Biome, GameObject[]> flatBiomePrefabs = new();
     private Dictionary<Biome, GameObject[]> hillBiomePrefabs = new();
 
-    [Header("Tile Sizing")]
-    public float tileRadius = 1.5f;
-    [Range(0.8f, 1.2f)]
+    [Range(0.5f, 1.2f)]
     [Tooltip("Multiplier to fine-tune tile prefab scaling for perfect fit (1.0 = auto, <1 = tighter, >1 = looser)")]
     public float tileRadiusMultiplier = 1.0f;
 
-    // ... Biome Visuals, Extrusion, Climate Settings ... (Keep these)
-    [Header("Biome Visuals")] public Color[] biomeColors = new Color[]
-    {
-        new Color(0.1f, 0.1f, 0.6f), // Ocean - deep blue
-        new Color(0.8f, 0.8f, 0.5f), // Coast - sandy beige
-        new Color(0.2f, 0.4f, 0.8f), // Seas - medium blue
-        new Color(0.85f, 0.75f, 0.35f), // Desert - sandy yellow
-        new Color(0.8f, 0.7f, 0.2f), // Savannah - yellow-green
-        new Color(0.5f, 0.8f, 0.3f), // Plains - light green
-        new Color(0.0f, 0.5f, 0.0f), // Forest - forest green
-        new Color(0.0f, 0.35f, 0.0f), // Jungle - dark green
-        new Color(0.5f, 0.3f, 0.0f), // Mountain - brown 
-        new Color(0.9f, 0.9f, 0.9f), // Snow - white
-        new Color(0.8f, 0.9f, 1.0f), // Glacier - light blue
-        new Color(0.7f, 0.7f, 0.6f), // Tundra - gray-green
-        new Color(0.6f, 0.55f, 0.2f), // Shrubland - olive green
-        new Color(0.25f, 0.4f, 0.3f), // Marsh - dark blue-green
-        new Color(0.2f, 0.4f, 0.2f), // Taiga - dark conifer green
-        new Color(0.1f, 0.3f, 0.15f), // Swamp - very dark green
-        new Color(0.5f, 0.4f, 0.3f), // Mountain - brown (NEW)
-        new Color(0.3f, 0.5f, 0.9f),  // River - lighter blue (NEW)
-        new Color(0.5f, 0.1f, 0.1f),  // Volcanic - dark red (NEW)
-        new Color(0.8f, 0.7f, 0.7f),  // Steam - misty white (NEW)
-        new Color(0.7f, 0.9f, 1.0f),  // IcicleField - icy blue
-        new Color(0.6f, 0.95f, 1.0f)  // CryoForest - frosty cyan
-    };
     public List<BiomeSettings> biomeSettings = new();
 
     public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
@@ -189,26 +160,6 @@ public bool isDemonicMapType = false; // Add this field
 public bool isIceWorldMapType = false; // Whether this is an ice world map type
 public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
-    [Header("Debug/Override Map Types")]
-    public bool overrideMapTypeFlags = false;
-    public bool debugIsDemonicMapType = false;
-    public bool debugIsInfernalMapType = false;
-    public bool debugIsScorchedMapType = false;
-    public bool debugIsRainforestMapType = false;
-
-    
-    public enum BiomeMaskQuality { Standard, Optimized, Blended }
-    
-    [Header("Biome Mask Generation")]
-    [Tooltip("Standard: Basic RGBA packing, Optimized: Better texture settings, Blended: Smooth transitions")]
-    public BiomeMaskQuality biomeMaskQuality = BiomeMaskQuality.Optimized;
-    [Range(1f, 5f)]
-    [Tooltip("Blend radius for smooth biome transitions (only used with Blended quality)")]
-    public float biomeBlendRadius = 2f;
-
-    // Runtime-generated textures no longer used
-
-    // compute buffers retained for compatibility (unused)
 
     // --------------------------- Private fields -----------------------------
     SphericalHexGrid grid;
@@ -323,8 +274,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// </summary>
     public System.Collections.IEnumerator GenerateSurface()
     {
-        Debug.Log($"PlanetGenerator.GenerateSurface() CALLED. Map Type: {currentMapTypeName}, IsDemonic: {isDemonicMapType}, IsInfernal: {isInfernalMapType}, IsScorched: {isScorchedMapType}, IsRainforest: {isRainforestMapType}");
-        Debug.Log($"Override Active: {overrideMapTypeFlags}, Debug Demonic: {debugIsDemonicMapType}, Debug Infernal: {debugIsInfernalMapType}, Debug Scorched: {debugIsScorchedMapType}, Debug Rainforest: {debugIsRainforestMapType}");
         // Clear previous data
         data.Clear();
         baseData.Clear();
@@ -737,9 +686,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             yield return GenerateRivers(isLandTile, data);
         }
 
-        // Decorations are now spawned by SGT features and external systems, so
-        // the old instantiation loop has been removed. Advance progress directly
-        // to the final stage.
         if (loadingPanelController != null)
         {
             loadingPanelController.SetProgress(0.95f);
@@ -1299,10 +1245,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
         // Use debug/override flags if enabled
-        bool useRainforest = overrideMapTypeFlags ? debugIsRainforestMapType : isRainforestMapType;
-        bool useScorched = overrideMapTypeFlags ? debugIsScorchedMapType : isScorchedMapType;
-        bool useInfernal = overrideMapTypeFlags ? debugIsInfernalMapType : isInfernalMapType;
-        bool useDemonic = overrideMapTypeFlags ? debugIsDemonicMapType : isDemonicMapType;
+        bool useRainforest = isRainforestMapType;
+        bool useScorched = isScorchedMapType;
+        bool useInfernal = isInfernalMapType;
+        bool useDemonic = isDemonicMapType;
 
         return BiomeHelper.GetBiome(isLand, temperature, moisture, useRainforest, useScorched, useInfernal, useDemonic);
     }

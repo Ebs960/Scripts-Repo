@@ -1,9 +1,6 @@
 using UnityEngine;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using SpaceGraphicsToolkit;
-using System.Threading.Tasks;
 using System.Linq;
 
 public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
@@ -56,15 +53,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     private Dictionary<Biome, GameObject[]> flatBiomePrefabs = new();
     private Dictionary<Biome, GameObject[]> hillBiomePrefabs = new();
 
-    [Header("Tile Sizing")]
-    public float tileRadius = 1.5f;
-
-
-    [Header("Visuals")]
-    public Color moonDunesColor = new Color(0.8f, 0.8f, 0.75f); // Light greyish
-    public Color moonCavesColor = new Color(0.4f, 0.4f, 0.45f); // Darker grey
-
-    // [Extrusion Settings] Removed: no longer used in surface calculations
 
     [Header("Initialization")]
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
