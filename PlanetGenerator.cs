@@ -74,7 +74,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float baseLandElevation = 0.15f;
     
     [Range(0f, 1f)]
-    [Tooltip("The fixed elevation level for coast tiles.")]
+    [Tooltip("Elevation for ocean tiles.")]
+    public float oceanElevation = 0f;
+    [Range(0f, 1f)]
+    [Tooltip("Elevation for sea tiles.")]
+    public float seasElevation = 0.05f;
+    [Range(0f, 1f)]
+    [Tooltip("Elevation for coast tiles.")]
     public float coastElevation = 0.1f;
     
     [Range(0f, 2f)] // Allow slightly higher max potential if needed
@@ -125,6 +131,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public List<BiomePrefabEntry> biomePrefabList = new();
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 8;
+
+    [Header("Water Prefabs")]
+    public GameObject OceanPrefab;
+    public GameObject SeasPrefab;
+    public GameObject CoastPrefab;
 
     private Dictionary<Biome, GameObject> biomePrefabs = new();
     // New: Dictionaries for flat and hill prefabs
@@ -196,17 +207,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     public bool debugIsScorchedMapType = false;
     public bool debugIsRainforestMapType = false;
 
-    
-    public enum BiomeMaskQuality { Standard, Optimized, Blended }
-    
-    [Header("Biome Mask Generation")]
-    [Tooltip("Standard: Basic RGBA packing, Optimized: Better texture settings, Blended: Smooth transitions")]
-    public BiomeMaskQuality biomeMaskQuality = BiomeMaskQuality.Optimized;
-    [Range(1f, 5f)]
-    [Tooltip("Blend radius for smooth biome transitions (only used with Blended quality)")]
-    public float biomeBlendRadius = 2f;
-
-    // Runtime-generated textures no longer used
+    // Legacy biome mask options removed
 
     // compute buffers retained for compatibility (unused)
 
@@ -248,6 +249,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         hillBiomePrefabs = new Dictionary<Biome, GameObject[]>();
         foreach (var entry in biomePrefabList)
         {
+            if (entry.biome == Biome.Ocean || entry.biome == Biome.Seas || entry.biome == Biome.Coast)
+                continue;
             if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
@@ -712,8 +715,15 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (data.ContainsKey(i)) {
                 Biome b = data[i].biome;
-                if (b == Biome.Coast || b == Biome.Seas || b == Biome.Ocean) {
-                    tileElevation[i] = coastElevation; // Fixed elevation for coasts, seas & ocean
+                if (b == Biome.Ocean) {
+                    tileElevation[i] = oceanElevation;
+                    var td = data[i]; td.elevation = oceanElevation; data[i] = td; baseData[i] = td;
+                } else if (b == Biome.Seas) {
+                    tileElevation[i] = seasElevation;
+                    var td = data[i]; td.elevation = seasElevation; data[i] = td; baseData[i] = td;
+                } else if (b == Biome.Coast) {
+                    tileElevation[i] = coastElevation;
+                    var td = data[i]; td.elevation = coastElevation; data[i] = td; baseData[i] = td;
                 }
             }
 
@@ -1162,6 +1172,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
             StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+
+        // Generate global water mesh once terrain is ready
+        var waterGen = GetComponent<WaterMeshGenerator>();
+        if (waterGen != null)
+            waterGen.Generate(grid.Radius);
     }
 
     /// <summary>
@@ -1451,6 +1466,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
+        if (tile.biome == Biome.Ocean && OceanPrefab != null)
+            return OceanPrefab;
+        if (tile.biome == Biome.Seas && SeasPrefab != null)
+            return SeasPrefab;
+        if (tile.biome == Biome.Coast && CoastPrefab != null)
+            return CoastPrefab;
         // Prefer hill prefab if tile is a hill
         if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
         {
@@ -1531,7 +1552,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 pos = grid.tileCenters[i];
+            Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
             pos = transform.TransformPoint(pos);
             GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
             if (tileGO != null)
