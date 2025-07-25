@@ -1542,10 +1542,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 worldCenter += wc;
             worldCenter /= worldCorners.Length;
 
-            Vector3 normal = (worldCenter - transform.position).normalized;
-            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, normal);
+            Vector3 up = worldCenter.normalized;
+            Vector3 right = Vector3.Cross(up, Vector3.up).normalized;
+            if (right == Vector3.zero)
+                right = Vector3.Cross(up, Vector3.forward).normalized;
+            Vector3 forward = Vector3.Cross(right, up).normalized;
+            Quaternion rotation = Quaternion.LookRotation(forward, up);
 
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, faceUp, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
