@@ -365,7 +365,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Store the result for this seed (only if a peak was found within the mask)
             if (currentPeakIndex != -1) {
                 seedPeaks[seedPos] = (currentPeakIndex, currentPeakValue);
-                // Debug.Log($"Seed at {seedPos} found peak tile {currentPeakIndex} with noise {currentPeakValue}");
             } else {
                 Debug.LogWarning($"Seed at {seedPos} had no tiles within its mask or mask was empty of noise peaks.");
             }
@@ -1064,7 +1063,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int GeneratePolarLandmasses(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
                                    Dictionary<int, float> tileNoiseCache, int tileCount) {
             
-            Debug.Log("Generating polar landmasses to ensure solid polar land...");
             
             int polarTilesGenerated = 0;
             float polarLandProbability = 0.4f; // 40% of polar tiles become land
@@ -1160,7 +1158,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         foreach (var kvp in biomeCounts.OrderByDescending(x => x.Value))
         {
             float percentage = (float)kvp.Value / grid.TileCount * 100f;
-            Debug.Log($"Biome {kvp.Key}: {kvp.Value} tiles ({percentage:F1}%)");
         }
         
         // Check for any tiles without data
@@ -1170,7 +1167,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Debug.LogWarning($"Warning: {tilesWithoutData} tiles have no biome data assigned!");
         }
         
-        Debug.Log("=== END BIOME QUANTITY SUMMARY ===");
     }
 
     // Helper: lat/long (deg) → unit vector

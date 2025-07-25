@@ -568,7 +568,6 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     void SpawnOneCivilization(CivData data, HashSet<int> occupied, bool isPlayer)
     {
-        Debug.Log($"Attempting to spawn civilization: {data?.civName ?? "NULL"}");
         
         // Check for null data
         if (data == null)

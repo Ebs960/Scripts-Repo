@@ -181,7 +181,6 @@ public class GameManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("GameManager: Singleton instance created and set to DontDestroyOnLoad");
         }
         else
         {
@@ -194,7 +193,6 @@ public class GameManager : MonoBehaviour
         if (GameSetupData.selectedPlayerCivilizationData == null && string.IsNullOrEmpty(GameSetupData.mapTypeName))
         {
             GameSetupData.InitializeDefaults();
-            Debug.Log("GameSetupData initialized with default values");
         }
 
         // Read civilization settings from GameSetupData
@@ -212,7 +210,6 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         Debug.Log("[GameManager] Start called.");
-        // ... existing code ...
     }
 
     /// <summary>
@@ -228,7 +225,6 @@ public class GameManager : MonoBehaviour
         {
             if (civilizationManagerPrefab != null)
             {
-                Debug.Log("GameManager: CivilizationManager not found in scene, creating from prefab...");
                 GameObject civManagerGO = Instantiate(civilizationManagerPrefab);
                 civilizationManager = civManagerGO.GetComponent<CivilizationManager>();
             }
@@ -244,7 +240,6 @@ public class GameManager : MonoBehaviour
         {
             if (climateManagerPrefab != null)
             {
-                Debug.Log("GameManager: ClimateManager not found in scene, creating from prefab...");
                 GameObject climateManagerGO = Instantiate(climateManagerPrefab);
                 climateManager = climateManagerGO.GetComponent<ClimateManager>();
             }
@@ -262,7 +257,6 @@ public class GameManager : MonoBehaviour
         {
             if (turnManagerPrefab != null)
             {
-                Debug.Log("GameManager: TurnManager not found in scene, creating from prefab...");
                 GameObject turnManagerGO = Instantiate(turnManagerPrefab);
                 turnManager = turnManagerGO.GetComponent<TurnManager>();
             }
@@ -278,7 +272,7 @@ public class GameManager : MonoBehaviour
         {
             if (unitSelectionManagerPrefab != null)
             {
-                Debug.Log("GameManager: UnitSelectionManager not found in scene, creating from prefab...");
+
                 GameObject unitSelectionManagerGO = Instantiate(unitSelectionManagerPrefab);
                 unitSelectionManager = unitSelectionManagerGO.GetComponent<UnitSelectionManager>();
             }
@@ -296,7 +290,6 @@ public class GameManager : MonoBehaviour
         {
             if (unitMovementControllerPrefab != null)
             {
-                Debug.Log("GameManager: UnitMovementController not found in scene, creating from prefab...");
                 GameObject unitMovementControllerGO = Instantiate(unitMovementControllerPrefab);
                 unitMovementControllerObj = unitMovementControllerGO.GetComponent<UnitMovementController>();
             }
@@ -315,7 +308,6 @@ public class GameManager : MonoBehaviour
         {
             if (policyManagerPrefab != null)
             {
-                Debug.Log("GameManager: PolicyManager not found in scene, creating from prefab...");
                 GameObject policyManagerGO = Instantiate(policyManagerPrefab);
                 policyManager = policyManagerGO.GetComponent<PolicyManager>();
             }
@@ -331,7 +323,6 @@ public class GameManager : MonoBehaviour
         {
             if (diplomacyManagerPrefab != null)
             {
-                Debug.Log("GameManager: DiplomacyManager not found in scene, creating from prefab...");
                 GameObject diplomacyManagerGO = Instantiate(diplomacyManagerPrefab);
                 diplomacyManager = diplomacyManagerGO.GetComponent<DiplomacyManager>();
             }
@@ -347,7 +338,6 @@ public class GameManager : MonoBehaviour
         {
             if (resourceManagerPrefab != null)
             {
-                Debug.Log("GameManager: ResourceManager not found in scene, creating from prefab...");
                 GameObject resourceManagerGO = Instantiate(resourceManagerPrefab);
                 resourceManager = resourceManagerGO.GetComponent<ResourceManager>();
             }
@@ -363,7 +353,7 @@ public class GameManager : MonoBehaviour
         {
             if (religionManagerPrefab != null)
             {
-                Debug.Log("GameManager: ReligionManager not found in scene, creating from prefab...");
+                // ...existing code...
                 GameObject religionManagerGO = Instantiate(religionManagerPrefab);
                 religionManager = religionManagerGO.GetComponent<ReligionManager>();
             }
@@ -379,7 +369,7 @@ public class GameManager : MonoBehaviour
         {
             if (animalManagerPrefab != null)
             {
-                Debug.Log("GameManager: AnimalManager not found in scene, creating from prefab...");
+                // ...existing code...
                 GameObject animalManagerGO = Instantiate(animalManagerPrefab);
                 animalManager = animalManagerGO.GetComponent<AnimalManager>();
             }
@@ -538,7 +528,6 @@ public class GameManager : MonoBehaviour
         {
             var grid = planetGenerator.Grid;
             unitMovementController.SetReferences(grid, planetGenerator, moonGenerator);
-            Debug.Log("GameManager: Set references on UnitMovementController after generator creation.");
         }
         else if (unitMovementController == null)
         {
@@ -555,13 +544,11 @@ public class GameManager : MonoBehaviour
             instantiatedCameraGO = Instantiate(planetaryCameraPrefab);
             instantiatedCameraGO.tag = "MainCamera";
             instantiatedCameraGO.SetActive(true);
-            Debug.Log("GameManager: Instantiated PlanetaryCameraManager prefab as MainCamera.");
 
             // Ensure the camera has an AudioListener
             if (instantiatedCameraGO.GetComponent<AudioListener>() == null)
             {
                 instantiatedCameraGO.AddComponent<AudioListener>();
-                Debug.LogWarning("GameManager: Added missing AudioListener to the main camera.");
             }
 
             // Ensure camera has latest generator references
@@ -634,7 +621,6 @@ public class GameManager : MonoBehaviour
         {
             // AnimalManager now gets grid and planet data from TileDataHelper
             animalManagerInstance.SpawnInitialAnimals();
-            Debug.Log("GameManager: Initial animals spawned.");
         }
         else
         {
@@ -763,14 +749,6 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log($"Loading game {saveName}...");
         // Implement your load game logic here
-    }
-
-    // Method to find and load all main managers and systems
-    private void FindAndInitializeManagers()
-    {
-        turnManager = FindAnyObjectByType<TurnManager>();
-        dipManager = FindAnyObjectByType<DiplomacyManager>();
-        civilizationManager = FindAnyObjectByType<CivilizationManager>();
     }
 }
 
