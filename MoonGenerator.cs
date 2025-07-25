@@ -641,9 +641,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         int neighborIdx = grid.neighbors[0][0];
         Vector3 c1 = grid.tileCenters[neighborIdx];
 
-        float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
-        float arcRadius = grid.Radius * angle * 0.5f;
-        return arcRadius;
+        // Straight line distance between centers gives the effective diameter
+        float centerDist = Vector3.Distance(c0, c1);
+        return centerDist * 0.5f;
     }
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
