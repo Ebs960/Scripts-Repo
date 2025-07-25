@@ -41,7 +41,6 @@ public class TurnManager : MonoBehaviour
         if (civ != null && !civs.Contains(civ))
         {
             civs.Add(civ);
-            Debug.Log($"TurnManager: Registered civilization {civ.civData.civName}");
         }
     }
 
@@ -72,7 +71,6 @@ public class TurnManager : MonoBehaviour
         currentIndex = -1;
         turnsStarted = true;
         
-        Debug.Log($"TurnManager: Starting turn cycle with {civs.Count} civilizations. Player civ: {playerCiv.civData.civName}");
         StartCoroutine(AdvanceTurnCoroutine());
     }
 

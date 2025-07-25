@@ -513,33 +513,27 @@ public class CivilizationManager : MonoBehaviour
         }
         
         // Spawn the player civilization
-        Debug.Log("Spawning player civilization...");
+        
         SpawnOneCivilization(playerCivData, occupied, isPlayer: true);
 
         // 2) AI civs
-        Debug.Log($"Spawning {aiCount} AI civilizations from {normalPool.Count} available...");
         Shuffle(normalPool);
         for (int i = 0; i < aiCount && i < normalPool.Count; i++)
         {
-            Debug.Log($"Spawning AI civ {i + 1}/{aiCount}: {normalPool[i].civName}");
             SpawnOneCivilization(normalPool[i], occupied, isPlayer: false);
         }
 
         // 3) City-states
-        Debug.Log($"Spawning {cityStateCount} city-states from {cityStatePool.Count} available...");
         Shuffle(cityStatePool);
         for (int i = 0; i < cityStateCount && i < cityStatePool.Count; i++)
         {
-            Debug.Log($"Spawning city-state {i + 1}/{cityStateCount}: {cityStatePool[i].civName}");
             SpawnOneCivilization(cityStatePool[i], occupied, isPlayer: false);
         }
 
         // 4) Tribes
-        Debug.Log($"Spawning {tribeCount} tribes from {tribePool.Count} available...");
         Shuffle(tribePool);
         for (int i = 0; i < tribeCount && i < tribePool.Count; i++)
         {
-            Debug.Log($"Spawning tribe {i + 1}/{tribeCount}: {tribePool[i].civName}");
             SpawnOneCivilization(tribePool[i], occupied, isPlayer: false);
         }
 
@@ -558,7 +552,6 @@ public class CivilizationManager : MonoBehaviour
             // Start the turn cycle
             TurnManager.Instance.StartTurns();
             
-            Debug.Log($"Turn cycle started with player civ: {playerCiv?.civData?.civName ?? "NULL"}");
         }
         else
         {
@@ -696,7 +689,6 @@ public class CivilizationManager : MonoBehaviour
         pioneer.Initialize(pioneerData, civ, tile);
         civ.workerUnits.Add(pioneer);
         
-        Debug.Log($"Successfully spawned civilization: {data.civName} (Player: {isPlayer}) at tile {tile}");
     }
 
     /// <summary>

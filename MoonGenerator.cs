@@ -588,25 +588,16 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        // Hill prefab selection
+        // All biomes (including water) use the same prefab lookup logic
         if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
-        {
             return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
-        }
-        // Flat prefab selection
         if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
-        {
             return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
-        }
         // Fallback: Any biome
         if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
-        {
             return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
-        }
         if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
-        {
             return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
-        }
         return null;
     }
 

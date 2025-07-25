@@ -131,10 +131,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 8;
 
-    [Header("Water Prefabs")]
-    public GameObject OceanPrefab;
-    public GameObject SeasPrefab;
-    public GameObject CoastPrefab;
 
     private Dictionary<Biome, GameObject> biomePrefabs = new();
     // New: Dictionaries for flat and hill prefabs
@@ -1422,31 +1418,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        if (tile.biome == Biome.Ocean && OceanPrefab != null)
-            return OceanPrefab;
-        if (tile.biome == Biome.Seas && SeasPrefab != null)
-            return SeasPrefab;
-        if (tile.biome == Biome.Coast && CoastPrefab != null)
-            return CoastPrefab;
-        // Prefer hill prefab if tile is a hill
+        // All biomes (including water) use the same prefab lookup logic
         if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
-        {
             return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
-        }
-        // Otherwise, use flat prefab
         if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
-        {
             return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
-        }
-        // Fallback: any biome
+        // Fallback: Any biome
         if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
-        {
             return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
-        }
         if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
-        {
             return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
-        }
         Debug.LogWarning($"No prefab found for biome={tile.biome}");
         return null;
     }
