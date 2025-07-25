@@ -1505,12 +1505,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int neighborIdx = grid.neighbors[0][0];
         Vector3 c1 = grid.tileCenters[neighborIdx];
 
-        // Angle between centers in radians
-        float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
-        // Arc length between centers (true distance on sphere)
-        float arcLength = grid.Radius * angle;
-        return arcLength;
+        // Straight line distance between centers
+        float centerDist = Vector3.Distance(c0, c1);
+        return centerDist * 0.5f;
     }
+
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
