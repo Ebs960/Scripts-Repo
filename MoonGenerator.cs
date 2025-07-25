@@ -55,6 +55,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     private Dictionary<Biome, GameObject[]> flatBiomePrefabs = new();
     private Dictionary<Biome, GameObject[]> hillBiomePrefabs = new();
 
+    [Range(0.5f, 1.2f)]
+    [Tooltip("Multiplier to fine-tune tile prefab scaling for perfect fit (1.0 = auto, <1 = tighter, >1 = looser)")]
+    public float tileRadiusMultiplier = 1.0f;
 
     [Header("Initialization")]
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
@@ -137,6 +140,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
+
+        // No need for dynamic tile sizing - we're using fixed scale 0.3
 
         // Build biome lookup tables if biome settings were provided via inspector
         if (biomeSettings != null)
@@ -594,104 +599,127 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // ------------------------------------------------------------------
     //  Prefab Helpers
     // ------------------------------------------------------------------
-    private GameObject GetPrefabForTile(HexTileData tile)
+    private GameObject GetPrefabForTile(int tileIndex, HexTileData tile)
     {
-        // Get tile index from Tiles list
-        int index = Tiles.IndexOf(tile);
-        bool isPentagon = grid.neighbors != null && index >= 0 && grid.neighbors[index].Count == 5;
-        Biome biomeKey = tile.biome;
-        Biome pentagonKey = (Biome)((int)biomeKey + 1000);
+        // Determine if tile is a pentagon
+        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+        BiomePrefabEntry entry = biomePrefabList.Find(e => e.biome == tile.biome);
+        if (entry.biome == Biome.Any) entry = biomePrefabList.Find(e => e.biome == Biome.Any);
 
         // Hill logic
         if (tile.isHill) {
-            if (isPentagon && hillBiomePrefabs.TryGetValue(pentagonKey, out var pentHillPrefabs) && pentHillPrefabs.Length > 0)
-                return pentHillPrefabs[UnityEngine.Random.Range(0, pentHillPrefabs.Length)];
-            if (hillBiomePrefabs.TryGetValue(biomeKey, out var hillPrefabs) && hillPrefabs.Length > 0)
-                return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
+            if (isPentagon && entry.pentagonHillPrefabs != null && entry.pentagonHillPrefabs.Length > 0)
+                return entry.pentagonHillPrefabs[UnityEngine.Random.Range(0, entry.pentagonHillPrefabs.Length)];
+            if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+                return entry.hillPrefabs[UnityEngine.Random.Range(0, entry.hillPrefabs.Length)];
         }
         // Flat logic
-        if (isPentagon && flatBiomePrefabs.TryGetValue(pentagonKey, out var pentFlatPrefabs) && pentFlatPrefabs.Length > 0)
-            return pentFlatPrefabs[UnityEngine.Random.Range(0, pentFlatPrefabs.Length)];
-        if (flatBiomePrefabs.TryGetValue(biomeKey, out var flatPrefabs) && flatPrefabs.Length > 0)
-            return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
+        if (isPentagon && entry.pentagonFlatPrefabs != null && entry.pentagonFlatPrefabs.Length > 0)
+            return entry.pentagonFlatPrefabs[UnityEngine.Random.Range(0, entry.pentagonFlatPrefabs.Length)];
+        if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+            return entry.flatPrefabs[UnityEngine.Random.Range(0, entry.flatPrefabs.Length)];
 
         // Fallback: Any biome
-        Biome anyKey = Biome.Any;
-        Biome pentAnyKey = (Biome)((int)anyKey + 1000);
-        if (tile.isHill && hillBiomePrefabs.TryGetValue(pentAnyKey, out var pentAnyHillPrefabs) && pentAnyHillPrefabs.Length > 0)
-            return pentAnyHillPrefabs[UnityEngine.Random.Range(0, pentAnyHillPrefabs.Length)];
-        if (tile.isHill && hillBiomePrefabs.TryGetValue(anyKey, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
-            return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
-        if (flatBiomePrefabs.TryGetValue(pentAnyKey, out var pentAnyFlatPrefabs) && pentAnyFlatPrefabs.Length > 0)
-            return pentAnyFlatPrefabs[UnityEngine.Random.Range(0, pentAnyFlatPrefabs.Length)];
-        if (flatBiomePrefabs.TryGetValue(anyKey, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
-            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
+        BiomePrefabEntry anyEntry = biomePrefabList.Find(e => e.biome == Biome.Any);
+        if (anyEntry.biome != Biome.Any) return null;
+        
+        if (tile.isHill) {
+            if (isPentagon && anyEntry.pentagonHillPrefabs != null && anyEntry.pentagonHillPrefabs.Length > 0)
+                return anyEntry.pentagonHillPrefabs[UnityEngine.Random.Range(0, anyEntry.pentagonHillPrefabs.Length)];
+            if (anyEntry.hillPrefabs != null && anyEntry.hillPrefabs.Length > 0)
+                return anyEntry.hillPrefabs[UnityEngine.Random.Range(0, anyEntry.hillPrefabs.Length)];
+        }
+        
+        if (isPentagon && anyEntry.pentagonFlatPrefabs != null && anyEntry.pentagonFlatPrefabs.Length > 0)
+            return anyEntry.pentagonFlatPrefabs[UnityEngine.Random.Range(0, anyEntry.pentagonFlatPrefabs.Length)];
+        if (anyEntry.flatPrefabs != null && anyEntry.flatPrefabs.Length > 0)
+            return anyEntry.flatPrefabs[UnityEngine.Random.Range(0, anyEntry.flatPrefabs.Length)];
 
         Debug.LogWarning($"No prefab found for biome={tile.biome}. Assign a prefab for this biome (including water biomes) in BiomePrefabEntry.");
         return null;
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    // Using hard-coded scale (0.3) for all tiles
+    
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
     {
-        
         // Get the appropriate prefab
-        GameObject prefab = GetPrefabForTile(tileData);
+        int tileIndex = Tiles.IndexOf(tileData);
+        GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
-        // Instantiate as child of parent
-        GameObject go = Instantiate(prefab, parent);
-        go.transform.localScale = Vector3.one;
-        go.transform.position = position;
-        go.transform.up = position.normalized;
+        // Determine if tile is a pentagon
+        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+        
+        // Instantiate with correct position, rotation and parent
+        GameObject go = Instantiate(prefab, position, rotation, parent);
+
+        // Different scale factors for hexagons and pentagons
+        const float hexagonScale = 0.042f;
+        const float pentagonScale = 0.157f; // Special scale for pentagons
+        float hardCodedScale = isPentagon ? pentagonScale : hexagonScale;
+        
+        go.transform.localScale = new Vector3(hardCodedScale, hardCodedScale, hardCodedScale);
 
         return go;
     }
 
-    private float GetPrefabBoundingRadius(GameObject go)
-    {
-        Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return 0f;
-        Bounds bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
-        foreach (var r in renderers)
-            bounds.Encapsulate(r.bounds);
-        float radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
-        return radius;
-    }
 
-    private float GetExpectedTileRadius(SphericalHexGrid grid)
-    {
-        if (grid == null || grid.TileCount == 0) return 0f;
-
-        Vector3 c0 = grid.tileCenters[0];
-        int neighborIdx = grid.neighbors[0][0];
-        Vector3 c1 = grid.tileCenters[neighborIdx];
-
-        // Straight line distance between centers gives the effective diameter
-        float centerDist = Vector3.Distance(c0, c1);
-        return centerDist * 0.5f;
-    }
+    // All tile sizing is now hard-coded to 0.3 so we don't need these methods anymore
+    // No need for dynamic tile sizing calculations
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
         GameObject parent = new GameObject("MoonTilePrefabs");
         parent.transform.SetParent(this.transform, false);
 
-        for (int i = 0; i < grid.TileCount; i++)
+        int tileCount = grid.TileCount;
+        for (int i = 0; i < tileCount; i++)
         {
-            // Get world-space corners for this tile
+            // Draw outline with LineRenderer using world-space corners
             int[] cornerIndices = grid.GetCornersOfTile(i);
             var localCorners = grid.CornerVertices;
             Vector3[] worldCorners = new Vector3[cornerIndices.Length];
-            for (int c = 0; c < cornerIndices.Length; c++)
-                worldCorners[c] = transform.TransformPoint(localCorners[cornerIndices[c]]);
+            for (int j = 0; j < cornerIndices.Length; j++)
+                worldCorners[j] = transform.TransformPoint(localCorners[cornerIndices[j]]);
 
+            // Calculate center and orientation ONCE for both line mesh and prefab
+            Vector3 worldCenter = Vector3.zero;
+            foreach (var wc in worldCorners)
+                worldCenter += wc;
+            worldCenter /= worldCorners.Length;
+
+            // Calculate hex normal (up) using the first three corners
+            Vector3 edge1 = worldCorners[1] - worldCorners[0];
+            Vector3 edge2 = worldCorners[2] - worldCorners[0];
+            Vector3 hexNormal = Vector3.Cross(edge1, edge2).normalized;
+
+            // Forward: direction from center to first corner
+            Vector3 forward = (worldCorners[0] - worldCenter).normalized;
+            // If forward is degenerate, use next edge
+            if (forward == Vector3.zero && worldCorners.Length > 1)
+                forward = (worldCorners[1] - worldCenter).normalized;
+
+            Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
+
+            // LineRenderer uses the calculated rotation for orientation
+            var lrObj = new GameObject($"HexOutline_{i}");
+            var lr = lrObj.AddComponent<LineRenderer>();
+            lr.positionCount = worldCorners.Length;
+            lr.useWorldSpace = true;
+            lr.loop = true;
+            lr.widthMultiplier = 0.02f;
+            lr.SetPositions(worldCorners);
+            lr.transform.SetParent(parent.transform, false);
+            lr.transform.position = worldCenter;
+            lr.transform.rotation = rotation;
+
+            // Instantiate tile prefab at center with EXACT same rotation as line mesh
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i]);
-
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
@@ -700,7 +728,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 indexHolder.tileIndex = i;
             }
 
-            if (i % batchSize == 0)
+            if (batchSize > 0 && i % batchSize == 0)
                 yield return null;
         }
     }

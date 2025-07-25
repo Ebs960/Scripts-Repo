@@ -67,6 +67,7 @@ public class SphericalHexGrid
             {
                 var f = meshFaces[fIdx];
                 Vector3 fc = (meshVertices[f[0]] + meshVertices[f[1]] + meshVertices[f[2]]) / 3f;
+                // Ensure exact normalization to radius - prevents subtle distortions
                 return fc.normalized * Radius;
             }).ToList();
 
@@ -79,7 +80,8 @@ public class SphericalHexGrid
                 if (!cornerLookup.TryGetValue(fc, out cornerIdx))
                 {
                     cornerIdx = CornerVertices.Count;
-                    CornerVertices.Add(fc);
+                    // Double ensure normalization before adding to corner vertices
+                    CornerVertices.Add(fc.normalized * Radius);
                     cornerLookup[fc] = cornerIdx;
                 }
                 corners.Add(cornerIdx);
@@ -198,6 +200,7 @@ public class SphericalHexGrid
     {
         var key = i0 < i1 ? (i0, i1) : (i1, i0);
         if (cache.TryGetValue(key, out int idx)) return idx;
+        // Calculate midpoint and ensure perfect normalization
         Vector3 mid = ((verts[i0] + verts[i1]) * 0.5f).normalized;
         idx = verts.Count;
         verts.Add(mid);

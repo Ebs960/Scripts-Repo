@@ -204,6 +204,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Destroy(gameObject);
             return;
         }
+        
 
         // Build prefab lookup dictionaries for flat and hill tiles
         flatBiomePrefabs = new Dictionary<Biome, GameObject[]>();
@@ -214,6 +215,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
                 hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
+            // Debug checks for pentagon prefabs
+            if (entry.pentagonFlatPrefabs == null || entry.pentagonFlatPrefabs.Length == 0)
+                Debug.LogWarning($"Pentagon flat prefabs NOT assigned for biome {entry.biome}");
+            else
+                Debug.Log($"Pentagon flat prefabs assigned for biome {entry.biome}: {entry.pentagonFlatPrefabs.Length} prefab(s)");
+
+            if (entry.pentagonHillPrefabs == null || entry.pentagonHillPrefabs.Length == 0)
+                Debug.LogWarning($"Pentagon hill prefabs NOT assigned for biome {entry.biome}");
+            else
+                Debug.Log($"Pentagon hill prefabs assigned for biome {entry.biome}: {entry.pentagonHillPrefabs.Length} prefab(s)");
+
+            if (entry.pentagonMountainPrefabs == null || entry.pentagonMountainPrefabs.Length == 0)
+                Debug.LogWarning($"Pentagon mountain prefabs NOT assigned for biome {entry.biome}");
+            else
+                Debug.Log($"Pentagon mountain prefabs assigned for biome {entry.biome}: {entry.pentagonMountainPrefabs.Length} prefab(s)");
         }
 
         // Initialize the grid for this planet (will be configured by GameManager)
@@ -1461,46 +1477,33 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    // Using hard-coded scale (0.3) for all tiles
+    
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
     {
-
         // Get the appropriate prefab
         int tileIndex = Tiles.IndexOf(tileData);
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
-        // Instantiate as child of parent
-        GameObject go = Instantiate(prefab, parent);
-        // Ensure uniform scale and correct placement/orientation
-        go.transform.localScale = Vector3.one;
-        go.transform.position = position;
-        go.transform.up = position.normalized;
+        // Determine if tile is a pentagon
+        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+
+        // Instantiate with correct position, rotation and parent
+        GameObject go = Instantiate(prefab, position, rotation, parent);
+
+        // Different scale factors for hexagons and pentagons
+        const float hexagonScale = 0.042f;
+        const float pentagonScale = 152f; // Special scale for pentagons
+        float hardCodedScale = isPentagon ? pentagonScale : hexagonScale;
+        
+        go.transform.localScale = new Vector3(hardCodedScale, hardCodedScale, hardCodedScale);
 
         return go;
     }
 
-    // Returns the bounding radius of a prefab GameObject
-    private float GetPrefabBoundingRadius(GameObject go)
-    {
-        Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return 0f;
-        Bounds bounds = new Bounds(renderers[0].bounds.center, Vector3.zero);
-        foreach (var r in renderers)
-            bounds.Encapsulate(r.bounds);
-        float radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
-        return radius;
-    }
-
-    // Returns the expected tile radius based on grid geometry
-    private float GetExpectedTileRadius(SphericalHexGrid grid)
-    {
-        if (grid == null || grid.TileCount == 0) return 0f;
-        Vector3 c0 = grid.tileCenters[0];
-        int neighborIdx = grid.neighbors[0][0];
-        Vector3 c1 = grid.tileCenters[neighborIdx];
-        float centerDist = Vector3.Distance(c0, c1);
-        return centerDist * 0.5f;
-    }
+    // We're now using hard-coded scale (0.3) for all tiles
+    // No need for dynamic radius calculation or bounding radius methods
 
     // Single overload taking explicit rotation
 
@@ -1519,6 +1522,26 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             for (int j = 0; j < cornerIndices.Length; j++)
                 worldCorners[j] = transform.TransformPoint(localCorners[cornerIndices[j]]);
 
+            // Calculate center and orientation ONCE for both line mesh and prefab
+            Vector3 worldCenter = Vector3.zero;
+            foreach (var wc in worldCorners)
+                worldCenter += wc;
+            worldCenter /= worldCorners.Length;
+
+            // Calculate hex normal (up) using the first three corners
+            Vector3 edge1 = worldCorners[1] - worldCorners[0];
+            Vector3 edge2 = worldCorners[2] - worldCorners[0];
+            Vector3 hexNormal = Vector3.Cross(edge1, edge2).normalized;
+
+            // Forward: direction from center to first corner
+            Vector3 forward = (worldCorners[0] - worldCenter).normalized;
+            // If forward is degenerate, use next edge
+            if (forward == Vector3.zero && worldCorners.Length > 1)
+                forward = (worldCorners[1] - worldCenter).normalized;
+
+            Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
+
+            // LineRenderer uses the calculated rotation for orientation
             var lrObj = new GameObject($"HexOutline_{i}");
             var lr = lrObj.AddComponent<LineRenderer>();
             lr.positionCount = worldCorners.Length;
@@ -1527,14 +1550,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             lr.widthMultiplier = 0.02f;
             lr.SetPositions(worldCorners);
             lr.transform.SetParent(parent.transform, false);
+            lr.transform.position = worldCenter;
+            lr.transform.rotation = rotation;
 
-            // Instantiate tile prefab at center derived from same corners
+            // Instantiate tile prefab at center with EXACT same rotation as line mesh
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i]);
-
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
