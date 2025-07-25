@@ -124,6 +124,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         public Biome biome;
         public GameObject[] flatPrefabs; // Prefabs for flat tiles
         public GameObject[] hillPrefabs; // Prefabs for hill tiles
+        public GameObject[] pentagonFlatPrefabs; // Prefabs for flat pentagon tiles
+        public GameObject[] pentagonHillPrefabs; // Prefabs for hill pentagon tiles
+        public GameObject[] pentagonMountainPrefabs; // Prefabs for mountain pentagon tiles
     }
 
     [Header("Tile Prefabs")]
