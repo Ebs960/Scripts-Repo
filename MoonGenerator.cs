@@ -632,11 +632,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
     {
-        // Calculate the rotation to face outward from the center
-        Vector3 up = position.normalized;
-        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
         
         // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileData);
@@ -688,12 +685,26 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         for (int i = 0; i < grid.TileCount; i++)
         {
+            // Get world-space corners for this tile
+            int[] cornerIndices = grid.GetCornersOfTile(i);
+            var localCorners = grid.CornerVertices;
+            Vector3[] worldCorners = new Vector3[cornerIndices.Length];
+            for (int c = 0; c < cornerIndices.Length; c++)
+                worldCorners[c] = transform.TransformPoint(localCorners[cornerIndices[c]]);
+
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
-            pos = transform.TransformPoint(pos);
-            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
+            // Center is the average of corners
+            Vector3 worldCenter = Vector3.zero;
+            foreach (var wc in worldCorners)
+                worldCenter += wc;
+            worldCenter /= worldCorners.Length;
+
+            Vector3 normal = (worldCenter - transform.position).normalized;
+            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, normal);
+
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, faceUp, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
