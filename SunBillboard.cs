@@ -52,4 +52,10 @@ public class SunBillboard : MonoBehaviour
             targetCam = Camera.main;
         }
     }
+
+    // Set the base radius to match the planet's radius
+    public void SetBaseRadius(float planetRadius)
+    {
+        baseRadius = planetRadius;
+    }
 }

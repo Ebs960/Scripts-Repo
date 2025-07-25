@@ -674,6 +674,13 @@ public class GameManager : MonoBehaviour
         // Use GenerateSurface as a coroutine and wait for all map generation to finish
         yield return StartCoroutine(planetGenerator.GenerateSurface());
 
+        // Automatically update SunBillboard radius after planet is generated
+        var sunBB = FindAnyObjectByType<SunBillboard>();
+        if (sunBB != null && planetGenerator != null)
+        {
+            sunBB.SetBaseRadius(planetGenerator.radius);
+        }
+
         // Generate moon if enabled
         if (generateMoon && moonGenerator != null)
         {
