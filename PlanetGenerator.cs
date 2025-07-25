@@ -206,8 +206,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         hillBiomePrefabs = new Dictionary<Biome, GameObject[]>();
         foreach (var entry in biomePrefabList)
         {
-            if (entry.biome == Biome.Ocean || entry.biome == Biome.Seas || entry.biome == Biome.Coast)
-                continue;
             if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
@@ -1428,7 +1426,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
         if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
             return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
-        Debug.LogWarning($"No prefab found for biome={tile.biome}");
+        Debug.LogWarning($"No prefab found for biome={tile.biome}. Assign a prefab for this biome (including water biomes) in BiomePrefabEntry.");
         return null;
     }
 
