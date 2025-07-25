@@ -1461,25 +1461,20 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
     {
-        
+
         // Get the appropriate prefab
         int tileIndex = Tiles.IndexOf(tileData);
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
-        // Instantiate with correct position, rotation and parent
-        GameObject go = Instantiate(prefab, position, rotation, parent);
-
-        // Scale the prefab to match the tile size
-        float prefabRadius = GetPrefabBoundingRadius(go);
-        float correctRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
-        if (prefabRadius > 0f && correctRadius > 0f)
-        {
-            float scaleFactor = correctRadius / prefabRadius;
-            go.transform.localScale = Vector3.one * scaleFactor;
-        }
+        // Instantiate as child of parent
+        GameObject go = Instantiate(prefab, parent);
+        // Ensure uniform scale and correct placement/orientation
+        go.transform.localScale = Vector3.one;
+        go.transform.position = position;
+        go.transform.up = position.normalized;
 
         return go;
     }
@@ -1537,19 +1532,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 worldCenter = Vector3.zero;
-            foreach (var wc in worldCorners)
-                worldCenter += wc;
-            worldCenter /= worldCorners.Length;
+            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i]);
 
-            Vector3 up = worldCenter.normalized;
-            Vector3 right = Vector3.Cross(up, Vector3.up).normalized;
-            if (right == Vector3.zero)
-                right = Vector3.Cross(up, Vector3.forward).normalized;
-            Vector3 forward = Vector3.Cross(right, up).normalized;
-            Quaternion rotation = Quaternion.LookRotation(forward, up);
-
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
