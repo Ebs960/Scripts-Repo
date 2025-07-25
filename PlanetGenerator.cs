@@ -1464,17 +1464,22 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return null;
     }
 
+    // Single tile instantiation method that handles all cases
     private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
     {
+        // Calculate the rotation to face outward from the center
+        Vector3 up = position.normalized;
+        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
+        
+        // Get the appropriate prefab
         int tileIndex = Tiles.IndexOf(tileData);
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
-        Vector3 up = position.normalized;
-        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
-
+        // Instantiate with correct position, rotation and parent
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
+        // Scale the prefab to match the tile size
         float prefabRadius = GetPrefabBoundingRadius(go);
         float correctRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
         if (prefabRadius > 0f && correctRadius > 0f)
@@ -1486,6 +1491,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return go;
     }
 
+    // Returns the bounding radius of a prefab GameObject
     private float GetPrefabBoundingRadius(GameObject go)
     {
         Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
@@ -1497,33 +1503,51 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return radius;
     }
 
+    // Returns the expected tile radius based on grid geometry
     private float GetExpectedTileRadius(SphericalHexGrid grid)
     {
         if (grid == null || grid.TileCount == 0) return 0f;
-
         Vector3 c0 = grid.tileCenters[0];
         int neighborIdx = grid.neighbors[0][0];
         Vector3 c1 = grid.tileCenters[neighborIdx];
-
-        // Straight line distance between centers
         float centerDist = Vector3.Distance(c0, c1);
         return centerDist * 0.5f;
     }
 
+    // Legacy overload, calls main overload with identity rotation
+    // Legacy overload removed: now only one overload exists, which calls the main overload with identity rotation
+    // Use: InstantiateTilePrefab(tileData, position, Quaternion.identity, parent)
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
         GameObject parent = new GameObject("TilePrefabs");
         parent.transform.SetParent(this.transform, false);
 
-        for (int i = 0; i < grid.TileCount; i++)
+        int tileCount = grid.TileCount;
+        for (int i = 0; i < tileCount; i++)
         {
+            // Draw outline with LineRenderer
+            int[] cornerIndices = grid.GetCornersOfTile(i);
+            Vector3[] outline = new Vector3[cornerIndices.Length];
+            for (int j = 0; j < cornerIndices.Length; j++)
+                outline[j] = grid.CornerVertices[cornerIndices[j]];
+
+            var lrObj = new GameObject($"HexOutline_{i}");
+            var lr = lrObj.AddComponent<LineRenderer>();
+            lr.positionCount = outline.Length;
+            lr.useWorldSpace = true;
+            lr.loop = true;
+            lr.widthMultiplier = 0.02f;
+            lr.SetPositions(outline);
+            lr.transform.SetParent(parent.transform, false);
+
+            // Instantiate tile prefab at center
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
-            pos = transform.TransformPoint(pos);
-            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
+            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i].normalized * (grid.Radius + td.elevation));
+            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, grid.tileCenters[i].normalized);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
@@ -1532,7 +1556,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 indexHolder.tileIndex = i;
             }
 
-            if (i % batchSize == 0)
+            if (batchSize > 0 && i % batchSize == 0)
                 yield return null;
         }
     }

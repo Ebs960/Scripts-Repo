@@ -42,6 +42,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         public Biome biome;
         public GameObject[] flatPrefabs; // Prefabs for flat tiles
         public GameObject[] hillPrefabs; // Prefabs for hill tiles
+        public GameObject[] pentagonFlatPrefabs; // Prefabs for flat pentagon tiles
+        public GameObject[] pentagonHillPrefabs; // Prefabs for hill pentagon tiles
     }
 
     [Header("Tile Prefabs")]
@@ -144,12 +146,18 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         flatBiomePrefabs.Clear();
         hillBiomePrefabs.Clear();
+        // Build dictionaries for all prefab types
         foreach (var entry in biomePrefabList)
         {
             if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
                 hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
+            // Pentagon support
+            if (entry.pentagonFlatPrefabs != null && entry.pentagonFlatPrefabs.Length > 0)
+                flatBiomePrefabs[(Biome)((int)entry.biome + 1000)] = entry.pentagonFlatPrefabs; // Key offset for pentagon
+            if (entry.pentagonHillPrefabs != null && entry.pentagonHillPrefabs.Length > 0)
+                hillBiomePrefabs[(Biome)((int)entry.biome + 1000)] = entry.pentagonHillPrefabs;
         }
     }
 
@@ -588,29 +596,56 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     // ------------------------------------------------------------------
     private GameObject GetPrefabForTile(HexTileData tile)
     {
-        // All biomes (including water) use the same prefab lookup logic
-        if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
-            return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
-        if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
+        // Get tile index from Tiles list
+        int index = Tiles.IndexOf(tile);
+        bool isPentagon = grid.neighbors != null && index >= 0 && grid.neighbors[index].Count == 5;
+        Biome biomeKey = tile.biome;
+        Biome pentagonKey = (Biome)((int)biomeKey + 1000);
+
+        // Hill logic
+        if (tile.isHill) {
+            if (isPentagon && hillBiomePrefabs.TryGetValue(pentagonKey, out var pentHillPrefabs) && pentHillPrefabs.Length > 0)
+                return pentHillPrefabs[UnityEngine.Random.Range(0, pentHillPrefabs.Length)];
+            if (hillBiomePrefabs.TryGetValue(biomeKey, out var hillPrefabs) && hillPrefabs.Length > 0)
+                return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
+        }
+        // Flat logic
+        if (isPentagon && flatBiomePrefabs.TryGetValue(pentagonKey, out var pentFlatPrefabs) && pentFlatPrefabs.Length > 0)
+            return pentFlatPrefabs[UnityEngine.Random.Range(0, pentFlatPrefabs.Length)];
+        if (flatBiomePrefabs.TryGetValue(biomeKey, out var flatPrefabs) && flatPrefabs.Length > 0)
             return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
+
         // Fallback: Any biome
-        if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
-            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
-        if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
+        Biome anyKey = Biome.Any;
+        Biome pentAnyKey = (Biome)((int)anyKey + 1000);
+        if (tile.isHill && hillBiomePrefabs.TryGetValue(pentAnyKey, out var pentAnyHillPrefabs) && pentAnyHillPrefabs.Length > 0)
+            return pentAnyHillPrefabs[UnityEngine.Random.Range(0, pentAnyHillPrefabs.Length)];
+        if (tile.isHill && hillBiomePrefabs.TryGetValue(anyKey, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
             return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
+        if (flatBiomePrefabs.TryGetValue(pentAnyKey, out var pentAnyFlatPrefabs) && pentAnyFlatPrefabs.Length > 0)
+            return pentAnyFlatPrefabs[UnityEngine.Random.Range(0, pentAnyFlatPrefabs.Length)];
+        if (flatBiomePrefabs.TryGetValue(anyKey, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
+            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
+
+        Debug.LogWarning($"No prefab found for biome={tile.biome}. Assign a prefab for this biome (including water biomes) in BiomePrefabEntry.");
         return null;
     }
 
+    // Single tile instantiation method that handles all cases
     private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
     {
+        // Calculate the rotation to face outward from the center
+        Vector3 up = position.normalized;
+        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
+        
+        // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileData);
         if (prefab == null) return null;
 
-        Vector3 up = position.normalized;
-        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
-
+        // Instantiate with correct position, rotation and parent
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
+        // Scale the prefab to match the tile size
         float prefabRadius = GetPrefabBoundingRadius(go);
         float correctRadius = GetExpectedTileRadius(grid);
         if (prefabRadius > 0f && correctRadius > 0f)
