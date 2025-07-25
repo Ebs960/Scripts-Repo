@@ -1433,7 +1433,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return null;
     }
 
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent, float expectedTileRadius)
     {
         GameObject prefab = GetPrefabForTile(tileData);
         if (prefab == null) return null;
@@ -1444,12 +1444,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
         float prefabRadius = GetPrefabBoundingRadius(go);
-        float correctRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
-        if (prefabRadius > 0f && correctRadius > 0f)
+        if (prefabRadius > 0f && expectedTileRadius > 0f)
         {
-            float scaleFactor = correctRadius / prefabRadius;
+            float scaleFactor = expectedTileRadius / prefabRadius;
             go.transform.localScale = Vector3.one * scaleFactor;
         }
+
+        // Ensure tile remains positioned at correct radius after scaling
+        Vector3 center = transform.position;
+        Vector3 normal = (go.transform.position - center).normalized;
+        go.transform.position = center + normal * (grid.Radius + tileData.elevation);
 
         return go;
     }
@@ -1469,21 +1473,40 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     {
         if (grid == null || grid.TileCount == 0) return 0f;
 
-        Vector3 c0 = grid.tileCenters[0];
-        int neighborIdx = grid.neighbors[0][0];
-        Vector3 c1 = grid.tileCenters[neighborIdx];
+        // Pick a representative tile (avoid pentagons for accuracy)
+        int sampleTile = 0;
+        if (grid.pentagonIndices.Contains(sampleTile))
+        {
+            for (int t = 0; t < grid.TileCount; t++)
+            {
+                if (!grid.pentagonIndices.Contains(t))
+                {
+                    sampleTile = t;
+                    break;
+                }
+            }
+        }
 
-        // Angle between centers in radians
-        float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
-        // Arc length between centers (true distance on sphere)
-        float arcLength = grid.Radius * angle;
-        return arcLength;
+        List<int> neighs = grid.neighbors[sampleTile];
+        if (neighs == null || neighs.Count == 0) return 0f;
+
+        // Average arc length to all neighbors of the sample tile
+        float totalArc = 0f;
+        foreach (int n in neighs)
+        {
+            float angle = Vector3.Angle(grid.tileCenters[sampleTile], grid.tileCenters[n]) * Mathf.Deg2Rad;
+            totalArc += grid.Radius * angle;
+        }
+        float averageArc = totalArc / neighs.Count;
+        return averageArc;
     }
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
         GameObject parent = new GameObject("TilePrefabs");
         parent.transform.SetParent(this.transform, false);
+
+        float expectedRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
 
         for (int i = 0; i < grid.TileCount; i++)
         {
@@ -1492,7 +1515,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
             pos = transform.TransformPoint(pos);
-            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform, expectedRadius);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
