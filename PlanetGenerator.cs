@@ -72,13 +72,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("The minimum elevation level for land and glacier tiles (before noise).")]
     public float baseLandElevation = 0.15f;
     
-    [Range(0f, 1f)]
+    [Range(-2f, 1f)]
     [Tooltip("Elevation for ocean tiles.")]
     public float oceanElevation = 0f;
-    [Range(0f, 1f)]
+    [Range(-2f, 1f)]
     [Tooltip("Elevation for sea tiles.")]
     public float seasElevation = 0.05f;
-    [Range(0f, 1f)]
+    [Range(-2f, 1f)]
     [Tooltip("Elevation for coast tiles.")]
     public float coastElevation = 0.1f;
     
