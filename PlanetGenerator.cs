@@ -1465,11 +1465,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
     {
-        // Calculate the rotation to face outward from the center
-        Vector3 up = position.normalized;
-        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, up);
         
         // Get the appropriate prefab
         int tileIndex = Tiles.IndexOf(tileData);
@@ -1514,9 +1511,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return centerDist * 0.5f;
     }
 
-    // Legacy overload, calls main overload with identity rotation
-    // Legacy overload removed: now only one overload exists, which calls the main overload with identity rotation
-    // Use: InstantiateTilePrefab(tileData, position, Quaternion.identity, parent)
+    // Single overload taking explicit rotation
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
@@ -1526,28 +1521,35 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int tileCount = grid.TileCount;
         for (int i = 0; i < tileCount; i++)
         {
-            // Draw outline with LineRenderer
+            // Draw outline with LineRenderer using world-space corners
             int[] cornerIndices = grid.GetCornersOfTile(i);
-            Vector3[] outline = new Vector3[cornerIndices.Length];
+            var localCorners = grid.CornerVertices;
+            Vector3[] worldCorners = new Vector3[cornerIndices.Length];
             for (int j = 0; j < cornerIndices.Length; j++)
-                outline[j] = grid.CornerVertices[cornerIndices[j]];
+                worldCorners[j] = transform.TransformPoint(localCorners[cornerIndices[j]]);
 
             var lrObj = new GameObject($"HexOutline_{i}");
             var lr = lrObj.AddComponent<LineRenderer>();
-            lr.positionCount = outline.Length;
+            lr.positionCount = worldCorners.Length;
             lr.useWorldSpace = true;
             lr.loop = true;
             lr.widthMultiplier = 0.02f;
-            lr.SetPositions(outline);
+            lr.SetPositions(worldCorners);
             lr.transform.SetParent(parent.transform, false);
 
-            // Instantiate tile prefab at center
+            // Instantiate tile prefab at center derived from same corners
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i].normalized * (grid.Radius + td.elevation));
-            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, grid.tileCenters[i].normalized);
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
+            Vector3 worldCenter = Vector3.zero;
+            foreach (var wc in worldCorners)
+                worldCenter += wc;
+            worldCenter /= worldCorners.Length;
+
+            Vector3 normal = (worldCenter - transform.position).normalized;
+            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, normal);
+
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, faceUp, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
