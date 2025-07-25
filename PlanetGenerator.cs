@@ -124,6 +124,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         public Biome biome;
         public GameObject[] flatPrefabs; // Prefabs for flat tiles
         public GameObject[] hillPrefabs; // Prefabs for hill tiles
+        public GameObject[] mountainPrefabs; // Prefabs for mountain tiles
         public GameObject[] pentagonFlatPrefabs; // Prefabs for flat pentagon tiles
         public GameObject[] pentagonHillPrefabs; // Prefabs for hill pentagon tiles
         public GameObject[] pentagonMountainPrefabs; // Prefabs for mountain pentagon tiles
@@ -1417,25 +1418,56 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // ------------------------------------------------------------------
     //  Prefab Helpers
     // ------------------------------------------------------------------
-    private GameObject GetPrefabForTile(HexTileData tile)
+    private GameObject GetPrefabForTile(int tileIndex, HexTileData tile)
     {
-        // All biomes (including water) use the same prefab lookup logic
-        if (tile.isHill && hillBiomePrefabs.TryGetValue(tile.biome, out var hillPrefabs) && hillPrefabs.Length > 0)
-            return hillPrefabs[UnityEngine.Random.Range(0, hillPrefabs.Length)];
-        if (flatBiomePrefabs.TryGetValue(tile.biome, out var flatPrefabs) && flatPrefabs.Length > 0)
-            return flatPrefabs[UnityEngine.Random.Range(0, flatPrefabs.Length)];
+        // Determine if tile is a pentagon
+        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+        BiomePrefabEntry entry = biomePrefabList.Find(e => e.biome == tile.biome);
+        if (entry.biome == Biome.Any) entry = biomePrefabList.Find(e => e.biome == Biome.Any);
+
+        // Mountain logic
+        if (tile.elevationTier == ElevationTier.Mountain) {
+            if (isPentagon && entry.pentagonMountainPrefabs != null && entry.pentagonMountainPrefabs.Length > 0)
+                return entry.pentagonMountainPrefabs[UnityEngine.Random.Range(0, entry.pentagonMountainPrefabs.Length)];
+            if (entry.mountainPrefabs != null && entry.mountainPrefabs.Length > 0)
+                return entry.mountainPrefabs[UnityEngine.Random.Range(0, entry.mountainPrefabs.Length)];
+        }
+        // Hill logic
+        if (tile.isHill) {
+            if (isPentagon && entry.pentagonHillPrefabs != null && entry.pentagonHillPrefabs.Length > 0)
+                return entry.pentagonHillPrefabs[UnityEngine.Random.Range(0, entry.pentagonHillPrefabs.Length)];
+            if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+                return entry.hillPrefabs[UnityEngine.Random.Range(0, entry.hillPrefabs.Length)];
+        }
+        // Flat logic
+        if (isPentagon && entry.pentagonFlatPrefabs != null && entry.pentagonFlatPrefabs.Length > 0)
+            return entry.pentagonFlatPrefabs[UnityEngine.Random.Range(0, entry.pentagonFlatPrefabs.Length)];
+        if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+            return entry.flatPrefabs[UnityEngine.Random.Range(0, entry.flatPrefabs.Length)];
+
         // Fallback: Any biome
-        if (flatBiomePrefabs.TryGetValue(Biome.Any, out var anyFlatPrefabs) && anyFlatPrefabs.Length > 0)
-            return anyFlatPrefabs[UnityEngine.Random.Range(0, anyFlatPrefabs.Length)];
-        if (hillBiomePrefabs.TryGetValue(Biome.Any, out var anyHillPrefabs) && anyHillPrefabs.Length > 0)
-            return anyHillPrefabs[UnityEngine.Random.Range(0, anyHillPrefabs.Length)];
+        BiomePrefabEntry anyEntry = biomePrefabList.Find(e => e.biome == Biome.Any);
+        if (tile.elevationTier == ElevationTier.Mountain && anyEntry.pentagonMountainPrefabs != null && anyEntry.pentagonMountainPrefabs.Length > 0)
+            return anyEntry.pentagonMountainPrefabs[UnityEngine.Random.Range(0, anyEntry.pentagonMountainPrefabs.Length)];
+        if (tile.elevationTier == ElevationTier.Mountain && anyEntry.mountainPrefabs != null && anyEntry.mountainPrefabs.Length > 0)
+            return anyEntry.mountainPrefabs[UnityEngine.Random.Range(0, anyEntry.mountainPrefabs.Length)];
+        if (tile.isHill && anyEntry.pentagonHillPrefabs != null && anyEntry.pentagonHillPrefabs.Length > 0)
+            return anyEntry.pentagonHillPrefabs[UnityEngine.Random.Range(0, anyEntry.pentagonHillPrefabs.Length)];
+        if (tile.isHill && anyEntry.hillPrefabs != null && anyEntry.hillPrefabs.Length > 0)
+            return anyEntry.hillPrefabs[UnityEngine.Random.Range(0, anyEntry.hillPrefabs.Length)];
+        if (isPentagon && anyEntry.pentagonFlatPrefabs != null && anyEntry.pentagonFlatPrefabs.Length > 0)
+            return anyEntry.pentagonFlatPrefabs[UnityEngine.Random.Range(0, anyEntry.pentagonFlatPrefabs.Length)];
+        if (anyEntry.flatPrefabs != null && anyEntry.flatPrefabs.Length > 0)
+            return anyEntry.flatPrefabs[UnityEngine.Random.Range(0, anyEntry.flatPrefabs.Length)];
+
         Debug.LogWarning($"No prefab found for biome={tile.biome}. Assign a prefab for this biome (including water biomes) in BiomePrefabEntry.");
         return null;
     }
 
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent, float expectedTileRadius)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
     {
-        GameObject prefab = GetPrefabForTile(tileData);
+        int tileIndex = Tiles.IndexOf(tileData);
+        GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
         Vector3 up = position.normalized;
@@ -1444,16 +1476,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
         float prefabRadius = GetPrefabBoundingRadius(go);
-        if (prefabRadius > 0f && expectedTileRadius > 0f)
+        float correctRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
+        if (prefabRadius > 0f && correctRadius > 0f)
         {
-            float scaleFactor = expectedTileRadius / prefabRadius;
+            float scaleFactor = correctRadius / prefabRadius;
             go.transform.localScale = Vector3.one * scaleFactor;
         }
-
-        // Ensure tile remains positioned at correct radius after scaling
-        Vector3 center = transform.position;
-        Vector3 normal = (go.transform.position - center).normalized;
-        go.transform.position = center + normal * (grid.Radius + tileData.elevation);
 
         return go;
     }
@@ -1473,40 +1501,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     {
         if (grid == null || grid.TileCount == 0) return 0f;
 
-        // Pick a representative tile (avoid pentagons for accuracy)
-        int sampleTile = 0;
-        if (grid.pentagonIndices.Contains(sampleTile))
-        {
-            for (int t = 0; t < grid.TileCount; t++)
-            {
-                if (!grid.pentagonIndices.Contains(t))
-                {
-                    sampleTile = t;
-                    break;
-                }
-            }
-        }
+        Vector3 c0 = grid.tileCenters[0];
+        int neighborIdx = grid.neighbors[0][0];
+        Vector3 c1 = grid.tileCenters[neighborIdx];
 
-        List<int> neighs = grid.neighbors[sampleTile];
-        if (neighs == null || neighs.Count == 0) return 0f;
-
-        // Average arc length to all neighbors of the sample tile
-        float totalArc = 0f;
-        foreach (int n in neighs)
-        {
-            float angle = Vector3.Angle(grid.tileCenters[sampleTile], grid.tileCenters[n]) * Mathf.Deg2Rad;
-            totalArc += grid.Radius * angle;
-        }
-        float averageArc = totalArc / neighs.Count;
-        return averageArc;
+        // Angle between centers in radians
+        float angle = Vector3.Angle(c0, c1) * Mathf.Deg2Rad;
+        // Arc length between centers (true distance on sphere)
+        float arcLength = grid.Radius * angle;
+        return arcLength;
     }
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
         GameObject parent = new GameObject("TilePrefabs");
         parent.transform.SetParent(this.transform, false);
-
-        float expectedRadius = GetExpectedTileRadius(grid) * tileRadiusMultiplier;
 
         for (int i = 0; i < grid.TileCount; i++)
         {
@@ -1515,7 +1524,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             Vector3 pos = grid.tileCenters[i].normalized * (grid.Radius + td.elevation);
             pos = transform.TransformPoint(pos);
-            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform, expectedRadius);
+            GameObject tileGO = InstantiateTilePrefab(td, pos, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
