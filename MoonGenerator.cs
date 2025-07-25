@@ -632,24 +632,18 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     }
 
     // Single tile instantiation method that handles all cases
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Transform parent)
     {
         
         // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileData);
         if (prefab == null) return null;
 
-        // Instantiate with correct position, rotation and parent
-        GameObject go = Instantiate(prefab, position, rotation, parent);
-
-        // Scale the prefab to match the tile size
-        float prefabRadius = GetPrefabBoundingRadius(go);
-        float correctRadius = GetExpectedTileRadius(grid);
-        if (prefabRadius > 0f && correctRadius > 0f)
-        {
-            float scaleFactor = correctRadius / prefabRadius;
-            go.transform.localScale = Vector3.one * scaleFactor;
-        }
+        // Instantiate as child of parent
+        GameObject go = Instantiate(prefab, parent);
+        go.transform.localScale = Vector3.one;
+        go.transform.position = position;
+        go.transform.up = position.normalized;
 
         return go;
     }
@@ -695,16 +689,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            // Center is the average of corners
-            Vector3 worldCenter = Vector3.zero;
-            foreach (var wc in worldCorners)
-                worldCenter += wc;
-            worldCenter /= worldCorners.Length;
+            Vector3 worldCenter = transform.TransformPoint(grid.tileCenters[i]);
 
-            Vector3 normal = (worldCenter - transform.position).normalized;
-            Quaternion faceUp = Quaternion.FromToRotation(Vector3.up, normal);
-
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, faceUp, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
