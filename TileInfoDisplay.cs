@@ -24,10 +24,6 @@ public class TileInfoDisplay : MonoBehaviour
     [Tooltip("Prefab for a ring / disc that marks the hovered tile.")]
     public GameObject highlightMarkerPrefab;
 
-    [Header("Interaction Settings")]
-    [Tooltip("Layer mask for raycasting to find tiles. Should include 'Tiles' and exclude 'Atmosphere'.")]
-    public LayerMask tileLayerMask;
-
     // ─────────────────────────────────────────────────────────────
     // Private fields
     // ─────────────────────────────────────────────────────────────
@@ -35,7 +31,6 @@ public class TileInfoDisplay : MonoBehaviour
     GameObject highlightMarker;     // ring / disc instance
     readonly StringBuilder sb = new StringBuilder();
     bool isReady = false;           // stays false until map is finished
-    private int lastHoveredTileIndex = -1; // Track the last hovered tile to prevent constant updates
 
     // ─────────────────────────────────────────────────────────────
     // Unity - Awake
@@ -95,8 +90,8 @@ public class TileInfoDisplay : MonoBehaviour
         if (TileDataHelper.Instance != null && Camera.main != null)
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            // Raycast to find a tile, using the specified layer mask
-            if (Physics.Raycast(ray, out var hit, 2000f, tileLayerMask)) // Increased distance and using layer mask
+            // Raycast to find a tile
+            if (Physics.Raycast(ray, out var hit, 2000f)) // Increased distance for safety
             {
                 // Check if the hit object is a tile by looking for TileIndexHolder
                 var tileIndexHolder = hit.collider.GetComponent<TileIndexHolder>();
@@ -104,45 +99,31 @@ public class TileInfoDisplay : MonoBehaviour
                 {
                     hovering = true;
                     int tileIndex = tileIndexHolder.tileIndex;
+                    
+                    // Use the modern TileDataHelper to get unified tile data
+                    var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
 
-                    // --- Optimization: Only update if the tile index has changed ---
-                    if (tileIndex != lastHoveredTileIndex)
+                    if (tileData != null)
                     {
-                        lastHoveredTileIndex = tileIndex; // Update the last hovered index
+                        // Position the highlight marker directly on the surface point hit by the raycast
+                        highlightMarker.transform.position = hit.point;
+                        // Align the marker with the surface normal for correct orientation on the sphere
+                        highlightMarker.transform.up = hit.normal;
+                        highlightMarker.SetActive(true);
 
-                        // Use the modern TileDataHelper to get unified tile data
-                        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
+                        // Build the info string using the modern HexTileData structure
+                        sb.Clear();
+                        string bodyName = isMoonTile ? "Moon" : "Planet";
+                        string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
+                        
+                        sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
+                        sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
+                        sb.AppendLine($"  Food: {tileData.food}   Prod: {tileData.production}");
+                        sb.AppendLine($"  Gold: {tileData.gold}   Sci: {tileData.science}");
+                        sb.AppendLine($"  Culture: {tileData.culture}");
+                        sb.AppendLine($"  <i><color=#888888>{bodyName} Tile #{tileIndex}</color></i>");
 
-                        if (tileData != null)
-                        {
-                            // Position the highlight marker directly on the surface point hit by the raycast
-                            highlightMarker.transform.position = hit.point;
-                            // Align the marker with the surface normal for correct orientation on the sphere
-                            highlightMarker.transform.up = hit.normal;
-                            highlightMarker.SetActive(true);
-
-                            // Build the info string using the modern HexTileData structure
-                            sb.Clear();
-                            string bodyName = isMoonTile ? "Moon" : "Planet";
-                            string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
-                            
-                            sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
-                            sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
-                            sb.AppendLine($"  Food: {tileData.food}   Prod: {tileData.production}");
-                            sb.AppendLine($"  Gold: {tileData.gold}   Sci: {tileData.science}");
-                            sb.AppendLine($"  Culture: {tileData.culture}");
-                            sb.AppendLine($"  <i><color=#888888>{bodyName} Tile #{tileIndex}</color></i>");
-
-                            infoText.text = sb.ToString();
-                        }
-                    }
-                    else
-                    {
-                        // It's the same tile, just make sure the marker is active
-                        if (!highlightMarker.activeSelf)
-                        {
-                            highlightMarker.SetActive(true);
-                        }
+                        infoText.text = sb.ToString();
                     }
                 }
             }
@@ -151,12 +132,8 @@ public class TileInfoDisplay : MonoBehaviour
         // If not hovering over any tile, hide the marker and clear the text
         if (!hovering)
         {
-            if (lastHoveredTileIndex != -1)
-            {
-                lastHoveredTileIndex = -1; // Reset the index
-                highlightMarker.SetActive(false);
-                ClearDisplay();
-            }
+            highlightMarker.SetActive(false);
+            ClearDisplay();
         }
     }
 

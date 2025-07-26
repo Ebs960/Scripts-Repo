@@ -1579,8 +1579,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return null;
     }
 
-    // Single tile instantiation method that handles all cases
-    // Using hard-coded scale (0.3) for all tiles
     
     private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Quaternion rotation, Transform parent)
     {
@@ -1607,14 +1605,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             elevatedPosition = position + normal * elevation * elevationScale;
         }
 
-        // --- Correct Tile Rotation ---
-        // The normal points outwards from the sphere's center. This is our "up" direction.
-        // We reverse it to correct the tile orientation.
-        Quaternion correctRotation = Quaternion.LookRotation(position.normalized) * Quaternion.Euler(90, 0, 0);
-
-
         // Instantiate with correct position (including elevation), rotation and parent
-        GameObject go = Instantiate(prefab, elevatedPosition, correctRotation, parent);
+        GameObject go = Instantiate(prefab, elevatedPosition, rotation, parent);
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
@@ -1827,10 +1819,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private float _cachedExpectedDistance = 0f;
 
-    // We're now using hard-coded scale (0.3) for all tiles
-    // No need for dynamic radius calculation or bounding radius methods
-
-    // Single overload taking explicit rotation
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {

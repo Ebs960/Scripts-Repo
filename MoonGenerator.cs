@@ -141,8 +141,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
-        // No need for dynamic tile sizing - we're using fixed scale 0.3
-
         // Build biome lookup tables if biome settings were provided via inspector
         if (biomeSettings != null)
         {
@@ -757,7 +755,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         const float pentagonScale = 0.157f; // Fixed pentagon scale (matching PlanetGenerator)
         float baseScale = isPentagon ? pentagonScale : hexagonScale;
         
-        go.transform.localScale = new Vector3(baseScale, baseScale, baseScale);
+        // Apply tileRadiusMultiplier (matching PlanetGenerator)
+        float finalScale = baseScale * tileRadiusMultiplier;
+        
+        go.transform.localScale = new Vector3(finalScale, finalScale, finalScale);
 
         // Apply mesh deformation to fill gaps
         StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon));
@@ -963,9 +964,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     private float _cachedExpectedDistance = 0f;
 
-
-    // All tile sizing is now hard-coded to 0.3 so we don't need these methods anymore
-    // No need for dynamic tile sizing calculations
 
     private System.Collections.IEnumerator SpawnAllTilePrefabs(int batchSize = 100)
     {
