@@ -82,50 +82,59 @@ public class TileInfoDisplay : MonoBehaviour
     // ─────────────────────────────────────────────────────────────
     void Update()
     {
-        if (!isReady) return;       // ← nothing runs until map is ready
+        if (!isReady) return;
 
         bool hovering = false;
 
-        // Ray-cast against the planet collider
-        if (GameManager.Instance?.planetGenerator != null && Camera.main != null)
+        // Use TileDataHelper which is aware of both Planet and Moon generators
+        if (TileDataHelper.Instance != null && Camera.main != null)
         {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out var hit, 1000f) && hit.collider &&
-                hit.collider.GetComponent<TileIndexHolder>())
+            // Raycast to find a tile
+            if (Physics.Raycast(ray, out var hit, 2000f)) // Increased distance for safety
             {
-                hovering = true;
-                var tile = GameManager.Instance.GetHexTileAtWorldPoint(hit.point);
-                if (tile != null)
+                // Check if the hit object is a tile by looking for TileIndexHolder
+                var tileIndexHolder = hit.collider.GetComponent<TileIndexHolder>();
+                if (tileIndexHolder != null)
                 {
-                    // move highlight ring
-                    Transform planetTransform = GameManager.Instance.planetGenerator.transform;
-                    Vector3 planetCenter = planetTransform.position;
-                    float distanceToSurface = Vector3.Distance(hit.point, planetCenter);
+                    hovering = true;
+                    int tileIndex = tileIndexHolder.tileIndex;
+                    
+                    // Use the modern TileDataHelper to get unified tile data
+                    var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
 
-                    highlightMarker.transform.position = planetCenter + tile.centerUnitVector * distanceToSurface;
-                    highlightMarker.transform.up = tile.centerUnitVector;
-                    highlightMarker.SetActive(true);
-
-                    // update info
-                    sb.Clear();
-                    int tileIndex = -1;
-                    if (hit.collider != null)
+                    if (tileData != null)
                     {
-                        var tih = hit.collider.GetComponent<TileIndexHolder>();
-                        if (tih != null) tileIndex = tih.tileIndex;
+                        // Position the highlight marker directly on the surface point hit by the raycast
+                        highlightMarker.transform.position = hit.point;
+                        // Align the marker with the surface normal for correct orientation on the sphere
+                        highlightMarker.transform.up = hit.normal;
+                        highlightMarker.SetActive(true);
+
+                        // Build the info string using the modern HexTileData structure
+                        sb.Clear();
+                        string bodyName = isMoonTile ? "Moon" : "Planet";
+                        string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
+                        
+                        sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
+                        sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
+                        sb.AppendLine($"  Food: {tileData.food}   Prod: {tileData.production}");
+                        sb.AppendLine($"  Gold: {tileData.gold}   Sci: {tileData.science}");
+                        sb.AppendLine($"  Culture: {tileData.culture}");
+                        sb.AppendLine($"  <i><color=#888888>{bodyName} Tile #{tileIndex}</color></i>");
+
+                        infoText.text = sb.ToString();
                     }
-                    string indexStr = tileIndex >= 0 ? $"Index: {tileIndex}" : "";
-                    string biomeName = System.Enum.GetName(typeof(Biome), tile.biomeIndex) ?? $"Biome {tile.biomeIndex}";
-                    sb.AppendLine($"  Biome: {biomeName}   Height: {tile.height:F2}");
-                    sb.AppendLine($"  Food: {tile.food}   Prod: {tile.production}");
-                    sb.AppendLine($"  Gold: {tile.gold}   Sci: {tile.science}");
-                    sb.AppendLine($"  Culture: {tile.culture}");
-                    infoText.text = sb.ToString();
                 }
             }
         }
 
-        if (!hovering) highlightMarker.SetActive(false);
+        // If not hovering over any tile, hide the marker and clear the text
+        if (!hovering)
+        {
+            highlightMarker.SetActive(false);
+            ClearDisplay();
+        }
     }
 
     void ClearDisplay() => infoText.text = "";

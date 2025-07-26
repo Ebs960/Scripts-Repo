@@ -82,6 +82,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Elevation for coast tiles.")]
     public float coastElevation = 0.1f;
     
+    [Range(0f, 0.5f)]
+    [Tooltip("Additional elevation boost for hill tiles (added to their base elevation).")]
+    public float hillElevationBoost = 0.05f;
+    
     [Range(0f, 2f)] // Allow slightly higher max potential if needed
     [Tooltip("The absolute maximum elevation any tile can reach (after noise).")]
     public float maxTotalElevation = 0.3f;
@@ -1591,9 +1595,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Vector3 elevatedPosition = position;
         if (tileElevation.TryGetValue(tileIndex, out float elevation))
         {
-            // Move the tile along its normal direction by the elevation amount
+            // Add hill elevation boost if this is a hill tile
+            if (tileData.isHill)
+            {
+                elevation += hillElevationBoost;
+            }
+            
+            // Move the tile along its normal direction by the elevation amount (proportional to sphere radius)
             Vector3 normal = position.normalized;
-            elevatedPosition = position + normal * elevation * 50f; // Scale factor for visible elevation difference
+            float elevationScale = radius * 0.1f; // 10% of sphere radius as max elevation range
+            elevatedPosition = position + normal * elevation * elevationScale;
         }
 
         // Instantiate with correct position (including elevation), rotation and parent
