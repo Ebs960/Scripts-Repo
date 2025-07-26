@@ -282,6 +282,105 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
             StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+
+        // Normalize tile distances for uniform spacing (after everything else is done)
+        StartCoroutine(NormalizeTileDistances());
+    }
+
+    /// <summary>
+    /// Normalizes distances between neighboring tile centers using Lloyd's relaxation algorithm.
+    /// This creates uniform spacing between tiles with minimal sphere deformation.
+    /// </summary>
+    private System.Collections.IEnumerator NormalizeTileDistances()
+    {
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.95f);
+            loadingPanelController.SetStatus("Normalizing moon tile spacing...");
+        }
+        
+        const int maxIterations = 5; // Number of relaxation iterations
+        const float relaxationFactor = 0.1f; // How much to move each iteration (0.1 = 10%)
+        
+        // Calculate target distance (average of all neighbor distances)
+        float totalDistance = 0f;
+        int distanceCount = 0;
+        
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            Vector3 tileCenter = grid.tileCenters[i];
+            foreach (int neighborIndex in grid.neighbors[i])
+            {
+                float distance = Vector3.Distance(tileCenter, grid.tileCenters[neighborIndex]);
+                totalDistance += distance;
+                distanceCount++;
+            }
+        }
+        
+        float targetDistance = totalDistance / distanceCount;
+        Debug.Log($"Target moon tile distance: {targetDistance:F4}");
+        
+        // Perform relaxation iterations
+        for (int iteration = 0; iteration < maxIterations; iteration++)
+        {
+            Vector3[] newPositions = new Vector3[grid.TileCount];
+            
+            // Copy current positions
+            for (int i = 0; i < grid.TileCount; i++)
+            {
+                newPositions[i] = grid.tileCenters[i];
+            }
+            
+            // Calculate new positions based on target distances
+            for (int i = 0; i < grid.TileCount; i++)
+            {
+                Vector3 currentPos = grid.tileCenters[i];
+                Vector3 adjustment = Vector3.zero;
+                int neighborCount = 0;
+                
+                foreach (int neighborIndex in grid.neighbors[i])
+                {
+                    Vector3 neighborPos = grid.tileCenters[neighborIndex];
+                    Vector3 direction = (neighborPos - currentPos).normalized;
+                    float currentDistance = Vector3.Distance(currentPos, neighborPos);
+                    
+                    if (currentDistance > 0.001f) // Avoid division by zero
+                    {
+                        float distanceError = targetDistance - currentDistance;
+                        adjustment += direction * distanceError * 0.5f; // Move half the error distance
+                        neighborCount++;
+                    }
+                }
+                
+                if (neighborCount > 0)
+                {
+                    adjustment /= neighborCount; // Average adjustment
+                    newPositions[i] = currentPos + adjustment * relaxationFactor;
+                    
+                    // Project back onto sphere to maintain spherical shape (with slight deformation allowed)
+                    float originalRadius = currentPos.magnitude;
+                    newPositions[i] = newPositions[i].normalized * originalRadius;
+                }
+            }
+            
+            // Apply new positions
+            for (int i = 0; i < grid.TileCount; i++)
+            {
+                grid.tileCenters[i] = newPositions[i];
+            }
+            
+            // Update progress
+            if (loadingPanelController != null)
+            {
+                float progress = 0.95f + (float)(iteration + 1) / maxIterations * 0.05f;
+                loadingPanelController.SetProgress(progress);
+                loadingPanelController.SetStatus($"Normalizing moon tile spacing... ({iteration + 1}/{maxIterations})");
+            }
+            
+            yield return null; // Allow frame to render
+        }
+        
+        Debug.Log("Moon tile distance normalization complete.");
     }
 
     /// <summary>
@@ -656,8 +755,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         GameObject go = Instantiate(prefab, position, rotation, parent);
 
         // Different scale factors for hexagons and pentagons
-        const float hexagonScale = 0.042f;
-        const float pentagonScale = 0.157f; // Special scale for pentagons
+        const float hexagonScale = 0.0345f;
+        const float pentagonScale = 0.145f; // Special scale for pentagons
         float hardCodedScale = isPentagon ? pentagonScale : hexagonScale;
         
         go.transform.localScale = new Vector3(hardCodedScale, hardCodedScale, hardCodedScale);
