@@ -151,18 +151,31 @@ public class TileDataHelper : MonoBehaviour
     {
         var (tileData, isMoon) = GetTileData(tileIndex);
 
-
         if (isMoon && moon != null)
         {
             var tileDir = moon.Grid.tileCenters[tileIndex].normalized;
             float radius = moon.Grid.Radius;
-            return moon.transform.TransformPoint(tileDir * (radius + unitOffset));
+            
+            // Get elevation from moon's tile elevation data
+            float elevation = moon.GetTileElevation(tileIndex);
+            float elevationScale = radius * 0.1f; // Same scale as used in generation
+            
+            return moon.transform.TransformPoint(tileDir * (radius + elevation * elevationScale + unitOffset));
         }
         else if (planet != null)
         {
             var tileDir = planet.Grid.tileCenters[tileIndex].normalized;
             float radius = planet.Grid.Radius;
-            return planet.transform.TransformPoint(tileDir * (radius + unitOffset));
+            
+            // Get elevation from planet's tile elevation data
+            float elevation = planet.GetTileElevation(tileIndex);
+            if (tileData != null && tileData.isHill)
+            {
+                elevation += planet.hillElevationBoost; // Add hill boost if it's a hill tile
+            }
+            float elevationScale = radius * 0.1f; // Same scale as used in generation
+            
+            return planet.transform.TransformPoint(tileDir * (radius + elevation * elevationScale + unitOffset));
         }
 
         // Fallback to default center if no generator references exist

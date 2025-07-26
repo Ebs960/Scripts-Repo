@@ -122,11 +122,11 @@ public class TileInfoDisplay : MonoBehaviour
 
                         if (tileData != null)
                         {
-                            // Position the highlight marker at the tile center instead of hit point
-                            Vector3 tileCenter = TileDataHelper.Instance.GetTileCenter(currentTileIndex);
-                            highlightMarker.transform.position = tileCenter;
+                            // Position the highlight marker at the elevated tile surface, not the base center
+                            Vector3 tileSurfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(currentTileIndex, 0.1f); // 0.1f offset to sit slightly above surface
+                            highlightMarker.transform.position = tileSurfacePosition;
                             // Align the marker with the radial direction from planet center
-                            highlightMarker.transform.up = tileCenter.normalized;
+                            highlightMarker.transform.up = tileSurfacePosition.normalized;
                             highlightMarker.SetActive(true);
 
                             // Build the info string using the modern HexTileData structure
