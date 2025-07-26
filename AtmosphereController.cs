@@ -8,7 +8,7 @@ public class AtmosphereController : MonoBehaviour
     public PlanetGenerator planetGenerator;
 
     [Header("Atmosphere Settings")]
-    [Range(0.01f, 0.2f)]
+    [Range(0.01f, 1.0f)]
     [Tooltip("Thickness of atmosphere relative to planet radius")]
     public float atmosphereThickness = 0.05f;
 
@@ -27,6 +27,10 @@ public class AtmosphereController : MonoBehaviour
         // Ensure we have a material
         if (atmosphereMaterial != null)
             meshRenderer.material = atmosphereMaterial;
+        
+        // Assign to the "Atmosphere" layer so raycasts can ignore it.
+        // Note: You must create the "Atmosphere" layer in Project Settings -> Tags and Layers.
+        gameObject.layer = LayerMask.NameToLayer("Atmosphere");
     }
 
     void Start()

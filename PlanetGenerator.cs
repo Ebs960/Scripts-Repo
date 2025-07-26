@@ -1607,8 +1607,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             elevatedPosition = position + normal * elevation * elevationScale;
         }
 
+        // --- Correct Tile Rotation ---
+        // The normal points outwards from the sphere's center. This is our "up" direction.
+        // We reverse it to correct the tile orientation.
+        Quaternion correctRotation = Quaternion.LookRotation(position.normalized) * Quaternion.Euler(90, 0, 0);
+
+
         // Instantiate with correct position (including elevation), rotation and parent
-        GameObject go = Instantiate(prefab, elevatedPosition, rotation, parent);
+        GameObject go = Instantiate(prefab, elevatedPosition, correctRotation, parent);
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
