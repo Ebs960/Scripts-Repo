@@ -1578,18 +1578,26 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // Single tile instantiation method that handles all cases
     // Using hard-coded scale (0.3) for all tiles
     
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Quaternion rotation, Transform parent)
     {
         // Get the appropriate prefab
-        int tileIndex = Tiles.IndexOf(tileData);
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
         // Determine if tile is a pentagon
-        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+        bool isPentagon = grid.neighbors != null && tileIndex >= 0 && tileIndex < grid.neighbors.Length && grid.neighbors[tileIndex].Count == 5;
 
-        // Instantiate with correct position, rotation and parent
-        GameObject go = Instantiate(prefab, position, rotation, parent);
+        // Apply elevation to position - move the tile up/down based on its elevation
+        Vector3 elevatedPosition = position;
+        if (tileElevation.TryGetValue(tileIndex, out float elevation))
+        {
+            // Move the tile along its normal direction by the elevation amount
+            Vector3 normal = position.normalized;
+            elevatedPosition = position + normal * elevation * 50f; // Scale factor for visible elevation difference
+        }
+
+        // Instantiate with correct position (including elevation), rotation and parent
+        GameObject go = Instantiate(prefab, elevatedPosition, rotation, parent);
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
@@ -1612,10 +1620,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Wait a frame to ensure all tiles are instantiated first
         yield return new WaitForEndOfFrame();
 
+        // Look for MeshFilter in the tile object or its children
         MeshFilter meshFilter = tileObject.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+        {
+            meshFilter = tileObject.GetComponentInChildren<MeshFilter>();
+        }
+        
         if (meshFilter == null || meshFilter.mesh == null)
         {
-            Debug.LogWarning($"Tile {tileIndex} has no MeshFilter or mesh for deformation");
+            Debug.LogWarning($"Planet tile {tileIndex} has no MeshFilter or mesh for deformation (checked parent and children)");
             yield break;
         }
 
@@ -1851,7 +1865,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, rotation, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();

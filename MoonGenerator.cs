@@ -740,15 +740,14 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     // Single tile instantiation method that handles all cases with mesh deformation
     
-    private GameObject InstantiateTilePrefab(HexTileData tileData, Vector3 position, Quaternion rotation, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Quaternion rotation, Transform parent)
     {
         // Get the appropriate prefab
-        int tileIndex = Tiles.IndexOf(tileData);
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
         if (prefab == null) return null;
 
         // Determine if tile is a pentagon
-        bool isPentagon = grid.neighbors != null && grid.neighbors[tileIndex].Count == 5;
+        bool isPentagon = grid.neighbors != null && tileIndex >= 0 && tileIndex < grid.neighbors.Length && grid.neighbors[tileIndex].Count == 5;
         
         // Instantiate with correct position, rotation and parent
         GameObject go = Instantiate(prefab, position, rotation, parent);
@@ -774,10 +773,16 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Wait a frame to ensure all tiles are instantiated first
         yield return new WaitForEndOfFrame();
 
+        // Look for MeshFilter in the tile object or its children
         MeshFilter meshFilter = tileObject.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+        {
+            meshFilter = tileObject.GetComponentInChildren<MeshFilter>();
+        }
+        
         if (meshFilter == null || meshFilter.mesh == null)
         {
-            Debug.LogWarning($"Moon tile {tileIndex} has no MeshFilter or mesh for deformation");
+            Debug.LogWarning($"Moon tile {tileIndex} has no MeshFilter or mesh for deformation (checked parent and children)");
             yield break;
         }
 
@@ -1012,7 +1017,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            GameObject tileGO = InstantiateTilePrefab(td, worldCenter, rotation, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, rotation, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
