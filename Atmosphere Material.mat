@@ -88,8 +88,8 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
-    - _AlphaEdge: 0.218
-    - _AlphaMid: 0.366
+    - _AlphaEdge: 0.601
+    - _AlphaMid: 0.643
     - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1

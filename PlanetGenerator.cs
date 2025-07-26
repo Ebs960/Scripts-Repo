@@ -1741,17 +1741,42 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 // If we found a good corner alignment, blend toward it
                 if (bestAlignment > 0.5f) // 50% alignment threshold
                 {
-                    // Calculate target position by scaling from center toward corner direction
-                    Vector3 idealPosition = cornerCenter + bestCornerDirection * distanceFromCenter;
+                    // Instead of finding just one corner, blend influences from ALL nearby corners
+                    Vector3 totalInfluence = Vector3.zero;
+                    float totalWeight = 0f;
                     
-                    // Calculate movement vector
-                    Vector3 movementVector = idealPosition - originalVertex;
+                    foreach (var corner in localCorners)
+                    {
+                        Vector3 cornerDirection = (corner - cornerCenter).normalized;
+                        float alignment = Vector3.Dot(directionFromCenter, cornerDirection);
+                        
+                        // Consider all corners with reasonable alignment (not just the best one)
+                        if (alignment > 0.2f) // Lower threshold to include more corners
+                        {
+                            // Calculate distance-based weight (closer corners have more influence)
+                            float distance = Vector3.Distance(originalVertex, corner);
+                            float weight = alignment / (1f + distance * 0.5f); // Combine alignment and proximity
+                            
+                            // Calculate the movement vector toward this corner
+                            Vector3 movementToCorner = corner - originalVertex;
+                            
+                            // Add weighted influence
+                            totalInfluence += movementToCorner * weight;
+                            totalWeight += weight;
+                        }
+                    }
                     
-                    // Constrain movement to tangent plane (no up/down movement)
-                    Vector3 tangentMovement = Vector3.ProjectOnPlane(movementVector, radialDirection);
-                    
-                    // Apply gentle blending with the blend factor
-                    targetPosition = originalVertex + tangentMovement * meshVertexBlendFactor; // Reduced strength to prevent pinching
+                    // Apply the combined influence from all corners
+                    if (totalWeight > 0f)
+                    {
+                        Vector3 averageMovement = totalInfluence / totalWeight;
+                        
+                        // Constrain movement to tangent plane (no up/down movement)
+                        Vector3 tangentMovement = Vector3.ProjectOnPlane(averageMovement, radialDirection);
+                        
+                        // Apply blending - this now represents influence from multiple corners
+                        targetPosition = originalVertex + tangentMovement * meshVertexBlendFactor;
+                    }
                 }
             }
             
