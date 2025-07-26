@@ -8,7 +8,7 @@ public class AtmosphereController : MonoBehaviour
     public PlanetGenerator planetGenerator;
 
     [Header("Atmosphere Settings")]
-    [Range(0.01f, 1f)]
+    [Range(0.01f, 0.2f)]
     [Tooltip("Thickness of atmosphere relative to planet radius")]
     public float atmosphereThickness = 0.05f;
 
@@ -74,7 +74,11 @@ public class AtmosphereController : MonoBehaviour
         );
 
         meshFilter.mesh = atmosphereMesh;
-        Debug.Log($"Generated atmosphere mesh with {atmosphereMesh.vertexCount} vertices, thickness: {atmosphereThickness}");
+        
+        // Assign the atmosphere layer to this GameObject
+        gameObject.layer = LayerMask.NameToLayer("Atmosphere");
+        
+        Debug.Log($"Generated atmosphere mesh with {atmosphereMesh.vertexCount} vertices, thickness: {atmosphereThickness}, assigned to Atmosphere layer");
     }
 
     // Call this if planet properties change
@@ -83,6 +87,9 @@ public class AtmosphereController : MonoBehaviour
         if (planetGenerator != null && meshFilter != null)
         {
             GenerateAtmosphereMesh();
+            
+            // Ensure the atmosphere layer is set
+            gameObject.layer = LayerMask.NameToLayer("Atmosphere");
             
             // Update material properties
             if (atmosphereMaterial != null)

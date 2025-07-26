@@ -122,10 +122,11 @@ public class TileInfoDisplay : MonoBehaviour
 
                         if (tileData != null)
                         {
-                            // Position the highlight marker directly on the surface point hit by the raycast
-                            highlightMarker.transform.position = hit.point;
-                            // Align the marker with the surface normal for correct orientation on the sphere
-                            highlightMarker.transform.up = hit.normal;
+                            // Position the highlight marker at the tile center instead of hit point
+                            Vector3 tileCenter = TileDataHelper.Instance.GetTileCenter(currentTileIndex);
+                            highlightMarker.transform.position = tileCenter;
+                            // Align the marker with the radial direction from planet center
+                            highlightMarker.transform.up = tileCenter.normalized;
                             highlightMarker.SetActive(true);
 
                             // Build the info string using the modern HexTileData structure
@@ -154,14 +155,8 @@ public class TileInfoDisplay : MonoBehaviour
             }
         }
 
-        // If not hovering over any tile, hide the marker and clear the text
-        if (!hovering && wasHoveringLastFrame)
-        {
-            highlightMarker.SetActive(false);
-            ClearDisplay();
-            lastHoveredTileIndex = -1;
-        }
-        
+        // Always keep the display active once we've hovered over a tile
+        // Don't hide the marker or clear text - just keep showing the last hovered tile
         wasHoveringLastFrame = hovering;
     }
 

@@ -149,6 +149,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Multiplier to fine-tune tile prefab scaling for perfect fit (1.0 = auto, <1 = tighter, >1 = looser)")]
     public float tileRadiusMultiplier = 1.0f;
 
+    [Range(0.0f, 2.0f)]
+    [Tooltip("How strongly to blend mesh vertices toward tile corners for better alignment (0 = no blending, 1 = full blending, >1 = stronger pull)")]
+    public float meshVertexBlendFactor = 1.0f;
+
     public List<BiomeSettings> biomeSettings = new();
 
     public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
@@ -1580,7 +1584,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
 
     
-    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Transform parent, Vector3[] worldCorners = null, Quaternion? targetRotation = null)
     {
         // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
@@ -1589,46 +1593,41 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Determine if tile is a pentagon
         bool isPentagon = grid.neighbors != null && tileIndex >= 0 && tileIndex < grid.neighbors.Length && grid.neighbors[tileIndex].Count == 5;
 
-        // Apply elevation to position - move the tile up/down based on its elevation
-        Vector3 elevatedPosition = position;
-        if (tileElevation.TryGetValue(tileIndex, out float elevation))
+        // Instantiate with correct position. The 'position' passed in is already elevated.
+        GameObject go = Instantiate(prefab, position, Quaternion.identity, parent);
+
+        // Apply rotation - use the provided target rotation if available, otherwise default to radial orientation
+        if (targetRotation.HasValue)
         {
-            // Add hill elevation boost if this is a hill tile
-            if (tileData.isHill)
-            {
-                elevation += hillElevationBoost;
-            }
-            
-            // Move the tile along its normal direction by the elevation amount (proportional to sphere radius)
-            Vector3 normal = position.normalized;
-            float elevationScale = radius * 0.1f; // 10% of sphere radius as max elevation range
-            elevatedPosition = position + normal * elevation * elevationScale;
+            // Use the exact same rotation as the LineRenderer for perfect alignment
+            go.transform.rotation = targetRotation.Value;
         }
-
-        // Instantiate with correct position (including elevation)
-        GameObject go = Instantiate(prefab, elevatedPosition, Quaternion.identity, parent);
-
-        // Orient so the tile's up points away from the planet's center
-        Vector3 radial = (position - transform.position).normalized;
-        go.transform.up = radial;
+        else
+        {
+            // Fallback orientation. Tiles should be modeled with Y-axis as up.
+            Vector3 radial = (position - transform.position).normalized;
+            go.transform.up = radial;
+        }
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
         const float pentagonScale = 0.157f; // Fixed pentagon scale
         float baseScale = isPentagon ? pentagonScale : hexagonScale;
+        float finalScale = baseScale * tileRadiusMultiplier;
         
-        go.transform.localScale = new Vector3(baseScale, baseScale, baseScale);
+        go.transform.localScale = new Vector3(finalScale, finalScale, finalScale);
 
-        // Apply mesh deformation to fill gaps
-        StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon));
+        // Apply mesh deformation to fill gaps, passing world corners for precise alignment
+        StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon, worldCorners));
 
         return go;
     }
 
     /// <summary>
-    /// Deforms the tile's mesh vertices to stretch toward gaps and create seamless coverage
+    /// Deforms the tile's mesh vertices to stretch toward gaps and create seamless coverage.
+    /// Uses provided world corners for precise alignment if available.
     /// </summary>
-    private System.Collections.IEnumerator DeformTileMeshToFillGaps(GameObject tileObject, int tileIndex, bool isPentagon)
+    private System.Collections.IEnumerator DeformTileMeshToFillGaps(GameObject tileObject, int tileIndex, bool isPentagon, Vector3[] worldCorners = null)
     {
         // Wait a frame to ensure all tiles are instantiated first
         yield return new WaitForEndOfFrame();
@@ -1651,23 +1650,111 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Mesh deformedMesh = Instantiate(originalMesh);
         Vector3[] vertices = deformedMesh.vertices;
         
-        // Calculate gap information for this tile
-        var gapInfo = AnalyzeTileGaps(tileIndex);
-        
-        if (gapInfo.hasSignificantGaps)
+        // If world corners are provided, use them for precise vertex alignment
+        if (worldCorners != null && worldCorners.Length > 0)
         {
-            // Apply vertex deformation based on gap analysis
-            DeformVerticesForGaps(vertices, gapInfo, tileIndex, isPentagon);
+            // Align mesh vertices to match the exact corner positions from the grid
+            AlignMeshVertexesToCorners(vertices, worldCorners, tileObject.transform, tileIndex);
+        }
+        else
+        {
+            // Fallback to gap analysis deformation
+            var gapInfo = AnalyzeTileGaps(tileIndex);
             
-            // Update the mesh
-            deformedMesh.vertices = vertices;
-            deformedMesh.RecalculateNormals();
-            deformedMesh.RecalculateBounds();
+            if (gapInfo.hasSignificantGaps)
+            {
+                // Apply vertex deformation based on gap analysis
+                DeformVerticesForGaps(vertices, gapInfo, tileIndex, isPentagon);
+            }
+        }
+        
+        // Update the mesh
+        deformedMesh.vertices = vertices;
+        deformedMesh.RecalculateNormals();
+        deformedMesh.RecalculateBounds();
+        
+        // Apply the deformed mesh
+        meshFilter.mesh = deformedMesh;
+        
+        if (worldCorners != null)
+        {
+            Debug.Log($"Aligned tile {tileIndex} mesh vertices to {worldCorners.Length} precise corner positions");
+        }
+    }
+
+    /// <summary>
+    /// Aligns mesh vertices to precisely match the world corner positions from the grid.
+    /// This ensures perfect alignment between tile mesh and LineRenderer outlines.
+    /// </summary>
+    private void AlignMeshVertexesToCorners(Vector3[] vertices, Vector3[] worldCorners, Transform tileTransform, int tileIndex)
+    {
+        if (vertices.Length == 0 || worldCorners.Length == 0)
+            return;
+
+        // Convert world corners to tile's local space
+        Vector3[] localCorners = new Vector3[worldCorners.Length];
+        for (int i = 0; i < worldCorners.Length; i++)
+        {
+            localCorners[i] = tileTransform.InverseTransformPoint(worldCorners[i]);
+        }
+
+        // Calculate the center of the local corners (this should be the tile center)
+        Vector3 cornerCenter = Vector3.zero;
+        foreach (var corner in localCorners)
+            cornerCenter += corner;
+        cornerCenter /= localCorners.Length;
+
+        // Calculate radial direction in tile's local space (should be along Y-axis typically)
+        Vector3 tilePosition = tileTransform.position;
+        Vector3 planetPosition = transform.position;
+        Vector3 radialDirection = tileTransform.InverseTransformDirection((tilePosition - planetPosition).normalized);
+
+        // For each vertex, gently pull it toward the correct position without extreme pinching
+        for (int v = 0; v < vertices.Length; v++)
+        {
+            Vector3 originalVertex = vertices[v];
+            Vector3 directionFromCenter = (originalVertex - cornerCenter).normalized;
             
-            // Apply the deformed mesh
-            meshFilter.mesh = deformedMesh;
+            // Find the ideal position for this vertex based on the corner layout
+            Vector3 targetPosition = originalVertex;
             
-            Debug.Log($"Deformed tile {tileIndex} mesh to fill {gapInfo.gapDirections.Count} gaps");
+            // For vertices on the perimeter, blend toward the corner structure
+            float distanceFromCenter = Vector3.Distance(originalVertex, cornerCenter);
+            if (distanceFromCenter > 0.1f) // Only affect vertices away from center
+            {
+                // Find the closest corner direction
+                float bestAlignment = -1f;
+                Vector3 bestCornerDirection = Vector3.zero;
+                
+                foreach (var corner in localCorners)
+                {
+                    Vector3 cornerDirection = (corner - cornerCenter).normalized;
+                    float alignment = Vector3.Dot(directionFromCenter, cornerDirection);
+                    if (alignment > bestAlignment)
+                    {
+                        bestAlignment = alignment;
+                        bestCornerDirection = cornerDirection;
+                    }
+                }
+                
+                // If we found a good corner alignment, blend toward it
+                if (bestAlignment > 0.5f) // 50% alignment threshold
+                {
+                    // Calculate target position by scaling from center toward corner direction
+                    Vector3 idealPosition = cornerCenter + bestCornerDirection * distanceFromCenter;
+                    
+                    // Calculate movement vector
+                    Vector3 movementVector = idealPosition - originalVertex;
+                    
+                    // Constrain movement to tangent plane (no up/down movement)
+                    Vector3 tangentMovement = Vector3.ProjectOnPlane(movementVector, radialDirection);
+                    
+                    // Apply gentle blending with the blend factor
+                    targetPosition = originalVertex + tangentMovement * meshVertexBlendFactor; // Reduced strength to prevent pinching
+                }
+            }
+            
+            vertices[v] = targetPosition;
         }
     }
 
@@ -1832,34 +1919,52 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int tileCount = grid.TileCount;
         for (int i = 0; i < tileCount; i++)
         {
-            // Draw outline with LineRenderer using world-space corners
-            int[] cornerIndices = grid.GetCornersOfTile(i);
-            var localCorners = grid.CornerVertices;
-            Vector3[] worldCorners = new Vector3[cornerIndices.Length];
-            for (int j = 0; j < cornerIndices.Length; j++)
-                worldCorners[j] = transform.TransformPoint(localCorners[cornerIndices[j]]);
+            if (!data.TryGetValue(i, out var td))
+                continue;
 
-            // Calculate center and orientation ONCE for both line mesh and prefab
+            // Get world-space corners using grid's consistent corner ordering
+            Vector3[] worldCorners = grid.GetTileWorldCorners(i, transform);
+            if (worldCorners.Length == 0)
+                continue;
+
+            // --- Elevation Calculation ---
+            float elevationValue = 0f;
+            if (tileElevation.TryGetValue(i, out float rawElevation))
+            {
+                elevationValue = rawElevation;
+                if (td.isHill)
+                {
+                    elevationValue += hillElevationBoost;
+                }
+            }
+            float elevationScale = radius * 0.1f; // 10% of sphere radius as max elevation range
+            Vector3 tileNormal = grid.tileCenters[i].normalized;
+            Vector3 elevationOffset = tileNormal * elevationValue * elevationScale;
+
+            // Apply elevation to corners and center
+            for (int j = 0; j < worldCorners.Length; j++)
+            {
+                worldCorners[j] += elevationOffset;
+            }
+            
+            // Calculate elevated center
             Vector3 worldCenter = Vector3.zero;
             foreach (var wc in worldCorners)
                 worldCenter += wc;
             worldCenter /= worldCorners.Length;
 
-            // Calculate hex normal (up) using the first three corners
+            // --- Orientation Calculation (using elevated corners) ---
             Vector3 edge1 = worldCorners[1] - worldCorners[0];
             Vector3 edge2 = worldCorners[2] - worldCorners[0];
             Vector3 hexNormal = Vector3.Cross(edge1, edge2).normalized;
 
-            // Forward: direction from center to first corner
             Vector3 forward = (worldCorners[0] - worldCenter).normalized;
-            // If forward is degenerate, use next edge
             if (forward == Vector3.zero && worldCorners.Length > 1)
                 forward = (worldCorners[1] - worldCenter).normalized;
 
-
             Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
 
-            // LineRenderer uses the calculated rotation for orientation
+            // --- LineRenderer (Optional Debugging) ---
             var lrObj = new GameObject($"HexOutline_{i}");
             var lr = lrObj.AddComponent<LineRenderer>();
             lr.positionCount = worldCorners.Length;
@@ -1871,11 +1976,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             lr.transform.position = worldCenter;
             lr.transform.rotation = rotation;
 
-            // Instantiate tile prefab at center using radial orientation
-            if (!data.TryGetValue(i, out var td))
-                continue;
-
-            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, parent.transform);
+            // --- Instantiate Tile Prefab ---
+            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, parent.transform, worldCorners, rotation);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();

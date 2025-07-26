@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Linq;
-using SpaceGraphicsToolkit;
 using System.Collections.Generic;
 
 /// <summary>
@@ -464,9 +463,13 @@ public class GameManager : MonoBehaviour
 
             if (moonGenerator != null)
             {
-                // Configure moon generator with the same subdivision as planet
-                GetMapSizeParams(mapSize, out int moonSubdivisions, out float planetRadius);
+                // Configure moon generator with reduced subdivisions proportional to size
+                GetMapSizeParams(mapSize, out int planetSubdivisions, out float planetRadius);
                 float moonRadius = planetRadius / 5f;
+                
+                // Scale moon subdivisions: since radius is 1/5th, reduce subdivisions by 2 levels
+                // This gives approximately 1/5th the tile count
+                int moonSubdivisions = Mathf.Max(3, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
 
                 // Assign loading panel controller if present
                 var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
@@ -480,8 +483,10 @@ public class GameManager : MonoBehaviour
                     moonGenerator.SetBiomeSettings(planetGenerator.biomeSettings);
                 }
                 
-                // Configure moon with correct radius and subdivisions
+                // Configure moon with correct radius and reduced subdivisions
                 moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
+                
+                Debug.Log($"[GameManager] Moon configured with subdivisions: {moonSubdivisions} (planet: {planetSubdivisions}), radius: {moonRadius:F1} (planet: {planetRadius:F1})");
                 
                 // No more hexasphereRenderer setup needed for moon
 

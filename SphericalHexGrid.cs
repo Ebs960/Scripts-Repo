@@ -252,4 +252,48 @@ public class SphericalHexGrid
         }
         return bestIdx;
     }
+
+    /// <summary>
+    /// Get the world-space corner positions for a tile in the correct ring order.
+    /// This ensures corner positions match between LineRenderer and tile prefab mesh.
+    /// </summary>
+    /// <param name="tileIndex">Index of the tile</param>
+    /// <param name="transform">Transform to convert from local to world space</param>
+    /// <returns>Array of world-space corner positions in ring order</returns>
+    public Vector3[] GetTileWorldCorners(int tileIndex, Transform transform)
+    {
+        if (tileIndex < 0 || tileIndex >= tileCorners.Length)
+            return new Vector3[0];
+
+        int[] cornerIndices = tileCorners[tileIndex].ToArray();
+        Vector3[] worldCorners = new Vector3[cornerIndices.Length];
+        
+        for (int i = 0; i < cornerIndices.Length; i++)
+        {
+            worldCorners[i] = transform.TransformPoint(CornerVertices[cornerIndices[i]]);
+        }
+        
+        return worldCorners;
+    }
+
+    /// <summary>
+    /// Get the local-space corner positions for a tile in the correct ring order.
+    /// </summary>
+    /// <param name="tileIndex">Index of the tile</param>
+    /// <returns>Array of local-space corner positions in ring order</returns>
+    public Vector3[] GetTileLocalCorners(int tileIndex)
+    {
+        if (tileIndex < 0 || tileIndex >= tileCorners.Length)
+            return new Vector3[0];
+
+        int[] cornerIndices = tileCorners[tileIndex].ToArray();
+        Vector3[] localCorners = new Vector3[cornerIndices.Length];
+        
+        for (int i = 0; i < cornerIndices.Length; i++)
+        {
+            localCorners[i] = CornerVertices[cornerIndices[i]];
+        }
+        
+        return localCorners;
+    }
 }

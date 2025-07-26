@@ -59,6 +59,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Multiplier to fine-tune tile prefab scaling for perfect fit (1.0 = auto, <1 = tighter, >1 = looser)")]
     public float tileRadiusMultiplier = 1.0f;
 
+    [Range(0.0f, 2.0f)]
+    [Tooltip("How strongly to blend mesh vertices toward tile corners for better alignment (0 = no blending, 1 = full blending, >1 = stronger pull)")]
+    public float meshVertexBlendFactor = 1.0f;
+
     [Header("Initialization")]
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
     public int initializationDelay = 1;
@@ -750,9 +754,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Instantiate with correct position
         GameObject go = Instantiate(prefab, position, Quaternion.identity, parent);
 
-        // Orient so the tile's up points away from the moon's center
+        // Orient so the tile's DOWN points away from the moon's center (up points toward center)
         Vector3 radial = (position - transform.position).normalized;
-        go.transform.up = radial;
+        go.transform.up = -radial; // Negative to flip the tile right-side up
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
@@ -924,11 +928,12 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             // Clamp total stretch to prevent extreme deformation
             totalStretch = Mathf.Clamp(totalStretch, 0f, maxStretchFactor);
             
-            // Apply the stretch
+            // Apply the stretch with blend factor control
             if (totalStretch > 0.01f) // Only apply significant stretches
             {
                 Vector3 stretchedVertex = originalVertex * (1f + totalStretch);
-                vertices[i] = stretchedVertex;
+                // Use meshVertexBlendFactor to control the strength of the deformation
+                vertices[i] = Vector3.Lerp(originalVertex, stretchedVertex, meshVertexBlendFactor);
             }
         }
     }
