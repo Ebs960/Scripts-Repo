@@ -1963,7 +1963,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (forward == Vector3.zero && worldCorners.Length > 1)
                 forward = (worldCorners[1] - worldCenter).normalized;
 
-            Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
+            Quaternion rotation = Quaternion.LookRotation(forward, -hexNormal);
 
             // --- LineRenderer (Optional Debugging) ---
             var lrObj = new GameObject($"HexOutline_{i}");
