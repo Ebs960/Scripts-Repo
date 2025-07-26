@@ -16,8 +16,8 @@ public class TileClickDetector : MonoBehaviour
     [Tooltip("Maximum raycast distance")]
     public float maxRaycastDistance = 1000f;
     
-    [Tooltip("Layer mask for planet collision")]
-    public LayerMask planetLayerMask = -1;
+    [Tooltip("Layer mask used for tile hover raycasts (exclude Atmosphere layer)")]
+    public LayerMask tileRaycastMask = -1;
     
     [Header("Visual Feedback")]
     public GameObject tileHighlightPrefab;
@@ -100,6 +100,7 @@ public class TileClickDetector : MonoBehaviour
                         currentHighlight.transform.position = worldPos;
 
                     currentHighlight.transform.up = hitInfo.tileTransform.up;
+                    currentHighlight.SetActive(true);
                 }
             }
         }
@@ -122,6 +123,19 @@ public class TileClickDetector : MonoBehaviour
                 lastHoverWasMoon = hitInfo.isMoon;
 
                 OnTileHovered?.Invoke(tileIndex, hitInfo.tileTransform.position, hitInfo.isMoon);
+
+                if (tileHighlightPrefab != null)
+                {
+                    Vector3 worldPos = hitInfo.tileTransform.position;
+
+                    if (currentHighlight == null)
+                        currentHighlight = Instantiate(tileHighlightPrefab, worldPos, Quaternion.identity);
+                    else
+                        currentHighlight.transform.position = worldPos;
+
+                    currentHighlight.transform.up = hitInfo.tileTransform.up;
+                    currentHighlight.SetActive(true);
+                }
             }
         }
         else
@@ -131,6 +145,9 @@ public class TileClickDetector : MonoBehaviour
                 lastHoveredTileIndex = -1;
                 lastHoverWasMoon = false;
                 OnTileExited?.Invoke();
+
+                if (currentHighlight != null)
+                    currentHighlight.SetActive(false);
             }
         }
     }
@@ -145,7 +162,7 @@ public class TileClickDetector : MonoBehaviour
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, planetLayerMask))
+        if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, tileRaycastMask))
         {
             TileIndexHolder holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
             if (holder != null)
