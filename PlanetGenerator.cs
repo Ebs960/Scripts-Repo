@@ -1580,7 +1580,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
 
     
-    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Quaternion rotation, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Transform parent)
     {
         // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
@@ -1605,8 +1605,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             elevatedPosition = position + normal * elevation * elevationScale;
         }
 
-        // Instantiate with correct position (including elevation), rotation and parent
-        GameObject go = Instantiate(prefab, elevatedPosition, rotation, parent);
+        // Instantiate with correct position (including elevation)
+        GameObject go = Instantiate(prefab, elevatedPosition, Quaternion.identity, parent);
+
+        // Orient so the tile's up points away from the planet's center
+        Vector3 radial = (position - transform.position).normalized;
+        go.transform.up = radial;
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
@@ -1852,6 +1856,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (forward == Vector3.zero && worldCorners.Length > 1)
                 forward = (worldCorners[1] - worldCenter).normalized;
 
+
             Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
 
             // LineRenderer uses the calculated rotation for orientation
@@ -1866,11 +1871,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             lr.transform.position = worldCenter;
             lr.transform.rotation = rotation;
 
-            // Instantiate tile prefab at center with EXACT same rotation as line mesh
+            // Instantiate tile prefab at center using radial orientation
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, rotation, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, parent.transform);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();
