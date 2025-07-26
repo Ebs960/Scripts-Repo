@@ -1593,13 +1593,208 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
-        const float pentagonScale = 145f; // Special scale for pentagons
-        float hardCodedScale = isPentagon ? pentagonScale : hexagonScale;
+        const float pentagonScale = 0.157f; // Fixed pentagon scale
+        float baseScale = isPentagon ? pentagonScale : hexagonScale;
         
-        go.transform.localScale = new Vector3(hardCodedScale, hardCodedScale, hardCodedScale);
+        go.transform.localScale = new Vector3(baseScale, baseScale, baseScale);
+
+        // Apply mesh deformation to fill gaps
+        StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon));
 
         return go;
     }
+
+    /// <summary>
+    /// Deforms the tile's mesh vertices to stretch toward gaps and create seamless coverage
+    /// </summary>
+    private System.Collections.IEnumerator DeformTileMeshToFillGaps(GameObject tileObject, int tileIndex, bool isPentagon)
+    {
+        // Wait a frame to ensure all tiles are instantiated first
+        yield return new WaitForEndOfFrame();
+
+        MeshFilter meshFilter = tileObject.GetComponent<MeshFilter>();
+        if (meshFilter == null || meshFilter.mesh == null)
+        {
+            Debug.LogWarning($"Tile {tileIndex} has no MeshFilter or mesh for deformation");
+            yield break;
+        }
+
+        // Get the current mesh and make it editable
+        Mesh originalMesh = meshFilter.mesh;
+        Mesh deformedMesh = Instantiate(originalMesh);
+        Vector3[] vertices = deformedMesh.vertices;
+        
+        // Calculate gap information for this tile
+        var gapInfo = AnalyzeTileGaps(tileIndex);
+        
+        if (gapInfo.hasSignificantGaps)
+        {
+            // Apply vertex deformation based on gap analysis
+            DeformVerticesForGaps(vertices, gapInfo, tileIndex, isPentagon);
+            
+            // Update the mesh
+            deformedMesh.vertices = vertices;
+            deformedMesh.RecalculateNormals();
+            deformedMesh.RecalculateBounds();
+            
+            // Apply the deformed mesh
+            meshFilter.mesh = deformedMesh;
+            
+            Debug.Log($"Deformed tile {tileIndex} mesh to fill {gapInfo.gapDirections.Count} gaps");
+        }
+    }
+
+    /// <summary>
+    /// Data structure for gap analysis results
+    /// </summary>
+    private struct TileGapInfo
+    {
+        public bool hasSignificantGaps;
+        public List<Vector3> gapDirections;     // Directions toward gaps (world space)
+        public List<float> gapMagnitudes;       // How severe each gap is (0-1)
+        public float averageGapSeverity;        // Overall gap severity
+        public Vector3 primaryGapDirection;     // Most significant gap direction
+    }
+
+    /// <summary>
+    /// Analyzes gaps around a tile by comparing expected vs actual neighbor distances
+    /// </summary>
+    private TileGapInfo AnalyzeTileGaps(int tileIndex)
+    {
+        var gapInfo = new TileGapInfo
+        {
+            gapDirections = new List<Vector3>(),
+            gapMagnitudes = new List<float>()
+        };
+
+        if (grid.neighbors == null || tileIndex < 0 || tileIndex >= grid.neighbors.Length)
+        {
+            return gapInfo;
+        }
+
+        Vector3 tileCenter = grid.tileCenters[tileIndex];
+        var neighbors = grid.neighbors[tileIndex];
+        
+        // Calculate expected distance (global average)
+        float expectedDistance = CalculateExpectedTileDistance();
+        
+        const float gapThreshold = 1.15f; // 15% larger than expected = gap
+        float totalGapSeverity = 0f;
+        Vector3 weightedGapDirection = Vector3.zero;
+
+        foreach (int neighborIndex in neighbors)
+        {
+            if (neighborIndex >= 0 && neighborIndex < grid.tileCenters.Length)
+            {
+                Vector3 neighborCenter = grid.tileCenters[neighborIndex];
+                Vector3 directionToNeighbor = (neighborCenter - tileCenter).normalized;
+                float actualDistance = Vector3.Distance(tileCenter, neighborCenter);
+                float gapRatio = actualDistance / expectedDistance;
+
+                if (gapRatio > gapThreshold)
+                {
+                    float gapSeverity = (gapRatio - 1.0f); // How much bigger than expected
+                    gapInfo.gapDirections.Add(directionToNeighbor);
+                    gapInfo.gapMagnitudes.Add(gapSeverity);
+                    
+                    totalGapSeverity += gapSeverity;
+                    weightedGapDirection += directionToNeighbor * gapSeverity;
+                }
+            }
+        }
+
+        gapInfo.hasSignificantGaps = gapInfo.gapDirections.Count > 0;
+        gapInfo.averageGapSeverity = gapInfo.gapDirections.Count > 0 ? totalGapSeverity / gapInfo.gapDirections.Count : 0f;
+        gapInfo.primaryGapDirection = weightedGapDirection.normalized;
+
+        return gapInfo;
+    }
+
+    /// <summary>
+    /// Deforms mesh vertices to stretch toward identified gaps
+    /// </summary>
+    private void DeformVerticesForGaps(Vector3[] vertices, TileGapInfo gapInfo, int tileIndex, bool isPentagon)
+    {
+        if (!gapInfo.hasSignificantGaps) return;
+
+        // Convert tile center to local space of the mesh
+        Vector3 tileCenter = Vector3.zero; // Mesh is centered at origin
+        
+        // Maximum stretch amount (as a fraction of original vertex distance from center)
+        const float maxStretchFactor = 0.4f; // 40% maximum stretch
+        
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            Vector3 originalVertex = vertices[i];
+            Vector3 vertexDirection = originalVertex.normalized;
+            float distanceFromCenter = originalVertex.magnitude;
+            
+            // Calculate how much to stretch this vertex based on nearby gaps
+            float totalStretch = 0f;
+            
+            for (int gapIndex = 0; gapIndex < gapInfo.gapDirections.Count; gapIndex++)
+            {
+                Vector3 gapDirection = gapInfo.gapDirections[gapIndex];
+                float gapMagnitude = gapInfo.gapMagnitudes[gapIndex];
+                
+                // Calculate alignment between vertex direction and gap direction
+                float alignment = Vector3.Dot(vertexDirection, gapDirection);
+                
+                // Only stretch vertices that are reasonably aligned with the gap direction
+                if (alignment > 0.3f) // 30-degree cone around gap direction
+                {
+                    // Stronger stretch for better alignment and more severe gaps
+                    float stretchAmount = alignment * gapMagnitude * maxStretchFactor;
+                    totalStretch += stretchAmount;
+                }
+            }
+            
+            // Clamp total stretch to prevent extreme deformation
+            totalStretch = Mathf.Clamp(totalStretch, 0f, maxStretchFactor);
+            
+            // Apply the stretch
+            if (totalStretch > 0.01f) // Only apply significant stretches
+            {
+                Vector3 stretchedVertex = originalVertex * (1f + totalStretch);
+                vertices[i] = stretchedVertex;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calculate the expected distance between neighboring tiles (cached)
+    /// </summary>
+    private float CalculateExpectedTileDistance()
+    {
+        // Cache the result to avoid recalculating
+        if (_cachedExpectedDistance > 0f) return _cachedExpectedDistance;
+
+        float totalDistance = 0f;
+        int distanceCount = 0;
+
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            if (grid.neighbors != null && i < grid.neighbors.Length && grid.neighbors[i] != null)
+            {
+                Vector3 tileCenter = grid.tileCenters[i];
+                foreach (int neighborIndex in grid.neighbors[i])
+                {
+                    if (neighborIndex >= 0 && neighborIndex < grid.tileCenters.Length)
+                    {
+                        float distance = Vector3.Distance(tileCenter, grid.tileCenters[neighborIndex]);
+                        totalDistance += distance;
+                        distanceCount++;
+                    }
+                }
+            }
+        }
+
+        _cachedExpectedDistance = distanceCount > 0 ? totalDistance / distanceCount : 1.0f;
+        Debug.Log($"Calculated expected tile distance: {_cachedExpectedDistance:F4}");
+        return _cachedExpectedDistance;
+    }
+
+    private float _cachedExpectedDistance = 0f;
 
     // We're now using hard-coded scale (0.3) for all tiles
     // No need for dynamic radius calculation or bounding radius methods
