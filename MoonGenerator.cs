@@ -760,7 +760,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.0345f;
-        const float pentagonScale = 0.157f; // Fixed pentagon scale (matching PlanetGenerator)
+        const float pentagonScale = 0.035f; // Fixed pentagon scale (matching PlanetGenerator)
         float baseScale = isPentagon ? pentagonScale : hexagonScale;
         
         // Apply tileRadiusMultiplier (matching PlanetGenerator)
