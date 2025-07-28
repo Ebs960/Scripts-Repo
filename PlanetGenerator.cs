@@ -381,7 +381,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Modern decoration system for spawning biome-specific decorations")]
     public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
 
-    public List<BiomeSettings> biomeSettings = new();
 
     [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
     public int initializationDelay = 1;
