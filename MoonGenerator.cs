@@ -89,7 +89,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     NoiseSampler cavePlacementNoise; // Separate noise for cave placement
     readonly Dictionary<int, HexTileData> data = new Dictionary<int, HexTileData>();
     readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>(); // Store final elevation
-    // Removed BiomeSettings lookup (obsolete)
+
     private LoadingPanelController loadingPanelController;
     /// <summary>
     /// List holding the final HexTileData objects for all moon tiles.

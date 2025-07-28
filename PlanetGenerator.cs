@@ -7,7 +7,6 @@ using TMPro;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Modern decoration system for biomes - separate from legacy BiomeSettings
 /// This handles decoration prefabs for each biome type independently
 /// </summary>
 [System.Serializable]
@@ -151,7 +150,6 @@ public struct BiomeDecorationEntry
 
 /// <summary>
 /// Component that manages decoration spawning for both planet and moon generators
-/// This replaces the decoration functionality that was embedded in BiomeSettings
 /// </summary>
 [System.Serializable]
 public class BiomeDecorationManager
@@ -385,7 +383,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     public List<BiomeSettings> biomeSettings = new();
 
-    public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
     [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
     public int initializationDelay = 1;
     // [Extrusion Settings] Removed: no longer used in surface calculations
@@ -416,7 +413,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     NoiseSampler noise;
     public Dictionary<int, HexTileData> data = new();
     public Dictionary<int, HexTileData> baseData = new();
-    public Dictionary<Biome, BiomeSettings> lookup = new();
     private Vector3 noiseOffset;
     // Cache elevation for river generation
     public Dictionary<int, float> tileElevation = new Dictionary<int, float>();
@@ -474,20 +470,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         grid = new SphericalHexGrid();
         Debug.Log($"[PlanetGenerator] Awake: Grid initialized, will be configured by GameManager");
 
-                
-        // Ensure BiomeSettings list has entries for all biomes if empty
-        if (biomeSettings.Count == 0) {
-            foreach (Biome b in Enum.GetValues(typeof(Biome))) {
-                if (b == Biome.Any) continue;
-                biomeSettings.Add(new BiomeSettings { biome = b });
-            }
-        }
-        foreach (var bs in biomeSettings)
-            if (!lookup.ContainsKey(bs.biome))
-                lookup.Add(bs.biome, bs);
-            else
-                lookup[bs.biome] = bs; // Allow overriding default settings
-                
                 
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
 
@@ -2250,10 +2232,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
     }
 
-    /// <summary>
-    /// Spawns decorations on a tile based on the biome settings
-    /// </summary>
-    /// <summary>
     /// Spawns decorations on a tile using the new BiomeDecorationManager system
     /// </summary>
     private void SpawnTileDecorations(GameObject tileObject, HexTileData tileData, int tileIndex, Vector3 tilePosition)
