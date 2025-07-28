@@ -42,7 +42,7 @@ public struct BiomeDecorationEntry
     public float maxDistanceFromCenter;
     
     [Header("Scale and Rotation")]
-    [Range(0.1f, 5.0f)]
+    [Range(0.1f, 15.0f)]
     [Tooltip("Scale multiplier for decorations in this biome")]
     public float scaleMultiplier;
     
@@ -362,6 +362,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public List<BiomePrefabEntry> biomePrefabList = new();
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 8;
+    [Tooltip("Number of tile decorations to spawn each frame (smaller batches for performance)")]
+    public int decorationSpawnBatchSize = 50;
 
 
     private Dictionary<Biome, GameObject> biomePrefabs = new();
@@ -1357,7 +1359,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Spawn visual prefabs if any are defined
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
-            StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+        {
+            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+            
+            // Spawn decorations in batches after all tile prefabs are created
+            if (decorationManager != null && decorationManager.enableDecorations)
+                yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+        }
 
         // Normalize tile distances for uniform spacing (after everything else is done)
         StartCoroutine(NormalizeTileDistances());
@@ -1832,8 +1840,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Apply mesh deformation to fill gaps, passing world corners for precise alignment
         StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon, worldCorners));
 
-        // Spawn decorations on the tile using the new decoration system
-        SpawnTileDecorations(go, tileData, tileIndex, position);
+        // Note: Decorations are now spawned in a separate batched process for performance
 
         return go;
     }
@@ -2229,6 +2236,84 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (batchSize > 0 && i % batchSize == 0)
                 yield return null;
         }
+    }
+
+    /// <summary>
+    /// Spawns decorations on all tiles in batches for performance
+    /// </summary>
+    private System.Collections.IEnumerator SpawnAllTileDecorations(int batchSize = 50)
+    {
+        if (decorationManager == null)
+        {
+            Debug.LogWarning("DecorationManager is null, skipping decoration spawning");
+            yield break;
+        }
+
+        decorationManager.Initialize();
+        
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetStatus("Spawning planet tile decorations...");
+            loadingPanelController.SetProgress(0.9f);
+        }
+
+        // Find the tile prefabs parent
+        Transform tilePrefabsParent = transform.Find("TilePrefabs");
+        if (tilePrefabsParent == null)
+        {
+            Debug.LogWarning("Could not find TilePrefabs parent object for decoration spawning");
+            yield break;
+        }
+
+        int tileCount = grid.TileCount;
+        int processedTiles = 0;
+        
+        for (int i = 0; i < tileCount; i++)
+        {
+            // Skip if we don't have tile data
+            if (!data.TryGetValue(i, out HexTileData tileData))
+                continue;
+
+            // Find the corresponding tile GameObject
+            Transform tileTransform = null;
+            foreach (Transform child in tilePrefabsParent)
+            {
+                var indexHolder = child.GetComponent<TileIndexHolder>();
+                if (indexHolder != null && indexHolder.tileIndex == i)
+                {
+                    tileTransform = child;
+                    break;
+                }
+            }
+
+            if (tileTransform == null)
+                continue;
+
+            // Spawn decorations for this tile
+            Vector3 tilePosition = tileTransform.position;
+            SpawnTileDecorations(tileTransform.gameObject, tileData, i, tilePosition);
+            
+            processedTiles++;
+
+            // Yield after processing a batch of tiles
+            if (batchSize > 0 && processedTiles % batchSize == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    float progress = 0.9f + (0.05f * (float)processedTiles / tileCount);
+                    loadingPanelController.SetProgress(progress);
+                }
+                yield return null;
+            }
+        }
+
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.95f);
+            loadingPanelController.SetStatus("Planet decoration spawning complete.");
+        }
+
+        Debug.Log($"Spawned decorations for {processedTiles} planet tiles");
     }
 
     /// Spawns decorations on a tile using the new BiomeDecorationManager system
