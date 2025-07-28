@@ -6,6 +6,232 @@ using System.Linq;
 using TMPro;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Modern decoration system for biomes - separate from legacy BiomeSettings
+/// This handles decoration prefabs for each biome type independently
+/// </summary>
+[System.Serializable]
+public struct BiomeDecorationEntry
+{
+    [Header("Biome Configuration")]
+    public Biome biome;
+    
+    [Header("Decoration Prefabs")]
+    [Tooltip("Decoration prefabs for this biome (trees, bushes, rocks, etc.)")]
+    public GameObject[] decorationPrefabs;
+    
+    [Header("Spawn Settings")]
+    [Range(0f, 1f)]
+    [Tooltip("Chance this biome will get decorations (0 = never, 1 = always)")]
+    public float spawnChance;
+    
+    [Range(1, 8)]
+    [Tooltip("Minimum decorations to spawn on tiles of this biome")]
+    public int minDecorations;
+    
+    [Range(1, 12)]
+    [Tooltip("Maximum decorations to spawn on tiles of this biome")]
+    public int maxDecorations;
+    
+    [Header("Positioning")]
+    [Range(0.1f, 0.9f)]
+    [Tooltip("Minimum distance from tile center (as fraction of tile radius)")]
+    public float minDistanceFromCenter;
+    
+    [Range(0.1f, 0.95f)]
+    [Tooltip("Maximum distance from tile center (as fraction of tile radius)")]
+    public float maxDistanceFromCenter;
+    
+    [Header("Scale and Rotation")]
+    [Range(0.1f, 5.0f)]
+    [Tooltip("Scale multiplier for decorations in this biome")]
+    public float scaleMultiplier;
+    
+    [Range(0f, 1f)]
+    [Tooltip("Random scale variation (0 = no variation, 1 = ±100% variation)")]
+    public float scaleVariation;
+    
+    [Tooltip("Should decorations randomly rotate around their up axis?")]
+    public bool randomRotation;
+    
+    /// <summary>
+    /// Get default settings for a biome
+    /// </summary>
+    public static BiomeDecorationEntry GetDefault(Biome biome)
+    {
+        return new BiomeDecorationEntry
+        {
+            biome = biome,
+            decorationPrefabs = new GameObject[0],
+            spawnChance = GetDefaultSpawnChance(biome),
+            minDecorations = GetDefaultMinDecorations(biome),
+            maxDecorations = GetDefaultMaxDecorations(biome),
+            minDistanceFromCenter = 0.4f,
+            maxDistanceFromCenter = 0.85f,
+            scaleMultiplier = 1.0f,
+            scaleVariation = 0.2f,
+            randomRotation = true
+        };
+    }
+    
+    private static float GetDefaultSpawnChance(Biome biome)
+    {
+        return biome switch
+        {
+            // Water biomes - no decorations
+            Biome.Ocean or Biome.Coast or Biome.Seas => 0f,
+            
+            // Lush biomes - high decoration chance
+            Biome.Forest or Biome.Jungle or Biome.Rainforest => 0.9f,
+            Biome.Grassland or Biome.Plains or Biome.Savannah => 0.8f,
+            
+            // Moderate decoration biomes
+            Biome.Taiga or Biome.PineForest => 0.7f,
+            Biome.Marsh or Biome.Swamp => 0.6f,
+            
+            // Sparse decoration biomes
+            Biome.Desert or Biome.Tundra => 0.4f,
+            Biome.Mountain or Biome.Snow => 0.3f,
+            
+            // Hostile biomes - minimal decorations
+            Biome.Volcanic or Biome.Steam => 0.2f,
+            Biome.Hellscape or Biome.Brimstone => 0.1f,
+            
+            // Moon biomes
+            Biome.MoonDunes => 0.5f,
+            Biome.MoonCaves => 0.3f,
+            
+            // Default
+            _ => 0.5f
+        };
+    }
+    
+    private static int GetDefaultMinDecorations(Biome biome)
+    {
+        return biome switch
+        {
+            // Lush biomes
+            Biome.Forest or Biome.Jungle or Biome.Rainforest => 2,
+            Biome.Grassland or Biome.Plains => 1,
+            
+            // Sparse biomes
+            Biome.Desert or Biome.Tundra or Biome.Mountain => 1,
+            
+            // Very sparse biomes
+            Biome.Volcanic or Biome.Hellscape => 1,
+            
+            // Default
+            _ => 1
+        };
+    }
+    
+    private static int GetDefaultMaxDecorations(Biome biome)
+    {
+        return biome switch
+        {
+            // Lush biomes - lots of decorations
+            Biome.Forest or Biome.Jungle or Biome.Rainforest => 5,
+            Biome.Grassland or Biome.Plains or Biome.Savannah => 4,
+            
+            // Moderate biomes
+            Biome.Taiga or Biome.PineForest => 3,
+            Biome.Marsh or Biome.Swamp => 3,
+            
+            // Sparse biomes
+            Biome.Desert or Biome.Tundra or Biome.Mountain => 2,
+            
+            // Very sparse biomes
+            Biome.Volcanic or Biome.Hellscape => 1,
+            
+            // Default
+            _ => 3
+        };
+    }
+}
+
+/// <summary>
+/// Component that manages decoration spawning for both planet and moon generators
+/// This replaces the decoration functionality that was embedded in BiomeSettings
+/// </summary>
+[System.Serializable]
+public class BiomeDecorationManager
+{
+    [Header("Biome Decoration Configuration")]
+    [Tooltip("Decoration settings for each biome type")]
+    public BiomeDecorationEntry[] biomeDecorations = new BiomeDecorationEntry[0];
+    
+    [Header("Global Decoration Settings")]
+    [Tooltip("Enable decoration spawning")]
+    public bool enableDecorations = true;
+    
+    [Range(0.5f, 3.0f)]
+    [Tooltip("Global scale multiplier applied to all decorations")]
+    public float globalScaleMultiplier = 1.0f;
+    
+    private Dictionary<Biome, BiomeDecorationEntry> decorationLookup;
+    
+    /// <summary>
+    /// Initialize the decoration lookup dictionary
+    /// </summary>
+    public void Initialize()
+    {
+        decorationLookup = new Dictionary<Biome, BiomeDecorationEntry>();
+        
+        foreach (var entry in biomeDecorations)
+        {
+            decorationLookup[entry.biome] = entry;
+        }
+    }
+    
+    /// <summary>
+    /// Get decoration settings for a specific biome
+    /// </summary>
+    public BiomeDecorationEntry GetDecorationSettings(Biome biome)
+    {
+        if (decorationLookup == null)
+            Initialize();
+            
+        if (decorationLookup.TryGetValue(biome, out var settings))
+            return settings;
+            
+        // Return default settings if not found
+        return BiomeDecorationEntry.GetDefault(biome);
+    }
+    
+    /// <summary>
+    /// Check if a biome should have decorations spawned
+    /// </summary>
+    public bool ShouldSpawnDecorations(Biome biome)
+    {
+        if (!enableDecorations)
+            return false;
+            
+        var settings = GetDecorationSettings(biome);
+        return settings.decorationPrefabs.Length > 0 && UnityEngine.Random.value < settings.spawnChance;
+    }
+    
+    /// <summary>
+    /// Get a random decoration prefab for a biome
+    /// </summary>
+    public GameObject GetRandomDecorationPrefab(Biome biome)
+    {
+        var settings = GetDecorationSettings(biome);
+        if (settings.decorationPrefabs.Length == 0)
+            return null;
+            
+        return settings.decorationPrefabs[UnityEngine.Random.Range(0, settings.decorationPrefabs.Length)];
+    }
+    
+    /// <summary>
+    /// Get the number of decorations to spawn for a tile
+    /// </summary>
+    public int GetDecorationCount(Biome biome)
+    {
+        var settings = GetDecorationSettings(biome);
+        return UnityEngine.Random.Range(settings.minDecorations, settings.maxDecorations + 1);
+    }
+}
+
 public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
@@ -152,6 +378,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0.0f, 2.0f)]
     [Tooltip("How strongly to blend mesh vertices toward tile corners for better alignment (0 = no blending, 1 = full blending, >1 = stronger pull)")]
     public float meshVertexBlendFactor = 1.0f;
+
+    [Header("Decoration System")]
+    [Tooltip("Modern decoration system for spawning biome-specific decorations")]
+    public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
 
     public List<BiomeSettings> biomeSettings = new();
 
@@ -1621,6 +1851,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Apply mesh deformation to fill gaps, passing world corners for precise alignment
         StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon, worldCorners));
 
+        // Spawn decorations on the tile using the new decoration system
+        SpawnTileDecorations(go, tileData, tileIndex, position);
+
         return go;
     }
 
@@ -2015,6 +2248,126 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (batchSize > 0 && i % batchSize == 0)
                 yield return null;
         }
+    }
+
+    /// <summary>
+    /// Spawns decorations on a tile based on the biome settings
+    /// </summary>
+    /// <summary>
+    /// Spawns decorations on a tile using the new BiomeDecorationManager system
+    /// </summary>
+    private void SpawnTileDecorations(GameObject tileObject, HexTileData tileData, int tileIndex, Vector3 tilePosition)
+    {
+        // Initialize decoration manager if needed
+        if (decorationManager == null)
+        {
+            decorationManager = new BiomeDecorationManager();
+        }
+        
+        decorationManager.Initialize();
+        
+        // Check if this biome should have decorations
+        if (!decorationManager.ShouldSpawnDecorations(tileData.biome))
+            return;
+
+        // Get decoration settings for this biome
+        var decorationSettings = decorationManager.GetDecorationSettings(tileData.biome);
+        
+        // Calculate the approximate tile radius based on scale
+        float tileRadius = CalculateTileRadius();
+        
+        // Safety check: don't spawn decorations on very small tiles
+        if (tileRadius < 0.1f)
+            return;
+        
+        // Determine number of decorations to spawn
+        int decorationCount = decorationManager.GetDecorationCount(tileData.biome);
+        
+        // Create a parent object for this tile's decorations
+        GameObject decorationParent = new GameObject($"Decorations_Tile_{tileIndex}");
+        decorationParent.transform.SetParent(tileObject.transform, false);
+        decorationParent.transform.localPosition = Vector3.zero;
+        decorationParent.transform.localRotation = Quaternion.identity;
+
+        for (int i = 0; i < decorationCount; i++)
+        {
+            // Get a random decoration prefab for this biome
+            GameObject decorationPrefab = decorationManager.GetRandomDecorationPrefab(tileData.biome);
+            if (decorationPrefab == null) continue;
+
+            // Generate a random position within the tile bounds
+            Vector3 decorationPosition = GenerateRandomDecorationPosition(tilePosition, tileRadius, decorationSettings);
+            
+            // Calculate the "up" direction for this position on the sphere
+            Vector3 upDirection = (decorationPosition - transform.position).normalized;
+            
+            // Create rotation to orient the decoration away from planet center
+            Quaternion decorationRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere, upDirection).normalized, upDirection);
+            
+            // Instantiate the decoration
+            GameObject decoration = Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
+            
+            // Apply decoration scaling with variation
+            float finalScale = decorationSettings.scaleMultiplier * decorationManager.globalScaleMultiplier;
+            if (decorationSettings.scaleVariation > 0f)
+            {
+                float variation = UnityEngine.Random.Range(-decorationSettings.scaleVariation, decorationSettings.scaleVariation);
+                finalScale *= (1f + variation);
+            }
+            decoration.transform.localScale = Vector3.one * finalScale;
+            
+            // Add random rotation around the up axis if enabled
+            if (decorationSettings.randomRotation)
+            {
+                decoration.transform.Rotate(upDirection, UnityEngine.Random.Range(0f, 360f), Space.World);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generates a random position for decoration placement within tile bounds using modern settings
+    /// </summary>
+    private Vector3 GenerateRandomDecorationPosition(Vector3 tileCenter, float tileRadius, BiomeDecorationEntry settings)
+    {
+        // Generate a random direction from tile center
+        Vector2 randomCircle = UnityEngine.Random.insideUnitCircle;
+        
+        // Scale to be within the decoration placement range
+        float distance = UnityEngine.Random.Range(
+            settings.minDistanceFromCenter * tileRadius,
+            settings.maxDistanceFromCenter * tileRadius
+        );
+        
+        // Calculate the planet's surface normal at tile center
+        Vector3 surfaceNormal = (tileCenter - transform.position).normalized;
+        
+        // Create a random direction on the sphere surface around the tile
+        Vector3 randomDirection = Vector3.Cross(surfaceNormal, Vector3.up);
+        if (randomDirection.magnitude < 0.1f) // Handle case where surface normal is parallel to Vector3.up
+            randomDirection = Vector3.Cross(surfaceNormal, Vector3.forward);
+        randomDirection = randomDirection.normalized;
+        
+        Vector3 tangent = Vector3.Cross(surfaceNormal, randomDirection).normalized;
+        
+        // Combine the tangent vectors to get a random direction on the sphere surface
+        Vector3 localOffset = (randomDirection * randomCircle.x + tangent * randomCircle.y) * distance;
+        
+        // Calculate final position and project back to sphere surface
+        Vector3 decorationPos = tileCenter + localOffset;
+        float planetRadius = tileCenter.magnitude; // Distance from planet center
+        decorationPos = decorationPos.normalized * planetRadius;
+        
+        return decorationPos;
+    }
+
+    /// <summary>
+    /// Calculates the approximate radius of a tile for decoration placement
+    /// </summary>
+    private float CalculateTileRadius()
+    {
+        // Use the expected tile distance calculation
+        float expectedDistance = CalculateExpectedTileDistance();
+        return expectedDistance * 0.5f; // Radius is roughly half the distance to neighbors
     }
 }
 

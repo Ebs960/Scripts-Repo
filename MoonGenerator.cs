@@ -63,19 +63,13 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("How strongly to blend mesh vertices toward tile corners for better alignment (0 = no blending, 1 = full blending, >1 = stronger pull)")]
     public float meshVertexBlendFactor = 1.0f;
 
+    [Header("Decoration System")]
+    [Tooltip("Modern decoration system for spawning biome-specific decorations")]
+    public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
+
     [Header("Initialization")]
     [Tooltip("Wait this many frames before initial generation so Hexasphere has finished.")]
     public int initializationDelay = 1;
-
-    private List<BiomeSettings> biomeSettings;
-    public List<BiomeSettings> GetBiomeSettings() => biomeSettings;
-    private readonly Dictionary<Biome, int> biomeToIndex = new Dictionary<Biome, int>();
-
-    public void SetBiomeSettings(List<BiomeSettings> sharedBiomeSettings)
-    {
-        biomeSettings = sharedBiomeSettings;
-        BuildBiomeLookup();
-    }
 
     /// <summary>
     /// Configure the moon generator with the correct radius and build the mesh
@@ -88,28 +82,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         Debug.Log($"[MoonGenerator] Configured with subdivisions: {subdivisions}, radius: {radius}");
     }
 
-    /// <summary>
-    /// Get moon map size parameters - same as planets but scaled down to 1/5th
-
-    private void BuildBiomeLookup()
-    {
-        lookup.Clear();
-        biomeToIndex.Clear();
-
-        if (biomeSettings == null)
-        {
-            Debug.LogError("[MoonGenerator] Biome settings list is null!");
-            return;
-        }
-
-        for (int i = 0; i < biomeSettings.Count; i++)
-        {
-            var bs = biomeSettings[i];
-            lookup[bs.biome] = bs;
-            biomeToIndex[bs.biome] = i;
-        }
-    }
-
 
     SphericalHexGrid grid;
     public SphericalHexGrid Grid => grid;
@@ -117,7 +89,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
     NoiseSampler cavePlacementNoise; // Separate noise for cave placement
     readonly Dictionary<int, HexTileData> data = new Dictionary<int, HexTileData>();
     readonly Dictionary<int, float> tileElevation = new Dictionary<int, float>(); // Store final elevation
-    readonly Dictionary<Biome, BiomeSettings> lookup = new Dictionary<Biome, BiomeSettings>(); // Lookup for settings
+    // Removed BiomeSettings lookup (obsolete)
     private LoadingPanelController loadingPanelController;
     /// <summary>
     /// List holding the final HexTileData objects for all moon tiles.
@@ -146,10 +118,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
         // Build biome lookup tables if biome settings were provided via inspector
-        if (biomeSettings != null)
-        {
-            BuildBiomeLookup();
-        }
+
 
         flatBiomePrefabs.Clear();
         hillBiomePrefabs.Clear();
@@ -771,6 +740,9 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Apply mesh deformation to fill gaps
         StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon));
 
+        // Spawn decorations on the tile using the new decoration system
+        SpawnTileDecorations(go, tileData, tileIndex, position);
+
         return go;
     }
 
@@ -1036,5 +1008,112 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             if (batchSize > 0 && i % batchSize == 0)
                 yield return null;
         }
+    }
+
+    /// <summary>
+    /// Spawns decorations on a moon tile based on the biome decoration settings
+    /// </summary>
+    private void SpawnTileDecorations(GameObject tileObject, HexTileData tileData, int tileIndex, Vector3 tilePosition)
+    {
+        if (decorationManager == null)
+            return;
+
+        decorationManager.Initialize();
+        var decorationEntry = decorationManager.GetDecorationSettings(tileData.biome);
+        if (decorationEntry.decorationPrefabs == null || decorationEntry.decorationPrefabs.Length == 0)
+            return;
+
+        if (UnityEngine.Random.value > decorationEntry.spawnChance)
+            return;
+
+        float tileRadius = CalculateTileRadius();
+        if (tileRadius < 0.1f)
+            return;
+
+        int decorationCount = UnityEngine.Random.Range(decorationEntry.minDecorations, decorationEntry.maxDecorations + 1);
+
+        GameObject decorationParent = new GameObject($"MoonDecorations_Tile_{tileIndex}");
+        decorationParent.transform.SetParent(tileObject.transform, false);
+        decorationParent.transform.localPosition = Vector3.zero;
+        decorationParent.transform.localRotation = Quaternion.identity;
+
+        for (int i = 0; i < decorationCount; i++)
+        {
+            // Select a random decoration from the biome
+            GameObject decorationPrefab = decorationEntry.decorationPrefabs[UnityEngine.Random.Range(0, decorationEntry.decorationPrefabs.Length)];
+            if (decorationPrefab == null) continue;
+
+            // Generate a random position within the tile bounds
+            Vector3 decorationPosition = GenerateRandomDecorationPosition(tilePosition, tileRadius, decorationEntry);
+            
+            // Calculate the "up" direction for this position on the moon
+            Vector3 upDirection = (decorationPosition - transform.position).normalized;
+            
+            // Create rotation to orient the decoration away from moon center
+            Quaternion decorationRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere, upDirection).normalized, upDirection);
+            
+            // Instantiate the decoration
+            GameObject decoration = Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
+            
+            // Apply decoration scale with variation
+
+            // Apply decoration scaling with variation
+            float finalScale = decorationEntry.scaleMultiplier * decorationManager.globalScaleMultiplier;
+            if (decorationEntry.scaleVariation > 0f)
+            {
+                float variation = UnityEngine.Random.Range(-decorationEntry.scaleVariation, decorationEntry.scaleVariation);
+                finalScale *= (1f + variation);
+            }
+            decoration.transform.localScale = Vector3.one * finalScale;
+            
+            // Add a small random rotation around the up axis for variety
+            decoration.transform.Rotate(upDirection, UnityEngine.Random.Range(0f, 360f), Space.World);
+        }
+    }
+
+    /// <summary>
+    /// Generates a random position for decoration placement within moon tile bounds
+    /// </summary>
+    private Vector3 GenerateRandomDecorationPosition(Vector3 tileCenter, float tileRadius, BiomeDecorationEntry decorationEntry)
+    {
+        // Generate a random direction from tile center
+        Vector2 randomCircle = UnityEngine.Random.insideUnitCircle;
+        
+        // Scale to be within the decoration placement range
+        float distance = UnityEngine.Random.Range(
+            decorationEntry.minDistanceFromCenter * tileRadius,
+            decorationEntry.maxDistanceFromCenter * tileRadius
+        );
+        
+        // Calculate the moon's surface normal at tile center
+        Vector3 surfaceNormal = (tileCenter - transform.position).normalized;
+        
+        // Create a random direction on the sphere surface around the tile
+        Vector3 randomDirection = Vector3.Cross(surfaceNormal, Vector3.up);
+        if (randomDirection.magnitude < 0.1f) // Handle case where surface normal is parallel to Vector3.up
+            randomDirection = Vector3.Cross(surfaceNormal, Vector3.forward);
+        randomDirection = randomDirection.normalized;
+        
+        Vector3 tangent = Vector3.Cross(surfaceNormal, randomDirection).normalized;
+        
+        // Combine the tangent vectors to get a random direction on the sphere surface
+        Vector3 localOffset = (randomDirection * randomCircle.x + tangent * randomCircle.y) * distance;
+        
+        // Calculate final position and project back to sphere surface
+        Vector3 decorationPos = tileCenter + localOffset;
+        float moonRadius = tileCenter.magnitude; // Distance from moon center
+        decorationPos = decorationPos.normalized * moonRadius;
+        
+        return decorationPos;
+    }
+
+    /// <summary>
+    /// Calculates the approximate radius of a moon tile for decoration placement
+    /// </summary>
+    private float CalculateTileRadius()
+    {
+        // Use the expected tile distance calculation
+        float expectedDistance = CalculateExpectedTileDistance();
+        return expectedDistance * 0.5f; // Radius is roughly half the distance to neighbors
     }
 }

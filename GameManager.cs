@@ -465,7 +465,7 @@ public class GameManager : MonoBehaviour
             {
                 // Configure moon generator with reduced subdivisions proportional to size
                 GetMapSizeParams(mapSize, out int planetSubdivisions, out float planetRadius);
-                float moonRadius = planetRadius / 5f;
+                float moonRadius = planetRadius / 2.5f;
                 
                 // Scale moon subdivisions: since radius is 1/5th, reduce subdivisions by 2 levels
                 // This gives approximately 1/5th the tile count
@@ -476,11 +476,6 @@ public class GameManager : MonoBehaviour
                 if (loadingPanelController != null)
                 {
                     moonGenerator.SetLoadingPanel(loadingPanelController);
-                }
-                // Pass biome settings from planet generator
-                if (planetGenerator != null)
-                {
-                    moonGenerator.SetBiomeSettings(planetGenerator.biomeSettings);
                 }
                 
                 // Configure moon with correct radius and reduced subdivisions
