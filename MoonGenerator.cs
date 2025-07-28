@@ -117,8 +117,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         noise = new NoiseSampler(seed); // For elevation
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
-        // Build biome lookup tables if biome settings were provided via inspector
-
 
         flatBiomePrefabs.Clear();
         hillBiomePrefabs.Clear();
