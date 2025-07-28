@@ -469,7 +469,7 @@ public class GameManager : MonoBehaviour
                 
                 // Scale moon subdivisions: since radius is 1/5th, reduce subdivisions by 2 levels
                 // This gives approximately 1/5th the tile count
-                int moonSubdivisions = Mathf.Max(3, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
+                int moonSubdivisions = Mathf.Max(2, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
 
                 // Assign loading panel controller if present
                 var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
