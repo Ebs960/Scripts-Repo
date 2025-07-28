@@ -130,6 +130,12 @@ public class AnimalManager : MonoBehaviour
         var unit = go.GetComponent<CombatUnit>();
         unit.Initialize(rule.unitData, null);
         unit.currentTileIndex = chosenIndex;
+        
+        // Properly orient the animal on the planetary surface
+        if (planet != null && planet.Grid != null)
+        {
+            unit.PositionUnitOnSurface(planet.Grid, chosenIndex);
+        }
 
         activeAnimals.Add(unit);
         unit.OnDeath += () => activeAnimals.Remove(unit);
