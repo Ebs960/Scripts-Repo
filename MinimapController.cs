@@ -41,7 +41,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     
     private float _currentZoomLevel = 1.0f; // 1.0 = normal view, higher = zoomed in, lower = zoomed out
     private Vector3 _lastCameraPosition;
-    private float _minimapRefreshCooldown = 0.5f; // Seconds between minimap refreshes
+    private float _minimapRefreshCooldown = 0.038f; // Much faster refresh now that it's optimized!
     private float _lastRefreshTime;
 
     private RectTransform _rt;
@@ -63,6 +63,9 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         // Don't build minimaps here - they'll be built by GameManager after world generation
         // Just set initial target
         SwitchToTarget(currentTarget);
+        
+        // Update initial button states
+        UpdateZoomButtonStates();
     }
 
     void Update()
@@ -77,12 +80,12 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (currentGenerator != null && _currentZoomLevel != 1.0f && mainCamera != null)
         {
             float distanceMoved = Vector3.Distance(mainCamera.transform.position, _lastCameraPosition);
-            bool shouldRefresh = distanceMoved > 0.1f && (Time.time - _lastRefreshTime) > _minimapRefreshCooldown;
+            bool shouldRefresh = distanceMoved > 0.01f && (Time.time - _lastRefreshTime) > _minimapRefreshCooldown; // More sensitive movement detection
             
             if (shouldRefresh)
             {
                 UpdateZoomCenter();
-                currentGenerator.Rebuild();
+                currentGenerator.Rebuild(); // Now much faster - just samples from master texture!
                 _lastCameraPosition = mainCamera.transform.position;
                 _lastRefreshTime = Time.time;
             }
@@ -115,12 +118,29 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     { 
         _currentZoomLevel = Mathf.Clamp(_currentZoomLevel + zoomStep, minZoomLevel, maxZoomLevel);
         RefreshMinimapTexture();
+        UpdateZoomButtonStates();
     }
     
     public void OnZoomOutButton() 
     { 
         _currentZoomLevel = Mathf.Clamp(_currentZoomLevel - zoomStep, minZoomLevel, maxZoomLevel);
         RefreshMinimapTexture();
+        UpdateZoomButtonStates();
+    }
+    
+    private void UpdateZoomButtonStates()
+    {
+        // Disable zoom out button if we're at minimum zoom (showing whole texture)
+        if (zoomOutButton != null)
+        {
+            zoomOutButton.interactable = _currentZoomLevel > minZoomLevel;
+        }
+        
+        // Disable zoom in button if we're at maximum zoom
+        if (zoomInButton != null)
+        {
+            zoomInButton.interactable = _currentZoomLevel < maxZoomLevel;
+        }
     }
     
     private void RefreshMinimapTexture()
@@ -169,6 +189,9 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         // Update button states (optional visual feedback)
         if (planetButton) planetButton.interactable = (target != MinimapTarget.Planet);
         if (moonButton) moonButton.interactable = (target != MinimapTarget.Moon);
+        
+        // Update zoom button states for the new target
+        UpdateZoomButtonStates();
     }
 
     public void SwitchToPlanet() => SwitchToTarget(MinimapTarget.Planet);
@@ -275,30 +298,27 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             return new Vector3(fallbackClat * Mathf.Cos(fallbackLon), Mathf.Sin(fallbackLat), fallbackClat * Mathf.Sin(fallbackLon)).normalized;
         }
         
-        // Account for zoom level and zoom center
-        float zoomLevel = generator.zoomLevel;
-        Vector3 zoomCenter = generator.zoomCenter;
-        
-        // Calculate zoom-adjusted angular coverage
-        float baseCoverage = 2f * Mathf.PI;
-        float latCoverage = Mathf.PI;
-        float currentLonCoverage = baseCoverage / zoomLevel;
-        float currentLatCoverage = latCoverage / zoomLevel;
-        
-        // Convert zoom center to lat/lon
+        // Calculate zoom center in UV space
         Vector3 zoomRootPos = currentRoot.position;
-        Vector3 zoomDir = (zoomCenter - zoomRootPos).normalized;
+        Vector3 zoomDir = (generator.zoomCenter - zoomRootPos).normalized;
         float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
         float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
         
-        // Map UV to lat/lon in zoomed space
-        float lat = centerLat + (uv.y - 0.5f) * currentLatCoverage;
-        float lon = centerLon + (uv.x - 0.5f) * currentLonCoverage;
+        // Convert zoom center to UV space (0-1)
+        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
+        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
         
-        // Clamp latitude and normalize longitude
-        lat = Mathf.Clamp(lat, -Mathf.PI * 0.5f, Mathf.PI * 0.5f);
-        while (lon > Mathf.PI) lon -= 2f * Mathf.PI;
-        while (lon < -Mathf.PI) lon += 2f * Mathf.PI;
+        // Calculate zoom-adjusted sampling area
+        float sampleWidth = 1.0f / generator.zoomLevel;
+        float sampleHeight = 1.0f / generator.zoomLevel;
+        
+        // Map UV to world space considering zoom
+        float worldU = centerU - sampleWidth * 0.5f + uv.x * sampleWidth;
+        float worldV = centerV - sampleHeight * 0.5f + uv.y * sampleHeight;
+        
+        // Convert back to lat/lon
+        float lon = (worldU * 2f - 1f) * Mathf.PI;
+        float lat = (worldV - 0.5f) * Mathf.PI;
         
         float clat = Mathf.Cos(lat);
         return new Vector3(clat * Mathf.Cos(lon), Mathf.Sin(lat), clat * Mathf.Sin(lon)).normalized;
@@ -318,30 +338,31 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             return new Vector2(fallbackU, fallbackV);
         }
         
-        // Account for zoom level and zoom center
-        float zoomLevel = generator.zoomLevel;
-        Vector3 zoomCenter = generator.zoomCenter;
-        
-        // Calculate zoom-adjusted angular coverage
-        float baseCoverage = 2f * Mathf.PI;
-        float latCoverage = Mathf.PI;
-        float currentLonCoverage = baseCoverage / zoomLevel;
-        float currentLatCoverage = latCoverage / zoomLevel;
-        
-        // Convert zoom center to lat/lon
-        Vector3 zoomRootPos = currentRoot.position;
-        Vector3 zoomDir = (zoomCenter - zoomRootPos).normalized;
-        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
-        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
-        
         // Convert direction to lat/lon
         float dirLat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
         float dirLon = Mathf.Atan2(dir.z, dir.x);
         
-        // Map to UV space relative to zoom center
-        float u = 0.5f + (dirLon - centerLon) / currentLonCoverage;
-        float v = 0.5f + (dirLat - centerLat) / currentLatCoverage;
+        // Convert to world UV space (0-1)
+        float worldU = (dirLon + Mathf.PI) / (2f * Mathf.PI);
+        float worldV = (dirLat + Mathf.PI * 0.5f) / Mathf.PI;
         
-        return new Vector2(Mathf.Clamp01(u), Mathf.Clamp01(v));
+        // Calculate zoom center in UV space
+        Vector3 zoomRootPos = currentRoot.position;
+        Vector3 zoomDir = (generator.zoomCenter - zoomRootPos).normalized;
+        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
+        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
+        
+        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
+        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
+        
+        // Calculate zoom-adjusted sampling area
+        float sampleWidth = 1.0f / generator.zoomLevel;
+        float sampleHeight = 1.0f / generator.zoomLevel;
+        
+        // Map world UV to local minimap UV
+        float localU = (worldU - (centerU - sampleWidth * 0.5f)) / sampleWidth;
+        float localV = (worldV - (centerV - sampleHeight * 0.5f)) / sampleHeight;
+        
+        return new Vector2(Mathf.Clamp01(localU), Mathf.Clamp01(localV));
     }
 }

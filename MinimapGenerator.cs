@@ -20,6 +20,15 @@ public class MinimapGenerator : MonoBehaviour
 
     [Header("Output")]
     public Texture2D minimapTexture;
+    
+    [Header("Performance")]
+    [Tooltip("High-resolution master texture for zooming (generated once)")]
+    public int masterTextureWidth = 2048;
+    [Tooltip("High-resolution master texture for zooming (generated once)")]
+    public int masterTextureHeight = 1024;
+    
+    private Texture2D _masterTexture; // High-res version for zooming
+    private bool _masterTextureReady = false;
 
     [Header("Data Source")]
     [Tooltip("Which generator to use for tile data")]
@@ -74,6 +83,20 @@ public class MinimapGenerator : MonoBehaviour
             return;
         }
 
+        // Build master texture once if not ready
+        if (!_masterTextureReady)
+        {
+            BuildMasterTexture();
+        }
+        
+        // Generate display texture by sampling from master texture
+        GenerateDisplayTexture();
+        
+        IsReady = true;
+    }
+    
+    private void BuildMasterTexture()
+    {
         // Get number of tiles from TileDataHelper
         var helper = TileDataHelper.Instance;
         if (helper == null)
@@ -112,45 +135,26 @@ public class MinimapGenerator : MonoBehaviour
             _tileDirs[i] = dir;
         }
 
-        // Allocate texture
-        if (minimapTexture == null || minimapTexture.width != width || minimapTexture.height != height)
+        // Allocate master texture (high resolution)
+        if (_masterTexture == null || _masterTexture.width != masterTextureWidth || _masterTexture.height != masterTextureHeight)
         {
-            minimapTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            minimapTexture.wrapMode = TextureWrapMode.Clamp;
-            minimapTexture.filterMode = FilterMode.Bilinear;
+            _masterTexture = new Texture2D(masterTextureWidth, masterTextureHeight, TextureFormat.RGBA32, false);
+            _masterTexture.wrapMode = TextureWrapMode.Clamp;
+            _masterTexture.filterMode = FilterMode.Bilinear;
         }
 
-        // Generate minimap with zoom support
-        var pixels = new Color[width * height];
+        // Generate master texture at full resolution (this is expensive but done once)
+        var pixels = new Color[masterTextureWidth * masterTextureHeight];
         
-        // Calculate zoom-adjusted angular coverage
-        float baseCoverage = 2f * Mathf.PI; // Full 360° longitude coverage at zoom level 1
-        float latCoverage = Mathf.PI; // Full 180° latitude coverage at zoom level 1
-        
-        float currentLonCoverage = baseCoverage / zoomLevel;
-        float currentLatCoverage = latCoverage / zoomLevel;
-        
-        // Convert zoom center to lat/lon for centering the zoomed view
-        Vector3 zoomRootPos = planetRoot ? planetRoot.position : Vector3.zero;
-        Vector3 zoomDir = (zoomCenter - zoomRootPos).normalized;
-        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
-        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
-        
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < masterTextureHeight; y++)
         {
-            float v = (y + 0.5f) / height;
-            // Map v to latitude range centered on zoom center
-            float lat = centerLat + (v - 0.5f) * currentLatCoverage;
-            lat = Mathf.Clamp(lat, -Mathf.PI * 0.5f, Mathf.PI * 0.5f); // Clamp to valid latitude range
+            float v = (y + 0.5f) / masterTextureHeight;
+            float lat = Mathf.PI * (v - 0.5f); // Full latitude range for master texture
 
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < masterTextureWidth; x++)
             {
-                float u = (x + 0.5f) / width;
-                // Map u to longitude range centered on zoom center
-                float lon = centerLon + (u - 0.5f) * currentLonCoverage;
-                // Normalize longitude to -π to π range
-                while (lon > Mathf.PI) lon -= 2f * Mathf.PI;
-                while (lon < -Mathf.PI) lon += 2f * Mathf.PI;
+                float u = (x + 0.5f) / masterTextureWidth;
+                float lon = 2f * Mathf.PI * (u - 0.5f); // Full longitude range for master texture
 
                 Vector3 dir = LatLonToDir(lat, lon);
 
@@ -180,7 +184,6 @@ public class MinimapGenerator : MonoBehaviour
                 Color c;
                 if (colorProvider != null)
                 {
-                    // Always pass UV - ColorProvider will decide whether to use texture or biome colors
                     c = colorProvider.ColorFor(tileData, uv);
                 }
                 else
@@ -188,25 +191,114 @@ public class MinimapGenerator : MonoBehaviour
                     c = DefaultColorFor(tileData);
                 }
                 
-                pixels[y * width + x] = c;
+                pixels[y * masterTextureWidth + x] = c;
+            }
+        }
+
+        _masterTexture.SetPixels(pixels);
+        _masterTexture.Apply();
+        _masterTextureReady = true;
+        
+        Debug.Log($"[MinimapGenerator] Master texture built: {masterTextureWidth}x{masterTextureHeight}");
+    }
+    
+    private void GenerateDisplayTexture()
+    {
+        if (!_masterTextureReady)
+        {
+            Debug.LogWarning("[MinimapGenerator] Master texture not ready!");
+            return;
+        }
+        
+        // Allocate display texture
+        if (minimapTexture == null || minimapTexture.width != width || minimapTexture.height != height)
+        {
+            minimapTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            minimapTexture.wrapMode = TextureWrapMode.Clamp;
+            minimapTexture.filterMode = FilterMode.Bilinear;
+        }
+
+        // Calculate zoom center in UV space (0-1)
+        Vector3 zoomRootPos = planetRoot ? planetRoot.position : Vector3.zero;
+        Vector3 zoomDir = (zoomCenter - zoomRootPos).normalized;
+        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
+        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
+        
+        // Convert to UV space (0-1)
+        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
+        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
+        
+        // Calculate zoom-adjusted sampling area
+        float sampleWidth = 1.0f / zoomLevel;  // Smaller area = more zoomed in
+        float sampleHeight = 1.0f / zoomLevel;
+        
+        // Calculate sampling bounds
+        float minU = centerU - sampleWidth * 0.5f;
+        float maxU = centerU + sampleWidth * 0.5f;
+        float minV = centerV - sampleHeight * 0.5f;
+        float maxV = centerV + sampleHeight * 0.5f;
+        
+        // Fast texture sampling from master texture
+        var pixels = new Color[width * height];
+        for (int y = 0; y < height; y++)
+        {
+            float v = minV + (y + 0.5f) / height * sampleHeight;
+            v = Mathf.Clamp01(v);
+            int masterY = Mathf.Clamp(Mathf.FloorToInt(v * masterTextureHeight), 0, masterTextureHeight - 1);
+            
+            for (int x = 0; x < width; x++)
+            {
+                float u = minU + (x + 0.5f) / width * sampleWidth;
+                u = Mathf.Clamp01(u);
+                int masterX = Mathf.Clamp(Mathf.FloorToInt(u * masterTextureWidth), 0, masterTextureWidth - 1);
+                
+                // Sample from master texture (much faster than regenerating!)
+                pixels[y * width + x] = _masterTexture.GetPixel(masterX, masterY);
             }
         }
 
         minimapTexture.SetPixels(pixels);
         minimapTexture.Apply();
-        IsReady = true;
     }
 
     public void Rebuild()
     {
+        // For zoom/pan changes, just regenerate display texture (fast)
+        if (_masterTextureReady)
+        {
+            GenerateDisplayTexture();
+        }
+        else
+        {
+            // Full rebuild if master texture not ready
+            IsReady = false;
+            Build();
+        }
+    }
+    
+    /// <summary>
+    /// Force a complete rebuild (including master texture) - use when tile data changes
+    /// </summary>
+    public void ForceFullRebuild()
+    {
+        _masterTextureReady = false;
         IsReady = false;
         Build();
     }
 
     public void UpdateTileOnMinimap(int tileIndex)
     {
-        if (!IsReady) return;
+        if (!IsReady || !_masterTextureReady) return;
         
+        // Update the master texture first
+        UpdateTileInMasterTexture(tileIndex);
+        
+        // Then regenerate the display texture from the updated master
+        GenerateDisplayTexture();
+    }
+    
+    private void UpdateTileInMasterTexture(int tileIndex)
+    {
         // Get world position from the correct generator
         Vector3 worldPos;
         if (dataSource == MinimapDataSource.Planet && GameManager.Instance?.planetGenerator != null)
@@ -222,10 +314,11 @@ public class MinimapGenerator : MonoBehaviour
             return; // Can't update without proper data source
         }
         
+        // Convert to master texture UV
         Vector2 uv = WorldPosToUV(worldPos);
-        int cx = Mathf.FloorToInt(uv.x * width);
-        int cy = Mathf.FloorToInt(uv.y * height);
-        int r = Mathf.Max(1, width / 256);
+        int cx = Mathf.FloorToInt(uv.x * masterTextureWidth);
+        int cy = Mathf.FloorToInt(uv.y * masterTextureHeight);
+        int r = Mathf.Max(1, masterTextureWidth / 512); // Scale radius based on master texture size
         
         // Get tile data from the correct generator
         HexTileData tileData;
@@ -253,17 +346,18 @@ public class MinimapGenerator : MonoBehaviour
             c = DefaultColorFor(tileData);
         }
 
+        // Update master texture
         for (int y = cy - r; y <= cy + r; y++)
         {
-            if (y < 0 || y >= height) continue;
+            if (y < 0 || y >= masterTextureHeight) continue;
             for (int x = cx - r; x <= cx + r; x++)
             {
-                if (x < 0 || x >= width) continue;
+                if (x < 0 || x >= masterTextureWidth) continue;
                 if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r)
-                    minimapTexture.SetPixel(x, y, c);
+                    _masterTexture.SetPixel(x, y, c);
             }
         }
-        minimapTexture.Apply();
+        _masterTexture.Apply();
     }
 
     private static Vector3 LatLonToDir(float lat, float lon)

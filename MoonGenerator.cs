@@ -717,7 +717,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     // Single tile instantiation method that handles all cases with mesh deformation
     
-    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Transform parent)
+    private GameObject InstantiateTilePrefab(HexTileData tileData, int tileIndex, Vector3 position, Transform parent, Quaternion? targetRotation = null)
     {
         // Get the appropriate prefab
         GameObject prefab = GetPrefabForTile(tileIndex, tileData);
@@ -729,9 +729,19 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Instantiate with correct position
         GameObject go = Instantiate(prefab, position, Quaternion.identity, parent);
 
-        // Orient so the tile's DOWN points away from the moon's center (up points toward center)
-        Vector3 radial = (position - transform.position).normalized;
-        go.transform.up = -radial; // Negative to flip the tile right-side up
+        // Apply rotation - use the provided target rotation if available, otherwise default to radial orientation
+        if (targetRotation.HasValue)
+        {
+            // Use the exact same rotation as the LineRenderer for perfect alignment
+            go.transform.rotation = targetRotation.Value;
+        }
+        else
+        {
+            // Fallback orientation. Orient so the tile's DOWN points away from the moon's center (up points toward center)
+            Vector3 radial = (position - transform.position).normalized;
+            go.transform.up = radial; // C
+            Debug.LogWarning($"No target rotation provided for tile {tileIndex}. Using radial orientation.");
+        }
 
         // Different scale factors for hexagons and pentagons
         const float hexagonScale = 0.047f;
@@ -983,7 +993,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             if (forward == Vector3.zero && worldCorners.Length > 1)
                 forward = (worldCorners[1] - worldCenter).normalized;
 
-            Quaternion rotation = Quaternion.LookRotation(forward, hexNormal);
+            Quaternion rotation = Quaternion.LookRotation(forward, -hexNormal); // Use -hexNormal like PlanetGenerator
 
             // LineRenderer uses the calculated rotation for orientation
             var lrObj = new GameObject($"HexOutline_{i}");
@@ -997,11 +1007,11 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             lr.transform.position = worldCenter;
             lr.transform.rotation = rotation;
 
-            // Instantiate tile prefab at center using radial orientation
+            // Instantiate tile prefab at center using the same rotation as LineRenderer
             if (!data.TryGetValue(i, out var td))
                 continue;
 
-            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, parent.transform);
+            GameObject tileGO = InstantiateTilePrefab(td, i, worldCenter, parent.transform, rotation);
             if (tileGO != null)
             {
                 var indexHolder = tileGO.GetComponent<TileIndexHolder>();

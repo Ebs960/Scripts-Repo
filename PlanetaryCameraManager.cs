@@ -47,6 +47,9 @@ public class PlanetaryCameraManager : MonoBehaviour
             cameraSkybox = gameObject.AddComponent<Skybox>();
 
         cameraRotation = Quaternion.identity;
+        
+        // Initialize center positions
+        UpdateCenterPositions();
         currentOrbitCenter = planetCenter;
 
         // Find the SunBillboard and Directional Light in the scene
@@ -118,7 +121,9 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Tab))
         {
             onMoon = !onMoon;
+            UpdateCenterPositions(); // Update positions dynamically
             currentOrbitCenter = onMoon ? moonCenter : planetCenter;
+            Debug.Log($"[PlanetaryCameraManager] Switched to {(onMoon ? "Moon" : "Planet")} at position: {currentOrbitCenter}");
         }
     }
 
@@ -132,6 +137,36 @@ public class PlanetaryCameraManager : MonoBehaviour
         transform.rotation = Quaternion.LookRotation((currentOrbitCenter - camPos).normalized, cameraRotation * Vector3.up);
         transform.Rotate(Vector3.right, cameraPivot, Space.Self);
     }
+    
+    void UpdateCenterPositions()
+    {
+        // Dynamically find planet and moon positions from GameManager
+        if (GameManager.Instance != null)
+        {
+            // Update planet center
+            if (GameManager.Instance.planetGenerator != null)
+            {
+                planetCenter = GameManager.Instance.planetGenerator.transform.position;
+            }
+            
+            // Update moon center
+            if (GameManager.Instance.moonGenerator != null)
+            {
+                moonCenter = GameManager.Instance.moonGenerator.transform.position;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Public method to update camera centers after world generation
+    /// </summary>
+    public void RefreshCenterPositions()
+    {
+        UpdateCenterPositions();
+        // Update current orbit center if we're already set
+        currentOrbitCenter = onMoon ? moonCenter : planetCenter;
+        Debug.Log($"[PlanetaryCameraManager] Refreshed centers - Planet: {planetCenter}, Moon: {moonCenter}");
+    }
 
     void HandleClickDetection()
     {
@@ -139,23 +174,45 @@ public class PlanetaryCameraManager : MonoBehaviour
         {
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
 
-            var planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
             int tileIndex = -1;
-
-            if (planet != null && planet.Grid != null &&
-                RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
+            
+            if (onMoon)
             {
-                Vector3 localDir = (hitPoint - planet.transform.position).normalized;
-                tileIndex = planet.Grid.GetTileAtPosition(localDir);
-            }
-
-            if (tileIndex >= 0)
-            {
-                Debug.Log($"Clicked on tile index: {tileIndex}");
-                var (tile, _) = TileDataHelper.Instance.GetTileData(tileIndex);
-                if (tile != null)
+                // Click detection for moon
+                var moon = GameManager.Instance?.moonGenerator ?? FindAnyObjectByType<MoonGenerator>();
+                if (moon != null && moon.Grid != null &&
+                    RaySphereIntersection(ray, moon.transform.position, moon.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {
-                    Debug.Log($"Biome: {tile.biome}, Elevation: {tile.elevation}, Food: {tile.food}");
+                    Vector3 localDir = (hitPoint - moon.transform.position).normalized;
+                    tileIndex = moon.Grid.GetTileAtPosition(localDir);
+                    
+                    if (tileIndex >= 0)
+                    {
+                        Debug.Log($"Clicked on moon tile index: {tileIndex}");
+                        var tileData = moon.GetHexTileData(tileIndex);
+                        Debug.Log($"Moon Biome: {tileData.biome}, Elevation: {tileData.elevation}");
+                    }
+                }
+            }
+            else
+            {
+                // Click detection for planet
+                var planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
+                if (planet != null && planet.Grid != null &&
+                    RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
+                {
+                    Vector3 localDir = (hitPoint - planet.transform.position).normalized;
+                    tileIndex = planet.Grid.GetTileAtPosition(localDir);
+                    
+                    if (tileIndex >= 0)
+                    {
+                        Debug.Log($"Clicked on planet tile index: {tileIndex}");
+                        var (tile, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+                        if (tile != null)
+                        {
+                            Debug.Log($"Planet Biome: {tile.biome}, Elevation: {tile.elevation}, Food: {tile.food}");
+                        }
+                    }
                 }
             }
         }
@@ -163,6 +220,13 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void LateUpdate()
     {
+        // Refresh positions periodically in case generators move
+        if (Time.frameCount % 60 == 0) // Every 60 frames (about once per second at 60fps)
+        {
+            UpdateCenterPositions();
+            currentOrbitCenter = onMoon ? moonCenter : planetCenter;
+        }
+        
         HandleInput();
         UpdateCameraPosition();
         HandleClickDetection();
