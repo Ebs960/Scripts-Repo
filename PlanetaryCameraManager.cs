@@ -209,4 +209,43 @@ public class PlanetaryCameraManager : MonoBehaviour
             _sunBB.AssignCamera(GetComponent<Camera>());
         }
     }
+
+    // Add this to your PlanetaryCameraManager
+
+public void ZoomBy(float delta)
+{
+    orbitRadius = Mathf.Clamp(orbitRadius + delta, minOrbitRadius, maxOrbitRadius);
+}
+
+public void FocusOnDirection(Vector3 worldDir, float seconds = 0.35f)
+{
+    // Convert worldDir (from planet center) to yaw/pitch for the camera
+    // Assume the planet is at planetCenter (not offset); adjust if not.
+    Vector3 dir = worldDir.normalized;
+    // Yaw: atan2(z, x); Pitch: asin(y)
+    float yawNew = Mathf.Atan2(dir.z, dir.x) * Mathf.Rad2Deg;
+    float pitchNew = Mathf.Asin(dir.y) * Mathf.Rad2Deg;
+    // Start a coroutine for a smooth lerp (if needed), else snap
+    StartCoroutine(LerpToAngles(yaw, pitch, yawNew, pitchNew, seconds));
+}
+
+private System.Collections.IEnumerator LerpToAngles(float startYaw, float startPitch, float endYaw, float endPitch, float seconds)
+{
+    float t = 0f;
+    float normEndYaw = endYaw;
+    // Ensure minimal angular interpolation (wrap-around)
+    if (Mathf.Abs(endYaw - startYaw) > 180f)
+        normEndYaw += (endYaw < startYaw) ? 360f : -360f;
+
+    while (t < 1f)
+    {
+        t += Time.deltaTime / Mathf.Max(0.001f, seconds);
+        yaw = Mathf.LerpAngle(startYaw, normEndYaw, t);
+        pitch = Mathf.Lerp(startPitch, endPitch, t);
+        yield return null;
+    }
+    yaw = endYaw;
+    pitch = endPitch;
+}
+
 }
