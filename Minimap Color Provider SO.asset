@@ -1,0 +1,156 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fa2bf0ed0b77064d84cf798c1febf80, type: 3}
+  m_Name: Minimap Color Provider SO
+  m_EditorClassIdentifier: 
+  renderMode: 1
+  biomeColors:
+  - biome: 0
+    color: {r: 0, g: 0.27220368, b: 1, a: 0}
+  - biome: 1
+    color: {r: 0.058063243, g: 0.8792453, b: 0.8584447, a: 0}
+  - biome: 2
+    color: {r: 1, g: 0.55683035, b: 0, a: 1}
+  - biome: 3
+    color: {r: 0.7283019, g: 0.6147456, b: 0.10306148, a: 1}
+  - biome: 4
+    color: {r: 0.6538691, g: 0.7735849, b: 0.37803486, a: 1}
+  - biome: 5
+    color: {r: 0.02958669, g: 0.509434, b: 0, a: 1}
+  - biome: 6
+    color: {r: 0, g: 0.2981131, b: 0, a: 1}
+  - biome: 7
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - biome: 8
+    color: {r: 0.8584906, g: 0.97513664, b: 1, a: 1}
+  - biome: 10
+    color: {r: 0.10242391, g: 1, b: 0, a: 1}
+  - biome: 11
+    color: {r: 0.5122776, g: 0.645283, b: 0.35916692, a: 1}
+  - biome: 9
+    color: {r: 0.77495897, g: 0.8037735, b: 0.7794752, a: 1}
+  - biome: 12
+    color: {r: 0.6144179, g: 0.62228817, b: 0.6226415, a: 1}
+  - biome: 13
+    color: {r: 0.5612803, g: 0.690566, b: 0, a: 1}
+  - biome: 14
+    color: {r: 0, g: 0.49103078, b: 0.85660374, a: 1}
+  - biome: 15
+    color: {r: 0.22264141, g: 0.14326017, b: 0.07183336, a: 1}
+  - biome: 16
+    color: {r: 0, g: 1, b: 0.7862749, a: 1}
+  - biome: 17
+    color: {r: 0.3735848, g: 0.3735848, b: 0.3735848, a: 1}
+  - biome: 18
+    color: {r: 0.5396226, g: 0.45511568, b: 0.45511568, a: 1}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
+  biomeTextures:
+  - biome: 0
+    texture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
+  - biome: 1
+    texture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
+  - biome: 2
+    texture: {fileID: 2800000, guid: b4c43bab7bd32d544a11305703554a54, type: 3}
+  - biome: 3
+    texture: {fileID: 2800000, guid: f0bfde0ee9836d4458b055686c8abcc8, type: 3}
+  - biome: 4
+    texture: {fileID: 2800000, guid: 1707d754343864b47b6864feaa4a8aa9, type: 3}
+  - biome: 5
+    texture: {fileID: 2800000, guid: f195142bdc91bd7478cf7ad8d7fbb238, type: 3}
+  - biome: 6
+    texture: {fileID: 2800000, guid: 5f2776499ee40f5478122b52fd891ff5, type: 3}
+  - biome: 7
+    texture: {fileID: 2800000, guid: f56072fbf54d548488220cab70ff575d, type: 3}
+  - biome: 8
+    texture: {fileID: 2800000, guid: a8acdd50901a7a34a804524291592972, type: 3}
+  - biome: 9
+    texture: {fileID: 2800000, guid: 490e26b5ca491464fb6e4c0cb82d55b5, type: 3}
+  - biome: 10
+    texture: {fileID: 2800000, guid: 5b4e66561fe4a9e48866bcb194db5a8d, type: 3}
+  - biome: 11
+    texture: {fileID: 2800000, guid: 8e3b16a130ed9ad459698e317b6b791f, type: 3}
+  - biome: 12
+    texture: {fileID: 2800000, guid: 8df62872c813f08409e153cf9f0bec3e, type: 3}
+  - biome: 13
+    texture: {fileID: 2800000, guid: 7d98b22f7c40e6c4a8cdef768d5f0269, type: 3}
+  - biome: 14
+    texture: {fileID: 2800000, guid: 078a542e75eef954c89e22dda37ace2f, type: 3}
+  - biome: 15
+    texture: {fileID: 2800000, guid: 8184ea15b50b2ae42b58018a8537f9f0, type: 3}
+  - biome: 16
+    texture: {fileID: 2800000, guid: 99615c734b442724482e75db10863466, type: 3}
+  - biome: 18
+    texture: {fileID: 2800000, guid: 192aef3753049d64c9f9bdf11c165000, type: 3}
+  - biome: 17
+    texture: {fileID: 2800000, guid: cfbb9517a455e49438d5f0c71d335feb, type: 3}
+  - biome: 19
+    texture: {fileID: 2800000, guid: ba713fcba59ffa649af32d87f8042e18, type: 3}
+  - biome: 20
+    texture: {fileID: 2800000, guid: 5026d7f4d1fe71343ad669ac62fcf96c, type: 3}
+  - biome: 21
+    texture: {fileID: 2800000, guid: 1f8d607439cf4eb4fb2b721f74efac35, type: 3}
+  - biome: 22
+    texture: {fileID: 2800000, guid: fb80efb9d328b96418b6c6c32722820a, type: 3}
+  - biome: 23
+    texture: {fileID: 2800000, guid: 99b4fc0eb76ec404b95f931496683517, type: 3}
+  - biome: 24
+    texture: {fileID: 2800000, guid: c3fc2d65a0d88cb4595d606de77239f8, type: 3}
+  - biome: 25
+    texture: {fileID: 2800000, guid: aa638c9b06783904d9d030a2b2426237, type: 3}
+  - biome: 26
+    texture: {fileID: 2800000, guid: 80a8b41f7e71738449b3f8c8f6d71e6a, type: 3}
+  - biome: 27
+    texture: {fileID: 2800000, guid: 5eecb472460324e45872682c80d62633, type: 3}
+  - biome: 28
+    texture: {fileID: 2800000, guid: fa42a99ded7afad489166b5000965885, type: 3}
+  - biome: 29
+    texture: {fileID: 2800000, guid: f21fd32caa0601941855807b636b805d, type: 3}
+  - biome: 30
+    texture: {fileID: 2800000, guid: 5d3384b986dcbde41b5711d3b30bc480, type: 3}
+  - biome: 31
+    texture: {fileID: 2800000, guid: 003f4323338e0634c98f0ad8259c3418, type: 3}
+  - biome: 32
+    texture: {fileID: 2800000, guid: a6ca79b1d9234a04ab4795f8c44f38e1, type: 3}
+  - biome: 33
+    texture: {fileID: 2800000, guid: 52f67815ab67c9d4ca075e15b8da358b, type: 3}
+  customMinimapTexture: {fileID: 0}

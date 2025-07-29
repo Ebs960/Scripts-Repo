@@ -734,8 +734,8 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         go.transform.up = -radial; // Negative to flip the tile right-side up
 
         // Different scale factors for hexagons and pentagons
-        const float hexagonScale = 0.0345f;
-        const float pentagonScale = 0.035f; // Fixed pentagon scale (matching PlanetGenerator)
+        const float hexagonScale = 0.047f;
+        const float pentagonScale = 0.047f; // Fixed pentagon scale (matching PlanetGenerator)
         float baseScale = isPentagon ? pentagonScale : hexagonScale;
         
         // Apply tileRadiusMultiplier (matching PlanetGenerator)

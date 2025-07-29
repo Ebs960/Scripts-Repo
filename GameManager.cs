@@ -678,6 +678,88 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("Map generation complete!");
+        
+        // Configure minimaps after world generation
+        ConfigureMinimaps();
+    }
+
+    private void ConfigureMinimaps()
+    {
+        Debug.Log("Configuring minimaps...");
+        
+        // Find minimap controller in the scene
+        var minimapController = FindAnyObjectByType<MinimapController>();
+        if (minimapController == null)
+        {
+            Debug.LogWarning("[GameManager] No MinimapController found in scene. Skipping minimap configuration.");
+            return;
+        }
+
+        // Assign camera reference
+        if (minimapController.mainCamera == null)
+        {
+            var camera = Camera.main ?? FindAnyObjectByType<Camera>();
+            if (camera != null)
+            {
+                minimapController.mainCamera = camera;
+                Debug.Log("Main camera assigned to minimap controller.");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] No camera found for minimap controller.");
+            }
+        }
+
+        // Assign camera manager reference
+        if (minimapController.cameraManager == null)
+        {
+            var cameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+            if (cameraManager != null)
+            {
+                minimapController.cameraManager = cameraManager;
+                Debug.Log("Camera manager assigned to minimap controller.");
+            }
+        }
+
+        // Configure planet minimap generator
+        if (minimapController.planetGenerator != null && planetGenerator != null)
+        {
+            minimapController.planetGenerator.ConfigureDataSource(
+                planetGenerator, 
+                planetGenerator.transform, 
+                MinimapDataSource.Planet
+            );
+            minimapController.planetRoot = planetGenerator.transform;
+            Debug.Log("Planet minimap generator configured.");
+            
+            // Build planet minimap
+            minimapController.planetGenerator.Build();
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Planet minimap generator or planet generator not found.");
+        }
+
+        // Configure moon minimap generator (if moon exists)
+        if (generateMoon && minimapController.moonGenerator != null && moonGenerator != null)
+        {
+            minimapController.moonGenerator.ConfigureDataSource(
+                moonGenerator, 
+                moonGenerator.transform, 
+                MinimapDataSource.Moon
+            );
+            minimapController.moonRoot = moonGenerator.transform;
+            Debug.Log("Moon minimap generator configured.");
+            
+            // Build moon minimap
+            minimapController.moonGenerator.Build();
+        }
+        else if (generateMoon)
+        {
+            Debug.LogWarning("[GameManager] Moon minimap generator or moon generator not found.");
+        }
+
+        Debug.Log("Minimap configuration complete!");
     }
 
     /// <summary>
