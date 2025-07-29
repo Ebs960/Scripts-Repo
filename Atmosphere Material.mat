@@ -49,7 +49,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _LatTintTex:
-        m_Texture: {fileID: 2800000, guid: 6e83d0eae5642de469f265015359f5f7, type: 3}
+        m_Texture: {fileID: 2800000, guid: 30aca8912be227440ac3a04e318f0453, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -88,8 +88,8 @@ Material:
     m_Floats:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
-    - _AlphaEdge: 0.601
-    - _AlphaMid: 0.387
+    - _AlphaEdge: 0.244
+    - _AlphaMid: 0.526
     - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
