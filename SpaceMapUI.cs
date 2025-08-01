@@ -50,6 +50,9 @@ public class SpaceMapUI : MonoBehaviour
     void Awake()
     {
         SetupUIReferences();
+        
+        // IMPORTANT: Hide the space map UI immediately
+        Hide();
     }
 
     /// <summary>
@@ -326,6 +329,8 @@ public class SpaceMapUI : MonoBehaviour
                 case PlanetType.Titan:
                 case PlanetType.Ganymede:
                     return new Vector2(45, 45); // Large moons
+                case PlanetType.Demonic:
+                    return new Vector2(90, 90); // Special hellish world, slightly larger
                 default:
                     return new Vector2(70, 70); // Earth-sized planets
             }
@@ -567,8 +572,16 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
-        spaceMapPanel.SetActive(false);
-        planetInfoPanel.SetActive(false);
+        if (spaceMapPanel != null)
+            spaceMapPanel.SetActive(false);
+        
+        if (planetInfoPanel != null)
+            planetInfoPanel.SetActive(false);
+            
+        if (spaceMapCanvas != null)
+            spaceMapCanvas.gameObject.SetActive(false);
+            
+        Debug.Log("[SpaceMapUI] Space map UI hidden");
     }
 
     /// <summary>

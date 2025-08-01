@@ -82,8 +82,10 @@ public class GameManager : MonoBehaviour
     [Header("UI Prefabs")]
     public GameObject playerUIPrefab;
     public GameObject planetaryCameraPrefab; // Assign 'New Map Shit/Camera Controller.prefab'
+    public GameObject spaceLoadingPanelPrefab; // Assign space loading panel prefab
 
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
+    private SpaceLoadingPanelController spaceLoadingPanel; // Reference to space loading panel
 
     // --- SGT-compatible tile grid and lookup ---
     [System.Serializable]
@@ -352,7 +354,6 @@ public class GameManager : MonoBehaviour
         {
             if (religionManagerPrefab != null)
             {
-                // ...existing code...
                 GameObject religionManagerGO = Instantiate(religionManagerPrefab);
                 religionManager = religionManagerGO.GetComponent<ReligionManager>();
             }
@@ -368,7 +369,6 @@ public class GameManager : MonoBehaviour
         {
             if (animalManagerPrefab != null)
             {
-                // ...existing code...
                 GameObject animalManagerGO = Instantiate(animalManagerPrefab);
                 animalManager = animalManagerGO.GetComponent<AnimalManager>();
             }
@@ -792,13 +792,76 @@ public class GameManager : MonoBehaviour
             if (UIManager.Instance.playerUI != null)
                 UIManager.Instance.playerUI.SetActive(true);
         }
+
+        // Initialize space loading panel if prefab is assigned
+        InitializeSpaceLoadingPanel();
     }
 
-    public void SetPaused(bool paused)
+    /// <summary>
+    /// Initialize the space loading panel for future space travel
+    /// </summary>
+    private void InitializeSpaceLoadingPanel()
     {
-        gamePaused = paused;
-        Time.timeScale = paused ? 0f : 1f;
-        OnGamePaused?.Invoke(paused);
+        if (spaceLoadingPanelPrefab != null && spaceLoadingPanel == null)
+        {
+            GameObject spaceLoadingGO = Instantiate(spaceLoadingPanelPrefab);
+            spaceLoadingPanel = spaceLoadingGO.GetComponent<SpaceLoadingPanelController>();
+            
+            if (spaceLoadingPanel != null)
+            {
+                // Ensure it starts hidden
+                spaceLoadingPanel.HideSpaceLoading();
+                Debug.Log("[GameManager] Space loading panel initialized");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Space loading panel prefab does not have SpaceLoadingPanelController component");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Show space travel loading screen (for future space travel features)
+    /// </summary>
+    public void ShowSpaceTravel(string destination, GameObject[] playerSpaceships = null)
+    {
+        if (spaceLoadingPanel != null)
+        {
+            string status = $"Traveling to {destination}...";
+            spaceLoadingPanel.ShowSpaceLoading(status, playerSpaceships);
+            Debug.Log($"[GameManager] Started space travel to {destination}");
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] No space loading panel available for space travel");
+        }
+    }
+
+    /// <summary>
+    /// Hide space travel loading screen
+    /// </summary>
+    public void HideSpaceTravel()
+    {
+        if (spaceLoadingPanel != null)
+        {
+            spaceLoadingPanel.HideSpaceLoading();
+            Debug.Log("[GameManager] Space travel completed");
+        }
+    }
+
+    /// <summary>
+    /// Update space travel progress (0.0 to 1.0)
+    /// </summary>
+    public void UpdateSpaceTravelProgress(float progress, string status = "")
+    {
+        if (spaceLoadingPanel != null)
+        {
+            spaceLoadingPanel.SetProgress(progress);
+            if (!string.IsNullOrEmpty(status))
+            {
+                spaceLoadingPanel.SetStatus(status);
+            }
+        }
     }
 
     /// <summary>

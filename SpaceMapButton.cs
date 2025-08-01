@@ -34,7 +34,7 @@ public class SpaceMapButton : MonoBehaviour
         }
 
         // Find or create SpaceMapUI
-        spaceMapUI = FindObjectOfType<SpaceMapUI>();
+        spaceMapUI = FindFirstObjectByType<SpaceMapUI>();
         if (spaceMapUI == null)
         {
             if (spaceMapUIPrefab != null)

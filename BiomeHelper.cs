@@ -91,10 +91,85 @@ public static class BiomeHelper {
     public static Biome GetBiome(bool isLand, float temperature, float moisture,
         bool isRainforestMapType = false, bool isScorchedMapType = false,
         bool isInfernalMapType = false, bool isDemonicMapType = false,
-        bool isIceWorldMapType = false, bool isMonsoonMapType = false)
+        bool isIceWorldMapType = false, bool isMonsoonMapType = false,
+        bool isMarsWorldType = false, bool isVenusWorldType = false,
+        bool isMercuryWorldType = false, bool isJupiterWorldType = false,
+        bool isSaturnWorldType = false, bool isUranusWorldType = false,
+        bool isNeptuneWorldType = false, bool isPlutoWorldType = false,
+        bool isTitanWorldType = false, bool isEuropaWorldType = false,
+        bool isIoWorldType = false, bool isGanymedeWorldType = false,
+        bool isCallistoWorldType = false, bool isLunaWorldType = false)
     {
         if (!isLand) {
             return Biome.Ocean;
+        }
+        // --- REAL SOLAR SYSTEM PLANET LOGIC ---
+        if (isMarsWorldType) {
+            if (temperature < 0.15f && moisture > 0.5f) return Biome.MartianPolarIce;
+            if (temperature < 0.25f && moisture < 0.3f) return Biome.MartianDunes;
+            if (temperature > 0.25f && moisture < 0.3f) return Biome.MartianRegolith;
+            if (temperature > 0.2f && moisture > 0.3f) return Biome.MartianCanyon;
+            return Biome.MartianRegolith;
+        }
+        if (isVenusWorldType) {
+            if (temperature > 0.6f && moisture < 0.2f) return Biome.VenusianLava;
+            if (temperature > 0.5f && moisture > 0.5f) return Biome.VenusianAcidClouds;
+            if (temperature > 0.5f && moisture < 0.5f) return Biome.VenusianPlains;
+            if (temperature > 0.4f && moisture > 0.2f) return Biome.VenusianHighlands;
+            return Biome.VenusianPlains;
+        }
+        if (isMercuryWorldType) {
+            if (temperature > 0.5f && moisture < 0.2f) return Biome.MercurianCraters;
+            if (temperature > 0.3f && moisture < 0.3f) return Biome.MercurianBasalt;
+            if (temperature < 0.3f && moisture < 0.2f) return Biome.MercurianScarp;
+            return Biome.MercurianCraters;
+        }
+        if (isJupiterWorldType) {
+            if (temperature < 0.0f && moisture > 0.5f) return Biome.JovianClouds;
+            if (temperature < -0.2f && moisture > 0.7f) return Biome.JovianStorm;
+            return Biome.JovianClouds;
+        }
+        if (isSaturnWorldType) {
+            if (temperature < 0.0f && moisture > 0.5f) return Biome.SaturnianClouds;
+            if (temperature < -0.2f && moisture > 0.7f) return Biome.SaturnianRings;
+            return Biome.SaturnianClouds;
+        }
+        if (isUranusWorldType) {
+            if (temperature < -0.3f && moisture > 0.5f) return Biome.UranianIce;
+            if (temperature < -0.4f && moisture > 0.7f) return Biome.UranianMethane;
+            return Biome.UranianIce;
+        }
+        if (isNeptuneWorldType) {
+            if (temperature < -0.3f && moisture > 0.5f) return Biome.NeptunianIce;
+            if (temperature < -0.4f && moisture > 0.7f) return Biome.NeptunianWinds;
+            return Biome.NeptunianIce;
+        }
+        if (isPlutoWorldType) {
+            if (temperature < -0.5f && moisture > 0.5f) return Biome.PlutoCryo;
+            if (temperature < -0.4f && moisture < 0.3f) return Biome.PlutoTholins;
+            if (temperature < -0.3f && moisture > 0.3f) return Biome.PlutoMountains;
+            return Biome.PlutoCryo;
+        }
+        if (isTitanWorldType) {
+            if (temperature < -0.4f && moisture > 0.5f) return Biome.TitanLakes;
+            if (temperature < -0.3f && moisture < 0.3f) return Biome.TitanDunes;
+            if (temperature < -0.2f && moisture > 0.3f) return Biome.TitanIce;
+            return Biome.TitanLakes;
+        }
+        if (isEuropaWorldType) {
+            if (temperature < -0.5f && moisture > 0.5f) return Biome.EuropaIce;
+            if (temperature < -0.4f && moisture > 0.3f) return Biome.EuropaRidges;
+            return Biome.EuropaIce;
+        }
+        if (isIoWorldType) {
+            if (temperature < -0.3f && moisture < 0.2f) return Biome.IoSulfur;
+            if (temperature < -0.2f && moisture > 0.2f) return Biome.IoVolcanic;
+            return Biome.IoVolcanic;
+        }
+        if (isLunaWorldType || isGanymedeWorldType || isCallistoWorldType) {
+            if (temperature < 0.0f && moisture < 0.2f) return Biome.MoonDunes;
+            if (temperature < 0.1f && moisture > 0.2f) return Biome.MoonCaves;
+            return Biome.MoonDunes;
         }
 
         // ICE WORLD: Exclusive biomes

@@ -19,6 +19,9 @@ public class SolarSystemManager : MonoBehaviour
     [Tooltip("Generate real solar system instead of procedural planets")]
     public bool useRealSolarSystem = false;
     
+    [Tooltip("Add fantasy planets (like Demonic worlds) to the real solar system")]
+    public bool includeFantasyPlanets = false;
+    
     [Tooltip("Prefab for generating new planets")]
     public GameObject planetGeneratorPrefab;
     
@@ -32,7 +35,10 @@ public class SolarSystemManager : MonoBehaviour
     [Tooltip("Main menu scene name")]
     public string mainMenuSceneName = "MainMenu";
     
-    [Tooltip("Space map scene name")]
+    [Tooltip("Use dedicated 3D space map scene instead of UI overlay")]
+    public bool useSpaceMapScene = false;
+    
+    [Tooltip("Space map scene name (only used if useSpaceMapScene is true)")]
     public string spaceMapSceneName = "SpaceMap";
 
     [Header("Current State")]
@@ -106,6 +112,12 @@ public class SolarSystemManager : MonoBehaviour
         
         // Add major moons
         AddRealMoons();
+        
+        // Add fantasy planets if enabled
+        if (includeFantasyPlanets)
+        {
+            AddFantasyPlanets();
+        }
         
         // Set Earth as home world
         planetData[2].isHomeWorld = true;
@@ -185,6 +197,39 @@ public class SolarSystemManager : MonoBehaviour
             civilizations = new List<CivilizationPresence>(),
             description = GetPlanetDescription(type)
         };
+    }
+    
+    /// <summary>
+    /// Add fantasy planets to the real solar system (beyond Pluto)
+    /// </summary>
+    private void AddFantasyPlanets()
+    {
+        // Demonic world - a hellish planet beyond the outer solar system
+        var demonicWorld = new PlanetSceneData
+        {
+            planetIndex = 200, // High index to avoid conflicts
+            planetName = "Infernus",
+            sceneName = planetScenePrefix + "200",
+            planetType = PlanetType.Demonic,
+            celestialBodyType = CelestialBodyType.Procedural,
+            isGenerated = false,
+            isCurrentlyLoaded = false,
+            isHomeWorld = false,
+            distanceFromStar = 50.0f, // Far beyond Pluto
+            planetSize = GameManager.MapSize.Standard,
+            orbitalPeriod = 120000f, // Very long orbital period
+            rotationPeriod = 32.0f, // Slightly longer than Earth day
+            gravity = 1.3f, // Higher gravity than Earth
+            hasAtmosphere = true,
+            atmosphereComposition = "Sulfur compounds, methane, carbon dioxide",
+            averageTemperature = 200f, // Hot despite distance (internal heat)
+            civilizations = new List<CivilizationPresence>(),
+            description = GetPlanetDescription(PlanetType.Demonic)
+        };
+        
+        planetData[200] = demonicWorld;
+        
+        Debug.Log("Added fantasy planets to solar system. Infernus (Demonic World) available for exploration!");
     }
     
     /// <summary>
@@ -395,7 +440,7 @@ public class SolarSystemManager : MonoBehaviour
         planet.civilizations.Clear();
         
         // Find CivilizationManager in the planet scene
-        CivilizationManager civManager = FindObjectOfType<CivilizationManager>();
+        CivilizationManager civManager = FindFirstObjectByType<CivilizationManager>();
         if (civManager != null && civManager.civilizations != null)
         {
             foreach (var civ in civManager.civilizations)
@@ -404,11 +449,11 @@ public class SolarSystemManager : MonoBehaviour
                 {
                     planet.civilizations.Add(new CivilizationPresence
                     {
-                        civilizationName = civ.civilizationName,
-                        leaderName = civ.leaderName,
-                        isPlayer = civ.isPlayer,
+                        civilizationName = civ.civData?.civName ?? "Unknown Civilization",
+                        leaderName = civ.leader?.leaderName ?? "Unknown Leader",
+                        isPlayer = civ.isPlayerControlled,
                         cityCount = civ.cities?.Count ?? 0,
-                        isAlive = civ.isAlive
+                        isAlive = (civ.cities?.Count > 0) || (civ.combatUnits?.Count > 0) || (civ.workerUnits?.Count > 0) // A civilization is alive if it has cities OR any units
                     });
                 }
             }
@@ -449,15 +494,32 @@ public class SolarSystemManager : MonoBehaviour
     {
         yield return ShowLoadingScreen("Opening star chart...");
         
-        // Try to load space map scene, or create UI overlay
-        try
+        if (useSpaceMapScene)
         {
-            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(spaceMapSceneName, LoadSceneMode.Additive);
-            yield return asyncLoad;
+            // Try to load space map scene
+            AsyncOperation asyncLoad = null;
+            try
+            {
+                asyncLoad = SceneManager.LoadSceneAsync(spaceMapSceneName, LoadSceneMode.Additive);
+            }
+            catch
+            {
+                asyncLoad = null;
+            }
+            
+            if (asyncLoad != null)
+            {
+                yield return asyncLoad;
+            }
+            else
+            {
+                // If space map scene doesn't exist, fallback to UI overlay
+                CreateSpaceMapOverlay();
+            }
         }
-        catch
+        else
         {
-            // If space map scene doesn't exist, create UI overlay instead
+            // Use UI overlay instead of scene
             CreateSpaceMapOverlay();
         }
         
@@ -470,7 +532,7 @@ public class SolarSystemManager : MonoBehaviour
     private void CreateSpaceMapOverlay()
     {
         // Find or create SpaceMapUI
-        SpaceMapUI spaceMapUI = FindObjectOfType<SpaceMapUI>();
+        SpaceMapUI spaceMapUI = FindFirstObjectByType<SpaceMapUI>();
         if (spaceMapUI == null)
         {
             GameObject spaceMapGO = new GameObject("SpaceMapUI");
@@ -484,23 +546,49 @@ public class SolarSystemManager : MonoBehaviour
     // Helper methods for loading screen
     private IEnumerator ShowLoadingScreen(string message)
     {
-        if (PlanetTransitionLoader.Instance != null)
+        // Try to use the enhanced loading panel system first
+        LoadingPanelController loadingPanel = FindFirstObjectByType<LoadingPanelController>();
+        if (loadingPanel != null)
         {
-            PlanetTransitionLoader.Instance.Show(GetPlanetData(currentPlanetIndex)?.planetName ?? "Unknown Planet");
-            PlanetTransitionLoader.Instance.SetStatus(message);
+            loadingPanel.ShowLoadingAuto(message); // Auto-detects space travel
         }
         else
         {
-            Debug.Log($"[Loading] {message}");
+            // Try using singleton space loading panel
+            LoadingPanelController.ShowSpaceLoadingStatic(message);
+            
+            // Fallback to legacy system if no space loading available
+            if (SpaceLoadingPanelController.Instance == null && PlanetTransitionLoader.Instance != null)
+            {
+                PlanetTransitionLoader.Instance.Show(GetPlanetData(currentPlanetIndex)?.planetName ?? "Unknown Planet");
+                PlanetTransitionLoader.Instance.SetStatus(message);
+            }
+            else if (SpaceLoadingPanelController.Instance == null)
+            {
+                Debug.Log($"[Loading] {message}");
+            }
         }
         yield return new WaitForSeconds(0.5f);
     }
 
     private IEnumerator HideLoadingScreen()
     {
-        if (PlanetTransitionLoader.Instance != null)
+        // Try to use the enhanced loading panel system first
+        LoadingPanelController loadingPanel = FindFirstObjectByType<LoadingPanelController>();
+        if (loadingPanel != null)
         {
-            PlanetTransitionLoader.Instance.Hide();
+            loadingPanel.HideAllLoading(); // Hides both regular and space loading
+        }
+        else
+        {
+            // Try using singleton space loading panel
+            LoadingPanelController.HideSpaceLoadingStatic();
+            
+            // Fallback to legacy system
+            if (SpaceLoadingPanelController.Instance == null && PlanetTransitionLoader.Instance != null)
+            {
+                PlanetTransitionLoader.Instance.Hide();
+            }
         }
         yield return new WaitForSeconds(0.2f);
     }
@@ -584,6 +672,8 @@ public class SolarSystemManager : MonoBehaviour
                 return "A barren, mountainous world with little atmosphere. Excellent for mining operations.";
             case PlanetType.Gas:
                 return "A gas giant with no solid surface. Flying cities harvest atmospheric resources.";
+            case PlanetType.Demonic:
+                return "A hellish realm of fire and brimstone. Ancient evils stir beneath the burning surface.";
             
             default:
                 return "An unknown world waiting to be explored and understood.";
@@ -593,218 +683,177 @@ public class SolarSystemManager : MonoBehaviour
     /// <summary>
     /// Configure game setup data for a specific planet type
     /// </summary>
-    public GameSetupData ConfigureGameSetupForPlanet(PlanetType planetType, GameManager.MapSize mapSize)
+    public void ConfigureGameSetupForPlanet(PlanetType planetType, GameManager.MapSize mapSize)
     {
-        var gameSetup = new GameSetupData();
-        
         // Set the map size
-        gameSetup.mapSize = mapSize;
+        GameSetupData.mapSize = mapSize;
         
         // Configure based on planet type using real PlanetGenerator parameters
         switch (planetType)
         {
             case PlanetType.Mercury:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = 0.65f; // Extremely hot
-                gameSetup.moistureBias = -0.3f; // No atmosphere, very dry
-                gameSetup.landThreshold = 0.2f; // Mostly cratered surface
-                gameSetup.mountainThreshold = 0.7f; // Many craters = mountains
-                gameSetup.hillThreshold = 0.5f; // Rough terrain
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = 0.65f; // Extremely hot
+                GameSetupData.moistureBias = -0.3f; // No atmosphere, very dry
+                GameSetupData.landThreshold = 0.2f; // Mostly cratered surface
                 break;
                 
             case PlanetType.Venus:
-                gameSetup.temperatureBias = 0.65f; // Hellishly hot
-                gameSetup.moistureBias = -0.25f; // Acid clouds but surface is dry
-                gameSetup.landThreshold = 0.35f; // Mostly solid surface
-                gameSetup.mountainThreshold = 0.75f; // Volcanic mountains
-                gameSetup.hillThreshold = 0.6f; // Rough volcanic terrain
-                gameSetup.isInfernalWorld = true; // Gets volcanic/steam biomes
+                GameSetupData.temperatureBias = 0.65f; // Hellishly hot
+                GameSetupData.moistureBias = -0.25f; // Acid clouds but surface is dry
+                GameSetupData.landThreshold = 0.35f; // Mostly solid surface
+                GameSetupData.isInfernalWorld = true; // Gets volcanic/steam biomes
                 break;
                 
             case PlanetType.Terran:
-                gameSetup.temperatureBias = 0.0f; // Earth-like moderate
-                gameSetup.moistureBias = 0.0f; // Earth-like balanced
-                gameSetup.landThreshold = 0.4f; // Earth-like land/water ratio
-                gameSetup.mountainThreshold = 0.8f; // Standard mountains
-                gameSetup.hillThreshold = 0.6f; // Standard hills
-                gameSetup.numberOfContinents = 6; // Earth-like continents
+                GameSetupData.temperatureBias = 0.0f; // Earth-like moderate
+                GameSetupData.moistureBias = 0.0f; // Earth-like balanced
+                GameSetupData.landThreshold = 0.4f; // Earth-like land/water ratio
+                GameSetupData.numberOfContinents = 6; // Earth-like continents
                 break;
                 
             case PlanetType.Mars:
-                gameSetup.temperatureBias = -0.5f; // Very cold
-                gameSetup.moistureBias = -0.2f; // Dry, thin atmosphere
-                gameSetup.landThreshold = 0.15f; // Mostly solid surface, some polar ice
-                gameSetup.mountainThreshold = 0.7f; // Olympus Mons and canyons
-                gameSetup.hillThreshold = 0.5f; // Varied terrain
-                gameSetup.numberOfContinents = 2; // Distinctive hemispheres
+                GameSetupData.temperatureBias = -0.5f; // Very cold
+                GameSetupData.moistureBias = -0.2f; // Dry, thin atmosphere
+                GameSetupData.landThreshold = 0.15f; // Mostly solid surface, some polar ice
+                GameSetupData.numberOfContinents = 2; // Distinctive hemispheres
                 break;
                 
             case PlanetType.Jupiter:
-                gameSetup.temperatureBias = -0.6f; // Very cold
-                gameSetup.moistureBias = 0.3f; // Dense gas atmosphere
-                gameSetup.landThreshold = 0.0f; // No solid surface
-                gameSetup.mountainThreshold = 1.0f; // No mountains
-                gameSetup.hillThreshold = 1.0f; // No hills
-                gameSetup.mapSize = GameManager.MapSize.Large;
+                GameSetupData.temperatureBias = -0.6f; // Very cold
+                GameSetupData.moistureBias = 0.3f; // Dense gas atmosphere
+                GameSetupData.landThreshold = 0.0f; // No solid surface
+                GameSetupData.mapSize = GameManager.MapSize.Large;
                 break;
                 
             case PlanetType.Saturn:
-                gameSetup.temperatureBias = -0.65f; // Extremely cold
-                gameSetup.moistureBias = 0.3f; // Dense gas atmosphere
-                gameSetup.landThreshold = 0.0f; // No solid surface
-                gameSetup.mountainThreshold = 1.0f; // No mountains
-                gameSetup.hillThreshold = 1.0f; // No hills
-                gameSetup.mapSize = GameManager.MapSize.Large;
+                GameSetupData.temperatureBias = -0.65f; // Extremely cold
+                GameSetupData.moistureBias = 0.3f; // Dense gas atmosphere
+                GameSetupData.landThreshold = 0.0f; // No solid surface
+                GameSetupData.mapSize = GameManager.MapSize.Large;
                 break;
                 
             case PlanetType.Uranus:
             case PlanetType.Neptune:
-                gameSetup.temperatureBias = -0.65f; // Ice giants are extremely cold
-                gameSetup.moistureBias = 0.2f; // Ice and gas
-                gameSetup.landThreshold = 0.1f; // Mostly gas with some ice
-                gameSetup.mountainThreshold = 0.9f; // Ice formations
-                gameSetup.hillThreshold = 0.7f; // Ice terrain
+                GameSetupData.temperatureBias = -0.65f; // Ice giants are extremely cold
+                GameSetupData.moistureBias = 0.2f; // Ice and gas
+                GameSetupData.landThreshold = 0.1f; // Mostly gas with some ice
                 break;
                 
             case PlanetType.Pluto:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = -0.65f; // Extremely cold
-                gameSetup.moistureBias = -0.1f; // Some nitrogen ice
-                gameSetup.landThreshold = 0.3f; // Solid surface with varied terrain
-                gameSetup.mountainThreshold = 0.8f; // Some terrain variation
-                gameSetup.hillThreshold = 0.6f; // Gentle ice features
-                gameSetup.isIceWorld = true; // Gets ice world biomes
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = -0.65f; // Extremely cold
+                GameSetupData.moistureBias = -0.1f; // Some nitrogen ice
+                GameSetupData.landThreshold = 0.3f; // Solid surface with varied terrain
+                GameSetupData.isIceWorld = true; // Gets ice world biomes
                 break;
                 
             case PlanetType.Luna:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = -0.3f; // Cold but varies with day/night
-                gameSetup.moistureBias = -0.3f; // No atmosphere or water
-                gameSetup.landThreshold = 0.35f; // Solid surface
-                gameSetup.mountainThreshold = 0.6f; // Many crater rims
-                gameSetup.hillThreshold = 0.4f; // Crater and mare terrain
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = -0.3f; // Cold but varies with day/night
+                GameSetupData.moistureBias = -0.3f; // No atmosphere or water
+                GameSetupData.landThreshold = 0.35f; // Solid surface
                 break;
                 
             case PlanetType.Io:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = -0.4f; // Cold despite volcanism
-                gameSetup.moistureBias = -0.25f; // Sulfur, not water
-                gameSetup.landThreshold = 0.4f; // Solid volcanic surface
-                gameSetup.mountainThreshold = 0.5f; // Active volcanoes
-                gameSetup.hillThreshold = 0.3f; // Constant volcanic activity
-                gameSetup.isInfernalWorld = true; // Volcanic world
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = -0.4f; // Cold despite volcanism
+                GameSetupData.moistureBias = -0.25f; // Sulfur, not water
+                GameSetupData.landThreshold = 0.4f; // Solid volcanic surface
+                GameSetupData.isInfernalWorld = true; // Volcanic world
                 break;
                 
             case PlanetType.Europa:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = -0.6f; // Very cold
-                gameSetup.moistureBias = 0.1f; // Subsurface ocean
-                gameSetup.landThreshold = 0.6f; // Ice shell over ocean
-                gameSetup.mountainThreshold = 0.9f; // Smooth ice surface
-                gameSetup.hillThreshold = 0.8f; // Some ice ridges
-                gameSetup.isIceWorld = true; // Ice world
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = -0.6f; // Very cold
+                GameSetupData.moistureBias = 0.1f; // Subsurface ocean
+                GameSetupData.landThreshold = 0.6f; // Ice shell over ocean
+                GameSetupData.isIceWorld = true; // Ice world
                 break;
                 
             case PlanetType.Titan:
-                gameSetup.temperatureBias = -0.6f; // Very cold
-                gameSetup.moistureBias = 0.15f; // Hydrocarbon lakes
-                gameSetup.landThreshold = 0.45f; // Mix of land and lakes
-                gameSetup.mountainThreshold = 0.85f; // Some terrain variation
-                gameSetup.hillThreshold = 0.7f; // Gentle terrain
+                GameSetupData.temperatureBias = -0.6f; // Very cold
+                GameSetupData.moistureBias = 0.15f; // Hydrocarbon lakes
+                GameSetupData.landThreshold = 0.45f; // Mix of land and lakes
                 break;
                 
             case PlanetType.Enceladus:
-                gameSetup.mapSize = GameManager.MapSize.Small;
-                gameSetup.temperatureBias = -0.65f; // Extremely cold
-                gameSetup.moistureBias = 0.0f; // Ice and geysers
-                gameSetup.landThreshold = 0.5f; // Ice surface
-                gameSetup.mountainThreshold = 0.9f; // Smooth with some ridges
-                gameSetup.hillThreshold = 0.8f; // Gentle ice terrain
-                gameSetup.isIceWorld = true; // Ice world
+                GameSetupData.mapSize = GameManager.MapSize.Small;
+                GameSetupData.temperatureBias = -0.65f; // Extremely cold
+                GameSetupData.moistureBias = 0.0f; // Ice and geysers
+                GameSetupData.landThreshold = 0.5f; // Ice surface
+                GameSetupData.isIceWorld = true; // Ice world
                 break;
                 
             case PlanetType.Ganymede:
             case PlanetType.Callisto:
-                gameSetup.temperatureBias = -0.6f; // Very cold
-                gameSetup.moistureBias = -0.1f; // Ice and rock
-                gameSetup.landThreshold = 0.4f; // Mixed ice/rock surface
-                gameSetup.mountainThreshold = 0.75f; // Crater rims and ridges
-                gameSetup.hillThreshold = 0.6f; // Varied icy terrain
-                gameSetup.isIceWorld = true; // Ice world
+                GameSetupData.temperatureBias = -0.6f; // Very cold
+                GameSetupData.moistureBias = -0.1f; // Ice and rock
+                GameSetupData.landThreshold = 0.4f; // Mixed ice/rock surface
+                GameSetupData.isIceWorld = true; // Ice world
                 break;
                 
             // Procedural planet defaults
             case PlanetType.Desert:
-                gameSetup.temperatureBias = 0.3f; // Hot
-                gameSetup.moistureBias = -0.2f; // Dry
-                gameSetup.landThreshold = 0.5f; // Mostly land
-                gameSetup.mountainThreshold = 0.8f; // Some mountains
-                gameSetup.hillThreshold = 0.6f; // Rolling dunes
+                GameSetupData.temperatureBias = 0.3f; // Hot
+                GameSetupData.moistureBias = -0.2f; // Dry
+                GameSetupData.landThreshold = 0.5f; // Mostly land
                 break;
                 
             case PlanetType.Ocean:
-                gameSetup.temperatureBias = 0.0f; // Moderate
-                gameSetup.moistureBias = 0.25f; // Very wet
-                gameSetup.landThreshold = 0.2f; // Mostly water
-                gameSetup.mountainThreshold = 0.85f; // Island peaks
-                gameSetup.hillThreshold = 0.7f; // Archipelago terrain
+                GameSetupData.temperatureBias = 0.0f; // Moderate
+                GameSetupData.moistureBias = 0.25f; // Very wet
+                GameSetupData.landThreshold = 0.2f; // Mostly water
                 break;
                 
             case PlanetType.Ice:
-                gameSetup.temperatureBias = -0.4f; // Cold
-                gameSetup.moistureBias = 0.1f; // Frozen water
-                gameSetup.landThreshold = 0.4f; // Mix of ice and land
-                gameSetup.mountainThreshold = 0.8f; // Ice mountains
-                gameSetup.hillThreshold = 0.6f; // Ice hills
-                gameSetup.isIceWorld = true; // Ice world biomes
+                GameSetupData.temperatureBias = -0.4f; // Cold
+                GameSetupData.moistureBias = 0.1f; // Frozen water
+                GameSetupData.landThreshold = 0.4f; // Mix of ice and land
+                GameSetupData.isIceWorld = true; // Ice world biomes
                 break;
                 
             case PlanetType.Volcanic:
-                gameSetup.temperatureBias = 0.4f; // Hot
-                gameSetup.moistureBias = 0.0f; // Variable
-                gameSetup.landThreshold = 0.45f; // Land with volcanic features
-                gameSetup.mountainThreshold = 0.6f; // Many volcanoes
-                gameSetup.hillThreshold = 0.4f; // Volcanic terrain
-                gameSetup.isInfernalWorld = true; // Volcanic world
+                GameSetupData.temperatureBias = 0.4f; // Hot
+                GameSetupData.moistureBias = 0.0f; // Variable
+                GameSetupData.landThreshold = 0.45f; // Land with volcanic features
+                GameSetupData.isInfernalWorld = true; // Volcanic world
                 break;
                 
             case PlanetType.Jungle:
-                gameSetup.temperatureBias = 0.2f; // Warm
-                gameSetup.moistureBias = 0.3f; // Very wet
-                gameSetup.landThreshold = 0.45f; // Good land/water balance
-                gameSetup.mountainThreshold = 0.85f; // Some peaks
-                gameSetup.hillThreshold = 0.7f; // Rolling jungle
-                gameSetup.isRainforestWorld = true; // Enhanced jungle biomes
+                GameSetupData.temperatureBias = 0.2f; // Warm
+                GameSetupData.moistureBias = 0.3f; // Very wet
+                GameSetupData.landThreshold = 0.45f; // Good land/water balance
+                GameSetupData.isRainforestWorld = true; // Enhanced jungle biomes
                 break;
                 
             case PlanetType.Rocky:
-                gameSetup.temperatureBias = -0.1f; // Cool
-                gameSetup.moistureBias = -0.1f; // Dry
-                gameSetup.landThreshold = 0.5f; // Mostly rocky land
-                gameSetup.mountainThreshold = 0.7f; // Many mountains
-                gameSetup.hillThreshold = 0.5f; // Very rocky
+                GameSetupData.temperatureBias = -0.1f; // Cool
+                GameSetupData.moistureBias = -0.1f; // Dry
+                GameSetupData.landThreshold = 0.5f; // Mostly rocky land
                 break;
                 
             case PlanetType.Gas:
-                gameSetup.temperatureBias = -0.3f; // Cold
-                gameSetup.moistureBias = 0.3f; // Dense atmosphere
-                gameSetup.landThreshold = 0.0f; // No solid surface
-                gameSetup.mountainThreshold = 1.0f; // No mountains
-                gameSetup.hillThreshold = 1.0f; // No hills
-                gameSetup.mapSize = GameManager.MapSize.Large;
+                GameSetupData.temperatureBias = -0.3f; // Cold
+                GameSetupData.moistureBias = 0.3f; // Dense atmosphere
+                GameSetupData.landThreshold = 0.0f; // No solid surface
+                GameSetupData.mapSize = GameManager.MapSize.Large;
+                break;
+                
+            case PlanetType.Demonic:
+                GameSetupData.temperatureBias = 0.65f; // Hellishly hot
+                GameSetupData.moistureBias = -0.15f; // Dry hellscape with occasional lava
+                GameSetupData.landThreshold = 0.45f; // Solid hellish terrain
+                GameSetupData.isDemonicWorld = true; // Enable demonic map features
                 break;
                 
             default:
                 // Default balanced settings
-                gameSetup.temperatureBias = 0.0f;
-                gameSetup.moistureBias = 0.0f;
-                gameSetup.landThreshold = 0.4f;
-                gameSetup.mountainThreshold = 0.8f;
-                gameSetup.hillThreshold = 0.6f;
+                GameSetupData.temperatureBias = 0.0f;
+                GameSetupData.moistureBias = 0.0f;
+                GameSetupData.landThreshold = 0.4f;
                 break;
         }
-        
-        return gameSetup;
     }
 }
 
@@ -889,7 +938,10 @@ public enum PlanetType
     Titan,      // Saturn's moon with lakes
     Enceladus,  // Saturn's icy moon
     Ganymede,   // Largest moon in solar system
-    Callisto    // Heavily cratered moon
+    Callisto,   // Heavily cratered moon
+    
+    // Special/Fantasy Planet Types
+    Demonic     // Hellish planet with demonic features
 }
 
 /// <summary>
