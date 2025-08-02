@@ -383,6 +383,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Modern decoration system for spawning biome-specific decorations")]
     public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
 
+    [Header("Performance Settings")]
+    [Tooltip("Enable expensive post-processing (normalization, mesh deformation) - disable for better performance")]
+    public bool enableExpensivePostProcessing = false;
+    [Tooltip("Enable mesh vertex deformation for gap filling (can be slow on large maps)")]
+    public bool enableMeshDeformation = false;
+    [Tooltip("Normalize tile distances for uniform spacing (slower but better visuals)")]
+    public bool enableTileNormalization = false;
 
     [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
     public int initializationDelay = 1;
@@ -1368,7 +1375,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         // Normalize tile distances for uniform spacing (after everything else is done)
-        StartCoroutine(NormalizeTileDistances());
+        if (enableExpensivePostProcessing && enableTileNormalization)
+        {
+            StartCoroutine(NormalizeTileDistances());
+        }
+        else
+        {
+            Debug.Log("Skipping tile normalization for better performance");
+        }
 
         // Generate global water mesh once terrain is ready
         var waterGen = GetComponent<WaterMeshGenerator>();
@@ -1390,8 +1404,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         const int maxIterations = 5; // Number of relaxation iterations
         const float relaxationFactor = 0.1f; // How much to move each iteration (0.1 = 10%)
+        const int batchSize = 200; // Process tiles in batches
         
-        // Calculate target distance (average of all neighbor distances)
+        // Calculate target distance (average of all neighbor distances) with batching
         float totalDistance = 0f;
         int distanceCount = 0;
         
@@ -1404,12 +1419,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 totalDistance += distance;
                 distanceCount++;
             }
+            
+            // Yield periodically during distance calculation
+            if (i % batchSize == 0)
+                yield return null;
         }
         
         float targetDistance = totalDistance / distanceCount;
         Debug.Log($"Target tile distance: {targetDistance:F4}");
         
-        // Perform relaxation iterations
+        // Perform relaxation iterations with batching
         for (int iteration = 0; iteration < maxIterations; iteration++)
         {
             Vector3[] newPositions = new Vector3[grid.TileCount];
@@ -1420,7 +1439,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 newPositions[i] = grid.tileCenters[i];
             }
             
-            // Calculate new positions based on target distances
+            // Calculate new positions based on target distances in batches
             for (int i = 0; i < grid.TileCount; i++)
             {
                 Vector3 currentPos = grid.tileCenters[i];
@@ -1450,6 +1469,20 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     float originalRadius = currentPos.magnitude;
                     newPositions[i] = newPositions[i].normalized * originalRadius;
                 }
+                
+                // Yield every batch to prevent frame drops
+                if (i % batchSize == 0)
+                {
+                    if (loadingPanelController != null)
+                    {
+                        float iterationProgress = (float)iteration / maxIterations;
+                        float batchProgress = (float)i / grid.TileCount;
+                        float totalProgress = 0.95f + (iterationProgress + batchProgress / maxIterations) * 0.05f;
+                        loadingPanelController.SetProgress(totalProgress);
+                        loadingPanelController.SetStatus($"Normalizing spacing... ({iteration + 1}/{maxIterations})");
+                    }
+                    yield return null;
+                }
             }
             
             // Apply new positions
@@ -1457,16 +1490,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             {
                 grid.tileCenters[i] = newPositions[i];
             }
-            
-            // Update progress
-            if (loadingPanelController != null)
-            {
-                float progress = 0.95f + (float)(iteration + 1) / maxIterations * 0.05f;
-                loadingPanelController.SetProgress(progress);
-                loadingPanelController.SetStatus($"Normalizing tile spacing... ({iteration + 1}/{maxIterations})");
-            }
-            
-            yield return null; // Allow frame to render
         }
         
         Debug.Log("Tile distance normalization complete.");
@@ -1837,8 +1860,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         go.transform.localScale = new Vector3(finalScale, finalScale, finalScale);
 
-        // Apply mesh deformation to fill gaps, passing world corners for precise alignment
-        StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon, worldCorners));
+        // Apply mesh deformation to fill gaps only if enabled
+        if (enableExpensivePostProcessing && enableMeshDeformation)
+        {
+            StartCoroutine(DeformTileMeshToFillGaps(go, tileIndex, isPentagon, worldCorners));
+        }
 
         // Note: Decorations are now spawned in a separate batched process for performance
 
@@ -2241,11 +2267,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// <summary>
     /// Spawns decorations on all tiles in batches for performance
     /// </summary>
-    private System.Collections.IEnumerator SpawnAllTileDecorations(int batchSize = 50)
+    private System.Collections.IEnumerator SpawnAllTileDecorations(int batchSize = 25)
     {
-        if (decorationManager == null)
+        if (decorationManager == null || !decorationManager.enableDecorations)
         {
-            Debug.LogWarning("DecorationManager is null, skipping decoration spawning");
+            Debug.LogWarning("DecorationManager is null or disabled, skipping decoration spawning");
             yield break;
         }
 
@@ -2265,43 +2291,45 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             yield break;
         }
 
-        int tileCount = grid.TileCount;
-        int processedTiles = 0;
+        // Pre-filter tiles that need decorations
+        var tilesNeedingDecorations = new List<(int index, HexTileData data, Transform transform)>();
         
-        for (int i = 0; i < tileCount; i++)
+        for (int i = 0; i < grid.TileCount; i++)
         {
-            // Skip if we don't have tile data
-            if (!data.TryGetValue(i, out HexTileData tileData))
-                continue;
-
-            // Find the corresponding tile GameObject
-            Transform tileTransform = null;
-            foreach (Transform child in tilePrefabsParent)
+            if (!data.TryGetValue(i, out HexTileData tileData)) continue;
+            
+            if (decorationManager.ShouldSpawnDecorations(tileData.biome))
             {
-                var indexHolder = child.GetComponent<TileIndexHolder>();
-                if (indexHolder != null && indexHolder.tileIndex == i)
+                // Find tile transform
+                foreach (Transform child in tilePrefabsParent)
                 {
-                    tileTransform = child;
-                    break;
+                    var indexHolder = child.GetComponent<TileIndexHolder>();
+                    if (indexHolder != null && indexHolder.tileIndex == i)
+                    {
+                        tilesNeedingDecorations.Add((i, tileData, child));
+                        break;
+                    }
                 }
             }
-
-            if (tileTransform == null)
-                continue;
-
-            // Spawn decorations for this tile
-            Vector3 tilePosition = tileTransform.position;
-            SpawnTileDecorations(tileTransform.gameObject, tileData, i, tilePosition);
             
-            processedTiles++;
+            // Yield during pre-filtering
+            if (i % 500 == 0)
+                yield return null;
+        }
 
-            // Yield after processing a batch of tiles
-            if (batchSize > 0 && processedTiles % batchSize == 0)
+        // Now spawn decorations only on tiles that need them
+        for (int i = 0; i < tilesNeedingDecorations.Count; i++)
+        {
+            var (tileIndex, tileData, tileTransform) = tilesNeedingDecorations[i];
+            SpawnTileDecorations(tileTransform.gameObject, tileData, tileIndex, tileTransform.position);
+            
+            if (i % batchSize == 0)
             {
                 if (loadingPanelController != null)
                 {
-                    float progress = 0.9f + (0.05f * (float)processedTiles / tileCount);
+                    float progress = 0.9f + (0.05f * (float)i / tilesNeedingDecorations.Count);
                     loadingPanelController.SetProgress(progress);
+                    loadingPanelController.SetStatus($"Adding decorations... ({i}/{tilesNeedingDecorations.Count})");
                 }
                 yield return null;
             }
@@ -2313,7 +2341,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             loadingPanelController.SetStatus("Planet decoration spawning complete.");
         }
 
-        Debug.Log($"Spawned decorations for {processedTiles} planet tiles");
+        Debug.Log($"Spawned decorations for {tilesNeedingDecorations.Count} planet tiles");
     }
 
     /// Spawns decorations on a tile using the new BiomeDecorationManager system

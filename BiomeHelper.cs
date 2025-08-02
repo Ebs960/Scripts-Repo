@@ -33,7 +33,6 @@ public enum Biome {
     MartianDunes,       // Mars - sand dunes
     
     VenusianLava,       // Venus - molten lava flows
-    VenusianAcidClouds, // Venus - sulfuric acid atmosphere
     VenusianPlains,     // Venus - rocky plains
     VenusianHighlands,  // Venus - elevated terrain
     
@@ -52,6 +51,7 @@ public enum Biome {
     
     NeptunianWinds,     // Neptune - extreme wind patterns
     NeptunianIce,       // Neptune - ice formations
+    NeptunianSurface,   // Neptune - standard surface terrain
     
     PlutoCryo,          // Pluto - frozen nitrogen plains
     PlutoTholins,       // Pluto - organic compound deposits
@@ -113,7 +113,6 @@ public static class BiomeHelper {
         }
         if (isVenusWorldType) {
             if (temperature > 0.6f && moisture < 0.2f) return Biome.VenusianLava;
-            if (temperature > 0.5f && moisture > 0.5f) return Biome.VenusianAcidClouds;
             if (temperature > 0.5f && moisture < 0.5f) return Biome.VenusianPlains;
             if (temperature > 0.4f && moisture > 0.2f) return Biome.VenusianHighlands;
             return Biome.VenusianPlains;
@@ -142,7 +141,7 @@ public static class BiomeHelper {
         if (isNeptuneWorldType) {
             if (temperature < -0.3f && moisture > 0.5f) return Biome.NeptunianIce;
             if (temperature < -0.4f && moisture > 0.7f) return Biome.NeptunianWinds;
-            return Biome.NeptunianIce;
+            return Biome.NeptunianSurface; // Default Neptune biome
         }
         if (isPlutoWorldType) {
             if (temperature < -0.5f && moisture > 0.5f) return Biome.PlutoCryo;
@@ -315,7 +314,6 @@ public static class BiomeHelper {
         
         // Venus Biomes - Extreme/Hostile
         Biome.VenusianLava => new YieldValues { food = 0, prod = 5, gold = 3, sci = 1, cult = 0 }, // Extreme production
-        Biome.VenusianAcidClouds => new YieldValues { food = 0, prod = 0, gold = 1, sci = 4, cult = 0 }, // Research value only
         Biome.VenusianPlains => new YieldValues { food = 0, prod = 3, gold = 2, sci = 1, cult = 0 }, // Industrial potential
         Biome.VenusianHighlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 2, cult = 0 }, // Elevated research
         
@@ -335,6 +333,7 @@ public static class BiomeHelper {
         Biome.UranianMethane => new YieldValues { food = 0, prod = 3, gold = 2, sci = 3, cult = 0 }, // Fuel production
         Biome.NeptunianWinds => new YieldValues { food = 0, prod = 1, gold = 1, sci = 5, cult = 0 }, // Atmospheric dynamics
         Biome.NeptunianIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice resources
+        Biome.NeptunianSurface => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 1 }, // Standard Neptune terrain
         
         // Pluto Biomes - Extreme cold/distance
         Biome.PlutoCryo => new YieldValues { food = 0, prod = 1, gold = 1, sci = 4, cult = 2 }, // Frontier science
@@ -390,7 +389,6 @@ public static class BiomeHelper {
         Biome.MartianDunes => 0,      // Shifting sands provide no cover
         
         Biome.VenusianLava => 0,      // Too hostile for defensive positions
-        Biome.VenusianAcidClouds => 0, // Corrosive environment
         Biome.VenusianPlains => 0,    // Flat, no cover
         Biome.VenusianHighlands => 2, // Elevated defensive positions
         
@@ -402,6 +400,12 @@ public static class BiomeHelper {
         Biome.JovianStorm => 0,       // Too chaotic for defense
         Biome.SaturnianRings => 1,    // Ring particles provide some cover
         Biome.SaturnianClouds => 1,   // Cloud cover
+        
+        Biome.UranianIce => 0,        // Flat ice surface
+        Biome.UranianMethane => 0,    // Gaseous atmosphere
+        Biome.NeptunianWinds => 0,    // Too chaotic for defense
+        Biome.NeptunianIce => 0,      // Flat ice surface
+        Biome.NeptunianSurface => 1,  // Some terrain features for cover
         
         Biome.PlutoMountains => 3,    // Mountain terrain
         Biome.PlutoCryo => 0,         // Flat frozen plains
@@ -461,7 +465,6 @@ public static class BiomeHelper {
         Biome.MartianDunes => 3,      // Shifting sand dunes
         
         Biome.VenusianLava => 4,      // Extremely dangerous to traverse
-        Biome.VenusianAcidClouds => 3, // Corrosive environment
         Biome.VenusianPlains => 2,    // Rocky but navigable
         Biome.VenusianHighlands => 2, // Elevated terrain
         
@@ -478,6 +481,7 @@ public static class BiomeHelper {
         Biome.UranianMethane => 3,    // Hazardous atmosphere
         Biome.NeptunianWinds => 4,    // Extreme wind resistance
         Biome.NeptunianIce => 2,      // Standard ice travel
+        Biome.NeptunianSurface => 2,  // Standard Neptune terrain
         
         Biome.PlutoCryo => 3,         // Extreme cold conditions
         Biome.PlutoTholins => 2,      // Organic compound terrain
@@ -513,13 +517,13 @@ public static class BiomeHelper {
             
             // Real Planet Damaging Biomes
             Biome.VenusianLava => true,     // Molten lava damage
-            Biome.VenusianAcidClouds => true, // Acid damage
             Biome.MercurianCraters => true, // Radiation exposure
             Biome.MercurianBasalt => true,  // Extreme temperature swings
             Biome.MercurianScarp => true,   // Radiation exposure
             Biome.JovianStorm => true,      // Storm damage
             Biome.UranianMethane => true,   // Toxic atmosphere
             Biome.NeptunianWinds => true,   // Extreme wind damage
+            Biome.NeptunianSurface => true, // Harsh Neptune conditions
             Biome.PlutoCryo => true,        // Extreme cold
             Biome.IoVolcanic => true,       // Volcanic activity
             Biome.IoSulfur => true,         // Toxic sulfur exposure
@@ -547,13 +551,13 @@ public static class BiomeHelper {
             
             // Real Planet Damage Values
             Biome.VenusianLava => 0.50f,     // Extreme heat damage
-            Biome.VenusianAcidClouds => 0.35f, // Severe acid damage
             Biome.MercurianCraters => 0.20f,  // Radiation damage
             Biome.MercurianBasalt => 0.15f,   // Temperature extremes
             Biome.MercurianScarp => 0.25f,    // High radiation exposure
             Biome.JovianStorm => 0.40f,       // Severe storm damage
             Biome.UranianMethane => 0.25f,    // Toxic atmosphere
             Biome.NeptunianWinds => 0.30f,    // Extreme wind shear
+            Biome.NeptunianSurface => 0.15f,  // Harsh Neptune conditions
             Biome.PlutoCryo => 0.20f,         // Extreme cold damage
             Biome.IoVolcanic => 0.60f,        // Highest damage - active volcanism
             Biome.IoSulfur => 0.20f,          // Sulfur toxicity
