@@ -14,9 +14,15 @@ public class SpaceMapButton : MonoBehaviour
     [Header("Button Settings")]
     public string buttonText = "Space Map";
     public KeyCode hotkey = KeyCode.M; // Press M to open space map
-    
+
+    [Header("Feature Buttons")]
+    public Button tradeButton;
+    public Button ruinsButton;
+
     private SpaceMapUI spaceMapUI;
     private SolarSystemManager solarSystemManager;
+    private InterplanetaryTradeManager tradeManager;
+    private AncientRuinsManager ancientRuinsManager;
 
     void Awake()
     {
@@ -32,6 +38,10 @@ public class SpaceMapButton : MonoBehaviour
             GameObject managerGO = new GameObject("SolarSystemManager");
             solarSystemManager = managerGO.AddComponent<SolarSystemManager>();
         }
+
+        // Find managers
+        tradeManager = FindObjectOfType<InterplanetaryTradeManager>(true);
+        ancientRuinsManager = FindObjectOfType<AncientRuinsManager>(true);
 
         // Find or create SpaceMapUI (including inactive objects)
         spaceMapUI = FindSpaceMapUIInScene();
@@ -98,6 +108,18 @@ public class SpaceMapButton : MonoBehaviour
             {
                 buttonTMP.text = this.buttonText;
             }
+        }
+
+        if (tradeButton != null)
+        {
+            // This assumes you have a panel to show. A more robust solution would be needed.
+            tradeButton.onClick.AddListener(() => Debug.Log("Trade button clicked."));
+        }
+
+        if (ruinsButton != null)
+        {
+            // We might not have a specific panel for ruins, but we can log something.
+            ruinsButton.onClick.AddListener(() => Debug.Log("Ancient Ruins button clicked."));
         }
     }
 
