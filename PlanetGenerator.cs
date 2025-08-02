@@ -363,7 +363,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 8;
     [Tooltip("Number of tile decorations to spawn each frame (smaller batches for performance)")]
-    public int decorationSpawnBatchSize = 50;
+    public int decorationSpawnBatchSize = 10;
 
 
     private Dictionary<Biome, GameObject> biomePrefabs = new();
@@ -2291,7 +2291,25 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             yield break;
         }
 
-        // Pre-filter tiles that need decorations
+        // Pre-cache tile transforms by index for fast lookup
+        var tileTransformCache = new Dictionary<int, Transform>();
+        int childCount = tilePrefabsParent.childCount;
+        
+        for (int i = 0; i < childCount; i++)
+        {
+            Transform child = tilePrefabsParent.GetChild(i);
+            var indexHolder = child.GetComponent<TileIndexHolder>();
+            if (indexHolder != null)
+            {
+                tileTransformCache[indexHolder.tileIndex] = child;
+            }
+            
+            // Yield periodically during caching
+            if (i % 100 == 0)
+                yield return null;
+        }
+
+        // Pre-filter tiles that need decorations using the cache
         var tilesNeedingDecorations = new List<(int index, HexTileData data, Transform transform)>();
         
         for (int i = 0; i < grid.TileCount; i++)
@@ -2300,20 +2318,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             
             if (decorationManager.ShouldSpawnDecorations(tileData.biome))
             {
-                // Find tile transform
-                foreach (Transform child in tilePrefabsParent)
+                if (tileTransformCache.TryGetValue(i, out Transform tileTransform))
                 {
-                    var indexHolder = child.GetComponent<TileIndexHolder>();
-                    if (indexHolder != null && indexHolder.tileIndex == i)
-                    {
-                        tilesNeedingDecorations.Add((i, tileData, child));
-                        break;
-                    }
+                    tilesNeedingDecorations.Add((i, tileData, tileTransform));
                 }
             }
             
             // Yield during pre-filtering
-            if (i % 500 == 0)
+            if (i % 250 == 0)
                 yield return null;
         }
 
@@ -2323,7 +2335,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             var (tileIndex, tileData, tileTransform) = tilesNeedingDecorations[i];
             SpawnTileDecorations(tileTransform.gameObject, tileData, tileIndex, tileTransform.position);
             
-            if (i % batchSize == 0)
+            if (i % batchSize == 0 || i % 5 == 0) // Yield every 5 decorations for smoother loading
             {
                 if (loadingPanelController != null)
                 {
