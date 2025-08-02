@@ -110,9 +110,6 @@ public class SolarSystemManager : MonoBehaviour
             planetData[planet.planetIndex] = planet;
         }
         
-        // Add major moons
-        AddRealMoons();
-        
         // Add fantasy planets if enabled
         if (includeFantasyPlanets)
         {
@@ -136,7 +133,7 @@ public class SolarSystemManager : MonoBehaviour
             planetName = name,
             sceneName = planetScenePrefix + index,
             planetType = type,
-            celestialBodyType = CelestialBodyType.RealPlanet,
+            celestialBodyType = CelestialBodyType.Procedural,
             isGenerated = false,
             isCurrentlyLoaded = false,
             isHomeWorld = false,
@@ -149,52 +146,6 @@ public class SolarSystemManager : MonoBehaviour
             hasAtmosphere = hasAtmosphere,
             atmosphereComposition = atmosphere,
             averageTemperature = temperature,
-            description = GetPlanetDescription(type)
-        };
-    }
-    
-    /// <summary>
-    /// Add major moons to the real solar system
-    /// </summary>
-    private void AddRealMoons()
-    {
-        // Earth's Moon
-        var luna = CreateRealMoon(100, "Luna", PlanetType.Luna, 2, GameManager.MapSize.Small);
-        planetData[2].moons.Add(luna);
-        
-        // Jupiter's major moons
-        var io = CreateRealMoon(101, "Io", PlanetType.Io, 4, GameManager.MapSize.Small);
-        var europa = CreateRealMoon(102, "Europa", PlanetType.Europa, 4, GameManager.MapSize.Small);
-        var ganymede = CreateRealMoon(103, "Ganymede", PlanetType.Ganymede, 4, GameManager.MapSize.Standard);
-        var callisto = CreateRealMoon(104, "Callisto", PlanetType.Callisto, 4, GameManager.MapSize.Small);
-        
-        planetData[4].moons.AddRange(new[] { io, europa, ganymede, callisto });
-        
-        // Saturn's major moons
-        var titan = CreateRealMoon(105, "Titan", PlanetType.Titan, 5, GameManager.MapSize.Standard);
-        var enceladus = CreateRealMoon(106, "Enceladus", PlanetType.Enceladus, 5, GameManager.MapSize.Small);
-        
-        planetData[5].moons.AddRange(new[] { titan, enceladus });
-    }
-    
-    /// <summary>
-    /// Create a real moon with specific properties
-    /// </summary>
-    private PlanetSceneData CreateRealMoon(int index, string name, PlanetType type, int parentPlanet, GameManager.MapSize size)
-    {
-        return new PlanetSceneData
-        {
-            planetIndex = index,
-            planetName = name,
-            sceneName = planetScenePrefix + index,
-            planetType = type,
-            celestialBodyType = CelestialBodyType.RealMoon,
-            isGenerated = false,
-            isCurrentlyLoaded = false,
-            isHomeWorld = false,
-            distanceFromStar = planetData[parentPlanet].distanceFromStar,
-            planetSize = size,
-            civilizations = new List<CivilizationPresence>(),
             description = GetPlanetDescription(type)
         };
     }
@@ -258,7 +209,7 @@ public class SolarSystemManager : MonoBehaviour
         if (planetData.ContainsKey(0))
         {
             planetData[0].isHomeWorld = true;
-            planetData[0].planetName = "Terra Prima"; // Home world name
+            planetData[0].planetName = "Earth"; // Home world name
         }
     }
 
@@ -888,7 +839,6 @@ public class PlanetSceneData
     public bool hasAtmosphere;
     public string atmosphereComposition;
     public float averageTemperature; // Celsius
-    public List<PlanetSceneData> moons = new List<PlanetSceneData>(); // For planets with moons
 }
 
 /// <summary>
@@ -950,6 +900,5 @@ public enum PlanetType
 public enum CelestialBodyType
 {
     Procedural,     // Generated using standard algorithms
-    RealPlanet,     // Based on real solar system data
-    RealMoon        // Moon of a real planet
+    RealPlanet      // Based on real solar system data
 }

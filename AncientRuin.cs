@@ -26,8 +26,8 @@ public class AncientRuin : MonoBehaviour
             case 1:
                 // Grant resources
                 int goldAmount = Random.Range(50, 201);
-                explorer.AddGold(goldAmount);
-                Debug.Log($"{explorer.civName} found {goldAmount} gold in the ruins!");
+                explorer.gold += goldAmount;
+                Debug.Log($"{explorer.civData.civName} found {goldAmount} gold in the ruins!");
                 break;
             case 2:
                 // Grant a free unit

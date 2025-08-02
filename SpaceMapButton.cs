@@ -21,7 +21,6 @@ public class SpaceMapButton : MonoBehaviour
 
     private SpaceMapUI spaceMapUI;
     private SolarSystemManager solarSystemManager;
-    private InterplanetaryTradeManager tradeManager;
     private AncientRuinsManager ancientRuinsManager;
 
     void Awake()
@@ -40,8 +39,8 @@ public class SpaceMapButton : MonoBehaviour
         }
 
         // Find managers
-        tradeManager = FindObjectOfType<InterplanetaryTradeManager>(true);
-        ancientRuinsManager = FindObjectOfType<AncientRuinsManager>(true);
+        
+        ancientRuinsManager = FindFirstObjectByType<AncientRuinsManager>(FindObjectsInactive.Include);
 
         // Find or create SpaceMapUI (including inactive objects)
         spaceMapUI = FindSpaceMapUIInScene();

@@ -36,6 +36,9 @@ public class Civilization : MonoBehaviour
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
     
+    [Header("Interplanetary Trade")]
+    public List<TradeRoute> interplanetaryTradeRoutes = new List<TradeRoute>();
+    
     [Header("Resources")]
     public Dictionary<ResourceData, int> resourceStockpile = new Dictionary<ResourceData, int>();
     
@@ -303,6 +306,16 @@ public class Civilization : MonoBehaviour
             culture      += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
             policyPoints += city.GetPolicyPointPerTurn(); // Assuming no direct modifier for policy points yet
             faith        += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+        }
+
+        // 3.5) Process interplanetary trade routes
+        foreach (var tradeRoute in interplanetaryTradeRoutes)
+        {
+            if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
+            {
+                gold += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+                Debug.Log($"[{civData.civName}] Interplanetary trade earned {tradeRoute.goldPerTurn} gold (Planet {tradeRoute.originPlanetIndex} → {tradeRoute.destinationPlanetIndex})");
+            }
         }
 
         // 4) Advance technology
@@ -807,6 +820,39 @@ public class Civilization : MonoBehaviour
         
         // Notify any UI or other systems
         OnResourceChanged?.Invoke(resource, resourceStockpile[resource]);
+    }
+    
+    /// <summary>
+    /// Add an interplanetary trade route
+    /// </summary>
+    public void AddTradeRoute(TradeRoute route)
+    {
+        if (route != null && route.isInterplanetaryRoute)
+        {
+            interplanetaryTradeRoutes.Add(route);
+        }
+    }
+    
+    /// <summary>
+    /// Get all interplanetary trade routes for this civilization
+    /// </summary>
+    public List<TradeRoute> GetInterplanetaryTradeRoutes()
+    {
+        return interplanetaryTradeRoutes;
+    }
+    
+    /// <summary>
+    /// Get total gold income from all interplanetary trade routes
+    /// </summary>
+    public int GetInterplanetaryTradeIncome()
+    {
+        int totalGold = 0;
+        foreach (var route in interplanetaryTradeRoutes)
+        {
+            if (route != null && route.isInterplanetaryRoute)
+                totalGold += route.goldPerTurn;
+        }
+        return totalGold;
     }
     
     /// <summary>

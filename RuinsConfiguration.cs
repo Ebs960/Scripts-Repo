@@ -77,7 +77,7 @@ public class RuinsConfiguration : ScriptableObject
         {
             new RuinDescriptionData
             {
-                ruinType = AncientRuinsManager.RuinType.Temple,
+                ruinType = AncientRuinsManager.RuinType.Technology,
                 possibleNames = new string[] 
                 { 
                     "Temple of the Star Watchers", "Sacred Pyramid of Zephyria", "Shrine of the Ancient Ones",
@@ -92,7 +92,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Laboratory,
+                ruinType = AncientRuinsManager.RuinType.Gold,
                 possibleNames = new string[] 
                 { 
                     "Quantum Research Facility", "Xenobiology Lab Complex", "Advanced Physics Institute",
@@ -107,7 +107,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Factory,
+                ruinType = AncientRuinsManager.RuinType.Unit,
                 possibleNames = new string[] 
                 { 
                     "Automated Production Facility", "Nanotech Manufacturing Plant", "Industrial Megacomplex",
@@ -122,7 +122,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Vault,
+                ruinType = AncientRuinsManager.RuinType.Gold,
                 possibleNames = new string[] 
                 { 
                     "Secure Resource Vault", "Treasury of the Ancients", "Protected Storage Complex",
@@ -137,7 +137,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Observatory,
+                ruinType = AncientRuinsManager.RuinType.Map,
                 possibleNames = new string[] 
                 { 
                     "Galactic Observatory", "Deep Space Monitoring Station", "Cosmic Phenomena Tracker",
@@ -152,7 +152,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Library,
+                ruinType = AncientRuinsManager.RuinType.Culture,
                 possibleNames = new string[] 
                 { 
                     "Archive of Universal Knowledge", "Great Library of Cosmos", "Digital Consciousness Vault",
@@ -167,7 +167,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Fortress,
+                ruinType = AncientRuinsManager.RuinType.Faith,
                 possibleNames = new string[] 
                 { 
                     "Quantum Defense Grid", "Military Command Bunker", "Strategic Defense Complex",
@@ -182,7 +182,7 @@ public class RuinsConfiguration : ScriptableObject
             },
             new RuinDescriptionData
             {
-                ruinType = AncientRuins.RuinType.Gateway,
+                ruinType = AncientRuinsManager.RuinType.Population,
                 possibleNames = new string[] 
                 { 
                     "Interdimensional Gateway", "Quantum Tunnel Hub", "Galactic Transit Node",

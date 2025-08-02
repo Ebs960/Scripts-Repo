@@ -284,7 +284,7 @@ public class SpaceMapUI : MonoBehaviour
         labelRect.offsetMax = Vector2.zero;
         
         // Add visual indicator for real planets
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet || planet.celestialBodyType == CelestialBodyType.RealMoon)
+        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
         {
             GameObject indicatorGO = CreateUIElement("RealPlanetIndicator", buttonGO.transform);
             Image indicator = indicatorGO.AddComponent<Image>();
@@ -310,7 +310,7 @@ public class SpaceMapUI : MonoBehaviour
         // Default size
         Vector2 baseSize = new Vector2(80, 80);
         
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet || planet.celestialBodyType == CelestialBodyType.RealMoon)
+        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
         {
             switch (planet.planetType)
             {
@@ -344,7 +344,7 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     private Vector2 GetPlanetPosition(PlanetSceneData planet, int index)
     {
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet || planet.celestialBodyType == CelestialBodyType.RealMoon)
+        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
         {
             // Position based on actual distance from star (scaled for UI)
             float scaledDistance = Mathf.Log(planet.distanceFromStar + 1) * 80f; // Logarithmic scaling
@@ -405,17 +405,12 @@ public class SpaceMapUI : MonoBehaviour
             {
                 typeText += " (Real Solar System)";
             }
-            else if (planet.celestialBodyType == CelestialBodyType.RealMoon)
-            {
-                typeText += " (Real Moon)";
-            }
-            planetTypeText.text = typeText;
         }
         
         // Update distance information
         if (distanceText != null)
         {
-            if (planet.celestialBodyType == CelestialBodyType.RealPlanet || planet.celestialBodyType == CelestialBodyType.RealMoon)
+            if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
             {
                 distanceText.text = $"Distance: {planet.distanceFromStar:F2} AU from Sun";
                 if (planet.orbitalPeriod > 0)
