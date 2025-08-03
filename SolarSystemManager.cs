@@ -70,16 +70,29 @@ public class SolarSystemManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            if (loadingPanel == null)
-                loadingPanel = FindFirstObjectByType<LoadingPanelController>();
-            Debug.Log("[SolarSystemManager] Starting InitializeSolarSystemRoutine. planetGeneratorPrefab=" + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name));
-            StartCoroutine(InitializeSolarSystemRoutine());
+            // Find loading panel - wait a bit for GameSceneInitializer to create it
+            StartCoroutine(DelayedInitialization());
         }
         else
         {
             Debug.LogWarning("[SolarSystemManager] Duplicate instance detected, destroying this object.");
             Destroy(gameObject);
         }
+    }
+
+    /// <summary>
+    /// Wait for GameSceneInitializer to create the loading panel, then start initialization
+    /// </summary>
+    private IEnumerator DelayedInitialization()
+    {
+        // Wait a frame for GameSceneInitializer to create the loading panel
+        yield return null;
+        
+        if (loadingPanel == null)
+            loadingPanel = FindFirstObjectByType<LoadingPanelController>();
+        
+        Debug.Log("[SolarSystemManager] Starting InitializeSolarSystemRoutine. planetGeneratorPrefab=" + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name) + ", loadingPanel=" + (loadingPanel == null ? "null" : "found"));
+        StartCoroutine(InitializeSolarSystemRoutine());
     }
 
     /// <summary>
@@ -351,52 +364,45 @@ public class SolarSystemManager : MonoBehaviour
         PlanetSceneData planet = planetData[planetIndex];
         Debug.Log($"[SolarSystemManager] Generating planet {planetIndex}: {planet.planetName} at {position}");
 
-        // Create a root GameObject for the planet
-        GameObject planetRoot = new GameObject($"Planet_{planetIndex}_Root");
-        planetRoot.transform.position = position;
-
-        // Debug: Log prefab assignment
         if (planetGeneratorPrefab == null)
         {
             Debug.LogError($"[SolarSystemManager] planetGeneratorPrefab is NULL for planet {planetIndex}!");
+            return;
         }
-        else
+
+        // Instantiate the planet prefab directly into the scene (no parent), set position
+        GameObject planetGO = Instantiate(planetGeneratorPrefab);
+        planetGO.name = $"Planet_{planetIndex}_Generator";
+        planetGO.transform.position = position;
+
+        // Get PlanetGenerator component
+        var generator = planetGO.GetComponent<PlanetGenerator>();
+        if (generator == null)
         {
-            Debug.Log($"[SolarSystemManager] Instantiating planetGeneratorPrefab '{planetGeneratorPrefab.name}' for planet {planetIndex}.");
-            GameObject planetGen = Instantiate(planetGeneratorPrefab, Vector3.zero, Quaternion.identity, planetRoot.transform);
-            planetGen.name = $"Planet_{planetIndex}_Generator";
-
-            // Try to get PlanetGenerator component
-            var generator = planetGen.GetComponent<PlanetGenerator>();
-            if (generator == null)
-            {
-                Debug.LogError($"[SolarSystemManager] Instantiated prefab for planet {planetIndex} does NOT have a PlanetGenerator component!");
-            }
-            else
-            {
-                Debug.Log($"[SolarSystemManager] Configuring PlanetGenerator for planet {planetIndex} ({planet.planetName})");
-                // Pass planet-specific data
-                generator.radius = planet.planetSize == GameManager.MapSize.Large ? 32f : (planet.planetSize == GameManager.MapSize.Small ? 18f : 24f);
-                generator.seed = planet.planetIndex * 1000 + DateTime.Now.Millisecond; // Example: unique seed per planet
-                generator.randomSeed = false;
-                generator.SetMapTypeName(planet.mapTypeName ?? planet.planetType.ToString());
-                generator.numberOfContinents =  planet.planetType == PlanetType.Ocean ? 0 : 6;
-                generator.moistureBias = 0f;
-                generator.temperatureBias = 0f;
-                // Optionally set more fields from planet
-                if (loadingPanel != null) generator.SetLoadingPanel(loadingPanel);
-
-                // Start planet generation
-                Debug.Log($"[SolarSystemManager] Starting planet surface generation coroutine for planet {planetIndex}");
-                generator.StartCoroutine(generator.GenerateSurface());
-            }
+            Debug.LogError($"[SolarSystemManager] Instantiated prefab for planet {planetIndex} does NOT have a PlanetGenerator component!");
+            return;
         }
+
+        Debug.Log($"[SolarSystemManager] Configuring PlanetGenerator for planet {planetIndex} ({planet.planetName})");
+        // Pass planet-specific data
+        generator.radius = planet.planetSize == GameManager.MapSize.Large ? 32f : (planet.planetSize == GameManager.MapSize.Small ? 18f : 24f);
+        generator.seed = planet.planetIndex * 1000 + DateTime.Now.Millisecond; // Example: unique seed per planet
+        generator.randomSeed = false;
+        generator.SetMapTypeName(planet.mapTypeName ?? planet.planetType.ToString());
+        generator.numberOfContinents = planet.planetType == PlanetType.Ocean ? 0 : 6;
+        generator.moistureBias = 0f;
+        generator.temperatureBias = 0f;
+        if (loadingPanel != null) generator.SetLoadingPanel(loadingPanel);
+
+        // Start planet generation
+        Debug.Log($"[SolarSystemManager] Starting planet surface generation coroutine for planet {planetIndex}");
+        generator.StartCoroutine(generator.GenerateSurface());
 
         // Optionally instantiate a moon if needed (not required for all planets)
         // ...
 
         // Store reference
-        planetGameObjects[planetIndex] = planetRoot;
+        planetGameObjects[planetIndex] = planetGO;
         planet.isGenerated = true;
         planet.generationDate = DateTime.Now;
     }
