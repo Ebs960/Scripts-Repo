@@ -43,6 +43,12 @@ public class GameManager : MonoBehaviour
     [Tooltip("AnimalManager prefab for spawning and controlling animals")]
     public GameObject animalManagerPrefab;
 
+    [Header("Space System Prefabs")]
+    [Tooltip("SolarSystemManager prefab for handling space travel and planets")]
+    public GameObject solarSystemManagerPrefab;
+    [Tooltip("AncientRuinsManager prefab for handling ancient ruins discovery")]
+    public GameObject ancientRuinsManagerPrefab;
+
     [Header("Game Settings")]
     public CivData selectedPlayerCivilizationData;
     public int numberOfCivilizations = 4;
@@ -375,6 +381,36 @@ public class GameManager : MonoBehaviour
             else
             {
                 Debug.LogError("GameManager: AnimalManager not found and no prefab assigned!");
+            }
+        }
+
+        // Find or create SolarSystemManager
+        var solarSystemManager = FindAnyObjectByType<SolarSystemManager>();
+        if (solarSystemManager == null)
+        {
+            if (solarSystemManagerPrefab != null)
+            {
+                GameObject solarSystemManagerGO = Instantiate(solarSystemManagerPrefab);
+                solarSystemManager = solarSystemManagerGO.GetComponent<SolarSystemManager>();
+            }
+            else
+            {
+                Debug.LogError("GameManager: SolarSystemManager not found and no prefab assigned!");
+            }
+        }
+
+        // Find or create AncientRuinsManager
+        var ancientRuinsManager = FindAnyObjectByType<AncientRuinsManager>();
+        if (ancientRuinsManager == null)
+        {
+            if (ancientRuinsManagerPrefab != null)
+            {
+                GameObject ancientRuinsManagerGO = Instantiate(ancientRuinsManagerPrefab);
+                ancientRuinsManager = ancientRuinsManagerGO.GetComponent<AncientRuinsManager>();
+            }
+            else
+            {
+                Debug.LogError("GameManager: AncientRuinsManager not found and no prefab assigned!");
             }
         }
     }

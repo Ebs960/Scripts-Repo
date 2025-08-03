@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq;
+using System.Collections;
 
 /// <summary>
 /// Component to add space map functionality to existing game UI
@@ -30,45 +32,69 @@ public class SpaceMapButton : MonoBehaviour
 
     void Start()
     {
-        // Find or create SolarSystemManager
+        TryInitOrSubscribe();
+    }
+
+    private void TryInitOrSubscribe()
+    {
         solarSystemManager = SolarSystemManager.Instance;
         if (solarSystemManager == null)
         {
-            GameObject managerGO = new GameObject("SolarSystemManager");
-            solarSystemManager = managerGO.AddComponent<SolarSystemManager>();
+            // Try again next frame until SolarSystemManager exists
+            StartCoroutine(WaitForSolarSystemManagerThenSubscribe());
+            return;
         }
+        // If already initialized, initialize immediately
+        if (solarSystemManager.GetAllPlanets() != null && solarSystemManager.GetAllPlanets().Count > 0)
+        {
+            OnSolarSystemReady();
+        }
+        else
+        {
+            // Subscribe to event
+            solarSystemManager.OnSolarSystemInitialized += OnSolarSystemReady;
+        }
+    }
+
+    private IEnumerator WaitForSolarSystemManagerThenSubscribe()
+    {
+        while (SolarSystemManager.Instance == null)
+            yield return null;
+        solarSystemManager = SolarSystemManager.Instance;
+        TryInitOrSubscribe();
+    }
+
+    private void OnSolarSystemReady()
+    {
+        if (solarSystemManager != null)
+            solarSystemManager.OnSolarSystemInitialized -= OnSolarSystemReady;
 
         // Find managers
-        
         ancientRuinsManager = FindFirstObjectByType<AncientRuinsManager>(FindObjectsInactive.Include);
 
-        // Find or create SpaceMapUI (including inactive objects)
+        // Find existing SpaceMapUI in scene (DON'T CREATE NEW ONES!)
         spaceMapUI = FindSpaceMapUIInScene();
         if (spaceMapUI == null)
         {
-            Debug.LogWarning("[SpaceMapButton] No SpaceMapUI found in scene, creating new one");
-            if (spaceMapUIPrefab != null)
+            Debug.LogError("[SpaceMapButton] No SpaceMapUI found in scene! Make sure you have a SpaceMapUI component in your scene.");
+            Debug.LogError("[SpaceMapButton] Check that your SpaceMapUI GameObject is active and the component is attached properly.");
+            // List all objects with SpaceMapUI components for debugging
+            SpaceMapUI[] allSpaceMapUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Debug.Log($"[SpaceMapButton] Found {allSpaceMapUIs.Length} SpaceMapUI components in scene:");
+            foreach (var ui in allSpaceMapUIs)
             {
-                GameObject spaceMapGO = Instantiate(spaceMapUIPrefab);
-                spaceMapUI = spaceMapGO.GetComponent<SpaceMapUI>();
-                Debug.Log("[SpaceMapButton] Created SpaceMapUI from prefab");
-            }
-            else
-            {
-                GameObject spaceMapGO = new GameObject("SpaceMapUI");
-                spaceMapUI = spaceMapGO.AddComponent<SpaceMapUI>();
-                Debug.Log("[SpaceMapButton] Created SpaceMapUI from scratch");
+                Debug.Log($"[SpaceMapButton] - {ui.name} on GameObject: {ui.gameObject.name} (Active: {ui.gameObject.activeInHierarchy}, Scene: {ui.gameObject.scene.name})");
             }
         }
         else
         {
             Debug.Log($"[SpaceMapButton] Found existing SpaceMapUI: {spaceMapUI.name} (Active: {spaceMapUI.gameObject.activeInHierarchy})");
-        }
-
-        // Initialize the space map UI
-        if (spaceMapUI != null && solarSystemManager != null)
-        {
-            spaceMapUI.Initialize(solarSystemManager);
+            // Initialize the space map UI with the existing one
+            if (solarSystemManager != null)
+            {
+                spaceMapUI.Initialize(solarSystemManager);
+                Debug.Log("[SpaceMapButton] Initialized existing SpaceMapUI with SolarSystemManager");
+            }
         }
     }
 
@@ -127,29 +153,60 @@ public class SpaceMapButton : MonoBehaviour
     /// </summary>
     public void OpenSpaceMap()
     {
-        // Re-find SpaceMapUI if it's null (in case it was destroyed/recreated)
-        if (spaceMapUI == null)
-        {
-            Debug.LogWarning("[SpaceMapButton] spaceMapUI is null, attempting to re-find...");
-            spaceMapUI = FindSpaceMapUIInScene();
-        }
+        Debug.Log("[SpaceMapButton] OpenSpaceMap called");
+
+        // Always re-find SpaceMapUI and SolarSystemManager in case of scene reloads
+        solarSystemManager = SolarSystemManager.Instance;
+        spaceMapUI = FindSpaceMapUIInScene();
 
         if (spaceMapUI != null)
         {
-            Debug.Log($"[SpaceMapButton] Opening SpaceMapUI: {spaceMapUI.name}");
+            Debug.Log($"[SpaceMapButton] Found SpaceMapUI: {spaceMapUI.name} on GameObject: {spaceMapUI.gameObject.name}");
+
+            // FORCE the GameObject to be active first
+            if (!spaceMapUI.gameObject.activeInHierarchy)
+            {
+                spaceMapUI.gameObject.SetActive(true);
+                Debug.Log($"[SpaceMapButton] Activated GameObject: {spaceMapUI.gameObject.name}");
+            }
+
+            // Make sure the Canvas is also active if it's a parent
+            Transform parent = spaceMapUI.transform.parent;
+            while (parent != null)
+            {
+                if (parent.GetComponent<Canvas>() != null && !parent.gameObject.activeInHierarchy)
+                {
+                    parent.gameObject.SetActive(true);
+                    Debug.Log($"[SpaceMapButton] Activated Canvas: {parent.name}");
+                }
+                parent = parent.parent;
+            }
+
+            // Always re-initialize with latest planet data
+            if (solarSystemManager != null)
+            {
+                spaceMapUI.Initialize(solarSystemManager);
+            }
+
+            // Now show the UI
             spaceMapUI.Show();
+            Debug.Log("[SpaceMapButton] SpaceMapUI.Show() called successfully");
         }
         else
         {
-            Debug.LogWarning("[SpaceMapButton] SpaceMapUI not found!");
-            
-            // Additional debugging info
-            SpaceMapUI[] allUIs = Resources.FindObjectsOfTypeAll<SpaceMapUI>();
-            Debug.Log($"[SpaceMapButton] Found {allUIs.Length} SpaceMapUI components total (including prefabs)");
-            
-            foreach (SpaceMapUI ui in allUIs)
+            Debug.LogError("[SpaceMapButton] Could not find SpaceMapUI in scene!");
+            Debug.LogError("[SpaceMapButton] Make sure you have a SpaceMapUI component properly set up in your scene hierarchy.");
+
+            // Debug: List all GameObjects with "Space" in the name
+            GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            Debug.Log($"[SpaceMapButton] Searching through {allObjects.Length} GameObjects...");
+
+            foreach (GameObject obj in allObjects)
             {
-                Debug.Log($"[SpaceMapButton] - {ui.name} (Scene: {ui.gameObject.scene.name}, Active: {ui.gameObject.activeInHierarchy})");
+                if (obj.name.ToLower().Contains("space"))
+                {
+                    Debug.Log($"[SpaceMapButton] Found GameObject with 'space': {obj.name} (Active: {obj.activeInHierarchy}) - Components: {string.Join(", ", obj.GetComponents<Component>().Select(c => c.GetType().Name))}");
+                }
             }
         }
     }
@@ -170,22 +227,52 @@ public class SpaceMapButton : MonoBehaviour
     /// </summary>
     private SpaceMapUI FindSpaceMapUIInScene()
     {
-        // First try the normal active search
+        Debug.Log("[SpaceMapButton] FindSpaceMapUIInScene called");
+        
+        // Method 1: Try normal active search first
         SpaceMapUI activeUI = FindFirstObjectByType<SpaceMapUI>();
         if (activeUI != null)
+        {
+            Debug.Log($"[SpaceMapButton] Found active SpaceMapUI: {activeUI.name}");
             return activeUI;
+        }
 
-        // If not found, search through all GameObjects including inactive ones
-        SpaceMapUI[] allUIs = Resources.FindObjectsOfTypeAll<SpaceMapUI>();
+        // Method 2: Search including inactive objects using the new API
+        SpaceMapUI[] allUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (SpaceMapUI ui in allUIs)
         {
             // Make sure it's a scene object, not a prefab
-            if (ui.gameObject.scene.name != null)
+            if (ui.gameObject.scene.name != null && ui.gameObject.scene.name != "")
             {
+                Debug.Log($"[SpaceMapButton] Found inactive SpaceMapUI: {ui.name} in scene: {ui.gameObject.scene.name}");
                 return ui;
             }
         }
 
+        // Method 3: Search by GameObject name if component search fails
+        GameObject[] allGameObjects = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (GameObject go in allGameObjects)
+        {
+            if (go.name.ToLower().Contains("spacemap") || go.name.ToLower().Contains("space map"))
+            {
+                SpaceMapUI uiComponent = go.GetComponent<SpaceMapUI>();
+                if (uiComponent != null && go.scene.name != null && go.scene.name != "")
+                {
+                    Debug.Log($"[SpaceMapButton] Found SpaceMapUI by name search: {go.name}");
+                    return uiComponent;
+                }
+                
+                // Also check children
+                uiComponent = go.GetComponentInChildren<SpaceMapUI>();
+                if (uiComponent != null && go.scene.name != null && go.scene.name != "")
+                {
+                    Debug.Log($"[SpaceMapButton] Found SpaceMapUI in children of: {go.name}");
+                    return uiComponent;
+                }
+            }
+        }
+
+        Debug.LogWarning("[SpaceMapButton] Could not find SpaceMapUI anywhere in scene");
         return null;
     }
 }

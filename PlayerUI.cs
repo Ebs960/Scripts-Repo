@@ -122,13 +122,43 @@ public class PlayerUI : MonoBehaviour
             diplomacyButton.onClick.RemoveAllListeners();
             diplomacyButton.onClick.AddListener(() => 
             {
-                if (UIManager.Instance != null)
+                Debug.Log("Diplomacy button clicked");
+                if (UIManager.Instance != null && currentCiv != null)
                 {
-                    UIManager.Instance.ShowPanel("DiplomacyPanel");
+                    // First try to find the DiplomacyUI component
+                    DiplomacyUI diplomacyUI = FindFirstObjectByType<DiplomacyUI>();
+                    if (diplomacyUI != null)
+                    {
+                        Debug.Log($"Found DiplomacyUI on: {diplomacyUI.gameObject.name}");
+                        
+                        // Activate the entire GameObject and any parent Canvas
+                        diplomacyUI.gameObject.SetActive(true);
+                        
+                        // Also activate parent Canvas if it exists
+                        Transform parent = diplomacyUI.transform.parent;
+                        while (parent != null)
+                        {
+                            if (parent.GetComponent<Canvas>() != null)
+                            {
+                                parent.gameObject.SetActive(true);
+                                Debug.Log($"Activated Diplomacy Canvas: {parent.name}");
+                                break;
+                            }
+                            parent = parent.parent;
+                        }
+                        
+                        // Show the diplomacy UI
+                        diplomacyUI.Show(currentCiv);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("DiplomacyUI component not found! Falling back to UIManager.");
+                        UIManager.Instance.ShowPanel("DiplomacyPanel");
+                    }
                 }
                 else
                 {
-                    Debug.LogError("PlayerUI: UIManager.Instance is null when trying to show diplomacy panel!");
+                    Debug.LogError("PlayerUI: UIManager or currentCiv is null when trying to show diplomacy panel!");
                 }
             });
         }

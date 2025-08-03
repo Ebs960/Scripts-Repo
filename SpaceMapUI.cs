@@ -37,10 +37,10 @@ public class SpaceMapUI : MonoBehaviour
     
     [Header("Visual Settings")]
     public float planetSpacing = 100f;
-    public Color homeWorldColor = Color.yellow;
-    public Color visitedPlanetColor = Color.green;
-    public Color unvisitedPlanetColor = Color.gray;
-    public Color currentPlanetColor = Color.cyan;
+
+    [Header("Planet Icons")]
+    public PlanetTypeSprite[] planetTypeIcons;
+    private Dictionary<PlanetType, Sprite> planetIconDict;
 
     private SolarSystemManager solarSystemManager;
     private List<PlanetButton> planetButtons = new List<PlanetButton>();
@@ -53,6 +53,17 @@ public class SpaceMapUI : MonoBehaviour
         
         // IMPORTANT: Hide the space map UI immediately
         Hide();
+
+        // Build planet icon dictionary
+        planetIconDict = new Dictionary<PlanetType, Sprite>();
+        if (planetTypeIcons != null)
+        {
+            foreach (var entry in planetTypeIcons)
+            {
+                if (!planetIconDict.ContainsKey(entry.planetType) && entry.icon != null)
+                    planetIconDict.Add(entry.planetType, entry.icon);
+            }
+        }
     }
 
     /// <summary>
@@ -231,74 +242,76 @@ public class SpaceMapUI : MonoBehaviour
         foreach (var button in planetButtons)
         {
             if (button != null && button.gameObject != null)
-                DestroyImmediate(button.gameObject);
+                Destroy(button.gameObject);
         }
         planetButtons.Clear();
 
         List<PlanetSceneData> planets = solarSystemManager.GetAllPlanets();
         
-        for (int i = 0; i < planets.Count; i++)
+        // Find home world to use as center reference
+        PlanetSceneData homeWorld = planets.FirstOrDefault(p => p.isHomeWorld);
+        
+        // Sort planets by distance from star for proper layout
+        var sortedPlanets = planets.OrderBy(p => p.distanceFromStar).ToList();
+        
+        Vector2 center = solarSystemView != null ? Vector2.zero : Vector2.zero;
+        float maxRadius = solarSystemView != null ? Mathf.Min(solarSystemView.rect.width, solarSystemView.rect.height) * 0.4f : 300f;
+        
+        // Find max distance for scaling
+        float maxDistance = sortedPlanets.Count > 0 ? sortedPlanets.Max(p => p.distanceFromStar) : 1f;
+        
+        for (int i = 0; i < sortedPlanets.Count; i++)
         {
-            CreatePlanetButton(planets[i], i);
+            PlanetSceneData planet = sortedPlanets[i];
+            
+            // Calculate position based on distance from star
+            float normalizedDistance = planet.distanceFromStar / maxDistance;
+            float radius = planet.isHomeWorld ? 0f : normalizedDistance * maxRadius;
+            
+            // Distribute planets around their orbital distance
+            float angle = (360f / Mathf.Max(sortedPlanets.Count, 1)) * i * Mathf.Deg2Rad;
+            Vector2 pos = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            
+            CreatePlanetButton(planet, i, pos);
         }
     }
 
     /// <summary>
     /// Create a button for a specific planet
     /// </summary>
-    private void CreatePlanetButton(PlanetSceneData planet, int index)
+    private void CreatePlanetButton(PlanetSceneData planet, int index, Vector2 position)
     {
         GameObject buttonGO = CreateUIElement($"Planet_{planet.planetIndex}", planetContainer);
         PlanetButton planetButton = buttonGO.AddComponent<PlanetButton>();
-        
+
         // Add visual components
         Image buttonImage = buttonGO.AddComponent<Image>();
         Button button = buttonGO.AddComponent<Button>();
-        
-        // Setup button appearance
-        Color buttonColor = GetPlanetColor(planet);
-        buttonImage.color = buttonColor;
-        
-        // Position button
-        RectTransform buttonRect = buttonGO.GetComponent<RectTransform>();
-        
-        // Adjust size based on planet type (gas giants larger, small planets smaller)
-        Vector2 buttonSize = GetPlanetButtonSize(planet);
-        buttonRect.sizeDelta = buttonSize;
-        
-        // Position planets based on their distance from star for real solar system
-        Vector2 position = GetPlanetPosition(planet, index);
-        buttonRect.anchoredPosition = position;
-        
-        // Add planet label
-        GameObject labelGO = CreateUIElement("Label", buttonGO.transform);
-        TextMeshProUGUI label = labelGO.AddComponent<TextMeshProUGUI>();
-        label.text = planet.planetName;
-        label.fontSize = Mathf.Max(8, Mathf.Min(12, buttonSize.x / 8)); // Scale font with button size
-        label.alignment = TextAlignmentOptions.Center;
-        
-        RectTransform labelRect = labelGO.GetComponent<RectTransform>();
-        labelRect.anchorMin = new Vector2(0, -0.5f);
-        labelRect.anchorMax = new Vector2(1, 0);
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-        
-        // Add visual indicator for real planets
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
+
+        // Use sprite - debug if missing
+        if (planetIconDict != null && planetIconDict.TryGetValue(planet.planetType, out var iconSprite))
         {
-            GameObject indicatorGO = CreateUIElement("RealPlanetIndicator", buttonGO.transform);
-            Image indicator = indicatorGO.AddComponent<Image>();
-            indicator.color = Color.yellow;
-            
-            RectTransform indicatorRect = indicatorGO.GetComponent<RectTransform>();
-            indicatorRect.sizeDelta = new Vector2(10, 10);
-            indicatorRect.anchoredPosition = new Vector2(buttonSize.x/2 - 5, buttonSize.y/2 - 5);
+            buttonImage.sprite = iconSprite;
+            buttonImage.type = Image.Type.Simple;
+            buttonImage.preserveAspect = true;
+            buttonImage.color = Color.white; // Keep sprite natural color
         }
-        
-        // Setup button component
-        planetButton.Initialize(planet, this);
+        else
+        {
+            // Debug missing sprite
+            Debug.LogWarning($"[SpaceMapUI] No sprite found for planet type: {planet.planetType} (Planet: {planet.planetName}). Assign a sprite in the Planet Type Icons array.");
+            buttonImage.color = Color.white; // Default white background
+        }
+
+        // Position button based on distance from star
+        RectTransform rect = buttonGO.GetComponent<RectTransform>();
+        rect.anchoredPosition = position;
+        rect.sizeDelta = GetPlanetButtonSize(planet);
+
+        // Setup button click
         button.onClick.AddListener(() => SelectPlanet(planet));
-        
+
+        planetButton.Initialize(planet, this);
         planetButtons.Add(planetButton);
     }
     
@@ -364,27 +377,45 @@ public class SpaceMapUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Get the appropriate color for a planet based on its status
-    /// </summary>
-    private Color GetPlanetColor(PlanetSceneData planet)
-    {
-        if (planet.isHomeWorld)
-            return homeWorldColor;
-        else if (solarSystemManager.currentPlanetIndex == planet.planetIndex)
-            return currentPlanetColor;
-        else if (planet.isGenerated)
-            return visitedPlanetColor;
-        else
-            return unvisitedPlanetColor;
-    }
-
-    /// <summary>
     /// Select a planet and show its information
     /// </summary>
     public void SelectPlanet(PlanetSceneData planet)
     {
         selectedPlanet = planet;
+        
+        // Update visual highlighting for all planet buttons
+        foreach (var planetButton in planetButtons)
+        {
+            if (planetButton != null && planetButton.gameObject != null)
+            {
+                var buttonImage = planetButton.GetComponent<Image>();
+                var outline = planetButton.GetComponent<Outline>();
+                
+                // Add or update outline for selected planet
+                if (planetButton.GetPlanetData().planetIndex == planet.planetIndex)
+                {
+                    // This is the selected planet - add highlight
+                    if (outline == null)
+                        outline = planetButton.gameObject.AddComponent<Outline>();
+                    
+                    outline.effectColor = Color.yellow;
+                    outline.effectDistance = new Vector2(3, 3);
+                    outline.enabled = true;
+                }
+                else
+                {
+                    // Not selected - remove highlight
+                    if (outline != null)
+                        outline.enabled = false;
+                }
+            }
+        }
+        
         ShowPlanetInfo(planet);
+        UpdateCivilizationList(planet);
+        
+        if (planetInfoPanel != null)
+            planetInfoPanel.SetActive(true);
     }
 
     /// <summary>
@@ -567,15 +598,15 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
-        if (spaceMapPanel != null)
-            spaceMapPanel.SetActive(false);
-        
-        if (planetInfoPanel != null)
-            planetInfoPanel.SetActive(false);
-            
+        // Hide the entire canvas or root object
         if (spaceMapCanvas != null)
+        {
             spaceMapCanvas.gameObject.SetActive(false);
-            
+        }
+        else
+        {
+            gameObject.SetActive(false);
+        }
         Debug.Log("[SpaceMapUI] Space map UI hidden");
     }
 
@@ -586,7 +617,7 @@ public class SpaceMapUI : MonoBehaviour
     {
         if (solarSystemManager == null) return;
         
-        // Update planet button colors
+        // Update planet button selection highlighting
         for (int i = 0; i < planetButtons.Count; i++)
         {
             if (planetButtons[i] != null)
@@ -594,10 +625,11 @@ public class SpaceMapUI : MonoBehaviour
                 PlanetSceneData planet = solarSystemManager.GetPlanetData(i);
                 if (planet != null)
                 {
-                    Image buttonImage = planetButtons[i].GetComponent<Image>();
-                    if (buttonImage != null)
+                    Outline outline = planetButtons[i].GetComponent<Outline>();
+                    if (outline != null)
                     {
-                        buttonImage.color = GetPlanetColor(planet);
+                        // Highlight current planet
+                        outline.enabled = (solarSystemManager.currentPlanetIndex == planet.planetIndex);
                     }
                 }
             }
@@ -623,4 +655,11 @@ public class PlanetButton : MonoBehaviour
     {
         return planetData;
     }
+}
+
+[System.Serializable]
+public struct PlanetTypeSprite
+{
+    public PlanetType planetType;
+    public Sprite icon;
 }
