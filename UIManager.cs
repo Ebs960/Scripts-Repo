@@ -183,6 +183,42 @@ public class UIManager : MonoBehaviour
         ShowPanel("TradePanel");
     }
 
+    public void ShowDiplomacyPanel(Civilization civ)
+    {
+        Debug.Log("[UIManager] ShowDiplomacyPanel called");
+        if (diplomacyPanel == null) 
+        {
+            Debug.LogError("[UIManager] diplomacyPanel is null! Cannot show diplomacy UI.");
+            return;
+        }
+        
+        // First activate the diplomacy panel GameObject
+        diplomacyPanel.SetActive(true);
+        Debug.Log("[UIManager] Diplomacy panel GameObject activated");
+        
+        // Then find and call the DiplomacyUI component
+        var diplomacyUI = diplomacyPanel.GetComponent<DiplomacyUI>();
+        if (diplomacyUI != null)
+        {
+            Debug.Log("[UIManager] Found DiplomacyUI component, calling Show()");
+            diplomacyUI.Show(civ);
+        }
+        else
+        {
+            // Try to find DiplomacyUI in children
+            diplomacyUI = diplomacyPanel.GetComponentInChildren<DiplomacyUI>();
+            if (diplomacyUI != null)
+            {
+                Debug.Log("[UIManager] Found DiplomacyUI component in children, calling Show()");
+                diplomacyUI.Show(civ);
+            }
+            else
+            {
+                Debug.LogError("[UIManager] DiplomacyUI component not found on diplomacy panel or its children!");
+            }
+        }
+    }
+
     public void ShowUnitInfoPanelForUnit(object unit)
     {
         if (unitInfoPanel == null || unit == null) return;

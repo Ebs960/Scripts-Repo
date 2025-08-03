@@ -125,36 +125,8 @@ public class PlayerUI : MonoBehaviour
                 Debug.Log("Diplomacy button clicked");
                 if (UIManager.Instance != null && currentCiv != null)
                 {
-                    // First try to find the DiplomacyUI component
-                    DiplomacyUI diplomacyUI = FindFirstObjectByType<DiplomacyUI>();
-                    if (diplomacyUI != null)
-                    {
-                        Debug.Log($"Found DiplomacyUI on: {diplomacyUI.gameObject.name}");
-                        
-                        // Activate the entire GameObject and any parent Canvas
-                        diplomacyUI.gameObject.SetActive(true);
-                        
-                        // Also activate parent Canvas if it exists
-                        Transform parent = diplomacyUI.transform.parent;
-                        while (parent != null)
-                        {
-                            if (parent.GetComponent<Canvas>() != null)
-                            {
-                                parent.gameObject.SetActive(true);
-                                Debug.Log($"Activated Diplomacy Canvas: {parent.name}");
-                                break;
-                            }
-                            parent = parent.parent;
-                        }
-                        
-                        // Show the diplomacy UI
-                        diplomacyUI.Show(currentCiv);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("DiplomacyUI component not found! Falling back to UIManager.");
-                        UIManager.Instance.ShowPanel("DiplomacyPanel");
-                    }
+                    // Use the new dedicated method
+                    UIManager.Instance.ShowDiplomacyPanel(currentCiv);
                 }
                 else
                 {

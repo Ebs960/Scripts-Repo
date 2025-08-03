@@ -39,6 +39,9 @@ public class DiplomacyUI : MonoBehaviour
 
     void Start()
     {
+        // Validate all required references
+        ValidateUIReferences();
+        
         // Set up button listeners
         closeButton.onClick.AddListener(Hide);
         declareWarButton.onClick.AddListener(OnDeclareWarClicked);
@@ -49,13 +52,144 @@ public class DiplomacyUI : MonoBehaviour
         // Hide panel initially
         mainPanel.SetActive(false);
     }
+    
+    private void ValidateUIReferences()
+    {
+        Debug.Log("[DiplomacyUI] Validating UI references:");
+        
+        // Main Panel
+        Debug.Log($"  mainPanel: {(mainPanel != null ? "OK" : "NULL")}");
+        Debug.Log($"  closeButton: {(closeButton != null ? "OK" : "NULL")}");
+        
+        // Left Section
+        Debug.Log($"  civListContainer: {(civListContainer != null ? "OK" : "NULL")}");
+        Debug.Log($"  civListItemPrefab: {(civListItemPrefab != null ? "OK" : "NULL")}");
+        Debug.Log($"  civListScroll: {(civListScroll != null ? "OK" : "NULL")}");
+        
+        // Middle Section
+        Debug.Log($"  selectedCivIcon: {(selectedCivIcon != null ? "OK" : "NULL")}");
+        Debug.Log($"  selectedCivName: {(selectedCivName != null ? "OK" : "NULL")}");
+        Debug.Log($"  selectedCivLeader: {(selectedCivLeader != null ? "OK" : "NULL")}");
+        Debug.Log($"  relationshipStatus: {(relationshipStatus != null ? "OK" : "NULL")}");
+        
+        // Right Section
+        Debug.Log($"  declareWarButton: {(declareWarButton != null ? "OK" : "NULL")}");
+        Debug.Log($"  proposePeaceButton: {(proposePeaceButton != null ? "OK" : "NULL")}");
+        Debug.Log($"  proposeAllianceButton: {(proposeAllianceButton != null ? "OK" : "NULL")}");
+        Debug.Log($"  denounceButton: {(denounceButton != null ? "OK" : "NULL")}");
+        
+        // Count critical missing references
+        int criticalMissing = 0;
+        if (mainPanel == null) criticalMissing++;
+        if (civListContainer == null) criticalMissing++;
+        if (civListItemPrefab == null) criticalMissing++;
+        if (selectedCivIcon == null) criticalMissing++;
+        if (declareWarButton == null) criticalMissing++;
+        
+        if (criticalMissing > 0)
+        {
+            Debug.LogError($"[DiplomacyUI] {criticalMissing} critical UI references are missing! Diplomacy UI may not function properly.");
+        }
+        else
+        {
+            Debug.Log("[DiplomacyUI] All critical UI references are assigned correctly.");
+        }
+    }
 
     public void Show(Civilization playerCiv)
     {
+        Debug.Log("[DiplomacyUI] Show() called");
         this.playerCiv = playerCiv;
-        mainPanel.SetActive(true);
+        
+        // Ensure the main panel is active first
+        if (mainPanel != null)
+        {
+            mainPanel.SetActive(true);
+            Debug.Log("[DiplomacyUI] Main panel activated");
+        }
+        else
+        {
+            Debug.LogError("[DiplomacyUI] Main panel is null! Cannot show diplomacy UI.");
+            return;
+        }
+        
+        // Ensure all three sections are properly activated
+        ActivateLeftSection();
+        ActivateMiddleSection();
+        ActivateRightSection();
+        
         UpdateCivilizationList();
         ClearSelectedCiv();
+    }
+    
+    private void ActivateLeftSection()
+    {
+        // Left Section - Civilization List
+        if (civListContainer != null)
+        {
+            civListContainer.gameObject.SetActive(true);
+            Debug.Log("[DiplomacyUI] Left section (civ list) activated");
+            
+            // Also activate parent if it's a separate panel
+            Transform parent = civListContainer.parent;
+            if (parent != null && parent != mainPanel.transform)
+            {
+                parent.gameObject.SetActive(true);
+                Debug.Log($"[DiplomacyUI] Left section parent '{parent.name}' activated");
+            }
+        }
+        else
+        {
+            Debug.LogError("[DiplomacyUI] civListContainer is null! Left section cannot be shown.");
+        }
+        
+        if (civListScroll != null)
+        {
+            civListScroll.gameObject.SetActive(true);
+            Debug.Log("[DiplomacyUI] Civ list scroll rect activated");
+        }
+        else
+        {
+            Debug.LogWarning("[DiplomacyUI] civListScroll is null! Scroll functionality may not work.");
+        }
+    }
+    
+    private void ActivateMiddleSection()
+    {
+        // Middle Section - Selected Civ Info
+        if (selectedCivIcon != null)
+        {
+            Transform middleParent = selectedCivIcon.transform.parent;
+            if (middleParent != null && middleParent != mainPanel.transform)
+            {
+                middleParent.gameObject.SetActive(true);
+                Debug.Log($"[DiplomacyUI] Middle section parent '{middleParent.name}' activated");
+            }
+            Debug.Log("[DiplomacyUI] Middle section (selected civ info) activated");
+        }
+        else
+        {
+            Debug.LogError("[DiplomacyUI] selectedCivIcon is null! Middle section cannot be shown.");
+        }
+    }
+    
+    private void ActivateRightSection()
+    {
+        // Right Section - Diplomatic Actions
+        if (declareWarButton != null)
+        {
+            Transform actionsParent = declareWarButton.transform.parent;
+            if (actionsParent != null && actionsParent != mainPanel.transform)
+            {
+                actionsParent.gameObject.SetActive(true);
+                Debug.Log($"[DiplomacyUI] Right section parent '{actionsParent.name}' activated");
+            }
+            Debug.Log("[DiplomacyUI] Right section (diplomatic actions) activated");
+        }
+        else
+        {
+            Debug.LogError("[DiplomacyUI] declareWarButton is null! Right section cannot be shown.");
+        }
     }
 
     public void Hide()
@@ -87,16 +221,47 @@ public class DiplomacyUI : MonoBehaviour
 
     private void UpdateCivilizationList()
     {
+        Debug.Log("[DiplomacyUI] UpdateCivilizationList called");
+        
         // Clear existing list items
         foreach (var item in civListItems)
             Destroy(item);
         civListItems.Clear();
 
+        if (CivilizationManager.Instance == null)
+        {
+            Debug.LogError("[DiplomacyUI] CivilizationManager.Instance is null! Cannot populate civilization list.");
+            return;
+        }
+
         var allCivs = CivilizationManager.Instance.GetAllCivs();
+        if (allCivs == null)
+        {
+            Debug.LogError("[DiplomacyUI] GetAllCivs() returned null! Cannot populate civilization list.");
+            return;
+        }
+
+        Debug.Log($"[DiplomacyUI] Found {allCivs.Count} civilizations");
+
+        if (civListItemPrefab == null)
+        {
+            Debug.LogError("[DiplomacyUI] civListItemPrefab is null! Cannot create civilization list items.");
+            return;
+        }
+
+        if (civListContainer == null)
+        {
+            Debug.LogError("[DiplomacyUI] civListContainer is null! Cannot parent civilization list items.");
+            return;
+        }
+
+        int itemsCreated = 0;
         foreach (var civ in allCivs)
         {
             if (civ == playerCiv) continue;
 
+            Debug.Log($"[DiplomacyUI] Creating list item for {civ.civData.civName}");
+            
             var listItem = Instantiate(civListItemPrefab, civListContainer);
             var button = listItem.GetComponent<Button>();
             var icon = listItem.GetComponentInChildren<Image>();
@@ -109,6 +274,14 @@ public class DiplomacyUI : MonoBehaviour
 
             button.onClick.AddListener(() => OnCivilizationSelected(civ));
             civListItems.Add(listItem);
+            itemsCreated++;
+        }
+        
+        Debug.Log($"[DiplomacyUI] Created {itemsCreated} civilization list items");
+        
+        if (itemsCreated == 0)
+        {
+            Debug.LogWarning("[DiplomacyUI] No civilization list items were created! This could mean no other civilizations exist or all are the player civilization.");
         }
     }
 

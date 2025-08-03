@@ -37,6 +37,8 @@ public class SpaceMapUI : MonoBehaviour
     
     [Header("Visual Settings")]
     public float planetSpacing = 100f;
+    public float connectionLineWidth = 2f;
+    public Color connectionLineColor = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
 
     [Header("Planet Icons")]
     public PlanetTypeSprite[] planetTypeIcons;
@@ -44,7 +46,9 @@ public class SpaceMapUI : MonoBehaviour
 
     private SolarSystemManager solarSystemManager;
     private List<PlanetButton> planetButtons = new List<PlanetButton>();
+    private List<GameObject> connectionLines = new List<GameObject>();
     private PlanetSceneData selectedPlanet;
+    private Vector2 homeWorldPosition = Vector2.zero;
     private bool isInitialized = false;
 
     void Awake()
@@ -238,7 +242,7 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     private void CreatePlanetButtons()
     {
-        // Clear existing buttons
+        // Clear existing buttons and connection lines
         foreach (var button in planetButtons)
         {
             if (button != null && button.gameObject != null)
@@ -246,33 +250,69 @@ public class SpaceMapUI : MonoBehaviour
         }
         planetButtons.Clear();
 
+        foreach (var line in connectionLines)
+        {
+            if (line != null)
+                Destroy(line);
+        }
+        connectionLines.Clear();
+
         List<PlanetSceneData> planets = solarSystemManager.GetAllPlanets();
         
         // Find home world to use as center reference
         PlanetSceneData homeWorld = planets.FirstOrDefault(p => p.isHomeWorld);
+        homeWorldPosition = Vector2.zero; // Always center the home world
         
         // Sort planets by distance from star for proper layout
         var sortedPlanets = planets.OrderBy(p => p.distanceFromStar).ToList();
         
-        Vector2 center = solarSystemView != null ? Vector2.zero : Vector2.zero;
+        Vector2 center = Vector2.zero; // Center of the solar system view
         float maxRadius = solarSystemView != null ? Mathf.Min(solarSystemView.rect.width, solarSystemView.rect.height) * 0.4f : 300f;
         
-        // Find max distance for scaling
-        float maxDistance = sortedPlanets.Count > 0 ? sortedPlanets.Max(p => p.distanceFromStar) : 1f;
+        // Find max distance for scaling (excluding home world)
+        float maxDistance = sortedPlanets.Where(p => !p.isHomeWorld).Count() > 0 ? 
+            sortedPlanets.Where(p => !p.isHomeWorld).Max(p => p.distanceFromStar) : 1f;
+        
+        // Create planet buttons
+        List<Vector2> planetPositions = new List<Vector2>();
         
         for (int i = 0; i < sortedPlanets.Count; i++)
         {
             PlanetSceneData planet = sortedPlanets[i];
+            Vector2 position;
             
-            // Calculate position based on distance from star
-            float normalizedDistance = planet.distanceFromStar / maxDistance;
-            float radius = planet.isHomeWorld ? 0f : normalizedDistance * maxRadius;
+            if (planet.isHomeWorld)
+            {
+                // Home world always at center
+                position = center;
+                homeWorldPosition = position;
+            }
+            else
+            {
+                // Calculate position based on distance from star
+                float normalizedDistance = planet.distanceFromStar / maxDistance;
+                float radius = normalizedDistance * maxRadius;
+                
+                // Distribute planets around their orbital distance
+                float angle = (360f / Mathf.Max(sortedPlanets.Count - 1, 1)) * (i - (homeWorld != null ? 1 : 0)) * Mathf.Deg2Rad;
+                position = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            }
             
-            // Distribute planets around their orbital distance
-            float angle = (360f / Mathf.Max(sortedPlanets.Count, 1)) * i * Mathf.Deg2Rad;
-            Vector2 pos = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
-            
-            CreatePlanetButton(planet, i, pos);
+            planetPositions.Add(position);
+            CreatePlanetButton(planet, i, position);
+        }
+        
+        // Create connection lines from home world to other planets
+        if (homeWorld != null)
+        {
+            for (int i = 0; i < sortedPlanets.Count; i++)
+            {
+                PlanetSceneData planet = sortedPlanets[i];
+                if (!planet.isHomeWorld)
+                {
+                    CreateConnectionLine(homeWorldPosition, planetPositions[i]);
+                }
+            }
         }
     }
 
@@ -313,6 +353,36 @@ public class SpaceMapUI : MonoBehaviour
 
         planetButton.Initialize(planet, this);
         planetButtons.Add(planetButton);
+    }
+
+    /// <summary>
+    /// Create a thin line connecting two positions
+    /// </summary>
+    private void CreateConnectionLine(Vector2 startPos, Vector2 endPos)
+    {
+        GameObject lineGO = CreateUIElement("ConnectionLine", planetContainer);
+        Image lineImage = lineGO.AddComponent<Image>();
+        
+        // Set line appearance
+        lineImage.color = connectionLineColor;
+        lineImage.sprite = null; // Use solid color
+        
+        // Calculate line position, rotation, and scale
+        Vector2 direction = endPos - startPos;
+        float distance = direction.magnitude;
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        
+        Vector2 center = (startPos + endPos) / 2f;
+        
+        RectTransform lineRect = lineGO.GetComponent<RectTransform>();
+        lineRect.anchoredPosition = center;
+        lineRect.sizeDelta = new Vector2(distance, connectionLineWidth);
+        lineRect.rotation = Quaternion.Euler(0, 0, angle);
+        
+        // Ensure lines are drawn behind planet buttons
+        lineGO.transform.SetAsFirstSibling();
+        
+        connectionLines.Add(lineGO);
     }
     
     /// <summary>
@@ -632,6 +702,15 @@ public class SpaceMapUI : MonoBehaviour
                         outline.enabled = (solarSystemManager.currentPlanetIndex == planet.planetIndex);
                     }
                 }
+            }
+        }
+        
+        // Ensure connection lines are visible and properly layered
+        foreach (var line in connectionLines)
+        {
+            if (line != null)
+            {
+                line.transform.SetAsFirstSibling(); // Keep lines behind planets
             }
         }
     }
