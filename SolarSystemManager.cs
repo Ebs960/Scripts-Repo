@@ -3,11 +3,15 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
 using System.Collections;
+using System.Linq;
 
 /// <summary>
 /// Manages multiple planet scenes and solar system data.
 /// Handles planet generation, scene switching, and persistence.
 /// </summary>
+// LoadingPanelController integration
+using TMPro;
+
 public class SolarSystemManager : MonoBehaviour
 {
     public static SolarSystemManager Instance { get; private set; }
@@ -47,32 +51,49 @@ public class SolarSystemManager : MonoBehaviour
 
     // Planet data storage
     private Dictionary<int, PlanetSceneData> planetData = new Dictionary<int, PlanetSceneData>();
-    private Dictionary<string, Scene> loadedScenes = new Dictionary<string, Scene>();
+    // Store root GameObject for each planet
+    private Dictionary<int, GameObject> planetGameObjects = new Dictionary<int, GameObject>();
     
     // Events
     public event Action<int> OnPlanetSwitched;
     public event Action<PlanetSceneData> OnPlanetGenerated;
     public event Action OnSolarSystemInitialized;
 
+    // Reference to the main loading panel controller (auto-found if not assigned)
+    [Header("Loading Panel Integration")]
+    public LoadingPanelController loadingPanel;
+
     void Awake()
     {
+        Debug.Log("[SolarSystemManager] Awake called. Instance=" + (Instance == null ? "null" : Instance.ToString()));
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeSolarSystem();
+            if (loadingPanel == null)
+                loadingPanel = FindFirstObjectByType<LoadingPanelController>();
+            Debug.Log("[SolarSystemManager] Starting InitializeSolarSystemRoutine. planetGeneratorPrefab=" + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name));
+            StartCoroutine(InitializeSolarSystemRoutine());
         }
         else
         {
+            Debug.LogWarning("[SolarSystemManager] Duplicate instance detected, destroying this object.");
             Destroy(gameObject);
         }
     }
 
     /// <summary>
-    /// Initialize the solar system with default planet data
+    /// Coroutine to initialize the solar system and track loading progress
     /// </summary>
-    private void InitializeSolarSystem()
+    private IEnumerator InitializeSolarSystemRoutine()
     {
+        // Show loading panel if available
+        if (loadingPanel != null)
+        {
+            loadingPanel.ShowLoading("Initializing Solar System...");
+            loadingPanel.SetProgress(0.05f);
+        }
+
         if (useRealSolarSystem)
         {
             CreateRealSolarSystem();
@@ -81,7 +102,44 @@ public class SolarSystemManager : MonoBehaviour
         {
             CreateProceduralSolarSystem();
         }
-        
+
+        if (loadingPanel != null)
+        {
+            loadingPanel.SetStatus("Generating Planets...");
+            loadingPanel.SetProgress(0.15f);
+        }
+
+        // Generate all planets as GameObjects, spaced far apart
+        int spacing = 1000;
+        int i = 0;
+        int total = planetData.Count;
+        foreach (var kvp in planetData)
+        {
+            float progress = 0.2f + 0.7f * (i / (float)Mathf.Max(1, total - 1));
+            if (loadingPanel != null)
+            {
+                loadingPanel.SetStatus($"Generating {kvp.Value.planetName}...");
+                loadingPanel.SetProgress(progress);
+            }
+            GeneratePlanet(kvp.Key, new Vector3(i * spacing, 0, 0));
+            i++;
+            yield return null;
+        }
+
+        // All planets remain active at all times
+        var home = planetData.Values.FirstOrDefault(p => p.isHomeWorld) ?? planetData[0];
+        currentPlanetIndex = home.planetIndex;
+        currentPlanetSceneName = home.planetName;
+        home.isCurrentlyLoaded = true;
+
+        if (loadingPanel != null)
+        {
+            loadingPanel.SetStatus("Solar System Ready!");
+            loadingPanel.SetProgress(1f);
+            yield return new WaitForSeconds(0.5f);
+            loadingPanel.HideAllLoading();
+        }
+
         OnSolarSystemInitialized?.Invoke();
         Debug.Log($"[SolarSystemManager] Solar system initialized with {planetData.Count} celestial bodies");
     }
@@ -240,7 +298,7 @@ public class SolarSystemManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Switch to a different planet scene
+    /// Switch to a different planet (activate/deactivate GameObjects and move camera)
     /// </summary>
     public void SwitchToPlanet(int planetIndex)
     {
@@ -250,82 +308,97 @@ public class SolarSystemManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(SwitchToPlanetCoroutine(planetIndex));
-    }
-
-    /// <summary>
-    /// Coroutine to handle planet switching with loading
-    /// </summary>
-    private IEnumerator SwitchToPlanetCoroutine(int planetIndex)
-    {
-        PlanetSceneData targetPlanet = planetData[planetIndex];
-        
-        // Show loading UI
-        yield return ShowLoadingScreen($"Traveling to {targetPlanet.planetName}...");
-
-        // If planet hasn't been generated, generate it first
-        if (!targetPlanet.isGenerated)
+        // Show loading panel for planet switch (space travel style)
+        if (loadingPanel != null)
         {
-            yield return GeneratePlanet(planetIndex);
+            loadingPanel.ShowLoading($"Traveling to {planetData[planetIndex].planetName}...", true);
+            loadingPanel.UpdateSpaceProgress(0.2f, "Preparing jump...");
         }
 
-        // Load the planet scene
-        yield return LoadPlanetScene(targetPlanet.sceneName);
+        // All planets remain active; just move the camera to the target planet
+        if (planetGameObjects.TryGetValue(planetIndex, out var targetGO) && targetGO != null)
+        {
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                mainCam.transform.position = targetGO.transform.position + new Vector3(0, 200, -400); // Example offset
+                mainCam.transform.LookAt(targetGO.transform);
+            }
+        }
 
         // Update current planet
         currentPlanetIndex = planetIndex;
-        currentPlanetSceneName = targetPlanet.sceneName;
-        
-        // Mark as currently loaded
+        currentPlanetSceneName = planetData[planetIndex].planetName;
         foreach (var planet in planetData.Values)
             planet.isCurrentlyLoaded = false;
-        targetPlanet.isCurrentlyLoaded = true;
+        planetData[planetIndex].isCurrentlyLoaded = true;
 
-        // Hide loading UI
-        yield return HideLoadingScreen();
+        if (loadingPanel != null)
+        {
+            loadingPanel.UpdateSpaceProgress(1f, $"Arrived at {planetData[planetIndex].planetName}!");
+            loadingPanel.HideAllLoading();
+        }
 
         OnPlanetSwitched?.Invoke(planetIndex);
-        Debug.Log($"[SolarSystemManager] Switched to planet {planetIndex}: {targetPlanet.planetName}");
+        Debug.Log($"[SolarSystemManager] Switched to planet {planetIndex}: {planetData[planetIndex].planetName}");
     }
 
     /// <summary>
-    /// Generate a new planet with the specified parameters
+    /// Generate a new planet as a GameObject in the current scene
     /// </summary>
-    private IEnumerator GeneratePlanet(int planetIndex)
+    private void GeneratePlanet(int planetIndex, Vector3 position)
     {
         PlanetSceneData planet = planetData[planetIndex];
-        
-        Debug.Log($"[SolarSystemManager] Generating planet {planetIndex}: {planet.planetName}");
-        
-        // Create a new scene for this planet
-        Scene planetScene = SceneManager.CreateScene(planet.sceneName);
-        SceneManager.SetActiveScene(planetScene);
-        
-        // Store the scene reference
-        loadedScenes[planet.sceneName] = planetScene;
+        Debug.Log($"[SolarSystemManager] Generating planet {planetIndex}: {planet.planetName} at {position}");
 
-        // Configure GameSetupData for this planet type
-        ConfigureGameSetupForPlanet(planet);
+        // Create a root GameObject for the planet
+        GameObject planetRoot = new GameObject($"Planet_{planetIndex}_Root");
+        planetRoot.transform.position = position;
 
-        // Create GameManager for this planet
-        GameObject gameManagerGO = new GameObject("GameManager");
-        GameManager planetGameManager = gameManagerGO.AddComponent<GameManager>();
-        
-        // Move GameManager to the planet scene
-        SceneManager.MoveGameObjectToScene(gameManagerGO, planetScene);
+        // Debug: Log prefab assignment
+        if (planetGeneratorPrefab == null)
+        {
+            Debug.LogError($"[SolarSystemManager] planetGeneratorPrefab is NULL for planet {planetIndex}!");
+        }
+        else
+        {
+            Debug.Log($"[SolarSystemManager] Instantiating planetGeneratorPrefab '{planetGeneratorPrefab.name}' for planet {planetIndex}.");
+            GameObject planetGen = Instantiate(planetGeneratorPrefab, Vector3.zero, Quaternion.identity, planetRoot.transform);
+            planetGen.name = $"Planet_{planetIndex}_Generator";
 
-        // Wait for generation to complete
-        yield return planetGameManager.StartNewGame();
+            // Try to get PlanetGenerator component
+            var generator = planetGen.GetComponent<PlanetGenerator>();
+            if (generator == null)
+            {
+                Debug.LogError($"[SolarSystemManager] Instantiated prefab for planet {planetIndex} does NOT have a PlanetGenerator component!");
+            }
+            else
+            {
+                Debug.Log($"[SolarSystemManager] Configuring PlanetGenerator for planet {planetIndex} ({planet.planetName})");
+                // Pass planet-specific data
+                generator.radius = planet.planetSize == GameManager.MapSize.Large ? 32f : (planet.planetSize == GameManager.MapSize.Small ? 18f : 24f);
+                generator.seed = planet.planetIndex * 1000 + DateTime.Now.Millisecond; // Example: unique seed per planet
+                generator.randomSeed = false;
+                generator.SetMapTypeName(planet.mapTypeName ?? planet.planetType.ToString());
+                generator.numberOfContinents =  planet.planetType == PlanetType.Ocean ? 0 : 6;
+                generator.moistureBias = 0f;
+                generator.temperatureBias = 0f;
+                // Optionally set more fields from planet
+                if (loadingPanel != null) generator.SetLoadingPanel(loadingPanel);
 
-        // Mark planet as generated
+                // Start planet generation
+                Debug.Log($"[SolarSystemManager] Starting planet surface generation coroutine for planet {planetIndex}");
+                generator.StartCoroutine(generator.GenerateSurface());
+            }
+        }
+
+        // Optionally instantiate a moon if needed (not required for all planets)
+        // ...
+
+        // Store reference
+        planetGameObjects[planetIndex] = planetRoot;
         planet.isGenerated = true;
         planet.generationDate = DateTime.Now;
-        
-        // Scan for civilizations on this planet
-        yield return ScanPlanetCivilizations(planet);
-
-        OnPlanetGenerated?.Invoke(planet);
-        Debug.Log($"[SolarSystemManager] Planet {planetIndex} generation complete");
     }
 
     /// <summary>
@@ -414,23 +487,7 @@ public class SolarSystemManager : MonoBehaviour
         yield return null;
     }
 
-    /// <summary>
-    /// Load a planet scene (assumes it already exists)
-    /// </summary>
-    private IEnumerator LoadPlanetScene(string sceneName)
-    {
-        if (loadedScenes.ContainsKey(sceneName))
-        {
-            // Scene already loaded, just activate it
-            SceneManager.SetActiveScene(loadedScenes[sceneName]);
-        }
-        else
-        {
-            // Load scene from disk (if it exists)
-            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-            yield return asyncLoad;
-        }
-    }
+    // Scene loading is no longer used in the all-in-one-scene approach
 
     /// <summary>
     /// Open the space map UI
@@ -443,8 +500,17 @@ public class SolarSystemManager : MonoBehaviour
 
     private IEnumerator OpenSpaceMapCoroutine()
     {
-        yield return ShowLoadingScreen("Opening star chart...");
-        
+        // Show space loading panel for star chart
+        if (loadingPanel != null)
+        {
+            loadingPanel.ShowLoading("Opening star chart...", true);
+            loadingPanel.UpdateSpaceProgress(0.1f, "Preparing star chart...");
+        }
+        else
+        {
+            yield return ShowLoadingScreen("Opening star chart...");
+        }
+
         if (useSpaceMapScene)
         {
             // Try to load space map scene
@@ -457,9 +523,13 @@ public class SolarSystemManager : MonoBehaviour
             {
                 asyncLoad = null;
             }
-            
+
             if (asyncLoad != null)
             {
+                if (loadingPanel != null)
+                {
+                    loadingPanel.UpdateSpaceProgress(0.5f, "Loading space map scene...");
+                }
                 yield return asyncLoad;
             }
             else
@@ -473,8 +543,16 @@ public class SolarSystemManager : MonoBehaviour
             // Use UI overlay instead of scene
             CreateSpaceMapOverlay();
         }
-        
-        yield return HideLoadingScreen();
+
+        if (loadingPanel != null)
+        {
+            loadingPanel.UpdateSpaceProgress(1f, "Star chart ready!");
+            loadingPanel.HideAllLoading();
+        }
+        else
+        {
+            yield return HideLoadingScreen();
+        }
     }
 
     /// <summary>

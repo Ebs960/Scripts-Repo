@@ -83,7 +83,6 @@ public class GameManager : MonoBehaviour
 
     // Manager references
     public TurnManager turnManager;
-    public DiplomacyManager dipManager;
 
     [Header("UI Prefabs")]
     public GameObject playerUIPrefab;
@@ -93,7 +92,7 @@ public class GameManager : MonoBehaviour
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
     private SpaceLoadingPanelController spaceLoadingPanel; // Reference to space loading panel
 
-    // --- SGT-compatible tile grid and lookup ---
+    //Tile grid and lookup ---
     [System.Serializable]
     public class HexTileData
     {
@@ -108,20 +107,8 @@ public class GameManager : MonoBehaviour
     }
 
     // --- References to high-res planet textures and grid ---
-    public Texture2D planetHeightTex;
-    public Texture2D planetAlbedoTex;
-    public SphericalHexGrid planetGrid;
 
-    /// <summary>
-    /// Called by PlanetGenerator to provide the high-res textures and grid after generation.
-    /// </summary>
-    public void SetPlanetTextures(Texture2D height, Texture2D albedo, SphericalHexGrid grid)
-    {
-        planetHeightTex = height;
-        planetAlbedoTex = albedo;
-        planetGrid = grid;
-        Debug.Log($"[GameManager] SetPlanetTextures: height={height?.width}x{height?.height}, albedo={albedo?.width}x{albedo?.height}, grid tiles={grid?.TileCount}");
-    }
+    public SphericalHexGrid planetGrid;
 
     public List<HexTileData> hexTiles = new List<HexTileData>();
     

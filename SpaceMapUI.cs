@@ -70,6 +70,48 @@ public class SpaceMapUI : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        // Setup button listeners AFTER all components are initialized
+        SetupButtonListeners();
+    }
+    
+    private void SetupButtonListeners()
+    {
+        Debug.Log("[SpaceMapUI] Setting up button listeners in Start()");
+        
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveAllListeners(); // Clear any existing listeners
+            closeButton.onClick.AddListener(() => {
+                Debug.Log("[SpaceMapUI] Close button clicked!");
+                Hide();
+            });
+            
+            // Ensure button is interactable
+            closeButton.interactable = true;
+            Debug.Log("[SpaceMapUI] Close button listener added and set to interactable");
+        }
+        else
+        {
+            Debug.LogError("[SpaceMapUI] Close button is null in Start()! UI may not be properly initialized.");
+        }
+        
+        // Setup travel button if it exists
+        if (travelButton != null)
+        {
+            travelButton.onClick.RemoveAllListeners();
+            travelButton.onClick.AddListener(() => {
+                if (selectedPlanet != null)
+                {
+                    Debug.Log($"[SpaceMapUI] Travel button clicked for {selectedPlanet.planetName}");
+                    ConfirmTravel(selectedPlanet);
+                }
+            });
+            Debug.Log("[SpaceMapUI] Travel button listener added");
+        }
+    }
+
     /// <summary>
     /// Setup UI references if not assigned in inspector
     /// </summary>
@@ -83,6 +125,13 @@ public class SpaceMapUI : MonoBehaviour
                 spaceMapCanvas = gameObject.AddComponent<Canvas>();
                 spaceMapCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 spaceMapCanvas.sortingOrder = 100; // High priority overlay
+            }
+            
+            // CRITICAL: Add GraphicRaycaster for button clicks to work
+            if (spaceMapCanvas.GetComponent<GraphicRaycaster>() == null)
+            {
+                spaceMapCanvas.gameObject.AddComponent<GraphicRaycaster>();
+                Debug.Log("[SpaceMapUI] Added GraphicRaycaster to canvas for button interaction");
             }
         }
 
@@ -152,8 +201,8 @@ public class SpaceMapUI : MonoBehaviour
         // Planet info panel
         CreatePlanetInfoPanel();
         
-        // Setup button events
-        closeButton.onClick.AddListener(Hide);
+        // Note: Button listeners are set up in Start() method
+        Debug.Log("[SpaceMapUI] SpaceMapPanel created - button listeners will be set up in Start()");
     }
 
     /// <summary>
@@ -668,16 +717,42 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
+        Debug.Log("[SpaceMapUI] Hide() called - attempting to close space map");
+        
         // Hide the entire canvas or root object
         if (spaceMapCanvas != null)
         {
             spaceMapCanvas.gameObject.SetActive(false);
+            Debug.Log("[SpaceMapUI] Space map canvas deactivated");
         }
         else
         {
             gameObject.SetActive(false);
+            Debug.Log("[SpaceMapUI] SpaceMapUI GameObject deactivated (fallback)");
         }
-        Debug.Log("[SpaceMapUI] Space map UI hidden");
+    }
+    
+    /// <summary>
+    /// Test method to verify close button functionality
+    /// </summary>
+    [ContextMenu("Test Close Button")]
+    public void TestCloseButton()
+    {
+        Debug.Log("[SpaceMapUI] Testing close button manually");
+        if (closeButton != null)
+        {
+            Debug.Log($"Close button exists: {closeButton.gameObject.name}");
+            Debug.Log($"Close button active: {closeButton.gameObject.activeInHierarchy}");
+            Debug.Log($"Close button interactable: {closeButton.interactable}");
+            Debug.Log($"Canvas has GraphicRaycaster: {spaceMapCanvas?.GetComponent<GraphicRaycaster>() != null}");
+            
+            // Test the hide method directly
+            Hide();
+        }
+        else
+        {
+            Debug.LogError("Close button is null!");
+        }
     }
 
     /// <summary>

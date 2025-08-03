@@ -42,15 +42,70 @@ public class DiplomacyUI : MonoBehaviour
         // Validate all required references
         ValidateUIReferences();
         
+        // Validate close button setup
+        ValidateCloseButton();
+        
         // Set up button listeners
-        closeButton.onClick.AddListener(Hide);
-        declareWarButton.onClick.AddListener(OnDeclareWarClicked);
-        proposePeaceButton.onClick.AddListener(OnProposePeaceClicked);
-        proposeAllianceButton.onClick.AddListener(OnProposeAllianceClicked);
-        denounceButton.onClick.AddListener(OnDenounceClicked);
+        SetupButtonListeners();
 
-        // Hide panel initially
-        mainPanel.SetActive(false);
+        // Hide the entire GameObject initially (instead of just mainPanel)
+        gameObject.SetActive(false);
+    }
+    
+    private void ValidateCloseButton()
+    {
+        if (closeButton != null)
+        {
+            Debug.Log($"[DiplomacyUI] Close button found on: {closeButton.gameObject.name}");
+            Debug.Log($"[DiplomacyUI] Close button parent: {closeButton.transform.parent?.name}");
+            
+            // Check if close button is on the main Canvas
+            Canvas parentCanvas = closeButton.GetComponentInParent<Canvas>();
+            if (parentCanvas != null)
+            {
+                Debug.Log($"[DiplomacyUI] Close button is on Canvas: {parentCanvas.name}");
+            }
+            else
+            {
+                Debug.LogError("[DiplomacyUI] Close button is not on a Canvas! This will cause click issues.");
+            }
+            
+            // Check if the Canvas has GraphicRaycaster
+            if (parentCanvas != null && parentCanvas.GetComponent<GraphicRaycaster>() == null)
+            {
+                Debug.LogError("[DiplomacyUI] Canvas missing GraphicRaycaster! Close button won't receive clicks.");
+            }
+        }
+    }
+    
+    private void SetupButtonListeners()
+    {
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveAllListeners();
+            closeButton.onClick.AddListener(() => {
+                Debug.Log("[DiplomacyUI] Close button clicked!");
+                Hide();
+            });
+            Debug.Log("[DiplomacyUI] Close button listener added");
+        }
+        
+        if (declareWarButton != null)
+        {
+            declareWarButton.onClick.AddListener(OnDeclareWarClicked);
+        }
+        if (proposePeaceButton != null)
+        {
+            proposePeaceButton.onClick.AddListener(OnProposePeaceClicked);
+        }
+        if (proposeAllianceButton != null)
+        {
+            proposeAllianceButton.onClick.AddListener(OnProposeAllianceClicked);
+        }
+        if (denounceButton != null)
+        {
+            denounceButton.onClick.AddListener(OnDenounceClicked);
+        }
     }
     
     private void ValidateUIReferences()
@@ -101,170 +156,14 @@ public class DiplomacyUI : MonoBehaviour
         Debug.Log("[DiplomacyUI] Show() called");
         this.playerCiv = playerCiv;
         
-        // Ensure the main panel is active first
-        if (mainPanel != null)
-        {
-            mainPanel.SetActive(true);
-            Debug.Log("[DiplomacyUI] Main panel activated");
-        }
-        else
-        {
-            Debug.LogError("[DiplomacyUI] Main panel is null! Cannot show diplomacy UI.");
-            return;
-        }
-        
-        // Ensure all three sections are properly activated
-        ActivateLeftSection();
-        ActivateMiddleSection();
-        ActivateRightSection();
+        // Simply activate the entire GameObject - this activates everything at once
+        gameObject.SetActive(true);
+        Debug.Log("[DiplomacyUI] Entire DiplomacyUI GameObject activated");
         
         UpdateCivilizationList();
         ClearSelectedCiv();
     }
     
-    private void ActivateLeftSection()
-    {
-        // Left Section - Civilization List
-        if (civListContainer != null)
-        {
-            civListContainer.gameObject.SetActive(true);
-            Debug.Log("[DiplomacyUI] Left section (civ list) activated");
-            
-            // Also activate parent if it's a separate panel
-            Transform parent = civListContainer.parent;
-            if (parent != null && parent != mainPanel.transform)
-            {
-                parent.gameObject.SetActive(true);
-                Debug.Log($"[DiplomacyUI] Left section parent '{parent.name}' activated");
-            }
-        }
-        else
-        {
-            Debug.LogError("[DiplomacyUI] civListContainer is null! Left section cannot be shown.");
-        }
-        
-        if (civListScroll != null)
-        {
-            civListScroll.gameObject.SetActive(true);
-            Debug.Log("[DiplomacyUI] Civ list scroll rect activated");
-        }
-        else
-        {
-            Debug.LogWarning("[DiplomacyUI] civListScroll is null! Scroll functionality may not work.");
-        }
-    }
-    
-    private void ActivateMiddleSection()
-    {
-        // Middle Section - Selected Civ Info
-        if (selectedCivIcon != null)
-        {
-            Transform middleParent = selectedCivIcon.transform.parent;
-            if (middleParent != null && middleParent != mainPanel.transform)
-            {
-                middleParent.gameObject.SetActive(true);
-                Debug.Log($"[DiplomacyUI] Middle section parent '{middleParent.name}' activated");
-            }
-            Debug.Log("[DiplomacyUI] Middle section (selected civ info) activated");
-        }
-        else
-        {
-            Debug.LogError("[DiplomacyUI] selectedCivIcon is null! Middle section cannot be shown.");
-        }
-    }
-    
-    private void ActivateRightSection()
-    {
-        // Right Section - Diplomatic Actions
-        if (declareWarButton != null)
-        {
-            Transform actionsParent = declareWarButton.transform.parent;
-            if (actionsParent != null && actionsParent != mainPanel.transform)
-            {
-                actionsParent.gameObject.SetActive(true);
-                Debug.Log($"[DiplomacyUI] Right section parent '{actionsParent.name}' activated");
-            }
-            Debug.Log("[DiplomacyUI] Right section (diplomatic actions) activated");
-        }
-        else
-        {
-            Debug.LogError("[DiplomacyUI] declareWarButton is null! Right section cannot be shown.");
-        }
-    }
-
-    public void Hide()
-    {
-        Debug.Log("[DiplomacyUI] Hide() called - closing all diplomacy panels");
-        
-        // Deactivate main panel
-        if (mainPanel != null)
-        {
-            mainPanel.SetActive(false);
-            Debug.Log("[DiplomacyUI] Main panel deactivated");
-        }
-        
-        // Ensure all three sections are properly deactivated
-        DeactivateLeftSection();
-        DeactivateMiddleSection();
-        DeactivateRightSection();
-        
-        selectedCiv = null;
-        Debug.Log("[DiplomacyUI] All diplomacy panels closed");
-    }
-    
-    private void DeactivateLeftSection()
-    {
-        // Left Section - Civilization List
-        if (civListContainer != null)
-        {
-            // Deactivate parent if it's a separate panel
-            Transform parent = civListContainer.parent;
-            if (parent != null && parent != mainPanel.transform)
-            {
-                parent.gameObject.SetActive(false);
-                Debug.Log($"[DiplomacyUI] Left section parent '{parent.name}' deactivated");
-            }
-            else
-            {
-                civListContainer.gameObject.SetActive(false);
-                Debug.Log("[DiplomacyUI] Left section (civ list) deactivated");
-            }
-        }
-        
-        if (civListScroll != null)
-        {
-            civListScroll.gameObject.SetActive(false);
-        }
-    }
-    
-    private void DeactivateMiddleSection()
-    {
-        // Middle Section - Selected Civ Info
-        if (selectedCivIcon != null)
-        {
-            Transform middleParent = selectedCivIcon.transform.parent;
-            if (middleParent != null && middleParent != mainPanel.transform)
-            {
-                middleParent.gameObject.SetActive(false);
-                Debug.Log($"[DiplomacyUI] Middle section parent '{middleParent.name}' deactivated");
-            }
-        }
-    }
-    
-    private void DeactivateRightSection()
-    {
-        // Right Section - Diplomatic Actions
-        if (declareWarButton != null)
-        {
-            Transform actionsParent = declareWarButton.transform.parent;
-            if (actionsParent != null && actionsParent != mainPanel.transform)
-            {
-                actionsParent.gameObject.SetActive(false);
-                Debug.Log($"[DiplomacyUI] Right section parent '{actionsParent.name}' deactivated");
-            }
-        }
-    }
-
     private void ClearSelectedCiv()
     {
         selectedCiv = null;
@@ -284,6 +183,17 @@ public class DiplomacyUI : MonoBehaviour
         proposePeaceButton.gameObject.SetActive(false);
         proposeAllianceButton.gameObject.SetActive(false);
         denounceButton.gameObject.SetActive(false);
+    }
+
+    public void Hide()
+    {
+        Debug.Log("[DiplomacyUI] Hide() called");
+        
+        // Simply deactivate the entire GameObject - this hides everything at once
+        gameObject.SetActive(false);
+        Debug.Log("[DiplomacyUI] Entire DiplomacyUI GameObject deactivated");
+        
+        selectedCiv = null;
     }
 
     private void UpdateCivilizationList()

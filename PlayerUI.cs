@@ -75,13 +75,22 @@ public class PlayerUI : MonoBehaviour
             techButton.onClick.AddListener(() => 
             {
                 Debug.Log("Tech button clicked");
-                if (UIManager.Instance != null && currentCiv != null)
+                
+                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
                 {
-                    UIManager.Instance.ShowTechPanel(currentCiv);
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
+                }
+                
+                if (UIManager.Instance != null && civToUse != null)
+                {
+                    UIManager.Instance.ShowTechPanel(civToUse);
                 }
                 else
                 {
-                    Debug.LogError("PlayerUI: UIManager or currentCiv is null, cannot show tech panel.");
+                    Debug.LogError($"PlayerUI: Cannot show tech panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
                 }
             });
         }
@@ -92,13 +101,22 @@ public class PlayerUI : MonoBehaviour
             cultureButton.onClick.AddListener(() => 
             {
                 Debug.Log("Culture button clicked");
-                if (UIManager.Instance != null && currentCiv != null)
+                
+                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
                 {
-                    UIManager.Instance.ShowCulturePanel(currentCiv);
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
+                }
+                
+                if (UIManager.Instance != null && civToUse != null)
+                {
+                    UIManager.Instance.ShowCulturePanel(civToUse);
                 }
                 else
                 {
-                    Debug.LogError("PlayerUI: UIManager or currentCiv is null, cannot show culture panel.");
+                    Debug.LogError($"PlayerUI: Cannot show culture panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
                 }
             });
         }
@@ -123,14 +141,23 @@ public class PlayerUI : MonoBehaviour
             diplomacyButton.onClick.AddListener(() => 
             {
                 Debug.Log("Diplomacy button clicked");
-                if (UIManager.Instance != null && currentCiv != null)
+                
+                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
+                {
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
+                }
+                
+                if (UIManager.Instance != null && civToUse != null)
                 {
                     // Use the new dedicated method
-                    UIManager.Instance.ShowDiplomacyPanel(currentCiv);
+                    UIManager.Instance.ShowDiplomacyPanel(civToUse);
                 }
                 else
                 {
-                    Debug.LogError("PlayerUI: UIManager or currentCiv is null when trying to show diplomacy panel!");
+                    Debug.LogError($"PlayerUI: Cannot show diplomacy panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
                 }
             });
         }
