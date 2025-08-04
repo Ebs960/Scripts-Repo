@@ -408,6 +408,16 @@ public class GameManager : MonoBehaviour
     private void CreateGenerators()
     {
         Debug.Log($"[CreateGenerators] incoming mapSize = {mapSize}  ({(int)mapSize})");
+        
+        // Check if we should use SolarSystemManager instead
+        var solarSystemForGeneratorCheck = FindAnyObjectByType<SolarSystemManager>();
+        if (solarSystemForGeneratorCheck != null && solarSystemForGeneratorCheck.useRealSolarSystem)
+        {
+            Debug.Log("[GameManager] SolarSystemManager detected with useRealSolarSystem=true, skipping regular planet generation");
+            // Don't create a planet generator - let SolarSystemManager handle it
+            return;
+        }
+        
         if (planetGeneratorPrefab != null)
         {
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
@@ -547,18 +557,29 @@ public class GameManager : MonoBehaviour
 
         // Set references on UnitMovementController now that planet and managers exist
         var unitMovementController = FindAnyObjectByType<UnitMovementController>();
-        if (unitMovementController != null && planetGenerator != null)
+        if (unitMovementController != null)
         {
-            var grid = planetGenerator.Grid;
-            unitMovementController.SetReferences(grid, planetGenerator, moonGenerator);
+            // Check if we're using SolarSystemManager
+            var solarSystemForUnitMovement = FindAnyObjectByType<SolarSystemManager>();
+            if (solarSystemForUnitMovement != null && solarSystemForUnitMovement.useRealSolarSystem)
+            {
+                Debug.Log("[GameManager] Using SolarSystemManager for UnitMovementController references");
+                // For solar system, we'll need to get references from the current planet
+                // This will be handled by SolarSystemManager when planets are generated
+            }
+            else if (planetGenerator != null)
+            {
+                var grid = planetGenerator.Grid;
+                unitMovementController.SetReferences(grid, planetGenerator, moonGenerator);
+            }
+            else
+            {
+                Debug.LogWarning("GameManager: PlanetGenerator is null, cannot set UnitMovementController references!");
+            }
         }
-        else if (unitMovementController == null)
+        else
         {
             Debug.LogWarning("GameManager: UnitMovementController not found after generator creation!");
-        }
-        else if (planetGenerator == null)
-        {
-            Debug.LogWarning("GameManager: PlanetGenerator is null, cannot set UnitMovementController references!");
         }
 
         // --- Camera instantiation ---
@@ -600,15 +621,27 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("=== STARTING MAP GENERATION ===");
 
-        // Generate the map (planet and optionally moon)
-        if (planetGenerator != null)
+        // Check if we should use SolarSystemManager instead of regular planet generation
+        var solarSystemForMapGeneration = FindAnyObjectByType<SolarSystemManager>();
+        if (solarSystemForMapGeneration != null && solarSystemForMapGeneration.useRealSolarSystem)
         {
-            yield return StartCoroutine(GenerateMap());
+            Debug.Log("[GameManager] Using SolarSystemManager for planet generation");
+            // Let SolarSystemManager handle all planet generation
+            // We don't need to generate a planet here since SolarSystemManager will do it
+            yield return null; // Give SolarSystemManager a frame to initialize
         }
         else
         {
-            Debug.LogError("PlanetGenerator not created. Can't start game.");
-            yield break;
+            // Generate the map (planet and optionally moon) using regular system
+            if (planetGenerator != null)
+            {
+                yield return StartCoroutine(GenerateMap());
+            }
+            else
+            {
+                Debug.LogError("PlanetGenerator not created. Can't start game.");
+                yield break;
+            }
         }
 
         Debug.Log("=== MAP GENERATION COMPLETE ===");
@@ -640,14 +673,28 @@ public class GameManager : MonoBehaviour
 
         // Spawn initial animals
         var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
-        if (animalManagerInstance != null && planetGenerator != null)
+        if (animalManagerInstance != null)
         {
-            // AnimalManager now gets grid and planet data from TileDataHelper
-            animalManagerInstance.SpawnInitialAnimals();
+            // Check if we're using SolarSystemManager
+            var solarSystemForAnimalSpawning = FindAnyObjectByType<SolarSystemManager>();
+            if (solarSystemForAnimalSpawning != null && solarSystemForAnimalSpawning.useRealSolarSystem)
+            {
+                Debug.Log("[GameManager] Using SolarSystemManager for animal spawning");
+                // Animal spawning will be handled by SolarSystemManager when planets are generated
+            }
+            else if (planetGenerator != null)
+            {
+                // AnimalManager now gets grid and planet data from TileDataHelper
+                animalManagerInstance.SpawnInitialAnimals();
+            }
+            else
+            {
+                Debug.LogWarning("GameManager: PlanetGenerator is null, cannot spawn initial animals.");
+            }
         }
         else
         {
-            Debug.LogWarning("GameManager: AnimalManager or PlanetGenerator not found, cannot spawn initial animals.");
+            Debug.LogWarning("GameManager: AnimalManager not found, cannot spawn initial animals.");
         }
 
         Debug.Log("=== STARTING UI INITIALIZATION ===");
@@ -745,41 +792,69 @@ public class GameManager : MonoBehaviour
         }
 
         // Configure planet minimap generator
-        if (minimapController.planetGenerator != null && planetGenerator != null)
+        if (minimapController.planetGenerator != null)
         {
-            minimapController.planetGenerator.ConfigureDataSource(
-                planetGenerator, 
-                planetGenerator.transform, 
-                MinimapDataSource.Planet
-            );
-            minimapController.planetRoot = planetGenerator.transform;
-            Debug.Log("Planet minimap generator configured.");
-            
-            // Build planet minimap
-            minimapController.planetGenerator.Build();
+            // Check if we're using SolarSystemManager
+            var solarSystemForPlanetMinimap = FindAnyObjectByType<SolarSystemManager>();
+            if (solarSystemForPlanetMinimap != null && solarSystemForPlanetMinimap.useRealSolarSystem)
+            {
+                Debug.Log("[GameManager] Using SolarSystemManager for minimap configuration");
+                // Minimap configuration will be handled by SolarSystemManager when planets are generated
+            }
+            else if (planetGenerator != null)
+            {
+                minimapController.planetGenerator.ConfigureDataSource(
+                    planetGenerator, 
+                    planetGenerator.transform, 
+                    MinimapDataSource.Planet
+                );
+                minimapController.planetRoot = planetGenerator.transform;
+                Debug.Log("Planet minimap generator configured.");
+                
+                // Build planet minimap
+                minimapController.planetGenerator.Build();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Planet generator not found for minimap configuration.");
+            }
         }
         else
         {
-            Debug.LogWarning("[GameManager] Planet minimap generator or planet generator not found.");
+            Debug.LogWarning("[GameManager] Planet minimap generator not found.");
         }
 
         // Configure moon minimap generator (if moon exists)
-        if (generateMoon && minimapController.moonGenerator != null && moonGenerator != null)
+        if (generateMoon && minimapController.moonGenerator != null)
         {
-            minimapController.moonGenerator.ConfigureDataSource(
-                moonGenerator, 
-                moonGenerator.transform, 
-                MinimapDataSource.Moon
-            );
-            minimapController.moonRoot = moonGenerator.transform;
-            Debug.Log("Moon minimap generator configured.");
-            
-            // Build moon minimap
-            minimapController.moonGenerator.Build();
+            // Check if we're using SolarSystemManager
+            var solarSystemForMoonMinimap = FindAnyObjectByType<SolarSystemManager>();
+            if (solarSystemForMoonMinimap != null && solarSystemForMoonMinimap.useRealSolarSystem)
+            {
+                Debug.Log("[GameManager] Using SolarSystemManager for moon minimap configuration");
+                // Moon minimap configuration will be handled by SolarSystemManager when moons are generated
+            }
+            else if (moonGenerator != null)
+            {
+                minimapController.moonGenerator.ConfigureDataSource(
+                    moonGenerator, 
+                    moonGenerator.transform, 
+                    MinimapDataSource.Moon
+                );
+                minimapController.moonRoot = moonGenerator.transform;
+                Debug.Log("Moon minimap generator configured.");
+                
+                // Build moon minimap
+                minimapController.moonGenerator.Build();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Moon generator not found for minimap configuration.");
+            }
         }
         else if (generateMoon)
         {
-            Debug.LogWarning("[GameManager] Moon minimap generator or moon generator not found.");
+            Debug.LogWarning("[GameManager] Moon minimap generator not found.");
         }
 
         Debug.Log("Minimap configuration complete!");

@@ -370,10 +370,32 @@ public class SolarSystemManager : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[SolarSystemManager] About to instantiate prefab: {planetGeneratorPrefab.name}");
+        Debug.Log($"[SolarSystemManager] Prefab has components: {string.Join(", ", planetGeneratorPrefab.GetComponents<Component>().Select(c => c.GetType().Name))}");
+        
         // Instantiate the planet prefab directly into the scene (no parent), set position
         GameObject planetGO = Instantiate(planetGeneratorPrefab);
+        
+        // CRITICAL DEBUG: Check if instantiation actually worked
+        if (planetGO == null)
+        {
+            Debug.LogError($"[SolarSystemManager] INSTANTIATE FAILED! GameObject is NULL after instantiation for planet {planetIndex}!");
+            return;
+        }
+        
+        Debug.Log($"[SolarSystemManager] Successfully instantiated GameObject: {planetGO.name}");
+        Debug.Log($"[SolarSystemManager] GameObject active: {planetGO.activeSelf}, activeInHierarchy: {planetGO.activeInHierarchy}");
+        Debug.Log($"[SolarSystemManager] GameObject scene: {planetGO.scene.name}");
+        Debug.Log($"[SolarSystemManager] GameObject components: {string.Join(", ", planetGO.GetComponents<Component>().Select(c => c.GetType().Name))}");
+        
         planetGO.name = $"Planet_{planetIndex}_Generator";
         planetGO.transform.position = position;
+        
+        Debug.Log($"[SolarSystemManager] GameObject position set to: {planetGO.transform.position}");
+
+        // Store reference FIRST before doing anything else
+        planetGameObjects[planetIndex] = planetGO;
+        Debug.Log($"[SolarSystemManager] Stored GameObject reference for planet {planetIndex}");
 
         // Get PlanetGenerator component
         var generator = planetGO.GetComponent<PlanetGenerator>();
@@ -384,7 +406,8 @@ public class SolarSystemManager : MonoBehaviour
         }
 
         Debug.Log($"[SolarSystemManager] Configuring PlanetGenerator for planet {planetIndex} ({planet.planetName})");
-        // Pass planet-specific data
+        
+        // Configure planet-specific data
         generator.radius = planet.planetSize == GameManager.MapSize.Large ? 32f : (planet.planetSize == GameManager.MapSize.Small ? 18f : 24f);
         generator.seed = planet.planetIndex * 1000 + DateTime.Now.Millisecond; // Example: unique seed per planet
         generator.randomSeed = false;
@@ -394,9 +417,43 @@ public class SolarSystemManager : MonoBehaviour
         generator.temperatureBias = 0f;
         if (loadingPanel != null) generator.SetLoadingPanel(loadingPanel);
 
-        // Start planet generation
+        // CRITICAL: Configure planet settings based on planet type
+        ConfigureGameSetupForPlanet(planet.planetType, planet.planetSize);
+        
+        // Apply GameSetupData settings to the generator
+        generator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
+        generator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
+        generator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
+        generator.moistureBias = GameSetupData.moistureBias;
+        generator.temperatureBias = GameSetupData.temperatureBias;
+        generator.landThreshold = GameSetupData.landThreshold;
+        generator.maxContinentWidthDegrees = GameSetupData.maxContinentWidthDegrees;
+        generator.maxContinentHeightDegrees = GameSetupData.maxContinentHeightDegrees;
+        generator.seedPositionVariance = GameSetupData.seedPositionVariance;
+        generator.numberOfContinents = GameSetupData.numberOfContinents;
+        generator.enableRivers = GameSetupData.enableRivers;
+        generator.minRiversPerContinent = GameSetupData.riverCount;
+        generator.maxRiversPerContinent = GameSetupData.riverCount + 1;
+        generator.numberOfIslands = GameSetupData.numberOfIslands;
+        generator.generateIslands = GameSetupData.generateIslands;
+
+        // CRITICAL: Generate the grid BEFORE starting surface generation
+        int subdivisions; float radius;
+        GameManager.GetMapSizeParams(planet.planetSize, out subdivisions, out radius);
+        generator.radius = radius; // Ensure radius is set correctly
+        generator.Grid.GenerateFromSubdivision(subdivisions, radius);
+        
+        Debug.Log($"[SolarSystemManager] Grid generated with subdivisions: {subdivisions}, radius: {radius}");
+
+        // Notify TileDataHelper of the new generator
+        if (TileDataHelper.Instance != null)
+        {
+            TileDataHelper.Instance.UpdateReferences();
+        }
+
+        // Start planet generation as a coroutine and wait for it to complete
         Debug.Log($"[SolarSystemManager] Starting planet surface generation coroutine for planet {planetIndex}");
-        generator.StartCoroutine(generator.GenerateSurface());
+        StartCoroutine(GeneratePlanetSurface(generator));
 
         // Optionally instantiate a moon if needed (not required for all planets)
         // ...
@@ -408,59 +465,26 @@ public class SolarSystemManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Configure GameSetupData based on planet type
+    /// Coroutine to generate planet surface and wait for completion
     /// </summary>
-    private void ConfigureGameSetupForPlanet(PlanetSceneData planet)
+    private IEnumerator GeneratePlanetSurface(PlanetGenerator generator)
     {
-        // Reset to defaults first
-        GameSetupData.InitializeDefaults();
+        Debug.Log($"[SolarSystemManager] GeneratePlanetSurface coroutine started");
         
-        // Configure based on planet type
-        switch (planet.planetType)
+        // Wait for the surface generation to complete
+        yield return StartCoroutine(generator.GenerateSurface());
+        
+        Debug.Log($"[SolarSystemManager] Planet surface generation completed");
+        
+        // Update SunBillboard radius after planet is generated
+        var sunBB = FindAnyObjectByType<SunBillboard>();
+        if (sunBB != null && generator != null)
         {
-            case PlanetType.Terran:
-                GameSetupData.mapTypeName = "Temperate Continental";
-                GameSetupData.numberOfContinents = UnityEngine.Random.Range(4, 7);
-                break;
-                
-            case PlanetType.Desert:
-                GameSetupData.mapTypeName = "Scorched Pangaea";
-                GameSetupData.numberOfContinents = UnityEngine.Random.Range(1, 3);
-                GameSetupData.moistureBias = -0.3f;
-                GameSetupData.temperatureBias = 0.4f;
-                break;
-                
-            case PlanetType.Ocean:
-                GameSetupData.mapTypeName = "Tropical Archipelago";
-                GameSetupData.numberOfContinents = 0;
-                GameSetupData.numberOfIslands = UnityEngine.Random.Range(15, 25);
-                GameSetupData.moistureBias = 0.3f;
-                break;
-                
-            case PlanetType.Ice:
-                GameSetupData.mapTypeName = "Frozen Tundra";
-                GameSetupData.temperatureBias = -0.5f;
-                GameSetupData.moistureBias = -0.2f;
-                break;
-                
-            case PlanetType.Volcanic:
-                GameSetupData.mapTypeName = "Infernal Mountains";
-                GameSetupData.temperatureBias = 0.6f;
-                GameSetupData.numberOfContinents = UnityEngine.Random.Range(2, 5);
-                break;
-                
-            case PlanetType.Jungle:
-                GameSetupData.mapTypeName = "Rainforest Continental";
-                GameSetupData.moistureBias = 0.4f;
-                GameSetupData.temperatureBias = 0.2f;
-                break;
+            sunBB.SetBaseRadius(generator.radius);
         }
-        
-        // Randomize other settings
-        GameSetupData.numberOfCivilizations = UnityEngine.Random.Range(3, 8);
-        GameSetupData.numberOfCityStates = UnityEngine.Random.Range(1, 4);
-        GameSetupData.mapSize = (GameManager.MapSize)UnityEngine.Random.Range(0, 3);
     }
+
+
 
     /// <summary>
     /// Scan a planet for existing civilizations
