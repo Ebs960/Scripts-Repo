@@ -372,13 +372,13 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create SolarSystemManager
-        var solarSystemManager = FindAnyObjectByType<SolarSystemManager>();
-        if (solarSystemManager == null)
+        var solarSystemManagerForCore = FindAnyObjectByType<SolarSystemManager>();
+        if (solarSystemManagerForCore == null)
         {
             if (solarSystemManagerPrefab != null)
             {
                 GameObject solarSystemManagerGO = Instantiate(solarSystemManagerPrefab);
-                solarSystemManager = solarSystemManagerGO.GetComponent<SolarSystemManager>();
+                solarSystemManagerForCore = solarSystemManagerGO.GetComponent<SolarSystemManager>();
             }
             else
             {
@@ -559,9 +559,9 @@ public class GameManager : MonoBehaviour
         var unitMovementController = FindAnyObjectByType<UnitMovementController>();
         if (unitMovementController != null)
         {
-            // Check if we're using SolarSystemManager
-            var solarSystemForUnitMovement = FindAnyObjectByType<SolarSystemManager>();
-            if (solarSystemForUnitMovement != null && solarSystemForUnitMovement.useRealSolarSystem)
+                    // Check if we're using SolarSystemManager for unit movement
+        var solarSystemForUnitMovement = FindAnyObjectByType<SolarSystemManager>();
+        if (solarSystemForUnitMovement != null && solarSystemForUnitMovement.useRealSolarSystem)
             {
                 Debug.Log("[GameManager] Using SolarSystemManager for UnitMovementController references");
                 // For solar system, we'll need to get references from the current planet
@@ -675,7 +675,7 @@ public class GameManager : MonoBehaviour
         var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
         if (animalManagerInstance != null)
         {
-            // Check if we're using SolarSystemManager
+            // Check if we're using SolarSystemManager for animal spawning
             var solarSystemForAnimalSpawning = FindAnyObjectByType<SolarSystemManager>();
             if (solarSystemForAnimalSpawning != null && solarSystemForAnimalSpawning.useRealSolarSystem)
             {

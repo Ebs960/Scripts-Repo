@@ -66,10 +66,14 @@ public class SolarSystemManager : MonoBehaviour
     void Awake()
     {
         Debug.Log("[SolarSystemManager] Awake called. Instance=" + (Instance == null ? "null" : Instance.ToString()));
+        Debug.Log("[SolarSystemManager] useRealSolarSystem = " + useRealSolarSystem);
+        Debug.Log("[SolarSystemManager] planetGeneratorPrefab = " + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name));
+        
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Debug.Log("[SolarSystemManager] Starting DelayedInitialization coroutine");
             // Find loading panel - wait a bit for GameSceneInitializer to create it
             StartCoroutine(DelayedInitialization());
         }
@@ -91,6 +95,13 @@ public class SolarSystemManager : MonoBehaviour
         if (loadingPanel == null)
             loadingPanel = FindFirstObjectByType<LoadingPanelController>();
         
+        // Get planet generator prefab from GameManager if we don't have one
+        if (planetGeneratorPrefab == null && GameManager.Instance != null)
+        {
+            planetGeneratorPrefab = GameManager.Instance.planetGeneratorPrefab;
+            Debug.Log("[SolarSystemManager] Got planetGeneratorPrefab from GameManager: " + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name));
+        }
+        
         Debug.Log("[SolarSystemManager] Starting InitializeSolarSystemRoutine. planetGeneratorPrefab=" + (planetGeneratorPrefab == null ? "null" : planetGeneratorPrefab.name) + ", loadingPanel=" + (loadingPanel == null ? "null" : "found"));
         StartCoroutine(InitializeSolarSystemRoutine());
     }
@@ -100,6 +111,8 @@ public class SolarSystemManager : MonoBehaviour
     /// </summary>
     private IEnumerator InitializeSolarSystemRoutine()
     {
+        Debug.Log("[SolarSystemManager] InitializeSolarSystemRoutine STARTED");
+        
         // Show loading panel if available
         if (loadingPanel != null)
         {
@@ -126,8 +139,10 @@ public class SolarSystemManager : MonoBehaviour
         int spacing = 1000;
         int i = 0;
         int total = planetData.Count;
+        Debug.Log($"[SolarSystemManager] About to generate {total} planets");
         foreach (var kvp in planetData)
         {
+            Debug.Log($"[SolarSystemManager] Generating planet {i}: {kvp.Value.planetName}");
             float progress = 0.2f + 0.7f * (i / (float)Mathf.Max(1, total - 1));
             if (loadingPanel != null)
             {
