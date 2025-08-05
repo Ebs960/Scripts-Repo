@@ -22,7 +22,6 @@ public class SpaceMapButton : MonoBehaviour
     public Button ruinsButton;
 
     private SpaceMapUI spaceMapUI;
-    private SolarSystemManager solarSystemManager;
     private AncientRuinsManager ancientRuinsManager;
 
     void Awake()
@@ -32,43 +31,24 @@ public class SpaceMapButton : MonoBehaviour
 
     void Start()
     {
-        TryInitOrSubscribe();
+        StartCoroutine(WaitForGameManagerThenInit());
     }
 
-    private void TryInitOrSubscribe()
+    private IEnumerator WaitForGameManagerThenInit()
     {
-        solarSystemManager = SolarSystemManager.Instance;
-        if (solarSystemManager == null)
-        {
-            // Try again next frame until SolarSystemManager exists
-            StartCoroutine(WaitForSolarSystemManagerThenSubscribe());
-            return;
-        }
-        // If already initialized, initialize immediately
-        if (solarSystemManager.GetAllPlanets() != null && solarSystemManager.GetAllPlanets().Count > 0)
-        {
-            OnSolarSystemReady();
-        }
-        else
-        {
-            // Subscribe to event
-            solarSystemManager.OnSolarSystemInitialized += OnSolarSystemReady;
-        }
-    }
-
-    private IEnumerator WaitForSolarSystemManagerThenSubscribe()
-    {
-        while (SolarSystemManager.Instance == null)
+        // Wait for GameManager.Instance to exist
+        while (GameManager.Instance == null)
             yield return null;
-        solarSystemManager = SolarSystemManager.Instance;
-        TryInitOrSubscribe();
+
+        // Wait for game to be in progress (initialized)
+        while (!GameManager.Instance.gameInProgress)
+            yield return null;
+
+        OnGameManagerReady();
     }
 
-    private void OnSolarSystemReady()
+    private void OnGameManagerReady()
     {
-        if (solarSystemManager != null)
-            solarSystemManager.OnSolarSystemInitialized -= OnSolarSystemReady;
-
         // Find managers
         ancientRuinsManager = FindFirstObjectByType<AncientRuinsManager>(FindObjectsInactive.Include);
 
@@ -89,12 +69,7 @@ public class SpaceMapButton : MonoBehaviour
         else
         {
             Debug.Log($"[SpaceMapButton] Found existing SpaceMapUI: {spaceMapUI.name} (Active: {spaceMapUI.gameObject.activeInHierarchy})");
-            // Initialize the space map UI with the existing one
-            if (solarSystemManager != null)
-            {
-                spaceMapUI.Initialize(solarSystemManager);
-                Debug.Log("[SpaceMapButton] Initialized existing SpaceMapUI with SolarSystemManager");
-            }
+            // No need to initialize with SolarSystemManager; SpaceMapUI now uses GameManager for planet data
         }
     }
 
@@ -155,8 +130,7 @@ public class SpaceMapButton : MonoBehaviour
     {
         Debug.Log("[SpaceMapButton] OpenSpaceMap called");
 
-        // Always re-find SpaceMapUI and SolarSystemManager in case of scene reloads
-        solarSystemManager = SolarSystemManager.Instance;
+        // Always re-find SpaceMapUI in case of scene reloads
         spaceMapUI = FindSpaceMapUIInScene();
 
         if (spaceMapUI != null)
@@ -182,11 +156,7 @@ public class SpaceMapButton : MonoBehaviour
                 parent = parent.parent;
             }
 
-            // Always re-initialize with latest planet data
-            if (solarSystemManager != null)
-            {
-                spaceMapUI.Initialize(solarSystemManager);
-            }
+            // No need to initialize with SolarSystemManager; SpaceMapUI now uses GameManager for planet data
 
             // Now show the UI
             spaceMapUI.Show();

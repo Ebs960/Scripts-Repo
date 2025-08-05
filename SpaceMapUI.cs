@@ -49,7 +49,6 @@ public class SpaceMapUI : MonoBehaviour
     private List<GameObject> connectionLines = new List<GameObject>();
     private GameManager.PlanetData selectedPlanet;
     private Vector2 homeWorldPosition = Vector2.zero;
-    private bool isInitialized = false;
 
     void Awake()
     {
