@@ -436,13 +436,17 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
+        Debug.Log($"[PlanetGenerator] Awake called on {gameObject.name}. Current Instance = {(Instance == null ? "null" : Instance.gameObject.name)}");
+        
         // Set the static instance
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log($"[PlanetGenerator] {gameObject.name} became the singleton Instance");
         }
         else if (Instance != this)
         {
+            Debug.LogWarning($"[PlanetGenerator] DESTROYING {gameObject.name} because {Instance.gameObject.name} is already the singleton Instance!");
             Destroy(gameObject);
             return;
         }

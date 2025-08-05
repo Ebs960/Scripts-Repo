@@ -42,12 +42,12 @@ public class SpaceMapUI : MonoBehaviour
 
     [Header("Planet Icons")]
     public PlanetTypeSprite[] planetTypeIcons;
-    private Dictionary<PlanetType, Sprite> planetIconDict;
+    private Dictionary<GameManager.PlanetType, Sprite> planetIconDict;
 
-    private SolarSystemManager solarSystemManager;
+    // private SolarSystemManager solarSystemManager; // REMOVED: Use GameManager.Instance
     private List<PlanetButton> planetButtons = new List<PlanetButton>();
     private List<GameObject> connectionLines = new List<GameObject>();
-    private PlanetSceneData selectedPlanet;
+    private GameManager.PlanetData selectedPlanet;
     private Vector2 homeWorldPosition = Vector2.zero;
     private bool isInitialized = false;
 
@@ -59,7 +59,7 @@ public class SpaceMapUI : MonoBehaviour
         Hide();
 
         // Build planet icon dictionary
-        planetIconDict = new Dictionary<PlanetType, Sprite>();
+        planetIconDict = new Dictionary<GameManager.PlanetType, Sprite>();
         if (planetTypeIcons != null)
         {
             foreach (var entry in planetTypeIcons)
@@ -275,16 +275,10 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Initialize the space map with solar system data
     /// </summary>
-    public void Initialize(SolarSystemManager manager)
-    {
-        solarSystemManager = manager;
-        
-        if (solarSystemManager != null)
-        {
-            CreatePlanetButtons();
-            isInitialized = true;
-        }
-    }
+    // public void Initialize(SolarSystemManager manager)
+    // {
+    //     // REMOVED: Use GameManager.Instance for planet data
+    // }
 
     /// <summary>
     /// Create buttons for each planet in the solar system
@@ -306,14 +300,14 @@ public class SpaceMapUI : MonoBehaviour
         }
         connectionLines.Clear();
 
-        List<PlanetSceneData> planets = solarSystemManager.GetAllPlanets();
-        
+        var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
+        if (planetData == null) return;
+        var planets = planetData.Values.ToList();
         // Find home world to use as center reference
-        PlanetSceneData homeWorld = planets.FirstOrDefault(p => p.isHomeWorld);
+                    GameManager.PlanetData homeWorld = planets.FirstOrDefault(p => p.isHomeWorld);
         homeWorldPosition = Vector2.zero; // Always center the home world
-        
         // Sort planets by distance from star for proper layout
-        var sortedPlanets = planets.OrderBy(p => p.distanceFromStar).ToList();
+        var sortedPlanets = planets.OrderBy(p => p.distanceFromHome).ToList();
         
         Vector2 center = Vector2.zero; // Center of the solar system view
         float maxRadius = solarSystemView != null ? Mathf.Min(solarSystemView.rect.width, solarSystemView.rect.height) * 0.4f : 300f;
@@ -327,7 +321,7 @@ public class SpaceMapUI : MonoBehaviour
         
         for (int i = 0; i < sortedPlanets.Count; i++)
         {
-            PlanetSceneData planet = sortedPlanets[i];
+            GameManager.PlanetData planet = sortedPlanets[i];
             Vector2 position;
             
             if (planet.isHomeWorld)
@@ -356,7 +350,7 @@ public class SpaceMapUI : MonoBehaviour
         {
             for (int i = 0; i < sortedPlanets.Count; i++)
             {
-                PlanetSceneData planet = sortedPlanets[i];
+                GameManager.PlanetData planet = sortedPlanets[i];
                 if (!planet.isHomeWorld)
                 {
                     CreateConnectionLine(homeWorldPosition, planetPositions[i]);
@@ -368,7 +362,7 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Create a button for a specific planet
     /// </summary>
-    private void CreatePlanetButton(PlanetSceneData planet, int index, Vector2 position)
+    private void CreatePlanetButton(GameManager.PlanetData planet, int index, Vector2 position)
     {
         GameObject buttonGO = CreateUIElement($"Planet_{planet.planetIndex}", planetContainer);
         PlanetButton planetButton = buttonGO.AddComponent<PlanetButton>();
@@ -437,35 +431,28 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Get the appropriate size for a planet button
     /// </summary>
-    private Vector2 GetPlanetButtonSize(PlanetSceneData planet)
+    private Vector2 GetPlanetButtonSize(GameManager.PlanetData planet)
     {
         // Default size
         Vector2 baseSize = new Vector2(80, 80);
         
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
+        if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
         {
             switch (planet.planetType)
             {
-                case PlanetType.Jupiter:
-                case PlanetType.Saturn:
+                case GameManager.PlanetType.Gas_Giant:
                     return new Vector2(120, 120); // Gas giants are larger
-                case PlanetType.Mercury:
-                case PlanetType.Pluto:
-                    return new Vector2(50, 50); // Small planets/dwarf planets
-                case PlanetType.Luna:
-                case PlanetType.Io:
-                case PlanetType.Europa:
-                case PlanetType.Enceladus:
-                case PlanetType.Callisto:
-                    return new Vector2(35, 35); // Moons are smaller
-                case PlanetType.Titan:
-                case PlanetType.Ganymede:
-                    return new Vector2(45, 45); // Large moons
-                case PlanetType.Demonic:
-                    return new Vector2(90, 90); // Special hellish world, slightly larger
+                case GameManager.PlanetType.Barren:
+                    return new Vector2(50, 50); // Small barren planets
+                case GameManager.PlanetType.Volcanic:
+                    return new Vector2(90, 90); // Volcanic worlds, slightly larger
                 default:
-                    return new Vector2(70, 70); // Earth-sized planets
+                    return new Vector2(70, 70); // Standard-sized planets
             }
+        }
+        else if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon)
+        {
+            return new Vector2(35, 35); // Moons are smaller
         }
         
         return baseSize;
@@ -474,12 +461,12 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Get the position for a planet button
     /// </summary>
-    private Vector2 GetPlanetPosition(PlanetSceneData planet, int index)
+    private Vector2 GetPlanetPosition(GameManager.PlanetData planet, int index)
     {
-        if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
+        if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
         {
-            // Position based on actual distance from star (scaled for UI)
-            float scaledDistance = Mathf.Log(planet.distanceFromStar + 1) * 80f; // Logarithmic scaling
+            // Position based on distance from home (scaled for UI)
+            float scaledDistance = Mathf.Log(planet.distanceFromHome + 1) * 80f; // Logarithmic scaling
             float xPos = -400 + scaledDistance; // Start from left side
             
             // Add some vertical variation for visual appeal
@@ -498,7 +485,7 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Select a planet and show its information
     /// </summary>
-    public void SelectPlanet(PlanetSceneData planet)
+    public void SelectPlanet(GameManager.PlanetData planet)
     {
         selectedPlanet = planet;
         
@@ -540,7 +527,7 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Display information about the selected planet
     /// </summary>
-    private void ShowPlanetInfo(PlanetSceneData planet)
+    private void ShowPlanetInfo(GameManager.PlanetData planet)
     {
         planetInfoPanel.SetActive(true);
         
@@ -551,21 +538,21 @@ public class SpaceMapUI : MonoBehaviour
         if (planetTypeText != null)
         {
             string typeText = planet.planetType.ToString();
-            if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
+            if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
             {
-                typeText += " (Real Solar System)";
+                typeText += " (Planet)";
             }
         }
         
         // Update distance information
         if (distanceText != null)
         {
-            if (planet.celestialBodyType == CelestialBodyType.RealPlanet)
+            if (planet.celestialBodyType == GameManager.CelestialBodyType.Planet)
             {
-                distanceText.text = $"Distance: {planet.distanceFromStar:F2} AU from Sun";
+                distanceText.text = $"Distance: {planet.distanceFromStar:F2} AU from Star";
                 if (planet.orbitalPeriod > 0)
                 {
-                    distanceText.text += $"\nOrbital Period: {planet.orbitalPeriod:F0} Earth days";
+                    distanceText.text += $"\nOrbital Period: {planet.orbitalPeriod:F0} days";
                 }
                 if (planet.averageTemperature != 0)
                 {
@@ -574,7 +561,7 @@ public class SpaceMapUI : MonoBehaviour
             }
             else
             {
-                distanceText.text = $"Distance: {planet.distanceFromStar:F2} units from star";
+                distanceText.text = $"Distance: {planet.distanceFromHome:F2} units from home";
             }
         }
         
@@ -596,16 +583,12 @@ public class SpaceMapUI : MonoBehaviour
                 statusText += $"\n\nAtmosphere: {planet.atmosphereComposition}";
             }
             
-            if (planet.gravity != 0 && planet.gravity != 1)
-            {
-                statusText += $"\nGravity: {planet.gravity:F2}g";
-            }
             
             planetStatusText.text = statusText;
         }
         
         // Update travel button
-        if (planet.planetIndex == solarSystemManager.currentPlanetIndex)
+        if (GameManager.Instance != null && planet.planetIndex == GameManager.Instance.currentPlanetIndex)
         {
             travelButton.GetComponentInChildren<TextMeshProUGUI>().text = "Current Planet";
             travelButton.interactable = false;
@@ -626,7 +609,7 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Update the civilization list for the selected planet
     /// </summary>
-    private void UpdateCivilizationList(PlanetSceneData planet)
+    private void UpdateCivilizationList(GameManager.PlanetData planet)
     {
         // Clear existing civilization entries
         foreach (Transform child in civilizationContainer)
@@ -649,9 +632,13 @@ public class SpaceMapUI : MonoBehaviour
         {
             foreach (var civ in planet.civilizations)
             {
-                Color civColor = civ.isPlayer ? Color.cyan : (civ.isAlive ? Color.green : Color.red);
-                string civText = $"{civ.civilizationName} - {civ.leaderName}";
-                if (civ.isPlayer) civText += " (Player)";
+                // Use CivData properties that actually exist
+                Color civColor = Color.green; // Default color for active civilizations
+                string civText = civ.civName;
+                if (civ.availableLeaders != null && civ.availableLeaders.Count > 0)
+                {
+                    civText += $" - {civ.availableLeaders[0].leaderName}"; // Use first available leader
+                }
                 CreateCivilizationEntry(civText, civColor);
             }
         }
@@ -675,9 +662,9 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Confirm travel to the selected planet
     /// </summary>
-    private void ConfirmTravel(PlanetSceneData planet)
+    private void ConfirmTravel(GameManager.PlanetData planet)
     {
-        string message = planet.isGenerated ? 
+        string message = planet.isExplored ? 
             $"Travel to {planet.planetName}?" : 
             $"Explore {planet.planetName}? This will generate a new world.";
             
@@ -689,10 +676,13 @@ public class SpaceMapUI : MonoBehaviour
     /// <summary>
     /// Travel to the specified planet
     /// </summary>
-    private void TravelToPlanet(PlanetSceneData planet)
+    private void TravelToPlanet(GameManager.PlanetData planet)
     {
         Hide();
-        solarSystemManager.SwitchToPlanet(planet.planetIndex);
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(planet.planetIndex));
+        }
     }
 
     /// <summary>
@@ -700,15 +690,9 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     public void Show()
     {
-        if (!isInitialized && solarSystemManager != null)
-        {
-            Initialize(solarSystemManager);
-        }
-        
+        // No more SolarSystemManager. Just show and refresh.
         gameObject.SetActive(true);
         spaceMapPanel.SetActive(true);
-        
-        // Refresh planet data
         RefreshPlanetData();
     }
 
@@ -760,26 +744,24 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     private void RefreshPlanetData()
     {
-        if (solarSystemManager == null) return;
-        
         // Update planet button selection highlighting
+        var planetData = GameManager.Instance != null ? GameManager.Instance.GetPlanetData() : null;
+        if (planetData == null) return;
         for (int i = 0; i < planetButtons.Count; i++)
         {
             if (planetButtons[i] != null)
             {
-                PlanetSceneData planet = solarSystemManager.GetPlanetData(i);
+                GameManager.PlanetData planet = planetData.ContainsKey(i) ? planetData[i] : null;
                 if (planet != null)
                 {
                     Outline outline = planetButtons[i].GetComponent<Outline>();
                     if (outline != null)
                     {
-                        // Highlight current planet
-                        outline.enabled = (solarSystemManager.currentPlanetIndex == planet.planetIndex);
+                        outline.enabled = (GameManager.Instance.currentPlanetIndex == planet.planetIndex);
                     }
                 }
             }
         }
-        
         // Ensure connection lines are visible and properly layered
         foreach (var line in connectionLines)
         {
@@ -796,16 +778,16 @@ public class SpaceMapUI : MonoBehaviour
 /// </summary>
 public class PlanetButton : MonoBehaviour
 {
-    private PlanetSceneData planetData;
+    private GameManager.PlanetData planetData;
     private SpaceMapUI spaceMapUI;
 
-    public void Initialize(PlanetSceneData data, SpaceMapUI ui)
+    public void Initialize(GameManager.PlanetData data, SpaceMapUI ui)
     {
         planetData = data;
         spaceMapUI = ui;
     }
 
-    public PlanetSceneData GetPlanetData()
+    public GameManager.PlanetData GetPlanetData()
     {
         return planetData;
     }
@@ -814,6 +796,6 @@ public class PlanetButton : MonoBehaviour
 [System.Serializable]
 public struct PlanetTypeSprite
 {
-    public PlanetType planetType;
+    public GameManager.PlanetType planetType;
     public Sprite icon;
 }

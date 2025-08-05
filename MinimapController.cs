@@ -2,11 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
+using System.Collections.Generic;
+using System.Linq;
 
 public enum MinimapTarget
 {
     Planet,
-    Moon
+    Moon,
+    PlanetByIndex  // For multi-planet system
 }
 
 [RequireComponent(typeof(RawImage))]
@@ -22,14 +25,23 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     public Camera mainCamera;
     public PlanetaryCameraManager cameraManager; // your existing manager; hook via Inspector
 
+    [Header("Multi-Planet Support")]
+    [Tooltip("Dictionary of minimap generators for each planet (for multi-planet system)")]
+    public Dictionary<int, MinimapGenerator> planetGenerators = new Dictionary<int, MinimapGenerator>();
+    [Tooltip("Dictionary of planet root transforms (for multi-planet system)")]
+    public Dictionary<int, Transform> planetRoots = new Dictionary<int, Transform>();
+    [Tooltip("Current planet index for multi-planet system")]
+    public int currentPlanetIndex = 0;
+    
     [Header("UI Controls")]
     public Button planetButton;   // Button to switch to planet minimap
     public Button moonButton;     // Button to switch to moon minimap
     public Button zoomInButton;   // Button to zoom in
     public Button zoomOutButton;  // Button to zoom out
+    public Button prevPlanetButton; // Button to switch to previous planet
+    public Button nextPlanetButton; // Button to switch to next planet
     public TextMeshProUGUI currentTargetLabel; // Optional label showing current target
-
-    [Header("Options")]
+    public TextMeshProUGUI planetNameLabel; // Label showing current planet name    [Header("Options")]
     public bool buildOnStart = true;
     public float zoomStep = 0.5f; // minimap zoom step (how much to zoom in/out)
     public float clickLerpSeconds = 0.35f; // smooth camera retarget
@@ -56,6 +68,8 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (moonButton) moonButton.onClick.AddListener(() => SwitchToTarget(MinimapTarget.Moon));
         if (zoomInButton) zoomInButton.onClick.AddListener(OnZoomInButton);
         if (zoomOutButton) zoomOutButton.onClick.AddListener(OnZoomOutButton);
+        if (prevPlanetButton) prevPlanetButton.onClick.AddListener(OnPrevPlanetButton);
+        if (nextPlanetButton) nextPlanetButton.onClick.AddListener(OnNextPlanetButton);
     }
 
     void Start()
@@ -128,6 +142,34 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         UpdateZoomButtonStates();
     }
     
+    public void OnPrevPlanetButton()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            var availablePlanets = planetGenerators.Keys.OrderBy(x => x).ToList();
+            if (availablePlanets.Count > 1)
+            {
+                int currentIndex = availablePlanets.IndexOf(currentPlanetIndex);
+                int prevIndex = currentIndex > 0 ? currentIndex - 1 : availablePlanets.Count - 1;
+                SwitchToPlanet(availablePlanets[prevIndex]);
+            }
+        }
+    }
+    
+    public void OnNextPlanetButton()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            var availablePlanets = planetGenerators.Keys.OrderBy(x => x).ToList();
+            if (availablePlanets.Count > 1)
+            {
+                int currentIndex = availablePlanets.IndexOf(currentPlanetIndex);
+                int nextIndex = (currentIndex + 1) % availablePlanets.Count;
+                SwitchToPlanet(availablePlanets[nextIndex]);
+            }
+        }
+    }
+    
     private void UpdateZoomButtonStates()
     {
         // Disable zoom out button if we're at minimum zoom (showing whole texture)
@@ -141,6 +183,16 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         {
             zoomInButton.interactable = _currentZoomLevel < maxZoomLevel;
         }
+    }
+    
+    private void UpdateNavigationButtonStates()
+    {
+        bool hasMultiplePlanets = GameManager.Instance != null && 
+                                  GameManager.Instance.enableMultiPlanetSystem && 
+                                  planetGenerators.Count > 1;
+        
+        if (prevPlanetButton) prevPlanetButton.interactable = hasMultiplePlanets;
+        if (nextPlanetButton) nextPlanetButton.interactable = hasMultiplePlanets;
     }
     
     private void RefreshMinimapTexture()
@@ -180,15 +232,52 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             minimapImage.texture = generator.minimapTexture;
         }
         
-        // Update UI
+        // Clear tile data caches when switching planets/moons
+        if (TileDataHelper.Instance != null)
+        {
+            TileDataHelper.Instance.OnPlanetSwitch();
+        }
+        
+        // Update UI labels
         if (currentTargetLabel)
         {
-            currentTargetLabel.text = target == MinimapTarget.Planet ? "Planet" : "Moon";
+            string targetText = target switch
+            {
+                MinimapTarget.Planet => "Planet",
+                MinimapTarget.Moon => "Moon", 
+                MinimapTarget.PlanetByIndex => $"Planet {currentPlanetIndex}",
+                _ => "Unknown"
+            };
+            currentTargetLabel.text = targetText;
+        }
+        
+        if (planetNameLabel && GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            if (target == MinimapTarget.PlanetByIndex)
+            {
+                var allPlanetData = GameManager.Instance.GetPlanetData();
+                if (allPlanetData != null && allPlanetData.ContainsKey(currentPlanetIndex))
+                {
+                    var planetData = allPlanetData[currentPlanetIndex];
+                    planetNameLabel.text = planetData.planetName ?? $"Planet {currentPlanetIndex}";
+                }
+                else
+                {
+                    planetNameLabel.text = $"Planet {currentPlanetIndex}";
+                }
+            }
+            else
+            {
+                planetNameLabel.text = target.ToString();
+            }
         }
         
         // Update button states (optional visual feedback)
-        if (planetButton) planetButton.interactable = (target != MinimapTarget.Planet);
+        if (planetButton) planetButton.interactable = (target != MinimapTarget.Planet && target != MinimapTarget.PlanetByIndex);
         if (moonButton) moonButton.interactable = (target != MinimapTarget.Moon);
+        
+        // Update navigation button states
+        UpdateNavigationButtonStates();
         
         // Update zoom button states for the new target
         UpdateZoomButtonStates();
@@ -199,12 +288,51 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
 
     private MinimapGenerator GetCurrentGenerator()
     {
+        // Multi-planet support
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            if (currentTarget == MinimapTarget.PlanetByIndex)
+            {
+                return planetGenerators.TryGetValue(currentPlanetIndex, out var generator) ? generator : null;
+            }
+        }
+        
+        // Original behavior
         return currentTarget == MinimapTarget.Planet ? planetGenerator : moonGenerator;
     }
 
     private Transform GetCurrentRoot()
     {
+        // Multi-planet support
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            if (currentTarget == MinimapTarget.PlanetByIndex)
+            {
+                return planetRoots.TryGetValue(currentPlanetIndex, out var root) ? root : null;
+            }
+        }
+        
+        // Original behavior
         return currentTarget == MinimapTarget.Planet ? planetRoot : moonRoot;
+    }
+    
+    /// <summary>
+    /// Add a planet to the multi-planet minimap system
+    /// </summary>
+    public void AddPlanet(int planetIndex, MinimapGenerator generator, Transform root)
+    {
+        planetGenerators[planetIndex] = generator;
+        planetRoots[planetIndex] = root;
+        Debug.Log($"[MinimapController] Added planet {planetIndex} to minimap system");
+    }
+    
+    /// <summary>
+    /// Switch to a specific planet by index (for multi-planet system)
+    /// </summary>
+    public void SwitchToPlanet(int planetIndex)
+    {
+        currentPlanetIndex = planetIndex;
+        SwitchToTarget(MinimapTarget.PlanetByIndex);
     }
 
     public void OnPointerClick(PointerEventData eventData)

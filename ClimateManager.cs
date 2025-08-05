@@ -27,6 +27,10 @@ public class ClimateManager : MonoBehaviour
     public List<SeasonalTextureEntry> seasonalTextures = new List<SeasonalTextureEntry>();
     private Dictionary<Biome, Dictionary<Season, (Texture2D albedo, Texture2D normal)>> seasonalTextureLookup = new();
 
+    [Header("Multi-Planet Support")]
+    [Tooltip("Planet index this climate manager is responsible for")]
+    public int planetIndex = 0;
+
     private int currentTurn = 0;
     private int seasonStartTurn = 0;
 
@@ -36,6 +40,15 @@ public class ClimateManager : MonoBehaviour
 
     void Awake()
     {
+        // For multi-planet systems, don't enforce singleton pattern
+        if (GameManager.Instance?.enableMultiPlanetSystem == true)
+        {
+            // Just set up this instance without singleton enforcement
+            BuildSeasonalTextureLookup();
+            return;
+        }
+
+        // Traditional singleton behavior for single planet mode
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);

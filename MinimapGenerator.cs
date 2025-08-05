@@ -4,7 +4,8 @@ using UnityEngine;
 public enum MinimapDataSource
 {
     Planet,
-    Moon
+    Moon,
+    PlanetByIndex  // For multi-planet system with specific planet index
 }
 
 [DisallowMultipleComponent]
@@ -34,6 +35,10 @@ public class MinimapGenerator : MonoBehaviour
     [Tooltip("Which generator to use for tile data")]
     public MinimapDataSource dataSource = MinimapDataSource.Planet;
     
+    [Header("Multi-Planet Support")]
+    [Tooltip("Planet index for multi-planet system (only used when dataSource is PlanetByIndex)")]
+    public int planetIndex = 0;
+    
     [Header("Zoom")]
     [Tooltip("Current zoom level - higher values show more detail of a smaller area")]
     public float zoomLevel = 1.0f;
@@ -51,11 +56,12 @@ public class MinimapGenerator : MonoBehaviour
     /// <summary>
     /// Configure this minimap generator to use a specific planet/moon generator and root transform
     /// </summary>
-    public void ConfigureDataSource(IHexasphereGenerator generator, Transform root, MinimapDataSource source)
+    public void ConfigureDataSource(IHexasphereGenerator generator, Transform root, MinimapDataSource source, int planetIdx = 0)
     {
         _generator = generator;
         planetRoot = root;
         dataSource = source;
+        planetIndex = planetIdx;
         zoomCenter = root ? root.position : Vector3.zero; // Set initial zoom center to planet/moon center
         IsReady = false; // Reset ready state when data source changes
     }

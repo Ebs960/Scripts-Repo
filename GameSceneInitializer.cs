@@ -31,15 +31,11 @@ public class GameSceneInitializer : MonoBehaviour
         // 3. Optional delay so the player actually sees 100 % for a moment
         yield return new WaitForSeconds(0.5f);
 
-        // 4. Do NOT hide the loading panel here. It will be hidden by SolarSystemManager after all planets are generated.
-        // Wait for SolarSystemManager to complete before waking TileInfoDisplay
-        if (SolarSystemManager.Instance != null)
+        // 4. Wait for GameManager to finish starting the game before waking TileInfoDisplay
+        if (GameManager.Instance != null)
         {
-            yield return new WaitUntil(() => SolarSystemManager.Instance != null);
-            // Subscribe to the solar system initialization event
-            bool solarSystemReady = false;
-            SolarSystemManager.Instance.OnSolarSystemInitialized += () => solarSystemReady = true;
-            yield return new WaitUntil(() => solarSystemReady);
+            // Wait until the game is in progress
+            yield return new WaitUntil(() => GameManager.Instance.gameInProgress);
         }
 
         // 5. Wake the tile-info UI (only after solar system is ready)

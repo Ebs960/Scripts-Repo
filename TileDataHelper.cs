@@ -9,8 +9,15 @@ public class TileDataHelper : MonoBehaviour
 {
     public static TileDataHelper Instance { get; private set; }
 
+    [Header("Single Planet References (Legacy)")]
     private PlanetGenerator planet;
     private MoonGenerator moon;
+    
+    [Header("Multi-Planet System")]
+    [Tooltip("Dictionary of planet generators for multi-planet system")]
+    private Dictionary<int, PlanetGenerator> planets = new Dictionary<int, PlanetGenerator>();
+    [Tooltip("Dictionary of moon generators for multi-planet system")]
+    private Dictionary<int, MoonGenerator> moons = new Dictionary<int, MoonGenerator>();
 
     private Dictionary<int, CachedTileData> tileDataCache = new();
     private Dictionary<int, int[]> adjacencyCache = new();
@@ -49,7 +56,48 @@ public class TileDataHelper : MonoBehaviour
     {
         planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
         moon = GameManager.Instance?.moonGenerator ?? FindAnyObjectByType<MoonGenerator>();
+        
+        // Update multi-planet references
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            UpdateMultiPlanetReferences();
+        }
+        
         ClearAllCaches();
+    }
+    
+    /// <summary>
+    /// Register a planet generator for multi-planet support
+    /// </summary>
+    public void RegisterPlanet(int planetIndex, PlanetGenerator planetGen)
+    {
+        planets[planetIndex] = planetGen;
+        Debug.Log($"[TileDataHelper] Registered planet {planetIndex}");
+    }
+    
+    /// <summary>
+    /// Register a moon generator for multi-planet support
+    /// </summary>
+    public void RegisterMoon(int planetIndex, MoonGenerator moonGen)
+    {
+        moons[planetIndex] = moonGen;
+        Debug.Log($"[TileDataHelper] Registered moon for planet {planetIndex}");
+    }
+    
+    /// <summary>
+    /// Update references for multi-planet system
+    /// </summary>
+    private void UpdateMultiPlanetReferences()
+    {
+        // Get all planet generators from GameManager
+        for (int i = 0; i < GameManager.Instance.maxPlanets; i++)
+        {
+            var planetGen = GameManager.Instance.GetPlanetGenerator(i);
+            if (planetGen != null && !planets.ContainsKey(i))
+            {
+                RegisterPlanet(i, planetGen);
+            }
+        }
     }
 
     private void CacheTileData(int tileIndex, HexTileData data, bool isMoon)
@@ -68,18 +116,49 @@ public class TileDataHelper : MonoBehaviour
             Time.frameCount - cached.lastUpdateFrame < CACHE_MAX_AGE)
             return (cached.tileData, cached.isMoonTile);
 
-        HexTileData data = planet?.GetHexTileData(tileIndex);
-        if (data != null)
+        // Multi-planet system support - check current active planet first
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            CacheTileData(tileIndex, data, false);
-            return (data, false);
+            int currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
+            
+            // Check current planet
+            if (planets.TryGetValue(currentPlanetIndex, out var currentPlanet))
+            {
+                HexTileData data = currentPlanet?.GetHexTileData(tileIndex);
+                if (data != null)
+                {
+                    CacheTileData(tileIndex, data, false);
+                    return (data, false);
+                }
+            }
+            
+            // Check current moon
+            if (moons.TryGetValue(currentPlanetIndex, out var currentMoon))
+            {
+                HexTileData data = currentMoon?.GetHexTileData(tileIndex);
+                if (data != null)
+                {
+                    CacheTileData(tileIndex, data, true);
+                    return (data, true);
+                }
+            }
+            
+            return (null, false);
         }
 
-        data = moon?.GetHexTileData(tileIndex);
-        if (data != null)
+        // Legacy single planet/moon support
+        HexTileData legacyData = planet?.GetHexTileData(tileIndex);
+        if (legacyData != null)
         {
-            CacheTileData(tileIndex, data, true);
-            return (data, true);
+            CacheTileData(tileIndex, legacyData, false);
+            return (legacyData, false);
+        }
+
+        legacyData = moon?.GetHexTileData(tileIndex);
+        if (legacyData != null)
+        {
+            CacheTileData(tileIndex, legacyData, true);
+            return (legacyData, true);
         }
 
         return (null, false);
@@ -87,9 +166,34 @@ public class TileDataHelper : MonoBehaviour
 
     public void SetTileData(int tileIndex, HexTileData tileData)
     {
-        bool isMoon = moon?.GetHexTileData(tileIndex) != null;
-        if (isMoon) moon?.SetHexTileData(tileIndex, tileData);
-        else planet?.SetHexTileData(tileIndex, tileData);
+        bool isMoon = false;
+        
+        // Multi-planet system support
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            int currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
+            
+            // Check if tile exists on current moon first
+            if (moons.TryGetValue(currentPlanetIndex, out var currentMoon) && 
+                currentMoon?.GetHexTileData(tileIndex) != null)
+            {
+                currentMoon.SetHexTileData(tileIndex, tileData);
+                isMoon = true;
+            }
+            // Otherwise set on current planet
+            else if (planets.TryGetValue(currentPlanetIndex, out var currentPlanet))
+            {
+                currentPlanet?.SetHexTileData(tileIndex, tileData);
+                isMoon = false;
+            }
+        }
+        else
+        {
+            // Legacy single planet/moon support
+            isMoon = moon?.GetHexTileData(tileIndex) != null;
+            if (isMoon) moon?.SetHexTileData(tileIndex, tileData);
+            else planet?.SetHexTileData(tileIndex, tileData);
+        }
 
         tileDataCache[tileIndex] = new CachedTileData
         {
@@ -114,11 +218,45 @@ public class TileDataHelper : MonoBehaviour
     {
         if (adjacencyCache.TryGetValue(tileIndex, out var cached)) return cached;
 
-        // Get the grid from the planet generator and access neighbors directly
-        var grid = planet?.Grid;
-        if (grid != null && tileIndex >= 0 && tileIndex < grid.neighbors.Length)
+        // Multi-planet system support
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            var neighborsList = grid.neighbors[tileIndex];
+            int currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
+            
+            // Try current planet first
+            if (planets.TryGetValue(currentPlanetIndex, out var currentPlanet))
+            {
+                var planetGrid = currentPlanet?.Grid;
+                if (planetGrid != null && tileIndex >= 0 && tileIndex < planetGrid.neighbors.Length)
+                {
+                    var neighborsList = planetGrid.neighbors[tileIndex];
+                    var neighbors = neighborsList?.ToArray() ?? new int[0];
+                    adjacencyCache[tileIndex] = neighbors;
+                    return neighbors;
+                }
+            }
+            
+            // Try current moon if planet failed
+            if (moons.TryGetValue(currentPlanetIndex, out var currentMoon))
+            {
+                var moonGrid = currentMoon?.Grid;
+                if (moonGrid != null && tileIndex >= 0 && tileIndex < moonGrid.neighbors.Length)
+                {
+                    var neighborsList = moonGrid.neighbors[tileIndex];
+                    var neighbors = neighborsList?.ToArray() ?? new int[0];
+                    adjacencyCache[tileIndex] = neighbors;
+                    return neighbors;
+                }
+            }
+            
+            return new int[0];
+        }
+
+        // Legacy single planet support
+        var legacyGrid = planet?.Grid;
+        if (legacyGrid != null && tileIndex >= 0 && tileIndex < legacyGrid.neighbors.Length)
+        {
+            var neighborsList = legacyGrid.neighbors[tileIndex];
             var neighbors = neighborsList?.ToArray() ?? new int[0];
             adjacencyCache[tileIndex] = neighbors;
             return neighbors;
@@ -131,12 +269,45 @@ public class TileDataHelper : MonoBehaviour
     {
         if (tileCenterCache.TryGetValue(tileIndex, out var cached)) return cached;
 
-        // Get the grid from the planet generator and access tile centers directly
-        var grid = planet?.Grid;
         Vector3 pos = Vector3.zero;
-        if (grid != null && tileIndex >= 0 && tileIndex < grid.tileCenters.Length)
+        
+        // Multi-planet system support
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            pos = grid.tileCenters[tileIndex];
+            int currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
+            
+            // Try current planet first
+            if (planets.TryGetValue(currentPlanetIndex, out var currentPlanet))
+            {
+                var planetGrid = currentPlanet?.Grid;
+                if (planetGrid != null && tileIndex >= 0 && tileIndex < planetGrid.tileCenters.Length)
+                {
+                    pos = planetGrid.tileCenters[tileIndex];
+                    tileCenterCache[tileIndex] = pos;
+                    return pos;
+                }
+            }
+            
+            // Try current moon if planet failed
+            if (moons.TryGetValue(currentPlanetIndex, out var currentMoon))
+            {
+                var moonGrid = currentMoon?.Grid;
+                if (moonGrid != null && tileIndex >= 0 && tileIndex < moonGrid.tileCenters.Length)
+                {
+                    pos = moonGrid.tileCenters[tileIndex];
+                    tileCenterCache[tileIndex] = pos;
+                    return pos;
+                }
+            }
+        }
+        else
+        {
+            // Legacy single planet support
+            var legacyGrid = planet?.Grid;
+            if (legacyGrid != null && tileIndex >= 0 && tileIndex < legacyGrid.tileCenters.Length)
+            {
+                pos = legacyGrid.tileCenters[tileIndex];
+            }
         }
         
         tileCenterCache[tileIndex] = pos;
@@ -238,5 +409,38 @@ public class TileDataHelper : MonoBehaviour
         tileDataCache.Clear();
         adjacencyCache.Clear();
         tileCenterCache.Clear();
+    }
+    
+    /// <summary>
+    /// Clear caches when switching between planets - called by MinimapController
+    /// </summary>
+    public void OnPlanetSwitch()
+    {
+        ClearAllCaches();
+        Debug.Log("[TileDataHelper] Cleared caches for planet switch");
+    }
+    
+    /// <summary>
+    /// Get tile data from a specific planet (for multi-planet operations)
+    /// </summary>
+    public (HexTileData tileData, bool isMoonTile) GetTileDataFromPlanet(int tileIndex, int planetIndex)
+    {
+        // Check planet first
+        if (planets.TryGetValue(planetIndex, out var targetPlanet))
+        {
+            HexTileData data = targetPlanet?.GetHexTileData(tileIndex);
+            if (data != null)
+                return (data, false);
+        }
+        
+        // Check moon
+        if (moons.TryGetValue(planetIndex, out var targetMoon))
+        {
+            HexTileData data = targetMoon?.GetHexTileData(tileIndex);
+            if (data != null)
+                return (data, true);
+        }
+        
+        return (null, false);
     }
 }

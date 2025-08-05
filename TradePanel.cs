@@ -417,19 +417,22 @@ public class TradePanel : MonoBehaviour
         
         List<string> planetNames = new List<string>();
         
-        // Get planets from SolarSystemManager
-        var solarSystemManager = FindFirstObjectByType<SolarSystemManager>();
-        if (solarSystemManager != null)
+        // Get planets from GameManager multi-planet system
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            var planets = solarSystemManager.GetAllPlanets();
-            foreach (var planet in planets)
+            var planetData = GameManager.Instance.GetPlanetData();
+            if (planetData != null)
             {
-                planetNames.Add(planet.planetName);
+                foreach (var planet in planetData.Values)
+                {
+                    planetNames.Add(planet.planetName);
+                }
             }
         }
-        else
+        
+        // Fallback planet names if no multi-planet system or no planets
+        if (planetNames.Count == 0)
         {
-            // Fallback planet names if no SolarSystemManager
             planetNames.AddRange(new[] { "Planet 1", "Planet 2", "Planet 3", "Planet 4" });
         }
         

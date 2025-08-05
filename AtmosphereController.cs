@@ -71,17 +71,17 @@ public class AtmosphereController : MonoBehaviour
     }
 
     /// <summary>
-    /// Check if this planet type should have an atmosphere based on real solar system data
+    /// Check if this planet type should have an atmosphere based on planet type
     /// </summary>
     private void CheckAtmosphereCompatibility()
     {
-        // Get the current planet type from SolarSystemManager
-        var solarSystem = SolarSystemManager.Instance;
-        if (solarSystem != null)
+        // Get the current planet type from GameManager
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            var currentPlanet = solarSystem.GetCurrentPlanet();
-            if (currentPlanet != null)
+            var planetData = GameManager.Instance.GetPlanetData();
+            if (planetData != null && planetData.ContainsKey(GameManager.Instance.currentPlanetIndex))
             {
+                var currentPlanet = planetData[GameManager.Instance.currentPlanetIndex];
                 atmosphereEnabled = ShouldPlanetHaveAtmosphere(currentPlanet.planetType);
                 
                 if (!atmosphereEnabled)
@@ -95,52 +95,35 @@ public class AtmosphereController : MonoBehaviour
                 }
             }
         }
+        else
+        {
+            // Default behavior for single planet mode - assume Terran type
+            atmosphereEnabled = ShouldPlanetHaveAtmosphere(GameManager.PlanetType.Terran);
+            Debug.Log("[AtmosphereController] Single planet mode - assuming Terran atmosphere");
+        }
     }
 
     /// <summary>
     /// Determine if a planet type should have a visible atmosphere
     /// </summary>
-    private bool ShouldPlanetHaveAtmosphere(PlanetType planetType)
+    private bool ShouldPlanetHaveAtmosphere(GameManager.PlanetType planetType)
     {
         switch (planetType)
         {
             // Planets with NO atmosphere (airless worlds)
-            case PlanetType.Mercury:        // No atmosphere
-            case PlanetType.Luna:           // Earth's moon - no atmosphere
-            case PlanetType.Io:             // Volcanic moon - very thin atmosphere
-            case PlanetType.Ganymede:       // Ice moon - no significant atmosphere
-            case PlanetType.Callisto:       // Ice moon - no atmosphere
-            case PlanetType.Enceladus:      // Small ice moon - minimal atmosphere
+            case GameManager.PlanetType.Barren:         // Barren - likely no atmosphere
                 return false;
-
-            // Planets with THIN atmosphere (minimal visual effect)
-            case PlanetType.Mars:           // Very thin CO2 atmosphere
-            case PlanetType.Pluto:          // Extremely thin nitrogen atmosphere
-                return false; // You could return true here for very subtle atmosphere
 
             // Planets with THICK/VISIBLE atmospheres
-            case PlanetType.Terran:         // Earth - perfect atmosphere
-            case PlanetType.Venus:          // Thick, dense atmosphere
-            case PlanetType.Jupiter:        // Massive gas giant atmosphere
-            case PlanetType.Saturn:         // Dense gas atmosphere
-            case PlanetType.Uranus:         // Ice giant atmosphere
-            case PlanetType.Neptune:        // Dense ice giant atmosphere
-            case PlanetType.Titan:          // Thick nitrogen atmosphere
-            case PlanetType.Europa:         // Thin oxygen atmosphere (could be subtle)
+            case GameManager.PlanetType.Terran:         // Earth-like - perfect atmosphere
+            case GameManager.PlanetType.Gas_Giant:      // Gas giant - thick atmosphere
+            case GameManager.PlanetType.Volcanic:       // Hot, likely atmospheric
+            case GameManager.PlanetType.Jungle:         // Humid, thick atmosphere
+            case GameManager.PlanetType.Ocean:          // Usually has atmosphere
+            case GameManager.PlanetType.Ice:            // Cold but could have atmosphere
+            case GameManager.PlanetType.Tundra:         // Cold world with atmosphere
+            case GameManager.PlanetType.Desert:         // Usually has thin atmosphere
                 return true;
-
-            // Procedural planet types
-            case PlanetType.Desert:         // Depends on design - usually thin
-            case PlanetType.Ocean:          // Usually has atmosphere
-            case PlanetType.Ice:            // Cold but could have atmosphere
-            case PlanetType.Volcanic:       // Hot, likely atmospheric
-            case PlanetType.Jungle:         // Humid, thick atmosphere
-            case PlanetType.Gas:            // Gas giant - thick atmosphere
-            case PlanetType.Demonic:        // Hellish world - thick sulfurous atmosphere
-                return true;
-
-            case PlanetType.Rocky:          // Barren - likely no atmosphere
-                return false;
 
             default:
                 return true; // Default to having atmosphere
