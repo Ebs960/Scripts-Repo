@@ -438,7 +438,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     {
         Debug.Log($"[PlanetGenerator] Awake called on {gameObject.name}. Current Instance = {(Instance == null ? "null" : Instance.gameObject.name)}");
         
-        // Set the static instance
+        // Set the static instance, but allow additional generators to exist for multi-planet mode
         if (Instance == null)
         {
             Instance = this;
@@ -446,9 +446,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         else if (Instance != this)
         {
-            Debug.LogWarning($"[PlanetGenerator] DESTROYING {gameObject.name} because {Instance.gameObject.name} is already the singleton Instance!");
-            Destroy(gameObject);
-            return;
+            Debug.LogWarning($"[PlanetGenerator] Multiple PlanetGenerators detected; keeping {Instance.gameObject.name} as default. This object will still run in multi-planet mode.");
+            // Do NOT destroy this object
         }
         
 

@@ -54,9 +54,11 @@ public class AtmosphereController : MonoBehaviour
 
     void Update()
     {
+        if (planetGenerator == null || planetGenerator.Grid == null || planetGenerator.Grid.TileCount == 0)
+            return;
+
         // Only generate mesh once when planet is ready and atmosphere is enabled
-        if (!meshGenerated && atmosphereEnabled && planetGenerator != null && 
-            planetGenerator.Grid != null && planetGenerator.Grid.TileCount > 0)
+        if (!meshGenerated && atmosphereEnabled)
         {
             GenerateAtmosphereMesh();
             meshGenerated = true;

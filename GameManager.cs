@@ -784,6 +784,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private IEnumerator StartMultiPlanetGame()
     {
+        FindCoreManagersInScene();
         Debug.Log("[GameManager] Starting multi-planet game");
 
         // Initialize basic multi-planet data
@@ -865,6 +866,12 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        // Configure grid based on planet size
+        GetMapSizeParams(planetData[planetIndex].planetSize, out int subdivisions, out float radius);
+        generator.subdivisions = subdivisions;
+        generator.radius = radius;
+        generator.Grid.GenerateFromSubdivision(subdivisions, radius);
+
         // Store references
         planetGenerators[planetIndex] = generator;
 
@@ -940,9 +947,16 @@ public class GameManager : MonoBehaviour
         Debug.Log($"[GameManager] Switching to planet {planetIndex}");
         currentPlanetIndex = planetIndex;
 
-        // Generate surface if not already generated
+        // Ensure grid is built and surface generated if needed
         var generator = planetGenerators[planetIndex];
-        if (generator != null && generator.Grid?.tileCenters?.Length == 0)
+        if (generator != null && !generator.Grid.IsBuilt)
+        {
+            GetMapSizeParams(planetData[planetIndex].planetSize, out int subDivs, out float rad);
+            generator.subdivisions = subDivs;
+            generator.radius = rad;
+            generator.Grid.GenerateFromSubdivision(subDivs, rad);
+        }
+        if (generator != null && generator.Grid.TileCount == 0)
         {
             Debug.Log($"[GameManager] Generating surface for planet {planetIndex}");
             yield return StartCoroutine(generator.GenerateSurface());

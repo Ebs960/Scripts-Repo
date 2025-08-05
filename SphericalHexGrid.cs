@@ -9,7 +9,8 @@ using System.Linq;
 /// </summary>
 public class SphericalHexGrid
 {
-    public int TileCount => tileCenters.Length;
+    public int TileCount => tileCenters != null ? tileCenters.Length : 0;
+    public bool IsBuilt => tileCenters != null && tileCenters.Length > 0;
     public Vector3[] tileCenters;            // Center point of each tile (on sphere surface)
     public List<int>[] neighbors;            // Neighbor indices for each tile
     public List<int>[] tileCorners;          // For each tile: list of indices (into CornerVertices) for corners (polygon, sorted)
