@@ -83,6 +83,8 @@ public class GameManager : MonoBehaviour
     private Dictionary<int, ClimateManager> planetClimateManagers = new Dictionary<int, ClimateManager>();
     private Dictionary<int, CivilizationManager> planetCivManagers = new Dictionary<int, CivilizationManager>();
     private Dictionary<int, PlanetData> planetData = new Dictionary<int, PlanetData>();
+    private List<string> realBodies;
+    private int totalPlanets;
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
@@ -132,6 +134,7 @@ public class GameManager : MonoBehaviour
         public Vector3 worldPosition; // Position in space
         public float distanceFromHome; // Distance from home world
         public List<string> civilizationNames = new List<string>(); // Civs present on this planet
+        public List<string> moonNames = new List<string>(); // Names of moons orbiting this planet
         
         // Additional properties for compatibility
         public float distanceFromStar; // Distance from star (for display purposes)
@@ -800,6 +803,129 @@ public class GameManager : MonoBehaviour
         Debug.Log("[GameManager] Multi-planet game started");
     }
 
+    private void ApplyRealPlanetIdentity(PlanetGenerator g, string bodyName)
+    {
+        g.ClearRealPlanetFlags();
+        g.allowOceans = true; g.allowRivers = true; g.allowIslands = true;
+
+        switch (bodyName)
+        {
+            case "Earth":
+                break;
+            case "Mars":
+                g.isMarsWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Venus":
+                g.isVenusWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Mercury":
+                g.isMercuryWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Jupiter":
+                g.isJupiterWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Saturn":
+                g.isSaturnWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Uranus":
+                g.isUranusWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Neptune":
+                g.isNeptuneWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Io":
+                g.isIoWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Europa":
+                g.isEuropaWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Ganymede":
+                g.isGanymedeWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Callisto":
+                g.isCallistoWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Titan":
+                g.isTitanWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Luna":
+                g.isLunaWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            case "Pluto":
+                g.isPlutoWorldType = true;
+                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                break;
+            default:
+                break;
+        }
+    }
+
+    private MoonGenerator CreateMoonForPlanet(int planetIndex, PlanetGenerator generator, string bodyName)
+    {
+        MoonGenerator moonGen = null;
+
+        switch (bodyName)
+        {
+            case "Earth":
+                if (generateMoon && moonGeneratorPrefab != null)
+                {
+                    GameObject moonGO = Instantiate(moonGeneratorPrefab);
+                    moonGO.name = $"Planet_{planetIndex}_Moon";
+                    moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
+
+                    moonGen = moonGO.GetComponent<MoonGenerator>();
+                    if (moonGen != null)
+                    {
+                        float moonRadius = generator.radius / 2.5f;
+                        int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
+
+                        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+                        if (loadingPanelController != null)
+                            moonGen.SetLoadingPanel(loadingPanelController);
+
+                        moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
+                    }
+                    else
+                    {
+                        Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
+                    }
+                }
+                break;
+
+            // Future moons for other bodies can be handled here
+            default:
+                break;
+        }
+
+        if (moonGen != null)
+        {
+            moonGenerators[planetIndex] = moonGen;
+            if (bodyName == "Earth")
+                moonGenerator = moonGen;
+            if (TileDataHelper.Instance != null)
+                TileDataHelper.Instance.RegisterMoon(planetIndex, moonGen);
+        }
+        else
+        {
+            moonGenerators[planetIndex] = null;
+        }
+
+        return moonGen;
+    }
+
     /// <summary>
     /// Initialize the multi-planet system with multiple planets
     /// </summary>
@@ -807,31 +933,51 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("[GameManager] Initializing multi-planet system");
 
-        // Create basic planet data for testing (3 planets)
-        for (int i = 0; i < 3; i++)
+        if (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
         {
+            realBodies = new List<string>
+            {
+                "Earth",
+                "Mars", "Venus", "Mercury",
+                "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+                "Io", "Europa", "Ganymede", "Callisto", "Titan", "Luna"
+            };
+            totalPlanets = realBodies.Count;
+        }
+        else
+        {
+            totalPlanets = 3;
+        }
+
+        planetData.Clear();
+        for (int i = 0; i < totalPlanets; i++)
+        {
+            string name = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+                ? realBodies[i]
+                : $"Planet {i + 1}";
+
             PlanetData planet = new PlanetData
             {
                 planetIndex = i,
-                planetName = $"Planet {i + 1}",
+                planetName = name,
                 planetType = PlanetType.Terran,
                 planetSize = GameManager.MapSize.Standard,
-                isHomeWorld = (i == 0), // First planet is home
-                distanceFromStar = (i + 1) * 1.5f, // Basic distance values
-                orbitalPeriod = (i + 1) * 365f, // Basic orbital periods
-                averageTemperature = 15f - (i * 10f), // Decreasing temperature with distance
+                isHomeWorld = (i == 0),
+                distanceFromStar = (i + 1) * 1.5f,
+                orbitalPeriod = (i + 1) * 365f,
+                averageTemperature = 15f - (i * 10f),
                 description = $"A {PlanetType.Terran} world in the system"
             };
-            
-            // Set isGenerated to match isExplored for compatibility
+
+            if (name == "Earth")
+                planet.moonNames.Add("Luna");
+
             planet.isGenerated = planet.isExplored;
-            
             planetData[i] = planet;
         }
 
-        // Generate planet GameObjects spaced apart
         int spacing = 1000;
-        for (int i = 0; i < planetData.Count; i++)
+        for (int i = 0; i < totalPlanets; i++)
         {
             yield return StartCoroutine(GenerateMultiPlanet(i, new Vector3(i * spacing, 0, 0)));
         }
@@ -852,12 +998,10 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        // Instantiate planet
         GameObject planetGO = Instantiate(planetGeneratorPrefab);
         planetGO.name = $"Planet_{planetIndex}_Generator";
         planetGO.transform.position = position;
 
-        // Get PlanetGenerator component
         var generator = planetGO.GetComponent<PlanetGenerator>();
         if (generator == null)
         {
@@ -866,22 +1010,56 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        // Configure grid based on planet size
-        GetMapSizeParams(planetData[planetIndex].planetSize, out int subdivisions, out float radius);
-        generator.subdivisions = subdivisions;
-        generator.radius = radius;
-        generator.Grid.GenerateFromSubdivision(subdivisions, radius);
+        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+            ? realBodies[planetIndex]
+            : (planetIndex == 0 ? "Earth" : "Mars");
 
-        // Store references
+        if (planetData.ContainsKey(planetIndex))
+            planetData[planetIndex].planetName = body;
+
+        ApplyRealPlanetIdentity(generator, body);
+
+        if (body == "Earth")
+        {
+            GetMapSizeParams(GameSetupData.mapSize, out int subdiv, out float rad);
+            generator.subdivisions = subdiv;
+            generator.radius = rad;
+        }
+        else
+        {
+            GetMapSizeParams(MapSize.Standard, out int subdiv, out float rad);
+            generator.subdivisions = subdiv;
+            generator.radius = rad;
+        }
+
+        generator.Grid.GenerateFromSubdivision(generator.subdivisions, generator.radius);
+
+        if (body == "Earth")
+        {
+            generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
+            generator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
+            generator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
+            generator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
+            generator.moistureBias = GameSetupData.moistureBias;
+            generator.temperatureBias = GameSetupData.temperatureBias;
+            generator.landThreshold = GameSetupData.landThreshold;
+        }
+
+        yield return StartCoroutine(generator.GenerateSurface());
+
         planetGenerators[planetIndex] = generator;
 
-        // Register with TileDataHelper
         if (TileDataHelper.Instance != null)
         {
             TileDataHelper.Instance.RegisterPlanet(planetIndex, generator);
         }
 
-        // Create climate manager for this planet
+        var moonGen = CreateMoonForPlanet(planetIndex, generator, body);
+        if (moonGen != null)
+        {
+            yield return StartCoroutine(moonGen.GenerateSurface());
+        }
+
         if (climateManagerPrefab != null)
         {
             GameObject climateGO = Instantiate(climateManagerPrefab);
@@ -892,12 +1070,6 @@ public class GameManager : MonoBehaviour
                 climateManager.planetIndex = planetIndex;
                 planetClimateManagers[planetIndex] = climateManager;
             }
-        }
-
-        // Generate the planet surface (but only for current planet to avoid singleton issues)
-        if (planetIndex == 0) // Only generate first planet initially
-        {
-            yield return StartCoroutine(generator.GenerateSurface());
         }
 
         Debug.Log($"[GameManager] Planet {planetIndex} generation complete");
@@ -946,6 +1118,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"[GameManager] Switching to planet {planetIndex}");
         currentPlanetIndex = planetIndex;
+        moonGenerator = moonGenerators.TryGetValue(planetIndex, out var mg) ? mg : null;
 
         // Ensure grid is built and surface generated if needed
         var generator = planetGenerators[planetIndex];
@@ -956,10 +1129,16 @@ public class GameManager : MonoBehaviour
             generator.radius = rad;
             generator.Grid.GenerateFromSubdivision(subDivs, rad);
         }
-        if (generator != null && generator.Grid.TileCount == 0)
+        if (generator != null && generator.Grid.TileCount > 0 && !generator.HasGeneratedSurface)
         {
             Debug.Log($"[GameManager] Generating surface for planet {planetIndex}");
             yield return StartCoroutine(generator.GenerateSurface());
+        }
+
+        if (moonGenerator != null && moonGenerator.Grid.TileCount > 0 && moonGenerator.Tiles.Count == 0)
+        {
+            Debug.Log($"[GameManager] Generating moon for planet {planetIndex}");
+            yield return StartCoroutine(moonGenerator.GenerateSurface());
         }
 
         // Update references in other systems

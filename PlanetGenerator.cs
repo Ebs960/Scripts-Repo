@@ -415,6 +415,28 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
 public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
 
+    [Header("Real Planet Flags")]
+    public bool isMarsWorldType, isVenusWorldType, isMercuryWorldType,
+        isJupiterWorldType, isSaturnWorldType, isUranusWorldType,
+        isNeptuneWorldType, isPlutoWorldType,
+        isTitanWorldType, isEuropaWorldType, isIoWorldType,
+        isGanymedeWorldType, isCallistoWorldType, isLunaWorldType;
+
+    [Header("Feature Toggles")]
+    public bool allowOceans = true;
+    public bool allowRivers = true;
+    public bool allowIslands = true;
+
+    public void ClearRealPlanetFlags()
+    {
+        isMarsWorldType = isVenusWorldType = isMercuryWorldType =
+        isJupiterWorldType = isSaturnWorldType = isUranusWorldType =
+        isNeptuneWorldType = isPlutoWorldType =
+        isTitanWorldType = isEuropaWorldType = isIoWorldType =
+        isGanymedeWorldType = isCallistoWorldType = isLunaWorldType = false;
+    }
+
+
     // --------------------------- Private fields -----------------------------
     SphericalHexGrid grid;
     public SphericalHexGrid Grid => grid;
@@ -430,6 +452,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// This is rebuilt after surface generation completes.
     /// </summary>
     public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
+    public bool HasGeneratedSurface { get; private set; } = false;
     private LoadingPanelController loadingPanelController;
 
 
@@ -674,9 +697,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         // ---------- 4.5. Generate Islands (NEW) ---------
-        if (GameSetupData.generateIslands && GameSetupData.numberOfIslands > 0) {
-            yield return GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount);
-        }
+        if (allowIslands)
+            yield return StartCoroutine(GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount));
 
         // ---------- 4.6. Generate Polar Landmasses (NEW) ---------
         this.landTilesGenerated += GeneratePolarLandmasses(isLandTile, tileLatLon, tileNoiseCache, tileCount);
@@ -684,6 +706,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Debug.Log($"Generated {landTilesGenerated} land tiles. Method: Deterministic Seeds + Mask + Guaranteed Core + Islands. ({(float)landTilesGenerated / tileCount * 100:F1}% surface coverage)");
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
+        if (!allowOceans)
+        {
+            for (int i = 0; i < tileCount; i++) isLandTile[i] = true;
+        }
+
         for (int i = 0; i < tileCount; i++)
         {
             Vector3 n = grid.tileCenters[i].normalized;
@@ -945,9 +972,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Debug.Log($"Post-coast true-land tiles: {landNow}");
 
         // ---------- 6.5 River Generation Pass (MOVED TO AFTER COAST/SEAS) ----
-        if (enableRivers) {
-            yield return GenerateRivers(isLandTile, data);
-        }
+        if (allowRivers)
+            yield return StartCoroutine(GenerateRivers(isLandTile, data));
 
         if (loadingPanelController != null)
         {
@@ -1496,6 +1522,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         
         Debug.Log("Tile distance normalization complete.");
+        HasGeneratedSurface = true;
     }
 
     /// <summary>
@@ -1630,13 +1657,15 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
-        // Use debug/override flags if enabled
-        bool useRainforest = isRainforestMapType;
-        bool useScorched = isScorchedMapType;
-        bool useInfernal = isInfernalMapType;
-        bool useDemonic = isDemonicMapType;
-
-        return BiomeHelper.GetBiome(isLand, temperature, moisture, useRainforest, useScorched, useInfernal, useDemonic);
+        return BiomeHelper.GetBiome(
+            isLand, temperature, moisture,
+            isRainforestMapType, isScorchedMapType, isInfernalMapType, isDemonicMapType,
+            isIceWorldMapType, isMonsoonMapType,
+            isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
+            isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
+            isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
+            isCallistoWorldType, isLunaWorldType
+        );
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)
