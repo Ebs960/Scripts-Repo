@@ -41,10 +41,10 @@ public class TileClickDetector : MonoBehaviour
             mainCamera = Camera.main;
         
         if (planetGenerator == null)
-            planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+            planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         
         if (moonGenerator == null)
-            moonGenerator = FindAnyObjectByType<MoonGenerator>();
+            moonGenerator = GameManager.Instance?.GetCurrentMoonGenerator();
         
         // Get grid references
         if (planetGenerator != null)

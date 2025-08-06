@@ -24,7 +24,7 @@ public class ResourceManager : MonoBehaviour
     void Start()
     {
         // Find references to key components
-        planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator != null)
             grid = planetGenerator.Grid;
         

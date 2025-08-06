@@ -18,6 +18,8 @@ public class GameManager : MonoBehaviour
     [Header("Generator Prefabs")]
     [Tooltip("PlanetGenerator prefab to instantiate - assign 'New Map Shit/Earth.prefab'")]
     public GameObject planetGeneratorPrefab;
+    [Tooltip("Generic planet prefab for non-Earth planets (Mars, Venus, etc.)")]
+    public GameObject genericPlanetPrefab;
     [Tooltip("MoonGenerator prefab to instantiate - assign 'New Map Shit/Moon.prefab'")]
     public GameObject moonGeneratorPrefab;
 
@@ -90,6 +92,69 @@ public class GameManager : MonoBehaviour
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
     public ClimateManager GetClimateManager(int planetIndex) => planetClimateManagers.TryGetValue(planetIndex, out var mgr) ? mgr : null;
     public Dictionary<int, PlanetData> GetPlanetData() => planetData;
+    
+    /// <summary>
+    /// Get the currently active planet generator (multi-planet aware)
+    /// </summary>
+    public PlanetGenerator GetCurrentPlanetGenerator()
+    {
+        if (enableMultiPlanetSystem)
+        {
+            return planetGenerators.TryGetValue(currentPlanetIndex, out var generator) ? generator : null;
+        }
+        return planetGenerator;
+    }
+    
+    /// <summary>
+    /// Get the currently active climate manager (multi-planet aware)
+    /// </summary>
+    public ClimateManager GetCurrentClimateManager()
+    {
+        if (enableMultiPlanetSystem)
+        {
+            return planetClimateManagers.TryGetValue(currentPlanetIndex, out var climate) ? climate : null;
+        }
+        return climateManager;
+    }
+    
+    /// <summary>
+    /// Get the currently active moon generator (multi-planet aware)
+    /// </summary>
+    public MoonGenerator GetCurrentMoonGenerator()
+    {
+        if (enableMultiPlanetSystem)
+        {
+            return moonGenerators.TryGetValue(currentPlanetIndex, out var moon) ? moon : null;
+        }
+        return moonGenerator;
+    }
+    
+    /// <summary>
+    /// Set the current planet index and update references (multi-planet mode)
+    /// </summary>
+    public void SetCurrentPlanet(int planetIndex)
+    {
+        if (!enableMultiPlanetSystem)
+        {
+            Debug.LogWarning("[GameManager] SetCurrentPlanet called but multi-planet system is disabled");
+            return;
+        }
+        
+        if (!planetGenerators.ContainsKey(planetIndex))
+        {
+            Debug.LogWarning($"[GameManager] Planet {planetIndex} does not exist");
+            return;
+        }
+        
+        Debug.Log($"[GameManager] Switching current planet to {planetIndex}");
+        currentPlanetIndex = planetIndex;
+        
+        // Update references in other systems that need to know about the current planet
+        if (TileDataHelper.Instance != null)
+        {
+            TileDataHelper.Instance.UpdateReferences();
+        }
+    }
 
     [Header("Game State")]
     public bool gameInProgress = false;
@@ -880,15 +945,38 @@ public class GameManager : MonoBehaviour
         switch (bodyName)
         {
             case "Earth":
-                if (generateMoon && moonGeneratorPrefab != null)
+                if (generateMoon)
                 {
-                    GameObject moonGO = Instantiate(moonGeneratorPrefab);
-                    moonGO.name = $"Planet_{planetIndex}_Moon";
-                    moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
-
-                    moonGen = moonGO.GetComponent<MoonGenerator>();
-                    if (moonGen != null)
+                    if (moonGeneratorPrefab != null)
                     {
+                        GameObject moonGO = Instantiate(moonGeneratorPrefab);
+                        moonGO.name = $"Planet_{planetIndex}_Moon";
+                        moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
+
+                        moonGen = moonGO.GetComponent<MoonGenerator>();
+                        if (moonGen != null)
+                        {
+                            float moonRadius = generator.radius / 2.5f;
+                            int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
+
+                            var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+                            if (loadingPanelController != null)
+                                moonGen.SetLoadingPanel(loadingPanelController);
+
+                            moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
+                        }
+                        else
+                        {
+                            Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[GameManager] moonGeneratorPrefab is NULL for Earth! Creating basic MoonGenerator.");
+                        GameObject moonGO = new GameObject($"Planet_{planetIndex}_Moon");
+                        moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
+                        
+                        moonGen = moonGO.AddComponent<MoonGenerator>();
                         float moonRadius = generator.radius / 2.5f;
                         int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
 
@@ -897,10 +985,6 @@ public class GameManager : MonoBehaviour
                             moonGen.SetLoadingPanel(loadingPanelController);
 
                         moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
-                    }
-                    else
-                    {
-                        Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
                     }
                 }
                 break;
@@ -976,10 +1060,18 @@ public class GameManager : MonoBehaviour
             planetData[i] = planet;
         }
 
+        // CRITICAL FIX: Generate planets ONE AT A TIME completely
+        // This prevents the MissingReferenceException by ensuring each planet finishes fully
         int spacing = 1000;
         for (int i = 0; i < totalPlanets; i++)
         {
+            Debug.Log($"[GameManager] Starting generation of planet {i} (waiting for complete finish before next)");
             yield return StartCoroutine(GenerateMultiPlanet(i, new Vector3(i * spacing, 0, 0)));
+            Debug.Log($"[GameManager] Planet {i} generation COMPLETELY FINISHED - moving to next");
+            
+            // Extra yield to ensure everything is fully settled before next planet
+            yield return new WaitForEndOfFrame();
+            yield return null;
         }
 
         Debug.Log($"[GameManager] Multi-planet system initialized with {planetData.Count} planets");
@@ -992,14 +1084,41 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log($"[GameManager] Generating planet {planetIndex} at {position}");
 
-        if (planetGeneratorPrefab == null)
+        // Determine which prefab to use based on planet type
+        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+            ? realBodies[planetIndex]
+            : (planetIndex == 0 ? "Earth" : "Mars");
+
+        GameObject prefabToUse = null;
+        
+        // Use Earth prefab for Earth, generic prefab for others
+        if (body == "Earth")
         {
-            Debug.LogError($"[GameManager] planetGeneratorPrefab is NULL for planet {planetIndex}!");
-            yield break;
+            prefabToUse = planetGeneratorPrefab;
+            if (prefabToUse == null)
+            {
+                Debug.LogError($"[GameManager] planetGeneratorPrefab is NULL for Earth!");
+                yield break;
+            }
+        }
+        else
+        {
+            prefabToUse = genericPlanetPrefab;
+            // If generic prefab is missing, fall back to Earth prefab and log warning
+            if (prefabToUse == null)
+            {
+                Debug.LogWarning($"[GameManager] genericPlanetPrefab is NULL for {body}! Using Earth prefab as fallback.");
+                prefabToUse = planetGeneratorPrefab;
+                if (prefabToUse == null)
+                {
+                    Debug.LogError($"[GameManager] Both planet prefabs are NULL for planet {planetIndex}!");
+                    yield break;
+                }
+            }
         }
 
-        GameObject planetGO = Instantiate(planetGeneratorPrefab);
-        planetGO.name = $"Planet_{planetIndex}_Generator";
+        GameObject planetGO = Instantiate(prefabToUse);
+        planetGO.name = $"Planet_{planetIndex}_Generator_{body}";
         planetGO.transform.position = position;
 
         var generator = planetGO.GetComponent<PlanetGenerator>();
@@ -1009,10 +1128,6 @@ public class GameManager : MonoBehaviour
             Destroy(planetGO);
             yield break;
         }
-
-        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
-            ? realBodies[planetIndex]
-            : (planetIndex == 0 ? "Earth" : "Mars");
 
         if (planetData.ContainsKey(planetIndex))
             planetData[planetIndex].planetName = body;
@@ -1045,7 +1160,16 @@ public class GameManager : MonoBehaviour
             generator.landThreshold = GameSetupData.landThreshold;
         }
 
+        Debug.Log($"[GameManager] Starting surface generation for planet {planetIndex}");
         yield return StartCoroutine(generator.GenerateSurface());
+        Debug.Log($"[GameManager] Surface generation complete for planet {planetIndex}");
+
+        // Ensure generator is still valid after surface generation
+        if (generator == null || generator.gameObject == null)
+        {
+            Debug.LogError($"[GameManager] Planet generator {planetIndex} became invalid during surface generation!");
+            yield break;
+        }
 
         planetGenerators[planetIndex] = generator;
 
@@ -1057,47 +1181,43 @@ public class GameManager : MonoBehaviour
         var moonGen = CreateMoonForPlanet(planetIndex, generator, body);
         if (moonGen != null)
         {
+            Debug.Log($"[GameManager] Starting moon generation for planet {planetIndex}");
             yield return StartCoroutine(moonGen.GenerateSurface());
+            Debug.Log($"[GameManager] Moon generation complete for planet {planetIndex}");
         }
 
-        if (climateManagerPrefab != null)
+        // Use climate manager attached to the planet prefab
+        var climateManager = planetGO.GetComponent<ClimateManager>();
+        if (climateManager == null)
         {
-            GameObject climateGO = Instantiate(climateManagerPrefab);
-            climateGO.name = $"Planet_{planetIndex}_ClimateManager";
-            var climateManager = climateGO.GetComponent<ClimateManager>();
-            if (climateManager != null)
-            {
-                climateManager.planetIndex = planetIndex;
-                planetClimateManagers[planetIndex] = climateManager;
-            }
+            // Look for climate manager in children
+            climateManager = planetGO.GetComponentInChildren<ClimateManager>();
+        }
+        
+        if (climateManager != null)
+        {
+            Debug.Log($"[GameManager] Found ClimateManager attached to planet {planetIndex} ({body})");
+            climateManager.planetIndex = planetIndex;
+            planetClimateManagers[planetIndex] = climateManager;
+        }
+        else
+        {
+            Debug.LogWarning($"[GameManager] No ClimateManager found on planet {planetIndex} ({body})! Creating basic ClimateManager.");
+            GameObject climateGO = new GameObject($"Planet_{planetIndex}_ClimateManager");
+            climateGO.transform.SetParent(planetGO.transform);
+            climateManager = climateGO.AddComponent<ClimateManager>();
+            climateManager.planetIndex = planetIndex;
+            planetClimateManagers[planetIndex] = climateManager;
         }
 
-        Debug.Log($"[GameManager] Planet {planetIndex} generation complete");
+        // Extra safety yield to ensure everything is completely finished
+        yield return new WaitForEndOfFrame();
+        yield return null;
+
+        Debug.Log($"[GameManager] Planet {planetIndex} generation COMPLETELY FINISHED");
     }
 
-    /// <summary>
-    /// Get current planet generator (single or multi-planet mode)
-    /// </summary>
-    public PlanetGenerator GetCurrentPlanetGenerator()
-    {
-        if (enableMultiPlanetSystem)
-        {
-            return planetGenerators.TryGetValue(currentPlanetIndex, out var generator) ? generator : null;
-        }
-        return planetGenerator;
-    }
 
-    /// <summary>
-    /// Get current climate manager (single or multi-planet mode)
-    /// </summary>
-    public ClimateManager GetCurrentClimateManager()
-    {
-        if (enableMultiPlanetSystem)
-        {
-            return planetClimateManagers.TryGetValue(currentPlanetIndex, out var climate) ? climate : null;
-        }
-        return climateManager;
-    }
 
     /// <summary>
     /// Switch to a different planet in multi-planet mode
@@ -1220,9 +1340,64 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // Configure planet minimap generator
-        if (minimapController.planetGenerator != null)
+        if (enableMultiPlanetSystem)
         {
+            // MULTI-PLANET MODE: Setup minimap for each planet
+            Debug.Log($"[GameManager] Configuring minimaps for {planetGenerators.Count} planets");
+            
+            foreach (var kvp in planetGenerators)
+            {
+                int planetIndex = kvp.Key;
+                var planetGen = kvp.Value;
+                
+                if (planetGen == null)
+                {
+                    Debug.LogWarning($"[GameManager] Planet generator {planetIndex} is null, skipping minimap");
+                    continue;
+                }
+                
+                // Create a minimap generator for this planet
+                var minimapGenGO = new GameObject($"MinimapGenerator_Planet_{planetIndex}");
+                var minimapGen = minimapGenGO.AddComponent<MinimapGenerator>();
+                
+                // Configure it
+                minimapGen.ConfigureDataSource(planetGen, planetGen.transform, MinimapDataSource.PlanetByIndex, planetIndex);
+                minimapGen.Build();
+                
+                // Add to minimap controller
+                minimapController.AddPlanet(planetIndex, minimapGen, planetGen.transform);
+                
+                Debug.Log($"[GameManager] Configured minimap for planet {planetIndex}");
+                
+                // Setup moon minimap for this planet if it has one
+                if (moonGenerators.ContainsKey(planetIndex) && moonGenerators[planetIndex] != null)
+                {
+                    var moonGen = moonGenerators[planetIndex];
+                    var moonMinimapGenGO = new GameObject($"MinimapGenerator_Moon_{planetIndex}");
+                    var moonMinimapGen = moonMinimapGenGO.AddComponent<MinimapGenerator>();
+                    
+                    moonMinimapGen.ConfigureDataSource(moonGen, moonGen.transform, MinimapDataSource.Moon);
+                    moonMinimapGen.Build();
+                    
+                    // Add moon to the same planet's minimap system
+                    Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
+                }
+            }
+            
+            // Set initial planet
+            if (planetGenerators.Count > 0)
+            {
+                minimapController.SwitchToPlanet(currentPlanetIndex);
+                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex}");
+            }
+        }
+        else
+        {
+            // SINGLE-PLANET MODE: Use existing setup
+            Debug.Log("[GameManager] Configuring single-planet minimap");
+            
+            // Configure planet minimap generator
+            if (minimapController.planetGenerator != null)
             {
                 minimapController.planetGenerator.ConfigureDataSource(
                     planetGenerator,
@@ -1234,38 +1409,37 @@ public class GameManager : MonoBehaviour
 
                 // Build planet minimap
                 minimapController.planetGenerator.Build();
-
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] Planet minimap generator not found.");
-        }
-
-        // Configure moon minimap generator (if moon exists)
-        if (generateMoon && minimapController.moonGenerator != null)
-        {
-            if (moonGenerator != null)
-            {
-                minimapController.moonGenerator.ConfigureDataSource(
-                    moonGenerator,
-                    moonGenerator.transform,
-                    MinimapDataSource.Moon
-                );
-                minimapController.moonRoot = moonGenerator.transform;
-                Debug.Log("Moon minimap generator configured.");
-
-                // Build moon minimap
-                minimapController.moonGenerator.Build();
             }
             else
             {
-                Debug.LogWarning("[GameManager] Moon generator not found for minimap configuration.");
+                Debug.LogWarning("[GameManager] Planet minimap generator not found.");
             }
-        }
-        else if (generateMoon)
-        {
-            Debug.LogWarning("[GameManager] Moon minimap generator not found.");
+
+            // Configure moon minimap generator (if moon exists)
+            if (generateMoon && minimapController.moonGenerator != null)
+            {
+                if (moonGenerator != null)
+                {
+                    minimapController.moonGenerator.ConfigureDataSource(
+                        moonGenerator,
+                        moonGenerator.transform,
+                        MinimapDataSource.Moon
+                    );
+                    minimapController.moonRoot = moonGenerator.transform;
+                    Debug.Log("Moon minimap generator configured.");
+
+                    // Build moon minimap
+                    minimapController.moonGenerator.Build();
+                }
+                else
+                {
+                    Debug.LogWarning("[GameManager] Moon generator not found for minimap configuration.");
+                }
+            }
+            else if (generateMoon)
+            {
+                Debug.LogWarning("[GameManager] Moon minimap generator not found.");
+            }
         }
 
         Debug.Log("Minimap configuration complete!");

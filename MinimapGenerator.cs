@@ -116,11 +116,11 @@ public class MinimapGenerator : MonoBehaviour
         
         if (dataSource == MinimapDataSource.Planet)
         {
-            grid = GameManager.Instance?.planetGenerator?.Grid;
+            grid = GameManager.Instance?.GetCurrentPlanetGenerator()?.Grid;
         }
         else if (dataSource == MinimapDataSource.Moon)
         {
-            grid = GameManager.Instance?.moonGenerator?.Grid;
+            grid = GameManager.Instance?.GetCurrentMoonGenerator()?.Grid;
         }
         
         if (grid == null)
@@ -307,13 +307,13 @@ public class MinimapGenerator : MonoBehaviour
     {
         // Get world position from the correct generator
         Vector3 worldPos;
-        if (dataSource == MinimapDataSource.Planet && GameManager.Instance?.planetGenerator != null)
+        if (dataSource == MinimapDataSource.Planet && GameManager.Instance?.GetCurrentPlanetGenerator() != null)
         {
-            worldPos = GameManager.Instance.planetGenerator.Grid.tileCenters[tileIndex];
+            worldPos = GameManager.Instance.GetCurrentPlanetGenerator()?.Grid.tileCenters[tileIndex] ?? Vector3.zero;
         }
-        else if (dataSource == MinimapDataSource.Moon && GameManager.Instance?.moonGenerator != null)
+        else if (dataSource == MinimapDataSource.Moon && GameManager.Instance?.GetCurrentMoonGenerator() != null)
         {
-            worldPos = GameManager.Instance.moonGenerator.Grid.tileCenters[tileIndex];
+            worldPos = GameManager.Instance.GetCurrentMoonGenerator().Grid.tileCenters[tileIndex];
         }
         else
         {

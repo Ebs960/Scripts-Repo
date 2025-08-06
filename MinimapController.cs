@@ -38,10 +38,11 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     public Button moonButton;     // Button to switch to moon minimap
     public Button zoomInButton;   // Button to zoom in
     public Button zoomOutButton;  // Button to zoom out
-    public Button prevPlanetButton; // Button to switch to previous planet
-    public Button nextPlanetButton; // Button to switch to next planet
+    public TMP_Dropdown planetDropdown; // Dropdown to select planet directly
     public TextMeshProUGUI currentTargetLabel; // Optional label showing current target
-    public TextMeshProUGUI planetNameLabel; // Label showing current planet name    [Header("Options")]
+    public TextMeshProUGUI planetNameLabel; // Label showing current planet name
+    
+    [Header("Options")]
     public bool buildOnStart = true;
     public float zoomStep = 0.5f; // minimap zoom step (how much to zoom in/out)
     public float clickLerpSeconds = 0.35f; // smooth camera retarget
@@ -68,8 +69,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (moonButton) moonButton.onClick.AddListener(() => SwitchToTarget(MinimapTarget.Moon));
         if (zoomInButton) zoomInButton.onClick.AddListener(OnZoomInButton);
         if (zoomOutButton) zoomOutButton.onClick.AddListener(OnZoomOutButton);
-        if (prevPlanetButton) prevPlanetButton.onClick.AddListener(OnPrevPlanetButton);
-        if (nextPlanetButton) nextPlanetButton.onClick.AddListener(OnNextPlanetButton);
+        if (planetDropdown) planetDropdown.onValueChanged.AddListener(OnPlanetDropdownChanged);
     }
 
     void Start()
@@ -142,31 +142,57 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         UpdateZoomButtonStates();
     }
     
-    public void OnPrevPlanetButton()
+
+    
+    public void OnPlanetDropdownChanged(int selectedIndex)
     {
-        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem && planetDropdown != null)
         {
             var availablePlanets = planetGenerators.Keys.OrderBy(x => x).ToList();
-            if (availablePlanets.Count > 1)
+            if (selectedIndex >= 0 && selectedIndex < availablePlanets.Count)
             {
-                int currentIndex = availablePlanets.IndexOf(currentPlanetIndex);
-                int prevIndex = currentIndex > 0 ? currentIndex - 1 : availablePlanets.Count - 1;
-                SwitchToPlanet(availablePlanets[prevIndex]);
+                int planetIndex = availablePlanets[selectedIndex];
+                SwitchToPlanet(planetIndex);
             }
         }
     }
     
-    public void OnNextPlanetButton()
+    /// <summary>
+    /// Update the planet dropdown with available planets
+    /// </summary>
+    private void UpdatePlanetDropdown()
     {
-        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        if (planetDropdown == null || GameManager.Instance == null) return;
+        
+        // Clear existing options
+        planetDropdown.ClearOptions();
+        
+        if (GameManager.Instance.enableMultiPlanetSystem)
         {
             var availablePlanets = planetGenerators.Keys.OrderBy(x => x).ToList();
-            if (availablePlanets.Count > 1)
+            var options = new List<TMP_Dropdown.OptionData>();
+            
+            foreach (int planetIndex in availablePlanets)
             {
-                int currentIndex = availablePlanets.IndexOf(currentPlanetIndex);
-                int nextIndex = (currentIndex + 1) % availablePlanets.Count;
-                SwitchToPlanet(availablePlanets[nextIndex]);
+                var planetData = GameManager.Instance.GetPlanetData();
+                string planetName = planetData.ContainsKey(planetIndex) ? planetData[planetIndex].planetName : $"Planet {planetIndex}";
+                options.Add(new TMP_Dropdown.OptionData(planetName));
             }
+            
+            planetDropdown.AddOptions(options);
+            
+            // Set current selection
+            int currentIndex = availablePlanets.IndexOf(currentPlanetIndex);
+            if (currentIndex >= 0)
+            {
+                planetDropdown.SetValueWithoutNotify(currentIndex);
+            }
+        }
+        else
+        {
+            // Single planet mode
+            planetDropdown.AddOptions(new List<string> { "Earth" });
+            planetDropdown.SetValueWithoutNotify(0);
         }
     }
     
@@ -184,16 +210,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             zoomInButton.interactable = _currentZoomLevel < maxZoomLevel;
         }
     }
-    
-    private void UpdateNavigationButtonStates()
-    {
-        bool hasMultiplePlanets = GameManager.Instance != null && 
-                                  GameManager.Instance.enableMultiPlanetSystem && 
-                                  planetGenerators.Count > 1;
-        
-        if (prevPlanetButton) prevPlanetButton.interactable = hasMultiplePlanets;
-        if (nextPlanetButton) nextPlanetButton.interactable = hasMultiplePlanets;
-    }
+
     
     private void RefreshMinimapTexture()
     {
@@ -324,6 +341,9 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         planetGenerators[planetIndex] = generator;
         planetRoots[planetIndex] = root;
         Debug.Log($"[MinimapController] Added planet {planetIndex} to minimap system");
+        
+        // Update dropdown options
+        UpdatePlanetDropdown();
     }
     
     /// <summary>
@@ -333,6 +353,17 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     {
         currentPlanetIndex = planetIndex;
         SwitchToTarget(MinimapTarget.PlanetByIndex);
+        
+        // Update dropdown selection without triggering event
+        if (planetDropdown != null && GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            var availablePlanets = planetGenerators.Keys.OrderBy(x => x).ToList();
+            int dropdownIndex = availablePlanets.IndexOf(planetIndex);
+            if (dropdownIndex >= 0)
+            {
+                planetDropdown.SetValueWithoutNotify(dropdownIndex);
+            }
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)

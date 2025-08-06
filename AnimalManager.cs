@@ -105,7 +105,7 @@ public class AnimalManager : MonoBehaviour
     void TrySpawn(AnimalSpawnRule rule)
     {
         var candidates = new List<int>();
-        var planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
 
         for (int i = 0; i < tileCount; i++)

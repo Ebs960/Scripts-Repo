@@ -41,7 +41,7 @@ public class ReligionManager : MonoBehaviour
     void Start()
     {
         // Get references
-        planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         if(planetGenerator != null)
             grid = planetGenerator.Grid;
         

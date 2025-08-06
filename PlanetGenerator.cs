@@ -523,23 +523,30 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 #endif
     }
     
+    private ClimateManager planetClimateManager; // Store reference to this planet's climate manager
+    
     void Start()
     {
-        // Subscribe to season changes to update visuals
-        if (ClimateManager.Instance != null)
+        // Subscribe to season changes from the climate manager attached to this planet
+        planetClimateManager = GetComponent<ClimateManager>() ?? GetComponentInChildren<ClimateManager>() ?? GetComponentInParent<ClimateManager>();
+        if (planetClimateManager != null)
         {
-            ClimateManager.Instance.OnSeasonChanged += HandleSeasonChange;
+            planetClimateManager.OnSeasonChanged += HandleSeasonChange;
+            Debug.Log($"[PlanetGenerator] Subscribed to climate manager on planet");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlanetGenerator] No ClimateManager found for this planet");
         }
     }
 
     void OnDestroy()
     {
         // Unsubscribe to prevent memory leaks
-        if (ClimateManager.Instance != null)
+        if (planetClimateManager != null)
         {
-            ClimateManager.Instance.OnSeasonChanged -= HandleSeasonChange;
+            planetClimateManager.OnSeasonChanged -= HandleSeasonChange;
         }
-
     }
 
     private void HandleSeasonChange(Season newSeason)
@@ -1396,17 +1403,49 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
         {
-            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+            // Safety check to prevent MissingReferenceException
+            if (this == null || gameObject == null)
+            {
+                Debug.LogError($"[PlanetGenerator] GameObject became invalid during generation. Stopping prefab spawning.");
+                yield break;
+            }
             
-            // Spawn decorations in batches after all tile prefabs are created
-            if (decorationManager != null && decorationManager.enableDecorations)
-                yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+            // Can't use yield inside try-catch, so check validity and call directly
+            bool spawnSuccessful = true;
+            if (this != null && gameObject != null)
+            {
+                yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+                
+                // Check again before spawning decorations
+                if (this != null && gameObject != null && spawnSuccessful)
+                {
+                    // Spawn decorations in batches after all tile prefabs are created
+                    if (decorationManager != null && decorationManager.enableDecorations)
+                        yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+                }
+                else
+                {
+                    Debug.LogError($"[PlanetGenerator] GameObject became invalid during tile spawning. Stopping decoration spawning.");
+                }
+            }
+            else
+            {
+                Debug.LogError($"[PlanetGenerator] GameObject is invalid, cannot spawn prefabs.");
+            }
         }
 
         // Normalize tile distances for uniform spacing (after everything else is done)
         if (enableExpensivePostProcessing && enableTileNormalization)
         {
-            StartCoroutine(NormalizeTileDistances());
+            // Safety check before starting normalization
+            if (this != null && gameObject != null)
+            {
+                StartCoroutine(NormalizeTileDistances());
+            }
+            else
+            {
+                Debug.LogWarning($"[PlanetGenerator] Cannot start tile normalization - GameObject is invalid");
+            }
         }
         else
         {
