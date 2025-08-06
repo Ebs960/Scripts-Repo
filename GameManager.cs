@@ -368,6 +368,18 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void FindCoreManagersInScene()
     {
+        // CRITICAL: Create TileDataHelper FIRST (before other managers need it)
+        if (TileDataHelper.Instance == null)
+        {
+            GameObject tileDataHelperGO = new GameObject("TileDataHelper");
+            tileDataHelperGO.AddComponent<TileDataHelper>();
+            Debug.Log("[GameManager] Created TileDataHelper");
+        }
+        else
+        {
+            Debug.Log("[GameManager] TileDataHelper already exists");
+        }
+        
         // Find or create CivilizationManager
         civilizationManager = FindAnyObjectByType<CivilizationManager>();
         if (civilizationManager == null)
@@ -540,6 +552,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: AncientRuinsManager not found and no prefab assigned!");
             }
         }
+
     }
 
     /// <summary>

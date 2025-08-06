@@ -23,6 +23,31 @@ public class ResourceManager : MonoBehaviour
 
     void Start()
     {
+        // CRITICAL: Wait for TileDataHelper before proceeding
+        if (TileDataHelper.Instance == null)
+        {
+            Debug.LogWarning("[ResourceManager] TileDataHelper not ready yet, will retry in Start");
+            StartCoroutine(WaitForTileDataHelper());
+            return;
+        }
+        
+        InitializeResourceManager();
+    }
+    
+    private System.Collections.IEnumerator WaitForTileDataHelper()
+    {
+        while (TileDataHelper.Instance == null)
+        {
+            Debug.Log("[ResourceManager] Waiting for TileDataHelper...");
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        Debug.Log("[ResourceManager] TileDataHelper found, initializing...");
+        InitializeResourceManager();
+    }
+    
+    private void InitializeResourceManager()
+    {
         // Find references to key components
         planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator != null)
@@ -51,7 +76,27 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     private void SpawnResources()
     {
-        if (grid == null || planetGenerator == null) return;
+        // SAFETY: Don't spawn if already spawned (prevents memory leak)
+        if (spawnedResources.Count > 0)
+        {
+            Debug.Log("[ResourceManager] Resources already spawned, skipping");
+            return;
+        }
+
+        // SAFETY: Check all required references
+        if (grid == null || planetGenerator == null)
+        {
+            Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
+            return;
+        }
+        
+        if (TileDataHelper.Instance == null)
+        {
+            Debug.LogError("[ResourceManager] TileDataHelper.Instance is null! Cannot spawn resources.");
+            return;
+        }
+
+        Debug.Log("[ResourceManager] Starting resource spawn...");
         int tileCount = grid.TileCount;
 
         for (int idx = 0; idx < tileCount; idx++)

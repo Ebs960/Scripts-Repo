@@ -483,21 +483,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
                 hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
-            // Debug checks for pentagon prefabs
-            if (entry.pentagonFlatPrefabs == null || entry.pentagonFlatPrefabs.Length == 0)
-                Debug.LogWarning($"Pentagon flat prefabs NOT assigned for biome {entry.biome}");
-            else
-                Debug.Log($"Pentagon flat prefabs assigned for biome {entry.biome}: {entry.pentagonFlatPrefabs.Length} prefab(s)");
-
-            if (entry.pentagonHillPrefabs == null || entry.pentagonHillPrefabs.Length == 0)
-                Debug.LogWarning($"Pentagon hill prefabs NOT assigned for biome {entry.biome}");
-            else
-                Debug.Log($"Pentagon hill prefabs assigned for biome {entry.biome}: {entry.pentagonHillPrefabs.Length} prefab(s)");
-
-            if (entry.pentagonMountainPrefabs == null || entry.pentagonMountainPrefabs.Length == 0)
-                Debug.LogWarning($"Pentagon mountain prefabs NOT assigned for biome {entry.biome}");
-            else
-                Debug.Log($"Pentagon mountain prefabs assigned for biome {entry.biome}: {entry.pentagonMountainPrefabs.Length} prefab(s)");
+            // Pentagon prefabs are stored without debug spam
+            // (Mountains are their own biome, many biomes don't need hills, this is normal)
         }
 
         // Initialize the grid for this planet (will be configured by GameManager)
