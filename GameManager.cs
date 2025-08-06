@@ -852,11 +852,16 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private IEnumerator StartMultiPlanetGame()
     {
-        FindCoreManagersInScene();
         Debug.Log("[GameManager] Starting multi-planet game");
+        
+        // CRITICAL: Don't create managers until planets exist!
+        // This prevents singleton conflicts and ensures proper execution order
 
-        // Initialize basic multi-planet data
+        // Initialize and generate all planets FIRST
         yield return StartCoroutine(InitializeMultiPlanetSystem());
+
+        // NOW it's safe to create managers since planets exist
+        FindCoreManagersInScene();
 
         // Start with the first planet
         if (planetData.Count > 0)
@@ -1017,26 +1022,31 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("[GameManager] Initializing multi-planet system");
 
-        if (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+        Debug.Log($"[GameManager] GameSetupData.systemPreset = {GameSetupData.systemPreset}");
+        Debug.Log($"[GameManager] useRealSolarSystem field = {useRealSolarSystem}");
+        
+        if (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
         {
             realBodies = new List<string>
             {
                 "Earth",
                 "Mars", "Venus", "Mercury",
                 "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-                "Io", "Europa", "Ganymede", "Callisto", "Titan", "Luna"
+                "Io", "Europa", "Ganymede", "Callisto", "Titan"
             };
             totalPlanets = realBodies.Count;
         }
         else
         {
-            totalPlanets = 3;
+            // Procedural system with basic planets
+            realBodies = new List<string> { "Earth", "Mars", "Venus" };
+            totalPlanets = realBodies.Count;
         }
 
         planetData.Clear();
         for (int i = 0; i < totalPlanets; i++)
         {
-            string name = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+            string name = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
                 ? realBodies[i]
                 : $"Planet {i + 1}";
 
@@ -1044,13 +1054,13 @@ public class GameManager : MonoBehaviour
             {
                 planetIndex = i,
                 planetName = name,
-                planetType = PlanetType.Terran,
-                planetSize = GameManager.MapSize.Standard,
+                planetType = GetPlanetType(name),
+                planetSize = GetPlanetSize(name),
                 isHomeWorld = (i == 0),
-                distanceFromStar = (i + 1) * 1.5f,
-                orbitalPeriod = (i + 1) * 365f,
-                averageTemperature = 15f - (i * 10f),
-                description = $"A {PlanetType.Terran} world in the system"
+                distanceFromStar = GetDistanceFromStar(name),
+                orbitalPeriod = GetOrbitalPeriod(name),
+                averageTemperature = GetAverageTemperature(name),
+                description = GetPlanetDescription(name)
             };
 
             if (name == "Earth")
@@ -1062,11 +1072,11 @@ public class GameManager : MonoBehaviour
 
         // CRITICAL FIX: Generate planets ONE AT A TIME completely
         // This prevents the MissingReferenceException by ensuring each planet finishes fully
-        int spacing = 1000;
         for (int i = 0; i < totalPlanets; i++)
         {
             Debug.Log($"[GameManager] Starting generation of planet {i} (waiting for complete finish before next)");
-            yield return StartCoroutine(GenerateMultiPlanet(i, new Vector3(i * spacing, 0, 0)));
+            Vector3 position = GetPlanetPosition(i, realBodies[i]);
+            yield return StartCoroutine(GenerateMultiPlanet(i, position));
             Debug.Log($"[GameManager] Planet {i} generation COMPLETELY FINISHED - moving to next");
             
             // Extra yield to ensure everything is fully settled before next planet
@@ -1078,6 +1088,204 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Get the world position for a planet/moon based on its type and relationship to parent planets
+    /// </summary>
+    private Vector3 GetPlanetPosition(int planetIndex, string bodyName)
+    {
+        float baseSpacing = 2000f; // Base spacing between planetary systems
+        float moonDistance = 300f; // Distance of moons from their parent planet
+        
+        switch (bodyName)
+        {
+            // Inner planets
+            case "Earth":
+                return new Vector3(0, 0, 0); // Earth at origin
+            case "Mars":
+                return new Vector3(baseSpacing, 0, 0);
+            case "Venus":
+                return new Vector3(-baseSpacing, 0, 0);
+            case "Mercury":
+                return new Vector3(-baseSpacing * 2, 0, 0);
+                
+            // Outer planets
+            case "Jupiter":
+                return new Vector3(baseSpacing * 2, 0, 0);
+            case "Saturn":
+                return new Vector3(baseSpacing * 3, 0, 0);
+            case "Uranus":
+                return new Vector3(baseSpacing * 4, 0, 0);
+            case "Neptune":
+                return new Vector3(baseSpacing * 5, 0, 0);
+            case "Pluto":
+                return new Vector3(baseSpacing * 6, 0, 0);
+                
+            // Jupiter's moons - positioned around Jupiter
+            case "Io":
+                return new Vector3(baseSpacing * 2 + moonDistance, 0, moonDistance);
+            case "Europa":
+                return new Vector3(baseSpacing * 2 - moonDistance, 0, moonDistance);
+            case "Ganymede":
+                return new Vector3(baseSpacing * 2 + moonDistance, 0, -moonDistance);
+            case "Callisto":
+                return new Vector3(baseSpacing * 2 - moonDistance, 0, -moonDistance);
+                
+            // Saturn's moon - positioned near Saturn
+            case "Titan":
+                return new Vector3(baseSpacing * 3 + moonDistance, 0, 0);
+                
+            default:
+                // Fallback positioning
+                return new Vector3(planetIndex * 1000f, 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Get the appropriate planet type for a celestial body
+    /// </summary>
+    private PlanetType GetPlanetType(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Earth" => PlanetType.Terran,
+            "Mars" => PlanetType.Desert,
+            "Venus" => PlanetType.Volcanic,
+            "Mercury" => PlanetType.Barren,
+            "Jupiter" => PlanetType.Gas_Giant,
+            "Saturn" => PlanetType.Gas_Giant,
+            "Uranus" => PlanetType.Ice,
+            "Neptune" => PlanetType.Ice,
+            "Pluto" => PlanetType.Ice,
+            "Io" => PlanetType.Volcanic,
+            "Europa" => PlanetType.Ice,
+            "Ganymede" => PlanetType.Ice,
+            "Callisto" => PlanetType.Barren,
+            "Titan" => PlanetType.Tundra,
+            _ => PlanetType.Terran
+        };
+    }
+
+    /// <summary>
+    /// Get the appropriate size for a celestial body
+    /// </summary>
+    private MapSize GetPlanetSize(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Earth" => MapSize.Large,
+            "Mars" => MapSize.Standard,
+            "Venus" => MapSize.Standard,
+            "Mercury" => MapSize.Small,
+            "Jupiter" => MapSize.Large,
+            "Saturn" => MapSize.Large,
+            "Uranus" => MapSize.Standard,
+            "Neptune" => MapSize.Standard,
+            "Pluto" => MapSize.Small,
+            // Moons are generally smaller
+            "Io" or "Europa" or "Ganymede" or "Callisto" or "Titan" => MapSize.Small,
+            _ => MapSize.Standard
+        };
+    }
+
+    /// <summary>
+    /// Get realistic distance from star for celestial bodies
+    /// </summary>
+    private float GetDistanceFromStar(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Mercury" => 0.39f,
+            "Venus" => 0.72f,
+            "Earth" => 1.0f,
+            "Mars" => 1.52f,
+            "Jupiter" => 5.2f,
+            "Saturn" => 9.5f,
+            "Uranus" => 19.2f,
+            "Neptune" => 30.1f,
+            "Pluto" => 39.5f,
+            // Moons have same distance as their parent planet
+            "Io" or "Europa" or "Ganymede" or "Callisto" => 5.2f, // Jupiter's distance
+            "Titan" => 9.5f, // Saturn's distance
+            _ => 1.0f
+        };
+    }
+
+    /// <summary>
+    /// Get realistic orbital period for celestial bodies
+    /// </summary>
+    private float GetOrbitalPeriod(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Mercury" => 88f,
+            "Venus" => 225f,
+            "Earth" => 365f,
+            "Mars" => 687f,
+            "Jupiter" => 4333f,
+            "Saturn" => 10759f,
+            "Uranus" => 30687f,
+            "Neptune" => 60190f,
+            "Pluto" => 90560f,
+            // Moons orbit their parent planet, not the sun
+            "Io" => 1.77f,
+            "Europa" => 3.55f,
+            "Ganymede" => 7.15f,
+            "Callisto" => 16.69f,
+            "Titan" => 15.95f,
+            _ => 365f
+        };
+    }
+
+    /// <summary>
+    /// Get realistic average temperature for celestial bodies
+    /// </summary>
+    private float GetAverageTemperature(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Mercury" => 167f,
+            "Venus" => 464f,
+            "Earth" => 15f,
+            "Mars" => -65f,
+            "Jupiter" => -110f,
+            "Saturn" => -140f,
+            "Uranus" => -195f,
+            "Neptune" => -200f,
+            "Pluto" => -230f,
+            "Io" => -130f,
+            "Europa" => -160f,
+            "Ganymede" => -180f,
+            "Callisto" => -185f,
+            "Titan" => -179f,
+            _ => 15f
+        };
+    }
+
+    /// <summary>
+    /// Get descriptive text for celestial bodies
+    /// </summary>
+    private string GetPlanetDescription(string bodyName)
+    {
+        return bodyName switch
+        {
+            "Earth" => "The blue marble - humanity's home world with vast oceans and diverse biomes",
+            "Mars" => "The red planet - a cold, desert world with ancient riverbeds and polar ice caps",
+            "Venus" => "The morning star - a volcanic hell world shrouded in thick, toxic atmosphere",
+            "Mercury" => "The innermost planet - a scorched, cratered world of extreme temperatures",
+            "Jupiter" => "The gas giant - a massive storm-wracked world with dozens of moons",
+            "Saturn" => "The ringed planet - a beautiful gas giant adorned with spectacular ice rings",
+            "Uranus" => "The ice giant - a tilted world of methane clouds and faint rings",
+            "Neptune" => "The windy planet - a deep blue ice giant with the fastest winds in the solar system",
+            "Pluto" => "The dwarf planet - a distant, frozen world at the edge of the solar system",
+            "Io" => "Jupiter's volcanic moon - the most geologically active body in the solar system",
+            "Europa" => "Jupiter's ice moon - hiding a subsurface ocean beneath its frozen crust",
+            "Ganymede" => "Jupiter's largest moon - bigger than Mercury with its own magnetic field",
+            "Callisto" => "Jupiter's cratered moon - an ancient, heavily bombarded ice world",
+            "Titan" => "Saturn's largest moon - shrouded in thick atmosphere with hydrocarbon lakes",
+            _ => "A mysterious world waiting to be explored"
+        };
+    }
+
+    /// <summary>
     /// Generate a single planet for the multi-planet system
     /// </summary>
     private IEnumerator GenerateMultiPlanet(int planetIndex, Vector3 position)
@@ -1085,7 +1293,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"[GameManager] Generating planet {planetIndex} at {position}");
 
         // Determine which prefab to use based on planet type
-        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem)
+        string body = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
             ? realBodies[planetIndex]
             : (planetIndex == 0 ? "Earth" : "Mars");
 

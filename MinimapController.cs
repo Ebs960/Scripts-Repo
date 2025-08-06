@@ -293,8 +293,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (planetButton) planetButton.interactable = (target != MinimapTarget.Planet && target != MinimapTarget.PlanetByIndex);
         if (moonButton) moonButton.interactable = (target != MinimapTarget.Moon);
         
-        // Update navigation button states
-        UpdateNavigationButtonStates();
+        // Navigation buttons removed - using dropdown instead
         
         // Update zoom button states for the new target
         UpdateZoomButtonStates();
