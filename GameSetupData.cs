@@ -1,5 +1,8 @@
 public static class GameSetupData
 {
+    public enum SystemPreset { Random, RealSolarSystem }
+    public static SystemPreset systemPreset = SystemPreset.Random; // set from Main Menu
+
     // Civilization Settings
     public static CivData selectedPlayerCivilizationData;
     public static LeaderData selectedLeaderData;
