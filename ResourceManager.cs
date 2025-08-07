@@ -73,6 +73,7 @@ public class ResourceManager : MonoBehaviour
 
     /// <summary>
     /// Scatter resource nodes across the map based on each ResourceData's rules.
+    /// MULTI-PLANET COMPATIBLE: Spawns resources on all planets
     /// </summary>
     private void SpawnResources()
     {
@@ -80,13 +81,6 @@ public class ResourceManager : MonoBehaviour
         if (spawnedResources.Count > 0)
         {
             Debug.Log("[ResourceManager] Resources already spawned, skipping");
-            return;
-        }
-
-        // SAFETY: Check all required references
-        if (grid == null || planetGenerator == null)
-        {
-            Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
             return;
         }
         
@@ -97,25 +91,72 @@ public class ResourceManager : MonoBehaviour
         }
 
         Debug.Log("[ResourceManager] Starting resource spawn...");
-        int tileCount = grid.TileCount;
+        
+        // MULTI-PLANET FIX: Spawn resources on all planets, not just current one
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            // Multi-planet mode: iterate through all planets
+            foreach (var kvp in GameManager.Instance.GetPlanetData())
+            {
+                int planetIndex = kvp.Key;
+                var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+                
+                if (planetGen == null || planetGen.Grid == null) continue;
+                
+                SpawnResourcesOnPlanet(planetGen, planetIndex);
+            }
+        }
+        else
+        {
+            // Single planet mode: use current planet
+            if (grid == null || planetGenerator == null)
+            {
+                Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
+                return;
+            }
+            
+            SpawnResourcesOnPlanet(planetGenerator, 0);
+        }
+        
+        Debug.Log($"[ResourceManager] Resource spawning completed. Total spawned: {spawnedResources.Count}");
+    }
+    
+    /// <summary>
+    /// Spawn resources on a specific planet
+    /// </summary>
+    private void SpawnResourcesOnPlanet(PlanetGenerator planetGen, int planetIndex)
+    {
+        var planetGrid = planetGen.Grid;
+        int tileCount = planetGrid.TileCount;
+        int resourcesSpawned = 0;
+        
+        Debug.Log($"[ResourceManager] Spawning resources on planet {planetIndex} with {tileCount} tiles");
 
         for (int idx = 0; idx < tileCount; idx++)
         {
-            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(idx);
+            // Get tile data specifically from this planet
+            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileDataFromPlanet(idx, planetIndex);
             if (tileData == null || isMoonTile) continue; // No resources on the moon for now
 
             foreach (var rd in resourceTypes)
             {
+                if (rd == null) continue; // Safety check
+                
                 // skip if biome not allowed
-                bool ok = false;
+                bool biomeAllowed = false;
                 foreach (var b in rd.allowedBiomes)
-                    if (b == tileData.biome) { ok = true; break; }
-                if (!ok) continue;
+                    if (b == tileData.biome) { biomeAllowed = true; break; }
+                if (!biomeAllowed) continue;
 
                 if (Random.value <= rd.spawnChance)
                 {
-                    Vector3 pos = TileDataHelper.Instance.GetTileCenter(idx);
-                    var go = Instantiate(rd.prefab, pos, Quaternion.identity);
+                    Vector3 pos = TileDataHelper.Instance.GetTileCenterFromPlanet(idx, planetIndex);
+                    
+                    // Use object pooling if available
+                    GameObject go = SimpleObjectPool.Instance != null 
+                        ? SimpleObjectPool.Instance.Get(rd.prefab, pos, Quaternion.identity)
+                        : Instantiate(rd.prefab, pos, Quaternion.identity);
+                        
                     var inst = go.AddComponent<ResourceInstance>();
                     inst.data = rd;
                     inst.tileIndex = idx;
@@ -123,10 +164,14 @@ public class ResourceManager : MonoBehaviour
 
                     // Mirror into the tile data
                     tileData.resource = rd;
-                    TileDataHelper.Instance.SetTileData(idx, tileData);
+                    TileDataHelper.Instance.SetTileDataOnPlanet(idx, tileData, planetIndex);
+                    
+                    resourcesSpawned++;
                 }
             }
         }
+        
+        Debug.Log($"[ResourceManager] Spawned {resourcesSpawned} resources on planet {planetIndex}");
     }
 
     // Load resources from Resources folder if not set in inspector

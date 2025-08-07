@@ -926,6 +926,18 @@ public class GameManager : MonoBehaviour
     private IEnumerator StartMultiPlanetGame()
     {
         Debug.Log("[GameManager] Starting multi-planet game");
+
+        // --- CRITICAL: Refresh settings from GameSetupData ---
+        Debug.Log("GameManager.StartMultiPlanetGame(): Refreshing settings from GameSetupData.");
+        selectedPlayerCivilizationData = GameSetupData.selectedPlayerCivilizationData;
+        numberOfCivilizations = GameSetupData.numberOfCivilizations;
+        numberOfCityStates = GameSetupData.numberOfCityStates;
+        numberOfTribes = GameSetupData.numberOfTribes;
+        mapSize = GameSetupData.mapSize;
+        animalPrevalence = GameSetupData.animalPrevalence;
+        generateMoon = GameSetupData.generateMoon;
+        Debug.Log($"GameManager.StartMultiPlanetGame() - Refreshed Counts: AI: {numberOfCivilizations}, CS: {numberOfCityStates}, Tribes: {numberOfTribes}");
+        // --- End Refresh ---
         
         // CRITICAL: Don't create managers until planets exist!
         // This prevents singleton conflicts and ensures proper execution order
@@ -943,7 +955,164 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[GameManager] Setting current planet to {currentPlanetIndex}");
         }
 
-        Debug.Log("[GameManager] Multi-planet game started");
+        // Set references on UnitMovementController now that planets and managers exist
+        var unitMovementController = FindAnyObjectByType<UnitMovementController>();
+        if (unitMovementController != null)
+        {
+            var currentPlanet = GetCurrentPlanetGenerator();
+            var currentMoon = GetCurrentMoonGenerator();
+            if (currentPlanet != null)
+            {
+                var grid = currentPlanet.Grid;
+                unitMovementController.SetReferences(grid, currentPlanet, currentMoon);
+                Debug.Log("[GameManager] Set UnitMovementController references to current planet and moon generators");
+            }
+            else
+            {
+                Debug.LogWarning("GameManager: Current PlanetGenerator is null, cannot set UnitMovementController references!");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: UnitMovementController not found after generator creation!");
+        }
+
+        // Continue with the rest of game initialization (copied from StartSinglePlanetGame)
+        
+        // --- Camera instantiation ---
+        if (planetaryCameraPrefab != null && Camera.main == null)
+        {
+            instantiatedCameraGO = Instantiate(planetaryCameraPrefab);
+            instantiatedCameraGO.tag = "MainCamera";
+            instantiatedCameraGO.SetActive(true);
+
+            // Ensure the camera has an AudioListener
+            if (instantiatedCameraGO.GetComponent<AudioListener>() == null)
+            {
+                instantiatedCameraGO.AddComponent<AudioListener>();
+            }
+
+            // Ensure camera has latest generator references
+            var cameraManager = instantiatedCameraGO.GetComponent<PlanetaryCameraManager>();
+            if (cameraManager != null)
+            {
+                Debug.Log("GameManager: Refreshed camera references after instantiation.");
+            }
+        }
+        else if (Camera.main != null)
+        {
+            instantiatedCameraGO = Camera.main.gameObject;
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: planetaryCameraPrefab not assigned!");
+        }
+
+        // Reset game state
+        currentTurn = 0;
+        gameInProgress = true;
+        gamePaused = false;
+
+        Debug.Log("=== MAP GENERATION COMPLETE (Multi-Planet) ===");
+
+        // Update loading progress - Civilization spawning
+        UpdateLoadingProgress(0.75f, "Spawning civilizations...");
+        
+        // Spawn civilizations
+        if (civilizationManager != null)
+        {
+            CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
+            if (playerCivData == null)
+            {
+                Debug.LogWarning("No player civilization selected in GameSetupData. CivilizationManager will select a default.");
+            }
+            civilizationManager.SpawnCivilizations(
+                playerCivData,
+                numberOfCivilizations,
+                numberOfCityStates,
+                numberOfTribes);
+
+            // Initialize the music manager with the newly spawned civs
+            if (MusicManager.Instance != null)
+            {
+                MusicManager.Instance.InitializeMusicTracks();
+            }
+        }
+        else
+        {
+            Debug.LogError("CivilizationManager not found. Can't spawn civilizations.");
+        }
+
+        // Update loading progress - Animal spawning
+        UpdateLoadingProgress(0.85f, "Spawning wildlife...");
+        
+        // Spawn initial animals
+        var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+        if (animalManagerInstance != null)
+        {
+            // AnimalManager now gets grid and planet data from TileDataHelper
+            animalManagerInstance.SpawnInitialAnimals();
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: AnimalManager not found, cannot spawn initial animals.");
+        }
+
+        // Update loading progress - Minimap setup
+        UpdateLoadingProgress(0.90f, "Setting up minimaps...");
+        
+        // Configure minimaps for multi-planet system
+        ConfigureMinimaps();
+
+        // Configure SunBillboard for multi-planet system
+        var sunBB = FindAnyObjectByType<SunBillboard>();
+        if (sunBB != null)
+        {
+            var currentPlanet = GetCurrentPlanetGenerator();
+            if (currentPlanet != null)
+            {
+                sunBB.SetBaseRadius(currentPlanet.radius);
+                Debug.Log($"[GameManager] SunBillboard radius set to {currentPlanet.radius} for current planet");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Current PlanetGenerator is null, cannot set SunBillboard radius!");
+            }
+        }
+        else
+        {
+            Debug.Log("[GameManager] No SunBillboard found in scene");
+        }
+
+        Debug.Log("=== STARTING UI INITIALIZATION (Multi-Planet) ===");
+
+        // Update loading progress - UI initialization
+        UpdateLoadingProgress(0.95f, "Initializing interface...");
+
+        // Initialize UI after civilizations are spawned
+        yield return new WaitForEndOfFrame(); // Give everything a frame to settle
+        Debug.Log("[GameManager] Calling InitializeUI...");
+        InitializeUI();
+        Debug.Log("[GameManager] InitializeUI finished.");
+
+        Debug.Log("=== UI INITIALIZATION COMPLETE (Multi-Planet) ===");
+
+        // Update loading progress - Final steps
+        UpdateLoadingProgress(1.0f, "Game ready!");
+
+        // Game is now ready
+        OnGameStarted?.Invoke();
+
+        // CRITICAL: Hide loading panel now that game is ready
+        HideLoadingPanel();
+
+        // Start game music now that everything is loaded and the loading panel is hidden
+        if (MusicManager.Instance != null)
+        {
+            MusicManager.Instance.PlayMusic();
+        }
+
+        Debug.Log("=== GameManager.StartMultiPlanetGame() COMPLETED SUCCESSFULLY ===");
     }
 
     private void ApplyRealPlanetIdentity(PlanetGenerator g, string bodyName)
@@ -1095,6 +1264,9 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("[GameManager] Initializing multi-planet system");
 
+        // Update loading progress - Starting multi-planet system
+        UpdateLoadingProgress(0.05f, "Initializing solar system...");
+
         Debug.Log($"[GameManager] GameSetupData.systemPreset = {GameSetupData.systemPreset}");
         Debug.Log($"[GameManager] useRealSolarSystem field = {useRealSolarSystem}");
         
@@ -1148,6 +1320,13 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < totalPlanets; i++)
         {
             Debug.Log($"[GameManager] Starting generation of planet {i} (waiting for complete finish before next)");
+            
+            // Update loading progress for planet generation
+            float planetProgress = 0.1f + (0.6f * i / totalPlanets); // 10% to 70% for planet generation
+            string planetName = (GameSetupData.systemPreset == GameSetupData.SystemPreset.RealSolarSystem || useRealSolarSystem)
+                ? realBodies[i] : $"Planet {i + 1}";
+            UpdateLoadingProgress(planetProgress, $"Generating {planetName}...");
+            
             Vector3 position = GetPlanetPosition(i, realBodies[i]);
             yield return StartCoroutine(GenerateMultiPlanet(i, position));
             Debug.Log($"[GameManager] Planet {i} generation COMPLETELY FINISHED - moving to next");
@@ -1157,6 +1336,9 @@ public class GameManager : MonoBehaviour
             yield return null;
         }
 
+        // Update loading progress - Planet generation complete
+        UpdateLoadingProgress(0.70f, "Planet generation complete!");
+        
         Debug.Log($"[GameManager] Multi-planet system initialized with {planetData.Count} planets");
     }
 
@@ -1626,6 +1808,17 @@ public class GameManager : MonoBehaviour
             // MULTI-PLANET MODE: Setup minimap for each planet
             Debug.Log($"[GameManager] Configuring minimaps for {planetGenerators.Count} planets");
             
+            // CRITICAL FIX: Find existing ColorProvider in scene
+            var existingColorProvider = FindAnyObjectByType<MinimapColorProvider>();
+            if (existingColorProvider != null)
+            {
+                Debug.Log($"[GameManager] Found existing MinimapColorProvider with render mode: {existingColorProvider.renderMode}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] No MinimapColorProvider found in scene! Minimaps will use default colors.");
+            }
+            
             foreach (var kvp in planetGenerators)
             {
                 int planetIndex = kvp.Key;
@@ -1641,9 +1834,15 @@ public class GameManager : MonoBehaviour
                 var minimapGenGO = new GameObject($"MinimapGenerator_Planet_{planetIndex}");
                 var minimapGen = minimapGenGO.AddComponent<MinimapGenerator>();
                 
-                // Configure it
+                // CRITICAL FIX: Assign ColorProvider if one exists
+                if (existingColorProvider != null)
+                {
+                    minimapGen.colorProvider = existingColorProvider;
+                }
+                
+                // Configure it (but don't build yet - build on-demand when switching to planet)
                 minimapGen.ConfigureDataSource(planetGen, planetGen.transform, MinimapDataSource.PlanetByIndex, planetIndex);
-                minimapGen.Build();
+                // DON'T BUILD HERE - this is too expensive for 15 planets at once!
                 
                 // Add to minimap controller
                 minimapController.AddPlanet(planetIndex, minimapGen, planetGen.transform);
@@ -1657,19 +1856,25 @@ public class GameManager : MonoBehaviour
                     var moonMinimapGenGO = new GameObject($"MinimapGenerator_Moon_{planetIndex}");
                     var moonMinimapGen = moonMinimapGenGO.AddComponent<MinimapGenerator>();
                     
+                    // CRITICAL FIX: Assign ColorProvider if one exists
+                    if (existingColorProvider != null)
+                    {
+                        moonMinimapGen.colorProvider = existingColorProvider;
+                    }
+                    
                     moonMinimapGen.ConfigureDataSource(moonGen, moonGen.transform, MinimapDataSource.Moon);
-                    moonMinimapGen.Build();
+                    // DON'T BUILD HERE - build on-demand when switching to this planet's moon
                     
                     // Add moon to the same planet's minimap system
                     Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
                 }
             }
             
-            // Set initial planet
+            // Set initial planet and build its minimap
             if (planetGenerators.Count > 0)
             {
                 minimapController.SwitchToPlanet(currentPlanetIndex);
-                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex}");
+                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex} - minimap will build on-demand");
             }
         }
         else
@@ -1677,9 +1882,26 @@ public class GameManager : MonoBehaviour
             // SINGLE-PLANET MODE: Use existing setup
             Debug.Log("[GameManager] Configuring single-planet minimap");
             
+            // CRITICAL FIX: Find existing ColorProvider in scene for single-planet mode too
+            var existingColorProvider = FindAnyObjectByType<MinimapColorProvider>();
+            if (existingColorProvider != null)
+            {
+                Debug.Log($"[GameManager] Found existing MinimapColorProvider with render mode: {existingColorProvider.renderMode}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] No MinimapColorProvider found in scene! Minimaps will use default colors.");
+            }
+            
             // Configure planet minimap generator
             if (minimapController.planetGenerator != null)
             {
+                // CRITICAL FIX: Assign ColorProvider if one exists
+                if (existingColorProvider != null)
+                {
+                    minimapController.planetGenerator.colorProvider = existingColorProvider;
+                }
+                
                 minimapController.planetGenerator.ConfigureDataSource(
                     planetGenerator,
                     planetGenerator.transform,
@@ -1701,6 +1923,12 @@ public class GameManager : MonoBehaviour
             {
                 if (moonGenerator != null)
                 {
+                    // CRITICAL FIX: Assign ColorProvider if one exists
+                    if (existingColorProvider != null)
+                    {
+                        minimapController.moonGenerator.colorProvider = existingColorProvider;
+                    }
+                    
                     minimapController.moonGenerator.ConfigureDataSource(
                         moonGenerator,
                         moonGenerator.transform,
@@ -1845,6 +2073,37 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene("MainMenu");
     }
     
+    /// <summary>
+    /// Update loading progress during game initialization
+    /// </summary>
+    private void UpdateLoadingProgress(float progress, string status)
+    {
+        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(progress);
+            loadingPanelController.SetStatus(status);
+            Debug.Log($"[GameManager] Loading: {progress:P0} - {status}");
+        }
+    }
+
+    /// <summary>
+    /// Hide the loading panel when game initialization is complete
+    /// </summary>
+    private void HideLoadingPanel()
+    {
+        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.HideLoading();
+            Debug.Log("[GameManager] Loading panel hidden - game ready to play!");
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] No LoadingPanelController found to hide");
+        }
+    }
+
     /// <summary>
     /// Clean up memory to prevent leaks and improve performance
     /// </summary>

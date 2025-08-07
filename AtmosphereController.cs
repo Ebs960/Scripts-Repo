@@ -59,11 +59,12 @@ public class AtmosphereController : MonoBehaviour
             return;
 
         // OPTION A: Skip procedural generation if prefab atmosphere already exists (CHECK ONLY ONCE)
-        // Check if this AtmosphereController already has a MeshRenderer with material assigned
-        // (indicating it's a prefab atmosphere, not a procedural one)
-        if (meshRenderer != null && meshRenderer.material != null && meshRenderer.material != atmosphereMaterial)
+        // Check if this AtmosphereController already has a MeshRenderer with a DIFFERENT material than our procedural one
+        // (indicating it's a prefab atmosphere with its own material, not a procedural one)
+        if (meshRenderer != null && meshRenderer.material != null && 
+            atmosphereMaterial != null && meshRenderer.material != atmosphereMaterial)
         {
-            // This is a prefab atmosphere - disable procedural generation
+            // This is a prefab atmosphere with different material - disable procedural generation
             atmosphereEnabled = false;
             Debug.Log($"[AtmosphereController] Detected prefab atmosphere on {gameObject.name} - skipping procedural generation");
             enabled = false; // STOP UPDATE() FROM RUNNING

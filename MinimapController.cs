@@ -254,9 +254,19 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         currentTarget = target;
         var generator = GetCurrentGenerator();
         
-        if (generator && generator.IsReady)
+        if (generator != null)
         {
-            minimapImage.texture = generator.minimapTexture;
+            // Build the minimap on-demand if not ready
+            if (!generator.IsReady)
+            {
+                Debug.Log($"[MinimapController] Building minimap on-demand for target: {target}");
+                generator.Build();
+            }
+            
+            if (generator.IsReady)
+            {
+                minimapImage.texture = generator.minimapTexture;
+            }
         }
         
         // Clear tile data caches when switching planets/moons

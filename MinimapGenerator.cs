@@ -24,9 +24,9 @@ public class MinimapGenerator : MonoBehaviour
     
     [Header("Performance")]
     [Tooltip("High-resolution master texture for zooming (generated once)")]
-    public int masterTextureWidth = 2048;
+    public int masterTextureWidth = 512;  // PERFORMANCE FIX: Reduced from 2048
     [Tooltip("High-resolution master texture for zooming (generated once)")]
-    public int masterTextureHeight = 1024;
+    public int masterTextureHeight = 256; // PERFORMANCE FIX: Reduced from 1024
     
     private Texture2D _masterTexture; // High-res version for zooming
     private bool _masterTextureReady = false;
@@ -122,10 +122,16 @@ public class MinimapGenerator : MonoBehaviour
         {
             grid = GameManager.Instance?.GetCurrentMoonGenerator()?.Grid;
         }
+        else if (dataSource == MinimapDataSource.PlanetByIndex)
+        {
+            // Get grid from specific planet by index
+            var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+            grid = planetGen?.Grid;
+        }
         
         if (grid == null)
         {
-            Debug.LogWarning($"[MinimapGenerator] {dataSource} grid not found.");
+            Debug.LogWarning($"[MinimapGenerator] {dataSource} grid not found. Planet index: {planetIndex}");
             return;
         }
 
@@ -139,6 +145,18 @@ public class MinimapGenerator : MonoBehaviour
             Vector3 rootPos = planetRoot ? planetRoot.position : Vector3.zero;
             Vector3 dir = (grid.tileCenters[i] - rootPos).normalized;
             _tileDirs[i] = dir;
+        }
+        
+        Debug.Log($"[MinimapGenerator] Building minimap for {dataSource}, planet index {planetIndex}, {tileCount} tiles");
+        
+        // DEBUG: Check ColorProvider configuration
+        if (colorProvider != null)
+        {
+            Debug.Log($"[MinimapGenerator] ColorProvider found: Render Mode = {colorProvider.renderMode}");
+        }
+        else
+        {
+            Debug.LogWarning($"[MinimapGenerator] No ColorProvider assigned! Will use default colors.");
         }
 
         // Allocate master texture (high resolution)
@@ -169,17 +187,58 @@ public class MinimapGenerator : MonoBehaviour
                 
                 // Get tile data from the correct generator based on data source
                 HexTileData tileData;
-                if (dataSource == MinimapDataSource.Planet && GameManager.Instance?.planetGenerator != null)
+                if (dataSource == MinimapDataSource.Planet)
                 {
-                    tileData = GameManager.Instance.planetGenerator.GetHexTileData(tileIndex);
+                    // Use current planet generator for backward compatibility
+                    var currentPlanet = GameManager.Instance?.GetCurrentPlanetGenerator();
+                    if (currentPlanet != null)
+                    {
+                        tileData = currentPlanet.GetHexTileData(tileIndex);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[MinimapGenerator] Current planet generator is null for Planet data source!");
+                        tileData = new HexTileData { biome = Biome.Ocean };
+                    }
                 }
-                else if (dataSource == MinimapDataSource.Moon && GameManager.Instance?.moonGenerator != null)
+                else if (dataSource == MinimapDataSource.Moon)
                 {
-                    tileData = GameManager.Instance.moonGenerator.GetHexTileData(tileIndex);
+                    // Use current moon generator for backward compatibility
+                    var currentMoon = GameManager.Instance?.GetCurrentMoonGenerator();
+                    if (currentMoon != null)
+                    {
+                        tileData = currentMoon.GetHexTileData(tileIndex);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[MinimapGenerator] Current moon generator is null for Moon data source!");
+                        tileData = new HexTileData { biome = Biome.Ocean };
+                    }
+                }
+                else if (dataSource == MinimapDataSource.PlanetByIndex)
+                {
+                    // Get tile data from specific planet by index
+                    var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+                    if (planetGen != null)
+                    {
+                        tileData = planetGen.GetHexTileData(tileIndex);
+                        
+                        // DEBUG: Log first few tiles to see what we're getting (reduced logging)
+                        if (tileIndex < 3 && x == 0 && y == 0)
+                        {
+                            Debug.Log($"[MinimapGenerator] Planet {planetIndex}, Tile {tileIndex}: Biome = {tileData.biome}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[MinimapGenerator] Planet generator {planetIndex} is null for PlanetByIndex data source!");
+                        tileData = new HexTileData { biome = Biome.Ocean };
+                    }
                 }
                 else
                 {
                     // Fallback if no generator available
+                    Debug.LogWarning($"[MinimapGenerator] Unknown data source: {dataSource}");
                     tileData = new HexTileData { biome = Biome.Ocean };
                 }
 
@@ -191,10 +250,29 @@ public class MinimapGenerator : MonoBehaviour
                 if (colorProvider != null)
                 {
                     c = colorProvider.ColorFor(tileData, uv);
+                    
+                    // CRITICAL FIX: Check if ColorProvider returned magenta (missing biome)
+                    if (c == Color.magenta)
+                    {
+                        // ColorProvider failed, use our default fallback
+                        c = DefaultColorFor(tileData);
+                        
+                        // Log missing biome data (but only once per biome)
+                        if (x == 0 && y == 0)
+                        {
+                            Debug.LogWarning($"[MinimapGenerator] ColorProvider returned magenta for biome {tileData.biome} - using fallback color. Check MinimapColorProvider configuration!");
+                        }
+                    }
                 }
                 else
                 {
                     c = DefaultColorFor(tileData);
+                }
+                
+                // DEBUG: Log first pixel color to see what we're getting
+                if (x == 0 && y == 0)
+                {
+                    Debug.Log($"[MinimapGenerator] First pixel: Biome={tileData.biome}, Color={c}, ColorProvider={(colorProvider != null ? "present" : "null")}");
                 }
                 
                 pixels[y * masterTextureWidth + x] = c;
@@ -315,6 +393,18 @@ public class MinimapGenerator : MonoBehaviour
         {
             worldPos = GameManager.Instance.GetCurrentMoonGenerator().Grid.tileCenters[tileIndex];
         }
+        else if (dataSource == MinimapDataSource.PlanetByIndex)
+        {
+            var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+            if (planetGen?.Grid != null && tileIndex < planetGen.Grid.tileCenters.Length)
+            {
+                worldPos = planetGen.Grid.tileCenters[tileIndex];
+            }
+            else
+            {
+                return; // Can't update without proper data source
+            }
+        }
         else
         {
             return; // Can't update without proper data source
@@ -328,13 +418,43 @@ public class MinimapGenerator : MonoBehaviour
         
         // Get tile data from the correct generator
         HexTileData tileData;
-        if (dataSource == MinimapDataSource.Planet && GameManager.Instance?.planetGenerator != null)
+        if (dataSource == MinimapDataSource.Planet)
         {
-            tileData = GameManager.Instance.planetGenerator.GetHexTileData(tileIndex);
+            // Use current planet generator for backward compatibility
+            var currentPlanet = GameManager.Instance?.GetCurrentPlanetGenerator();
+            if (currentPlanet != null)
+            {
+                tileData = currentPlanet.GetHexTileData(tileIndex);
+            }
+            else
+            {
+                return; // Can't update without proper data source
+            }
         }
-        else if (dataSource == MinimapDataSource.Moon && GameManager.Instance?.moonGenerator != null)
+        else if (dataSource == MinimapDataSource.Moon)
         {
-            tileData = GameManager.Instance.moonGenerator.GetHexTileData(tileIndex);
+            // Use current moon generator for backward compatibility
+            var currentMoon = GameManager.Instance?.GetCurrentMoonGenerator();
+            if (currentMoon != null)
+            {
+                tileData = currentMoon.GetHexTileData(tileIndex);
+            }
+            else
+            {
+                return; // Can't update without proper data source
+            }
+        }
+        else if (dataSource == MinimapDataSource.PlanetByIndex)
+        {
+            var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+            if (planetGen != null)
+            {
+                tileData = planetGen.GetHexTileData(tileIndex);
+            }
+            else
+            {
+                return; // Can't update without proper data source
+            }
         }
         else
         {
@@ -401,7 +521,18 @@ public class MinimapGenerator : MonoBehaviour
 
     private Color DefaultColorFor(HexTileData tile)
     {
-        if (colorProvider != null) return colorProvider.ColorFor(tile);
-        return new Color(0.3f, 0.5f, 0.8f, 1f);
+        // FIXED: Don't call colorProvider here - this is the fallback function!
+        // Return different colors based on biome
+        return tile.biome switch
+        {
+            Biome.Ocean => new Color(0.2f, 0.4f, 0.8f, 1f),      // Blue
+            Biome.Forest => new Color(0.2f, 0.6f, 0.2f, 1f),     // Green
+            Biome.Desert => new Color(0.8f, 0.7f, 0.3f, 1f),     // Sandy
+            Biome.Mountain => new Color(0.6f, 0.5f, 0.4f, 1f),   // Brown
+            Biome.Plains => new Color(0.4f, 0.7f, 0.3f, 1f),     // Light green
+            Biome.Snow => new Color(0.9f, 0.9f, 0.9f, 1f),       // White
+            Biome.Tundra => new Color(0.6f, 0.7f, 0.8f, 1f),     // Light blue-gray
+            _ => new Color(0.5f, 0.5f, 0.5f, 1f)                 // Gray fallback
+        };
     }
 }

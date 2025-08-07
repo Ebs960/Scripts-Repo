@@ -435,4 +435,50 @@ public class TileDataHelper : MonoBehaviour
         
         return (null, false);
     }
+    
+    /// <summary>
+    /// Get tile center from a specific planet (for multi-planet operations)
+    /// </summary>
+    public Vector3 GetTileCenterFromPlanet(int tileIndex, int planetIndex)
+    {
+        // Check planet first
+        if (planets.TryGetValue(planetIndex, out var targetPlanet))
+        {
+            var planetGrid = targetPlanet?.Grid;
+            if (planetGrid != null && tileIndex >= 0 && tileIndex < planetGrid.tileCenters.Length)
+            {
+                return planetGrid.tileCenters[tileIndex];
+            }
+        }
+        
+        // Check moon
+        if (moons.TryGetValue(planetIndex, out var targetMoon))
+        {
+            var moonGrid = targetMoon?.Grid;
+            if (moonGrid != null && tileIndex >= 0 && tileIndex < moonGrid.tileCenters.Length)
+            {
+                return moonGrid.tileCenters[tileIndex];
+            }
+        }
+        
+        return Vector3.zero;
+    }
+    
+    /// <summary>
+    /// Set tile data on a specific planet (for multi-planet operations)
+    /// </summary>
+    public void SetTileDataOnPlanet(int tileIndex, HexTileData tileData, int planetIndex)
+    {
+        // Check if tile exists on moon first
+        if (moons.TryGetValue(planetIndex, out var targetMoon) && 
+            targetMoon?.GetHexTileData(tileIndex) != null)
+        {
+            targetMoon.SetHexTileData(tileIndex, tileData);
+        }
+        // Otherwise set on planet
+        else if (planets.TryGetValue(planetIndex, out var targetPlanet))
+        {
+            targetPlanet?.SetHexTileData(tileIndex, tileData);
+        }
+    }
 }
