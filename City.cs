@@ -127,7 +127,8 @@ public class City : MonoBehaviour
         CreateLabelUI();
         
         // Cache reference
-        planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
     }
 
     /// <summary>
@@ -408,7 +409,8 @@ public class City : MonoBehaviour
         }
 
         // 5) Reassign map-ownership of the city's tiles
-        var planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null)
         {
             // Get territory radius based on number of remaining cities
@@ -826,7 +828,7 @@ public class City : MonoBehaviour
         owner.faith -= unitData.faithCost;
         
         // Spawn the unit
-        if (planetGenerator == null) planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         Vector3 pos = planetGenerator.Grid.tileCenters[centerTileIndex];
         
         var unitGO = Instantiate(unitData.prefab, pos, Quaternion.identity);
@@ -853,12 +855,12 @@ public class City : MonoBehaviour
         
         // Terrains
         if (reqTerrains != null && reqTerrains.Length > 0) {
-            if (planetGenerator == null) planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+            if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
             
             // gather city‐radius tiles (1 tile for simplicity)
             bool found = false;
             foreach (int n in TileDataHelper.Instance.GetTileNeighbors(centerTileIndex)) {
-                if (planetGenerator == null) planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+                if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
                 var (tdOpt, _) = TileDataHelper.Instance.GetTileData(n);
                 
                 if (tdOpt == null) continue;
@@ -875,7 +877,7 @@ public class City : MonoBehaviour
     /// Completes the item and adds it to the appropriate collection or instantiates it.
     /// </summary>
     private void CompleteItem(ScriptableObject d) {
-        if (planetGenerator == null) planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         Vector3 pos = planetGenerator.Grid.tileCenters[centerTileIndex];
 
         switch (d) {
@@ -1137,7 +1139,7 @@ public class City : MonoBehaviour
     int SumYield(System.Func<HexTileData,int> selector)
     {
         int total = 0;
-        if (planetGenerator == null) planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator == null) return 0; // Safety check
 
         var owned = owner.ownedTileIndices; // Needs access to owner's tile list

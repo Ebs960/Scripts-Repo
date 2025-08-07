@@ -35,9 +35,8 @@ public class DemonManager : MonoBehaviour
             return;
         }
 
-        planet = FindAnyObjectByType<PlanetGenerator>();
-        if (planet != null)
-            grid = planet.Grid;
+        // DemonManager works across all planets - no need to store single planet reference
+        // Individual spawn operations will iterate through all planets
     }
 
     void Start()
@@ -65,33 +64,65 @@ public class DemonManager : MonoBehaviour
 
     private void SpawnDemon()
     {
-        if (grid == null)
+        // Safety check for multi-planet system
+        if (TileDataHelper.Instance == null)
         {
-            Debug.LogError("DemonManager cannot spawn demons, SphericalHexGrid not found!");
+            Debug.LogWarning("[DemonManager] TileDataHelper not ready, cannot spawn demons");
             return;
         }
-        // Find valid spawn locations
-        List<int> validTiles = new List<int>();
-        for (int i = 0; i < grid.TileCount; i++)
+        
+        if (GameManager.Instance == null || !GameManager.Instance.enableMultiPlanetSystem)
         {
-            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(i);
-            if (tileData == null || isMoonTile) continue;
+            Debug.LogError("[DemonManager] GameManager or multi-planet system not available");
+            return;
+        }
+        
+        // Find valid spawn locations across ALL planets
+        List<(int tileIndex, int planetIndex)> validTiles = new List<(int, int)>();
+        
+        var planetData = GameManager.Instance.GetPlanetData();
+        foreach (var kvp in planetData)
+        {
+            int planetIndex = kvp.Key;
+            var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+            if (planetGen == null || planetGen.Grid == null) continue;
+            
+            var planetGrid = planetGen.Grid;
+            for (int i = 0; i < planetGrid.TileCount; i++)
+            {
+                var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileDataFromPlanet(i, planetIndex);
+                if (tileData == null || isMoonTile) continue;
 
-            // Check if tile is a valid demon spawn biome
-            if (!spawnableBiomes.Contains(tileData.biome)) continue;
+                // Check if tile is a valid demon spawn biome
+                if (!spawnableBiomes.Contains(tileData.biome)) continue;
 
 
-            // Check if tile is unoccupied
-            if (tileData.occupantId != 0) continue;
+                // Check if tile is unoccupied
+                if (tileData.occupantId != 0) continue;
 
-            validTiles.Add(i);
+                validTiles.Add((i, planetIndex));
+            }
         }
 
         if (validTiles.Count == 0) return;
 
-        // Pick random spawn location
-        int spawnTileIndex = validTiles[Random.Range(0, validTiles.Count)];
-        Vector3 spawnPos = TileDataHelper.Instance.GetTileSurfacePosition(spawnTileIndex, 0.5f);
+        // Pick random spawn location from any planet
+        var (spawnTileIndex, spawnPlanetIndex) = validTiles[Random.Range(0, validTiles.Count)];
+        
+        // Get the planet generator for the selected planet
+        var spawnPlanetGen = GameManager.Instance.GetPlanetGenerator(spawnPlanetIndex);
+        if (spawnPlanetGen == null)
+        {
+            Debug.LogError($"[DemonManager] Could not find planet generator for planet {spawnPlanetIndex}");
+            return;
+        }
+        
+        // Get spawn position on the selected planet
+        Vector3 spawnPos = spawnPlanetGen.Grid.tileCenters[spawnTileIndex];
+        // Convert to world position with elevation
+        Vector3 surfaceNormal = (spawnPos - spawnPlanetGen.transform.position).normalized;
+        float planetRadius = spawnPlanetGen.radius;
+        spawnPos = spawnPlanetGen.transform.position + surfaceNormal * (planetRadius + 0.5f);
 
         // Pick random demon type
         DemonUnitData demonType = demonUnits[Random.Range(0, demonUnits.Length)];
@@ -104,7 +135,7 @@ public class DemonManager : MonoBehaviour
         demonUnit.Initialize(demonType, null); 
         activeDemonUnits.Add(demonUnit);
 
-        Debug.Log($"Spawned {demonType.unitName} at tile {spawnTileIndex}");
+        Debug.Log($"Spawned {demonType.unitName} at tile {spawnTileIndex} on planet {spawnPlanetIndex}");
     }
 
     public void RemoveDemon(CombatUnit demonUnit)

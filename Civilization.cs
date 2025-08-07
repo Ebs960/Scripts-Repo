@@ -1425,10 +1425,12 @@ public class Civilization : MonoBehaviour
         // Set references for correct world context
         SphericalHexGrid gridToUse = gridOverride ?? planetGrid;
         PlanetGenerator planetToUse = planetOverride ?? planetGenerator;
-        if (gridToUse == null)
-            gridToUse = FindAnyObjectByType<PlanetGenerator>()?.Grid;
+        if (gridToUse == null) {
+            var currentPlanet = GameManager.Instance?.GetCurrentPlanetGenerator();
+            gridToUse = currentPlanet?.Grid;
+        }
         if (planetToUse == null)
-            planetToUse = FindAnyObjectByType<PlanetGenerator>();
+            planetToUse = GameManager.Instance?.GetCurrentPlanetGenerator();
         // City class sets its own references now
         Debug.Log($"[FoundNewCity] Grid={gridToUse}, Planet={planetToUse}");
 
@@ -1520,7 +1522,8 @@ public class Civilization : MonoBehaviour
         civData = data;
         leader = leaderData; // Set the leader for this civilization instance
         isPlayerControlled = isPlayer;
-        planetGenerator = planet ?? FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        planetGenerator = planet ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         planetGrid = grid ?? planetGenerator?.Grid;
         
         // --- Ensure cityPrefab is set from CivData ---

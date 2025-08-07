@@ -179,7 +179,8 @@ public class PlanetaryCameraManager : MonoBehaviour
             if (onMoon)
             {
                 // Click detection for moon
-                var moon = GameManager.Instance?.moonGenerator ?? FindAnyObjectByType<MoonGenerator>();
+                // Use GameManager API for multi-planet support
+        var moon = GameManager.Instance?.GetCurrentMoonGenerator();
                 if (moon != null && moon.Grid != null &&
                     RaySphereIntersection(ray, moon.transform.position, moon.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {
@@ -197,7 +198,8 @@ public class PlanetaryCameraManager : MonoBehaviour
             else
             {
                 // Click detection for planet
-                var planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
+                // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
                 if (planet != null && planet.Grid != null &&
                     RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {

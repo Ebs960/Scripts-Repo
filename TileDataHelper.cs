@@ -40,17 +40,9 @@ public class TileDataHelper : MonoBehaviour
 
     void Start() => UpdateReferences();
 
-    private float nextReferenceCheckTime = 0f;
-    private const float REFERENCE_CHECK_INTERVAL = 1f;
-
-    void Update()
-    {
-        if ((planet == null || moon == null) && Time.time >= nextReferenceCheckTime)
-        {
-            nextReferenceCheckTime = Time.time + REFERENCE_CHECK_INTERVAL;
-            UpdateReferences();
-        }
-    }
+    // PERFORMANCE FIX: Removed Update() method - now uses event-driven system
+    // References are updated when GameManager calls RegisterPlanet/RegisterMoon
+    // or when explicitly called via UpdateReferences()
 
     public void UpdateReferences()
     {

@@ -12,11 +12,37 @@ public class ImprovementManager : MonoBehaviour
     // Planet generator reference
     private PlanetGenerator planetGenerator;
 
-    // Get a reference to the planet generator
+    // Get a reference to the planet generator (for legacy compatibility)
     private void InitializeReferences()
     {
         if (planetGenerator == null)
-            planetGenerator = FindAnyObjectByType<PlanetGenerator>();
+            // Use GameManager API for multi-planet support
+        planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
+    }
+    
+    /// <summary>
+    /// Get tile data from any planet by checking all planets
+    /// </summary>
+    private HexTileData GetTileDataAcrossAllPlanets(int tileIndex)
+    {
+        if (TileDataHelper.Instance == null) return null;
+        
+        // First try current planet (most common case)
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData != null) return tileData;
+        
+        // If not found, check all planets
+        if (GameManager.Instance?.enableMultiPlanetSystem == true)
+        {
+            var planetData = GameManager.Instance.GetPlanetData();
+            foreach (var kvp in planetData)
+            {
+                var (planetTileData, _) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, kvp.Key);
+                if (planetTileData != null) return planetTileData;
+            }
+        }
+        
+        return null;
     }
 
     void Awake()
@@ -39,8 +65,8 @@ public class ImprovementManager : MonoBehaviour
         // No duplicate jobs on same tile
         if (jobs.Exists(j => j.tileIndex == tileIndex)) return false;
 
-        // Check tile requirements
-        var td = planetGenerator.GetHexTileData(tileIndex);
+        // Check tile requirements across all planets
+        var td = GetTileDataAcrossAllPlanets(tileIndex);
         if (td == null) return false;
         
         // Basic terrain checks

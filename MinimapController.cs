@@ -56,6 +56,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     private Vector3 _lastCameraPosition;
     private float _minimapRefreshCooldown = 0.038f; // Much faster refresh now that it's optimized!
     private float _lastRefreshTime;
+    private float _lastTextureCheckTime; // Performance: Only check texture assignment periodically
 
     private RectTransform _rt;
 
@@ -84,29 +85,38 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
 
     void Update()
     {
-        var currentGenerator = GetCurrentGenerator();
-        if (currentGenerator && currentGenerator.IsReady && minimapImage.texture == null)
-            minimapImage.texture = currentGenerator.minimapTexture;
+        // PERFORMANCE FIX: Only check texture assignment once per second
+        if (Time.time - _lastTextureCheckTime > 0.0001f)
+        {
+            var currentGenerator = GetCurrentGenerator();
+            if (currentGenerator && currentGenerator.IsReady && minimapImage.texture == null)
+                minimapImage.texture = currentGenerator.minimapTexture;
+            _lastTextureCheckTime = Time.time;
+        }
 
         UpdateMarker();
         
-        // Update zoom center when camera moves significantly (with throttling)
-        if (currentGenerator != null && _currentZoomLevel != 1.0f && mainCamera != null)
+        // PERFORMANCE FIX: Improved camera movement detection and throttling
+        if (_currentZoomLevel != 1.0f && mainCamera != null)
         {
-            float distanceMoved = Vector3.Distance(mainCamera.transform.position, _lastCameraPosition);
-            bool shouldRefresh = distanceMoved > 0.01f && (Time.time - _lastRefreshTime) > _minimapRefreshCooldown; // More sensitive movement detection
-            
-            if (shouldRefresh)
+            var currentGenerator = GetCurrentGenerator();
+            if (currentGenerator != null)
             {
-                UpdateZoomCenter();
-                currentGenerator.Rebuild(); // Now much faster - just samples from master texture!
-                _lastCameraPosition = mainCamera.transform.position;
-                _lastRefreshTime = Time.time;
-            }
-            else
-            {
-                // Just update center without rebuilding for smooth marker movement
-                UpdateZoomCenterOnly();
+                float distanceMoved = Vector3.Distance(mainCamera.transform.position, _lastCameraPosition);
+                bool shouldRefresh = distanceMoved > 0.05f && (Time.time - _lastRefreshTime) > _minimapRefreshCooldown; // Increased threshold for better performance
+                
+                if (shouldRefresh)
+                {
+                    UpdateZoomCenter();
+                    currentGenerator.Rebuild(); // Now much faster - just samples from master texture!
+                    _lastCameraPosition = mainCamera.transform.position;
+                    _lastRefreshTime = Time.time;
+                }
+                else if (distanceMoved > 0.01f)
+                {
+                    // Just update center without rebuilding for smooth marker movement
+                    UpdateZoomCenterOnly();
+                }
             }
         }
     }

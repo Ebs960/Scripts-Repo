@@ -62,22 +62,20 @@ public class UnitMovementController : MonoBehaviour
     public void FindReferencesInCurrentScene()
     {
         // Find SphericalHexGrid directly in the current scene via PlanetGenerator
-        if (grid == null)
-        {
-            var pg = FindAnyObjectByType<PlanetGenerator>();
-            grid = pg != null ? pg.Grid : null;
-        }
-        
-        // Find PlanetGenerator directly in the current scene
+        // Use GameManager API for multi-planet support
         if (planet == null)
         {
-            planet = FindAnyObjectByType<PlanetGenerator>();
+            planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         }
         
-        // Find MoonGenerator directly in the current scene
         if (moon == null)
         {
-            moon = FindAnyObjectByType<MoonGenerator>();
+            moon = GameManager.Instance?.GetCurrentMoonGenerator();
+        }
+        
+        if (grid == null && planet != null)
+        {
+            grid = planet.Grid;
         }
         
         Debug.Log($"[UnitMovementController] Found references in scene - Grid: {grid != null}, Planet: {planet != null}, Moon: {moon != null}");

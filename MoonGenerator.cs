@@ -1218,8 +1218,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             // Create rotation to orient the decoration away from moon center
             Quaternion decorationRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere, upDirection).normalized, upDirection);
             
-            // Instantiate the decoration
-            GameObject decoration = Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
+            // PERFORMANCE FIX: Use object pooling for decorations instead of Instantiate
+            GameObject decoration = SimpleObjectPool.Instance != null 
+                ? SimpleObjectPool.Instance.Get(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform)
+                : Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
             
             // Apply decoration scale with variation
 

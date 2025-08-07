@@ -92,7 +92,8 @@ public class CombatUnit : MonoBehaviour
     void Awake()
     {
         animator = GetComponent<Animator>();
-        planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null) grid = planet.Grid;
         UnitRegistry.Register(gameObject);
     }
@@ -606,7 +607,8 @@ public class CombatUnit : MonoBehaviour
         // Ensure grid is initialized before calling PositionUnitOnSurface
         if (grid == null)
         {
-            planet = FindAnyObjectByType<PlanetGenerator>();
+            // Use GameManager API for multi-planet support
+        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
             if (planet != null)
             {
                 grid = planet.Grid;

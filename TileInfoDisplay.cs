@@ -35,6 +35,11 @@ public class TileInfoDisplay : MonoBehaviour
     // Optimization: only update when hovering over a different tile
     int lastHoveredTileIndex = -1;
     bool wasHoveringLastFrame = false;
+    
+    // Performance optimization: only raycast when mouse moves
+    private Vector3 lastMousePosition = Vector3.zero;
+    private bool forceRaycastNextFrame = false;
+    private const float MOUSE_MOVEMENT_THRESHOLD = 1f; // pixels
 
     // ─────────────────────────────────────────────────────────────
     // Unity - Awake
@@ -93,13 +98,26 @@ public class TileInfoDisplay : MonoBehaviour
     {
         if (!isReady) return;
 
+        // PERFORMANCE FIX: Only raycast when mouse actually moves
+        Vector3 currentMousePosition = Input.mousePosition;
+        float mouseDistance = Vector3.Distance(currentMousePosition, lastMousePosition);
+        
+        if (mouseDistance < MOUSE_MOVEMENT_THRESHOLD && !forceRaycastNextFrame)
+        {
+            // Mouse hasn't moved enough, skip expensive raycast
+            return;
+        }
+        
+        lastMousePosition = currentMousePosition;
+        forceRaycastNextFrame = false;
+
         bool hovering = false;
         int currentTileIndex = -1;
 
         // Use TileDataHelper which is aware of both Planet and Moon generators
         if (TileDataHelper.Instance != null && Camera.main != null)
         {
-            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            var ray = Camera.main.ScreenPointToRay(currentMousePosition);
             
             // Raycast with layer filtering to avoid atmosphere and other non-tile objects
             // Use a reasonable layermask - typically tiles are on Default layer (0)
@@ -158,6 +176,14 @@ public class TileInfoDisplay : MonoBehaviour
         // Always keep the display active once we've hovered over a tile
         // Don't hide the marker or clear text - just keep showing the last hovered tile
         wasHoveringLastFrame = hovering;
+    }
+    
+    /// <summary>
+    /// Force a raycast on the next frame (useful when planet switches, etc.)
+    /// </summary>
+    public void ForceRefresh()
+    {
+        forceRaycastNextFrame = true;
     }
 
     void ClearDisplay() => infoText.text = "";

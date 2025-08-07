@@ -49,7 +49,8 @@ public class WorkerUnit : MonoBehaviour
     void Awake()
     {
         animator = GetComponent<Animator>();
-        planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null) grid = planet.Grid;
         unitAnimator = GetComponent<Animator>();
         UnitRegistry.Register(gameObject);

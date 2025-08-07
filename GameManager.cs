@@ -362,6 +362,62 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Cache structure for batched manager finding
+    /// </summary>
+    private struct ManagerCache
+    {
+        public CivilizationManager civilizationManager;
+        public ClimateManager climateManager;
+        public TurnManager turnManager;
+        public UnitSelectionManager unitSelectionManager;
+        public UnitMovementController unitMovementController;
+        public PolicyManager policyManager;
+        public DiplomacyManager diplomacyManager;
+        public ResourceManager resourceManager;
+        public ReligionManager religionManager;
+        public AnimalManager animalManager;
+        public AncientRuinsManager ancientRuinsManager;
+        public LoadingPanelController loadingPanelController;
+        public PlanetaryCameraManager cameraManager;
+        public MinimapController minimapController;
+    }
+
+    /// <summary>
+    /// PERFORMANCE FIX: Batch all FindAnyObjectByType calls into a single scene search
+    /// </summary>
+    private ManagerCache CacheAllManagerReferences()
+    {
+        // Find all managers in one pass through the scene
+        var allComponents = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        
+        ManagerCache cache = new ManagerCache();
+        
+        foreach (var component in allComponents)
+        {
+            switch (component)
+            {
+                case CivilizationManager cm: cache.civilizationManager = cm; break;
+                case ClimateManager clm: cache.climateManager = clm; break;
+                case TurnManager tm: cache.turnManager = tm; break;
+                case UnitSelectionManager usm: cache.unitSelectionManager = usm; break;
+                case UnitMovementController umc: cache.unitMovementController = umc; break;
+                case PolicyManager pm: cache.policyManager = pm; break;
+                case DiplomacyManager dm: cache.diplomacyManager = dm; break;
+                case ResourceManager rm: cache.resourceManager = rm; break;
+                case ReligionManager rgnm: cache.religionManager = rgnm; break;
+                case AnimalManager am: cache.animalManager = am; break;
+                case AncientRuinsManager arm: cache.ancientRuinsManager = arm; break;
+                case LoadingPanelController lpc: cache.loadingPanelController = lpc; break;
+                case PlanetaryCameraManager pcm: cache.cameraManager = pcm; break;
+                case MinimapController mc: cache.minimapController = mc; break;
+            }
+        }
+        
+        Debug.Log($"[GameManager] Cached manager references in one scene search");
+        return cache;
+    }
+
+    /// <summary>
     /// Finds and assigns references to core managers in the current scene.
     /// Creates managers if they don't exist.
     /// This should be called after the Game scene is loaded.
@@ -380,8 +436,12 @@ public class GameManager : MonoBehaviour
             Debug.Log("[GameManager] TileDataHelper already exists");
         }
         
+        // PERFORMANCE FIX: Batch all FindAnyObjectByType calls together
+        // This reduces the number of expensive scene searches from 15+ to 1
+        var foundManagers = CacheAllManagerReferences();
+        
         // Find or create CivilizationManager
-        civilizationManager = FindAnyObjectByType<CivilizationManager>();
+        civilizationManager = foundManagers.civilizationManager;
         if (civilizationManager == null)
         {
             if (civilizationManagerPrefab != null)
@@ -396,7 +456,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create ClimateManager
-        climateManager = FindAnyObjectByType<ClimateManager>();
+        climateManager = foundManagers.climateManager;
         if (climateManager == null)
         {
             if (climateManagerPrefab != null)
@@ -410,10 +470,10 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        diplomacyManager = FindAnyObjectByType<DiplomacyManager>();
+        diplomacyManager = foundManagers.diplomacyManager;
 
         // Find or create TurnManager
-        turnManager = FindAnyObjectByType<TurnManager>();
+        turnManager = foundManagers.turnManager;
         if (turnManager == null)
         {
             if (turnManagerPrefab != null)
@@ -428,7 +488,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create UnitSelectionManager
-        var unitSelectionManager = FindAnyObjectByType<UnitSelectionManager>();
+        var unitSelectionManager = foundManagers.unitSelectionManager;
         if (unitSelectionManager == null)
         {
             if (unitSelectionManagerPrefab != null)
@@ -446,7 +506,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create UnitMovementController
-        var unitMovementControllerObj = FindAnyObjectByType<UnitMovementController>();
+        var unitMovementControllerObj = foundManagers.unitMovementController;
         if (unitMovementControllerObj == null)
         {
             if (unitMovementControllerPrefab != null)
@@ -464,7 +524,7 @@ public class GameManager : MonoBehaviour
         // (We don't store unitMovementControllerObj in a public field here; we'll find it when needed)
 
         // Find or create PolicyManager
-        var policyManager = FindAnyObjectByType<PolicyManager>();
+        var policyManager = foundManagers.policyManager;
         if (policyManager == null)
         {
             if (policyManagerPrefab != null)
@@ -479,7 +539,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create DiplomacyManager
-        diplomacyManager = FindAnyObjectByType<DiplomacyManager>();
+        diplomacyManager = foundManagers.diplomacyManager;
         if (diplomacyManager == null)
         {
             if (diplomacyManagerPrefab != null)
@@ -494,7 +554,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create ResourceManager
-        var resourceManager = FindAnyObjectByType<ResourceManager>();
+        var resourceManager = foundManagers.resourceManager;
         if (resourceManager == null)
         {
             if (resourceManagerPrefab != null)
@@ -509,7 +569,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create ReligionManager
-        var religionManager = FindAnyObjectByType<ReligionManager>();
+        var religionManager = foundManagers.religionManager;
         if (religionManager == null)
         {
             if (religionManagerPrefab != null)
@@ -524,7 +584,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create AnimalManager
-        var animalManager = FindAnyObjectByType<AnimalManager>();
+        var animalManager = foundManagers.animalManager;
         if (animalManager == null)
         {
             if (animalManagerPrefab != null)
@@ -539,7 +599,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Find or create AncientRuinsManager
-        var ancientRuinsManager = FindAnyObjectByType<AncientRuinsManager>();
+        var ancientRuinsManager = foundManagers.ancientRuinsManager;
         if (ancientRuinsManager == null)
         {
             if (ancientRuinsManagerPrefab != null)
@@ -1778,8 +1838,47 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         OnGameEnded?.Invoke();
 
+        // PERFORMANCE FIX: Clean up memory before scene transition
+        CleanupMemory();
+
         // Return to main menu scene
         SceneManager.LoadScene("MainMenu");
+    }
+    
+    /// <summary>
+    /// Clean up memory to prevent leaks and improve performance
+    /// </summary>
+    private void CleanupMemory()
+    {
+        Debug.Log("[GameManager] Starting memory cleanup...");
+        
+        // Clear object pools
+        if (SimpleObjectPool.Instance != null)
+        {
+            SimpleObjectPool.Instance.ClearAllPools();
+        }
+        
+        // Clear tile data caches
+        if (TileDataHelper.Instance != null)
+        {
+            TileDataHelper.Instance.ClearAllCaches();
+        }
+        
+        // Clear planet/moon generator references
+        planetGenerators.Clear();
+        moonGenerators.Clear();
+        planetClimateManagers.Clear();
+        planetCivManagers.Clear();
+        planetData.Clear();
+        
+        // Clear hex tiles data
+        hexTiles.Clear();
+        
+        // Force garbage collection
+        System.GC.Collect();
+        Resources.UnloadUnusedAssets();
+        
+        Debug.Log("[GameManager] Memory cleanup completed");
     }
 
     /// <summary>

@@ -198,7 +198,8 @@ public class ClimateManager : MonoBehaviour
 
     private void UpdateReferences()
     {
-        planet = FindAnyObjectByType<PlanetGenerator>();
+                    // Use GameManager API for multi-planet support
+            planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet == null)
         {
             Debug.LogError("[ClimateManager] Could not find PlanetGenerator in scene!");

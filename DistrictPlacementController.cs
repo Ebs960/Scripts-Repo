@@ -27,7 +27,8 @@ public class DistrictPlacementController : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
         
-        planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         grid = planet != null ? planet.Grid : null;
     }
     

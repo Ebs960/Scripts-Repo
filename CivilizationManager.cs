@@ -465,7 +465,8 @@ public class CivilizationManager : MonoBehaviour
         civs.Clear();
         currentCivIndex = -1;
         
-        var planet   = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet   = GameManager.Instance?.GetCurrentPlanetGenerator();
         var grid      = planet != null ? planet.Grid : null;
         var occupied = new HashSet<int>();
 
@@ -575,7 +576,8 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         
-        var planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         var grid  = planet != null ? planet.Grid : null;
         if (grid == null)
         {
@@ -694,7 +696,8 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     int FindSpawnTile(CivData data, HashSet<int> occupied, bool enforceClimate)
     {
-        var planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         var grid    = planet != null ? planet.Grid : null;
         var candidates = new List<int>();
 
@@ -750,7 +753,8 @@ public class CivilizationManager : MonoBehaviour
 
         // Pick a generic CivData (e.g. a city-state template)
         var template = allCivDatas.FirstOrDefault(d => d.isCityState) ?? allCivDatas[0];
-        var planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         var grid = planet != null ? planet.Grid : null;
         civ.Initialize(template, null, false, grid, planet);
 

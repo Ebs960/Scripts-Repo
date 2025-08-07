@@ -50,7 +50,8 @@ public class TechManager : MonoBehaviour
             foreach (var biome in tech.requiredControlledBiomes)
             {
                 // Use FindAnyObjectByType instead of Instance
-                PlanetGenerator planetGen = FindAnyObjectByType<PlanetGenerator>();
+                // Use GameManager API for multi-planet support
+        PlanetGenerator planetGen = GameManager.Instance?.GetCurrentPlanetGenerator();
                 int count = civ.ownedTileIndices
                     .FindAll(idx => {
                         var td = planetGen.GetHexTileData(idx);

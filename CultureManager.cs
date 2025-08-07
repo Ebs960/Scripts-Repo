@@ -19,7 +19,8 @@ public class CultureManager : MonoBehaviour
     public List<CultureData> GetAvailableCultures(Civilization civ)
     {
         var available = new List<CultureData>();
-        var planet = FindAnyObjectByType<PlanetGenerator>();
+        // Use GameManager API for multi-planet support
+        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         
         if (planet == null)
         {
