@@ -141,9 +141,8 @@ public class MinimapGenerator : MonoBehaviour
         for (int i = 0; i < tileCount; i++)
         {
             _tileIndices.Add(i);
-            // IMPORTANT: grid.tileCenters are in planet-local space already
-            // Do NOT subtract world root position for off-origin planets
-            Vector3 dir = grid.tileCenters[i].normalized;
+            // Compute direction relative to the planet's own center so off-origin planets work correctly
+            Vector3 dir = (grid.tileCenters[i] - planetRoot.position).normalized;
             _tileDirs[i] = dir;
         }
         
