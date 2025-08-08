@@ -249,6 +249,8 @@ public class GameManager : MonoBehaviour
     [Header("Minimap Configuration")]
     [Tooltip("MinimapColorProvider ScriptableObject asset for minimap rendering")]
     public MinimapColorProvider minimapColorProvider;
+    [Tooltip("Pre-build minimap textures for all planets at startup")]
+    public bool prebuildAllMinimaps = true;
 
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
     private SpaceLoadingPanelController spaceLoadingPanel; // Reference to space loading panel
@@ -1864,42 +1866,51 @@ public class GameManager : MonoBehaviour
                     minimapGen.colorProvider = minimapColorProvider;
                 }
                 
-                // Configure it (but don't build yet - build on-demand when switching to planet)
+                // Configure minimap generator
                 minimapGen.ConfigureDataSource(planetGen, planetGen.transform, MinimapDataSource.PlanetByIndex, planetIndex);
-                // DON'T BUILD HERE - this is too expensive for 15 planets at once!
-                
+
                 // Add to minimap controller
                 minimapController.AddPlanet(planetIndex, minimapGen, planetGen.transform);
-                
+
+                if (prebuildAllMinimaps)
+                {
+                    minimapGen.Build();
+                }
+
                 Debug.Log($"[GameManager] Configured minimap for planet {planetIndex}");
-                
+
                 // Setup moon minimap for this planet if it has one
                 if (moonGenerators.ContainsKey(planetIndex) && moonGenerators[planetIndex] != null)
                 {
                     var moonGen = moonGenerators[planetIndex];
                     var moonMinimapGenGO = new GameObject($"MinimapGenerator_Moon_{planetIndex}");
                     var moonMinimapGen = moonMinimapGenGO.AddComponent<MinimapGenerator>();
-                    
+
                     // CRITICAL FIX: Assign ColorProvider if one exists
                     if (minimapColorProvider != null)
                     {
                         moonMinimapGen.colorProvider = minimapColorProvider;
                     }
-                    
+
                     moonMinimapGen.ConfigureDataSource(moonGen, moonGen.transform, MinimapDataSource.Moon);
-                    // DON'T BUILD HERE - build on-demand when switching to this planet's moon
-                    
+
                     // Add moon to the minimap controller so Moon target can resolve
                     minimapController.AddMoon(planetIndex, moonMinimapGen, moonGen.transform);
+
+                    if (prebuildAllMinimaps)
+                    {
+                        moonMinimapGen.Build();
+                    }
+
                     Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
                 }
             }
             
-            // Set initial planet and build its minimap
+            // Set initial planet minimap
             if (planetGenerators.Count > 0)
             {
                 minimapController.SwitchToPlanet(currentPlanetIndex);
-                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex} - minimap will build on-demand");
+                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex} - {(prebuildAllMinimaps ? "minimaps pre-built" : "minimap will build on-demand")}");
             }
         }
         else
@@ -1935,7 +1946,10 @@ public class GameManager : MonoBehaviour
                 Debug.Log("Planet minimap generator configured.");
 
                 // Build planet minimap
-                minimapController.planetGenerator.Build();
+                if (prebuildAllMinimaps)
+                {
+                    minimapController.planetGenerator.Build();
+                }
             }
             else
             {
@@ -1962,7 +1976,10 @@ public class GameManager : MonoBehaviour
                     Debug.Log("Moon minimap generator configured.");
 
                     // Build moon minimap
-                    minimapController.moonGenerator.Build();
+                    if (prebuildAllMinimaps)
+                    {
+                        minimapController.moonGenerator.Build();
+                    }
                 }
                 else
                 {

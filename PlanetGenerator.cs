@@ -749,21 +749,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Override polar land areas with frozen biomes
+                // Override polar land areas with planet-specific polar biomes
                 if (absLatitude >= polarLatitudeThreshold) {
-                    // Use latitude distance from threshold to determine how "polar" it is
-                    float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
-                    
-                    if (polarIntensity > 0.7f) {
-                        // Most extreme polar regions: Arctic (coldest of all)
-                        biome = Biome.Arctic;
-                    } else if (moisture > 0.3f) {
-                        // Less extreme but wet polar: Snow
-                        biome = Biome.Snow;
-                    } else {
-                        // Less extreme and dry polar: Frozen
-                        biome = Biome.Frozen;
-                    }
+                    biome = GetPolarBiome(absLatitude, moisture);
                 }
 
                 if (finalElevation > mountainThreshold) { 
@@ -1692,6 +1680,34 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
             isCallistoWorldType, isLunaWorldType
         );
+    }
+
+    private Biome GetPolarBiome(float absLatitude, float moisture)
+    {
+        if (IsEarthWorld())
+        {
+            float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
+            if (polarIntensity > 0.7f)
+                return Biome.Arctic;
+            return moisture > 0.3f ? Biome.Snow : Biome.Frozen;
+        }
+
+        if (isMarsWorldType) return Biome.MartianPolarIce;
+        if (isUranusWorldType) return Biome.UranianIce;
+        if (isNeptuneWorldType) return Biome.NeptunianIce;
+        if (isPlutoWorldType) return Biome.PlutoCryo;
+        if (isEuropaWorldType) return Biome.EuropaIce;
+        if (isTitanWorldType) return Biome.TitanIce;
+        return Biome.Arctic;
+    }
+
+    private bool IsEarthWorld()
+    {
+        return !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType &&
+               !isJupiterWorldType && !isSaturnWorldType && !isUranusWorldType &&
+               !isNeptuneWorldType && !isPlutoWorldType &&
+               !isTitanWorldType && !isEuropaWorldType && !isIoWorldType &&
+               !isGanymedeWorldType && !isCallistoWorldType && !isLunaWorldType;
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)
