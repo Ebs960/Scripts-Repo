@@ -105,6 +105,10 @@ public class TurnManager : MonoBehaviour
         if (isPlayer && round > 1 && AnimalManager.Instance != null)
             AnimalManager.Instance.ProcessTurn();
 
+        // Progress interplanetary space travel
+        if (isPlayer && SpaceRouteManager.Instance != null)
+            SpaceRouteManager.Instance.ProgressAllTravels();
+
         OnTurnChanged?.Invoke(civ, round);
         OnAIProcessingChanged?.Invoke(!isPlayer, civ);
 

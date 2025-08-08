@@ -68,6 +68,18 @@ public class UnitSelectionManager : MonoBehaviour
         {
             HandleRightClick();
         }
+        
+        // Space key: Show space travel UI for selected unit
+        if (Input.GetKeyDown(KeyCode.Space) && HasSelectedUnit())
+        {
+            HandleSpaceTravelKey();
+        }
+        
+        // M key: Open space map for solar system overview
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            HandleSpaceMapKey();
+        }
     }
     
     /// <summary>
@@ -327,5 +339,38 @@ public class UnitSelectionManager : MonoBehaviour
     public bool HasSelectedUnit()
     {
         return selectedUnit != null;
+    }
+
+    /// <summary>
+    /// Handle space key press to show space travel UI
+    /// </summary>
+    private void HandleSpaceTravelKey()
+    {
+        if (selectedUnit == null)
+            return;
+
+        // Get current planet index
+        int currentPlanetIndex = GameManager.Instance?.currentPlanetIndex ?? 0;
+
+        // Show embark UI
+        SpaceEmbarkUI.ShowEmbarkUIForUnit(selectedUnit.gameObject, currentPlanetIndex);
+        
+        Debug.Log($"[UnitSelectionManager] Showing space travel UI for {GetUnitName(selectedUnit)} on Planet {currentPlanetIndex}");
+    }
+
+    /// <summary>
+    /// Handle M key press to show space map
+    /// </summary>
+    private void HandleSpaceMapKey()
+    {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowSpaceMap();
+            Debug.Log("[UnitSelectionManager] Opening Space Map (M key pressed)");
+        }
+        else
+        {
+            Debug.LogWarning("[UnitSelectionManager] UIManager.Instance is null - cannot open space map");
+        }
     }
 } 

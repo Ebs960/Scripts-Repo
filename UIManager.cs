@@ -17,6 +17,7 @@ public class UIManager : MonoBehaviour
     public GameObject diplomacyPanel;
     public GameObject unitInfoPanel;
     public GameObject playerUI;
+    public SpaceMapUI spaceMapUI;
 
     [Header("Notification Settings")]
     public float notificationDuration = 3f;
@@ -246,5 +247,32 @@ public class UIManager : MonoBehaviour
         if (UnitSelectionManager.Instance != null)
             UnitSelectionManager.Instance.DeselectUnit();
         HideUnitInfoPanel();
+    }
+
+    /// <summary>
+    /// Show the space map UI for interplanetary travel and visualization
+    /// </summary>
+    public void ShowSpaceMap()
+    {
+        if (spaceMapUI != null)
+        {
+            Debug.Log("[UIManager] Opening Space Map UI");
+            spaceMapUI.Show();
+        }
+        else
+        {
+            Debug.LogWarning("[UIManager] SpaceMapUI is not assigned! Please assign it in the Inspector.");
+        }
+    }
+
+    /// <summary>
+    /// Hide the space map UI
+    /// </summary>
+    public void HideSpaceMap()
+    {
+        if (spaceMapUI != null)
+        {
+            spaceMapUI.Hide();
+        }
     }
 }

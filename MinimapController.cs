@@ -30,6 +30,10 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     public Dictionary<int, MinimapGenerator> planetGenerators = new Dictionary<int, MinimapGenerator>();
     [Tooltip("Dictionary of planet root transforms (for multi-planet system)")]
     public Dictionary<int, Transform> planetRoots = new Dictionary<int, Transform>();
+    [Tooltip("Dictionary of moon minimap generators per planet (for multi-planet system)")]
+    public Dictionary<int, MinimapGenerator> moonGenerators = new Dictionary<int, MinimapGenerator>();
+    [Tooltip("Dictionary of moon root transforms per planet (for multi-planet system)")]
+    public Dictionary<int, Transform> moonRoots = new Dictionary<int, Transform>();
     [Tooltip("Current planet index for multi-planet system")]
     public int currentPlanetIndex = 0;
     
@@ -328,9 +332,9 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
             if (currentTarget == MinimapTarget.PlanetByIndex)
-            {
                 return planetGenerators.TryGetValue(currentPlanetIndex, out var generator) ? generator : null;
-            }
+            if (currentTarget == MinimapTarget.Moon)
+                return moonGenerators.TryGetValue(currentPlanetIndex, out var moonGen) ? moonGen : null;
         }
         
         // Original behavior
@@ -343,9 +347,9 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
             if (currentTarget == MinimapTarget.PlanetByIndex)
-            {
                 return planetRoots.TryGetValue(currentPlanetIndex, out var root) ? root : null;
-            }
+            if (currentTarget == MinimapTarget.Moon)
+                return moonRoots.TryGetValue(currentPlanetIndex, out var mroot) ? mroot : null;
         }
         
         // Original behavior
@@ -363,6 +367,16 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         
         // Update dropdown options
         UpdatePlanetDropdown();
+    }
+
+    /// <summary>
+    /// Add a moon minimap generator for a given planet index
+    /// </summary>
+    public void AddMoon(int planetIndex, MinimapGenerator generator, Transform root)
+    {
+        moonGenerators[planetIndex] = generator;
+        moonRoots[planetIndex] = root;
+        Debug.Log($"[MinimapController] Added moon for planet {planetIndex} to minimap system");
     }
     
     /// <summary>

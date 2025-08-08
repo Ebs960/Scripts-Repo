@@ -48,6 +48,8 @@ public class GameManager : MonoBehaviour
     [Header("Space System Prefabs")]
     [Tooltip("AncientRuinsManager prefab for handling ancient ruins discovery")]
     public GameObject ancientRuinsManagerPrefab;
+    [Tooltip("SpaceRouteManager prefab for handling interplanetary unit travel")]
+    public GameObject spaceRouteManagerPrefab;
 
     [Header("Game Settings")]
     public CivData selectedPlayerCivilizationData;
@@ -243,6 +245,10 @@ public class GameManager : MonoBehaviour
     public GameObject playerUIPrefab;
     public GameObject planetaryCameraPrefab; // Assign 'New Map Shit/Camera Controller.prefab'
     public GameObject spaceLoadingPanelPrefab; // Assign space loading panel prefab
+    
+    [Header("Minimap Configuration")]
+    [Tooltip("MinimapColorProvider ScriptableObject asset for minimap rendering")]
+    public MinimapColorProvider minimapColorProvider;
 
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
     private SpaceLoadingPanelController spaceLoadingPanel; // Reference to space loading panel
@@ -434,6 +440,26 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.Log("[GameManager] TileDataHelper already exists");
+        }
+
+        // Create SpaceRouteManager for interplanetary travel
+        if (SpaceRouteManager.Instance == null)
+        {
+            if (spaceRouteManagerPrefab != null)
+            {
+                GameObject spaceRouteManagerGO = Instantiate(spaceRouteManagerPrefab);
+                Debug.Log("[GameManager] Created SpaceRouteManager from prefab");
+            }
+            else
+            {
+                GameObject spaceRouteManagerGO = new GameObject("SpaceRouteManager");
+                spaceRouteManagerGO.AddComponent<SpaceRouteManager>();
+                Debug.Log("[GameManager] Created SpaceRouteManager (no prefab assigned)");
+            }
+        }
+        else
+        {
+            Debug.Log("[GameManager] SpaceRouteManager already exists");
         }
         
         // PERFORMANCE FIX: Batch all FindAnyObjectByType calls together
@@ -1808,15 +1834,14 @@ public class GameManager : MonoBehaviour
             // MULTI-PLANET MODE: Setup minimap for each planet
             Debug.Log($"[GameManager] Configuring minimaps for {planetGenerators.Count} planets");
             
-            // CRITICAL FIX: Find existing ColorProvider in scene
-            var existingColorProvider = FindAnyObjectByType<MinimapColorProvider>();
-            if (existingColorProvider != null)
+            // CRITICAL FIX: Use assigned ColorProvider ScriptableObject
+            if (minimapColorProvider != null)
             {
-                Debug.Log($"[GameManager] Found existing MinimapColorProvider with render mode: {existingColorProvider.renderMode}");
+                Debug.Log($"[GameManager] Using assigned MinimapColorProvider with render mode: {minimapColorProvider.renderMode}");
             }
             else
             {
-                Debug.LogWarning("[GameManager] No MinimapColorProvider found in scene! Minimaps will use default colors.");
+                Debug.LogWarning("[GameManager] No MinimapColorProvider assigned in GameManager! Minimaps will use default colors. Please assign a MinimapColorProvider ScriptableObject in the Inspector.");
             }
             
             foreach (var kvp in planetGenerators)
@@ -1835,9 +1860,9 @@ public class GameManager : MonoBehaviour
                 var minimapGen = minimapGenGO.AddComponent<MinimapGenerator>();
                 
                 // CRITICAL FIX: Assign ColorProvider if one exists
-                if (existingColorProvider != null)
+                if (minimapColorProvider != null)
                 {
-                    minimapGen.colorProvider = existingColorProvider;
+                    minimapGen.colorProvider = minimapColorProvider;
                 }
                 
                 // Configure it (but don't build yet - build on-demand when switching to planet)
@@ -1857,15 +1882,16 @@ public class GameManager : MonoBehaviour
                     var moonMinimapGen = moonMinimapGenGO.AddComponent<MinimapGenerator>();
                     
                     // CRITICAL FIX: Assign ColorProvider if one exists
-                    if (existingColorProvider != null)
+                    if (minimapColorProvider != null)
                     {
-                        moonMinimapGen.colorProvider = existingColorProvider;
+                        moonMinimapGen.colorProvider = minimapColorProvider;
                     }
                     
                     moonMinimapGen.ConfigureDataSource(moonGen, moonGen.transform, MinimapDataSource.Moon);
                     // DON'T BUILD HERE - build on-demand when switching to this planet's moon
                     
-                    // Add moon to the same planet's minimap system
+                    // Add moon to the minimap controller so Moon target can resolve
+                    minimapController.AddMoon(planetIndex, moonMinimapGen, moonGen.transform);
                     Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
                 }
             }
@@ -1882,24 +1908,23 @@ public class GameManager : MonoBehaviour
             // SINGLE-PLANET MODE: Use existing setup
             Debug.Log("[GameManager] Configuring single-planet minimap");
             
-            // CRITICAL FIX: Find existing ColorProvider in scene for single-planet mode too
-            var existingColorProvider = FindAnyObjectByType<MinimapColorProvider>();
-            if (existingColorProvider != null)
+            // CRITICAL FIX: Use assigned ColorProvider ScriptableObject for single-planet mode too
+            if (minimapColorProvider != null)
             {
-                Debug.Log($"[GameManager] Found existing MinimapColorProvider with render mode: {existingColorProvider.renderMode}");
+                Debug.Log($"[GameManager] Using assigned MinimapColorProvider with render mode: {minimapColorProvider.renderMode}");
             }
             else
             {
-                Debug.LogWarning("[GameManager] No MinimapColorProvider found in scene! Minimaps will use default colors.");
+                Debug.LogWarning("[GameManager] No MinimapColorProvider assigned in GameManager! Minimaps will use default colors. Please assign a MinimapColorProvider ScriptableObject in the Inspector.");
             }
             
             // Configure planet minimap generator
             if (minimapController.planetGenerator != null)
             {
                 // CRITICAL FIX: Assign ColorProvider if one exists
-                if (existingColorProvider != null)
+                if (minimapColorProvider != null)
                 {
-                    minimapController.planetGenerator.colorProvider = existingColorProvider;
+                    minimapController.planetGenerator.colorProvider = minimapColorProvider;
                 }
                 
                 minimapController.planetGenerator.ConfigureDataSource(
@@ -1924,9 +1949,9 @@ public class GameManager : MonoBehaviour
                 if (moonGenerator != null)
                 {
                     // CRITICAL FIX: Assign ColorProvider if one exists
-                    if (existingColorProvider != null)
+                    if (minimapColorProvider != null)
                     {
-                        minimapController.moonGenerator.colorProvider = existingColorProvider;
+                        minimapController.moonGenerator.colorProvider = minimapColorProvider;
                     }
                     
                     minimapController.moonGenerator.ConfigureDataSource(

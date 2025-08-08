@@ -242,32 +242,8 @@ public class MinimapGenerator : MonoBehaviour
                     tileData = new HexTileData { biome = Biome.Ocean };
                 }
 
-                // Create UV coordinates for this pixel
-                Vector2 uv = new Vector2(u, v);
-
-                // Use enhanced ColorProvider with UV support
-                Color c;
-                if (colorProvider != null)
-                {
-                    c = colorProvider.ColorFor(tileData, uv);
-                    
-                    // CRITICAL FIX: Check if ColorProvider returned magenta (missing biome)
-                    if (c == Color.magenta)
-                    {
-                        // ColorProvider failed, use our default fallback
-                        c = DefaultColorFor(tileData);
-                        
-                        // Log missing biome data (but only once per biome)
-                        if (x == 0 && y == 0)
-                        {
-                            Debug.LogWarning($"[MinimapGenerator] ColorProvider returned magenta for biome {tileData.biome} - using fallback color. Check MinimapColorProvider configuration!");
-                        }
-                    }
-                }
-                else
-                {
-                    c = DefaultColorFor(tileData);
-                }
+                // Match Earth behavior: sample by tile only (no global equirectangular texture sampling)
+                Color c = colorProvider != null ? colorProvider.ColorFor(tileData) : DefaultColorFor(tileData);
                 
                 // DEBUG: Log first pixel color to see what we're getting
                 if (x == 0 && y == 0)

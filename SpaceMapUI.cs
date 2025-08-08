@@ -39,6 +39,11 @@ public class SpaceMapUI : MonoBehaviour
     public float planetSpacing = 100f;
     public float connectionLineWidth = 2f;
     public Color connectionLineColor = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
+    
+    [Header("Space Travel Visualization")]
+    public GameObject spaceshipIconPrefab;
+    public Color activeTravelRouteColor = Color.cyan;
+    public float spaceshipIconSize = 20f;
 
     [Header("Planet Icons")]
     public PlanetTypeSprite[] planetTypeIcons;
@@ -47,6 +52,8 @@ public class SpaceMapUI : MonoBehaviour
     // private SolarSystemManager solarSystemManager; // REMOVED: Use GameManager.Instance
     private List<PlanetButton> planetButtons = new List<PlanetButton>();
     private List<GameObject> connectionLines = new List<GameObject>();
+    private List<GameObject> activeTravelRoutes = new List<GameObject>();
+    private List<GameObject> travelingSpaceships = new List<GameObject>();
     private GameManager.PlanetData selectedPlanet;
     private Vector2 homeWorldPosition = Vector2.zero;
 
@@ -677,6 +684,31 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     private void TravelToPlanet(GameManager.PlanetData planet)
     {
+        // Check if we have a selected spaceship unit to travel with
+        var selectedUnit = UnitSelectionManager.Instance?.GetSelectedUnit();
+        if (selectedUnit != null)
+        {
+            var combatUnit = selectedUnit.GetComponent<CombatUnit>();
+            if (combatUnit != null && combatUnit.data.category == CombatCategory.Spaceship)
+            {
+                // Use space travel system for spaceships
+                int currentPlanet = GameManager.Instance?.currentPlanetIndex ?? 0;
+                bool success = SpaceRouteManager.Instance?.StartSpaceTravel(selectedUnit.gameObject, currentPlanet, planet.planetIndex) ?? false;
+                
+                if (success)
+                {
+                    Debug.Log($"[SpaceMapUI] Started space travel for {selectedUnit.name} to {planet.planetName}");
+                    Hide();
+                    return;
+                }
+                else
+                {
+                    Debug.LogWarning($"[SpaceMapUI] Failed to start space travel for {selectedUnit.name}");
+                }
+            }
+        }
+        
+        // Fallback: Direct planet switching (for non-spaceship travel or no unit selected)
         Hide();
         if (GameManager.Instance != null)
         {
@@ -693,6 +725,8 @@ public class SpaceMapUI : MonoBehaviour
         gameObject.SetActive(true);
         spaceMapPanel.SetActive(true);
         RefreshPlanetData();
+        CreatePlanetButtons();
+        UpdateSpaceTravelVisualization();
     }
 
     /// <summary>
@@ -768,6 +802,180 @@ public class SpaceMapUI : MonoBehaviour
             {
                 line.transform.SetAsFirstSibling(); // Keep lines behind planets
             }
+        }
+        
+        // Update space travel visualization
+        UpdateSpaceTravelVisualization();
+    }
+
+    /// <summary>
+    /// Update visual representation of active space travel
+    /// </summary>
+    private void UpdateSpaceTravelVisualization()
+    {
+        // Clear existing travel visuals
+        ClearSpaceTravelVisuals();
+
+        // Get active space travels from SpaceRouteManager
+        if (SpaceRouteManager.Instance == null) return;
+
+        var activeTravels = SpaceRouteManager.Instance.GetActiveTravels();
+        var planetData = GameManager.Instance?.GetPlanetData();
+        if (planetData == null) return;
+
+        foreach (var travel in activeTravels)
+        {
+            // Create visual representation for each active travel
+            CreateTravelRouteVisualization(travel, planetData);
+            CreateTravelingSpaceshipIcon(travel, planetData);
+        }
+    }
+
+    /// <summary>
+    /// Clear all space travel visual elements
+    /// </summary>
+    private void ClearSpaceTravelVisuals()
+    {
+        foreach (var route in activeTravelRoutes)
+        {
+            if (route != null) Destroy(route);
+        }
+        activeTravelRoutes.Clear();
+
+        foreach (var ship in travelingSpaceships)
+        {
+            if (ship != null) Destroy(ship);
+        }
+        travelingSpaceships.Clear();
+    }
+
+    /// <summary>
+    /// Create visual route line for active space travel
+    /// </summary>
+    private void CreateTravelRouteVisualization(SpaceRouteManager.SpaceTravelTask travel, Dictionary<int, GameManager.PlanetData> planetData)
+    {
+        if (!planetData.ContainsKey(travel.originPlanetIndex) || !planetData.ContainsKey(travel.destinationPlanetIndex))
+            return;
+
+        // Find positions of origin and destination planets in UI space
+        Vector2 originPos = GetPlanetUIPosition(travel.originPlanetIndex);
+        Vector2 destPos = GetPlanetUIPosition(travel.destinationPlanetIndex);
+
+        if (originPos == Vector2.zero || destPos == Vector2.zero) return;
+
+        // Create animated route line
+        GameObject routeGO = CreateUIElement($"TravelRoute_{travel.taskId}", planetContainer);
+        Image routeImage = routeGO.AddComponent<Image>();
+        
+        // Set animated line appearance
+        routeImage.color = activeTravelRouteColor;
+        routeImage.sprite = null; // Use solid color
+        
+        // Calculate line position, rotation, and scale
+        Vector2 direction = destPos - originPos;
+        float distance = direction.magnitude;
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        
+        Vector2 center = (originPos + destPos) / 2f;
+        
+        RectTransform routeRect = routeGO.GetComponent<RectTransform>();
+        routeRect.anchoredPosition = center;
+        routeRect.sizeDelta = new Vector2(distance, connectionLineWidth * 2f); // Thicker for active routes
+        routeRect.rotation = Quaternion.Euler(0, 0, angle);
+        
+        // Add pulsing animation for active routes
+        StartCoroutine(AnimateActiveTravelRoute(routeImage));
+        
+        activeTravelRoutes.Add(routeGO);
+    }
+
+    /// <summary>
+    /// Create spaceship icon showing current travel position
+    /// </summary>
+    private void CreateTravelingSpaceshipIcon(SpaceRouteManager.SpaceTravelTask travel, Dictionary<int, GameManager.PlanetData> planetData)
+    {
+        if (!planetData.ContainsKey(travel.originPlanetIndex) || !planetData.ContainsKey(travel.destinationPlanetIndex))
+            return;
+
+        // Find positions of origin and destination planets in UI space
+        Vector2 originPos = GetPlanetUIPosition(travel.originPlanetIndex);
+        Vector2 destPos = GetPlanetUIPosition(travel.destinationPlanetIndex);
+
+        if (originPos == Vector2.zero || destPos == Vector2.zero) return;
+
+        // Calculate current position based on travel progress
+        Vector2 currentPos = Vector2.Lerp(originPos, destPos, travel.Progress);
+
+        // Create spaceship icon
+        GameObject shipGO = CreateUIElement($"TravelingShip_{travel.taskId}", planetContainer);
+        Image shipImage = shipGO.AddComponent<Image>();
+        
+        // Use spaceship icon or default circle
+        if (spaceshipIconPrefab != null)
+        {
+            var prefabImage = spaceshipIconPrefab.GetComponent<Image>();
+            if (prefabImage != null && prefabImage.sprite != null)
+            {
+                shipImage.sprite = prefabImage.sprite;
+                shipImage.color = Color.white;
+            }
+        }
+        else
+        {
+            // Default circle icon
+            shipImage.color = Color.yellow;
+        }
+        
+        // Position and size the spaceship icon
+        RectTransform shipRect = shipGO.GetComponent<RectTransform>();
+        shipRect.anchoredPosition = currentPos;
+        shipRect.sizeDelta = Vector2.one * spaceshipIconSize;
+        
+        // Add simple text component showing travel info
+        GameObject textGO = CreateUIElement("TravelText", shipGO.transform);
+        TextMeshProUGUI travelText = textGO.AddComponent<TextMeshProUGUI>();
+        travelText.text = $"{travel.unitName}\n{travel.turnsRemaining}T";
+        travelText.fontSize = 8;
+        travelText.alignment = TextAlignmentOptions.Center;
+        travelText.color = Color.white;
+        
+        RectTransform textRect = textGO.GetComponent<RectTransform>();
+        textRect.anchoredPosition = Vector2.zero;
+        textRect.sizeDelta = new Vector2(60, 30);
+        
+        travelingSpaceships.Add(shipGO);
+    }
+
+    /// <summary>
+    /// Get UI position for a planet by its index
+    /// </summary>
+    private Vector2 GetPlanetUIPosition(int planetIndex)
+    {
+        foreach (var planetButton in planetButtons)
+        {
+            if (planetButton != null && planetButton.GetPlanetData().planetIndex == planetIndex)
+            {
+                var rect = planetButton.GetComponent<RectTransform>();
+                return rect != null ? rect.anchoredPosition : Vector2.zero;
+            }
+        }
+        return Vector2.zero;
+    }
+
+    /// <summary>
+    /// Animate active travel routes with pulsing effect
+    /// </summary>
+    private System.Collections.IEnumerator AnimateActiveTravelRoute(Image routeImage)
+    {
+        while (routeImage != null)
+        {
+            // Pulse the alpha between 0.3 and 1.0
+            float alpha = 0.65f + 0.35f * Mathf.Sin(Time.time * 3f);
+            Color color = routeImage.color;
+            color.a = alpha;
+            routeImage.color = color;
+            
+            yield return null;
         }
     }
 }
