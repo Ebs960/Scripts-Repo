@@ -283,12 +283,26 @@ public void ZoomBy(float delta)
     orbitRadius = Mathf.Clamp(orbitRadius + delta, minOrbitRadius, maxOrbitRadius);
 }
 
-public void FocusOnDirection(Vector3 worldDir, float seconds = 0.35f)
+public void FocusOnDirection(Vector3 worldDir, float seconds = 0.35f, Vector3? newCenter = null, bool isMoon = false)
 {
-    // Convert worldDir (from planet center) to yaw/pitch for the camera
-    // Assume the planet is at planetCenter (not offset); adjust if not.
+    // Optionally retarget the orbit center before focusing
+    if (newCenter.HasValue)
+    {
+        currentOrbitCenter = newCenter.Value;
+        if (isMoon)
+        {
+            moonCenter = newCenter.Value;
+            onMoon = true;
+        }
+        else
+        {
+            planetCenter = newCenter.Value;
+            onMoon = false;
+        }
+    }
+
+    // Convert worldDir (from body center) to yaw/pitch for the camera
     Vector3 dir = worldDir.normalized;
-    // Yaw: atan2(z, x); Pitch: asin(y)
     float yawNew = Mathf.Atan2(dir.z, dir.x) * Mathf.Rad2Deg;
     float pitchNew = Mathf.Asin(dir.y) * Mathf.Rad2Deg;
     // Start a coroutine for a smooth lerp (if needed), else snap
