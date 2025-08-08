@@ -57,9 +57,6 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     public MinimapTarget currentTarget = MinimapTarget.Planet;
     
     private float _currentZoomLevel = 1.0f; // 1.0 = normal view, higher = zoomed in, lower = zoomed out
-    private Vector3 _lastCameraPosition;
-    private float _minimapRefreshCooldown = 0.038f; // Much faster refresh now that it's optimized!
-    private float _lastRefreshTime;
     private float _lastTextureCheckTime; // Performance: Only check texture assignment periodically
 
     private RectTransform _rt;
@@ -113,46 +110,6 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         }
 
         UpdateMarker();
-        
-        // PERFORMANCE FIX: Improved camera movement detection and throttling
-        if (_currentZoomLevel != 1.0f && mainCamera != null)
-        {
-            var currentGenerator = GetCurrentGenerator();
-            if (currentGenerator != null)
-            {
-                float distanceMoved = Vector3.Distance(mainCamera.transform.position, _lastCameraPosition);
-                bool shouldRefresh = distanceMoved > 0.05f && (Time.time - _lastRefreshTime) > _minimapRefreshCooldown; // Increased threshold for better performance
-                
-                if (shouldRefresh)
-                {
-                    UpdateZoomCenter();
-                    currentGenerator.Rebuild(); // Now much faster - just samples from master texture!
-                    _lastCameraPosition = mainCamera.transform.position;
-                    _lastRefreshTime = Time.time;
-                }
-                else if (distanceMoved > 0.01f)
-                {
-                    // Just update center without rebuilding for smooth marker movement
-                    UpdateZoomCenterOnly();
-                }
-            }
-        }
-    }
-    
-    private void UpdateZoomCenterOnly()
-    {
-        var generator = GetCurrentGenerator();
-        var currentRoot = GetCurrentRoot();
-        if (generator != null && mainCamera != null && currentRoot != null)
-        {
-            // Direction from planet center toward the camera in local space
-            Vector3 center = currentRoot.position;
-            Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
-            Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
-
-            // Only update the zoom center direction, don't rebuild yet
-            generator.zoomCenter = localDir;
-        }
     }
 
     // --- UI Hooks (wire to your buttons) ---
@@ -245,23 +202,8 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         var generator = GetCurrentGenerator();
         if (generator != null)
         {
-            // Update zoom center to current camera position
-            UpdateZoomCenter();
+            generator.SetZoomLevel(_currentZoomLevel);
             generator.Rebuild();
-        }
-    }
-    
-    private void UpdateZoomCenter()
-    {
-        var generator = GetCurrentGenerator();
-        var currentRoot = GetCurrentRoot();
-        if (generator != null && mainCamera != null && currentRoot != null)
-        {
-            // Set zoom center based on where the camera is looking
-            Vector3 center = currentRoot.position;
-            Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
-            Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
-            generator.SetZoomLevel(_currentZoomLevel, localDir);
         }
     }
 
@@ -466,13 +408,22 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     // --- Camera focus ---
     private void FocusCamera(Vector3 dir)
     {
-        if (cameraManager != null) {
-            cameraManager.FocusOnDirection(dir, clickLerpSeconds);
+        var currentRoot = GetCurrentRoot();
+        if (currentRoot == null) return;
+
+        bool isMoon = currentTarget == MinimapTarget.Moon;
+
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem && !isMoon)
+        {
+            StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(currentPlanetIndex));
         }
-        else {
-            // Fallback: rotate main camera to look at point on sphere
-            var currentRoot = GetCurrentRoot();
-            if (!currentRoot || !mainCamera) return;
+
+        if (cameraManager != null)
+        {
+            cameraManager.FocusOnDirection(dir, clickLerpSeconds, currentRoot.position, isMoon);
+        }
+        else if (mainCamera != null)
+        {
             Vector3 center = currentRoot.position;
             Vector3 newPos = center - dir * (mainCamera.transform.position - center).magnitude;
             StartCoroutine(LerpCamera(mainCamera.transform.position, newPos, clickLerpSeconds));
