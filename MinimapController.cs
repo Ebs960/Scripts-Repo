@@ -70,8 +70,22 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         _rt = minimapImage.rectTransform;
         
         // Wire up button events
-        if (planetButton) planetButton.onClick.AddListener(() => SwitchToTarget(MinimapTarget.Planet));
-        if (moonButton) moonButton.onClick.AddListener(() => SwitchToTarget(MinimapTarget.Moon));
+        if (planetButton)
+        {
+            planetButton.onClick.RemoveAllListeners();
+            planetButton.onClick.AddListener(() =>
+            {
+                if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+                    SwitchToPlanet(GameManager.Instance.currentPlanetIndex);
+                else
+                    SwitchToTarget(MinimapTarget.Planet);
+            });
+        }
+        if (moonButton)
+        {
+            moonButton.onClick.RemoveAllListeners();
+            moonButton.onClick.AddListener(() => SwitchToTarget(MinimapTarget.Moon));
+        }
         if (zoomInButton) zoomInButton.onClick.AddListener(OnZoomInButton);
         if (zoomOutButton) zoomOutButton.onClick.AddListener(OnZoomOutButton);
         if (planetDropdown) planetDropdown.onValueChanged.AddListener(OnPlanetDropdownChanged);
@@ -79,11 +93,11 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
 
     void Start()
     {
-        // Don't build minimaps here - they'll be built by GameManager after world generation
-        // Just set initial target
-        SwitchToTarget(currentTarget);
-        
-        // Update initial button states
+        // In multi-planet mode, GameManager will switch to the current planet after wiring
+        if (GameManager.Instance == null || !GameManager.Instance.enableMultiPlanetSystem)
+        {
+            SwitchToTarget(currentTarget);
+        }
         UpdateZoomButtonStates();
     }
 
@@ -314,7 +328,7 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         }
         
         // Update button states (optional visual feedback)
-        if (planetButton) planetButton.interactable = (target != MinimapTarget.Planet && target != MinimapTarget.PlanetByIndex);
+        if (planetButton) planetButton.interactable = (target != MinimapTarget.PlanetByIndex);
         if (moonButton) moonButton.interactable = (target != MinimapTarget.Moon);
         
         // Navigation buttons removed - using dropdown instead
@@ -323,8 +337,29 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         UpdateZoomButtonStates();
     }
 
-    public void SwitchToPlanet() => SwitchToTarget(MinimapTarget.Planet);
-    public void SwitchToMoon() => SwitchToTarget(MinimapTarget.Moon);
+    public void SwitchToPlanet()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            SwitchToPlanet(GameManager.Instance.currentPlanetIndex);
+        }
+        else
+        {
+            SwitchToTarget(MinimapTarget.Planet);
+        }
+    }
+    public void SwitchToMoon()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        {
+            currentTarget = MinimapTarget.Moon;
+            SwitchToTarget(MinimapTarget.Moon);
+        }
+        else
+        {
+            SwitchToTarget(MinimapTarget.Moon);
+        }
+    }
 
     private MinimapGenerator GetCurrentGenerator()
     {

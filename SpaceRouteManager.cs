@@ -113,9 +113,43 @@ public class SpaceRouteManager : MonoBehaviour
             return false;
         }
 
+        // Travel capability gating (stubs for future systems)
+        switch (combatUnit.data.travelCapability)
+        {
+            case TravelCapability.OrbitOnly:
+                Debug.LogWarning("[SpaceRouteManager] This ship can only enter orbit. Interplanetary travel is not permitted (stub).");
+                return false;
+            case TravelCapability.PlanetAndMoon:
+                // Allow planet <-> moon only in current system
+                if (!IsPlanetMoonPair(fromPlanetIndex, toPlanetIndex))
+                {
+                    Debug.LogWarning("[SpaceRouteManager] This ship can only travel between a planet and its moon (stub).");
+                    return false;
+                }
+                break;
+            case TravelCapability.Interplanetary:
+                // Supported: within same solar system
+                break;
+            case TravelCapability.Interstellar:
+                Debug.LogWarning("[SpaceRouteManager] Interstellar travel not implemented yet (stub).");
+                return false;
+            case TravelCapability.Intergalactic:
+                Debug.LogWarning("[SpaceRouteManager] Intergalactic travel not implemented yet (stub).");
+                return false;
+        }
+
         if (fromPlanetIndex == toPlanetIndex)
         {
             Debug.LogWarning("[SpaceRouteManager] Cannot travel to the same planet");
+            return false;
+        }
+
+        // Validate speed > 0 (engines online)
+        var cu = unit.GetComponent<CombatUnit>();
+        float unitBaseSpeed = (cu != null && cu.data != null) ? cu.data.spaceAUPerTurn : 0f;
+        if (unitBaseSpeed <= 0f)
+        {
+            Debug.LogWarning("[SpaceRouteManager] Cannot start space travel - ship speed is 0 AU/turn (engines offline).");
             return false;
         }
 
@@ -157,6 +191,13 @@ public class SpaceRouteManager : MonoBehaviour
         // Notify listeners
         OnTravelStarted?.Invoke(task);
 
+        // Also prompt UI status panel to update now (on launch)
+        var statusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
+        if (statusUI != null)
+        {
+            statusUI.Refresh();
+        }
+
         return true;
     }
 
@@ -193,6 +234,13 @@ public class SpaceRouteManager : MonoBehaviour
         {
             CompleteTravelTask(completedTravel);
         }
+
+        // Ensure status UI updates each turn to reflect new ETAs
+        var statusUIUpdate = FindAnyObjectByType<SpaceTravelStatusUI>();
+        if (statusUIUpdate != null)
+        {
+            statusUIUpdate.Refresh();
+        }
     }
 
     private void CompleteTravelTask(SpaceTravelTask task)
@@ -226,22 +274,29 @@ public class SpaceRouteManager : MonoBehaviour
         return distanceUnits;
     }
 
+    // Stub helper to recognize planet <-> moon travel within current system
+    private bool IsPlanetMoonPair(int fromPlanet, int toPlanet)
+    {
+        // Current implementation: only Earth (index 0) has moon handled.
+        // Extend later using GameManager planetData.moonNames mapping.
+        // For now, consider a planet and its moon share the same index mapping via GameManager.moonGenerators.
+        // Since moons are not separate planet indices in travel yet, allow only within same index (no-op)
+        return fromPlanet == toPlanet; // Placeholder: prevent cross-planet until moon indexing is formalized
+    }
+
     private int CalculateTravelTime(float distanceAU, GameObject unit)
     {
-        // Base time calculation
-        float baseTurns = distanceAU * baseTurnsPerAU;
+        // SPEED POLICY: Determined ONLY by unit's CombatUnitData (no global tech or route multipliers)
+        var cu = unit.GetComponent<CombatUnit>();
+        float speedAUPerTurn = (cu != null && cu.data != null) ? cu.data.spaceAUPerTurn : 0f;
+        // If speed is 0, engines are disabled/offline: ship should not move (no auto fallback)
+        if (speedAUPerTurn <= 0f)
+        {
+            return int.MaxValue / 2; // effectively infinite; caller prevents start with 0 speed
+        }
 
-        // Apply technology modifier
-        baseTurns *= technologyModifier;
-
-        // Apply unit-specific speed modifier
-        string unitType = GetUnitType(unit);
-        float speedMultiplier = GetSpeedMultiplierForUnit(unitType);
-        baseTurns /= speedMultiplier;
-
-        // Ensure minimum travel time
-        int finalTurns = Mathf.Max(minimumTravelTurns, Mathf.RoundToInt(baseTurns));
-
+        float turns = distanceAU / speedAUPerTurn;
+        int finalTurns = Mathf.Max(minimumTravelTurns, Mathf.RoundToInt(turns));
         return finalTurns;
     }
 

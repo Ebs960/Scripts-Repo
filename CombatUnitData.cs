@@ -12,6 +12,15 @@ public enum CombatCategory
     Dragoon, Animal
 }
 
+public enum TravelCapability
+{
+    OrbitOnly,          // Can only enter orbit around current planet (stub)
+    PlanetAndMoon,      // Can travel between planet and its moon (stub)
+    Interplanetary,     // Can travel to other planets within the same solar system (implemented)
+    Interstellar,       // Can travel to other stars (stub)
+    Intergalactic       // Can travel to other galaxies (stub)
+}
+
 public enum FormationShape { Square, Circle, Wedge }
 
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
@@ -34,6 +43,15 @@ public class CombatUnitData : ScriptableObject
     public CombatCategory category;
     public bool requiresAirport;
     public bool requiresSpaceport;
+    [Header("Space Travel Capability (Stub Gates)")]
+    [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
+    public TravelCapability travelCapability = TravelCapability.Interplanetary;
+
+    [Header("Space Travel Stats")]
+    [Tooltip("If > 0, use this as absolute speed (AU per turn). Overrides default speed model.")]
+    public float spaceAUPerTurn = 0f;
+    [Tooltip("Multiplier on default speed model (higher = faster). Used when AU/turn is 0.")]
+    public float spaceSpeedMultiplier = 1.0f;
     
     [Header("Transport Capabilities")]
     [Tooltip("Whether this unit can transport other units")]

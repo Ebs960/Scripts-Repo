@@ -66,6 +66,14 @@ public class SpaceTravelStatusUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Public refresh method so other systems can force an immediate UI update
+    /// </summary>
+    public void Refresh()
+    {
+        UpdateDisplay();
+    }
+
     private void UpdateDisplay()
     {
         if (SpaceRouteManager.Instance == null)

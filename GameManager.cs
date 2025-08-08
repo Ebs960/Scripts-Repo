@@ -1638,16 +1638,15 @@ public class GameManager : MonoBehaviour
 
         generator.Grid.GenerateFromSubdivision(generator.subdivisions, generator.radius);
 
-        if (body == "Earth")
-        {
-            generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
-            generator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
-            generator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
-            generator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
-            generator.moistureBias = GameSetupData.moistureBias;
-            generator.temperatureBias = GameSetupData.temperatureBias;
-            generator.landThreshold = GameSetupData.landThreshold;
-        }
+        // Apply common climate and generation settings to ALL planets
+        // (biome selection will still differ via world-type flags)
+        generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
+        generator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
+        generator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
+        generator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
+        generator.moistureBias = GameSetupData.moistureBias;
+        generator.temperatureBias = GameSetupData.temperatureBias;
+        generator.landThreshold = GameSetupData.landThreshold;
 
         Debug.Log($"[GameManager] Starting surface generation for planet {planetIndex}");
         yield return StartCoroutine(generator.GenerateSurface());

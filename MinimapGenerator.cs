@@ -141,9 +141,9 @@ public class MinimapGenerator : MonoBehaviour
         for (int i = 0; i < tileCount; i++)
         {
             _tileIndices.Add(i);
-            // Use the correct root position based on data source
-            Vector3 rootPos = planetRoot ? planetRoot.position : Vector3.zero;
-            Vector3 dir = (grid.tileCenters[i] - rootPos).normalized;
+            // IMPORTANT: grid.tileCenters are in planet-local space already
+            // Do NOT subtract world root position for off-origin planets
+            Vector3 dir = grid.tileCenters[i].normalized;
             _tileDirs[i] = dir;
         }
         
@@ -242,8 +242,23 @@ public class MinimapGenerator : MonoBehaviour
                     tileData = new HexTileData { biome = Biome.Ocean };
                 }
 
-                // Match Earth behavior: sample by tile only (no global equirectangular texture sampling)
-                Color c = colorProvider != null ? colorProvider.ColorFor(tileData) : DefaultColorFor(tileData);
+                // Create UV for this pixel in equirectangular space
+                Vector2 uv = new Vector2(u, v);
+
+                // Use textures with UV sampling (required for BiomeTextures)
+                Color c;
+                if (colorProvider != null)
+                {
+                    c = colorProvider.ColorFor(tileData, uv);
+                    if (c == Color.magenta)
+                    {
+                        c = DefaultColorFor(tileData);
+                    }
+                }
+                else
+                {
+                    c = DefaultColorFor(tileData);
+                }
                 
                 // DEBUG: Log first pixel color to see what we're getting
                 if (x == 0 && y == 0)
