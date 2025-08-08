@@ -43,8 +43,8 @@ public class MinimapGenerator : MonoBehaviour
     [Tooltip("Current zoom level - higher values show more detail of a smaller area")]
     public float zoomLevel = 1.0f;
     
-    [Tooltip("Camera position for zoom focus (world coordinates)")]
-    public Vector3 zoomCenter = Vector3.zero;
+    [Tooltip("Direction from planet center for zoom focus (local coordinates)")]
+    public Vector3 zoomCenter = Vector3.right;
 
     // Cached tile indices and their world positions
     private List<int> _tileIndices;
@@ -62,7 +62,8 @@ public class MinimapGenerator : MonoBehaviour
         planetRoot = root;
         dataSource = source;
         planetIndex = planetIdx;
-        zoomCenter = root ? root.position : Vector3.zero; // Set initial zoom center to planet/moon center
+        // Start centered on 0° longitude/latitude in the planet's local frame
+        zoomCenter = Vector3.right;
         IsReady = false; // Reset ready state when data source changes
     }
     
@@ -74,7 +75,8 @@ public class MinimapGenerator : MonoBehaviour
         zoomLevel = newZoomLevel;
         if (newZoomCenter.HasValue)
         {
-            zoomCenter = newZoomCenter.Value;
+            // Expect zoom center as a direction relative to the planet's origin
+            zoomCenter = newZoomCenter.Value.normalized;
         }
     }
 
@@ -141,8 +143,9 @@ public class MinimapGenerator : MonoBehaviour
         for (int i = 0; i < tileCount; i++)
         {
             _tileIndices.Add(i);
-            // Compute direction relative to the planet's own center so off-origin planets work correctly
-            Vector3 dir = (grid.tileCenters[i] - planetRoot.position).normalized;
+            // Use local coordinates so planets positioned/rotated in world space still map correctly
+            Vector3 localPos = planetRoot ? planetRoot.InverseTransformPoint(grid.tileCenters[i]) : grid.tileCenters[i];
+            Vector3 dir = localPos.normalized;
             _tileDirs[i] = dir;
         }
         
@@ -292,9 +295,8 @@ public class MinimapGenerator : MonoBehaviour
             minimapTexture.filterMode = FilterMode.Bilinear;
         }
 
-        // Calculate zoom center in UV space (0-1)
-        Vector3 zoomRootPos = planetRoot ? planetRoot.position : Vector3.zero;
-        Vector3 zoomDir = (zoomCenter - zoomRootPos).normalized;
+        // Calculate zoom center in UV space (0-1) using local direction
+        Vector3 zoomDir = zoomCenter.normalized;
         float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
         float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
         
@@ -488,8 +490,8 @@ public class MinimapGenerator : MonoBehaviour
 
     private Vector2 WorldPosToUV(Vector3 worldPos)
     {
-        Vector3 center = planetRoot ? planetRoot.position : Vector3.zero;
-        Vector3 dir = (worldPos - center).normalized;
+        Vector3 localPos = planetRoot ? planetRoot.InverseTransformPoint(worldPos) : worldPos;
+        Vector3 dir = localPos.normalized;
         float lat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
         float lon = Mathf.Atan2(dir.z, dir.x);
         float u = (lon + Mathf.PI) / (2f * Mathf.PI);

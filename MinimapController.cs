@@ -145,13 +145,13 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         var currentRoot = GetCurrentRoot();
         if (generator != null && mainCamera != null && currentRoot != null)
         {
-            // Set zoom center based on where the camera is looking (without rebuilding)
+            // Direction from planet center toward the camera in local space
             Vector3 center = currentRoot.position;
             Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
-            Vector3 surfacePoint = center + camDirFromCenter;
-            
-            // Only update the zoom center, don't rebuild yet
-            generator.zoomCenter = surfacePoint;
+            Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
+
+            // Only update the zoom center direction, don't rebuild yet
+            generator.zoomCenter = localDir;
         }
     }
 
@@ -247,7 +247,6 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         {
             // Update zoom center to current camera position
             UpdateZoomCenter();
-            generator.SetZoomLevel(_currentZoomLevel);
             generator.Rebuild();
         }
     }
@@ -261,8 +260,8 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             // Set zoom center based on where the camera is looking
             Vector3 center = currentRoot.position;
             Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
-            Vector3 surfacePoint = center + camDirFromCenter;
-            generator.SetZoomLevel(_currentZoomLevel, surfacePoint);
+            Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
+            generator.SetZoomLevel(_currentZoomLevel, localDir);
         }
     }
 
@@ -453,13 +452,12 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         var currentRoot = GetCurrentRoot();
         if (!marker || !mainCamera || !currentRoot || !generator || !generator.IsReady) return;
 
-        // For an orbital camera looking at planet/moon center: the sub-observer point is the direction from center toward camera
+        // Direction from center toward camera in local space
         Vector3 center = currentRoot.position;
         Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
-        // The point on the surface facing the camera (nadir under the camera):
-        Vector3 surfacePoint = center + camDirFromCenter; // unit sphere assumption for UV calc
+        Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
 
-        Vector2 uv = WorldDirToUV(camDirFromCenter);
+        Vector2 uv = DirectionToUV(localDir);
         Vector2 anchored = UVToLocal(uv);
         
         marker.rectTransform.anchoredPosition = anchored;
@@ -516,46 +514,41 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     {
         var generator = GetCurrentGenerator();
         var currentRoot = GetCurrentRoot();
-        if (generator == null || currentRoot == null) 
+        if (generator == null || currentRoot == null)
         {
-            // Fallback to simple conversion
+            // Fallback to simple conversion assuming identity orientation
             float fallbackLon = (uv.x * 2f - 1f) * Mathf.PI;
             float fallbackLat = (uv.y - 0.5f) * Mathf.PI;
             float fallbackClat = Mathf.Cos(fallbackLat);
             return new Vector3(fallbackClat * Mathf.Cos(fallbackLon), Mathf.Sin(fallbackLat), fallbackClat * Mathf.Sin(fallbackLon)).normalized;
         }
-        
-        // Calculate zoom center in UV space
-        Vector3 zoomRootPos = currentRoot.position;
-        Vector3 zoomDir = (generator.zoomCenter - zoomRootPos).normalized;
+
+        // Calculate zoom center in UV space using stored local direction
+        Vector3 zoomDir = generator.zoomCenter.normalized;
         float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
         float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
-        
-        // Convert zoom center to UV space (0-1)
         float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
         float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
-        
-        // Calculate zoom-adjusted sampling area
+
         float sampleWidth = 1.0f / generator.zoomLevel;
         float sampleHeight = 1.0f / generator.zoomLevel;
-        
-        // Map UV to world space considering zoom
+
         float worldU = centerU - sampleWidth * 0.5f + uv.x * sampleWidth;
         float worldV = centerV - sampleHeight * 0.5f + uv.y * sampleHeight;
-        
-        // Convert back to lat/lon
+
         float lon = (worldU * 2f - 1f) * Mathf.PI;
         float lat = (worldV - 0.5f) * Mathf.PI;
-        
         float clat = Mathf.Cos(lat);
-        return new Vector3(clat * Mathf.Cos(lon), Mathf.Sin(lat), clat * Mathf.Sin(lon)).normalized;
+        Vector3 localDir = new Vector3(clat * Mathf.Cos(lon), Mathf.Sin(lat), clat * Mathf.Sin(lon)).normalized;
+
+        // Return world direction using planet transform
+        return currentRoot.TransformDirection(localDir).normalized;
     }
 
-    private Vector2 WorldDirToUV(Vector3 dir)
+    private Vector2 DirectionToUV(Vector3 dir)
     {
         var generator = GetCurrentGenerator();
-        var currentRoot = GetCurrentRoot();
-        if (generator == null || currentRoot == null)
+        if (generator == null)
         {
             // Fallback to simple conversion
             float fallbackLat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
@@ -564,32 +557,24 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
             float fallbackV = (fallbackLat + Mathf.PI * 0.5f) / Mathf.PI;
             return new Vector2(fallbackU, fallbackV);
         }
-        
-        // Convert direction to lat/lon
+
         float dirLat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
         float dirLon = Mathf.Atan2(dir.z, dir.x);
-        
-        // Convert to world UV space (0-1)
         float worldU = (dirLon + Mathf.PI) / (2f * Mathf.PI);
         float worldV = (dirLat + Mathf.PI * 0.5f) / Mathf.PI;
-        
-        // Calculate zoom center in UV space
-        Vector3 zoomRootPos = currentRoot.position;
-        Vector3 zoomDir = (generator.zoomCenter - zoomRootPos).normalized;
+
+        Vector3 zoomDir = generator.zoomCenter.normalized;
         float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
         float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
-        
         float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
         float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
-        
-        // Calculate zoom-adjusted sampling area
+
         float sampleWidth = 1.0f / generator.zoomLevel;
         float sampleHeight = 1.0f / generator.zoomLevel;
-        
-        // Map world UV to local minimap UV
+
         float localU = (worldU - (centerU - sampleWidth * 0.5f)) / sampleWidth;
         float localV = (worldV - (centerV - sampleHeight * 0.5f)) / sampleHeight;
-        
+
         return new Vector2(Mathf.Clamp01(localU), Mathf.Clamp01(localV));
     }
 }
