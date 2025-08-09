@@ -27,14 +27,6 @@ public class PlanetaryCameraManager : MonoBehaviour
     public bool allowMouseDrag = true;
     private Vector3? lastMousePos = null;
     private bool onMoon = false;
-    
-    [Header("Tile-Centric Drag")]
-    private int dragStartTileIndex = -1;
-    private Vector3 dragStartDirection = Vector3.zero;
-    private bool isDragActive = false;
-    private Vector3 dragStartMousePos = Vector3.zero;
-    private bool wasLocked = false;
-    private bool blockNextDrag = false;
 
     [Header("Swooping Camera Settings")]
     public bool enableSwooping = true;
@@ -107,59 +99,19 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (allowMouseDrag)
         {
             if (Input.GetMouseButtonDown(0))
-            {
-                // PREVENT INTERFERENCE: Don't start drag if mouse is over UI (like minimap)
-                if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() || blockNextDrag)
-                {
-                    Debug.Log($"[PlanetaryCameraManager] Skipping drag: UI={UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()}, blocked={blockNextDrag}");
-                    blockNextDrag = false; // Reset the flag
-                    return;
-                }
-                
                 lastMousePos = Input.mousePosition;
-                // TILE-CENTRIC DRAG: Find which tile we clicked on
-                StartTileCentricDrag();
-            }
             else if (Input.GetMouseButton(0) && lastMousePos.HasValue)
             {
-                if (isDragActive && dragStartTileIndex >= 0)
-                {
-                    // TILE-CENTRIC DRAG: Try to keep the clicked tile under the mouse
-                    PerformTileCentricDrag();
-                }
-                else
-                {
-                    // FALLBACK: Standard drag behavior
-                    Vector3 delta = (Vector3)Input.mousePosition - lastMousePos.Value;
-                    
-                    // SURFACE-AWARE DRAG: Adjust sensitivity based on camera distance and orientation
-                    float cameraDistance = Vector3.Distance(transform.position, currentOrbitCenter);
-                    float distanceScale = Mathf.Clamp(cameraDistance / 10f, 0.2f, 2f); // Scale based on distance
-                    
-                    // REVERSED: User wants opposite behavior for ALL directions
-                    float dragYaw = delta.x * mouseSensitivity * 0.01f * distanceScale;  // REVERSED left/right too
-                    float dragPitch = -delta.y * mouseSensitivity * 0.01f * distanceScale;
-                    
-                    yaw += dragYaw;
-                    pitch += dragPitch;
-                    pitch = Mathf.Clamp(pitch, -89f, 89f);
-                }
+                Vector3 delta = (Vector3)Input.mousePosition - lastMousePos.Value;
+                float dragYaw = -delta.x * mouseSensitivity * 0.01f;
+                float dragPitch = -delta.y * mouseSensitivity * 0.01f;
+                yaw += dragYaw;
+                pitch += dragPitch;
+                pitch = Mathf.Clamp(pitch, -89f, 89f);
                 lastMousePos = Input.mousePosition;
             }
-            else if (Input.GetMouseButtonUp(0) && isDragActive)
-            {
+            else if (Input.GetMouseButtonUp(0))
                 lastMousePos = null;
-                isDragActive = false;
-                dragStartTileIndex = -1;
-                
-                // Restore cursor lock state
-                if (!wasLocked)
-                {
-                    Cursor.lockState = CursorLockMode.None;
-                }
-                
-                Debug.Log("[PlanetaryCameraManager] Ended tile-centric drag, cursor unlocked");
-            }
         }
 
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -324,131 +276,11 @@ public class PlanetaryCameraManager : MonoBehaviour
         }
     }
 
-    // Add this to your PlanetaryCameraManager
 
 public void ZoomBy(float delta)
 {
     orbitRadius = Mathf.Clamp(orbitRadius + delta, minOrbitRadius, maxOrbitRadius);
 }
 
-public void BlockNextDrag()
-{
-    blockNextDrag = true;
-    Debug.Log("[PlanetaryCameraManager] Next drag blocked");
-}
-
-public void FocusOnDirection(Vector3 worldDir, float seconds = 0.35f, Vector3? newCenter = null, bool isMoon = false)
-{
-    Debug.Log($"[PlanetaryCameraManager] FocusOnDirection called: worldDir={worldDir}, seconds={seconds}, newCenter={newCenter}, isMoon={isMoon}");
-    Debug.Log($"[PlanetaryCameraManager] Current camera pos: {transform.position}, current yaw/pitch: {yaw:F1}°/{pitch:F1}°");
-    
-    // Optionally retarget the orbit center before focusing
-    if (newCenter.HasValue)
-    {
-        currentOrbitCenter = newCenter.Value;
-        if (isMoon)
-        {
-            moonCenter = newCenter.Value;
-            onMoon = true;
-        }
-        else
-        {
-            planetCenter = newCenter.Value;
-            onMoon = false;
-        }
-        Debug.Log($"[PlanetaryCameraManager] Updated orbit center to: {currentOrbitCenter}");
-    }
-
-    // Convert worldDir (from body center) to yaw/pitch for the camera
-    Vector3 dir = worldDir.normalized;
-    float yawNew = Mathf.Atan2(dir.z, dir.x) * Mathf.Rad2Deg;
-    float pitchNew = Mathf.Asin(dir.y) * Mathf.Rad2Deg;
-    
-    Debug.Log($"[PlanetaryCameraManager] Direction {dir} -> yaw: {yaw:F1}° -> {yawNew:F1}°, pitch: {pitch:F1}° -> {pitchNew:F1}°");
-    
-    // Start a coroutine for a smooth lerp (if needed), else snap
-    StartCoroutine(LerpToAngles(yaw, pitch, yawNew, pitchNew, seconds));
-}
-
-private System.Collections.IEnumerator LerpToAngles(float startYaw, float startPitch, float endYaw, float endPitch, float seconds)
-{
-    float t = 0f;
-    float normEndYaw = endYaw;
-    // Ensure minimal angular interpolation (wrap-around)
-    if (Mathf.Abs(endYaw - startYaw) > 180f)
-        normEndYaw += (endYaw < startYaw) ? 360f : -360f;
-
-    while (t < 1f)
-    {
-        t += Time.deltaTime / Mathf.Max(0.001f, seconds);
-        yaw = Mathf.LerpAngle(startYaw, normEndYaw, t);
-        pitch = Mathf.Lerp(startPitch, endPitch, t);
-        yield return null;
-    }
-    yaw = endYaw;
-    pitch = endPitch;
-}
-
-private void StartTileCentricDrag()
-{
-    // Cast a ray to find which tile was clicked
-    Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-    
-    if (onMoon)
-    {
-        var moon = GameManager.Instance?.GetCurrentMoonGenerator();
-        if (moon != null && moon.Grid != null &&
-            RaySphereIntersection(ray, moon.transform.position, moon.transform.localScale.x * 0.5f, out Vector3 hitPoint))
-        {
-            Vector3 localDir = (hitPoint - moon.transform.position).normalized;
-            dragStartTileIndex = moon.Grid.GetTileAtPosition(localDir);
-            dragStartDirection = localDir;
-            isDragActive = dragStartTileIndex >= 0;
-            Debug.Log($"[PlanetaryCameraManager] Started tile-centric drag on moon tile {dragStartTileIndex}");
-        }
-    }
-    else
-    {
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-        if (planet != null && planet.Grid != null &&
-            RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
-        {
-            Vector3 localDir = (hitPoint - planet.transform.position).normalized;
-            dragStartTileIndex = planet.Grid.GetTileAtPosition(localDir);
-            dragStartDirection = localDir;
-            isDragActive = dragStartTileIndex >= 0;
-            dragStartMousePos = Input.mousePosition;
-            
-            // Lock cursor for true anchoring experience
-            wasLocked = Cursor.lockState == CursorLockMode.Locked;
-            Cursor.lockState = CursorLockMode.Locked;
-            
-            Debug.Log($"[PlanetaryCameraManager] Started tile-centric drag on planet tile {dragStartTileIndex}, cursor locked");
-        }
-    }
-}
-
-private void PerformTileCentricDrag()
-{
-    // Use mouse delta for smooth movement while cursor is locked
-    Vector3 currentMousePos = Input.mousePosition;
-    Vector2 mouseDelta = currentMousePos - dragStartMousePos;
-    
-    // Convert mouse delta to camera rotation (same sensitivity as normal drag)
-    float cameraDistance = Vector3.Distance(transform.position, currentOrbitCenter);
-    float distanceScale = Mathf.Clamp(cameraDistance / 10f, 0.2f, 2f);
-    
-    float dragYaw = mouseDelta.x * mouseSensitivity * 0.01f * distanceScale * 0.1f; // Reduced for anchored feel
-    float dragPitch = -mouseDelta.y * mouseSensitivity * 0.01f * distanceScale * 0.1f; // Reduced for anchored feel
-    
-    yaw += dragYaw;
-    pitch += dragPitch;
-    pitch = Mathf.Clamp(pitch, -89f, 89f);
-    
-    // Reset mouse position for next frame (this creates the "anchored" effect)
-    dragStartMousePos = currentMousePos;
-    
-    Debug.Log($"[PlanetaryCameraManager] Tile-centric drag: mouseDelta={mouseDelta}, yaw+={dragYaw:F3}, pitch+={dragPitch:F3}");
-}
 
 }

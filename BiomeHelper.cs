@@ -224,142 +224,49 @@ public static class BiomeHelper {
     // Permafrost Cracks: impassable terrain feature, can be checked elsewhere by biome and map type
     // Frost Geysers: hazardous feature, can be checked elsewhere by biome and map type
 
-        // EARTH-ONLY BIOMES: Check if this is actually Earth before assigning Earth biomes
-        bool isEarthWorld = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType &&
-                           !isJupiterWorldType && !isSaturnWorldType && !isUranusWorldType &&
-                           !isNeptuneWorldType && !isPlutoWorldType &&
-                           !isTitanWorldType && !isEuropaWorldType && !isIoWorldType &&
-                           !isGanymedeWorldType && !isCallistoWorldType && !isLunaWorldType;
-        
-        if (isEarthWorld)
-        {
-            // EARTH CLIMATE LOGIC - these biomes ONLY for Earth
-            // Hot climates
-            if (temperature > 0.8f) {
-                if (moisture < 0.4f) return Biome.Desert;
-                if (moisture < 0.5f) return Biome.Savannah;
-                if (moisture < 0.8f) return Biome.Jungle;
-                return Biome.Swamp; // High moisture in hot climates creates swamp instead of rainforest in non-rainforest maps
-            }
+        // Hot climates
+        if (temperature > 0.8f) {
+            if (moisture < 0.4f) return Biome.Desert;
+            if (moisture < 0.5f) return Biome.Savannah;
+            if (moisture < 0.8f) return Biome.Jungle;
+            return Biome.Swamp; // High moisture in hot climates creates swamp instead of rainforest in non-rainforest maps
+        }
 
-            // Warm climates
-            if (temperature > 0.7f) {
-                if (moisture < 0.3f) return Biome.Savannah;
-                if (moisture < 0.6f) return Biome.Plains;
-                return Biome.Jungle; // High moisture in warm climates creates jungle instead of rainforest in non-rainforest maps
-            }
+        // Warm climates
+        if (temperature > 0.7f) {
+            if (moisture < 0.3f) return Biome.Savannah;
+            if (moisture < 0.6f) return Biome.Plains;
+            return Biome.Jungle; // High moisture in warm climates creates jungle instead of rainforest in non-rainforest maps
+        }
 
-            // Temperate climates
-            if (temperature > 0.4f) {
-                if (moisture < 0.3f) return Biome.Plains;
-                if (moisture < 0.6f) return Biome.Grassland;
-                if (moisture < 0.8f) return Biome.Forest;
-                return Biome.Swamp;
-            }
+        // Temperate climates
+        if (temperature > 0.4f) {
+            if (moisture < 0.3f) return Biome.Plains;
+            if (moisture < 0.6f) return Biome.Grassland;
+            if (moisture < 0.8f) return Biome.Forest;
+            return Biome.Swamp;
+        }
 
-            // The steppe/pines
-            if (temperature > 0.30f) {
-                if (moisture < 0.60f) return Biome.Steppe;
-                return Biome.PineForest;
-            }
+        // The steppe/pines
+        if (temperature > 0.30f) {
+            if (moisture < 0.60f) return Biome.Steppe;
+            return Biome.PineForest;
+        }
 
-            // Cold climates
-            if (temperature > 0.20f) {
-                if (moisture < 0.20f) return Biome.Tundra;
-                if (moisture < 0.75f) return Biome.Taiga;
-                return Biome.Marsh;
-            }
-            
-            // Frozen climates (Earth only)
-            if (temperature > 0.08f) {
-                if (moisture < 0.35f) return Biome.Frozen;
-                if (moisture < 0.75f) return Biome.Tundra;
-                return Biome.Snow;
-            }
-            return Biome.Arctic;
+        // Cold climates
+        if (temperature > 0.20f) {
+            if (moisture < 0.20f) return Biome.Tundra;
+            if (moisture < 0.75f) return Biome.Taiga;
+            return Biome.Marsh;
         }
-        
-        // NON-EARTH PLANETS: Use ONLY planet-specific biomes based on temperature/moisture!
-        // Each planet gets diverse biomes based on climate, but NEVER Earth biomes
-        
-        if (isMarsWorldType) {
-            if (temperature > 0.6f) return Biome.MartianDunes;
-            if (temperature > 0.3f) return Biome.MartianRegolith;
-            if (temperature > 0.15f) return Biome.MartianCanyon;
-            return Biome.MartianPolarIce;
+
+        // Frozen climates
+        if (temperature > 0.08f) {
+            if (moisture < 0.35f) return Biome.Frozen;
+            if (moisture < 0.75f) return Biome.Tundra;
+            return Biome.Snow;
         }
-        
-        if (isVenusWorldType) {
-            if (temperature > 0.7f) return Biome.VenusianLava;
-            if (temperature > 0.5f) return Biome.VenusianPlains;
-            return Biome.VenusianHighlands;
-        }
-        
-        if (isMercuryWorldType) {
-            if (temperature > 0.6f) return Biome.MercurianBasalt;
-            if (temperature > 0.3f) return Biome.MercurianCraters;
-            return Biome.MercurianScarp;
-        }
-        
-        if (isJupiterWorldType) {
-            if (moisture > 0.7f) return Biome.JovianStorm;
-            return Biome.JovianClouds;
-        }
-        
-        if (isSaturnWorldType) {
-            if (moisture > 0.6f) return Biome.SaturnianRings;
-            return Biome.SaturnianClouds;
-        }
-        
-        if (isUranusWorldType) {
-            if (moisture > 0.6f) return Biome.UranianMethane;
-            return Biome.UranianIce;
-        }
-        
-        if (isNeptuneWorldType) {
-            if (temperature < -0.3f) return Biome.NeptunianWinds;
-            if (moisture > 0.5f) return Biome.NeptunianIce;
-            return Biome.NeptunianSurface;
-        }
-        
-        if (isPlutoWorldType) {
-            if (temperature > -0.4f) return Biome.PlutoMountains;
-            if (moisture < 0.3f) return Biome.PlutoTholins;
-            return Biome.PlutoCryo;
-        }
-        
-        if (isTitanWorldType) {
-            if (moisture > 0.7f) return Biome.TitanLakes;
-            if (temperature > 0.2f) return Biome.TitanDunes;
-            return Biome.TitanIce;
-        }
-        
-        if (isEuropaWorldType) {
-            if (temperature > 0.1f) return Biome.EuropaRidges;
-            return Biome.EuropaIce;
-        }
-        
-        if (isIoWorldType) {
-            if (temperature > 0.5f) return Biome.IoVolcanic;
-            return Biome.IoSulfur;
-        }
-        
-        if (isGanymedeWorldType) {
-            return Biome.EuropaIce; // Similar to Europa
-        }
-        
-        if (isCallistoWorldType) {
-            return Biome.EuropaIce; // Similar to Europa
-        }
-        
-        if (isLunaWorldType) {
-            if (moisture > 0.4f) return Biome.MoonCaves;
-            return Biome.MoonDunes;
-        }
-        
-        // Emergency fallback for unknown planet types - should never reach here
-        Debug.LogError($"[BiomeHelper] Unknown planet type reached fallback! All planet flags false. Using Mars fallback.");
-        return Biome.MartianRegolith;
+        return Biome.Arctic;
     }
 
 

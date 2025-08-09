@@ -749,9 +749,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Override polar land areas with planet-specific polar biomes
+                // Override polar land areas with frozen biomes
                 if (absLatitude >= polarLatitudeThreshold) {
-                    biome = GetPolarBiome(absLatitude, moisture);
+                    // Use latitude distance from threshold to determine how "polar" it is
+                    float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
+                    
+                    if (polarIntensity > 0.7f) {
+                        // Most extreme polar regions: Arctic (coldest of all)
+                        biome = Biome.Arctic;
+                    } else if (moisture > 0.3f) {
+                        // Less extreme but wet polar: Snow
+                        biome = Biome.Snow;
+                    } else {
+                        // Less extreme and dry polar: Frozen
+                        biome = Biome.Frozen;
+                    }
                 }
 
                 if (finalElevation > mountainThreshold) { 
@@ -1680,46 +1692,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
             isCallistoWorldType, isLunaWorldType
         );
-    }
-
-    private Biome GetPolarBiome(float absLatitude, float moisture)
-    {
-        if (IsEarthWorld())
-        {
-            float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
-            if (polarIntensity > 0.7f)
-                return Biome.Arctic;
-            return moisture > 0.3f ? Biome.Snow : Biome.Frozen;
-        }
-
-        // FIXED: Non-Earth planets use ONLY planet-specific biomes, NEVER Earth biomes!
-        if (isMarsWorldType) return Biome.MartianPolarIce;
-        if (isVenusWorldType) return Biome.VenusianLava; // Venus has no real poles, use lava
-        if (isMercuryWorldType) return Biome.MercurianCraters;
-        if (isUranusWorldType) return Biome.UranianIce;
-        if (isNeptuneWorldType) return Biome.NeptunianIce;
-        if (isPlutoWorldType) return Biome.PlutoCryo;
-        if (isEuropaWorldType) return Biome.EuropaIce;
-        if (isTitanWorldType) return Biome.TitanIce;
-        if (isIoWorldType) return Biome.IoVolcanic;
-        if (isGanymedeWorldType) return Biome.EuropaIce; // Similar to Europa
-        if (isCallistoWorldType) return Biome.EuropaIce; // Similar to Europa
-        if (isJupiterWorldType) return Biome.JovianClouds;
-        if (isSaturnWorldType) return Biome.SaturnianClouds;
-        if (isLunaWorldType) return Biome.MoonDunes; // Moon uses moon biomes
-        
-        // Generic fallback for unknown planet types - use Mars fallback (NEVER Earth biomes!)
-        Debug.LogError($"[PlanetGenerator] Unknown planet type in GetPolarBiome! Using Mars fallback.");
-        return Biome.MartianRegolith;
-    }
-
-    private bool IsEarthWorld()
-    {
-        return !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType &&
-               !isJupiterWorldType && !isSaturnWorldType && !isUranusWorldType &&
-               !isNeptuneWorldType && !isPlutoWorldType &&
-               !isTitanWorldType && !isEuropaWorldType && !isIoWorldType &&
-               !isGanymedeWorldType && !isCallistoWorldType && !isLunaWorldType;
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)

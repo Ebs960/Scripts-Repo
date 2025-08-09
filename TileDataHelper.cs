@@ -81,31 +81,13 @@ public class TileDataHelper : MonoBehaviour
     /// </summary>
     private void UpdateMultiPlanetReferences()
     {
-        // FIXED: Get ALL generated planets, not just up to maxPlanets limit
-        // This ensures real solar system works with all planets
-        var planetData = GameManager.Instance.GetPlanetData();
-        if (planetData != null)
+        // Get all planet generators from GameManager
+        for (int i = 0; i < GameManager.Instance.maxPlanets; i++)
         {
-            foreach (var kvp in planetData)
+            var planetGen = GameManager.Instance.GetPlanetGenerator(i);
+            if (planetGen != null && !planets.ContainsKey(i))
             {
-                int planetIndex = kvp.Key;
-                var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
-                if (planetGen != null && !planets.ContainsKey(planetIndex))
-                {
-                    RegisterPlanet(planetIndex, planetGen);
-                }
-            }
-        }
-        else
-        {
-            // Fallback: scan up to maxPlanets if planetData is null
-            for (int i = 0; i < GameManager.Instance.maxPlanets; i++)
-            {
-                var planetGen = GameManager.Instance.GetPlanetGenerator(i);
-                if (planetGen != null && !planets.ContainsKey(i))
-                {
-                    RegisterPlanet(i, planetGen);
-                }
+                RegisterPlanet(i, planetGen);
             }
         }
     }

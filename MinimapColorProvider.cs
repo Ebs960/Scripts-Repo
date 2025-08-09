@@ -90,6 +90,11 @@ public class MinimapColorProvider : ScriptableObject
                     int y = Mathf.Clamp(Mathf.FloorToInt(uvVal.y * texture.height), 0, texture.height - 1);
                     return texture.GetPixel(x, y);
                 }
+                // Debug warning when texture is missing for this biome in BiomeTextures mode
+                if (_textureLookup != null && !_textureLookup.ContainsKey(tile.biome))
+                {
+                    Debug.LogWarning($"[MinimapColorProvider] BiomeTextures mode: No texture assigned for biome '{tile.biome}'. Falling back to solid color. Please assign a texture for this biome in the MinimapColorProvider asset.");
+                }
                 // Fallback to color if no texture assigned for this biome
                 goto case MinimapRenderMode.BiomeColors;
 
