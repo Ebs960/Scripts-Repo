@@ -1307,13 +1307,16 @@ public class GameManager : MonoBehaviour
                 "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
                 "Io", "Europa", "Ganymede", "Callisto", "Titan"
             };
+            // FIXED: Real solar system ignores maxPlanets limit - generate ALL planets!
             totalPlanets = realBodies.Count;
+            Debug.Log($"[GameManager] Real Solar System mode: generating ALL {totalPlanets} celestial bodies");
         }
         else
         {
-            // Procedural system with basic planets
+            // Procedural system with basic planets, respect maxPlanets limit
             realBodies = new List<string> { "Earth", "Mars", "Venus" };
-            totalPlanets = realBodies.Count;
+            totalPlanets = Mathf.Min(maxPlanets, realBodies.Count);
+            Debug.Log($"[GameManager] Procedural system mode: generating {totalPlanets} planets (max: {maxPlanets})");
         }
 
         planetData.Clear();
@@ -1872,10 +1875,8 @@ public class GameManager : MonoBehaviour
                 // Add to minimap controller
                 minimapController.AddPlanet(planetIndex, minimapGen, planetGen.transform);
 
-                if (prebuildAllMinimaps)
-                {
-                    minimapGen.Build();
-                }
+                // Build atlas + minimap immediately so it's ready
+                minimapGen.Build();
 
                 Debug.Log($"[GameManager] Configured minimap for planet {planetIndex}");
 
@@ -1897,10 +1898,7 @@ public class GameManager : MonoBehaviour
                     // Add moon to the minimap controller so Moon target can resolve
                     minimapController.AddMoon(planetIndex, moonMinimapGen, moonGen.transform);
 
-                    if (prebuildAllMinimaps)
-                    {
-                        moonMinimapGen.Build();
-                    }
+                    moonMinimapGen.Build();
 
                     Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
                 }

@@ -200,9 +200,20 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     private void RefreshMinimapTexture()
     {
         var generator = GetCurrentGenerator();
+        var currentRoot = GetCurrentRoot();
         if (generator != null)
         {
-            generator.SetZoomLevel(_currentZoomLevel);
+            // Set zoom center to camera's current direction for better zoom experience
+            Vector3? zoomCenter = null;
+            if (mainCamera != null && currentRoot != null)
+            {
+                Vector3 center = currentRoot.position;
+                Vector3 camDirFromCenter = (mainCamera.transform.position - center).normalized;
+                Vector3 localDir = currentRoot.InverseTransformDirection(camDirFromCenter);
+                zoomCenter = localDir;
+            }
+            
+            generator.SetZoomLevel(_currentZoomLevel, zoomCenter);
             generator.Rebuild();
         }
     }
@@ -212,19 +223,20 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     {
         currentTarget = target;
         var generator = GetCurrentGenerator();
-        
         if (generator != null)
         {
-            // Build the minimap on-demand if not ready
-            if (!generator.IsReady)
+            if (!generator.isBuilt)
             {
                 Debug.Log($"[MinimapController] Building minimap on-demand for target: {target}");
                 generator.Build();
             }
-            
-            if (generator.IsReady)
+            var tex = generator.GetMinimapTexture();
+            if (tex != null)
             {
-                minimapImage.texture = generator.minimapTexture;
+                tex.wrapMode = TextureWrapMode.Clamp;
+                minimapImage.texture = tex;
+                minimapImage.uvRect = new Rect(0, 0, 1, 1);
+                // optional: enforce 2:1 rect size here if desired
             }
         }
         
@@ -232,6 +244,12 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         if (TileDataHelper.Instance != null)
         {
             TileDataHelper.Instance.OnPlanetSwitch();
+        }
+        
+        // Force TileInfoDisplay to refresh (clears any cached hover data)
+        if (TileInfoDisplay.Instance != null)
+        {
+            TileInfoDisplay.Instance.ForceRefresh();
         }
         
         // Update UI labels
@@ -360,7 +378,22 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     /// </summary>
     public void SwitchToPlanet(int planetIndex)
     {
+        // PREVENT UNNECESSARY SWITCHES: Don't switch if already on the target planet
+        if (currentPlanetIndex == planetIndex && currentTarget == MinimapTarget.PlanetByIndex)
+        {
+            Debug.Log($"[MinimapController] Already on planet {planetIndex}, skipping switch");
+            return;
+        }
+        
+        Debug.Log($"[MinimapController] Switching to planet {planetIndex}");
         currentPlanetIndex = planetIndex;
+        
+        // CRITICAL FIX: Update GameManager's current planet so TileDataHelper looks at the right planet!
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SetCurrentPlanet(planetIndex);
+        }
+        
         SwitchToTarget(MinimapTarget.PlanetByIndex);
         
         // Update dropdown selection without triggering event
@@ -377,14 +410,157 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        // NUCLEAR OPTION: Block drag IMMEDIATELY before anything else
+        if (cameraManager != null)
+        {
+            cameraManager.BlockNextDrag();
+            Debug.Log("[MinimapController] BLOCKING camera manager drag for minimap click");
+        }
+        
         var generator = GetCurrentGenerator();
         if (!generator || !generator.IsReady) return;
+        
+        // PREVENT CAMERA DRAG: Consume the event
+        eventData.Use();
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_rt, eventData.position, eventData.pressEventCamera, out var local))
         {
-            var uv = LocalToUV(local);
-            Vector3 dir = UVToDirection(uv);
-            FocusCamera(dir);
+            // CRITICAL FIX: Use the SAME equirectangular projection as the minimap!
+            // The minimap texture is built using spherical math, not linear UV!
+            var size = _rt.rect.size;
+            
+            // First convert to linear UV (just for debugging)
+            float linearU = Mathf.Clamp01((local.x + size.x * 0.5f) / size.x);
+            float linearV = Mathf.Clamp01((local.y + size.y * 0.5f) / size.y);
+            
+            // Now convert to equirectangular UV (same as minimap BuildTileUVs)
+            // Map linear UV to longitude/latitude, then to equirectangular UV
+            float longitude = ((1f - linearU) * 2f - 1f) * Mathf.PI; // FLIPPED: left=+PI, right=-PI
+            float latitude = (linearV * 2f - 1f) * Mathf.PI * 0.5f; // -PI/2 to +PI/2
+            
+            // Convert to direction vector (same as minimap expects)
+            float cosLat = Mathf.Cos(latitude);
+            Vector3 direction = new Vector3(
+                cosLat * Mathf.Cos(longitude),
+                Mathf.Sin(latitude), 
+                cosLat * Mathf.Sin(longitude)
+            );
+            
+            // Convert direction to minimap UV (EXACT same math as BuildTileUVs)
+            float u = (Mathf.Atan2(direction.z, direction.x) + Mathf.PI) / (2f * Mathf.PI);
+            float v = 0.5f - (Mathf.Asin(Mathf.Clamp(direction.y, -1f, 1f)) / Mathf.PI);
+            u = Mathf.Clamp01(u);
+            v = Mathf.Clamp01(v);
+            
+            Debug.Log($"[MinimapController] Linear UV: ({linearU:F3}, {linearV:F3}) -> Equirectangular UV: ({u:F3}, {v:F3})");
+
+            // EXTENSIVE DEBUG: Add debugging for everything
+            Debug.Log($"[MinimapController] === MINIMAP CLICK DEBUG START ===");
+            Debug.Log($"[MinimapController] Screen pos: {eventData.position}, Local: {local}, Size: {size}");
+            Debug.Log($"[MinimapController] Calculated UV: ({u:F3}, {v:F3})");
+            Debug.Log($"[MinimapController] Current target: {currentTarget}, Planet index: {currentPlanetIndex}");
+            
+            var currentRoot = GetCurrentRoot();
+            Debug.Log($"[MinimapController] Current root: {(currentRoot != null ? currentRoot.name : "NULL")}");
+            Debug.Log($"[MinimapController] Current generator: {(generator != null ? generator.name : "NULL")}");
+            Debug.Log($"[MinimapController] Generator isBuilt: {(generator != null ? generator.isBuilt : false)}");
+            
+            // APPROACH 5: USE THE EXACT SAME DIRECTION THE MINIMAP USES!
+            // The minimap uses localPos.normalized, NOT world space transforms
+            
+            // DEBUG: Check zoom parameters that might be affecting the lookup
+            Debug.Log($"[MinimapController] Minimap zoom level: {generator.zoomLevel}, zoom center: {generator.zoomCenter}");
+            
+            // BYPASS THE ZOOM BULLSHIT ENTIRELY!
+            // Step 1: Try the broken zoom method first for comparison
+            int zoomedTileIndex = generator.GetTileAtUV(u, v);
+            Debug.Log($"[MinimapController] UV ({u:F3}, {v:F3}) -> ZOOMED method says tile index: {zoomedTileIndex}");
+            
+            // Step 2: DIRECT lookup bypassing all zoom crap (this is what should work!)
+            int directIx = Mathf.Clamp(Mathf.FloorToInt(u * generator.widthUV), 0, generator.widthUV - 1);
+            int directIy = Mathf.Clamp(Mathf.FloorToInt(v * generator.heightUV), 0, generator.heightUV - 1);
+            
+            // We need to manually create the direct lookup since uvToTileIndex is private
+            // Let's use the zoomed method but force zoom to be 1.0 and center to 0.5,0.5
+            float originalZoom = generator.zoomLevel;
+            Vector3 originalCenter = generator.zoomCenter;
+            
+            // FIX THE ZOOM CENTER PERMANENTLY! It should be (0,0,1) for equirectangular "no zoom"
+            if (originalCenter != new Vector3(0, 0, 1))
+            {
+                Debug.Log($"[MinimapController] FIXING broken zoom center from {originalCenter} to (0,0,1)");
+                generator.SetZoomLevel(1.0f, new Vector3(0, 0, 1)); // Correct "no zoom"
+                // Don't restore the broken zoom center!
+            }
+            else
+            {
+                // Zoom center is already correct, just temporarily force zoom level 1.0
+                generator.SetZoomLevel(1.0f, originalCenter);
+            }
+            
+            int directTileIndex = generator.GetTileAtUV(u, v);
+            
+            // Only restore zoom level if center was already correct
+            if (originalCenter == new Vector3(0, 0, 1))
+            {
+                generator.SetZoomLevel(originalZoom, originalCenter);
+            }
+            
+            Debug.Log($"[MinimapController] UV ({u:F3}, {v:F3}) -> DIRECT method says tile index: {directTileIndex}");
+            Debug.Log($"[MinimapController] Zoom is fucking things up by: {Mathf.Abs(zoomedTileIndex - directTileIndex)} tiles!");
+            
+            // Use the direct method (no zoom bullshit)
+            int tileIndex = directTileIndex;
+            
+            // VERIFICATION: Let's check if this mapping is consistent by reverse-engineering
+            var planetGen = GameManager.Instance.GetCurrentPlanetGenerator();
+            if (planetGen?.Grid != null && tileIndex >= 0 && tileIndex < planetGen.Grid.tileCenters.Length)
+            {
+                // Get the tile center and calculate what UV it SHOULD map to
+                Vector3 localTileCenter = planetGen.Grid.tileCenters[tileIndex];
+                Vector3 tileDirection = localTileCenter.normalized;
+                
+                // Calculate what UV this tile SHOULD have (same math as minimap BuildTileUVs)
+                float expectedU = (Mathf.Atan2(tileDirection.z, tileDirection.x) + Mathf.PI) / (2f * Mathf.PI);
+                float expectedV = 0.5f - (Mathf.Asin(Mathf.Clamp(tileDirection.y, -1f, 1f)) / Mathf.PI);
+                expectedV = Mathf.Clamp01(expectedV);
+                
+                Debug.Log($"[MinimapController] Tile {tileIndex} local center: {localTileCenter}");
+                Debug.Log($"[MinimapController] Tile {tileIndex} direction: {tileDirection}");
+                Debug.Log($"[MinimapController] Expected UV for tile {tileIndex}: ({expectedU:F3}, {expectedV:F3})");
+                Debug.Log($"[MinimapController] Clicked UV: ({u:F3}, {v:F3})");
+                Debug.Log($"[MinimapController] UV difference: ({Mathf.Abs(expectedU - u):F3}, {Mathf.Abs(expectedV - v):F3})");
+                
+                // COORDINATE SYSTEM FIX: Convert from minimap space to camera space
+                // Test different coordinate transformations to fix the mismatch
+                Vector3 cameraDirection1 = tileDirection; // Original
+                Vector3 cameraDirection2 = new Vector3(tileDirection.x, -tileDirection.y, tileDirection.z); // Flip Y
+                Vector3 cameraDirection3 = new Vector3(-tileDirection.x, tileDirection.y, tileDirection.z); // Flip X
+                Vector3 cameraDirection4 = new Vector3(tileDirection.x, tileDirection.y, -tileDirection.z); // Flip Z
+                Vector3 cameraDirection5 = new Vector3(tileDirection.z, tileDirection.y, tileDirection.x); // Swap X/Z
+                Vector3 cameraDirection6 = new Vector3(-tileDirection.z, tileDirection.y, tileDirection.x); // Swap X/Z + flip
+                
+                Debug.Log($"[MinimapController] Testing coordinate transformations:");
+                Debug.Log($"[MinimapController] Original:    {cameraDirection1}");
+                Debug.Log($"[MinimapController] Flip Y:      {cameraDirection2}");
+                Debug.Log($"[MinimapController] Flip X:      {cameraDirection3}");
+                Debug.Log($"[MinimapController] Flip Z:      {cameraDirection4}");
+                Debug.Log($"[MinimapController] Swap X/Z:    {cameraDirection5}");
+                Debug.Log($"[MinimapController] Swap+FlipZ:  {cameraDirection6}");
+                
+                // Try option 6 first (most common coordinate mismatch)
+                Debug.Log($"[MinimapController] Using transformed direction: {cameraDirection6}");
+                FocusCamera(cameraDirection6);
+            }
+            else
+            {
+                Debug.LogError($"[MinimapController] Invalid tile index {tileIndex} or missing planet grid! Grid null: {planetGen?.Grid == null}, tileCount: {planetGen?.Grid?.tileCenters?.Length ?? 0}");
+            }
+            
+
+            
+            Debug.Log($"[MinimapController] === MINIMAP CLICK DEBUG END ===");
         }
+
     }
 
     // --- Marker shows camera sub-observer point ---
@@ -409,24 +585,33 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
     private void FocusCamera(Vector3 dir)
     {
         var currentRoot = GetCurrentRoot();
-        if (currentRoot == null) return;
+        if (currentRoot == null) 
+        {
+            Debug.LogError("[MinimapController] FocusCamera called but currentRoot is null!");
+            return;
+        }
 
         bool isMoon = currentTarget == MinimapTarget.Moon;
 
-        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem && !isMoon)
-        {
-            StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(currentPlanetIndex));
-        }
+        Debug.Log($"[MinimapController] FocusCamera called with direction: {dir}, root: {currentRoot.name}, isMoon: {isMoon}");
+        Debug.Log($"[MinimapController] Camera manager: {(cameraManager != null ? cameraManager.name : "NULL")}");
 
+        // NEVER REGENERATE PLANETS ON MINIMAP CLICK! Just move camera.
         if (cameraManager != null)
         {
+            Debug.Log($"[MinimapController] Calling cameraManager.FocusOnDirection({dir}, {clickLerpSeconds}, {currentRoot.position}, {isMoon})");
             cameraManager.FocusOnDirection(dir, clickLerpSeconds, currentRoot.position, isMoon);
         }
         else if (mainCamera != null)
         {
             Vector3 center = currentRoot.position;
             Vector3 newPos = center - dir * (mainCamera.transform.position - center).magnitude;
+            Debug.Log($"[MinimapController] Using fallback camera lerp from {mainCamera.transform.position} to {newPos}");
             StartCoroutine(LerpCamera(mainCamera.transform.position, newPos, clickLerpSeconds));
+        }
+        else
+        {
+            Debug.LogError("[MinimapController] No camera manager or main camera found!");
         }
     }
 
@@ -461,39 +646,60 @@ public class MinimapController : MonoBehaviour, IPointerClickHandler
         return new Vector2(x, y);
     }
 
+    private Vector3 UVToLocalDirection(Vector2 uv)
+    {
+        // APPROACH 1: EXACT INVERSE OF THE WAYPOINT SYSTEM!
+        // The waypoint uses DirectionToUV, so we reverse that exact math:
+        // In DirectionToUV: 
+        // float dirLat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
+        // float dirLon = Mathf.Atan2(dir.z, dir.x);
+        // float worldU = (dirLon + Mathf.PI) / (2f * Mathf.PI);
+        // float worldV = (dirLat + Mathf.PI * 0.5f) / Mathf.PI;
+        
+        // So the INVERSE is:
+        float dirLon = uv.x * 2f * Mathf.PI - Mathf.PI; // worldU -> dirLon
+        float dirLat = uv.y * Mathf.PI - Mathf.PI * 0.5f; // worldV -> dirLat
+        
+        // Convert spherical to cartesian (same as DirectionToUV but in reverse)
+        float cosLat = Mathf.Cos(dirLat);
+        Vector3 localDirection = new Vector3(
+            cosLat * Mathf.Cos(dirLon),  // x
+            Mathf.Sin(dirLat),           // y  
+            cosLat * Mathf.Sin(dirLon)   // z
+        ).normalized;
+        
+        Debug.Log($"[MinimapController] UV ({uv.x:F3}, {uv.y:F3}) -> lon={dirLon*Mathf.Rad2Deg:F1}°, lat={dirLat*Mathf.Rad2Deg:F1}° -> local: {localDirection}");
+        return localDirection;
+    }
+
     private Vector3 UVToDirection(Vector2 uv)
     {
-        var generator = GetCurrentGenerator();
-        var currentRoot = GetCurrentRoot();
-        if (generator == null || currentRoot == null)
-        {
-            // Fallback to simple conversion assuming identity orientation
-            float fallbackLon = (uv.x * 2f - 1f) * Mathf.PI;
-            float fallbackLat = (uv.y - 0.5f) * Mathf.PI;
-            float fallbackClat = Mathf.Cos(fallbackLat);
-            return new Vector3(fallbackClat * Mathf.Cos(fallbackLon), Mathf.Sin(fallbackLat), fallbackClat * Mathf.Sin(fallbackLon)).normalized;
-        }
-
-        // Calculate zoom center in UV space using stored local direction
-        Vector3 zoomDir = generator.zoomCenter.normalized;
-        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
-        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
-        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
-        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
-
-        float sampleWidth = 1.0f / generator.zoomLevel;
-        float sampleHeight = 1.0f / generator.zoomLevel;
-
-        float worldU = centerU - sampleWidth * 0.5f + uv.x * sampleWidth;
-        float worldV = centerV - sampleHeight * 0.5f + uv.y * sampleHeight;
-
-        float lon = (worldU * 2f - 1f) * Mathf.PI;
-        float lat = (worldV - 0.5f) * Mathf.PI;
+        // USE THE EXACT SAME CONVERSION AS THE MINIMAP CREATION!
+        // This is the INVERSE of BuildTileUVs() in MinimapGenerator:
+        // u = (Mathf.Atan2(d.z, d.x) + Mathf.PI) / (2f * Mathf.PI);
+        // v = 0.5f - (Mathf.Asin(Mathf.Clamp(d.y, -1f, 1f)) / Mathf.PI);
+        
+        float lon = uv.x * 2f * Mathf.PI - Mathf.PI; // u -> longitude
+        float lat = (0.5f - uv.y) * Mathf.PI; // v -> latitude (inverted because v=0 at north pole)
+        
         float clat = Mathf.Cos(lat);
-        Vector3 localDir = new Vector3(clat * Mathf.Cos(lon), Mathf.Sin(lat), clat * Mathf.Sin(lon)).normalized;
-
-        // Return world direction using planet transform
-        return currentRoot.TransformDirection(localDir).normalized;
+        Vector3 localDirection = new Vector3(clat * Mathf.Cos(lon), Mathf.Sin(lat), clat * Mathf.Sin(lon)).normalized;
+        
+        // CRITICAL FIX: Convert from local space to world space!
+        // The minimap uses local directions, but FocusOnDirection expects world directions
+        var currentRoot = GetCurrentRoot();
+        if (currentRoot != null)
+        {
+            Debug.Log($"[MinimapController] Root transform: pos={currentRoot.position}, rot={currentRoot.rotation.eulerAngles}, scale={currentRoot.localScale}");
+            Vector3 worldDirection = currentRoot.TransformDirection(localDirection);
+            Debug.Log($"[MinimapController] UV ({uv.x:F3}, {uv.y:F3}) -> lon={lon*Mathf.Rad2Deg:F1}°, lat={lat*Mathf.Rad2Deg:F1}°");
+            Debug.Log($"[MinimapController] local {localDirection} -> world {worldDirection}");
+            Debug.Log($"[MinimapController] Transform matrix: {currentRoot.localToWorldMatrix}");
+            return worldDirection.normalized;
+        }
+        
+        Debug.LogWarning("[MinimapController] No current root found, using local direction as fallback");
+        return localDirection;
     }
 
     private Vector2 DirectionToUV(Vector3 dir)

@@ -1692,13 +1692,25 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             return moisture > 0.3f ? Biome.Snow : Biome.Frozen;
         }
 
+        // FIXED: Non-Earth planets use ONLY planet-specific biomes, NEVER Earth biomes!
         if (isMarsWorldType) return Biome.MartianPolarIce;
+        if (isVenusWorldType) return Biome.VenusianLava; // Venus has no real poles, use lava
+        if (isMercuryWorldType) return Biome.MercurianCraters;
         if (isUranusWorldType) return Biome.UranianIce;
         if (isNeptuneWorldType) return Biome.NeptunianIce;
         if (isPlutoWorldType) return Biome.PlutoCryo;
         if (isEuropaWorldType) return Biome.EuropaIce;
         if (isTitanWorldType) return Biome.TitanIce;
-        return Biome.Arctic;
+        if (isIoWorldType) return Biome.IoVolcanic;
+        if (isGanymedeWorldType) return Biome.EuropaIce; // Similar to Europa
+        if (isCallistoWorldType) return Biome.EuropaIce; // Similar to Europa
+        if (isJupiterWorldType) return Biome.JovianClouds;
+        if (isSaturnWorldType) return Biome.SaturnianClouds;
+        if (isLunaWorldType) return Biome.MoonDunes; // Moon uses moon biomes
+        
+        // Generic fallback for unknown planet types - use Mars fallback (NEVER Earth biomes!)
+        Debug.LogError($"[PlanetGenerator] Unknown planet type in GetPolarBiome! Using Mars fallback.");
+        return Biome.MartianRegolith;
     }
 
     private bool IsEarthWorld()

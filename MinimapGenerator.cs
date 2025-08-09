@@ -19,9 +19,8 @@ public class MinimapGenerator : MonoBehaviour
     [Header("Colors")]
     public MinimapColorProvider colorProvider;
 
-    [Header("Output")]
-    public Texture2D minimapTexture;
-    
+    // Final minimap texture is declared in the UV atlas section below
+
     [Header("Performance")]
     [Tooltip("High-resolution master texture for zooming (generated once)")]
     public int masterTextureWidth = 512;  // PERFORMANCE FIX: Reduced from 2048
@@ -30,6 +29,15 @@ public class MinimapGenerator : MonoBehaviour
     
     private Texture2D _masterTexture; // High-res version for zooming
     private bool _masterTextureReady = false;
+
+    // --- New persistent UV atlas data ---
+    [Header("UV Atlas")]
+    [Tooltip("Width of the precomputed UV atlas used for fast tile lookup")] public int widthUV = 512; // Changed from 1024
+    [Tooltip("Height of the precomputed UV atlas used for fast tile lookup")] public int heightUV = 256; // Changed from 512
+    private Vector2[] tileUVs;                    // Per-tile UV (0..1, equirectangular)
+    private int[] uvToTileIndex;                  // For each UV pixel, the nearest tile index
+    public Texture2D minimapTexture;              // Final 512x256 minimap texture (kept persistent)
+    public bool isBuilt = false;                  // Whether atlas + minimapTexture have been created
 
     [Header("Data Source")]
     [Tooltip("Which generator to use for tile data")]
@@ -82,27 +90,24 @@ public class MinimapGenerator : MonoBehaviour
 
     public void Build()
     {
-        if (IsReady) return;
-        
-        // Ensure we have a configured data source
+        if (isBuilt) { IsReady = true; return; }
+
         if (_generator == null || planetRoot == null)
         {
-            Debug.LogWarning($"[MinimapGenerator] Data source not configured. Call ConfigureDataSource() first.");
+            Debug.LogWarning("[MinimapGenerator] Data source not configured. Call ConfigureDataSource() first.");
             return;
         }
 
-        // Build master texture once if not ready
-        if (!_masterTextureReady)
-        {
-            BuildMasterTexture();
-        }
-        
-        // Generate display texture by sampling from master texture
-        GenerateDisplayTexture();
-        
+        if (!PrepareGridAndTiles()) return;
+        BuildTileUVs();
+        BuildUVLookup();
+        RasterizeMinimap();
+
+        isBuilt = true;
         IsReady = true;
     }
-    
+
+    // Legacy path retained for compatibility (unused by new Build())
     private void BuildMasterTexture()
     {
         // Get number of tiles from TileDataHelper
@@ -143,10 +148,8 @@ public class MinimapGenerator : MonoBehaviour
         for (int i = 0; i < tileCount; i++)
         {
             _tileIndices.Add(i);
-            // Use local coordinates so planets positioned/rotated in world space still map correctly
             Vector3 localPos = planetRoot ? planetRoot.InverseTransformPoint(grid.tileCenters[i]) : grid.tileCenters[i];
-            Vector3 dir = localPos.normalized;
-            _tileDirs[i] = dir;
+            _tileDirs[i] = localPos.normalized;
         }
         
         Debug.Log($"[MinimapGenerator] Building minimap for {dataSource}, planet index {planetIndex}, {tileCount} tiles");
@@ -336,6 +339,242 @@ public class MinimapGenerator : MonoBehaviour
         minimapTexture.SetPixels(pixels);
         minimapTexture.Apply();
     }
+
+    // === New pipeline ===
+    private SphericalHexGrid cachedGrid;
+    private bool PrepareGridAndTiles()
+    {
+        cachedGrid = null;
+        if (dataSource == MinimapDataSource.Planet)
+            cachedGrid = GameManager.Instance?.GetCurrentPlanetGenerator()?.Grid;
+        else if (dataSource == MinimapDataSource.Moon)
+            cachedGrid = GameManager.Instance?.GetCurrentMoonGenerator()?.Grid;
+        else if (dataSource == MinimapDataSource.PlanetByIndex)
+            cachedGrid = GameManager.Instance?.GetPlanetGenerator(planetIndex)?.Grid;
+
+        if (cachedGrid == null)
+        {
+            Debug.LogWarning($"[MinimapGenerator] Grid missing for {dataSource}, planet {planetIndex}");
+            return false;
+        }
+
+        int tileCount = cachedGrid.tileCenters.Length;
+        _tileIndices = new List<int>(tileCount);
+        _tileDirs = new Vector3[tileCount];
+        tileUVs = new Vector2[tileCount];
+        for (int i = 0; i < tileCount; i++)
+        {
+            _tileIndices.Add(i);
+            // IMPORTANT: grid.tileCenters are already in planet-local space
+            // Do NOT transform by planetRoot; this caused all tiles to collapse
+            Vector3 localPos = cachedGrid.tileCenters[i];
+            _tileDirs[i] = localPos.normalized;
+        }
+        return true;
+    }
+
+    private void BuildTileUVs()
+    {
+        for (int i = 0; i < _tileDirs.Length; i++)
+        {
+            Vector3 d = _tileDirs[i];
+            float u = (Mathf.Atan2(d.z, d.x) + Mathf.PI) / (2f * Mathf.PI);
+            float v = 0.5f - (Mathf.Asin(Mathf.Clamp(d.y, -1f, 1f)) / Mathf.PI); // v=0 at north pole
+            tileUVs[i] = new Vector2(u, Mathf.Clamp01(v));
+        }
+    }
+
+    private void BuildUVLookup()
+    {
+        uvToTileIndex = new int[widthUV * heightUV];
+        // Simple bucket grid
+        int bucketsX = 128, bucketsY = 64;
+        List<int>[,] buckets = new List<int>[bucketsX, bucketsY];
+        for (int bx = 0; bx < bucketsX; bx++)
+            for (int by = 0; by < bucketsY; by++)
+                buckets[bx, by] = new List<int>(8);
+
+        // Assign tiles to buckets (and nearby buckets)
+        for (int i = 0; i < tileUVs.Length; i++)
+        {
+            Vector2 uv = tileUVs[i];
+            int bx = Mathf.Clamp(Mathf.FloorToInt(uv.x * bucketsX), 0, bucketsX - 1);
+            int by = Mathf.Clamp(Mathf.FloorToInt(uv.y * bucketsY), 0, bucketsY - 1);
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int px = (bx + dx + bucketsX) % bucketsX;
+                    int py = Mathf.Clamp(by + dy, 0, bucketsY - 1);
+                    buckets[px, py].Add(i);
+                }
+            }
+        }
+
+        // For each UV pixel, choose nearest tile from its bucket neighborhood
+        for (int y = 0; y < heightUV; y++)
+        {
+            float v = (y + 0.5f) / heightUV;
+            int by = Mathf.Clamp(Mathf.FloorToInt(v * bucketsY), 0, bucketsY - 1);
+            
+            // POLAR FIX: Detect polar regions and use wider search
+            bool isPolarRegion = (v < 0.15f || v > 0.85f);
+            int searchRadius = isPolarRegion ? 8 : 1; // Wider search for poles (was 3, now 8)
+            
+            for (int x = 0; x < widthUV; x++)
+            {
+                float u = (x + 0.5f) / widthUV;
+                int bx = Mathf.Clamp(Mathf.FloorToInt(u * bucketsX), 0, bucketsX - 1);
+
+                // PERFORMANCE FIX: Use bucket search for ALL regions (no expensive O(n) search)
+                int bestIdx = 0;
+                float bestDist2 = float.MaxValue;
+                
+                // Normal bucket search for non-polar regions (now also applies to polar regions with wider searchRadius)
+                for (int dx = -searchRadius; dx <= searchRadius; dx++)
+                {
+                    for (int dy = -searchRadius; dy <= searchRadius; dy++)
+                    {
+                        int px = (bx + dx + bucketsX) % bucketsX;
+                        int py = Mathf.Clamp(by + dy, 0, bucketsY - 1);
+                        var list = buckets[px, py];
+                        for (int k = 0; k < list.Count; k++)
+                        {
+                            int ti = list[k];
+                            Vector2 tuv = tileUVs[ti];
+                            // Handle wraparound in u
+                            float du = Mathf.Abs(u - tuv.x);
+                            du = Mathf.Min(du, 1f - du);
+                            float dv = (v - tuv.y);
+                            float d2 = du * du + dv * dv;
+                            if (d2 < bestDist2)
+                            {
+                                bestDist2 = d2;
+                                bestIdx = ti;
+                            }
+                        }
+                    }
+                }
+
+                uvToTileIndex[y * widthUV + x] = bestIdx;
+                // Also mirror seam for last column
+                if (x == 0)
+                    uvToTileIndex[y * widthUV + (widthUV - 1)] = bestIdx;
+            }
+        }
+    }
+
+    private void RasterizeMinimap()
+    {
+        if (minimapTexture == null || minimapTexture.width != width || minimapTexture.height != height)
+        {
+            minimapTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            minimapTexture.wrapMode = TextureWrapMode.Clamp;
+            minimapTexture.filterMode = FilterMode.Bilinear;
+        }
+
+        // ZOOM SUPPORT: Calculate zoom center in UV space (0-1) using local direction
+        Vector3 zoomDir = zoomCenter.normalized;
+        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
+        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
+        
+        // Convert to UV space (0-1)
+        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
+        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
+        
+        // Calculate zoom-adjusted sampling area
+        float sampleWidth = 1.0f / zoomLevel;  // Smaller area = more zoomed in
+        float sampleHeight = 1.0f / zoomLevel;
+        
+        // Calculate sampling bounds
+        float minU = centerU - sampleWidth * 0.5f;
+        float maxU = centerU + sampleWidth * 0.5f;
+        float minV = centerV - sampleHeight * 0.5f;
+        float maxV = centerV + sampleHeight * 0.5f;
+
+        Color[] outPixels = new Color[width * height];
+        for (int Y = 0; Y < height; Y++)
+        {
+            // ZOOM: Map Y coordinate to the zoomed sampling area  
+            // NOTE: Y=0 is top of texture, Y=height-1 is bottom of texture
+            // We want bottom of texture (Y=height-1) to map to minV (south)
+            // We want top of texture (Y=0) to map to maxV (north)
+            float sampleV = maxV - (Y + 0.5f) / height * sampleHeight;
+            sampleV = Mathf.Clamp01(sampleV);
+            int iy = Mathf.Clamp(Mathf.FloorToInt(sampleV * heightUV), 0, heightUV - 1);
+            
+            for (int X = 0; X < width; X++)
+            {
+                // ZOOM: Map X coordinate to the zoomed sampling area
+                float sampleU = minU + (X + 0.5f) / width * sampleWidth;
+                sampleU = Mathf.Clamp01(sampleU);
+                float u = sampleU;
+                float v = sampleV;
+                int ix = Mathf.Clamp(Mathf.FloorToInt(u * widthUV), 0, widthUV - 1);
+                int tileIndex = uvToTileIndex[iy * widthUV + ix];
+
+                // Fetch tile data from the configured source
+                HexTileData tileData;
+                if (dataSource == MinimapDataSource.PlanetByIndex)
+                {
+                    var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+                    tileData = planetGen != null ? planetGen.GetHexTileData(tileIndex) : null;
+                }
+                else if (dataSource == MinimapDataSource.Planet)
+                {
+                    var currentPlanet = GameManager.Instance?.GetCurrentPlanetGenerator();
+                    tileData = currentPlanet != null ? currentPlanet.GetHexTileData(tileIndex) : null;
+                }
+                else
+                {
+                    var currentMoon = GameManager.Instance?.GetCurrentMoonGenerator();
+                    tileData = currentMoon != null ? currentMoon.GetHexTileData(tileIndex) : null;
+                }
+
+                Color c = (tileData != null && colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(u, v)) : Color.gray;
+                outPixels[Y * width + X] = c;
+            }
+        }
+        minimapTexture.SetPixels(outPixels);
+        minimapTexture.Apply();
+    }
+
+    public int GetTileAtUV(float u, float v)
+    {
+        // ZOOM SUPPORT: Convert minimap UV to world UV accounting for zoom
+        // Calculate zoom center in UV space
+        Vector3 zoomDir = zoomCenter.normalized;
+        float centerLat = Mathf.Asin(Mathf.Clamp(zoomDir.y, -1f, 1f));
+        float centerLon = Mathf.Atan2(zoomDir.z, zoomDir.x);
+        float centerU = (centerLon + Mathf.PI) / (2f * Mathf.PI);
+        float centerV = (centerLat + Mathf.PI * 0.5f) / Mathf.PI;
+        
+        // Calculate sampling area
+        float sampleWidth = 1.0f / zoomLevel;
+        float sampleHeight = 1.0f / zoomLevel;
+        float minU = centerU - sampleWidth * 0.5f;
+        float minV = centerV - sampleHeight * 0.5f;
+        
+        // Convert minimap UV to world UV
+        float worldU = minU + u * sampleWidth;
+        float worldV = minV + v * sampleHeight; // NO FLIP - v already correct
+        
+        worldU = Mathf.Repeat(worldU, 1f);
+        worldV = Mathf.Clamp01(worldV);
+        
+        int ix = Mathf.Clamp(Mathf.FloorToInt(worldU * widthUV), 0, widthUV - 1);
+        int iy = Mathf.Clamp(Mathf.FloorToInt(worldV * heightUV), 0, heightUV - 1);
+        
+        if (uvToTileIndex == null || uvToTileIndex.Length == 0) 
+        {
+            Debug.LogError("[MinimapGenerator] uvToTileIndex is null or empty!");
+            return 0;
+        }
+        
+        return uvToTileIndex[iy * widthUV + ix];
+    }
+
+    public Texture2D GetMinimapTexture() => minimapTexture;
 
     public void Rebuild()
     {
