@@ -749,7 +749,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Override polar land areas with planet-specific biomes
+                // Override polar land areas with frozen biomes
                 if (absLatitude >= polarLatitudeThreshold) {
                     // Use latitude distance from threshold to determine how "polar" it is
                     float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
@@ -757,8 +757,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     // Planet-specific polar biomes
                     if (isMarsWorldType) {
                         biome = Biome.MartianPolarIce;
-                    } else if (isJupiterWorldType) {
-                        biome = Biome.JovianStorm; // Jupiter uses storms for polar regions
                     } else if (isUranusWorldType) {
                         biome = Biome.UranianIce;
                     } else if (isNeptuneWorldType) {
@@ -769,10 +767,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         biome = Biome.TitanIce;
                     } else if (isEuropaWorldType) {
                         biome = Biome.EuropaIce;
-                    } else if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
-                               isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
-                        // These planets have NO polar regions - keep their standard biomes
-                        // Don't override the biome at all
                     } else {
                         // Earth and other planets use Earth polar logic
                         if (polarIntensity > 0.7f) {
