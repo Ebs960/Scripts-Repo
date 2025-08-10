@@ -1597,9 +1597,10 @@ MonoBehaviour:
   maxZoom: 4
   minZoom: 1
   zoomSpeed: 0.25
-  buttonZoomStep: 0.5
+  buttonZoomStep: 1
   preGenerateAllMinimaps: 1
   minimapsPerFrame: 1
+  pixelsPerFrame: 50000
 --- !u!1 &5186900336430570707
 GameObject:
   m_ObjectHideFlags: 0

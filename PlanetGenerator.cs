@@ -767,6 +767,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         biome = Biome.TitanIce;
                     } else if (isEuropaWorldType) {
                         biome = Biome.EuropaIce;
+                    } else if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
+                               isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
+                        // These planets have NO polar regions - keep their standard biomes
+                        // Don't override the biome at all
                     } else {
                         // Earth and other planets use Earth polar logic
                         if (polarIntensity > 0.7f) {

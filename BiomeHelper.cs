@@ -271,6 +271,10 @@ public static class BiomeHelper {
             if (isUranusWorldType) {
                 return Biome.UranianIce;
             }
+
+            if (isJupiterWorldType) {
+                return Biome.JovianStorm;
+            }
             
             // Neptune polar regions
             if (isNeptuneWorldType) {
@@ -290,6 +294,14 @@ public static class BiomeHelper {
             // Europa polar regions
             if (isEuropaWorldType) {
                 return Biome.EuropaIce;
+            }
+            
+            // Venus, Mercury, Saturn, Io, Ganymede, Callisto, Luna have NO polar regions
+            // They should use their standard biomes even in cold temperatures
+            if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
+                isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
+                // Return their standard biomes - no polar override
+                // This will fall through to the normal biome logic below
             }
         }
 

@@ -121,17 +121,36 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         int totalPlanets;
         if (_gameManager.enableMultiPlanetSystem)
         {
-            totalPlanets = _gameManager.GetPlanetData().Count;
+            var planetData = _gameManager.GetPlanetData();
+            totalPlanets = planetData?.Count ?? 0;
+            Debug.Log($"[MinimapUI] Multi-planet system: Found {totalPlanets} planets in planet data");
+            
+            // Fallback: try counting planet generators directly
+            if (totalPlanets == 0)
+            {
+                int generatorCount = 0;
+                for (int i = 0; i < 20; i++) // Check up to 20 planets
+                {
+                    if (_gameManager.GetPlanetGenerator(i) != null)
+                    {
+                        generatorCount = i + 1;
+                    }
+                }
+                totalPlanets = generatorCount;
+                Debug.Log($"[MinimapUI] Fallback: Found {totalPlanets} planets via generator count");
+            }
         }
         else
         {
             totalPlanets = _gameManager.planetGenerator != null ? 1 : 0;
+            Debug.Log($"[MinimapUI] Single planet system: Found {totalPlanets} planets");
         }
 
         if (totalPlanets == 0)
         {
-            Debug.LogWarning("[MinimapUI] No planets found for minimap generation");
-            _minimapsPreGenerated = true;
+            // Don't mark as pre-generated; allow GameManager to trigger this again once planets exist
+            Debug.LogWarning("[MinimapUI] No planets found for minimap generation (will retry when planets are ready)");
+            _minimapsPreGenerated = false;
             yield break;
         }
 
@@ -139,9 +158,28 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
         {
-            string planetName = _gameManager.enableMultiPlanetSystem
-                ? _gameManager.GetPlanetData()[planetIndex].planetName
-                : "Planet";
+            string planetName = "Unknown";
+            if (_gameManager.enableMultiPlanetSystem)
+            {
+                var planetData = _gameManager.GetPlanetData();
+                if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
+                {
+                    planetName = pd.planetName;
+                }
+                else
+                {
+                    // Fallback: try to get name from planet generator
+                    var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
+                    if (planetGen != null)
+                    {
+                        planetName = planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
+                    }
+                }
+            }
+            else
+            {
+                planetName = "Planet";
+            }
 
             Debug.Log($"[MinimapUI] Generating minimap for {planetName} (index {planetIndex})...");
 
@@ -209,85 +247,97 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             filterMode = FilterMode.Bilinear
         };
 
-        // Pre-calculate all tile colors to avoid repeated lookups
-        var tileColourCache = new Dictionary<int, Color>();
-        
-        // Pre-populate tile color cache for all tiles
-        for (int tileIndex = 0; tileIndex < grid.TileCount; tileIndex++)
-        {
-            var tileData = planetGen.GetHexTileData(tileIndex);
-            
-            // If that fails, try TileDataHelper
-            if (tileData == null && TileDataHelper.Instance != null)
-            {
-                var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
-                if (!isMoon && helperTileData != null)
-                    tileData = helperTileData;
-            }
-            
-            // If still null, try getting from the planet generator's data dictionary
-            if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
-            {
-                tileData = planetGen.data[tileIndex];
-            }
-            
-            Color colour;
-            if (tileData == null)
-            {
-                // Last resort: create basic land/ocean tile based on grid position
-                colour = (tileIndex % 3 == 0) ? new Color(0.2f, 0.4f, 0.8f) : new Color(0.3f, 0.6f, 0.2f);
-            }
-            else
-            {
-                colour = (colorProvider != null)
-                    ? colorProvider.ColorFor(tileData, Vector2.zero)
-                    : GetDefaultBiomeColour(tileData.biome);
-            }
-            
-            tileColourCache[tileIndex] = colour;
-        }
-
-        // Generate texture pixels in batches
-        int pixelsProcessed = 0;
+        // Precompute trig to reduce per-pixel cost
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
         for (int y = 0; y < height; y++)
         {
             float v = (y + 0.5f) / height;
             float latRad = Mathf.PI * (0.5f - v);
-            float sinLat = Mathf.Sin(latRad);
-            float cosLat = Mathf.Cos(latRad);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        // Cache tile data and per-tile sample offsets (no color pre-cache)
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        var tileOffsetCache = new Dictionary<int, Vector2>();
+        var pixels = new Color32[width * height];
+
+        int processed = 0;
+        for (int y = 0; y < height; y++)
+        {
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            float v = (y + 0.5f) / height;
 
             for (int x = 0; x < width; x++)
             {
                 float u = (x + 0.5f) / width;
-                float lonRad = 2f * Mathf.PI * (u - 0.5f);
-                float sinLon = Mathf.Sin(lonRad);
-                float cosLon = Mathf.Cos(lonRad);
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
 
-                // Unit direction in planet-local space (+Z forward, +X right, +Y up)
                 Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
                 int tileIndex = grid.GetTileAtPosition(dir);
-                
-                Color colour;
-                if (tileIndex < 0 || !tileColourCache.ContainsKey(tileIndex))
+
+                Color color;
+                if (tileIndex < 0)
                 {
-                    colour = Color.magenta;
+                    color = Color.magenta;
                 }
                 else
                 {
-                    colour = tileColourCache[tileIndex];
+                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
+                    {
+                        tileData = planetGen.GetHexTileData(tileIndex);
+                        if (tileData == null && TileDataHelper.Instance != null)
+                        {
+                            var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
+                            if (!isMoon && helperTileData != null) tileData = helperTileData;
+                        }
+                        if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
+                            tileData = planetGen.data[tileIndex];
+
+                        tileDataCache[tileIndex] = tileData; // may be null; avoids repeated lookups
+                    }
+
+                    if (tileData == null)
+                    {
+                        color = new Color(0.35f, 0.35f, 0.35f);
+                    }
+                    else
+                    {
+                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
+                        {
+                            int hash = tileIndex * 9781 + 7;
+                            float ox = ((hash >> 8) & 0xFF) / 255f;
+                            float oy = (hash & 0xFF) / 255f;
+                            offset = new Vector2(ox, oy);
+                            tileOffsetCache[tileIndex] = offset;
+                        }
+
+                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
+                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                    }
                 }
 
-                tex.SetPixel(x, y, colour);
-                pixelsProcessed++;
-
-                // Yield every batch of pixels to prevent frame drops
-                if (pixelsProcessed % pixelsPerFrame == 0)
-                {
+                pixels[y * width + x] = color;
+                processed++;
+                if (processed % pixelsPerFrame == 0)
                     yield return null;
-                }
             }
         }
 
+        tex.SetPixels32(pixels);
         tex.Apply();
         _minimapTextures[planetIndex] = tex;
         
@@ -316,22 +366,55 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         planetDropdown.ClearOptions();
         var options = new List<TMP_Dropdown.OptionData>();
 
-        int max = _gameManager.enableMultiPlanetSystem ? _gameManager.maxPlanets : 1;
+        // Discover actual planet indices available
         var pd = _gameManager.GetPlanetData();
-        for (int i = 0; i < max; i++)
-        {
-            // Only add planets that have minimaps if pre-generation is enabled
-            if (_minimapsPreGenerated && !_minimapTextures.ContainsKey(i))
-                continue;
+        var indices = new List<int>();
 
+        if (_gameManager.enableMultiPlanetSystem)
+        {
+            // Prefer planet data count if available
+            if (pd != null && pd.Count > 0)
+            {
+                foreach (var kv in pd)
+                {
+                    // Only include indices that have a generator or at least data
+                    if (_gameManager.GetPlanetGenerator(kv.Key) != null)
+                        indices.Add(kv.Key);
+                }
+            }
+
+            // Fallback: probe generators up to maxPlanets
+            if (indices.Count == 0)
+            {
+                for (int i = 0; i < _gameManager.maxPlanets; i++)
+                {
+                    if (_gameManager.GetPlanetGenerator(i) != null)
+                        indices.Add(i);
+                }
+            }
+        }
+        else
+        {
+            if (_gameManager.planetGenerator != null)
+                indices.Add(0);
+        }
+
+        foreach (var i in indices)
+        {
             string label = (pd != null && pd.TryGetValue(i, out var d) && !string.IsNullOrEmpty(d.planetName))
                 ? d.planetName
                 : $"Planet {i + 1}";
             options.Add(new TMP_Dropdown.OptionData(label));
         }
 
+        // If still nothing, add at least one default entry so UI isn't empty
+        if (options.Count == 0)
+        {
+            options.Add(new TMP_Dropdown.OptionData("Planet 1"));
+        }
+
         planetDropdown.AddOptions(options);
-        planetDropdown.value = _gameManager.currentPlanetIndex;
+        planetDropdown.value = Mathf.Clamp(_gameManager.currentPlanetIndex, 0, options.Count - 1);
         planetDropdown.RefreshShownValue();
     }
 
@@ -347,7 +430,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         if (_minimapsPreGenerated)
         {
-            // Use pre-generated texture
+            // Use pre-generated texture when present; otherwise, generate on-demand
             if (_minimapTextures.TryGetValue(planetIndex, out var tex) && tex != null)
             {
                 if (minimapImage != null) minimapImage.texture = tex;
@@ -356,7 +439,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
             else
             {
-                Debug.LogWarning($"[MinimapUI] No pre-generated minimap found for planet {planetIndex}");
+                Debug.LogWarning($"[MinimapUI] No pre-generated minimap found for planet {planetIndex} — generating on-demand.");
+                var generated = GenerateMinimapTexture(planetIndex);
+                if (generated != null)
+                {
+                    _minimapTextures[planetIndex] = generated;
+                    if (minimapImage != null) minimapImage.texture = generated;
+                    SetZoom(1f);
+                }
             }
         }
         else
@@ -413,90 +503,88 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             filterMode = FilterMode.Bilinear
         };
 
-        // Pre-calculate all tile colors to avoid repeated lookups
-        var tileColourCache = new Dictionary<int, Color>();
-        var tileOffsetCache = new Dictionary<int, Vector2>();
-        
-        // Pre-populate tile color cache for all tiles
-        for (int tileIndex = 0; tileIndex < grid.TileCount; tileIndex++)
-        {
-            var tileData = planetGen.GetHexTileData(tileIndex);
-            
-            // If that fails, try TileDataHelper
-            if (tileData == null && TileDataHelper.Instance != null)
-            {
-                var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
-                if (!isMoon && helperTileData != null)
-                    tileData = helperTileData;
-            }
-            
-            // If still null, try getting from the planet generator's data dictionary
-            if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
-            {
-                tileData = planetGen.data[tileIndex];
-            }
-            
-            Color colour;
-            if (tileData == null)
-            {
-                // Last resort: create basic land/ocean tile based on grid position
-                colour = (tileIndex % 3 == 0) ? new Color(0.2f, 0.4f, 0.8f) : new Color(0.3f, 0.6f, 0.2f);
-            }
-            else
-            {
-                // Calculate offset for texture sampling
-                int hash = tileIndex * 9781 + 7;
-                float ox = ((hash >> 8) & 0xFF) / 255f;
-                float oy = (hash & 0xFF) / 255f;
-                var offset = new Vector2(ox, oy);
-                tileOffsetCache[tileIndex] = offset;
-                
-                // Sample color with offset
-                float sampleU = Mathf.Repeat(0.5f + offset.x, 1f);
-                float sampleV = Mathf.Repeat(0.5f + offset.y, 1f);
-                colour = (colorProvider != null)
-                    ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV))
-                    : GetDefaultBiomeColour(tileData.biome);
-            }
-            
-            tileColourCache[tileIndex] = colour;
-        }
-
-        // Generate texture pixels in batches
-        int pixelsProcessed = 0;
+        // Precompute trig
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
         for (int y = 0; y < height; y++)
         {
             float v = (y + 0.5f) / height;
             float latRad = Mathf.PI * (0.5f - v);
-            float sinLat = Mathf.Sin(latRad);
-            float cosLat = Mathf.Cos(latRad);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        var tileOffsetCache = new Dictionary<int, Vector2>();
+        var pixels = new Color32[width * height];
+
+        for (int y = 0; y < height; y++)
+        {
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            float v = (y + 0.5f) / height;
 
             for (int x = 0; x < width; x++)
             {
                 float u = (x + 0.5f) / width;
-                float lonRad = 2f * Mathf.PI * (u - 0.5f);
-                float sinLon = Mathf.Sin(lonRad);
-                float cosLon = Mathf.Cos(lonRad);
-
-                // Unit direction in planet-local space (+Z forward, +X right, +Y up)
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
                 Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
                 int tileIndex = grid.GetTileAtPosition(dir);
-                
-                Color colour;
-                if (tileIndex < 0 || !tileColourCache.ContainsKey(tileIndex))
+
+                Color color;
+                if (tileIndex < 0)
                 {
-                    colour = Color.magenta;
+                    color = Color.magenta;
                 }
                 else
                 {
-                    colour = tileColourCache[tileIndex];
-                }
+                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
+                    {
+                        tileData = planetGen.GetHexTileData(tileIndex);
+                        if (tileData == null && TileDataHelper.Instance != null)
+                        {
+                            var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
+                            if (!isMoon && helperTileData != null) tileData = helperTileData;
+                        }
+                        if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
+                            tileData = planetGen.data[tileIndex];
+                        tileDataCache[tileIndex] = tileData;
+                    }
 
-                tex.SetPixel(x, y, colour);
-                pixelsProcessed++;
+                    if (tileData == null)
+                    {
+                        color = new Color(0.35f, 0.35f, 0.35f);
+                    }
+                    else
+                    {
+                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
+                        {
+                            int hash = tileIndex * 9781 + 7;
+                            float ox = ((hash >> 8) & 0xFF) / 255f;
+                            float oy = (hash & 0xFF) / 255f;
+                            offset = new Vector2(ox, oy);
+                            tileOffsetCache[tileIndex] = offset;
+                        }
+                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
+                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                    }
+                }
+                pixels[y * width + x] = color;
             }
         }
 
+        tex.SetPixels32(pixels);
         tex.Apply();
         return tex;
     }
@@ -653,16 +741,20 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         float lonRad = 2f * Mathf.PI * (worldU - 0.5f);
         float latRad = Mathf.PI * (0.5f - worldV);
 
-        Vector3 dir = new Vector3(
+        Vector3 localDir = new Vector3(
             Mathf.Sin(lonRad) * Mathf.Cos(latRad),
             Mathf.Sin(latRad),
             Mathf.Cos(lonRad) * Mathf.Cos(latRad)).normalized;
 
+        // Transform to world-space using current planet's orientation
+        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+        Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir) : localDir;
+
         var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
         if (camMgr != null)
         {
-            camMgr.JumpToDirection(dir, false);
-            Debug.Log($"[MinimapUI] Jumping camera to direction: {dir}");
+            camMgr.JumpToDirection(worldDir, false);
+            Debug.Log($"[MinimapUI] Jumping camera to world direction: {worldDir}");
         }
     }
 

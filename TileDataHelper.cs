@@ -20,6 +20,8 @@ public class TileDataHelper : MonoBehaviour
     private Dictionary<int, MoonGenerator> moons = new Dictionary<int, MoonGenerator>();
 
     private Dictionary<int, CachedTileData> tileDataCache = new();
+    // Planet-aware cache to avoid cross-planet collisions when the same tileIndex exists on multiple planets
+    private Dictionary<(int planetIndex, int tileIndex), CachedTileData> planetTileDataCache = new();
     private Dictionary<int, int[]> adjacencyCache = new();
     private Dictionary<int, Vector3> tileCenterCache = new();
 
@@ -401,6 +403,7 @@ public class TileDataHelper : MonoBehaviour
         tileDataCache.Clear();
         adjacencyCache.Clear();
         tileCenterCache.Clear();
+        planetTileDataCache.Clear();
     }
     
     /// <summary>
@@ -417,12 +420,23 @@ public class TileDataHelper : MonoBehaviour
     /// </summary>
     public (HexTileData tileData, bool isMoonTile) GetTileDataFromPlanet(int tileIndex, int planetIndex)
     {
+        // Check planet-aware cache first
+        var key = (planetIndex, tileIndex);
+        if (planetTileDataCache.TryGetValue(key, out var cached) &&
+            Time.frameCount - cached.lastUpdateFrame < CACHE_MAX_AGE)
+        {
+            return (cached.tileData, cached.isMoonTile);
+        }
+        
         // Check planet first
         if (planets.TryGetValue(planetIndex, out var targetPlanet))
         {
             HexTileData data = targetPlanet?.GetHexTileData(tileIndex);
             if (data != null)
+            {
+                planetTileDataCache[key] = new CachedTileData { tileData = data, isMoonTile = false, lastUpdateFrame = Time.frameCount };
                 return (data, false);
+            }
         }
         
         // Check moon
@@ -430,7 +444,10 @@ public class TileDataHelper : MonoBehaviour
         {
             HexTileData data = targetMoon?.GetHexTileData(tileIndex);
             if (data != null)
+            {
+                planetTileDataCache[key] = new CachedTileData { tileData = data, isMoonTile = true, lastUpdateFrame = Time.frameCount };
                 return (data, true);
+            }
         }
         
         return (null, false);

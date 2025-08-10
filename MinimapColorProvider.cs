@@ -43,6 +43,13 @@ public class MinimapColorProvider : ScriptableObject
 
     private Dictionary<Biome, Color> _colorLookup;
     private Dictionary<Biome, Texture2D> _textureLookup;
+    
+    [Header("Performance")]
+    [Tooltip("Cache texture pixel arrays for fast CPU sampling (recommended for minimap generation)")]
+    public bool cacheTexturePixels = true;
+
+    // Cache raw pixel data for textures to avoid slow Texture2D.GetPixel in tight loops
+    private Dictionary<Texture2D, (Color32[] pixels, int width, int height)> _texturePixels;
 
     private void OnEnable()
     {
@@ -60,6 +67,24 @@ public class MinimapColorProvider : ScriptableObject
                 _textureLookup[bt.biome] = bt.texture;
             }
         }
+
+        if (cacheTexturePixels)
+        {
+            _texturePixels = new Dictionary<Texture2D, (Color32[] pixels, int width, int height)>();
+            // Pre-cache biome textures
+            foreach (var tex in _textureLookup.Values)
+            {
+                if (tex != null && !_texturePixels.ContainsKey(tex))
+                {
+                    _texturePixels[tex] = (tex.GetPixels32(), tex.width, tex.height);
+                }
+            }
+            // Optionally cache custom texture
+            if (customMinimapTexture != null && !_texturePixels.ContainsKey(customMinimapTexture))
+            {
+                _texturePixels[customMinimapTexture] = (customMinimapTexture.GetPixels32(), customMinimapTexture.width, customMinimapTexture.height);
+            }
+        }
     }
 
     /// <summary>
@@ -74,10 +99,7 @@ public class MinimapColorProvider : ScriptableObject
                 // Use single custom equirectangular texture
                 if (customMinimapTexture != null && uv.HasValue)
                 {
-                    var uvVal = uv.Value;
-                    int x = Mathf.Clamp(Mathf.FloorToInt(uvVal.x * customMinimapTexture.width), 0, customMinimapTexture.width - 1);
-                    int y = Mathf.Clamp(Mathf.FloorToInt(uvVal.y * customMinimapTexture.height), 0, customMinimapTexture.height - 1);
-                    return customMinimapTexture.GetPixel(x, y);
+                    return SampleTexture(customMinimapTexture, uv.Value);
                 }
                 break;
 
@@ -85,10 +107,7 @@ public class MinimapColorProvider : ScriptableObject
                 // Use individual biome textures
                 if (_textureLookup != null && _textureLookup.TryGetValue(tile.biome, out var texture) && uv.HasValue)
                 {
-                    var uvVal = uv.Value;
-                    int x = Mathf.Clamp(Mathf.FloorToInt(uvVal.x * texture.width), 0, texture.width - 1);
-                    int y = Mathf.Clamp(Mathf.FloorToInt(uvVal.y * texture.height), 0, texture.height - 1);
-                    return texture.GetPixel(x, y);
+                    return SampleTexture(texture, uv.Value);
                 }
                 // Debug warning when texture is missing for this biome in BiomeTextures mode
                 if (_textureLookup != null && !_textureLookup.ContainsKey(tile.biome))
@@ -110,6 +129,26 @@ public class MinimapColorProvider : ScriptableObject
 
         // Fallback for any unhandled cases
         return Color.magenta;
+    }
+
+    private Color SampleTexture(Texture2D texture, Vector2 uv)
+    {
+        uv.x = Mathf.Repeat(uv.x, 1f);
+        uv.y = Mathf.Repeat(uv.y, 1f);
+
+        if (cacheTexturePixels && _texturePixels != null && _texturePixels.TryGetValue(texture, out var entry))
+        {
+            int x = Mathf.Clamp((int)(uv.x * entry.width), 0, entry.width - 1);
+            int y = Mathf.Clamp((int)(uv.y * entry.height), 0, entry.height - 1);
+            int idx = y * entry.width + x;
+            return (Color)entry.pixels[idx];
+        }
+        else
+        {
+            int x = Mathf.Clamp((int)(uv.x * texture.width), 0, texture.width - 1);
+            int y = Mathf.Clamp((int)(uv.y * texture.height), 0, texture.height - 1);
+            return texture.GetPixel(x, y);
+        }
     }
     
     /// <summary>
