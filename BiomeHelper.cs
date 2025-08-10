@@ -260,6 +260,39 @@ public static class BiomeHelper {
             return Biome.Marsh;
         }
 
+        // POLAR BIOMES - Planet-specific polar logic (temperature <= 0.08f)
+        if (temperature <= 0.08f) {
+            // Mars polar regions
+            if (isMarsWorldType) {
+                return Biome.MartianPolarIce;
+            }
+            
+            // Uranus polar regions
+            if (isUranusWorldType) {
+                return Biome.UranianIce;
+            }
+            
+            // Neptune polar regions
+            if (isNeptuneWorldType) {
+                return Biome.NeptunianIce;
+            }
+            
+            // Pluto polar regions
+            if (isPlutoWorldType) {
+                return Biome.PlutoCryo;
+            }
+            
+            // Titan polar regions
+            if (isTitanWorldType) {
+                return Biome.TitanIce;
+            }
+            
+            // Europa polar regions
+            if (isEuropaWorldType) {
+                return Biome.EuropaIce;
+            }
+        }
+
         // Frozen climates
         if (temperature > 0.08f) {
             if (moisture < 0.35f) return Biome.Frozen;

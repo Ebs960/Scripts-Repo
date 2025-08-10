@@ -385,7 +385,6 @@ public class GameManager : MonoBehaviour
         public AncientRuinsManager ancientRuinsManager;
         public LoadingPanelController loadingPanelController;
         public PlanetaryCameraManager cameraManager;
-        public MinimapController minimapController;
     }
 
     /// <summary>
@@ -415,7 +414,6 @@ public class GameManager : MonoBehaviour
                 case AncientRuinsManager arm: cache.ancientRuinsManager = arm; break;
                 case LoadingPanelController lpc: cache.loadingPanelController = lpc; break;
                 case PlanetaryCameraManager pcm: cache.cameraManager = pcm; break;
-                case MinimapController mc: cache.minimapController = mc; break;
             }
         }
         
@@ -878,6 +876,24 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("=== MAP GENERATION COMPLETE ===");
 
+        // Generate minimap now that the planet is ready
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
+        if (minimapUI != null)
+        {
+            Debug.Log("[GameManager] Starting minimap generation...");
+            
+            // Start minimap generation
+            minimapUI.StartMinimapGeneration();
+            
+            // Wait for minimaps to be pre-generated
+            while (!minimapUI.MinimapsPreGenerated)
+            {
+                yield return null;
+            }
+            
+            Debug.Log("[GameManager] Minimap pre-generation complete");
+        }
+
         // Spawn civilizations
         if (civilizationManager != null)
         {
@@ -1041,6 +1057,64 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("=== MAP GENERATION COMPLETE (Multi-Planet) ===");
 
+        // Trigger minimap generation now that planets are ready
+        var minimapUI = FindAnyObjectByType<MinimapUI>();
+        if (minimapUI != null)
+        {
+            UpdateLoadingProgress(0.70f, "Waiting for planet surfaces...");
+            Debug.Log("[GameManager] Waiting for planet surfaces to be generated...");
+            
+            // Wait for all planet surfaces to be generated before creating minimaps
+            bool allSurfacesReady = false;
+            int maxWaitFrames = 300; // 5 seconds at 60fps
+            int waitFrames = 0;
+            
+            while (!allSurfacesReady && waitFrames < maxWaitFrames)
+            {
+                allSurfacesReady = true;
+                
+                // Check if all planets have generated their surfaces
+                for (int i = 0; i < totalPlanets; i++)
+                {
+                    var planetGen = GetPlanetGenerator(i);
+                    if (planetGen != null && !planetGen.HasGeneratedSurface)
+                    {
+                        allSurfacesReady = false;
+                        break;
+                    }
+                }
+                
+                if (!allSurfacesReady)
+                {
+                    waitFrames++;
+                    yield return null;
+                }
+            }
+            
+            if (allSurfacesReady)
+            {
+                Debug.Log("[GameManager] All planet surfaces generated, starting minimap generation...");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Timeout waiting for planet surfaces, proceeding with minimap generation anyway...");
+            }
+            
+            UpdateLoadingProgress(0.72f, "Generating minimaps...");
+            Debug.Log("[GameManager] Starting minimap generation...");
+            
+            // Start minimap generation
+            minimapUI.StartMinimapGeneration();
+            
+            // Wait for minimaps to be pre-generated
+            while (!minimapUI.MinimapsPreGenerated)
+            {
+                yield return null;
+            }
+            
+            Debug.Log("[GameManager] Minimap pre-generation complete");
+        }
+
         // Update loading progress - Civilization spawning
         UpdateLoadingProgress(0.75f, "Spawning civilizations...");
         
@@ -1087,8 +1161,7 @@ public class GameManager : MonoBehaviour
         // Update loading progress - Minimap setup
         UpdateLoadingProgress(0.90f, "Setting up minimaps...");
         
-        // Configure minimaps for multi-planet system
-        ConfigureMinimaps();
+
 
         // Configure SunBillboard for multi-planet system
         var sunBB = FindAnyObjectByType<SunBillboard>();
@@ -1787,197 +1860,10 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("Map generation complete!");
 
-        // Configure minimaps after world generation
-        ConfigureMinimaps();
+
     }
 
-    private void ConfigureMinimaps()
-    {
-        Debug.Log("Configuring minimaps...");
 
-        // Find minimap controller in the scene
-        var minimapController = FindAnyObjectByType<MinimapController>();
-        if (minimapController == null)
-        {
-            Debug.LogWarning("[GameManager] No MinimapController found in scene. Skipping minimap configuration.");
-            return;
-        }
-
-        // Assign camera reference
-        if (minimapController.mainCamera == null)
-        {
-            var camera = Camera.main ?? FindAnyObjectByType<Camera>();
-            if (camera != null)
-            {
-                minimapController.mainCamera = camera;
-                Debug.Log("Main camera assigned to minimap controller.");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] No camera found for minimap controller.");
-            }
-        }
-
-        // Assign camera manager reference
-        if (minimapController.cameraManager == null)
-        {
-            var cameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-            if (cameraManager != null)
-            {
-                minimapController.cameraManager = cameraManager;
-                Debug.Log("Camera manager assigned to minimap controller.");
-            }
-        }
-
-        if (enableMultiPlanetSystem)
-        {
-            // MULTI-PLANET MODE: Setup minimap for each planet
-            Debug.Log($"[GameManager] Configuring minimaps for {planetGenerators.Count} planets");
-            
-            // CRITICAL FIX: Use assigned ColorProvider ScriptableObject
-            if (minimapColorProvider != null)
-            {
-                Debug.Log($"[GameManager] Using assigned MinimapColorProvider with render mode: {minimapColorProvider.renderMode}");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] No MinimapColorProvider assigned in GameManager! Minimaps will use default colors. Please assign a MinimapColorProvider ScriptableObject in the Inspector.");
-            }
-            
-            foreach (var kvp in planetGenerators)
-            {
-                int planetIndex = kvp.Key;
-                var planetGen = kvp.Value;
-                
-                if (planetGen == null)
-                {
-                    Debug.LogWarning($"[GameManager] Planet generator {planetIndex} is null, skipping minimap");
-                    continue;
-                }
-                
-                // Create a minimap generator for this planet
-                var minimapGenGO = new GameObject($"MinimapGenerator_Planet_{planetIndex}");
-                var minimapGen = minimapGenGO.AddComponent<MinimapGenerator>();
-                
-                // CRITICAL FIX: Assign ColorProvider if one exists
-                if (minimapColorProvider != null)
-                {
-                    minimapGen.colorProvider = minimapColorProvider;
-                }
-                
-                // Configure it (but don't build yet - build on-demand when switching to planet)
-                minimapGen.ConfigureDataSource(planetGen, planetGen.transform, MinimapDataSource.PlanetByIndex, planetIndex);
-                // DON'T BUILD HERE - this is too expensive for 15 planets at once!
-                
-                // Add to minimap controller
-                minimapController.AddPlanet(planetIndex, minimapGen, planetGen.transform);
-                
-                Debug.Log($"[GameManager] Configured minimap for planet {planetIndex}");
-                
-                // Setup moon minimap for this planet if it has one
-                if (moonGenerators.ContainsKey(planetIndex) && moonGenerators[planetIndex] != null)
-                {
-                    var moonGen = moonGenerators[planetIndex];
-                    var moonMinimapGenGO = new GameObject($"MinimapGenerator_Moon_{planetIndex}");
-                    var moonMinimapGen = moonMinimapGenGO.AddComponent<MinimapGenerator>();
-                    
-                    // CRITICAL FIX: Assign ColorProvider if one exists
-                    if (minimapColorProvider != null)
-                    {
-                        moonMinimapGen.colorProvider = minimapColorProvider;
-                    }
-                    
-                    moonMinimapGen.ConfigureDataSource(moonGen, moonGen.transform, MinimapDataSource.Moon);
-                    // DON'T BUILD HERE - build on-demand when switching to this planet's moon
-                    
-                    // Add moon to the minimap controller so Moon target can resolve
-                    minimapController.AddMoon(planetIndex, moonMinimapGen, moonGen.transform);
-                    Debug.Log($"[GameManager] Configured moon minimap for planet {planetIndex}");
-                }
-            }
-            
-            // Set initial planet and build its minimap
-            if (planetGenerators.Count > 0)
-            {
-                minimapController.SwitchToPlanet(currentPlanetIndex);
-                Debug.Log($"[GameManager] Set initial minimap to planet {currentPlanetIndex} - minimap will build on-demand");
-            }
-        }
-        else
-        {
-            // SINGLE-PLANET MODE: Use existing setup
-            Debug.Log("[GameManager] Configuring single-planet minimap");
-            
-            // CRITICAL FIX: Use assigned ColorProvider ScriptableObject for single-planet mode too
-            if (minimapColorProvider != null)
-            {
-                Debug.Log($"[GameManager] Using assigned MinimapColorProvider with render mode: {minimapColorProvider.renderMode}");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] No MinimapColorProvider assigned in GameManager! Minimaps will use default colors. Please assign a MinimapColorProvider ScriptableObject in the Inspector.");
-            }
-            
-            // Configure planet minimap generator
-            if (minimapController.planetGenerator != null)
-            {
-                // CRITICAL FIX: Assign ColorProvider if one exists
-                if (minimapColorProvider != null)
-                {
-                    minimapController.planetGenerator.colorProvider = minimapColorProvider;
-                }
-                
-                minimapController.planetGenerator.ConfigureDataSource(
-                    planetGenerator,
-                    planetGenerator.transform,
-                    MinimapDataSource.Planet
-                );
-                minimapController.planetRoot = planetGenerator.transform;
-                Debug.Log("Planet minimap generator configured.");
-
-                // Build planet minimap
-                minimapController.planetGenerator.Build();
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] Planet minimap generator not found.");
-            }
-
-            // Configure moon minimap generator (if moon exists)
-            if (generateMoon && minimapController.moonGenerator != null)
-            {
-                if (moonGenerator != null)
-                {
-                    // CRITICAL FIX: Assign ColorProvider if one exists
-                    if (minimapColorProvider != null)
-                    {
-                        minimapController.moonGenerator.colorProvider = minimapColorProvider;
-                    }
-                    
-                    minimapController.moonGenerator.ConfigureDataSource(
-                        moonGenerator,
-                        moonGenerator.transform,
-                        MinimapDataSource.Moon
-                    );
-                    minimapController.moonRoot = moonGenerator.transform;
-                    Debug.Log("Moon minimap generator configured.");
-
-                    // Build moon minimap
-                    minimapController.moonGenerator.Build();
-                }
-                else
-                {
-                    Debug.LogWarning("[GameManager] Moon generator not found for minimap configuration.");
-                }
-            }
-            else if (generateMoon)
-            {
-                Debug.LogWarning("[GameManager] Moon minimap generator not found.");
-            }
-        }
-
-        Debug.Log("Minimap configuration complete!");
-    }
 
     /// <summary>
     /// Public method to generate the world with a callback when finished

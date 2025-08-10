@@ -749,20 +749,42 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Override polar land areas with frozen biomes
+                // Override polar land areas with planet-specific biomes
                 if (absLatitude >= polarLatitudeThreshold) {
                     // Use latitude distance from threshold to determine how "polar" it is
                     float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
                     
-                    if (polarIntensity > 0.7f) {
-                        // Most extreme polar regions: Arctic (coldest of all)
-                        biome = Biome.Arctic;
-                    } else if (moisture > 0.3f) {
-                        // Less extreme but wet polar: Snow
-                        biome = Biome.Snow;
+                    // Planet-specific polar biomes
+                    if (isMarsWorldType) {
+                        biome = Biome.MartianPolarIce;
+                    } else if (isJupiterWorldType) {
+                        biome = Biome.JovianStorm; // Jupiter uses storms for polar regions
+                    } else if (isUranusWorldType) {
+                        biome = Biome.UranianIce;
+                    } else if (isNeptuneWorldType) {
+                        biome = Biome.NeptunianIce;
+                    } else if (isPlutoWorldType) {
+                        biome = Biome.PlutoCryo;
+                    } else if (isTitanWorldType) {
+                        biome = Biome.TitanIce;
+                    } else if (isEuropaWorldType) {
+                        biome = Biome.EuropaIce;
+                    } else if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
+                               isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
+                        // These planets have NO polar regions - keep their standard biomes
+                        // Don't override the biome at all
                     } else {
-                        // Less extreme and dry polar: Frozen
-                        biome = Biome.Frozen;
+                        // Earth and other planets use Earth polar logic
+                        if (polarIntensity > 0.7f) {
+                            // Most extreme polar regions: Arctic (coldest of all)
+                            biome = Biome.Arctic;
+                        } else if (moisture > 0.3f) {
+                            // Less extreme but wet polar: Snow
+                            biome = Biome.Snow;
+                        } else {
+                            // Less extreme and dry polar: Frozen
+                            biome = Biome.Frozen;
+                        }
                     }
                 }
 

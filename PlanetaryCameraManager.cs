@@ -47,7 +47,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             cameraSkybox = gameObject.AddComponent<Skybox>();
 
         cameraRotation = Quaternion.identity;
-        
+
         // Initialize center positions
         UpdateCenterPositions();
         currentOrbitCenter = planetCenter;
@@ -137,26 +137,28 @@ public class PlanetaryCameraManager : MonoBehaviour
         transform.rotation = Quaternion.LookRotation((currentOrbitCenter - camPos).normalized, cameraRotation * Vector3.up);
         transform.Rotate(Vector3.right, cameraPivot, Space.Self);
     }
-    
+
     void UpdateCenterPositions()
     {
-        // Dynamically find planet and moon positions from GameManager
+        // If GameManager knows about multiple planets, get the current planet/moon centres.
         if (GameManager.Instance != null)
         {
-            // Update planet center
-            if (GameManager.Instance.planetGenerator != null)
-            {
-                planetCenter = GameManager.Instance.planetGenerator.transform.position;
-            }
-            
-            // Update moon center
-            if (GameManager.Instance.moonGenerator != null)
-            {
-                moonCenter = GameManager.Instance.moonGenerator.transform.position;
-            }
+            var currentPlanet = GameManager.Instance.GetCurrentPlanetGenerator();
+            if (currentPlanet != null)
+                planetCenter = currentPlanet.transform.position;
+
+            var moon = GameManager.Instance.GetCurrentMoonGenerator();
+            if (moon != null)
+                moonCenter = moon.transform.position;
+        }
+        else
+        {
+            // Fallback: keep existing serialized defaults
         }
     }
-    
+
+
+
     /// <summary>
     /// Public method to update camera centers after world generation
     /// </summary>
@@ -175,18 +177,18 @@ public class PlanetaryCameraManager : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
 
             int tileIndex = -1;
-            
+
             if (onMoon)
             {
                 // Click detection for moon
                 // Use GameManager API for multi-planet support
-        var moon = GameManager.Instance?.GetCurrentMoonGenerator();
+                var moon = GameManager.Instance?.GetCurrentMoonGenerator();
                 if (moon != null && moon.Grid != null &&
                     RaySphereIntersection(ray, moon.transform.position, moon.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {
                     Vector3 localDir = (hitPoint - moon.transform.position).normalized;
                     tileIndex = moon.Grid.GetTileAtPosition(localDir);
-                    
+
                     if (tileIndex >= 0)
                     {
                         Debug.Log($"Clicked on moon tile index: {tileIndex}");
@@ -199,13 +201,13 @@ public class PlanetaryCameraManager : MonoBehaviour
             {
                 // Click detection for planet
                 // Use GameManager API for multi-planet support
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+                var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
                 if (planet != null && planet.Grid != null &&
                     RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {
                     Vector3 localDir = (hitPoint - planet.transform.position).normalized;
                     tileIndex = planet.Grid.GetTileAtPosition(localDir);
-                    
+
                     if (tileIndex >= 0)
                     {
                         Debug.Log($"Clicked on planet tile index: {tileIndex}");
@@ -228,7 +230,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             UpdateCenterPositions();
             currentOrbitCenter = onMoon ? moonCenter : planetCenter;
         }
-        
+
         HandleInput();
         UpdateCameraPosition();
         HandleClickDetection();
@@ -277,10 +279,41 @@ public class PlanetaryCameraManager : MonoBehaviour
     }
 
 
-public void ZoomBy(float delta)
-{
-    orbitRadius = Mathf.Clamp(orbitRadius + delta, minOrbitRadius, maxOrbitRadius);
+    public void ZoomBy(float delta)
+    {
+        orbitRadius = Mathf.Clamp(orbitRadius + delta, minOrbitRadius, maxOrbitRadius);
+    }
+
+    /// <summary>
+    /// Instantly reorient the orbital camera to face a given direction on the active body.
+    /// 'dir' is a unit vector in world/planet-local space where:
+    /// +Z forward, +X right (east), +Y up (north). Set 'toMoon' true to orbit the moon.
+    /// </summary>
+    public void JumpToDirection(Vector3 dir, bool toMoon)
+    {
+        dir = dir.normalized;
+
+        // Convert direction into yaw (around Y) and pitch (around X)
+        float newYaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+        float newPitch = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
+
+        onMoon = toMoon;
+
+        // Refresh centers (multi-planet aware) and pick orbit target
+        UpdateCenterPositions();
+        currentOrbitCenter = onMoon ? moonCenter : planetCenter;
+
+        // Apply angles and reset any added pivot tilt so we're not off-kilter
+        yaw = newYaw;
+        pitch = Mathf.Clamp(newPitch, -89f, 89f);
+        basePivot = 0f; // reset user tilt; swoop will still be applied in Update
+
+        // Move camera immediately this frame
+        cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 camOffset = cameraRotation * (Vector3.back * orbitRadius);
+        Vector3 camPos = currentOrbitCenter + camOffset;
+        transform.position = camPos;
+        transform.LookAt(currentOrbitCenter, cameraRotation * Vector3.up);
+    }
 }
 
-
-}
