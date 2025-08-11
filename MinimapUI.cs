@@ -26,6 +26,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public Button zoomInButton;
     [Tooltip("Button to zoom out on the minimap")]
     public Button zoomOutButton;
+    [Tooltip("Button to switch the view to the current planet's moon (assign in inspector)")]
+    public Button moonButton;
+    [Tooltip("Button to switch back to the main planet (assign in inspector)")]
+    public Button mainPlanetButton;
     [Tooltip("Optional text display showing current zoom level")]
     public TextMeshProUGUI zoomLevelText;
     [Tooltip("Position indicator (shows where camera is looking on minimap)")]
@@ -39,13 +43,19 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [SerializeField] private float zoomSpeed = 1f;
     [SerializeField] private float buttonZoomStep = 0.5f;
 
+    [Header("Switching Settings")]
+    [Tooltip("Index of the main planet to switch back to when pressing the main planet button (0 = Earth by default)")]
+    [SerializeField] private int mainPlanetIndex = 0;
+
     [Header("Pre-generation Settings")]
     [SerializeField] private bool preGenerateAllMinimaps = false;
     [SerializeField] private int minimapsPerFrame = 1;
     [SerializeField] private int pixelsPerFrame = 200000; // Process pixels in batches for better performance
 
     // Private fields
+    // Planet and Moon minimap caches
     private readonly Dictionary<int, Texture2D> _minimapTextures = new();
+    private readonly Dictionary<int, Texture2D> _moonMinimapTextures = new();
     private float _currentZoom = 1f;
     private Vector2 _panOffset = Vector2.zero; // For panning around the zoomed minimap
     private bool _isDragging = false;
@@ -53,6 +63,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private GameManager _gameManager;
     private bool _minimapsPreGenerated = false;
     private LoadingPanelController _loadingPanel;
+    private bool _lastIsOnMoon = false; // track camera target to auto-switch minimap
+    
+    // UI mirroring cache
+    [SerializeField] private Camera uiCamera; // leave null for Screen Space - Overlay
+    private bool _isHorizontallyMirrored;
+    private bool _isVerticallyMirrored;
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
@@ -112,12 +128,45 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             zoomInButton.onClick.AddListener(ZoomIn);
         if (zoomOutButton != null)
             zoomOutButton.onClick.AddListener(ZoomOut);
+
+        // Wire Moon button to switch to the current planet's moon
+        if (moonButton != null)
+        {
+            moonButton.onClick.AddListener(OnMoonButtonClicked);
+        }
+        else
+        {
+            Debug.LogWarning("[MinimapUI] Moon button not assigned in inspector; moon switching will be unavailable.");
+        }
+        // Wire Main planet button to switch back to configured main planet
+        if (mainPlanetButton != null)
+        {
+            mainPlanetButton.onClick.AddListener(OnMainPlanetButtonClicked);
+        }
+        else
+        {
+            Debug.LogWarning("[MinimapUI] Main planet button not assigned in inspector; main planet switching will be unavailable.");
+        }
     }
 
     void Update()
     {
         // Update position indicator every frame for smooth tracking
         UpdatePositionIndicator();
+
+        // Auto-switch between planet and moon minimap when camera target changes
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        if (isOnMoon != _lastIsOnMoon)
+        {
+            _lastIsOnMoon = isOnMoon;
+            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
+        }
+    }
+
+    private void OnEnable()
+    {
+        RefreshMirrorFlags();
     }
 
     void Start()
@@ -131,6 +180,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             BuildPlanetDropdown();
             ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
         }
+    }
+
+    // Keep flags fresh if layout / anchors / scaling changes
+    protected void OnRectTransformDimensionsChange()
+    {
+        if (isActiveAndEnabled) RefreshMirrorFlags();
     }
 
     /// <summary>
@@ -196,7 +251,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         Debug.Log($"[MinimapUI] Generating {totalPlanets} minimaps...");
 
-        for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
+    for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
         {
             string planetName = "Unknown";
             if (_gameManager.enableMultiPlanetSystem)
@@ -223,15 +278,22 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
             Debug.Log($"[MinimapUI] Generating minimap for {planetName} (index {planetIndex})...");
 
-            // Use coroutine-based generation for better performance
+            // Use coroutine-based generation for better performance (planet)
             yield return StartCoroutine(GenerateMinimapTextureCoroutine(planetIndex));
+
+            // Also generate moon minimap if a moon exists for this planet
+            var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+            if (moonGen != null && moonGen.Grid != null && moonGen.Grid.TileCount > 0)
+            {
+                yield return StartCoroutine(GenerateMoonMinimapTextureCoroutine(planetIndex));
+            }
 
             // Update loading progress
             if (_loadingPanel != null)
             {
                 float progress = (float)planetIndex / totalPlanets;
                 _loadingPanel.SetProgress(progress);
-                _loadingPanel.SetStatus($"Generated minimap for {planetName}...");
+                _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen!=null ? " (and moon)" : string.Empty)}");
             }
 
             // Yield to prevent frame drops
@@ -252,6 +314,127 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             ShowMinimapForPlanet(0);
         }
+    }
+
+    private IEnumerator GenerateMoonMinimapTextureCoroutine(int planetIndex)
+    {
+        if (_gameManager == null)
+        {
+            Debug.LogError("[MinimapUI] No GameManager instance.");
+            yield break;
+        }
+
+        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+        if (moonGen == null)
+        {
+            Debug.LogWarning($"[MinimapUI] Moon generator not found for planet {planetIndex}");
+            yield break;
+        }
+
+        var grid = moonGen.Grid;
+        if (grid == null)
+        {
+            Debug.LogWarning("[MinimapUI] Moon Grid missing.");
+            yield break;
+        }
+
+        int width = minimapResolution.x;
+        int height = minimapResolution.y;
+        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        // Precompute trig to reduce per-pixel cost
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float latRad = Mathf.PI * (0.5f - v);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        var tileOffsetCache = new Dictionary<int, Vector2>();
+        var pixels = new Color32[width * height];
+
+        int processed = 0;
+        for (int y = 0; y < height; y++)
+        {
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            float v = (y + 0.5f) / height;
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (x + 0.5f) / width;
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
+
+                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
+                int tileIndex = grid.GetTileAtPosition(dir);
+
+                Color color;
+                if (tileIndex < 0)
+                {
+                    color = Color.magenta;
+                }
+                else
+                {
+                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
+                    {
+                        tileData = moonGen.GetHexTileData(tileIndex);
+                        tileDataCache[tileIndex] = tileData; // may be null; avoids repeated lookups
+                    }
+
+                    if (tileData == null)
+                    {
+                        color = new Color(0.35f, 0.35f, 0.35f);
+                    }
+                    else
+                    {
+                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
+                        {
+                            int hash = tileIndex * 9781 + 7;
+                            float ox = ((hash >> 8) & 0xFF) / 255f;
+                            float oy = (hash & 0xFF) / 255f;
+                            offset = new Vector2(ox, oy);
+                            tileOffsetCache[tileIndex] = offset;
+                        }
+
+                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
+                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                    }
+                }
+
+                pixels[y * width + x] = color;
+                processed++;
+                if (processed % pixelsPerFrame == 0)
+                    yield return null;
+            }
+        }
+
+        // Apply the same orientation flips as the planet minimap
+        FlipPixelsVertically(pixels, width, height);
+        FlipPixelsHorizontally(pixels, width, height);
+        tex.SetPixels32(pixels);
+        tex.Apply();
+        _moonMinimapTextures[planetIndex] = tex;
+
+        Debug.Log($"[MinimapUI] Generated MOON minimap for planet {planetIndex} ({width}x{height})");
     }
 
     private IEnumerator GenerateMinimapTextureCoroutine(int planetIndex)
@@ -399,8 +582,50 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (tex != null) DestroyImmediate(tex);
         }
         _minimapTextures.Clear();
+        foreach (var tex in _moonMinimapTextures.Values)
+        {
+            if (tex != null) DestroyImmediate(tex);
+        }
+        _moonMinimapTextures.Clear();
         _minimapsPreGenerated = false;
         Debug.Log("[MinimapUI] Minimap cache cleared. Restart generation to create new textures.");
+    }
+
+    /// <summary>
+    /// Detect if the RawImage is mirrored by the UI transform stack.
+    /// </summary>
+    private void RefreshMirrorFlags()
+    {
+        if (minimapImage == null) return;
+
+        // Auto-pick UI camera when not set
+        if (uiCamera == null)
+        {
+            var canvas = minimapImage.canvas;
+            if (canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                uiCamera = canvas.worldCamera;
+        }
+
+        var rt = minimapImage.rectTransform;
+
+        // Get four world corners (bl, tl, tr, br)
+        Vector3[] wc = new Vector3[4];
+        rt.GetWorldCorners(wc);
+
+        // Project to screen space (camera can be null for Overlay)
+        Vector2 bl = RectTransformUtility.WorldToScreenPoint(uiCamera, wc[0]);
+        Vector2 tl = RectTransformUtility.WorldToScreenPoint(uiCamera, wc[1]);
+        Vector2 tr = RectTransformUtility.WorldToScreenPoint(uiCamera, wc[2]);
+        Vector2 br = RectTransformUtility.WorldToScreenPoint(uiCamera, wc[3]);
+
+        // If the right edge is to the left of the left edge, it's mirrored on X
+        _isHorizontallyMirrored = (br.x < bl.x) || (tr.x < tl.x);
+        // If the top edge is below the bottom edge, it's mirrored on Y
+        _isVerticallyMirrored   = (tl.y < bl.y) || (tr.y < br.y);
+
+#if UNITY_EDITOR
+        Debug.Log($"[MinimapUI] Mirror flags -> H:{_isHorizontallyMirrored}  V:{_isVerticallyMirrored}");
+#endif
     }
 
     private void BuildPlanetDropdown()
@@ -472,39 +697,191 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void ShowMinimapForPlanet(int planetIndex)
     {
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+
         if (_minimapsPreGenerated)
         {
             // Use pre-generated texture when present; otherwise, generate on-demand
-            if (_minimapTextures.TryGetValue(planetIndex, out var tex) && tex != null)
+            if (!isOnMoon)
             {
-                if (minimapImage != null) minimapImage.texture = tex;
-                SetZoom(1f);
-                Debug.Log($"[MinimapUI] Showing pre-generated minimap for planet {planetIndex}");
+                if (_minimapTextures.TryGetValue(planetIndex, out var tex) && tex != null)
+                {
+                    if (minimapImage != null) minimapImage.texture = tex;
+                    SetZoom(1f);
+                    Debug.Log($"[MinimapUI] Showing pre-generated minimap for planet {planetIndex}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[MinimapUI] No pre-generated minimap found for planet {planetIndex} — generating on-demand.");
+                    var generated = GenerateMinimapTexture(planetIndex);
+                    if (generated != null)
+                    {
+                        _minimapTextures[planetIndex] = generated;
+                        if (minimapImage != null) minimapImage.texture = generated;
+                        SetZoom(1f);
+                    }
+                }
             }
             else
             {
-                Debug.LogWarning($"[MinimapUI] No pre-generated minimap found for planet {planetIndex} — generating on-demand.");
-                var generated = GenerateMinimapTexture(planetIndex);
-                if (generated != null)
+                if (_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) && mtex != null)
                 {
-                    _minimapTextures[planetIndex] = generated;
-                    if (minimapImage != null) minimapImage.texture = generated;
+                    if (minimapImage != null) minimapImage.texture = mtex;
                     SetZoom(1f);
+                    Debug.Log($"[MinimapUI] Showing pre-generated MOON minimap for planet {planetIndex}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[MinimapUI] No pre-generated MOON minimap found for planet {planetIndex} — generating on-demand.");
+                    var generated = GenerateMoonMinimapTexture(planetIndex);
+                    if (generated != null)
+                    {
+                        _moonMinimapTextures[planetIndex] = generated;
+                        if (minimapImage != null) minimapImage.texture = generated;
+                        SetZoom(1f);
+                    }
                 }
             }
         }
         else
         {
             // Fallback to on-demand generation
-            if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
+            if (!isOnMoon)
             {
-                tex = GenerateMinimapTexture(planetIndex);
-                _minimapTextures[planetIndex] = tex;
-            }
+                if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
+                {
+                    tex = GenerateMinimapTexture(planetIndex);
+                    _minimapTextures[planetIndex] = tex;
+                }
 
-            if (minimapImage != null) minimapImage.texture = tex;
-            SetZoom(1f);
+                if (minimapImage != null) minimapImage.texture = tex;
+                SetZoom(1f);
+            }
+            else
+            {
+                if (!_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) || mtex == null)
+                {
+                    mtex = GenerateMoonMinimapTexture(planetIndex);
+                    _moonMinimapTextures[planetIndex] = mtex;
+                }
+
+                if (minimapImage != null) minimapImage.texture = mtex;
+                SetZoom(1f);
+            }
         }
+    }
+
+    private Texture2D GenerateMoonMinimapTexture(int planetIndex)
+    {
+        if (_gameManager == null)
+        {
+            Debug.LogError("[MinimapUI] No GameManager instance.");
+            return null;
+        }
+
+        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+        if (moonGen == null)
+        {
+            Debug.LogWarning($"[MinimapUI] Moon generator not found for planet {planetIndex}");
+            return null;
+        }
+
+        var grid = moonGen.Grid;
+        if (grid == null)
+        {
+            Debug.LogWarning("[MinimapUI] Moon Grid missing.");
+            return null;
+        }
+
+        int width = minimapResolution.x;
+        int height = minimapResolution.y;
+        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        // Precompute trig
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float latRad = Mathf.PI * (0.5f - v);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        var tileOffsetCache = new Dictionary<int, Vector2>();
+        var pixels = new Color32[width * height];
+
+        for (int y = 0; y < height; y++)
+        {
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            float v = (y + 0.5f) / height;
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (x + 0.5f) / width;
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
+                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
+                int tileIndex = grid.GetTileAtPosition(dir);
+
+                Color color;
+                if (tileIndex < 0)
+                {
+                    color = Color.magenta;
+                }
+                else
+                {
+                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
+                    {
+                        tileData = moonGen.GetHexTileData(tileIndex);
+                        tileDataCache[tileIndex] = tileData;
+                    }
+
+                    if (tileData == null)
+                    {
+                        color = new Color(0.35f, 0.35f, 0.35f);
+                    }
+                    else
+                    {
+                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
+                        {
+                            int hash = tileIndex * 9781 + 7;
+                            float ox = ((hash >> 8) & 0xFF) / 255f;
+                            float oy = (hash & 0xFF) / 255f;
+                            offset = new Vector2(ox, oy);
+                            tileOffsetCache[tileIndex] = offset;
+                        }
+                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
+                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                    }
+                }
+                pixels[y * width + x] = color;
+            }
+        }
+
+        // Match planet minimap orientation
+        FlipPixelsVertically(pixels, width, height);
+        FlipPixelsHorizontally(pixels, width, height);
+        tex.SetPixels32(pixels);
+        tex.Apply();
+        return tex;
     }
 
     private Texture2D GenerateMinimapTexture(int planetIndex)
@@ -771,71 +1148,78 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void HandleClickToMove(Vector2 localPoint)
     {
-        Debug.Log($"[MinimapUI] === CLICK DEBUG START ===");
-        Debug.Log($"[MinimapUI] Input localPoint: {localPoint}");
-        
-        // Convert to normalized coordinates (0-1) relative to the RawImage
-        Vector2 size = minimapImage.rectTransform.rect.size;
-        float normX = (localPoint.x / size.x) + 0.5f;
-        float normY = (localPoint.y / size.y) + 0.5f;
-        
-        Debug.Log($"[MinimapUI] RawImage size: {size}");
-        Debug.Log($"[MinimapUI] Normalized coordinates: normX={normX:F4}, normY={normY:F4}");
-        
-        // Clamp to valid range
+        Debug.Log("[MinimapUI] === CLICK DEBUG START ===");
+        Debug.Log($"[MinimapUI] Input localPoint: ({localPoint.x:F2}, {localPoint.y:F2})");
+
+        // RawImage pixel size in local space
+        var rawSize = minimapImage.rectTransform.rect.size;
+        Debug.Log($"[MinimapUI] RawImage size: ({rawSize.x:F2}, {rawSize.y:F2})");
+
+        // Local (0,0) is rect center -> convert to 0..1
+        float normX = (localPoint.x + rawSize.x * 0.5f) / rawSize.x;
+        float normY = (localPoint.y + rawSize.y * 0.5f) / rawSize.y;
+
+        Debug.Log($"[MinimapUI] Normalized (pre-mirror): normX={normX:F4}, normY={normY:F4}");
+
+        // Un-mirror the click to match what is actually drawn
+        if (_isHorizontallyMirrored) normX = 1f - normX;
+        if (_isVerticallyMirrored)   normY = 1f - normY;
+
         normX = Mathf.Clamp01(normX);
         normY = Mathf.Clamp01(normY);
-        Debug.Log($"[MinimapUI] Clamped coordinates: normX={normX:F4}, normY={normY:F4}");
+        Debug.Log($"[MinimapUI] Normalized (post-mirror): normX={normX:F4}, normY={normY:F4}");
 
-        // Convert to UV coordinates considering the current zoom/pan
-        var uvRect = minimapImage.uvRect;
-        float worldU = uvRect.x + normX * uvRect.width;
-        float worldV = uvRect.y + normY * uvRect.height;
-        
+        // Apply current zoom/pan window
+        var uvRect = minimapImage.uvRect;           // (x,y,width,height) in 0..1
         Debug.Log($"[MinimapUI] UV Rect: {uvRect}");
-        Debug.Log($"[MinimapUI] World UV coordinates: worldU={worldU:F4}, worldV={worldV:F4}");
+    float worldU = uvRect.x + normX * uvRect.width;
+    float worldV = uvRect.y + normY * uvRect.height;
+    Debug.Log($"[MinimapUI] World UV coordinates: worldU={worldU:F4}, worldV={worldV:F4}");
 
-        // Convert from RawImage UV to position indicator coordinate system
-        // RawImage UV is already in the same coordinate system as position indicator
-        float positionIndicatorU = worldU;       // No inversion needed
-        float positionIndicatorV = worldV;       // V should be the same
-        
-        Debug.Log($"[MinimapUI] Position indicator UV: posU={positionIndicatorU:F4}, posV={positionIndicatorV:F4}");
+    // Some pipelines rotate the minimap content by 180°. Compensate by shifting U by 0.5.
+    float adjU = Mathf.Repeat(worldU + 0.5f, 1f);
+    Debug.Log($"[MinimapUI] Adjusted U (rot+180): adjU={adjU:F4}");
 
-        // Move camera to this location
-        // Apply the INVERSE of the position indicator transformations
-        // Position indicator: u = 1f - ((lon + Mathf.PI) / (2f * Mathf.PI))
-        // So inverse: lon = 2f * Mathf.PI * (1f - u) - Mathf.PI
-        float lonRad = 2f * Mathf.PI * (1f - positionIndicatorU) - Mathf.PI;
-        
-        // Position indicator: v = 0.5f + (lat / Mathf.PI)
-        // So inverse: lat = (v - 0.5f) * Mathf.PI
-        float latRad = (positionIndicatorV - 0.5f) * Mathf.PI;
-        
-        Debug.Log($"[MinimapUI] Spherical coordinates: lonRad={lonRad:F4} ({lonRad * Mathf.Rad2Deg:F2}°), latRad={latRad:F4} ({latRad * Mathf.Rad2Deg:F2}°)");
+    // Inverse of position indicator mapping
+        // Indicator uses: u = 1 - (lon + PI) / (2PI)  =>  lon = 2PI * (1 - u) - PI
+        //                  v = 0.5 + (lat / PI)      =>  lat = (v - 0.5) * PI
+    float lonRad = 2f * Mathf.PI * (1f - adjU) - Mathf.PI;
+        float latRad = (worldV - 0.5f) * Mathf.PI;
+        Debug.Log($"[MinimapUI] Spherical coordinates: lonRad={lonRad:F4} ({lonRad*Mathf.Rad2Deg:F2}°), latRad={latRad:F4} ({latRad*Mathf.Rad2Deg:F2}°)");
 
+        // Equirectangular to local direction
         Vector3 localDir = new Vector3(
             Mathf.Sin(lonRad) * Mathf.Cos(latRad),
             Mathf.Sin(latRad),
-            Mathf.Cos(lonRad) * Mathf.Cos(latRad)).normalized;
-            
+            Mathf.Cos(lonRad) * Mathf.Cos(latRad)
+        ).normalized;
         Debug.Log($"[MinimapUI] Local direction vector: {localDir}");
 
-        // Transform to world-space using current planet's orientation
-        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-        Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir) : localDir;
-        
-        Debug.Log($"[MinimapUI] Planet transform: {currentPlanetGen?.transform?.rotation}");
-        Debug.Log($"[MinimapUI] World direction vector: {worldDir}");
-
+        // Decide target body (planet or moon) and respect its transform
         var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        Vector3 worldDir;
+        if (isOnMoon)
+        {
+            var moonGen = _gameManager?.GetCurrentMoonGenerator();
+            worldDir = moonGen != null ? moonGen.transform.TransformDirection(localDir).normalized : localDir;
+        }
+        else
+        {
+            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+            worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
+        }
+
+        Debug.Log($"[MinimapUI] World direction vector: {worldDir}");
+        Debug.Log("[MinimapUI] Jumping camera to world direction.");
+
         if (camMgr != null)
         {
-            camMgr.JumpToDirection(worldDir, false);
-            Debug.Log($"[MinimapUI] Jumping camera to world direction: {worldDir}");
+            // Pass whether we are targeting the moon so the camera orbits the right body
+            camMgr.JumpToDirection(worldDir, isOnMoon);
         }
-        
-        Debug.Log($"[MinimapUI] === CLICK DEBUG END ===");
+
+        Debug.Log("[MinimapUI] === CLICK DEBUG END ===");
     }
 
     public void OnScroll(PointerEventData eventData)
@@ -912,6 +1296,59 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (zoomOutButton != null)
             zoomOutButton.interactable = _currentZoom > minZoom;
     }
+
+    /// <summary>
+    /// OnClick handler for the Moon button. Switches to the current planet's moon if available.
+    /// </summary>
+    private void OnMoonButtonClicked()
+    {
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (_gameManager == null || camMgr == null)
+        {
+            Debug.LogWarning("[MinimapUI] Cannot switch to moon: missing GameManager or CameraManager.");
+            return;
+        }
+
+        int planetIndex = Mathf.Clamp(_gameManager.currentPlanetIndex, 0, Mathf.Max(0, _gameManager.maxPlanets - 1));
+        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+        if (moonGen == null || moonGen.Grid == null || moonGen.Grid.TileCount == 0)
+        {
+            Debug.LogWarning($"[MinimapUI] Planet {planetIndex} has no moon or moon grid; cannot switch.");
+            return;
+        }
+
+        camMgr.SwitchToMoon(true);
+        ShowMinimapForPlanet(planetIndex);
+    }
+
+    /// <summary>
+    /// OnClick handler for the Main planet button. Switches to the configured main planet and ensures we're not on the moon.
+    /// </summary>
+    private void OnMainPlanetButtonClicked()
+    {
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (_gameManager == null || camMgr == null)
+        {
+            Debug.LogWarning("[MinimapUI] Cannot switch to main planet: missing GameManager or CameraManager.");
+            return;
+        }
+
+        int targetIndex = Mathf.Clamp(mainPlanetIndex, 0, Mathf.Max(0, _gameManager.maxPlanets - 1));
+        if (_gameManager.enableMultiPlanetSystem)
+        {
+            _gameManager.SetCurrentPlanet(targetIndex);
+        }
+        camMgr.SwitchToMoon(false);
+
+        // Reflect in UI
+        if (planetDropdown != null)
+        {
+            planetDropdown.value = targetIndex;
+            planetDropdown.RefreshShownValue();
+        }
+
+        ShowMinimapForPlanet(targetIndex);
+    }
     
     /// <summary>
     /// Update the position indicator to show where the camera is positioned on the planet
@@ -923,14 +1360,26 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var camera = Camera.main;
         if (camera == null) return;
 
-        // Get the current planet's position
-        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-        if (currentPlanetGen == null) return;
+        // Determine whether to show indicator on planet or moon based on camera target
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
 
-        Vector3 planetPosition = currentPlanetGen.transform.position;
+        Vector3 bodyPosition;
+        if (isOnMoon)
+        {
+            var moonGen = _gameManager?.GetCurrentMoonGenerator();
+            if (moonGen == null) return;
+            bodyPosition = moonGen.transform.position;
+        }
+        else
+        {
+            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+            if (currentPlanetGen == null) return;
+            bodyPosition = currentPlanetGen.transform.position;
+        }
         
         // Calculate camera position relative to planet center
-        Vector3 relativePos = camera.transform.position - planetPosition;
+    Vector3 relativePos = camera.transform.position - bodyPosition;
         
         // Normalize to get direction from planet center
         Vector3 direction = relativePos.normalized;
@@ -942,7 +1391,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // Convert to UV coordinates (0-1)
         // Longitude: -π to π -> 0 to 1 (0 = left edge, 1 = right edge)
         // Try horizontal flip to match minimap orientation
-        float u = 1f - ((lon + Mathf.PI) / (2f * Mathf.PI));
+        float u = 1f- (lon + Mathf.PI) / (2f * Mathf.PI);
         
         // Latitude: -π/2 to π/2 -> 0 to 1 (0 = top edge, 1 = bottom edge)
         // The texture is flipped vertically after generation, so we need to invert the V coordinate
@@ -953,7 +1402,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         v = Mathf.Clamp01(v);
         
         // Always show the position indicator, even if outside current view
-        // Convert to local position on minimap (0-1 range)
+    // Convert to local position on minimap (0-1 range)
         var rect = minimapImage.rectTransform.rect;
         Vector2 localPos = new Vector2(
             (u - 0.5f) * rect.width,

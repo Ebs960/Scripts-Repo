@@ -275,4 +275,20 @@ public class UIManager : MonoBehaviour
             spaceMapUI.Hide();
         }
     }
+
+    /// <summary>
+    /// UI hook: Switch camera view to Earth's moon (Luna).
+    /// Wire your Moon button OnClick to this method.
+    /// </summary>
+    public void GoToEarthMoon()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.GoToEarthMoon();
+        }
+        else
+        {
+            Debug.LogWarning("[UIManager] GameManager not found; cannot switch to Earth's moon.");
+        }
+    }
 }

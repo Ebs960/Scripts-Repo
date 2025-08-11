@@ -92,6 +92,7 @@ public class GameManager : MonoBehaviour
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
+    public MoonGenerator GetMoonGenerator(int planetIndex) => moonGenerators.TryGetValue(planetIndex, out var moon) ? moon : null;
     public ClimateManager GetClimateManager(int planetIndex) => planetClimateManagers.TryGetValue(planetIndex, out var mgr) ? mgr : null;
     public Dictionary<int, PlanetData> GetPlanetData() => planetData;
     
@@ -1920,6 +1921,61 @@ public class GameManager : MonoBehaviour
             {
                 Debug.LogWarning("[GameManager] Space loading panel prefab does not have SpaceLoadingPanelController component");
             }
+        }
+    }
+
+    /// <summary>
+    /// Switch view to Earth's moon (Luna) in multi-planet setups, or to the single moon in single-planet mode.
+    /// </summary>
+    public void GoToEarthMoon()
+    {
+        // Determine Earth index if using real system; otherwise assume index 0
+        int earthIndex = 0;
+        if (enableMultiPlanetSystem)
+        {
+            foreach (var kv in planetData)
+            {
+                if (string.Equals(kv.Value.planetName, "Earth", StringComparison.OrdinalIgnoreCase))
+                {
+                    earthIndex = kv.Key;
+                    break;
+                }
+            }
+
+            if (currentPlanetIndex != earthIndex)
+            {
+                // Switch current planet to Earth synchronously if already generated
+                if (planetGenerators.ContainsKey(earthIndex))
+                {
+                    currentPlanetIndex = earthIndex;
+                    moonGenerator = moonGenerators.TryGetValue(earthIndex, out var mg) ? mg : null;
+                    TileDataHelper.Instance?.UpdateReferences();
+                }
+                else
+                {
+                    Debug.LogWarning($"[GameManager] Earth index {earthIndex} not ready.");
+                }
+            }
+        }
+
+        // Ensure Earth has a moon
+        var currentMoon = GetCurrentMoonGenerator();
+        if (currentMoon == null)
+        {
+            Debug.LogWarning("[GameManager] No moon generator available for current planet. Cannot go to moon.");
+            return;
+        }
+
+        // Move camera to orbit the moon
+        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (camMgr != null)
+        {
+            camMgr.SwitchToMoon(true);
+            Debug.Log("[GameManager] Switched camera to Earth's moon.");
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] PlanetaryCameraManager not found. Cannot switch camera to moon.");
         }
     }
 

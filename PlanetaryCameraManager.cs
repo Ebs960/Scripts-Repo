@@ -27,6 +27,7 @@ public class PlanetaryCameraManager : MonoBehaviour
     public bool allowMouseDrag = true;
     private Vector3? lastMousePos = null;
     private bool onMoon = false;
+    public bool IsOnMoon => onMoon;
 
     [Header("Swooping Camera Settings")]
     public bool enableSwooping = true;
@@ -314,6 +315,24 @@ public class PlanetaryCameraManager : MonoBehaviour
         Vector3 camPos = currentOrbitCenter + camOffset;
         transform.position = camPos;
         transform.LookAt(currentOrbitCenter, cameraRotation * Vector3.up);
+    }
+
+    /// <summary>
+    /// Switch orbit target between planet and moon, keeping current orientation.
+    /// </summary>
+    public void SwitchToMoon(bool toMoon)
+    {
+        onMoon = toMoon;
+        UpdateCenterPositions();
+        currentOrbitCenter = onMoon ? moonCenter : planetCenter;
+
+        // Keep orientation; just reposition camera around the new center
+        cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 camOffset = cameraRotation * (Vector3.back * orbitRadius);
+        Vector3 camPos = currentOrbitCenter + camOffset;
+        transform.position = camPos;
+        transform.LookAt(currentOrbitCenter, cameraRotation * Vector3.up);
+        Debug.Log($"[PlanetaryCameraManager] Switched target to {(onMoon ? "Moon" : "Planet")} at {currentOrbitCenter}");
     }
 }
 

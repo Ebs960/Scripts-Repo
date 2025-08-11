@@ -1590,6 +1590,8 @@ MonoBehaviour:
   minimapContainer: {fileID: 2569911654292508293}
   zoomInButton: {fileID: 6924044681161247334}
   zoomOutButton: {fileID: 551640169055990870}
+  moonButton: {fileID: 3172175531367859731}
+  mainPlanetButton: {fileID: 286983583296350513}
   zoomLevelText: {fileID: 3513231434145898316}
   positionIndicator: {fileID: 8306577482277223502}
   minimapResolution: {x: 512, y: 256}
@@ -1598,9 +1600,11 @@ MonoBehaviour:
   minZoom: 1
   zoomSpeed: 0.25
   buttonZoomStep: 1
+  mainPlanetIndex: 0
   preGenerateAllMinimaps: 1
   minimapsPerFrame: 1
-  pixelsPerFrame: 200000
+  pixelsPerFrame: 900000
+  uiCamera: {fileID: 0}
 --- !u!1 &5186900336430570707
 GameObject:
   m_ObjectHideFlags: 0
