@@ -765,6 +765,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         biome = Biome.PlutoCryo;
                     } else if (isTitanWorldType) {
                         biome = Biome.TitanIce;
+                    } else if (isJupiterWorldType) {
+                        biome = Biome.JovianStorm;
                     } else if (isEuropaWorldType) {
                         biome = Biome.EuropaIce;
                     } else if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
@@ -793,12 +795,22 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             } else { // Water Biomes
                  finalElevation = 0f; // Water elevation is 0
-                 // Classify polar water tiles as glaciers, everything else as ocean
-                 if (absLatitude >= polarLatitudeThreshold) {
-                    biome = Biome.Glacier;
+                 // Planet-specific water biomes
+                 if (isJupiterWorldType) {
+                     // Jupiter should always have Jovian biomes, never Earth water biomes
+                     if (absLatitude >= polarLatitudeThreshold) {
+                         biome = Biome.JovianStorm; // Polar water = storms
+                     } else {
+                         biome = Biome.JovianClouds; // Regular water = cloud layers
+                     }
                  } else {
-                     biome = Biome.Ocean;
-                }
+                     // Classify polar water tiles as glaciers, everything else as ocean
+                     if (absLatitude >= polarLatitudeThreshold) {
+                        biome = Biome.Glacier;
+                     } else {
+                         biome = Biome.Ocean;
+                    }
+                 }
             }
 
             // *** Override for Glaciers: Treat them like land for elevation ***
@@ -859,8 +871,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
-            // Protect Snow and Glacier tiles from ever becoming a coast or sea
-            if (data[i].biome == Biome.Snow || data[i].biome == Biome.Glacier) {
+            // Protect Snow, Glacier, and Jupiter biomes from ever becoming a coast or sea
+            if (data[i].biome == Biome.Snow || data[i].biome == Biome.Glacier ||
+                data[i].biome == Biome.JovianClouds || data[i].biome == Biome.JovianStorm) {
                 postProcessProtectedTiles.Add(i);
                 continue;
             }
@@ -920,7 +933,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
-            // BIOME PROTECTION: Never modify Snow or Glacier
+            // BIOME PROTECTION: Never modify Snow, Glacier, or Jupiter biomes
             if (postProcessProtectedTiles.Contains(i)) continue;
 
             Biome currentBiome = data[i].biome;

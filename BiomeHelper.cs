@@ -124,9 +124,10 @@ public static class BiomeHelper {
             return Biome.MercurianCraters;
         }
         if (isJupiterWorldType) {
-            if (temperature < 0.0f && moisture > 0.5f) return Biome.JovianClouds;
-            if (temperature < -0.2f && moisture > 0.7f) return Biome.JovianStorm;
-            return Biome.JovianClouds;
+            // Jupiter should always have Jovian biomes, never Earth biomes
+            if (temperature <= 0.08f) return Biome.JovianStorm; // Polar regions = storms
+            if (temperature < 0.0f) return Biome.JovianStorm; // Cold regions = storms
+            return Biome.JovianClouds; // Default = cloud layers
         }
         if (isSaturnWorldType) {
             if (temperature < 0.0f && moisture > 0.5f) return Biome.SaturnianClouds;
@@ -272,9 +273,8 @@ public static class BiomeHelper {
                 return Biome.UranianIce;
             }
 
-            if (isJupiterWorldType) {
-                return Biome.JovianStorm;
-            }
+            // Jupiter polar logic is now handled in the main Jupiter section above
+            // No need for duplicate check here
             
             // Neptune polar regions
             if (isNeptuneWorldType) {
