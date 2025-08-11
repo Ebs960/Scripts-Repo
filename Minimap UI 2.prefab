@@ -1592,7 +1592,7 @@ MonoBehaviour:
   zoomOutButton: {fileID: 551640169055990870}
   zoomLevelText: {fileID: 3513231434145898316}
   positionIndicator: {fileID: 8306577482277223502}
-  minimapResolution: {x: 1024, y: 512}
+  minimapResolution: {x: 512, y: 256}
   colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
   maxZoom: 4
   minZoom: 1
@@ -1600,7 +1600,7 @@ MonoBehaviour:
   buttonZoomStep: 1
   preGenerateAllMinimaps: 1
   minimapsPerFrame: 1
-  pixelsPerFrame: 50000
+  pixelsPerFrame: 200000
 --- !u!1 &5186900336430570707
 GameObject:
   m_ObjectHideFlags: 0

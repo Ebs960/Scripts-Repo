@@ -42,7 +42,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [Header("Pre-generation Settings")]
     [SerializeField] private bool preGenerateAllMinimaps = false;
     [SerializeField] private int minimapsPerFrame = 1;
-    [SerializeField] private int pixelsPerFrame = 50000; // Process pixels in batches for better performance
+    [SerializeField] private int pixelsPerFrame = 200000; // Process pixels in batches for better performance
 
     // Private fields
     private readonly Dictionary<int, Texture2D> _minimapTextures = new();
@@ -56,6 +56,46 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
+
+    // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
+    // bottom-left origin (Texture2D) to a top-left display orientation.
+    private static void FlipPixelsVertically(Color32[] pixels, int width, int height)
+    {
+        if (pixels == null || pixels.Length != width * height) return;
+        int half = height / 2;
+        var rowBuffer = new Color32[width];
+        for (int y = 0; y < half; y++)
+        {
+            int topRowStart = (height - 1 - y) * width;
+            int bottomRowStart = y * width;
+
+            // Swap rows using a small buffer
+            System.Array.Copy(pixels, bottomRowStart, rowBuffer, 0, width);
+            System.Array.Copy(pixels, topRowStart, pixels, bottomRowStart, width);
+            System.Array.Copy(rowBuffer, 0, pixels, topRowStart, width);
+        }
+    }
+
+    // Flip a Color32 pixel buffer horizontally in-place (column swap) to fix horizontal orientation
+    private static void FlipPixelsHorizontally(Color32[] pixels, int width, int height)
+    {
+        if (pixels == null || pixels.Length != width * height) return;
+        int half = width / 2;
+        for (int y = 0; y < height; y++)
+        {
+            int rowStart = y * width;
+            for (int x = 0; x < half; x++)
+            {
+                int leftIndex = rowStart + x;
+                int rightIndex = rowStart + (width - 1 - x);
+                
+                // Swap pixels
+                Color32 temp = pixels[leftIndex];
+                pixels[leftIndex] = pixels[rightIndex];
+                pixels[rightIndex] = temp;
+            }
+        }
+    }
 
     void Awake()
     {
@@ -337,7 +377,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        tex.SetPixels32(pixels);
+    // Flip vertically so north appears at the top of the displayed minimap
+    FlipPixelsVertically(pixels, width, height);
+    // Flip horizontally to fix horizontal orientation
+    FlipPixelsHorizontally(pixels, width, height);
+    tex.SetPixels32(pixels);
         tex.Apply();
         _minimapTextures[planetIndex] = tex;
         
@@ -584,7 +628,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        tex.SetPixels32(pixels);
+    // Flip vertically so north appears at the top of the displayed minimap
+    FlipPixelsVertically(pixels, width, height);
+    // Flip horizontally to fix horizontal orientation
+    FlipPixelsHorizontally(pixels, width, height);
+    tex.SetPixels32(pixels);
         tex.Apply();
         return tex;
     }
@@ -723,32 +771,62 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void HandleClickToMove(Vector2 localPoint)
     {
+        Debug.Log($"[MinimapUI] === CLICK DEBUG START ===");
+        Debug.Log($"[MinimapUI] Input localPoint: {localPoint}");
+        
         // Convert to normalized coordinates (0-1) relative to the RawImage
         Vector2 size = minimapImage.rectTransform.rect.size;
         float normX = (localPoint.x / size.x) + 0.5f;
         float normY = (localPoint.y / size.y) + 0.5f;
         
+        Debug.Log($"[MinimapUI] RawImage size: {size}");
+        Debug.Log($"[MinimapUI] Normalized coordinates: normX={normX:F4}, normY={normY:F4}");
+        
         // Clamp to valid range
         normX = Mathf.Clamp01(normX);
         normY = Mathf.Clamp01(normY);
+        Debug.Log($"[MinimapUI] Clamped coordinates: normX={normX:F4}, normY={normY:F4}");
 
         // Convert to UV coordinates considering the current zoom/pan
         var uvRect = minimapImage.uvRect;
         float worldU = uvRect.x + normX * uvRect.width;
         float worldV = uvRect.y + normY * uvRect.height;
+        
+        Debug.Log($"[MinimapUI] UV Rect: {uvRect}");
+        Debug.Log($"[MinimapUI] World UV coordinates: worldU={worldU:F4}, worldV={worldV:F4}");
+
+        // Convert from RawImage UV to position indicator coordinate system
+        // RawImage UV is already in the same coordinate system as position indicator
+        float positionIndicatorU = worldU;       // No inversion needed
+        float positionIndicatorV = worldV;       // V should be the same
+        
+        Debug.Log($"[MinimapUI] Position indicator UV: posU={positionIndicatorU:F4}, posV={positionIndicatorV:F4}");
 
         // Move camera to this location
-        float lonRad = 2f * Mathf.PI * (worldU - 0.5f);
-        float latRad = Mathf.PI * (0.5f - worldV);
+        // Apply the INVERSE of the position indicator transformations
+        // Position indicator: u = 1f - ((lon + Mathf.PI) / (2f * Mathf.PI))
+        // So inverse: lon = 2f * Mathf.PI * (1f - u) - Mathf.PI
+        float lonRad = 2f * Mathf.PI * (1f - positionIndicatorU) - Mathf.PI;
+        
+        // Position indicator: v = 0.5f + (lat / Mathf.PI)
+        // So inverse: lat = (v - 0.5f) * Mathf.PI
+        float latRad = (positionIndicatorV - 0.5f) * Mathf.PI;
+        
+        Debug.Log($"[MinimapUI] Spherical coordinates: lonRad={lonRad:F4} ({lonRad * Mathf.Rad2Deg:F2}°), latRad={latRad:F4} ({latRad * Mathf.Rad2Deg:F2}°)");
 
         Vector3 localDir = new Vector3(
             Mathf.Sin(lonRad) * Mathf.Cos(latRad),
             Mathf.Sin(latRad),
             Mathf.Cos(lonRad) * Mathf.Cos(latRad)).normalized;
+            
+        Debug.Log($"[MinimapUI] Local direction vector: {localDir}");
 
         // Transform to world-space using current planet's orientation
         var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
         Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir) : localDir;
+        
+        Debug.Log($"[MinimapUI] Planet transform: {currentPlanetGen?.transform?.rotation}");
+        Debug.Log($"[MinimapUI] World direction vector: {worldDir}");
 
         var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
         if (camMgr != null)
@@ -756,6 +834,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             camMgr.JumpToDirection(worldDir, false);
             Debug.Log($"[MinimapUI] Jumping camera to world direction: {worldDir}");
         }
+        
+        Debug.Log($"[MinimapUI] === CLICK DEBUG END ===");
     }
 
     public void OnScroll(PointerEventData eventData)
@@ -861,10 +941,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         
         // Convert to UV coordinates (0-1)
         // Longitude: -π to π -> 0 to 1 (0 = left edge, 1 = right edge)
-        float u = (lon + Mathf.PI) / (2f * Mathf.PI);
+        // Try horizontal flip to match minimap orientation
+        float u = 1f - ((lon + Mathf.PI) / (2f * Mathf.PI));
         
-        // Latitude: -π/2 to π/2 -> 1 to 0 (1 = top edge, 0 = bottom edge)
-        float v = 1f - ((lat + Mathf.PI * 0.5f) / Mathf.PI);
+        // Latitude: -π/2 to π/2 -> 0 to 1 (0 = top edge, 1 = bottom edge)
+        // The texture is flipped vertically after generation, so we need to invert the V coordinate
+        float v = 0.5f + (lat / Mathf.PI); // Invert to match the flipped texture
         
         // Clamp to valid range
         u = Mathf.Repeat(u, 1f);
@@ -884,5 +966,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         
         positionIndicator.anchoredPosition = localPos;
         positionIndicator.gameObject.SetActive(true);
+        
+        // Debug logging for position indicator (only log occasionally to avoid spam)
+        if (Time.frameCount % 3000 == 0) // Log every 300 frames (once per 5 seconds at 60fps)
+        {
+            Debug.Log($"[MinimapUI] === POSITION INDICATOR DEBUG ===");
+            Debug.Log($"[MinimapUI] Camera direction: {direction}");
+            Debug.Log($"[MinimapUI] Spherical coords: lat={lat:F4} ({lat * Mathf.Rad2Deg:F2}°), lon={lon:F4} ({lon * Mathf.Rad2Deg:F2}°)");
+            Debug.Log($"[MinimapUI] UV coordinates: u={u:F4}, v={v:F4}");
+            Debug.Log($"[MinimapUI] Local position: {localPos}");
+            Debug.Log($"[MinimapUI] === POSITION INDICATOR DEBUG END ===");
+        }
     }
 }
