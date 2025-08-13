@@ -84,6 +84,10 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Morale gained when killing an enemy unit")]
     public int moraleGainOnKill = 10;
 
+    [Header("Weather")]
+    [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
+    public bool takesWeatherDamage = true;
+
     [Header("Production & Purchase")]
     public int productionCost;
     public int goldCost;

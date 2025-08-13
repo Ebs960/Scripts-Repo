@@ -79,6 +79,72 @@ public class HexTileData
     public bool HasHolySite => HasDistrict && district.isHolySite;
     public bool HasReligion => religionStatus.GetDominantReligion() != null;
 
+    // Local yield bonus aggregator
+    private struct YieldAgg { public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyAdd; public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPct; }
+    private static YieldAgg AggregateImprovementBonusesLocal(Civilization civ, ImprovementData imp)
+    {
+        YieldAgg a = new YieldAgg(); if (civ == null || imp == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.improvementBonuses == null) continue;
+                foreach (var b in t.improvementBonuses)
+                    if (b != null && b.improvement == imp)
+                    {
+                        a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                        a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                        a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                        a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.improvementBonuses == null) continue;
+                foreach (var b in c.improvementBonuses)
+                    if (b != null && b.improvement == imp)
+                    {
+                        a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                        a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd; a.policyAdd += b.policyPointsAdd;
+                        a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                        a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct; a.policyPct += b.policyPointsPct;
+                    }
+            }
+        return a;
+    }
+
+    private static YieldAgg AggregateGenericBonusesLocal(Civilization civ, ScriptableObject target)
+    {
+        YieldAgg a = new YieldAgg(); if (civ == null || target == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.genericYieldBonuses == null) continue;
+                foreach (var b in t.genericYieldBonuses)
+                    if (b != null && b.target == target)
+                    {
+                        a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                        a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd;
+                        a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                        a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.genericYieldBonuses == null) continue;
+                foreach (var b in c.genericYieldBonuses)
+                    if (b != null && b.target == target)
+                    {
+                        a.foodAdd += b.foodAdd; a.productionAdd += b.productionAdd; a.goldAdd += b.goldAdd;
+                        a.scienceAdd += b.scienceAdd; a.cultureAdd += b.cultureAdd; a.faithAdd += b.faithAdd;
+                        a.foodPct += b.foodPct; a.productionPct += b.productionPct; a.goldPct += b.goldPct;
+                        a.sciencePct += b.sciencePct; a.culturePct += b.culturePct; a.faithPct += b.faithPct;
+                    }
+            }
+        return a;
+    }
+
     /// <summary>
     /// Total effective yield after improvements, resource, and season.
     /// You can call this per-turn in your city/civ income loops.
@@ -98,13 +164,33 @@ public class HexTileData
 
         if (HasImprovement)
         {
-            y.Food += improvement.foodPerTurn;
-            y.Production += improvement.productionPerTurn; 
-            y.Gold += improvement.goldPerTurn;
-            y.Science += improvement.sciencePerTurn;
-            y.Culture += improvement.culturePerTurn;
-            y.Policy += improvement.policyPointsPerTurn;
-            y.Faith += improvement.faithPerTurn;
+            int f = improvement.foodPerTurn;
+            int p = improvement.productionPerTurn;
+            int g = improvement.goldPerTurn;
+            int s = improvement.sciencePerTurn;
+            int c = improvement.culturePerTurn;
+            int pol = improvement.policyPointsPerTurn;
+            int fa = improvement.faithPerTurn;
+
+            if (HasOwner)
+            {
+                var agg = AggregateImprovementBonusesLocal(owner, improvement);
+                f = Mathf.RoundToInt((f + agg.foodAdd) * (1f + agg.foodPct));
+                p = Mathf.RoundToInt((p + agg.productionAdd) * (1f + agg.productionPct));
+                g = Mathf.RoundToInt((g + agg.goldAdd) * (1f + agg.goldPct));
+                s = Mathf.RoundToInt((s + agg.scienceAdd) * (1f + agg.sciencePct));
+                c = Mathf.RoundToInt((c + agg.cultureAdd) * (1f + agg.culturePct));
+                pol = Mathf.RoundToInt((pol + agg.policyAdd) * (1f + agg.policyPct));
+                fa = Mathf.RoundToInt((fa + agg.faithAdd) * (1f + agg.faithPct));
+            }
+
+            y.Food += f;
+            y.Production += p; 
+            y.Gold += g;
+            y.Science += s;
+            y.Culture += c;
+            y.Policy += pol;
+            y.Faith += fa;
         }
 
         if (HasResource)
@@ -120,12 +206,30 @@ public class HexTileData
         
         if (HasDistrict)
         {
-            y.Food += district.baseFood;
-            y.Production += district.baseProduction;
-            y.Gold += district.baseGold;
-            y.Science += district.baseScience;
-            y.Culture += district.baseCulture;
-            y.Faith += district.baseFaith;
+            int f = district.baseFood;
+            int p = district.baseProduction;
+            int g = district.baseGold;
+            int s = district.baseScience;
+            int c = district.baseCulture;
+            int fa = district.baseFaith;
+
+            if (HasOwner)
+            {
+                var agg = AggregateGenericBonusesLocal(owner, district);
+                f = Mathf.RoundToInt((f + agg.foodAdd) * (1f + agg.foodPct));
+                p = Mathf.RoundToInt((p + agg.productionAdd) * (1f + agg.productionPct));
+                g = Mathf.RoundToInt((g + agg.goldAdd) * (1f + agg.goldPct));
+                s = Mathf.RoundToInt((s + agg.scienceAdd) * (1f + agg.sciencePct));
+                c = Mathf.RoundToInt((c + agg.cultureAdd) * (1f + agg.culturePct));
+                fa = Mathf.RoundToInt((fa + agg.faithAdd) * (1f + agg.faithPct));
+            }
+
+            y.Food += f;
+            y.Production += p;
+            y.Gold += g;
+            y.Science += s;
+            y.Culture += c;
+            y.Faith += fa;
             
             // Apply adjacency bonuses if this is a Holy Site
             if (HasHolySite)

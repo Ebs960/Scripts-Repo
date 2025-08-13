@@ -1177,6 +1177,31 @@ public class Civilization : MonoBehaviour
 
         // Invoke the event
         OnTechResearched?.Invoke(tech);
+
+        // Refresh derived stats and caches across the civ after research completes
+        try
+        {
+            // Units/workers: update only health cap safely (do not refill points mid-turn)
+            if (combatUnits != null)
+                foreach (var u in combatUnits)
+                    if (u != null) u.OnCivBonusesChanged();
+            if (workerUnits != null)
+                foreach (var w in workerUnits)
+                    if (w != null) w.OnCivBonusesChanged();
+
+            // Cities: invalidate caches and update available buildings (for new unlocks)
+            if (cities != null)
+                foreach (var c in cities)
+                    if (c != null)
+                    {
+                        c.RefreshGovernorBonuses();
+                        c.UpdateAvailableBuildings();
+                    }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Civilization] Refresh after tech research threw: {ex}");
+        }
     }
     
     /// <summary>
@@ -1208,6 +1233,24 @@ public class Civilization : MonoBehaviour
                     city.UpdateAvailableBuildings(); // And potentially units
                 }
             }
+        }
+
+        // Refresh derived stats and caches across the civ after culture adoption
+        try
+        {
+            if (combatUnits != null)
+                foreach (var u in combatUnits)
+                    if (u != null) u.OnCivBonusesChanged();
+            if (workerUnits != null)
+                foreach (var w in workerUnits)
+                    if (w != null) w.OnCivBonusesChanged();
+            if (cities != null)
+                foreach (var c in cities)
+                    if (c != null) c.RefreshGovernorBonuses();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Civilization] Refresh after culture adoption threw: {ex}");
         }
     }
 

@@ -20,6 +20,10 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Can forage resources from unimproved tiles")]
     public bool canForage = false;
 
+    [Header("Weather")]
+    [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
+    public bool takesWeatherDamage = true;
+
     [Header("Production & Purchase")] public int productionCost;
     public int goldCost;
     public ResourceData[] requiredResources;

@@ -56,6 +56,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // Planet and Moon minimap caches
     private readonly Dictionary<int, Texture2D> _minimapTextures = new();
     private readonly Dictionary<int, Texture2D> _moonMinimapTextures = new();
+    // Fast path: per-body (planet or moon) LUT cache mapping pixel -> tile index
+    // Key: P{planetIndex}_M{0|1}_W{w}_H{h}
+    private static readonly Dictionary<string, int[]> _bodyIndexLUT = new();
     private float _currentZoom = 1f;
     private Vector2 _panOffset = Vector2.zero; // For panning around the zoomed minimap
     private bool _isDragging = false;
@@ -72,6 +75,57 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
+
+    // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
+    private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
+    {
+        if (grid == null) return null;
+        string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
+        if (_bodyIndexLUT.TryGetValue(key, out var cached)) return cached;
+
+        var lut = new int[width * height];
+
+        // Precompute trig
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float latRad = Mathf.PI * (0.5f - v);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        for (int y = 0; y < height; y++)
+        {
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            int yBase = y * width;
+            for (int x = 0; x < width; x++)
+            {
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
+                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
+                int tileIndex = grid.GetTileAtPosition(dir);
+                lut[yBase + x] = tileIndex;
+            }
+        }
+
+        _bodyIndexLUT[key] = lut;
+#if UNITY_EDITOR
+        Debug.Log($"[MinimapUI] Built index LUT {key} (size={width}x{height})");
+#endif
+        return lut;
+    }
 
     // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
     // bottom-left origin (Texture2D) to a top-left display orientation.
@@ -345,46 +399,28 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             wrapMode = TextureWrapMode.Clamp,
             filterMode = FilterMode.Bilinear
         };
-
-        // Precompute trig to reduce per-pixel cost
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
-        }
+        // Build/fetch per-body LUT
+        var lut = EnsureIndexLUTForBody(planetIndex, true, grid, width, height);
+        if (lut == null) yield break;
 
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileOffsetCache = new Dictionary<int, Vector2>();
         var pixels = new Color32[width * height];
+        // Precompute UVs for sampling
+        float[] vArr = new float[height];
+        for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
+        float[] uArr = new float[width];
+        for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
 
         int processed = 0;
         for (int y = 0; y < height; y++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            float v = (y + 0.5f) / height;
+            float v = vArr[y];
 
             for (int x = 0; x < width; x++)
             {
-                float u = (x + 0.5f) / width;
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
+                int idx = y * width + x;
+                int tileIndex = lut[idx];
 
                 Color color;
                 if (tileIndex < 0)
@@ -413,23 +449,22 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                             offset = new Vector2(ox, oy);
                             tileOffsetCache[tileIndex] = offset;
                         }
-
-                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
                         float sampleV = Mathf.Repeat(v + offset.y, 1f);
                         color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
                     }
                 }
 
-                pixels[y * width + x] = color;
+                // Write directly with final orientation (flip X & Y inline)
+                int dstX = width - 1 - x;
+                int dstY = height - 1 - y;
+                pixels[dstY * width + dstX] = color;
                 processed++;
                 if (processed % pixelsPerFrame == 0)
                     yield return null;
             }
         }
 
-        // Apply the same orientation flips as the planet minimap
-        FlipPixelsVertically(pixels, width, height);
-        FlipPixelsHorizontally(pixels, width, height);
         tex.SetPixels32(pixels);
         tex.Apply();
         _moonMinimapTextures[planetIndex] = tex;
@@ -470,24 +505,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             filterMode = FilterMode.Bilinear
         };
 
-        // Precompute trig to reduce per-pixel cost
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
+        // Build/fetch per-body LUT (planet)
+        var lut = EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
+        if (lut == null)
         {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
+            Debug.LogWarning("[MinimapUI] LUT build failed.");
+            yield break;
         }
 
         // Cache tile data and per-tile sample offsets (no color pre-cache)
@@ -495,21 +518,20 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var tileOffsetCache = new Dictionary<int, Vector2>();
         var pixels = new Color32[width * height];
 
-        int processed = 0;
+    // Precompute sampling UV arrays
+    float[] vArr = new float[height];
+    for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
+    float[] uArr = new float[width];
+    for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
+
+    int processed = 0;
         for (int y = 0; y < height; y++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            float v = (y + 0.5f) / height;
+        float v = vArr[y];
 
             for (int x = 0; x < width; x++)
             {
-                float u = (x + 0.5f) / width;
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
+        int tileIndex = lut[y * width + x];
 
                 Color color;
                 if (tileIndex < 0)
@@ -546,24 +568,21 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                             offset = new Vector2(ox, oy);
                             tileOffsetCache[tileIndex] = offset;
                         }
-
-                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
-                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
+            float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
+            float sampleV = Mathf.Repeat(v + offset.y, 1f);
                         color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
                     }
                 }
 
-                pixels[y * width + x] = color;
+        int dstX = width - 1 - x;
+        int dstY = height - 1 - y;
+        pixels[dstY * width + dstX] = color;
                 processed++;
                 if (processed % pixelsPerFrame == 0)
                     yield return null;
             }
         }
-
-    // Flip vertically so north appears at the top of the displayed minimap
-    FlipPixelsVertically(pixels, width, height);
-    // Flip horizontally to fix horizontal orientation
-    FlipPixelsHorizontally(pixels, width, height);
+    
     tex.SetPixels32(pixels);
         tex.Apply();
         _minimapTextures[planetIndex] = tex;
@@ -802,44 +821,21 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             filterMode = FilterMode.Bilinear
         };
 
-        // Precompute trig
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
-        }
+        var lut = EnsureIndexLUTForBody(planetIndex, true, grid, width, height);
+        if (lut == null) return null;
 
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileOffsetCache = new Dictionary<int, Vector2>();
         var pixels = new Color32[width * height];
+        float[] vArr = new float[height]; for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
+        float[] uArr = new float[width]; for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
 
         for (int y = 0; y < height; y++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            float v = (y + 0.5f) / height;
-
+            float v = vArr[y]; int yBase = y * width;
             for (int x = 0; x < width; x++)
             {
-                float u = (x + 0.5f) / width;
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
-
+                int tileIndex = lut[yBase + x];
                 Color color;
                 if (tileIndex < 0)
                 {
@@ -852,7 +848,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                         tileData = moonGen.GetHexTileData(tileIndex);
                         tileDataCache[tileIndex] = tileData;
                     }
-
                     if (tileData == null)
                     {
                         color = new Color(0.35f, 0.35f, 0.35f);
@@ -867,18 +862,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                             offset = new Vector2(ox, oy);
                             tileOffsetCache[tileIndex] = offset;
                         }
-                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
                         float sampleV = Mathf.Repeat(v + offset.y, 1f);
                         color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
                     }
                 }
-                pixels[y * width + x] = color;
+                int dstX = width - 1 - x; int dstY = height - 1 - y;
+                pixels[dstY * width + dstX] = color;
             }
         }
 
-        // Match planet minimap orientation
-        FlipPixelsVertically(pixels, width, height);
-        FlipPixelsHorizontally(pixels, width, height);
         tex.SetPixels32(pixels);
         tex.Apply();
         return tex;
@@ -924,44 +917,22 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             filterMode = FilterMode.Bilinear
         };
 
-        // Precompute trig
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
-        }
+    var lut = EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
+    if (lut == null) return null;
 
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileOffsetCache = new Dictionary<int, Vector2>();
         var pixels = new Color32[width * height];
 
+        float[] vArr = new float[height]; for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
+        float[] uArr = new float[width]; for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
+
         for (int y = 0; y < height; y++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            float v = (y + 0.5f) / height;
-
+            float v = vArr[y]; int yBase = y * width;
             for (int x = 0; x < width; x++)
             {
-                float u = (x + 0.5f) / width;
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
-
+                int tileIndex = lut[yBase + x];
                 Color color;
                 if (tileIndex < 0)
                 {
@@ -981,7 +952,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                             tileData = planetGen.data[tileIndex];
                         tileDataCache[tileIndex] = tileData;
                     }
-
                     if (tileData == null)
                     {
                         color = new Color(0.35f, 0.35f, 0.35f);
@@ -996,19 +966,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                             offset = new Vector2(ox, oy);
                             tileOffsetCache[tileIndex] = offset;
                         }
-                        float sampleU = Mathf.Repeat(u + offset.x, 1f);
+                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
                         float sampleV = Mathf.Repeat(v + offset.y, 1f);
                         color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
                     }
                 }
-                pixels[y * width + x] = color;
+                int dstX = width - 1 - x; int dstY = height - 1 - y;
+                pixels[dstY * width + dstX] = color;
             }
         }
 
-    // Flip vertically so north appears at the top of the displayed minimap
-    FlipPixelsVertically(pixels, width, height);
-    // Flip horizontally to fix horizontal orientation
-    FlipPixelsHorizontally(pixels, width, height);
     tex.SetPixels32(pixels);
         tex.Apply();
         return tex;

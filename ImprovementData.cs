@@ -19,6 +19,10 @@ public class ImprovementData : ScriptableObject
     [Tooltip("Prefab to spawn if destroyed")]
     public GameObject destroyedPrefab;
     
+    [Header("Shelter")]
+    [Tooltip("If true, units on this tile are considered sheltered from weather (e.g., winter attrition)")]
+    public bool isShelter = false;
+    
     [Header("Territory Requirements")]
     [Tooltip("Must be built within a city's direct influence")]
     public bool needsCity;

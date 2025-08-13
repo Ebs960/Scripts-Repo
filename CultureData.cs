@@ -1,5 +1,6 @@
 // Assets/Scripts/Data/CultureData.cs
 using UnityEngine;
+using System;
 
 [CreateAssetMenu(fileName = "NewCultureData", menuName = "Data/Culture Data")]
 public class CultureData : ScriptableObject
@@ -37,4 +38,18 @@ public class CultureData : ScriptableObject
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;
+
+    [Header("Targeted Bonuses")]
+    [Tooltip("Per-unit stat bonuses granted by this culture.")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this culture.")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Per-equipment stat bonuses granted by this culture.")]
+    public EquipmentStatBonus[] equipmentBonuses;
+    [Tooltip("Per-improvement yield bonuses granted by this culture.")]
+    public ImprovementYieldBonus[] improvementBonuses;
+    [Tooltip("Per-building yield bonuses granted by this culture.")]
+    public BuildingYieldBonus[] buildingBonuses;
+    [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
+    public GenericYieldBonus[] genericYieldBonuses;
 }

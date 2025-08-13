@@ -38,6 +38,10 @@ public class WorkerUnit : MonoBehaviour
     // Flag for tracking winter movement penalty
     public bool hasWinterPenalty { get; set; }
 
+    [Header("Weather")]
+    [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
+    public bool takesWeatherDamage = true;
+
     // --- Combat Stats (if applicable) ---
     public int CurrentAttack => (data != null) ? data.baseAttack : 0;
     public int CurrentDefense => (data != null) ? data.baseDefense : 0;
@@ -45,6 +49,36 @@ public class WorkerUnit : MonoBehaviour
     [Header("UI")]
     [SerializeField] private GameObject unitLabelPrefab;
     private UnitLabel unitLabelInstance;
+
+    // Local worker bonus aggregation
+    private struct WorkerAgg { public int workAdd, moveAdd, healthAdd; public float workPct, movePct, healthPct; }
+    private WorkerAgg AggregateWorkerBonusesLocal(Civilization civ, WorkerUnitData wu)
+    {
+        WorkerAgg a = new WorkerAgg(); if (civ == null || wu == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.workerBonuses == null) continue;
+                foreach (var b in t.workerBonuses)
+                    if (b != null && b.worker == wu)
+                    {
+                        a.workAdd += b.workPointsAdd; a.moveAdd += b.movePointsAdd; a.healthAdd += b.healthAdd;
+                        a.workPct += b.workPointsPct; a.movePct += b.movePointsPct; a.healthPct += b.healthPct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.workerBonuses == null) continue;
+                foreach (var b in c.workerBonuses)
+                    if (b != null && b.worker == wu)
+                    {
+                        a.workAdd += b.workPointsAdd; a.moveAdd += b.movePointsAdd; a.healthAdd += b.healthAdd;
+                        a.workPct += b.workPointsPct; a.movePct += b.movePointsPct; a.healthPct += b.healthPct;
+                    }
+            }
+        return a;
+    }
 
     void Awake()
     {
@@ -68,9 +102,14 @@ public class WorkerUnit : MonoBehaviour
         data = unitData;
         owner = unitOwner;
         level = 1;                    // reset
-        currentHealth    = data.baseHealth;
-        currentWorkPoints = data.baseWorkPoints;
-        currentMovePoints = data.baseMovePoints;
+    // Apply targeted bonuses (health affects max/current)
+    var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
+    int maxHealth = Mathf.RoundToInt((data.baseHealth + wb.healthAdd) * (1f + wb.healthPct));
+    currentHealth    = maxHealth;
+    currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+    currentMovePoints = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+    // Weather susceptibility from data
+    takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
         unitAnimator.SetTrigger("IdleYoung");  // explicit initial idle
 
         // Subscribe to events
@@ -378,10 +417,13 @@ public class WorkerUnit : MonoBehaviour
 
     public void ResetForNewTurn()
     {
-        currentWorkPoints = data.baseWorkPoints;
+    // Aggregate targeted bonuses
+    var wb = AggregateWorkerBonusesLocal(owner, data);
+    currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+    int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
         
         // Reset movement points with winter penalty if applicable
-        currentMovePoints = data.baseMovePoints;
+        currentMovePoints = baseMove;
         if (hasWinterPenalty && ClimateManager.Instance != null && 
             ClimateManager.Instance.currentSeason == Season.Winter)
         {
@@ -585,5 +627,23 @@ public class WorkerUnit : MonoBehaviour
                 return true;
         }
         return false;
+    }
+
+    // Called by Civilization when civ-wide bonuses (tech/culture) change.
+    // Intentionally does not refill move/work mid-turn; clamps health to new cap.
+    public void OnCivBonusesChanged()
+    {
+        // Recompute new max health based on current targeted bonuses
+        var wb = AggregateWorkerBonusesLocal(owner, data);
+        int newMax = Mathf.RoundToInt((data.baseHealth + wb.healthAdd) * (1f + wb.healthPct));
+        int before = currentHealth;
+        currentHealth = Mathf.Min(currentHealth, newMax);
+
+        if (unitLabelInstance != null && before != currentHealth)
+        {
+            string ownerName = owner != null && owner.civData != null ? owner.civData.civName : "Unknown";
+            unitLabelInstance.UpdateLabel(data.unitName, ownerName, currentHealth, data.baseHealth);
+        }
+        // Movement/work point caps will be applied at next ResetForNewTurn.
     }
 }

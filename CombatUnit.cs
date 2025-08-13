@@ -66,6 +66,11 @@ public class CombatUnit : MonoBehaviour
     
     // Flag for tracking winter movement penalty
     public bool hasWinterPenalty { get; set; }
+    
+    // Weather susceptibility
+    [Header("Weather")]
+    [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
+    public bool takesWeatherDamage = true;
 
     // Routed flag when morale hits zero
     public bool isRouted { get; private set; }
@@ -123,6 +128,8 @@ public class CombatUnit : MonoBehaviour
         level = 1;
         experience = 0;
         equipped = data.defaultEquipment;
+    // Weather susceptibility from data
+    takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
         
         if (data.defaultEquipment != null)
         {
@@ -246,10 +253,146 @@ public class CombatUnit : MonoBehaviour
     }
 
     // Combined stats - UPDATED to include all ability modifiers
-    public int CurrentAttack     => BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
-    public int CurrentDefense    => BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
-    public int MaxHealth         => BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
-    public int CurrentRange      => BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+    // Local aggregation structs
+    private struct UnitAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd, moraleAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct, moralePct; }
+    private struct EquipAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
+
+    private UnitAgg AggregateUnitBonusesLocal(Civilization civ, CombatUnitData u)
+    {
+        UnitAgg a = new UnitAgg(); if (civ == null || u == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.unitBonuses == null) continue;
+                foreach (var b in t.unitBonuses)
+                    if (b != null && b.unit == u)
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd; a.moraleAdd += b.moraleAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct; a.moralePct += b.moralePct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.unitBonuses == null) continue;
+                foreach (var b in c.unitBonuses)
+                    if (b != null && b.unit == u)
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd; a.moraleAdd += b.moraleAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct; a.moralePct += b.moralePct;
+                    }
+            }
+        return a;
+    }
+
+    private EquipAgg AggregateEquipBonusesLocal(Civilization civ, EquipmentData eq)
+    {
+        EquipAgg a = new EquipAgg(); if (civ == null || eq == null) return a;
+        if (civ.researchedTechs != null)
+            foreach (var t in civ.researchedTechs)
+            {
+                if (t?.equipmentBonuses == null) continue;
+                foreach (var b in t.equipmentBonuses)
+                    if (b != null && b.equipment == eq)
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct;
+                    }
+            }
+        if (civ.researchedCultures != null)
+            foreach (var c in civ.researchedCultures)
+            {
+                if (c?.equipmentBonuses == null) continue;
+                foreach (var b in c.equipmentBonuses)
+                    if (b != null && b.equipment == eq)
+                    {
+                        a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
+                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd;
+                        a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
+                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct;
+                    }
+            }
+        return a;
+    }
+
+    public int CurrentAttack
+    {
+        get
+        {
+            int val = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
+            if (owner != null && data != null)
+            {
+                var u = AggregateUnitBonusesLocal(owner, data);
+                val = Mathf.RoundToInt((val + u.attackAdd) * (1f + u.attackPct));
+            }
+            if (owner != null && equipped != null)
+            {
+                var e = AggregateEquipBonusesLocal(owner, equipped);
+                val = Mathf.RoundToInt((val + e.attackAdd) * (1f + e.attackPct));
+            }
+            return val;
+        }
+    }
+    public int CurrentDefense
+    {
+        get
+        {
+            int val = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+            if (owner != null && data != null)
+            {
+                var u = AggregateUnitBonusesLocal(owner, data);
+                val = Mathf.RoundToInt((val + u.defenseAdd) * (1f + u.defensePct));
+            }
+            if (owner != null && equipped != null)
+            {
+                var e = AggregateEquipBonusesLocal(owner, equipped);
+                val = Mathf.RoundToInt((val + e.defenseAdd) * (1f + e.defensePct));
+            }
+            return val;
+        }
+    }
+    public int MaxHealth
+    {
+        get
+        {
+            int val = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
+            if (owner != null && data != null)
+            {
+                var u = AggregateUnitBonusesLocal(owner, data);
+                val = Mathf.RoundToInt((val + u.healthAdd) * (1f + u.healthPct));
+            }
+            if (owner != null && equipped != null)
+            {
+                var e = AggregateEquipBonusesLocal(owner, equipped);
+                val = Mathf.RoundToInt((val + e.healthAdd) * (1f + e.healthPct));
+            }
+            return val;
+        }
+    }
+    public int CurrentRange
+    {
+        get
+        {
+            int val = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+            if (owner != null && data != null)
+            {
+                var u = AggregateUnitBonusesLocal(owner, data);
+                val = Mathf.RoundToInt((val + u.rangeAdd) * (1f + u.rangePct));
+            }
+            if (owner != null && equipped != null)
+            {
+                var e = AggregateEquipBonusesLocal(owner, equipped);
+                val = Mathf.RoundToInt((val + e.rangeAdd) * (1f + e.rangePct));
+            }
+            return val;
+        }
+    }
     public int MaxAttackPoints   => BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
     public int MaxMorale         => useOverrideStats && morale > 0 ? morale : data.baseMorale;
     
@@ -594,9 +737,36 @@ public class CombatUnit : MonoBehaviour
     // New helper method to recalculate stats affected by equipment and abilities
     private void RecalculateStats()
     {
-        currentMovePoints = BaseMovePoints + EquipmentMoveBonus;
-        currentAttackPoints = MaxAttackPoints; // Using the property that includes ability modifiers
-        currentHealth = Mathf.Min(currentHealth, MaxHealth); // Cap health at new max if needed
+        // Base + equipment + abilities are already encapsulated in properties
+        int baseMove = BaseMovePoints + EquipmentMoveBonus;
+    int baseAP = BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
+    int maxHP = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
+
+        // Apply targeted bonuses from techs/cultures
+        if (owner != null && data != null)
+        {
+            var agg = AggregateUnitBonusesLocal(owner, data);
+            // Apply additive first
+            baseMove += agg.moveAdd;
+            baseAP += agg.apAdd;
+            maxHP += agg.healthAdd;
+            // Apply multiplicative
+            baseMove = Mathf.RoundToInt(baseMove * (1f + agg.movePct));
+            baseAP = Mathf.RoundToInt(baseAP * (1f + agg.apPct));
+            maxHP = Mathf.RoundToInt(maxHP * (1f + agg.healthPct));
+            // Attack/Defense/Range/Morale handled dynamically via getters or in combat; keep HP/move/AP here
+            if (equipped != null)
+            {
+                var eagg = AggregateEquipBonusesLocal(owner, equipped);
+                baseMove = Mathf.RoundToInt((baseMove + eagg.moveAdd) * (1f + eagg.movePct));
+                baseAP = Mathf.RoundToInt((baseAP + eagg.apAdd) * (1f + eagg.apPct));
+                maxHP = Mathf.RoundToInt((maxHP + eagg.healthAdd) * (1f + eagg.healthPct));
+            }
+        }
+
+        currentMovePoints = baseMove;
+        currentAttackPoints = baseAP;
+        currentHealth = Mathf.Min(currentHealth, maxHP);
     }
 
     // Added helper method for City.cs usage
@@ -1185,6 +1355,22 @@ public class CombatUnit : MonoBehaviour
             string ownerName = owner != null && owner.civData != null ? owner.civData.civName : "Unknown";
             unitLabelInstance.UpdateLabel(data.unitName, ownerName, newHealth, maxHealth);
         }
+    }
+
+    // Called by Civilization when civ-wide bonuses (tech/culture) change.
+    // Intentionally does not refill movement or attack points mid-turn.
+    public void OnCivBonusesChanged()
+    {
+        // Clamp current health to new max if modifiers decreased it; keep current otherwise.
+        int before = currentHealth;
+        int max = MaxHealth; // property already includes tech/culture/equipment
+        currentHealth = Mathf.Min(currentHealth, max);
+        if (currentHealth != before)
+        {
+            OnHealthChanged?.Invoke(currentHealth, max);
+        }
+        // Movement/AP maximums might increase due to tech, but we don't refill here;
+        // they'll be applied on next ResetForNewTurn via RecalculateStats.
     }
 
     /// <summary>

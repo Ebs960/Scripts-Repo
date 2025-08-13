@@ -1,5 +1,6 @@
 // Assets/Scripts/Data/TechData.cs
 using UnityEngine;
+using System;
 
 public enum TechAge
 {
@@ -76,6 +77,20 @@ public class TechData : ScriptableObject
     public float scienceModifier;               // New
     public float cultureModifier;               // New
     public float faithModifier;                 // New
+
+    [Header("Targeted Bonuses")]
+    [Tooltip("Per-unit stat bonuses granted by this technology.")]
+    public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-worker stat bonuses granted by this technology.")]
+    public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Per-equipment stat bonuses granted by this technology.")]
+    public EquipmentStatBonus[] equipmentBonuses;
+    [Tooltip("Per-improvement yield bonuses granted by this technology.")]
+    public ImprovementYieldBonus[] improvementBonuses;
+    [Tooltip("Per-building yield bonuses granted by this technology.")]
+    public BuildingYieldBonus[] buildingBonuses;
+    [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
+    public GenericYieldBonus[] genericYieldBonuses;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;

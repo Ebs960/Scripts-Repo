@@ -1084,7 +1084,7 @@ public class City : MonoBehaviour
 
     public int GetFoodPerTurn()
     {
-        int baseFood = SumYield(t => t.food) + SumBuilt(b => b.foodPerTurn);
+    int baseFood = SumYield(t => t.food) + SumBuiltWithBonuses(BuildingYieldType.Food);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
@@ -1092,10 +1092,71 @@ public class City : MonoBehaviour
         }
         return baseFood;
     }
+
+    enum BuildingYieldType { Food, Production, Gold, Science, Culture, Faith, PolicyPoints }
+
+    int SumBuiltWithBonuses(BuildingYieldType kind)
+    {
+        int total = 0;
+        foreach (var (data, _) in builtBuildings)
+        {
+            if (data == null) continue;
+            int baseVal = 0;
+            switch (kind)
+            {
+                case BuildingYieldType.Food: baseVal = data.foodPerTurn; break;
+                case BuildingYieldType.Production: baseVal = data.productionPerTurn; break;
+                case BuildingYieldType.Gold: baseVal = data.goldPerTurn; break;
+                case BuildingYieldType.Science: baseVal = data.sciencePerTurn; break;
+                case BuildingYieldType.Culture: baseVal = data.culturePerTurn; break;
+                case BuildingYieldType.Faith: baseVal = data.faithPerTurn; break;
+                case BuildingYieldType.PolicyPoints: baseVal = data.policyPointsPerTurn; break;
+            }
+            if (owner != null)
+            {
+                // Local aggregate through techs/cultures
+                var agg = new { foodAdd = 0, prodAdd = 0, goldAdd = 0, scienceAdd = 0, cultureAdd = 0, faithAdd = 0, policyAdd = 0, foodPct = 0f, prodPct = 0f, goldPct = 0f, sciencePct = 0f, culturePct = 0f, faithPct = 0f, policyPct = 0f };
+                if (owner.researchedTechs != null)
+                    foreach (var t in owner.researchedTechs)
+                    {
+                        if (t?.buildingBonuses == null) continue;
+                        foreach (var b in t.buildingBonuses)
+                            if (b != null && b.building == data)
+                            {
+                                agg = new { foodAdd = agg.foodAdd + b.foodAdd, prodAdd = agg.prodAdd + b.productionAdd, goldAdd = agg.goldAdd + b.goldAdd, scienceAdd = agg.scienceAdd + b.scienceAdd, cultureAdd = agg.cultureAdd + b.cultureAdd, faithAdd = agg.faithAdd + b.faithAdd, policyAdd = agg.policyAdd + b.policyPointsAdd, foodPct = agg.foodPct + b.foodPct, prodPct = agg.prodPct + b.productionPct, goldPct = agg.goldPct + b.goldPct, sciencePct = agg.sciencePct + b.sciencePct, culturePct = agg.culturePct + b.culturePct, faithPct = agg.faithPct + b.faithPct, policyPct = agg.policyPct + b.policyPointsPct };
+                            }
+                    }
+                if (owner.researchedCultures != null)
+                    foreach (var c in owner.researchedCultures)
+                    {
+                        if (c?.buildingBonuses == null) continue;
+                        foreach (var b in c.buildingBonuses)
+                            if (b != null && b.building == data)
+                            {
+                                agg = new { foodAdd = agg.foodAdd + b.foodAdd, prodAdd = agg.prodAdd + b.productionAdd, goldAdd = agg.goldAdd + b.goldAdd, scienceAdd = agg.scienceAdd + b.scienceAdd, cultureAdd = agg.cultureAdd + b.cultureAdd, faithAdd = agg.faithAdd + b.faithAdd, policyAdd = agg.policyAdd + b.policyPointsAdd, foodPct = agg.foodPct + b.foodPct, prodPct = agg.prodPct + b.productionPct, goldPct = agg.goldPct + b.goldPct, sciencePct = agg.sciencePct + b.sciencePct, culturePct = agg.culturePct + b.culturePct, faithPct = agg.faithPct + b.faithPct, policyPct = agg.policyPct + b.policyPointsPct };
+                            }
+                    }
+                int add = 0; float pct = 0f;
+                switch (kind)
+                {
+                    case BuildingYieldType.Food: add = agg.foodAdd; pct = agg.foodPct; break;
+                    case BuildingYieldType.Production: add = agg.prodAdd; pct = agg.prodPct; break;
+                    case BuildingYieldType.Gold: add = agg.goldAdd; pct = agg.goldPct; break;
+                    case BuildingYieldType.Science: add = agg.scienceAdd; pct = agg.sciencePct; break;
+                    case BuildingYieldType.Culture: add = agg.cultureAdd; pct = agg.culturePct; break;
+                    case BuildingYieldType.Faith: add = agg.faithAdd; pct = agg.faithPct; break;
+                    case BuildingYieldType.PolicyPoints: add = agg.policyAdd; pct = agg.policyPct; break;
+                }
+                baseVal = Mathf.RoundToInt((baseVal + add) * (1f + pct));
+            }
+            total += baseVal;
+        }
+        return total;
+    }
     
     public int GetGoldPerTurn()
     {
-        int baseGold = SumYield(t => t.gold) + SumBuilt(b => b.goldPerTurn);
+    int baseGold = SumYield(t => t.gold) + SumBuiltWithBonuses(BuildingYieldType.Gold);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
@@ -1106,7 +1167,7 @@ public class City : MonoBehaviour
     
     public int GetSciencePerTurn()
     {
-        int baseScience = SumYield(t => t.science) + SumBuilt(b => b.sciencePerTurn);
+    int baseScience = SumYield(t => t.science) + SumBuiltWithBonuses(BuildingYieldType.Science);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
@@ -1117,7 +1178,7 @@ public class City : MonoBehaviour
     
     public int GetCulturePerTurn()
     {
-        int baseCulture = SumYield(t => t.culture) + SumBuilt(b => b.culturePerTurn);
+    int baseCulture = SumYield(t => t.culture) + SumBuiltWithBonuses(BuildingYieldType.Culture);
         if (governor != null)
         {
             var bonuses = governor.GetTotalBonuses();
@@ -1128,7 +1189,7 @@ public class City : MonoBehaviour
     
     public int GetPolicyPointPerTurn()
     {
-        int basePolicyPoints = SumYield(t => 0) + SumBuilt(b => b.policyPointsPerTurn); // Assuming tiles don't give policy points directly
+    int basePolicyPoints = SumYield(t => 0) + SumBuiltWithBonuses(BuildingYieldType.PolicyPoints); // Assuming tiles don't give policy points directly
         
         // Governors don't have base policy point bonuses, but traits might add them in the future
         
@@ -1208,7 +1269,7 @@ public class City : MonoBehaviour
     public int GetFaithPerTurn()
     {
         int faith = baseFaithPerTurn;
-        faith += SumBuilt(b => b.faithPerTurn);
+    faith += SumBuiltWithBonuses(BuildingYieldType.Faith);
         faith += SumYield(t => t.faithYield);
         if (governor != null)
         {

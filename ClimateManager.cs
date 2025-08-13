@@ -36,6 +36,12 @@ public class ClimateManager : MonoBehaviour
 
     private PlanetGenerator planet;
 
+    [Header("Winter Attrition")]
+    [Tooltip("HP damage applied to exposed units each turn during Winter")]
+    public int winterAttritionDamage = 1;
+    [Tooltip("If true, apply winter attrition to units that are not sheltered")]
+    public bool enableWinterAttrition = true;
+
     public event Action<Season> OnSeasonChanged;
 
     void Awake()
@@ -124,10 +130,71 @@ public class ClimateManager : MonoBehaviour
         if (season == Season.Winter)
         {
             ApplyWinterMovementPenalty();
+            if (enableWinterAttrition)
+            {
+                ApplyWinterAttrition();
+            }
         }
         else
         {
             RemoveWinterMovementPenalty();
+        }
+    }
+
+    // Apply HP damage to units that are outdoors (not in shelter) during winter
+    private void ApplyWinterAttrition()
+    {
+        if (winterAttritionDamage <= 0) return;
+
+        // Combat units
+        foreach (var unit in UnitRegistry.GetCombatUnits())
+        {
+            try
+            {
+                if (unit == null) continue;
+                if (!unit.takesWeatherDamage) continue;
+                int idx = unit.currentTileIndex;
+                if (idx < 0) continue;
+
+                var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(idx);
+                if (tileData == null) continue;
+
+                bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
+                if (!sheltered)
+                {
+                    unit.ApplyDamage(winterAttritionDamage);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[ClimateManager] Winter attrition (combat) failed: {ex.Message}");
+            }
+        }
+
+        // Worker units
+        foreach (var worker in UnitRegistry.GetWorkerUnits())
+        {
+            try
+            {
+                if (worker == null) continue;
+                if (!worker.takesWeatherDamage) continue;
+                int idx = worker.currentTileIndex;
+                if (idx < 0) continue;
+
+                var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(idx);
+                if (tileData == null) continue;
+
+                bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
+                if (!sheltered)
+                {
+                    // Apply attrition damage to workers
+                    worker.ApplyDamage(winterAttritionDamage);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[ClimateManager] Winter attrition (worker) failed: {ex.Message}");
+            }
         }
     }
 
