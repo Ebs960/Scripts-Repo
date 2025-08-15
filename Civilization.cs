@@ -125,6 +125,8 @@ public class Civilization : MonoBehaviour
     public event Action<TechData> OnTechStarted;
     public event Action<CultureData> OnCultureStarted;
     public event Action<TechData> OnTechResearched;  // The event
+    // Fired after research/culture changes that may affect availability (units/buildings/improvements)
+    public event Action OnUnlocksChanged;
 
     private int turnCount;
 
@@ -1202,6 +1204,9 @@ public class Civilization : MonoBehaviour
         {
             Debug.LogWarning($"[Civilization] Refresh after tech research threw: {ex}");
         }
+
+    // Notify listeners that unlock-driven availability may have changed
+    OnUnlocksChanged?.Invoke();
     }
     
     /// <summary>
@@ -1252,6 +1257,9 @@ public class Civilization : MonoBehaviour
         {
             Debug.LogWarning($"[Civilization] Refresh after culture adoption threw: {ex}");
         }
+
+    // Notify listeners that unlock-driven availability may have changed
+    OnUnlocksChanged?.Invoke();
     }
 
     // --- NEW: Equipment Inventory Methods ---
@@ -1545,13 +1553,139 @@ public class Civilization : MonoBehaviour
         return equipmentInventory.Keys.ToList();
     }
 
+    // --- Improvements availability & obsolescence helpers ---
+    /// <summary>
+    /// Returns all improvements unlocked by researched technologies.
+    /// Note: Cultures currently do not unlock improvements directly.
+    /// </summary>
+    public List<ImprovementData> GetUnlockedImprovements()
+    {
+        var result = new HashSet<ImprovementData>();
+        if (researchedTechs != null)
+        {
+            foreach (var t in researchedTechs)
+            {
+                if (t?.unlocksImprovements == null) continue;
+                foreach (var imp in t.unlocksImprovements)
+                    if (imp != null) result.Add(imp);
+            }
+        }
+        return result.ToList();
+    }
+
+    /// <summary>
+    /// For a given worker archetype, compute which improvements should be considered obsolete
+    /// because the civ has unlocked a replacement that this worker can also build.
+    /// </summary>
+    public HashSet<ImprovementData> GetObsoleteImprovementsForWorker(WorkerUnitData worker)
+    {
+        var obsolete = new HashSet<ImprovementData>();
+        if (worker == null || worker.buildableImprovements == null) return obsolete;
+
+        // Consider only replacements that are both unlocked AND buildable by this worker
+        var unlocked = GetUnlockedImprovements();
+
+        foreach (var replacement in unlocked)
+        {
+            if (replacement == null) continue;
+
+            // Worker must be able to build the replacement
+            bool workerCanBuildReplacement = System.Array.Exists(worker.buildableImprovements, i => i == replacement);
+            if (!workerCanBuildReplacement) continue;
+
+            // Any improvement listed in replacement.replacesImprovements becomes obsolete for this worker
+            if (replacement.replacesImprovements != null)
+            {
+                foreach (var old in replacement.replacesImprovements)
+                {
+                    if (old != null)
+                        obsolete.Add(old);
+                }
+            }
+        }
+
+        return obsolete;
+    }
+
+    /// <summary>
+    /// Get the list of improvements this worker can currently build, filtered to remove obsolete ones.
+    /// If tileIndex is provided, also filters by tile land/biome requirements.
+    /// </summary>
+    public List<ImprovementData> GetAvailableImprovementsForWorker(WorkerUnitData worker, int tileIndex = -1)
+    {
+        var list = new List<ImprovementData>();
+        if (worker == null || worker.buildableImprovements == null) return list;
+
+        var obsolete = GetObsoleteImprovementsForWorker(worker);
+
+        // Optional tile filter
+        HexTileData tileData = null;
+        if (tileIndex >= 0)
+        {
+            var (td, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+            tileData = td;
+        }
+
+        // Precompute unlocked replacements for tile-aware obsolescence
+        var unlocked = GetUnlockedImprovements();
+
+        foreach (var imp in worker.buildableImprovements)
+        {
+            if (imp == null) continue;
+
+            // Tile filters
+            if (tileData != null)
+            {
+                if (!tileData.isLand) continue;
+                if (imp.allowedBiomes != null && imp.allowedBiomes.Length > 0)
+                {
+                    bool allowed = System.Array.IndexOf(imp.allowedBiomes, tileData.biome) >= 0;
+                    if (!allowed) continue;
+                }
+            }
+
+            // Obsolescence: if a replacement is unlocked AND valid for this worker AND allowed on this tile, hide this improvement
+            bool obsoleteHere = false;
+            if (imp != null && unlocked != null)
+            {
+                foreach (var repl in unlocked)
+                {
+                    if (repl == null || repl.replacesImprovements == null) continue;
+                    // Is 'imp' listed as replaced by 'repl'?
+                    bool replacesThis = System.Array.IndexOf(repl.replacesImprovements, imp) >= 0;
+                    if (!replacesThis) continue;
+
+                    // Can this worker build the replacement?
+                    bool workerCanBuildReplacement = System.Array.Exists(worker.buildableImprovements, i => i == repl);
+                    if (!workerCanBuildReplacement) continue;
+
+                    // If tile specified, ensure replacement is allowed here
+                    if (tileData != null && repl.allowedBiomes != null && repl.allowedBiomes.Length > 0)
+                    {
+                        bool replAllowed = System.Array.IndexOf(repl.allowedBiomes, tileData.biome) >= 0;
+                        if (!replAllowed) continue;
+                    }
+
+                    obsoleteHere = true;
+                    break;
+                }
+            }
+
+            if (obsoleteHere) continue;
+
+            list.Add(imp);
+        }
+
+        return list;
+    }
+
     public TechAge GetCurrentAge()
     {
-        // If no techs researched, return Prehistoric
+        // If no techs researched, default to Paleolithic (first defined age)
         if (researchedTechs == null || researchedTechs.Count == 0)
-            return TechAge.PrehistoricAge;
+            return TechAge.PaleolithicAge;
 
-        TechAge maxAge = TechAge.PrehistoricAge;
+        TechAge maxAge = TechAge.PaleolithicAge;
         foreach (var tech in researchedTechs)
         {
             if (tech != null && tech.techAge > maxAge)

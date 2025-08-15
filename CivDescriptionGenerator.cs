@@ -140,17 +140,14 @@ public static class CivDescriptionGenerator
 
     // Tech age flavor lines
     private static readonly Dictionary<TechAge, string> techAgeFlavors = new Dictionary<TechAge, string> {
-        { TechAge.PrehistoricAge, "They dwell in the Prehistoric Age, where fire and stone shape their destiny." },
-        { TechAge.TribalAge, "They are in the Tribal Age, bound by kinship and ancient rites." },
-        { TechAge.IceAge, "They endure the Ice Age, surviving in a world of frost and hardship." },
-        { TechAge.VillageAge, "They thrive in the Village Age, where small communities blossom." },
+        { TechAge.PaleolithicAge, "They dwell in the Paleolithic Age, where fire and stone shape their destiny." },
+        { TechAge.NeolithicAge, "They are in the Neolithic Age, bound by kinship and ancient rites." },
         { TechAge.MonumentAge, "They build wonders in the Monument Age, etching their mark in stone." },
         { TechAge.CopperAge, "They wield copper tools, forging ahead in the Copper Age." },
         { TechAge.BronzeAge, "They are in the Bronze Age, where empires rise and fall on the strength of metal." },
         { TechAge.IronAge, "They march through the Iron Age, their weapons sharp and ambitions sharper." },
         { TechAge.ClassicalAge, "They flourish in the Classical Age, a time of philosophy and conquest." },
         { TechAge.AxialAge, "They ponder the mysteries of the Axial Age, seeking wisdom and unity." },
-        { TechAge.MigrationAge, "They wander in the Migration Age, reshaping the world with every step." },
         { TechAge.DarkAge, "They struggle through the Dark Age, where hope flickers but never dies." },
         { TechAge.FeudalAge, "They are entrenched in the Feudal Age, ruled by lords and bound by oaths." },
         { TechAge.CastleAge, "They fortify in the Castle Age, their walls tall and their resolve taller." },

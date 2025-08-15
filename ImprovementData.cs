@@ -1,6 +1,101 @@
 // Assets/Scripts/Data/ImprovementData.cs
 using UnityEngine;
 
+[System.Serializable]
+public class ImprovementUpgradeData
+{
+    [Header("Identity")]
+    public string upgradeName;
+    public Sprite icon;
+    [TextArea] public string description;
+
+    [Header("Requirements")]
+    [Tooltip("Technology required to unlock this upgrade")]
+    public TechData requiredTech;
+    [Tooltip("Culture required to unlock this upgrade")]
+    public CultureData requiredCulture;
+    [Tooltip("Gold cost to build this upgrade")]
+    public int goldCost;
+    [Tooltip("Resources required to build this upgrade")]
+    public ResourceCost[] resourceCosts;
+
+    [Header("Effects")]
+    [Tooltip("Additional yields this upgrade provides per turn")]
+    public int additionalFood;
+    public int additionalProduction;
+    public int additionalGold;
+    public int additionalScience;
+    public int additionalCulture;
+    public int additionalFaith;
+
+    [Tooltip("Prefab to spawn when this upgrade is built")]
+    public GameObject upgradePrefab;
+    [Tooltip("If true, this upgrade can only be built once per improvement")]
+    public bool uniqueUpgrade = true;
+
+    /// <summary>
+    /// Check if this upgrade can be built by the given civilization
+    /// </summary>
+    public bool CanBuild(Civilization civ)
+    {
+        if (civ == null) return false;
+
+        // Check tech requirement
+        if (requiredTech != null && !civ.researchedTechs.Contains(requiredTech))
+            return false;
+
+        // Check culture requirement
+        if (requiredCulture != null && !civ.researchedCultures.Contains(requiredCulture))
+            return false;
+
+        // Check gold cost
+        if (civ.gold < goldCost)
+            return false;
+
+        // Check resource costs
+        if (resourceCosts != null)
+        {
+            foreach (var cost in resourceCosts)
+            {
+                if (cost.resource != null && civ.GetResourceCount(cost.resource) < cost.amount)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Consume the required resources and gold from the civilization
+    /// </summary>
+    public bool ConsumeRequirements(Civilization civ)
+    {
+        if (!CanBuild(civ)) return false;
+
+        // Deduct gold
+        civ.gold -= goldCost;
+
+        // Deduct resources
+        if (resourceCosts != null)
+        {
+            foreach (var cost in resourceCosts)
+            {
+                if (cost.resource != null)
+                    civ.ConsumeResource(cost.resource, cost.amount);
+            }
+        }
+
+        return true;
+    }
+}
+
+[System.Serializable]
+public class ResourceCost
+{
+    public ResourceData resource;
+    public int amount;
+}
+
 [CreateAssetMenu(fileName = "NewImprovementData", menuName = "CivGame/Improvement Data")]
 public class ImprovementData : ScriptableObject
 {
@@ -45,4 +140,39 @@ public class ImprovementData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Trap Settings")]
+    [Tooltip("If true, this improvement acts as a trap that can trigger on unit entry.")]
+    public bool isTrap = false;
+
+    [Tooltip("Damage dealt when the trap triggers.")]
+    public int trapDamage = 20;
+
+    [Tooltip("If true, only affects animals. Otherwise uses trapAffectedCategories list.")]
+    public bool trapAffectsAnimalsOnly = true;
+
+    [Tooltip("Optional whitelist of affected categories if not animals-only.")]
+    public CombatCategory[] trapAffectedCategories;
+
+    [Tooltip("If true, immobilizes trapped unit for a number of turns.")]
+    public bool trapImmobilize = false;
+
+    [Tooltip("How many turns the unit is immobilized when the trap triggers.")]
+    public int trapImmobilizeTurns = 1;
+
+    [Tooltip("How many times this trap can trigger before being consumed.")]
+    public int trapMaxTriggers = 1;
+
+    [Tooltip("If true, remove the trap improvement from the tile once uses are depleted.")]
+    public bool trapConsumeOnDeplete = true;
+
+    [Tooltip("If true, units from the builder's civ do not trigger this trap.")]
+    public bool trapFriendlySafe = true;
+
+    [Header("Upgrades")]
+    [Tooltip("If set, this improvement replaces the listed older improvements once unlocked; those become obsolete in build menus.")]
+    public ImprovementData[] replacesImprovements;
+    
+    [Tooltip("Available upgrades that can be built on this improvement")]
+    public ImprovementUpgradeData[] availableUpgrades;
 }

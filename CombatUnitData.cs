@@ -4,7 +4,7 @@ using UnityEngine;
 public enum CombatCategory
 {
     Spearman, Swordsman, Clubman, Artillery,
-    Archer, Crossbowman, Spaceship, Aircraft,
+    Archer, Crossbowman, SpearThrower, Spaceship, Aircraft,
     Submarine, Ship, Boat, SeaCrawler,
     Gunman, Robot, Mutant, Cyborg,
     Driller, LavaSwimmer, Tank,

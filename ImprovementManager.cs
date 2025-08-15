@@ -12,6 +12,18 @@ public class ImprovementManager : MonoBehaviour
     // Planet generator reference
     private PlanetGenerator planetGenerator;
 
+    // Active traps by tile index
+    private readonly Dictionary<int, TrapRuntime> traps = new Dictionary<int, TrapRuntime>();
+
+    private struct TrapRuntime
+    {
+        public int tileIndex;
+        public Civilization owner;
+        public ImprovementData data;
+        public int usesLeft;
+        public bool armed;
+    }
+
     // Get a reference to the planet generator (for legacy compatibility)
     private void InitializeReferences()
     {
@@ -121,13 +133,42 @@ public class ImprovementManager : MonoBehaviour
         Vector3 pos = TileDataHelper.Instance.GetTileCenter(job.tileIndex);
 
         if (job.data.completePrefab != null)
-            Instantiate(job.data.completePrefab, pos, Quaternion.identity);
+        {
+            GameObject completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
+            
+            // TODO: Add click handler for upgrades when ImprovementClickHandler is available
+            // var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
+            // if (clickHandler == null)
+            //     clickHandler = completedImprovement.AddComponent<ImprovementClickHandler>();
+            // clickHandler.Initialize(job.tileIndex, job.data);
+            
+            // Add collider if needed for clicking
+            if (completedImprovement.GetComponent<Collider>() == null)
+            {
+                var collider = completedImprovement.AddComponent<BoxCollider>();
+                // Adjust collider size as needed
+                collider.size = Vector3.one * 2f;
+            }
+        }
 
         var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(job.tileIndex);
         if (tileData != null)
         {
             tileData.improvement = job.data;
             TileDataHelper.Instance.SetTileData(job.tileIndex, tileData);
+        }
+
+        // Register trap runtime state if this improvement is a trap
+        if (job.data.isTrap)
+        {
+            traps[job.tileIndex] = new TrapRuntime
+            {
+                tileIndex = job.tileIndex,
+                owner = job.owner,
+                data = job.data,
+                usesLeft = Mathf.Max(1, job.data.trapMaxTriggers),
+                armed = true
+            };
         }
 
         jobs.Remove(job);
@@ -156,5 +197,113 @@ public class ImprovementManager : MonoBehaviour
         {
             if (remainingWork < 0) remainingWork = 0;
         }
+    }
+
+    /// <summary>
+    /// Notify the manager that a unit has entered a tile. Will trigger trap if present and applicable.
+    /// </summary>
+    public void NotifyUnitEnteredTile(int tileIndex, CombatUnit unit)
+    {
+        if (unit == null) return;
+        if (!traps.TryGetValue(tileIndex, out var trap)) return;
+        if (!trap.armed || trap.usesLeft <= 0) return;
+
+        // Validate improvement still exists and is a trap
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData?.improvement == null || !tileData.improvement.isTrap)
+            return;
+
+        // Friendly safe
+        if (trap.data.trapFriendlySafe && unit.owner == trap.owner)
+            return;
+
+        // Category filter
+        var cat = unit.data != null ? unit.data.category : CombatCategory.Spearman;
+        bool affects = trap.data.trapAffectsAnimalsOnly
+            ? (cat == CombatCategory.Animal)
+            : (trap.data.trapAffectedCategories != null && System.Array.IndexOf(trap.data.trapAffectedCategories, cat) >= 0);
+        if (!affects) return;
+
+        // Apply trap effects
+        int dmg = Mathf.Max(0, trap.data.trapDamage);
+        if (dmg > 0) unit.ApplyDamage(dmg);
+        if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+        {
+            unit.ApplyTrap(trap.data.trapImmobilizeTurns);
+            // Prevent further movement this turn
+            unit.DeductMovementPoints(unit.currentMovePoints);
+        }
+
+        // Decrement uses and update or remove
+        trap.usesLeft--;
+        traps[tileIndex] = trap;
+        if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
+        {
+            RemoveImprovement(tileIndex);
+        }
+    }
+
+    /// <summary>
+    /// Notify the manager that a worker has entered a tile. Triggers trap if present and applicable.
+    /// Workers are affected by traps unless the trap is animals-only or friendly-safe.
+    /// </summary>
+    public void NotifyUnitEnteredTile(int tileIndex, WorkerUnit worker)
+    {
+        if (worker == null) return;
+        if (!traps.TryGetValue(tileIndex, out var trap)) return;
+        if (!trap.armed || trap.usesLeft <= 0) return;
+
+        // Validate improvement still exists and is a trap
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData?.improvement == null || !tileData.improvement.isTrap)
+            return;
+
+        // Friendly safe
+        if (trap.data.trapFriendlySafe && worker.owner == trap.owner)
+            return;
+
+        // If trap is animals-only, skip workers
+        if (trap.data.trapAffectsAnimalsOnly)
+            return;
+
+        // Apply trap effects
+        int dmg = Mathf.Max(0, trap.data.trapDamage);
+        if (dmg > 0) worker.ApplyDamage(dmg);
+        if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+        {
+            worker.ApplyTrap(trap.data.trapImmobilizeTurns);
+            // Prevent further movement this turn
+            worker.DeductMovementPoints(worker.currentMovePoints);
+        }
+
+        // Decrement uses and update or remove
+        trap.usesLeft--;
+        traps[tileIndex] = trap;
+        if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
+        {
+            RemoveImprovement(tileIndex);
+        }
+    }
+
+    /// <summary>
+    /// Remove any improvement from a tile, including trap state.
+    /// </summary>
+    public void RemoveImprovement(int tileIndex)
+    {
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData == null) return;
+        var data = tileData.improvement;
+        if (data == null) return;
+
+        // Optional destroyed prefab
+        if (data.destroyedPrefab != null)
+        {
+            Instantiate(data.destroyedPrefab, TileDataHelper.Instance.GetTileCenter(tileIndex), Quaternion.identity);
+        }
+
+        tileData.improvement = null;
+        TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+
+        traps.Remove(tileIndex);
     }
 }

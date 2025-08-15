@@ -35,6 +35,10 @@ public class WorkerUnit : MonoBehaviour
     public int currentWorkPoints { get; private set; }
     public int currentMovePoints { get; private set; }
     
+    // Trap immobilization state
+    private int trappedTurnsRemaining = 0;
+    public bool IsTrapped => trappedTurnsRemaining > 0;
+    
     // Flag for tracking winter movement penalty
     public bool hasWinterPenalty { get; set; }
 
@@ -189,12 +193,15 @@ public class WorkerUnit : MonoBehaviour
 
     public bool CanBuild(ImprovementData imp, int tileIndex)
     {
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    if (tileData == null) return false;
 
-        // must be land and listed in buildableImprovements
-        return tileData.isLand
-               && System.Array.Exists(data.buildableImprovements, i => i == imp)
-               && imp.allowedBiomes.Contains(tileData.biome);
+    // Use civ helper to respect obsolescence filtering
+    var available = owner != null ? owner.GetAvailableImprovementsForWorker(data, tileIndex) : null;
+    bool listedAndAvailable = available != null && available.Contains(imp);
+
+    // must be land and in filtered availability list
+    return tileData.isLand && listedAndAvailable;
     }
 
     public void StartBuilding(ImprovementData imp, int tileIndex)
@@ -417,21 +424,36 @@ public class WorkerUnit : MonoBehaviour
 
     public void ResetForNewTurn()
     {
-    // Aggregate targeted bonuses
-    var wb = AggregateWorkerBonusesLocal(owner, data);
-    currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
-    int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
-        
-        // Reset movement points with winter penalty if applicable
-        currentMovePoints = baseMove;
-        if (hasWinterPenalty && ClimateManager.Instance != null && 
-            ClimateManager.Instance.currentSeason == Season.Winter)
+        // Aggregate targeted bonuses
+        var wb = AggregateWorkerBonusesLocal(owner, data);
+        currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+        int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+
+        // If trapped, decrement duration and block movement this turn
+        if (IsTrapped)
         {
-            currentMovePoints = Mathf.Max(1, currentMovePoints - 1);
+            trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
+            currentMovePoints = 0;
+        }
+        else
+        {
+            // Reset movement points with winter penalty if applicable
+            currentMovePoints = baseMove;
+            if (hasWinterPenalty && ClimateManager.Instance != null && 
+                ClimateManager.Instance.currentSeason == Season.Winter)
+            {
+                currentMovePoints = Mathf.Max(1, currentMovePoints - 1);
+            }
         }
         
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
+    }
+
+    // Apply immobilization effect from traps
+    public void ApplyTrap(int turns)
+    {
+        trappedTurnsRemaining = Mathf.Max(trappedTurnsRemaining, turns);
     }
     
     /// <summary>

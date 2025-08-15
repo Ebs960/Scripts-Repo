@@ -4,17 +4,14 @@ using System;
 
 public enum TechAge
 {
-    PrehistoricAge,
-    TribalAge,
-    IceAge,
-    VillageAge,
+    PaleolithicAge,
+    NeolithicAge,
     MonumentAge,
     CopperAge,
     BronzeAge,
     IronAge,
     ClassicalAge,
     AxialAge,
-    MigrationAge,
     DarkAge,
     FeudalAge,
     CastleAge,

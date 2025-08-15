@@ -299,11 +299,32 @@ public class UnitMovementController : MonoBehaviour
             {
                 combatUnit.currentTileIndex = targetTileIndex;
                 TileDataHelper.Instance.SetTileOccupant(targetTileIndex, combatUnit.gameObject);
+                // Check for traps on arrival
+                ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
+
+                // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
+                if (combatUnit.currentHealth <= 0 || combatUnit.currentMovePoints <= 0 || combatUnit.IsTrapped)
+                {
+                    // Fire movement completed event up to this step and exit early
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
+                    combatUnit.isMoving = false;
+                    yield break;
+                }
             }
             else
             {
                 workerUnit.currentTileIndex = targetTileIndex;
                 TileDataHelper.Instance.SetTileOccupant(targetTileIndex, workerUnit.gameObject);
+                // Check for traps on arrival
+                ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
+
+                // If worker was trapped (immobilized) or killed by a trap, stop further movement
+                if (workerUnit.currentHealth <= 0 || workerUnit.currentMovePoints <= 0 || workerUnit.IsTrapped)
+                {
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
+                    workerUnit.UpdateWalkingState(false);
+                    yield break;
+                }
             }
             
             // Fire movement event for each step

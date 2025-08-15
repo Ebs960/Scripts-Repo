@@ -330,7 +330,7 @@ public class PlayerUI : MonoBehaviour
             ageText.text = age.ToString().Replace("Age", " Age");
             if (ageIconImage != null)
             {
-                string iconName = age.ToString(); // e.g., "PrehistoricAge"
+                string iconName = age.ToString(); // e.g., "PaleolithicAge"
                 Sprite icon = Resources.Load<Sprite>($"Icons/Ages/{iconName}");
                 if (icon != null)
                     ageIconImage.sprite = icon;

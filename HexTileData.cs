@@ -34,6 +34,8 @@ public class HexTileData
     // --- Static Features ---
     [Tooltip("Improvement built here, if any")]
     public ImprovementData improvement;
+    [Tooltip("Upgrades built on this improvement")]
+    public System.Collections.Generic.List<string> builtUpgrades = new System.Collections.Generic.List<string>();
     [Tooltip("Resource on this tile, if any")]
     public ResourceData resource;
     [Tooltip("District built on this tile, if any")]

@@ -875,6 +875,14 @@ public class CombatUnit : MonoBehaviour
         // Calculate base move points including equipment bonuses
         int baseMove = BaseMovePoints + EquipmentMoveBonus;
         
+        // If trapped, decrement duration and block movement for this turn
+        if (IsTrapped)
+        {
+            trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
+            currentMovePoints = 0;
+        }
+        else
+        {
         // Apply winter penalty if applicable
         if (hasWinterPenalty && ClimateManager.Instance != null && 
             ClimateManager.Instance.currentSeason == Season.Winter)
@@ -884,6 +892,7 @@ public class CombatUnit : MonoBehaviour
         else
         {
             currentMovePoints = baseMove;
+        }
         }
         
         currentAttackPoints = MaxAttackPoints;
@@ -1110,6 +1119,9 @@ public class CombatUnit : MonoBehaviour
         
         // Update tile occupancy
         TileDataHelper.Instance.SetTileOccupant(targetTileIndex, unit.gameObject);
+
+    // Trigger trap if unloading onto a trapped tile
+    ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
         
         // Fire event for UI updates
         OnUnitUnloaded.Invoke(unit);
@@ -1371,6 +1383,16 @@ public class CombatUnit : MonoBehaviour
         }
         // Movement/AP maximums might increase due to tech, but we don't refill here;
         // they'll be applied on next ResetForNewTurn via RecalculateStats.
+    }
+
+    // --- Trap mechanics ---
+    private int trappedTurnsRemaining = 0;
+    public bool IsTrapped => trappedTurnsRemaining > 0;
+
+    public void ApplyTrap(int turns)
+    {
+        trappedTurnsRemaining = Mathf.Max(trappedTurnsRemaining, turns);
+        // Optional: visual/UI feedback could be triggered here
     }
 
     /// <summary>
