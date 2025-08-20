@@ -161,7 +161,24 @@ public class GameManager : MonoBehaviour
 
     [Header("Game State")]
     public bool gameInProgress = false;
-    public bool gamePaused = false;
+    
+    // Private field for pause state
+    private bool _gamePaused = false;
+    
+    // Public property that triggers event when changed
+    public bool gamePaused 
+    { 
+        get => _gamePaused; 
+        set 
+        { 
+            if (_gamePaused != value)
+            {
+                _gamePaused = value;
+                OnGamePaused?.Invoke(value);
+            }
+        } 
+    }
+    
     public int currentTurn = 0;
 
     // Enums for multi-planet system

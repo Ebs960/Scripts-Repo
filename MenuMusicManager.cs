@@ -87,6 +87,14 @@ public class MenuMusicManager : MonoBehaviour
 
     public void PlayMenuMusic()
     {
+        // Check if menu music is enabled
+        bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
+        if (!musicEnabled)
+        {
+            Debug.Log("MenuMusicManager: Menu music is disabled, not playing.");
+            return;
+        }
+
         if (menuMusic != null && menuMusic.Count > 0)
         {
             PlayMusicFromList(menuMusic);
@@ -187,6 +195,24 @@ public class MenuMusicManager : MonoBehaviour
         {
             musicSource.volume = volume;
             PlayerPrefs.SetFloat("MenuMusicVolume", volume);
+        }
+    }
+
+    public void SetMusicEnabled(bool enabled)
+    {
+        PlayerPrefs.SetInt("MenuMusicEnabled", enabled ? 1 : 0);
+        
+        if (enabled)
+        {
+            // Restore volume and play music
+            float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
+            SetVolume(savedVolume);
+            PlayMenuMusic();
+        }
+        else
+        {
+            // Stop music
+            StartCoroutine(FadeOut());
         }
     }
 } 

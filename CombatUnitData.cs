@@ -40,7 +40,6 @@ public class CombatUnitData : ScriptableObject
     [Range(0.5f, 5f)] public float formationSpacing = 1.5f;
 
     [Header("Category & Deployment")]
-    public CombatCategory category;
     public bool requiresAirport;
     public bool requiresSpaceport;
     [Header("Space Travel Capability (Stub Gates)")]
@@ -93,6 +92,12 @@ public class CombatUnitData : ScriptableObject
     public int goldCost;
     public ResourceData[] requiredResources;
     public Biome[] requiredTerrains;
+    
+    [Header("Worker Construction")]
+    [Tooltip("If true, workers can construct this unit on the map using work points.")]
+    public bool buildableByWorker = false;
+    [Tooltip("Total work points required by workers to construct this unit on a tile.")]
+    public int workerWorkCost = 40;
 
     [Header("Base Stats")]
     public int baseAttack;
@@ -111,6 +116,12 @@ public class CombatUnitData : ScriptableObject
     public TechData[] requiredTechs;
     [Tooltip("All these cultures must be adopted to unlock this unit")]
     public CultureData[] requiredCultures;
+
+    [Header("Unit Limits")]
+    [Tooltip("Maximum number of this unit type a civilization can have (-1 = unlimited)")]
+    public int unitLimit = -1;
+    [Tooltip("Unique identifier for units that share the same limit (leave empty for individual limits)")]
+    public string limitCategory = "";
 
     [Header("Equipment")]
     public EquipmentData defaultEquipment;

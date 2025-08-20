@@ -107,7 +107,7 @@ public class SpaceRouteManager : MonoBehaviour
 
         // CRITICAL: Only spaceships can travel through space
         var combatUnit = unit.GetComponent<CombatUnit>();
-        if (combatUnit == null || combatUnit.data.category != CombatCategory.Spaceship)
+    if (combatUnit == null || combatUnit.data.unitType != CombatCategory.Spaceship)
         {
             Debug.LogWarning($"[SpaceRouteManager] Only spaceships can travel through space! Unit {unit.name} is not a spaceship.");
             return false;

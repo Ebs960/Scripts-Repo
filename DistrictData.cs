@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName="CivGame/Districts/District")]
+[CreateAssetMenu(menuName="Data/Districts")]
 public class DistrictData : ScriptableObject
 {
     [Header("Identity")]

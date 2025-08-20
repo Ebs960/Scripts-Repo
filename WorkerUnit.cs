@@ -218,6 +218,52 @@ public class WorkerUnit : MonoBehaviour
         animator.SetTrigger("building");
     }
 
+    // --- Unit construction via workers ---
+    public bool CanBuildUnit(CombatUnitData unitData, int tileIndex)
+    {
+        if (unitData == null || owner == null) return false;
+        if (!unitData.buildableByWorker) return false;
+        if (!unitData.AreRequirementsMet(owner)) return false;
+        if (!LimitManager.Instance.CanCreateCombatUnit(owner, unitData)) return false;
+
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData == null) return false;
+        if (!tileData.isLand) return false; // simple rule for now
+        if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID()) return false;
+        return true;
+    }
+
+    public void StartBuildingUnit(CombatUnitData unitData, int tileIndex)
+    {
+        if (!CanBuildUnit(unitData, tileIndex)) return;
+        bool started = ImprovementManager.Instance.CreateUnitJob(unitData, tileIndex, owner);
+        if (!started) return;
+        animator.SetTrigger("building");
+    }
+
+    // --- Build worker units via workers ---
+    public bool CanBuildWorker(WorkerUnitData workerData, int tileIndex)
+    {
+        if (workerData == null || owner == null) return false;
+        if (!workerData.buildableByWorker) return false;
+        if (!workerData.AreRequirementsMet(owner)) return false;
+        if (!LimitManager.Instance.CanCreateWorkerUnit(owner, workerData)) return false;
+
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData == null) return false;
+        if (!tileData.isLand) return false;
+        if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID()) return false;
+        return true;
+    }
+
+    public void StartBuildingWorker(WorkerUnitData workerData, int tileIndex)
+    {
+        if (!CanBuildWorker(workerData, tileIndex)) return;
+        bool started = ImprovementManager.Instance.CreateWorkerJob(workerData, tileIndex, owner);
+        if (!started) return;
+        animator.SetTrigger("building");
+    }
+
     /// <summary>
     /// Use this worker's work points to add progress to the build job on its current tile.
     /// </summary>
@@ -227,6 +273,26 @@ public class WorkerUnit : MonoBehaviour
 
         ImprovementManager.Instance.AddWork(currentTileIndex, data.baseWorkPoints);
         currentWorkPoints = 0;  // worker is spent for this turn
+    }
+
+    /// <summary>
+    /// Use this worker's work points to add progress to a unit build job on its current tile.
+    /// </summary>
+    public void ContributeWorkToUnit()
+    {
+        if (currentWorkPoints <= 0) return;
+        ImprovementManager.Instance.AddUnitWork(currentTileIndex, data.baseWorkPoints);
+        currentWorkPoints = 0;
+    }
+
+    /// <summary>
+    /// Contribute work to a worker unit job on this tile.
+    /// </summary>
+    public void ContributeWorkToWorker()
+    {
+        if (currentWorkPoints <= 0) return;
+        ImprovementManager.Instance.AddWorkerWork(currentTileIndex, data.baseWorkPoints);
+        currentWorkPoints = 0;
     }
 
     public bool CanForage(ResourceData resource, int tileIndex)

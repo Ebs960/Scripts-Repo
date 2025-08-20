@@ -10,7 +10,7 @@ public abstract class DiploDeal : ScriptableObject
     public abstract void Abort(Civilization a, Civilization b);
 }
 
-[CreateAssetMenu(menuName="Diplomacy/Peace Treaty")]
+[CreateAssetMenu(menuName="Data/Diplomacy/Peace Treaty")]
 public class PeaceTreaty : DiploDeal
 {
     public override bool CanPropose(Civilization from, Civilization to)
@@ -43,7 +43,7 @@ public class PeaceTreaty : DiploDeal
     }
 }
 
-[CreateAssetMenu(menuName="Diplomacy/Trade Agreement")]
+[CreateAssetMenu(menuName="Data/Diplomacy/Trade Agreement")]
 public class TradeAgreement : DiploDeal
 {
     public int goldPerTurnExchange = 5;
@@ -75,7 +75,7 @@ public class TradeAgreement : DiploDeal
     }
 }
 
-[CreateAssetMenu(menuName="Diplomacy/Alliance")]
+[CreateAssetMenu(menuName="Data/Diplomacy/Alliance")]
 public class AllianceDeal : DiploDeal
 {
     public override bool CanPropose(Civilization from, Civilization to)

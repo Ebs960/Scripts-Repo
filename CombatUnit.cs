@@ -411,7 +411,7 @@ public class CombatUnit : MonoBehaviour
         // Special case for Moon: ONLY spaceships with canTravelToMoon flag can go there
         if (isMoonTile)
         {
-            bool isSpaceshipWithMoonAccess = data.category == CombatCategory.Spaceship && data.canTravelToMoon;
+            bool isSpaceshipWithMoonAccess = data.unitType == CombatCategory.Spaceship && data.canTravelToMoon;
             
             if (!isSpaceshipWithMoonAccess)
                 return false;
@@ -428,7 +428,7 @@ public class CombatUnit : MonoBehaviour
             // Regular planet rules: water check for naval units
             if (!tileData.isLand)
             {
-                switch (data.category)
+                switch (data.unitType)
                 {
                     case CombatCategory.Ship:
                     case CombatCategory.Boat:
@@ -483,10 +483,10 @@ public class CombatUnit : MonoBehaviour
         if (isRouted) return false; // Routed units cannot attack
 
         // Target category checks
-        bool targetIsAir = target.data.category == CombatCategory.Aircraft;
-        bool targetIsSpace = target.data.category == CombatCategory.Spaceship;
-        bool targetIsUnderwater = target.data.category == CombatCategory.Submarine || 
-                                 target.data.category == CombatCategory.SeaCrawler;
+    bool targetIsAir = target.data.unitType == CombatCategory.Aircraft;
+    bool targetIsSpace = target.data.unitType == CombatCategory.Spaceship;
+    bool targetIsUnderwater = target.data.unitType == CombatCategory.Submarine || 
+                 target.data.unitType == CombatCategory.SeaCrawler;
 
         // Check specific attack capabilities
         if (targetIsAir && !data.canAttackAir) return false;

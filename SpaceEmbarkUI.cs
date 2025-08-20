@@ -65,7 +65,7 @@ public class SpaceEmbarkUI : MonoBehaviour
 
         // Check if unit is a spaceship
         var combatUnit = unit.GetComponent<CombatUnit>();
-        if (combatUnit == null || combatUnit.data.category != CombatCategory.Spaceship)
+    if (combatUnit == null || combatUnit.data.unitType != CombatCategory.Spaceship)
         {
             Debug.LogWarning($"[SpaceEmbarkUI] Only spaceships can travel through space! Unit {unit.name} is not a spaceship.");
             

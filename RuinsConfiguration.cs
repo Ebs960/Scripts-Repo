@@ -4,7 +4,7 @@ using UnityEngine;
 /// Scriptable object to configure ancient ruins for the ruins exploration system
 /// Create instances of this to define ruins across your solar system
 /// </summary>
-[CreateAssetMenu(fileName = "RuinsConfiguration", menuName = "Space Game/Ruins Configuration")]
+[CreateAssetMenu(fileName = "RuinsConfiguration", menuName = "Data/Ruins Configuration")]
 public class RuinsConfiguration : ScriptableObject
 {
     [Header("Ruins Settings")]

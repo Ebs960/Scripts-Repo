@@ -28,12 +28,26 @@ public class CultureData : ScriptableObject
     public float attackBonus;
     public float defenseBonus;
     public float movementBonus;
-    public float foodModifier;
-    public float productionModifier;
-    public float goldModifier;
-    public float scienceModifier;
-    public float cultureModifier;
-    public float faithModifier;
+    public float foodModifier;                  // Percentage modifier (e.g. 0.1 = +10%)
+    public float productionModifier;            // Percentage modifier (e.g. 0.1 = +10%)
+    public float goldModifier;                  // Percentage modifier (e.g. 0.1 = +10%)
+    public float scienceModifier;               // Percentage modifier (e.g. 0.1 = +10%)
+    public float cultureModifier;               // Percentage modifier (e.g. 0.1 = +10%)
+    public float faithModifier;                 // Percentage modifier (e.g. 0.1 = +10%)
+
+    [Header("Flat Bonuses")]
+    [Tooltip("Flat food bonus per turn (e.g. +2 food per turn)")]
+    public int flatFoodBonus;
+    [Tooltip("Flat production bonus per turn (e.g. +2 production per turn)")]
+    public int flatProductionBonus;
+    [Tooltip("Flat gold bonus per turn (e.g. +3 gold per turn)")]
+    public int flatGoldBonus;
+    [Tooltip("Flat science bonus per turn (e.g. +2 science per turn)")]
+    public int flatScienceBonus;
+    [Tooltip("Flat culture bonus per turn (e.g. +1 culture per turn)")]
+    public int flatCultureBonus;
+    [Tooltip("Flat faith bonus per turn (e.g. +1 faith per turn)")]
+    public int flatFaithBonus;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
@@ -52,4 +66,9 @@ public class CultureData : ScriptableObject
     public BuildingYieldBonus[] buildingBonuses;
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
+
+    [Header("Unit & Building Limits")]
+    [Tooltip("Increases the limit for specific units/buildings")]
+    public UnitLimitModifier[] unitLimitModifiers;
+    public BuildingLimitModifier[] buildingLimitModifiers;
 }

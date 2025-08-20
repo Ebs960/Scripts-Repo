@@ -35,6 +35,17 @@ public enum TechAge
     GalacticAge
 }
 
+public enum TechCategory
+{
+    General,
+    Military,
+    Economic,
+    Cultural,
+    Religious,
+    Scientific,
+    Infrastructure
+}
+
 [CreateAssetMenu(fileName = "NewTechData", menuName = "Data/Technology Data")]
 public class TechData : ScriptableObject
 {
@@ -44,6 +55,16 @@ public class TechData : ScriptableObject
 
     [TextArea]
     public string description;
+
+    [Header("Visual & Tree Layout")]
+    [Tooltip("Icon sprite for the tech tree")]
+    public Sprite techIcon;
+    [Tooltip("Hint for vertical positioning within dependency layer (0=top, higher=bottom)")]
+    public int positionHint = 0;
+    [Tooltip("Group related techs together")]
+    public TechCategory category = TechCategory.General;
+    [Tooltip("Custom color for this tech node (optional)")]
+    public Color techColor = Color.white;
 
     [Header("Cost & Requirements")]
     public int scienceCost;
@@ -68,12 +89,26 @@ public class TechData : ScriptableObject
     public float attackBonus;                   // e.g. +10% attack
     public float defenseBonus;                  // e.g. +10% defense
     public float movementBonus;                 // e.g. +1 move point
-    public float foodModifier;                  // New
-    public float productionModifier;            // New
-    public float goldModifier;                  // New
-    public float scienceModifier;               // New
-    public float cultureModifier;               // New
-    public float faithModifier;                 // New
+    public float foodModifier;                  // Percentage modifier (e.g. 0.1 = +10%)
+    public float productionModifier;            // Percentage modifier (e.g. 0.1 = +10%)
+    public float goldModifier;                  // Percentage modifier (e.g. 0.1 = +10%)
+    public float scienceModifier;               // Percentage modifier (e.g. 0.1 = +10%)
+    public float cultureModifier;               // Percentage modifier (e.g. 0.1 = +10%)
+    public float faithModifier;                 // Percentage modifier (e.g. 0.1 = +10%)
+
+    [Header("Flat Bonuses")]
+    [Tooltip("Flat food bonus per turn (e.g. +2 food per turn)")]
+    public int flatFoodBonus;
+    [Tooltip("Flat production bonus per turn (e.g. +2 production per turn)")]
+    public int flatProductionBonus;
+    [Tooltip("Flat gold bonus per turn (e.g. +3 gold per turn)")]
+    public int flatGoldBonus;
+    [Tooltip("Flat science bonus per turn (e.g. +2 science per turn)")]
+    public int flatScienceBonus;
+    [Tooltip("Flat culture bonus per turn (e.g. +1 culture per turn)")]
+    public int flatCultureBonus;
+    [Tooltip("Flat faith bonus per turn (e.g. +1 faith per turn)")]
+    public int flatFaithBonus;
 
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this technology.")]
@@ -92,4 +127,9 @@ public class TechData : ScriptableObject
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;
+
+    [Header("Unit & Building Limits")]
+    [Tooltip("Increases the limit for specific units/buildings")]
+    public UnitLimitModifier[] unitLimitModifiers;
+    public BuildingLimitModifier[] buildingLimitModifiers;
 }

@@ -45,6 +45,14 @@ public class MusicManager : MonoBehaviour
 
     public void PlayMusic()
     {
+        // Check if music is enabled
+        bool musicEnabled = PlayerPrefs.GetInt("MusicEnabled", 1) == 1;
+        if (!musicEnabled)
+        {
+            Debug.Log("MusicManager: Music is disabled, not playing.");
+            return;
+        }
+
         // Play the current playlist if available
         if (currentPlaylist != null && currentPlaylist.Count > 0)
         {
@@ -227,6 +235,24 @@ public class MusicManager : MonoBehaviour
         {
             musicSource.volume = volume;
             PlayerPrefs.SetFloat("GameMusicVolume", volume);
+        }
+    }
+
+    public void SetMusicEnabled(bool enabled)
+    {
+        PlayerPrefs.SetInt("MusicEnabled", enabled ? 1 : 0);
+        
+        if (enabled)
+        {
+            // Restore volume and play if we have a playlist
+            float savedVolume = PlayerPrefs.GetFloat("GameMusicVolume", 0.75f);
+            SetVolume(savedVolume);
+            PlayMusic();
+        }
+        else
+        {
+            // Stop music
+            StopMusicImmediate();
         }
     }
 

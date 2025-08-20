@@ -689,7 +689,7 @@ public class SpaceMapUI : MonoBehaviour
         if (selectedUnit != null)
         {
             var combatUnit = selectedUnit.GetComponent<CombatUnit>();
-            if (combatUnit != null && combatUnit.data.category == CombatCategory.Spaceship)
+            if (combatUnit != null && combatUnit.data.unitType == CombatCategory.Spaceship)
             {
                 // Use space travel system for spaceships
                 int currentPlanet = GameManager.Instance?.currentPlanetIndex ?? 0;

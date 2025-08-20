@@ -17,6 +17,7 @@ public class MainMenuManager : MonoBehaviour
     public GameObject civSelectionPanel;
     public GameObject leaderSelectionPanel; // New panel for leader selection
     public GameObject gameSetupPanel;
+    public GameObject optionsPanel;        // Options menu panel (new)
 
     [Header("Civilization Selection")]
     public Transform civButtonContainer;   // Container for civilization buttons
@@ -39,6 +40,7 @@ public class MainMenuManager : MonoBehaviour
     [Header("Main Menu")]
     public Button newGameButton;           // On main menu
     public Button loadGameButton;          // Load saved game (new)
+    public Button optionsButton;           // Options menu (new)
     public Button quitGameButton;          // Quit game (new)
 
     [Header("Game Setup Controls")]
@@ -89,6 +91,17 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Animal Settings")]
     public TMP_Dropdown animalPrevalenceDropdown;
+
+    [Header("Options Menu Audio Settings")]
+    public Slider menuMusicVolumeSlider;
+    public TextMeshProUGUI menuMusicVolumeText;
+    public Toggle menuMusicEnabledToggle;
+    public Button optionsBackButton;
+    
+    [Header("Options Menu Autosave Settings")]
+    public Toggle autosaveEnabledToggle;
+    public Slider autosaveIntervalSlider;
+    public TextMeshProUGUI autosaveIntervalText;
 
     private CivData selectedCivilization;
     private LeaderData selectedLeader;
@@ -198,11 +211,21 @@ public class MainMenuManager : MonoBehaviour
         // Hook up button callbacks
         if (newGameButton != null) newGameButton.onClick.AddListener(OnNewGameClicked);
         if (loadGameButton != null) loadGameButton.onClick.AddListener(OnLoadGameClicked);
+        if (optionsButton != null) optionsButton.onClick.AddListener(OnOptionsClicked);
         if (quitGameButton != null) quitGameButton.onClick.AddListener(OnQuitGameClicked);
         if (selectCivButton != null) selectCivButton.onClick.AddListener(OnCivSelected);
         if (backToMenuButton != null) backToMenuButton.onClick.AddListener(OnBackToMenuClicked);
         if (backFromCivButton != null) backFromCivButton.onClick.AddListener(OnBackFromCivSelectionClicked);
         if (startGameButton != null) startGameButton.onClick.AddListener(OnStartGameClicked);
+        
+        // Options panel callbacks
+        if (optionsBackButton != null) optionsBackButton.onClick.AddListener(OnOptionsBackClicked);
+        if (menuMusicVolumeSlider != null) menuMusicVolumeSlider.onValueChanged.AddListener(OnMenuMusicVolumeChanged);
+        if (menuMusicEnabledToggle != null) menuMusicEnabledToggle.onValueChanged.AddListener(OnMenuMusicEnabledChanged);
+        
+        // Autosave settings callbacks
+        if (autosaveEnabledToggle != null) autosaveEnabledToggle.onValueChanged.AddListener(OnAutosaveEnabledChanged);
+        if (autosaveIntervalSlider != null) autosaveIntervalSlider.onValueChanged.AddListener(OnAutosaveIntervalChanged);
         
         // New Leader Panel Buttons
         if (selectLeaderButton != null) selectLeaderButton.onClick.AddListener(OnLeaderSelected);
@@ -258,6 +281,12 @@ public class MainMenuManager : MonoBehaviour
             
         // Initialize all sliders and toggles
         InitializeControls();
+        
+        // Initialize audio settings
+        InitializeAudioSettings();
+        
+        // Initialize autosave settings
+        InitializeAutosaveSettings();
         
         // Update selected civ icon
         if (selectedCivIcon != null)
@@ -559,8 +588,13 @@ public class MainMenuManager : MonoBehaviour
     // Called when "Load Game" is clicked
     void OnLoadGameClicked()
     {
-        // TODO: Implement game loading
-        Debug.Log("Load game not implemented yet");
+        // For now, just log that load was clicked
+        // The actual load game functionality will be handled in the pause menu during gameplay
+        // or we could create a separate load game scene/panel here
+        Debug.Log("Load Game clicked - implement load game scene/panel here");
+        
+        // TODO: Create a load game panel similar to the pause menu's save/load system
+        // This would show available save slots and allow loading before starting a new game
     }
     
     // Called when "Quit Game" is clicked
@@ -998,5 +1032,144 @@ public class MainMenuManager : MonoBehaviour
         mapSizeDropdown.onValueChanged.AddListener(OnMapSizeChanged);
         UpdatePlanetSizeText();
     }
+
+    #region Options Menu Methods
+
+    private void InitializeAudioSettings()
+    {
+        // Initialize options panel state
+        if (optionsPanel != null)
+            optionsPanel.SetActive(false);
+
+        // Initialize menu music volume slider
+        if (menuMusicVolumeSlider != null)
+        {
+            float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
+            menuMusicVolumeSlider.value = savedVolume;
+            UpdateMenuMusicVolumeText(savedVolume);
+        }
+
+        // Initialize menu music enabled toggle
+        if (menuMusicEnabledToggle != null)
+        {
+            bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
+            menuMusicEnabledToggle.isOn = musicEnabled;
+        }
+    }
+
+    void OnOptionsClicked()
+    {
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(false);
+        
+        if (optionsPanel != null)
+            optionsPanel.SetActive(true);
+        
+        Debug.Log("Options menu opened");
+    }
+
+    void OnOptionsBackClicked()
+    {
+        if (optionsPanel != null)
+            optionsPanel.SetActive(false);
+        
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(true);
+        
+        Debug.Log("Options menu closed");
+    }
+
+    void OnMenuMusicVolumeChanged(float volume)
+    {
+        UpdateMenuMusicVolumeText(volume);
+        
+        // Update menu music volume
+        if (MenuMusicManager.Instance != null)
+        {
+            MenuMusicManager.Instance.SetVolume(volume);
+        }
+        
+        // Save preference
+        PlayerPrefs.SetFloat("MenuMusicVolume", volume);
+    }
+
+    private void UpdateMenuMusicVolumeText(float volume)
+    {
+        if (menuMusicVolumeText != null)
+        {
+            menuMusicVolumeText.text = Mathf.RoundToInt(volume * 100f) + "%";
+        }
+    }
+
+    void OnMenuMusicEnabledChanged(bool enabled)
+    {
+        PlayerPrefs.SetInt("MenuMusicEnabled", enabled ? 1 : 0);
+        
+        if (MenuMusicManager.Instance != null)
+        {
+            if (enabled)
+            {
+                // Restore volume and play music
+                float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
+                MenuMusicManager.Instance.SetVolume(savedVolume);
+                MenuMusicManager.Instance.PlayMenuMusic();
+            }
+            else
+            {
+                // Mute music
+                MenuMusicManager.Instance.SetVolume(0f);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Autosave Settings Methods
+
+    private void InitializeAutosaveSettings()
+    {
+        // Initialize autosave enabled toggle
+        if (autosaveEnabledToggle != null)
+        {
+            bool autosaveEnabled = PlayerPrefs.GetInt("AutosaveEnabled", 1) == 1;
+            autosaveEnabledToggle.isOn = autosaveEnabled;
+        }
+
+        // Initialize autosave interval slider
+        if (autosaveIntervalSlider != null)
+        {
+            autosaveIntervalSlider.minValue = 1f;
+            autosaveIntervalSlider.maxValue = 10f;
+            autosaveIntervalSlider.wholeNumbers = true;
+            
+            int savedInterval = PlayerPrefs.GetInt("AutosaveInterval", 3);
+            autosaveIntervalSlider.value = savedInterval;
+            UpdateAutosaveIntervalText(savedInterval);
+        }
+    }
+
+    void OnAutosaveEnabledChanged(bool enabled)
+    {
+        PlayerPrefs.SetInt("AutosaveEnabled", enabled ? 1 : 0);
+        Debug.Log($"Autosave {(enabled ? "enabled" : "disabled")}");
+    }
+
+    void OnAutosaveIntervalChanged(float interval)
+    {
+        int intervalInt = Mathf.RoundToInt(interval);
+        UpdateAutosaveIntervalText(intervalInt);
+        PlayerPrefs.SetInt("AutosaveInterval", intervalInt);
+        Debug.Log($"Autosave interval set to {intervalInt} turns");
+    }
+
+    private void UpdateAutosaveIntervalText(int interval)
+    {
+        if (autosaveIntervalText != null)
+        {
+            autosaveIntervalText.text = $"Every {interval} turn{(interval == 1 ? "" : "s")}";
+        }
+    }
+
+    #endregion
 
 } 

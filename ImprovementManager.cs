@@ -8,6 +8,10 @@ public class ImprovementManager : MonoBehaviour
 
     // All active build jobs on the map
     private readonly List<BuildJob> jobs = new();
+    // Parallel pipeline for worker-built combat units
+    private readonly List<UnitJob> unitJobs = new();
+    // Parallel pipeline for worker-built worker units
+    private readonly List<WorkerJob> workerJobs = new();
     
     // Planet generator reference
     private PlanetGenerator planetGenerator;
@@ -105,6 +109,52 @@ public class ImprovementManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Attempt to start a worker unit build job for a combat unit on tileIndex.
+    /// Respects unit flags, requirements, limits, and tile occupancy.
+    /// </summary>
+    public bool CreateUnitJob(CombatUnitData unit, int tileIndex, Civilization owner)
+    {
+        if (unit == null || owner == null) return false;
+        if (!unit.buildableByWorker) return false;
+        if (!unit.AreRequirementsMet(owner)) return false;
+        if (!LimitManager.Instance.CanCreateCombatUnit(owner, unit)) return false;
+
+        // No duplicate jobs per tile
+        if (unitJobs.Exists(j => j.tileIndex == tileIndex)) return false;
+
+        // Tile must be valid and free
+    var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    if (tileData == null) return false;
+    // Allow job even if a worker is occupying the tile; we'll spawn the unit on a free neighbor if needed
+    if (!tileData.isLand) return false; // basic restriction for now
+
+        // Optional: validate adjacent friendly city or territory rules if desired later
+
+        unitJobs.Add(new UnitJob(tileIndex, owner, unit));
+        return true;
+    }
+
+    /// <summary>
+    /// Attempt to start a worker build job for a worker unit on tileIndex.
+    /// </summary>
+    public bool CreateWorkerJob(WorkerUnitData unit, int tileIndex, Civilization owner)
+    {
+        if (unit == null || owner == null) return false;
+        if (!unit.buildableByWorker) return false;
+        if (!unit.AreRequirementsMet(owner)) return false;
+        if (!LimitManager.Instance.CanCreateWorkerUnit(owner, unit)) return false;
+
+        if (workerJobs.Exists(j => j.tileIndex == tileIndex)) return false;
+
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData == null) return false;
+        if (!tileData.isLand) return false;
+
+        workerJobs.Add(new WorkerJob(tileIndex, owner, unit));
+        return true;
+    }
+
+    /// <summary>
     /// Apply work points from a worker to the job on its tile.
     /// </summary>
     public void AddWork(int tileIndex, int workPoints)
@@ -117,6 +167,36 @@ public class ImprovementManager : MonoBehaviour
 
         if (job.remainingWork <= 0)
             CompleteJob(job);
+    }
+
+    /// <summary>
+    /// Apply work points to a unit job on this tile.
+    /// </summary>
+    public void AddUnitWork(int tileIndex, int workPoints)
+    {
+        var job = unitJobs.Find(j => j.tileIndex == tileIndex);
+        if (job == null) return;
+
+        job.remainingWork -= workPoints;
+        job.Clamp();
+
+        if (job.remainingWork <= 0)
+            CompleteUnitJob(job);
+    }
+
+    /// <summary>
+    /// Apply work points to a worker unit job on this tile.
+    /// </summary>
+    public void AddWorkerWork(int tileIndex, int workPoints)
+    {
+        var job = workerJobs.Find(j => j.tileIndex == tileIndex);
+        if (job == null) return;
+
+        job.remainingWork -= workPoints;
+        job.Clamp();
+
+        if (job.remainingWork <= 0)
+            CompleteWorkerJob(job);
     }
 
     /// <summary>
@@ -174,6 +254,89 @@ public class ImprovementManager : MonoBehaviour
         jobs.Remove(job);
     }
 
+    private void CompleteUnitJob(UnitJob job)
+    {
+        // Spawn the unit and register occupancy
+        var unitPrefab = job.data.prefab;
+        if (unitPrefab == null)
+        {
+            Debug.LogError($"Unit {job.data?.unitName} has no prefab; cannot spawn.");
+            unitJobs.Remove(job);
+            return;
+        }
+
+    // Find a valid spawn tile (prefer job tile if unoccupied)
+    int spawnIndex = FindSpawnTile(job.tileIndex);
+    Vector3 pos = TileDataHelper.Instance.GetTileCenter(spawnIndex);
+    var go = Object.Instantiate(unitPrefab, pos, Quaternion.identity);
+        var unit = go.GetComponent<CombatUnit>();
+        if (unit == null)
+        {
+            Debug.LogError("Spawned unit prefab missing CombatUnit component.");
+            Object.Destroy(go);
+            unitJobs.Remove(job);
+            return;
+        }
+
+        unit.Initialize(job.data, job.owner);
+        unit.InitializeAndReturn(job.data, job.owner, spawnIndex);
+        job.owner.combatUnits.Add(unit);
+        LimitManager.Instance.AddCombatUnit(job.owner, job.data);
+        TileDataHelper.Instance.SetTileOccupant(spawnIndex, unit.gameObject);
+
+        unitJobs.Remove(job);
+    }
+
+    private void CompleteWorkerJob(WorkerJob job)
+    {
+        // Spawn the worker unit and register occupancy
+        var prefab = job.data.prefab;
+        if (prefab == null)
+        {
+            Debug.LogError($"Worker unit {job.data?.unitName} has no prefab; cannot spawn.");
+            workerJobs.Remove(job);
+            return;
+        }
+
+        int spawnIndex = FindSpawnTile(job.tileIndex);
+        Vector3 pos = TileDataHelper.Instance.GetTileCenter(spawnIndex);
+        var go = Object.Instantiate(prefab, pos, Quaternion.identity);
+        var unit = go.GetComponent<WorkerUnit>();
+        if (unit == null)
+        {
+            Debug.LogError("Spawned worker prefab missing WorkerUnit component.");
+            Object.Destroy(go);
+            workerJobs.Remove(job);
+            return;
+        }
+
+        unit.Initialize(job.data, job.owner, spawnIndex);
+        job.owner.workerUnits.Add(unit);
+        LimitManager.Instance.AddWorkerUnit(job.owner, job.data);
+        TileDataHelper.Instance.SetTileOccupant(spawnIndex, unit.gameObject);
+
+        workerJobs.Remove(job);
+    }
+
+    private int FindSpawnTile(int centerIndex)
+    {
+        // If center tile is free, use it
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(centerIndex);
+        if (tileData != null && tileData.occupantId == 0)
+            return centerIndex;
+
+        // Otherwise try neighbors
+        foreach (int n in TileDataHelper.Instance.GetTileNeighbors(centerIndex))
+        {
+            var (td, _) = TileDataHelper.Instance.GetTileData(n);
+            if (td != null && td.isLand && td.occupantId == 0)
+                return n;
+        }
+
+        // Fallback to center
+        return centerIndex;
+    }
+
 
     /// <summary>
     /// Represents a construction project on a tile.
@@ -191,6 +354,54 @@ public class ImprovementManager : MonoBehaviour
             this.owner = owner;
             this.data = data;
             this.remainingWork = data.workCost;
+        }
+
+        public void Clamp()
+        {
+            if (remainingWork < 0) remainingWork = 0;
+        }
+    }
+
+    /// <summary>
+    /// Represents a worker-built combat unit job on a tile.
+    /// </summary>
+    private class UnitJob
+    {
+        public int tileIndex;
+        public Civilization owner;
+        public CombatUnitData data;
+        public int remainingWork;
+
+        public UnitJob(int tileIndex, Civilization owner, CombatUnitData data)
+        {
+            this.tileIndex = tileIndex;
+            this.owner = owner;
+            this.data = data;
+            this.remainingWork = Mathf.Max(1, data.workerWorkCost);
+        }
+
+        public void Clamp()
+        {
+            if (remainingWork < 0) remainingWork = 0;
+        }
+    }
+
+    /// <summary>
+    /// Represents a worker-built worker unit job on a tile.
+    /// </summary>
+    private class WorkerJob
+    {
+        public int tileIndex;
+        public Civilization owner;
+        public WorkerUnitData data;
+        public int remainingWork;
+
+        public WorkerJob(int tileIndex, Civilization owner, WorkerUnitData data)
+        {
+            this.tileIndex = tileIndex;
+            this.owner = owner;
+            this.data = data;
+            this.remainingWork = Mathf.Max(1, data.workerWorkCost);
         }
 
         public void Clamp()
@@ -218,7 +429,7 @@ public class ImprovementManager : MonoBehaviour
             return;
 
         // Category filter
-        var cat = unit.data != null ? unit.data.category : CombatCategory.Spearman;
+    var cat = unit.data != null ? unit.data.unitType : CombatCategory.Spearman;
         bool affects = trap.data.trapAffectsAnimalsOnly
             ? (cat == CombatCategory.Animal)
             : (trap.data.trapAffectedCategories != null && System.Array.IndexOf(trap.data.trapAffectedCategories, cat) >= 0);

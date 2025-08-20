@@ -33,6 +33,12 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Harbor building required for production")]
     public bool requiresHarbor = false;
 
+    [Header("Worker Construction")]
+    [Tooltip("If true, workers can construct this worker type on the map using work points.")]
+    public bool buildableByWorker = false;
+    [Tooltip("Total work points required by workers to construct this worker unit on a tile.")]
+    public int workerWorkCost = 30;
+
     [Header("Build Options")] public ImprovementData[] buildableImprovements;
     public RouteType[] buildableRoutes;
 
@@ -41,6 +47,12 @@ public class WorkerUnitData : ScriptableObject
     public TechData[] requiredTechs;
     [Tooltip("All these cultures must be adopted to unlock this unit")]
     public CultureData[] requiredCultures;
+
+    [Header("Unit Limits")]
+    [Tooltip("Maximum number of this unit type a civilization can have (-1 = unlimited)")]
+    public int unitLimit = -1;
+    [Tooltip("Unique identifier for units that share the same limit (leave empty for individual limits)")]
+    public string limitCategory = "";
 
     /// <summary>
     /// Checks if all requirements (techs, cultures) are met for this unit

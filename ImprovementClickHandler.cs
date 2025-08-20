@@ -31,7 +31,7 @@ public class ImprovementClickHandler : MonoBehaviour
         if (!tileData.owner.isPlayerControlled) return;
 
         // Show the improvement upgrade UI
-        var upgradeUI = FindObjectOfType<ImprovementUpgradeUI>();
+        var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
         if (upgradeUI != null)
         {
             upgradeUI.ShowUpgradePanel(improvementData, tileIndex, tileData.owner);

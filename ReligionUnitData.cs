@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(menuName="CivGame/Units/ReligionUnit")]
+[CreateAssetMenu(menuName="Data/ReligionUnit")]
 public class ReligionUnitData : CombatUnitData
 {
     [Header("Religion Unit Properties")]

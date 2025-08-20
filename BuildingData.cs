@@ -54,6 +54,14 @@ public class BuildingData : ScriptableObject
     public TechData[] requiredTechs;
     public int requiredPopulation;
 
+    [Header("Building Limits")]
+    [Tooltip("Maximum number of this building type a civilization can have (-1 = unlimited)")]
+    public int buildingLimit = -1;
+    [Tooltip("Unique identifier for buildings that share the same limit (leave empty for individual limits)")]
+    public string limitCategory = "";
+    [Tooltip("Maximum number of this building per city (1 = one per city, -1 = unlimited per city)")]
+    public int perCityLimit = 1;
+
     [Header("Yields (per turn)")]
     public int foodPerTurn;
     public int productionPerTurn;

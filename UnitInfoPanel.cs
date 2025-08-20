@@ -31,10 +31,15 @@ public class UnitInfoPanel : MonoBehaviour
 
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
+    [Header("Worker Build Units UI")] 
+    [SerializeField] private Transform buildUnitsContainer; // vertical layout group
+    [SerializeField] private GameObject buildUnitButtonPrefab; // simple button with icon/text
+    [SerializeField] private Button contributeWorkButton; // applies work points this turn to current tile job (improvement or unit)
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
     private List<EquipmentButton> equipmentButtons = new List<EquipmentButton>();
+    private readonly List<GameObject> buildUnitButtons = new List<GameObject>();
 
     private void Awake()
     {
@@ -43,6 +48,9 @@ public class UnitInfoPanel : MonoBehaviour
         
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
+
+        if (contributeWorkButton != null)
+            contributeWorkButton.onClick.AddListener(OnContributeWorkClicked);
 
         // On start, clear the panel to show a "no unit selected" state.
         ClearPanelInfo();
@@ -135,6 +143,13 @@ public class UnitInfoPanel : MonoBehaviour
         if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false);
         if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
+        if (buildUnitsContainer != null)
+        {
+            foreach (var go in buildUnitButtons) if (go != null) Destroy(go);
+            buildUnitButtons.Clear();
+            buildUnitsContainer.gameObject.SetActive(false);
+        }
+        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
 
         // Clear unit references
         currentCombatUnit = null;
@@ -206,10 +221,13 @@ public class UnitInfoPanel : MonoBehaviour
             levelText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
             Debug.LogWarning("UnitInfoPanel: Using 'levelText' to display Worker Work Points. Consider adding a dedicated UI element.");
         }
-        // else if (workPointsText != null) // If you add a dedicated field
-        // {
-        //     workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
-        // }
+        // Show worker build units section
+        if (buildUnitsContainer != null)
+        {
+            PopulateWorkerBuildUnits(currentWorkerUnit);
+            buildUnitsContainer.gameObject.SetActive(true);
+        }
+        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(true);
     }
 
     private void ToggleEquipmentPanel()
@@ -292,6 +310,8 @@ public class UnitInfoPanel : MonoBehaviour
         
         if (settleCityButton != null)
             settleCityButton.onClick.RemoveListener(OnSettleCityClicked);
+        if (contributeWorkButton != null)
+            contributeWorkButton.onClick.RemoveListener(OnContributeWorkClicked);
     }
 
     private void HideAllSections()
@@ -314,6 +334,97 @@ public class UnitInfoPanel : MonoBehaviour
         // Implement the logic to populate the panel for a WorkerUnit
         // This is a placeholder and should be replaced with the actual implementation
         Debug.Log("UnitInfoPanel: Populating for WorkerUnit");
+        UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void PopulateWorkerBuildUnits(WorkerUnit worker)
+    {
+        if (buildUnitsContainer == null || worker == null) return;
+
+        // Clear existing
+        foreach (var go in buildUnitButtons) if (go != null) Destroy(go);
+        buildUnitButtons.Clear();
+
+        var civ = worker.owner;
+        if (civ == null) return;
+
+    // Gather units unlocked by civ (tech/culture/unique)
+    var units = civ.unlockedCombatUnits;
+    var workerUnits = civ.unlockedWorkerUnits;
+    if (units == null && workerUnits == null) return;
+
+        foreach (var u in units)
+        {
+            if (u == null) continue;
+            if (!u.buildableByWorker) continue;
+            if (!worker.CanBuildUnit(u, worker.currentTileIndex)) continue;
+
+            var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+            buildUnitButtons.Add(btnGO);
+
+            // Try to populate basic visuals if it has Image/Text components
+            var txt = btnGO.GetComponentInChildren<TextMeshProUGUI>();
+            if (txt != null) txt.text = $"Build {u.unitName} ({u.workerWorkCost} WP)";
+            var img = btnGO.GetComponentInChildren<Image>();
+            if (img != null && u.icon != null) img.sprite = u.icon;
+
+            var button = btnGO.GetComponent<Button>();
+            if (button != null)
+            {
+                var unitLocal = u;
+                button.onClick.AddListener(() => OnStartWorkerBuildUnit(unitLocal));
+            }
+        }
+
+        // Also list buildable worker units
+        if (workerUnits != null)
+        {
+            foreach (var wu in workerUnits)
+            {
+                if (wu == null) continue;
+                if (!wu.buildableByWorker) continue;
+                if (!worker.CanBuildWorker(wu, worker.currentTileIndex)) continue;
+
+                var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+                buildUnitButtons.Add(btnGO);
+
+                var txt = btnGO.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null) txt.text = $"Build {wu.unitName} ({wu.workerWorkCost} WP)";
+                var img = btnGO.GetComponentInChildren<Image>();
+                if (img != null && wu.icon != null) img.sprite = wu.icon;
+
+                var button = btnGO.GetComponent<Button>();
+                if (button != null)
+                {
+                    var localWu = wu;
+                    button.onClick.AddListener(() => OnStartWorkerBuildWorker(localWu));
+                }
+            }
+        }
+    }
+
+    private void OnStartWorkerBuildUnit(CombatUnitData unitData)
+    {
+        if (currentWorkerUnit == null || unitData == null) return;
+        currentWorkerUnit.StartBuildingUnit(unitData, currentWorkerUnit.currentTileIndex);
+        // After starting, allow immediate contribution if player wants
+        UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void OnContributeWorkClicked()
+    {
+        if (currentWorkerUnit == null) return;
+        // Contribute to either improvement or unit job on current tile
+        currentWorkerUnit.ContributeWork();
+        currentWorkerUnit.ContributeWorkToUnit();
+        currentWorkerUnit.ContributeWorkToWorker();
+        UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void OnStartWorkerBuildWorker(WorkerUnitData workerData)
+    {
+        if (currentWorkerUnit == null || workerData == null) return;
+        currentWorkerUnit.StartBuildingWorker(workerData, currentWorkerUnit.currentTileIndex);
         UpdateUnitInfoForWorkerUnit();
     }
 }
