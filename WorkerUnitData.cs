@@ -39,6 +39,15 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Total work points required by workers to construct this worker unit on a tile.")]
     public int workerWorkCost = 30;
 
+    [Header("Per-Turn Yields")]
+    [Tooltip("Flat yields this worker provides each turn while alive (added to owning civilization)")]
+    public int foodPerTurn;
+    public int goldPerTurn;
+    public int sciencePerTurn;
+    public int culturePerTurn;
+    public int policyPointsPerTurn;
+    public int faithPerTurn;
+
     [Header("Build Options")] public ImprovementData[] buildableImprovements;
     public RouteType[] buildableRoutes;
 

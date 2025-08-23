@@ -8,8 +8,16 @@ public class CultureUI : MonoBehaviour
 {
     [Header("Panel References")]
     [SerializeField] private GameObject culturePanel;
-    [SerializeField] private Transform cultureButtonContainer; // ScrollRect's content
+    [SerializeField] private ScrollRect cultureScrollRect; // The ScrollRect for the culture tree
+    [SerializeField] private RectTransform cultureContent; // The content area of the ScrollRect
+    [SerializeField] private Transform cultureButtonContainer; // ScrollRect's content (fallback for list view)
     [SerializeField] private GameObject cultureButtonPrefab; // Prefab for culture buttons
+    
+    [Header("Culture Tree Integration")]
+    [SerializeField] private TechTreeBackgroundData backgroundData; // Background system
+    [SerializeField] private bool useCustomLayout = true; // Use saved layout vs list layout
+    [SerializeField] private string layoutFileName = "CultureTreeLayout.json"; // JSON file from CultureTreeBuilder
+    [SerializeField] private Vector2 cultureNodeSize = new Vector2(200, 100); // Size of each culture node
 
     [Header("Info Panel")]
     [SerializeField] private TextMeshProUGUI selectedCultureNameText;
@@ -52,7 +60,16 @@ public class CultureUI : MonoBehaviour
             return;
         }
         UIManager.Instance.ShowPanel("culturePanel");
-        PopulateCultureOptions();
+        
+        if (useCustomLayout)
+        {
+            CreateCultureTreeWithCustomLayout();
+        }
+        else
+        {
+            PopulateCultureOptions();
+        }
+        
         ClearInfoPanel(); // Do not auto-select any culture
     }
 
@@ -99,6 +116,206 @@ public class CultureUI : MonoBehaviour
             }
         }
         RefreshCultureButtonStates();
+    }
+    
+    private void CreateCultureTreeWithCustomLayout()
+    {
+        // Clear existing buttons
+        foreach (Transform child in cultureContent != null ? cultureContent : cultureButtonContainer)
+        {
+            Destroy(child.gameObject);
+        }
+        cultureButtons.Clear();
+        
+        // Load layout from JSON file
+        CultureTreeLayout layout = LoadLayoutFromFile();
+        if (layout == null)
+        {
+            Debug.LogWarning("No culture tree layout found, falling back to list view");
+            PopulateCultureOptions();
+            return;
+        }
+        
+        // Create background images if we have background data
+        if (backgroundData != null && cultureContent != null)
+        {
+            CreateBackgroundImages();
+        }
+        
+        // Set content size from layout
+        if (cultureContent != null && layout.culturePositions != null && layout.culturePositions.Count > 0)
+        {
+            // Calculate content size based on culture positions
+            float maxX = 0f, minY = 0f;
+            foreach (var pos in layout.culturePositions)
+            {
+                maxX = Mathf.Max(maxX, pos.position.x + cultureNodeSize.x);
+                minY = Mathf.Min(minY, pos.position.y - cultureNodeSize.y);
+            }
+            cultureContent.sizeDelta = new Vector2(maxX + 100f, Mathf.Abs(minY) + 100f);
+        }
+        
+        // Create culture nodes at their saved positions
+        if (CultureManager.Instance?.allCultures != null)
+        {
+            foreach (CultureData culture in CultureManager.Instance.allCultures)
+            {
+                // Find saved position for this culture
+                Vector2 position = Vector2.zero;
+                bool foundPosition = false;
+                
+                if (layout.culturePositions != null)
+                {
+                    foreach (var pos in layout.culturePositions)
+                    {
+                        if (pos.cultureName == culture.cultureName)
+                        {
+                            position = pos.position;
+                            foundPosition = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!foundPosition)
+                {
+                    Debug.LogWarning($"No saved position found for culture: {culture.cultureName}");
+                    continue; // Skip cultures not in the saved layout
+                }
+                
+                CreateCultureNode(culture, position);
+            }
+        }
+        
+        RefreshCultureButtonStates();
+    }
+    
+    private void CreateBackgroundImages()
+    {
+        if (backgroundData == null || cultureContent == null) return;
+        
+        // Get all backgrounds in age order
+        Sprite[] backgroundImages = backgroundData.GetAllBackgroundsInOrder();
+        
+        if (backgroundImages.Length == 0) return;
+        
+        // Calculate total background width
+        float totalBackgroundWidth = backgroundData.GetTotalWidth();
+        float imageHeight = 1024f * backgroundData.backgroundScale;
+        
+        // Create background container
+        GameObject backgroundContainer = new GameObject("BackgroundContainer");
+        backgroundContainer.transform.SetParent(cultureContent, false);
+        
+        RectTransform bgRect = backgroundContainer.AddComponent<RectTransform>();
+        bgRect.anchorMin = new Vector2(0, 1); // Top-left origin
+        bgRect.anchorMax = new Vector2(0, 1);
+        bgRect.pivot = new Vector2(0, 1);
+        bgRect.sizeDelta = new Vector2(totalBackgroundWidth, imageHeight);
+        bgRect.anchoredPosition = Vector2.zero;
+        
+        // Set background to render behind everything else
+        backgroundContainer.transform.SetAsFirstSibling();
+        
+        // Create individual background images for each age
+        var allAges = System.Enum.GetValues(typeof(TechAge));
+        float currentX = 0f;
+        int imageIndex = 0;
+        
+        foreach (TechAge age in allAges)
+        {
+            Sprite ageBackground = backgroundData.GetBackgroundForAge(age);
+            if (ageBackground == null) continue;
+            
+            GameObject ageImageObj = new GameObject($"Background_{age}");
+            ageImageObj.transform.SetParent(backgroundContainer.transform, false);
+            
+            Image ageImage = ageImageObj.AddComponent<Image>();
+            ageImage.sprite = ageBackground;
+            ageImage.type = Image.Type.Sliced;
+            
+            float imageWidth = ageBackground.texture.width * backgroundData.backgroundScale;
+            
+            RectTransform ageRect = ageImage.rectTransform;
+            ageRect.anchorMin = new Vector2(0, 0);
+            ageRect.anchorMax = new Vector2(0, 1);
+            ageRect.pivot = new Vector2(0, 0.5f);
+            ageRect.sizeDelta = new Vector2(imageWidth, imageHeight);
+            ageRect.anchoredPosition = new Vector2(currentX, 0);
+            
+            currentX += imageWidth + backgroundData.imageSpacing;
+            imageIndex++;
+        }
+        
+        Debug.Log($"Created {imageIndex} age-based background images for culture tree");
+    }
+    
+    private void CreateCultureNode(CultureData culture, Vector2 position)
+    {
+        GameObject buttonGO = Instantiate(cultureButtonPrefab, cultureContent != null ? cultureContent : cultureButtonContainer);
+        
+        // Set position for custom layout
+        if (cultureContent != null)
+        {
+            RectTransform rectTransform = buttonGO.GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = new Vector2(0, 1); // Top-left anchor
+                rectTransform.anchorMax = new Vector2(0, 1);
+                rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                rectTransform.sizeDelta = cultureNodeSize;
+                rectTransform.anchoredPosition = position;
+            }
+        }
+        
+        // Initialize the button
+        CultureButtonUI cultureButtonUI = buttonGO.GetComponent<CultureButtonUI>();
+        if (cultureButtonUI != null)
+        {
+            cultureButtonUI.Initialize(culture, this);
+            cultureButtons.Add(cultureButtonUI);
+            UpdateCultureButtonState(cultureButtonUI, culture);
+        }
+        else
+        {
+            // Fallback for buttons without CultureButtonUI component
+            Button button = buttonGO.GetComponent<Button>();
+            TextMeshProUGUI buttonText = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null) buttonText.text = culture.cultureName;
+            if (button != null) button.onClick.AddListener(() => SelectCulture(culture));
+        }
+    }
+    
+    private CultureTreeLayout LoadLayoutFromFile()
+    {
+        string filePath = "";
+        
+#if UNITY_EDITOR
+        // In editor, look in Assets folder
+        filePath = System.IO.Path.Combine(Application.dataPath, layoutFileName);
+#else
+        // In build, look in persistent data path
+        filePath = System.IO.Path.Combine(Application.persistentDataPath, layoutFileName);
+#endif
+        
+        if (!System.IO.File.Exists(filePath))
+        {
+            Debug.LogWarning($"Culture tree layout file not found at: {filePath}");
+            return null;
+        }
+        
+        try
+        {
+            string json = System.IO.File.ReadAllText(filePath);
+            CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(json);
+            Debug.Log($"Loaded culture tree layout with {layout?.culturePositions?.Count ?? 0} culture positions");
+            return layout;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to load culture tree layout: {e.Message}");
+            return null;
+        }
     }
 
     public void SelectCulture(CultureData culture)
@@ -217,6 +434,20 @@ public class CultureUI : MonoBehaviour
             UpdateCultureButtonState(btnUI, btnUI.RepresentedCulture);
         }
     }
+}
+
+// Layout data structure for loading from JSON
+[System.Serializable]
+public class CultureTreeLayout
+{
+    public List<CulturePosition> culturePositions;
+}
+
+[System.Serializable]
+public class CulturePosition
+{
+    public string cultureName;
+    public Vector2 position;
 }
 
 

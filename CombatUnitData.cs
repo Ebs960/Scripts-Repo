@@ -129,6 +129,15 @@ public class CombatUnitData : ScriptableObject
     [Header("Yield")]
     public int foodOnKill;
     
+    [Header("Per-Turn Yields")]
+    [Tooltip("Flat yields this unit provides each turn while alive (added to owning civilization)")]
+    public int foodPerTurn;
+    public int goldPerTurn;
+    public int sciencePerTurn;
+    public int culturePerTurn;
+    public int policyPointsPerTurn;
+    public int faithPerTurn;
+    
     /// <summary>
     /// Checks if all requirements (techs, cultures) are met for this unit
     /// </summary>

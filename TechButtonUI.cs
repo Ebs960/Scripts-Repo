@@ -38,6 +38,12 @@ public class TechButtonUI : MonoBehaviour
         RepresentedTech = tech;
         techUI = ownerUI;
 
+        // Auto-find components if not assigned (for procedurally created nodes)
+        if (techNameText == null)
+            techNameText = GetComponentInChildren<TextMeshProUGUI>();
+        if (backgroundImage == null)
+            backgroundImage = GetComponent<Image>();
+
         if (techNameText != null)
             techNameText.text = tech.techName;
 

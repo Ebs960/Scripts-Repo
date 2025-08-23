@@ -4,49 +4,49 @@ using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
-/// Tech palette item that can be dragged into the builder
+/// Culture palette item that can be dragged into the builder
 /// </summary>
-public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
+public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("UI Components")]
-    public Image techIcon;
-    public TextMeshProUGUI techNameText;
+    public Image cultureIcon;
+    public TextMeshProUGUI cultureNameText;
     public Image backgroundImage;
     
     [Header("Visual States")]
     public Color normalColor = Color.white;
     public Color hoverColor = Color.gray;
     
-    public TechData RepresentedTech { get; private set; }
-    public TechTreeBuilder Builder { get; private set; }
+    public CultureData RepresentedCulture { get; private set; }
+    public CultureTreeBuilder Builder { get; private set; }
     
     private GameObject draggedObject;
     
-    public void Initialize(TechData tech, TechTreeBuilder builder)
+    public void Initialize(CultureData culture, CultureTreeBuilder builder)
     {
-        RepresentedTech = tech;
+        RepresentedCulture = culture;
         Builder = builder;
 
-        if (tech.techIcon != null && techIcon != null)
-            techIcon.sprite = tech.techIcon;
+        if (culture.cultureIcon != null && cultureIcon != null)
+            cultureIcon.sprite = culture.cultureIcon;
 
-        if (techNameText != null)
+        if (cultureNameText != null)
         {
-            techNameText.text = tech.techName;
-            techNameText.enableAutoSizing = true;
-            techNameText.fontSizeMin = 6f;
-            techNameText.fontSizeMax = 10f;
+            cultureNameText.text = culture.cultureName;
+            cultureNameText.enableAutoSizing = true;
+            cultureNameText.fontSizeMin = 6f;
+            cultureNameText.fontSizeMax = 10f;
         }
 
         if (backgroundImage != null)
             backgroundImage.color = normalColor;
 
         // Debug logs for diagnosis
-        Debug.Log($"[TechPaletteItem.Initialize] Tech: {tech?.techName ?? "<null>"} | Icon: {(tech?.techIcon != null ? "Y" : "N")} | Parent: {transform.parent?.name} | Active: {gameObject.activeSelf}");
+        Debug.Log($"[CulturePaletteItem.Initialize] Culture: {culture?.cultureName ?? "<null>"} | Icon: {(culture?.cultureIcon != null ? "Y" : "N")} | Parent: {transform.parent?.name} | Active: {gameObject.activeSelf}");
         var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
-            Debug.Log($"[TechPaletteItem.Initialize] RectTransform: anchoredPos={rect.anchoredPosition} sizeDelta={rect.sizeDelta} scale={rect.localScale}");
+            Debug.Log($"[CulturePaletteItem.Initialize] RectTransform: anchoredPos={rect.anchoredPosition} sizeDelta={rect.sizeDelta} scale={rect.localScale}");
         }
     }
     
@@ -65,7 +65,7 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             canvasGroup.blocksRaycasts = false;
             
             // Remove any existing components that might interfere
-            var paletteItem = draggedObject.GetComponent<TechPaletteItem>();
+            var paletteItem = draggedObject.GetComponent<CulturePaletteItem>();
             if (paletteItem != null)
                 Destroy(paletteItem);
         }
@@ -97,7 +97,7 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                 Rect contentRect = Builder.builderContent.rect;
                 if (contentRect.Contains(localPoint))
                 {
-                    Builder.AddTechToBuilder(RepresentedTech, localPoint);
+                    Builder.AddCultureToBuilder(RepresentedCulture, localPoint);
                 }
             }
         }
@@ -108,10 +108,10 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (backgroundImage != null)
             backgroundImage.color = hoverColor;
         
-        // Show tooltip with tech info
+        // Show tooltip with culture info
         if (TooltipSystem.Instance != null)
         {
-            TooltipSystem.Instance.ShowTechTooltip(RepresentedTech, null);
+            TooltipSystem.Instance.ShowCultureTooltip(RepresentedCulture, null);
         }
     }
     

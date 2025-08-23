@@ -320,6 +320,55 @@ public class Civilization : MonoBehaviour
             }
         }
 
+        // 3.6) Per-unit yields (combat units). Applies after city yields, before research/culture processing.
+        if (combatUnits != null && combatUnits.Count > 0)
+        {
+            int addFood = 0, addGold = 0, addSci = 0, addCul = 0, addFai = 0, addPol = 0;
+            foreach (var u in combatUnits)
+            {
+                if (u == null || u.data == null) continue;
+                var yields = BonusAggregator.ComputeUnitPerTurnYield(this, u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+                addFood += yields.food;
+                addGold += yields.gold;
+                addSci  += yields.science;
+                addCul  += yields.culture;
+                addFai  += yields.faith;
+                addPol  += yields.policy;
+            }
+
+            // Apply global civ yield modifiers to these additions as well
+            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            science += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
+            culture += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
+            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            policyPoints += addPol; // no global modifier currently
+        }
+
+        // 3.7) Per-unit yields (workers)
+        if (workerUnits != null && workerUnits.Count > 0)
+        {
+            int addFood = 0, addGold = 0, addSci = 0, addCul = 0, addFai = 0, addPol = 0;
+            foreach (var w in workerUnits)
+            {
+                if (w == null || w.data == null) continue;
+                var yields = BonusAggregator.ComputeWorkerPerTurnYield(this, w.data);
+                addFood += yields.food;
+                addGold += yields.gold;
+                addSci  += yields.science;
+                addCul  += yields.culture;
+                addFai  += yields.faith;
+                addPol  += yields.policy;
+            }
+
+            gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            science += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
+            culture += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
+            faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            policyPoints += addPol; // no global modifier currently
+        }
+
         // 4) Advance technology
         ProcessResearch();
 

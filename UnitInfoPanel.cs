@@ -43,8 +43,12 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void Awake()
     {
+        // Equipment management moved to Equipment Manager panel; hide in unit panel
         if (openEquipmentButton != null)
-            openEquipmentButton.onClick.AddListener(ToggleEquipmentPanel);
+        {
+            openEquipmentButton.onClick.RemoveAllListeners();
+            openEquipmentButton.gameObject.SetActive(false);
+        }
         
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
@@ -64,15 +68,15 @@ public class UnitInfoPanel : MonoBehaviour
 
         string unitNameForLog = "Unknown Unit";
 
-        if (unitObject is CombatUnit combatUnit)
+    if (unitObject is CombatUnit combatUnit)
         {
             currentCombatUnit = combatUnit;
             currentWorkerUnit = null; // Ensure worker unit is cleared
             unitNameForLog = currentCombatUnit.data.unitName;
             Debug.Log($"UnitInfoPanel.ShowPanel: Processing CombatUnit: {unitNameForLog}");
             PopulateForCombatUnit(currentCombatUnit);
-            if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false); // Close equipment by default
-            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(true); // Show for combat units
+            if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false); // Equipment UI disabled
+            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false); // Hidden in this panel
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
         }
         else if (unitObject is WorkerUnit workerUnit)
@@ -83,7 +87,7 @@ public class UnitInfoPanel : MonoBehaviour
             Debug.Log($"UnitInfoPanel.ShowPanel: Processing WorkerUnit: {unitNameForLog}");
             PopulateForWorkerUnit(currentWorkerUnit);
             if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
-            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false); // Hide for worker units
+            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false); // Hidden in this panel
 
             // Show or hide the Settle City button
             if (settleCityButton != null)
@@ -232,19 +236,9 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void ToggleEquipmentPanel()
     {
-        if (equipmentSelectionPanel == null || currentCombatUnit == null) // Check currentCombatUnit
-        {
-            if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
-            return;
-        }
-
-        bool isActive = !equipmentSelectionPanel.activeSelf;
-        equipmentSelectionPanel.SetActive(isActive);
-
-        if (isActive)
-        {
-            PopulateEquipmentOptions();
-        }
+    // Deprecated: equipment selection is now handled by EquipmentManagerPanel.
+    if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
+    Debug.Log("UnitInfoPanel: Equipment panel disabled. Use Equipment Manager panel instead.");
     }
 
     private void PopulateEquipmentOptions()

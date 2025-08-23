@@ -11,6 +11,10 @@ public class CultureData : ScriptableObject
     [TextArea]
     public string description;
 
+    [Header("Visual")]
+    [Tooltip("Icon sprite for the culture")]
+    public Sprite cultureIcon;
+
     [Header("Cost & Requirements")]
     public int cultureCost;
     public CultureData[] requiredCultures;
@@ -56,10 +60,16 @@ public class CultureData : ScriptableObject
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this culture.")]
     public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-unit per-turn yield bonuses granted by this culture.")]
+    public UnitYieldBonus[] unitYieldBonuses;
     [Tooltip("Per-worker stat bonuses granted by this culture.")]
     public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Per-worker per-turn yield bonuses granted by this culture.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
     [Tooltip("Per-equipment stat bonuses granted by this culture.")]
     public EquipmentStatBonus[] equipmentBonuses;
+    [Tooltip("Per-equipment per-turn yield bonuses granted by this culture (applies when equipped).")]
+    public EquipmentYieldBonus[] equipmentYieldBonuses;
     [Tooltip("Per-improvement yield bonuses granted by this culture.")]
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this culture.")]

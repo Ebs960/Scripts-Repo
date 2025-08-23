@@ -4,15 +4,15 @@ using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
-/// Draggable tech node for the tree builder
+/// Draggable culture node for the tree builder
 /// </summary>
-public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, 
+public class CultureBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, 
     IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("UI Components")]
-    public Image techIcon;
+    public Image cultureIcon;
     public Image backgroundImage;
-    public TextMeshProUGUI techNameText;
+    public TextMeshProUGUI cultureNameText;
     public Button deleteButton;
     public Button connectButton;
     
@@ -22,8 +22,8 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
     public Color draggingColor = Color.cyan;
     public Color hoverColor = Color.gray;
     
-    public TechData RepresentedTech { get; private set; }
-    public TechTreeBuilder Builder { get; private set; }
+    public CultureData RepresentedCulture { get; private set; }
+    public CultureTreeBuilder Builder { get; private set; }
     public Vector2Int GridPosition { get; private set; }
     
     private RectTransform rectTransform;
@@ -42,20 +42,20 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
             connectButton.onClick.AddListener(StartConnection);
     }
     
-    public void Initialize(TechData tech, TechTreeBuilder builder)
+    public void Initialize(CultureData culture, CultureTreeBuilder builder)
     {
-        RepresentedTech = tech;
+        RepresentedCulture = culture;
         Builder = builder;
         
-        if (tech.techIcon != null && techIcon != null)
-            techIcon.sprite = tech.techIcon;
+        if (culture.cultureIcon != null && cultureIcon != null)
+            cultureIcon.sprite = culture.cultureIcon;
         
-        if (techNameText != null)
+        if (cultureNameText != null)
         {
-            techNameText.text = tech.techName;
-            techNameText.enableAutoSizing = true;
-            techNameText.fontSizeMin = 8f;
-            techNameText.fontSizeMax = 12f;
+            cultureNameText.text = culture.cultureName;
+            cultureNameText.enableAutoSizing = true;
+            cultureNameText.fontSizeMin = 8f;
+            cultureNameText.fontSizeMax = 12f;
         }
         
         UpdateVisualState();
@@ -182,10 +182,10 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
             backgroundImage.color = hoverColor;
         }
         
-        // Show tooltip with tech info
+        // Show tooltip with culture info
         if (TooltipSystem.Instance != null)
         {
-            TooltipSystem.Instance.ShowTechTooltip(RepresentedTech, null);
+            TooltipSystem.Instance.ShowCultureTooltip(RepresentedCulture, null);
         }
     }
     
@@ -205,7 +205,7 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
     private void DeleteNode()
     {
         if (Builder != null)
-            Builder.RemoveTechFromBuilder(RepresentedTech);
+            Builder.RemoveCultureFromBuilder(RepresentedCulture);
     }
     
     private void StartConnection()
@@ -217,10 +217,10 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
     private void ShowContextMenu(Vector2 screenPosition)
     {
         // Simple context menu logging for now
-        Debug.Log($"Context menu for {RepresentedTech.techName}");
+        Debug.Log($"Context menu for {RepresentedCulture.cultureName}");
         Debug.Log("Available actions:");
         Debug.Log("- Delete (Del key)");
-        Debug.Log("- Connect (Ctrl+Click another node)");
+        Debug.Log("- Connect (Ctrl+Click another culture)");
         Debug.Log("- Move (Drag)");
     }
 }

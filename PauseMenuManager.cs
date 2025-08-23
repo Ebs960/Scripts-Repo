@@ -114,9 +114,15 @@ public class PauseMenuManager : MonoBehaviour
 
     void Start()
     {
-        // Initialize UI
-        if (pauseMenuPanel != null)
+        // Initialize UI - make sure pause menu starts hidden
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HidePauseMenu();
+        }
+        else if (pauseMenuPanel != null)
+        {
             pauseMenuPanel.SetActive(false);
+        }
         
         if (optionsPanel != null)
             optionsPanel.SetActive(false);
@@ -225,8 +231,16 @@ public class PauseMenuManager : MonoBehaviour
         isPaused = true;
         Time.timeScale = 0f;
 
-        if (pauseMenuPanel != null)
+        // Use UIManager to show pause menu
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowPauseMenu();
+        }
+        else if (pauseMenuPanel != null)
+        {
+            // Fallback to direct control if UIManager not available
             pauseMenuPanel.SetActive(true);
+        }
 
         // Update GameManager pause state (this will automatically trigger OnGamePaused event)
         if (GameManager.Instance != null)
@@ -244,8 +258,16 @@ public class PauseMenuManager : MonoBehaviour
         isPaused = false;
         Time.timeScale = 1f;
 
-        if (pauseMenuPanel != null)
+        // Use UIManager to hide pause menu
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HidePauseMenu();
+        }
+        else if (pauseMenuPanel != null)
+        {
+            // Fallback to direct control if UIManager not available
             pauseMenuPanel.SetActive(false);
+        }
 
         if (optionsPanel != null)
             optionsPanel.SetActive(false);
@@ -412,8 +434,15 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ShowOptions()
     {
-        if (pauseMenuPanel != null)
+        // Hide pause menu and show options
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HidePauseMenu();
+        }
+        else if (pauseMenuPanel != null)
+        {
             pauseMenuPanel.SetActive(false);
+        }
         
         if (optionsPanel != null)
             optionsPanel.SetActive(true);
@@ -424,8 +453,15 @@ public class PauseMenuManager : MonoBehaviour
         if (optionsPanel != null)
             optionsPanel.SetActive(false);
         
-        if (pauseMenuPanel != null)
+        // Show pause menu again
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowPauseMenu();
+        }
+        else if (pauseMenuPanel != null)
+        {
             pauseMenuPanel.SetActive(true);
+        }
     }
 
     public void ExitToMainMenu()

@@ -27,6 +27,14 @@ public class PolicyData : ScriptableObject
     public float cultureModifier;       // New
     public float faithModifier;         // New
 
+    [Header("Unit Yield Bonuses")]
+    [Tooltip("Per-unit per-turn yield bonuses granted by this policy.")]
+    public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-equipment per-turn yield bonuses granted by this policy (applies when equipped).")]
+    public EquipmentYieldBonus[] equipmentYieldBonuses;
+    [Tooltip("Per-worker per-turn yield bonuses granted by this policy.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
+
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;

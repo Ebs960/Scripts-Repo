@@ -26,6 +26,14 @@ public class GovernmentData : ScriptableObject
     public float cultureModifier;       // New
     public float faithModifier;         // New
 
+    [Header("Unit Yield Bonuses")]
+    [Tooltip("Per-unit per-turn yield bonuses granted by this government while active.")]
+    public UnitYieldBonus[] unitYieldBonuses;
+    [Tooltip("Per-equipment per-turn yield bonuses granted by this government (applies when equipped).")]
+    public EquipmentYieldBonus[] equipmentYieldBonuses;
+    [Tooltip("Per-worker per-turn yield bonuses granted by this government while active.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
+
     [Header("Unlocked Content")]
     [Tooltip("Units that become available when adopting this government")]
     public CombatUnitData[] unlockedUnits;

@@ -52,6 +52,7 @@ public class CombatUnit : MonoBehaviour
     public event System.Action OnEquipmentChanged;
 
     // Equipment & Abilities
+    // Currently equipped item (last set via Equip/EquipItem) used for yield calculations, too
     public EquipmentData equipped { get; private set; }
     public List<Ability> unlockedAbilities { get; private set; } = new List<Ability>();
 
@@ -194,13 +195,37 @@ public class CombatUnit : MonoBehaviour
     public int BaseRange => useOverrideStats && range > 0 ? range : data.baseRange;
     public int BaseAttackPoints => useOverrideStats && attackPoints > 0 ? attackPoints : data.baseAttackPoints;
 
-    // Equipment bonuses
-    public int EquipmentAttackBonus        => equipped?.attackBonus        ?? 0;
-    public int EquipmentDefenseBonus       => equipped?.defenseBonus       ?? 0;
-    public int EquipmentHealthBonus        => equipped?.healthBonus        ?? 0;
-    public int EquipmentMoveBonus          => equipped?.movementBonus      ?? 0;
-    public int EquipmentRangeBonus         => equipped?.rangeBonus         ?? 0;
-    public int EquipmentAttackPointsBonus  => equipped?.attackPointsBonus  ?? 0;
+    // Equipment bonuses (sum across all equipped slots)
+    public int EquipmentAttackBonus
+        => (equippedWeapon?.attackBonus ?? 0)
+         + (equippedShield?.attackBonus ?? 0)
+         + (equippedArmor?.attackBonus ?? 0)
+         + (equippedMiscellaneous?.attackBonus ?? 0);
+    public int EquipmentDefenseBonus
+        => (equippedWeapon?.defenseBonus ?? 0)
+         + (equippedShield?.defenseBonus ?? 0)
+         + (equippedArmor?.defenseBonus ?? 0)
+         + (equippedMiscellaneous?.defenseBonus ?? 0);
+    public int EquipmentHealthBonus
+        => (equippedWeapon?.healthBonus ?? 0)
+         + (equippedShield?.healthBonus ?? 0)
+         + (equippedArmor?.healthBonus ?? 0)
+         + (equippedMiscellaneous?.healthBonus ?? 0);
+    public int EquipmentMoveBonus
+        => (equippedWeapon?.movementBonus ?? 0)
+         + (equippedShield?.movementBonus ?? 0)
+         + (equippedArmor?.movementBonus ?? 0)
+         + (equippedMiscellaneous?.movementBonus ?? 0);
+    public int EquipmentRangeBonus
+        => (equippedWeapon?.rangeBonus ?? 0)
+         + (equippedShield?.rangeBonus ?? 0)
+         + (equippedArmor?.rangeBonus ?? 0)
+         + (equippedMiscellaneous?.rangeBonus ?? 0);
+    public int EquipmentAttackPointsBonus
+        => (equippedWeapon?.attackPointsBonus ?? 0)
+         + (equippedShield?.attackPointsBonus ?? 0)
+         + (equippedArmor?.attackPointsBonus ?? 0)
+         + (equippedMiscellaneous?.attackPointsBonus ?? 0);
 
     // Ability modifiers - ADDED
     public int GetAbilityAttackModifier()
@@ -320,6 +345,24 @@ public class CombatUnit : MonoBehaviour
             }
         return a;
     }
+    
+    // Sum equipment-targeted bonuses across all currently equipped items
+    private EquipAgg AggregateAllEquippedBonusesLocal(Civilization civ)
+    {
+        EquipAgg total = new EquipAgg();
+        if (civ == null) return total;
+        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
+        foreach (var it in items)
+        {
+            if (it == null) continue;
+            var e = AggregateEquipBonusesLocal(civ, it);
+            total.attackAdd += e.attackAdd; total.defenseAdd += e.defenseAdd; total.healthAdd += e.healthAdd;
+            total.moveAdd += e.moveAdd; total.rangeAdd += e.rangeAdd; total.apAdd += e.apAdd;
+            total.attackPct += e.attackPct; total.defensePct += e.defensePct; total.healthPct += e.healthPct;
+            total.movePct += e.movePct; total.rangePct += e.rangePct; total.apPct += e.apPct;
+        }
+        return total;
+    }
 
     public int CurrentAttack
     {
@@ -331,9 +374,9 @@ public class CombatUnit : MonoBehaviour
                 var u = AggregateUnitBonusesLocal(owner, data);
                 val = Mathf.RoundToInt((val + u.attackAdd) * (1f + u.attackPct));
             }
-            if (owner != null && equipped != null)
+            if (owner != null)
             {
-                var e = AggregateEquipBonusesLocal(owner, equipped);
+                var e = AggregateAllEquippedBonusesLocal(owner);
                 val = Mathf.RoundToInt((val + e.attackAdd) * (1f + e.attackPct));
             }
             return val;
@@ -349,9 +392,9 @@ public class CombatUnit : MonoBehaviour
                 var u = AggregateUnitBonusesLocal(owner, data);
                 val = Mathf.RoundToInt((val + u.defenseAdd) * (1f + u.defensePct));
             }
-            if (owner != null && equipped != null)
+            if (owner != null)
             {
-                var e = AggregateEquipBonusesLocal(owner, equipped);
+                var e = AggregateAllEquippedBonusesLocal(owner);
                 val = Mathf.RoundToInt((val + e.defenseAdd) * (1f + e.defensePct));
             }
             return val;
@@ -367,9 +410,9 @@ public class CombatUnit : MonoBehaviour
                 var u = AggregateUnitBonusesLocal(owner, data);
                 val = Mathf.RoundToInt((val + u.healthAdd) * (1f + u.healthPct));
             }
-            if (owner != null && equipped != null)
+            if (owner != null)
             {
-                var e = AggregateEquipBonusesLocal(owner, equipped);
+                var e = AggregateAllEquippedBonusesLocal(owner);
                 val = Mathf.RoundToInt((val + e.healthAdd) * (1f + e.healthPct));
             }
             return val;
@@ -385,9 +428,9 @@ public class CombatUnit : MonoBehaviour
                 var u = AggregateUnitBonusesLocal(owner, data);
                 val = Mathf.RoundToInt((val + u.rangeAdd) * (1f + u.rangePct));
             }
-            if (owner != null && equipped != null)
+            if (owner != null)
             {
-                var e = AggregateEquipBonusesLocal(owner, equipped);
+                var e = AggregateAllEquippedBonusesLocal(owner);
                 val = Mathf.RoundToInt((val + e.rangeAdd) * (1f + e.rangePct));
             }
             return val;
@@ -743,7 +786,7 @@ public class CombatUnit : MonoBehaviour
     int maxHP = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
 
         // Apply targeted bonuses from techs/cultures
-        if (owner != null && data != null)
+    if (owner != null && data != null)
         {
             var agg = AggregateUnitBonusesLocal(owner, data);
             // Apply additive first
@@ -755,13 +798,11 @@ public class CombatUnit : MonoBehaviour
             baseAP = Mathf.RoundToInt(baseAP * (1f + agg.apPct));
             maxHP = Mathf.RoundToInt(maxHP * (1f + agg.healthPct));
             // Attack/Defense/Range/Morale handled dynamically via getters or in combat; keep HP/move/AP here
-            if (equipped != null)
-            {
-                var eagg = AggregateEquipBonusesLocal(owner, equipped);
-                baseMove = Mathf.RoundToInt((baseMove + eagg.moveAdd) * (1f + eagg.movePct));
-                baseAP = Mathf.RoundToInt((baseAP + eagg.apAdd) * (1f + eagg.apPct));
-                maxHP = Mathf.RoundToInt((maxHP + eagg.healthAdd) * (1f + eagg.healthPct));
-            }
+            // Apply equipment-targeted bonuses across all equipped items
+            var eagg = AggregateAllEquippedBonusesLocal(owner);
+            baseMove = Mathf.RoundToInt((baseMove + eagg.moveAdd) * (1f + eagg.movePct));
+            baseAP = Mathf.RoundToInt((baseAP + eagg.apAdd) * (1f + eagg.apPct));
+            maxHP = Mathf.RoundToInt((maxHP + eagg.healthAdd) * (1f + eagg.healthPct));
         }
 
         currentMovePoints = baseMove;

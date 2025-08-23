@@ -15,9 +15,18 @@ public class UIManager : MonoBehaviour
     public GameObject religionPanel;
     public GameObject tradePanel;
     public GameObject diplomacyPanel;
+    public GameObject equipmentPanel;
     public GameObject unitInfoPanel;
+    public GameObject pauseMenuPanel;
     public GameObject playerUI;
     public SpaceMapUI spaceMapUI;
+
+    [Header("UI Audio")]
+    [Tooltip("Click sound played for all UI Buttons.")]
+    public AudioClip uiClickClip;
+    [Range(0f,1f)] public float uiClickVolume = 1f;
+    private AudioSource uiAudioSource;
+    private readonly HashSet<Button> wiredButtons = new HashSet<Button>();
 
     [Header("Notification Settings")]
     public float notificationDuration = 3f;
@@ -50,8 +59,12 @@ public class UIManager : MonoBehaviour
             { "tradePanel", tradePanel },
             { "DiplomacyPanel", diplomacyPanel },
             { "diplomacyPanel", diplomacyPanel },
+            { "EquipmentPanel", equipmentPanel },
+            { "equipmentPanel", equipmentPanel },
             { "UnitInfoPanel", unitInfoPanel },
             { "unitInfoPanel", unitInfoPanel },
+            { "PauseMenuPanel", pauseMenuPanel },
+            { "pauseMenuPanel", pauseMenuPanel },
             { "PlayerUI", playerUI },
             { "playerUI", playerUI }
         };
@@ -59,6 +72,16 @@ public class UIManager : MonoBehaviour
         
         // Keep PlayerUI active - it should be visible at game start
         if (playerUI != null) playerUI.SetActive(true);
+
+        // Ensure we have an AudioSource for UI sounds
+        uiAudioSource = GetComponent<AudioSource>();
+        if (uiAudioSource == null)
+            uiAudioSource = gameObject.AddComponent<AudioSource>();
+        uiAudioSource.playOnAwake = false;
+        uiAudioSource.spatialBlend = 0f;
+
+        // Wire click sounds for all known panels/buttons
+        WireAllPanelsForClickSound();
     }
 
     /// <summary>
@@ -70,7 +93,10 @@ public class UIManager : MonoBehaviour
         if (!panelDict.TryGetValue(name, out var panel))
             panelDict.TryGetValue(name.ToLowerInvariant(), out panel);
         if (panel != null)
+        {
             panel.SetActive(true);
+            WireButtons(panel);
+        }
     }
 
     /// <summary>
@@ -184,6 +210,60 @@ public class UIManager : MonoBehaviour
         ShowPanel("TradePanel");
     }
 
+    public void ShowEquipmentPanel(Civilization civ)
+    {
+    if (equipmentPanel == null)
+        {
+            Debug.LogWarning("UIManager: equipmentPanel is not assigned.");
+            return;
+        }
+        // Prefer passing civ via SendMessage to avoid hard type dependency
+        if (civ != null)
+            equipmentPanel.SendMessage("Show", civ, SendMessageOptions.DontRequireReceiver);
+        else
+            equipmentPanel.SendMessage("ShowDefault", SendMessageOptions.DontRequireReceiver);
+        ShowPanel("EquipmentPanel");
+    WireButtons(equipmentPanel);
+    }
+
+    public void HideEquipmentPanel()
+    {
+        if (equipmentPanel == null) return;
+    equipmentPanel.SendMessage("Hide", SendMessageOptions.DontRequireReceiver);
+        HidePanel("EquipmentPanel");
+    }
+
+    // --- UI Audio helpers ---
+    private void WireAllPanelsForClickSound()
+    {
+        foreach (var kvp in panelDict)
+        {
+            var panel = kvp.Value;
+            if (panel != null)
+                WireButtons(panel);
+        }
+    }
+
+    private void WireButtons(GameObject root)
+    {
+        if (root == null) return;
+        var buttons = root.GetComponentsInChildren<Button>(true);
+        foreach (var btn in buttons)
+        {
+            if (btn == null || wiredButtons.Contains(btn)) continue;
+            btn.onClick.AddListener(PlayUIClick);
+            wiredButtons.Add(btn);
+        }
+    }
+
+    private void PlayUIClick()
+    {
+        if (uiClickClip != null && uiAudioSource != null)
+        {
+            uiAudioSource.PlayOneShot(uiClickClip, uiClickVolume);
+        }
+    }
+
     public void ShowDiplomacyPanel(Civilization civ)
     {
         Debug.Log("[UIManager] ShowDiplomacyPanel called");
@@ -274,6 +354,22 @@ public class UIManager : MonoBehaviour
         {
             spaceMapUI.Hide();
         }
+    }
+
+    /// <summary>
+    /// Show the pause menu
+    /// </summary>
+    public void ShowPauseMenu()
+    {
+        ShowPanel("PauseMenuPanel");
+    }
+
+    /// <summary>
+    /// Hide the pause menu
+    /// </summary>
+    public void HidePauseMenu()
+    {
+        HidePanel("PauseMenuPanel");
     }
 
     /// <summary>

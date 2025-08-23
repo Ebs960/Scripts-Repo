@@ -9,9 +9,9 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Visual tech tree builder that allows drag-and-drop positioning of technologies
+/// Visual culture tree builder that allows drag-and-drop positioning of cultures
 /// </summary>
-public class TechTreeBuilder : MonoBehaviour
+public class CultureTreeBuilder : MonoBehaviour
 {
     [Header("Background Settings")]
     [Tooltip("ScriptableObject containing age-based background images")]
@@ -26,9 +26,9 @@ public class TechTreeBuilder : MonoBehaviour
     public Button autoLayoutButton;
     public Toggle snapToGridToggle;
     
-    [Header("Tech Palette")]
-    public Transform techPalette;
-    public Button addAllTechsButton;
+    [Header("Culture Palette")]
+    public Transform culturePalette;
+    public Button addAllCulturesButton;
     
     [Header("Grid Settings")]
     public float gridSize = 50f;
@@ -38,11 +38,11 @@ public class TechTreeBuilder : MonoBehaviour
     public int gridColumns = 15;  // Reduced columns since cells are wider now
     public int gridRows = 10;     // Reduced rows for better proportions
     public Vector2 cellSize = new Vector2(200f, 100f);  // Rectangular: 2:1 ratio
-    public Color emptyCellColor = Color.clear; // Transparent cells
-    public Color occupiedCellColor = Color.clear; // Transparent cells
+    public Color emptyCellColor = new Color(0.1f, 0.1f, 0.1f, 0.3f);
+    public Color occupiedCellColor = new Color(0.4f, 0.2f, 0.4f, 0.5f); // Purple tint for culture
     
     [Header("Connection Settings")]
-    public Color validConnectionColor = Color.green;
+    public Color validConnectionColor = Color.magenta;
     public Color invalidConnectionColor = Color.red;
     public bool showConnectionPreview = true;
     [Tooltip("Thickness of connection lines in UI pixels")] public float connectionThickness = 3f;
@@ -50,23 +50,23 @@ public class TechTreeBuilder : MonoBehaviour
     [Header("Status")]
     public TextMeshProUGUI statusText;
     
-    // Discovered TechData assets available to the builder (no TechManager needed)
-    private readonly List<TechData> availableTechs = new List<TechData>();
-    private readonly Dictionary<string, TechData> techByName = new Dictionary<string, TechData>();
+    // Discovered CultureData assets available to the builder (no CultureManager needed)
+    private readonly List<CultureData> availableCultures = new List<CultureData>();
+    private readonly Dictionary<string, CultureData> cultureByName = new Dictionary<string, CultureData>();
 
-    private Dictionary<TechData, TechBuilderNode> techNodes = new Dictionary<TechData, TechBuilderNode>();
+    private Dictionary<CultureData, CultureBuilderNode> cultureNodes = new Dictionary<CultureData, CultureBuilderNode>();
     private List<GameObject> connectionLines = new List<GameObject>();
-    private TechBuilderNode selectedNode;
-    private TechBuilderNode draggedNode;
+    private CultureBuilderNode selectedNode;
+    private CultureBuilderNode draggedNode;
     private bool isConnecting = false;
     private GameObject connectionPreviewLine;
     private Image connectionPreviewImage;
     
     // Grid system
     private GameObject[,] gridCells;
-    private Dictionary<Vector2Int, TechBuilderNode> gridOccupancy = new Dictionary<Vector2Int, TechBuilderNode>();
+    private Dictionary<Vector2Int, CultureBuilderNode> gridOccupancy = new Dictionary<Vector2Int, CultureBuilderNode>();
     
-    public static TechTreeBuilder Instance { get; private set; }
+    public static CultureTreeBuilder Instance { get; private set; }
     
     void Awake()
     {
@@ -77,8 +77,8 @@ public class TechTreeBuilder : MonoBehaviour
     {
         SetupUI();
         SetupGrid();
-        LoadAllTechs();
-        UpdateStatus("Tech Tree Builder loaded. Drag techs from palette to build your tree!");
+        LoadAllCultures();
+        UpdateStatus("Culture Tree Builder loaded. Drag cultures from palette to build your tree!");
     }
     
     void Update()
@@ -101,8 +101,8 @@ public class TechTreeBuilder : MonoBehaviour
         if (autoLayoutButton != null)
             autoLayoutButton.onClick.AddListener(AutoLayout);
         
-        if (addAllTechsButton != null)
-            addAllTechsButton.onClick.AddListener(AddAllTechsToBuilder);
+        if (addAllCulturesButton != null)
+            addAllCulturesButton.onClick.AddListener(AddAllCulturesToBuilder);
     }
     
     private void SetupGrid()
@@ -157,7 +157,7 @@ public class TechTreeBuilder : MonoBehaviour
     {
         if (backgroundData == null)
         {
-            Debug.Log("No background data assigned to TechTreeBuilder");
+            Debug.Log("No background data assigned to CultureTreeBuilder");
             return;
         }
         
@@ -260,9 +260,9 @@ public class TechTreeBuilder : MonoBehaviour
                 Vector2 cellPosition = GetCellWorldPosition(x, y);
                 cellRect.anchoredPosition = cellPosition;
                 
-                // Add visual background (invisible)
+                // Add visual background
                 Image cellImage = cellObj.AddComponent<Image>();
-                cellImage.color = Color.clear; // Make cells invisible
+                cellImage.color = emptyCellColor;
                 cellImage.raycastTarget = false; // Don't block interactions
                 
                 // Store reference
@@ -351,58 +351,58 @@ public class TechTreeBuilder : MonoBehaviour
         }
     }
     
-    public void LoadAllTechs()
+    public void LoadAllCultures()
     {
-        availableTechs.Clear();
-        techByName.Clear();
+        availableCultures.Clear();
+        cultureByName.Clear();
 
 #if UNITY_EDITOR
-        // Editor: find all TechData assets anywhere in the project
-        string[] guids = AssetDatabase.FindAssets("t:TechData");
+        // Editor: find all CultureData assets anywhere in the project
+        string[] guids = AssetDatabase.FindAssets("t:CultureData");
         foreach (var guid in guids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            var tech = AssetDatabase.LoadAssetAtPath<TechData>(path);
-            if (tech != null && !availableTechs.Contains(tech))
+            var culture = AssetDatabase.LoadAssetAtPath<CultureData>(path);
+            if (culture != null && !availableCultures.Contains(culture))
             {
-                availableTechs.Add(tech);
-                if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                availableCultures.Add(culture);
+                if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
             }
         }
 #else
-        // Runtime: look in Resources (place TechData assets under a Resources folder)
-        var found = Resources.LoadAll<TechData>(string.Empty);
-        foreach (var tech in found)
+        // Runtime: look in Resources (place CultureData assets under a Resources folder)
+        var found = Resources.LoadAll<CultureData>(string.Empty);
+        foreach (var culture in found)
         {
-            if (tech != null && !availableTechs.Contains(tech))
+            if (culture != null && !availableCultures.Contains(culture))
             {
-                availableTechs.Add(tech);
-                if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                availableCultures.Add(culture);
+                if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
             }
         }
 #endif
 
         // Populate palette
-        if (availableTechs.Count == 0)
+        if (availableCultures.Count == 0)
         {
-            UpdateStatus("No technologies found. In editor, ensure TechData assets exist; at runtime, place them under a Resources folder.");
+            UpdateStatus("No cultures found. In editor, ensure CultureData assets exist; at runtime, place them under a Resources folder.");
             return;
         }
 
-        foreach (var tech in availableTechs.OrderBy(t => t.scienceCost))
+        foreach (var culture in availableCultures.OrderBy(c => c.cultureCost))
         {
-            CreateTechPaletteItem(tech);
+            CreateCulturePaletteItem(culture);
         }
 
-        UpdateStatus($"Loaded {availableTechs.Count} techs into palette.");
+        UpdateStatus($"Loaded {availableCultures.Count} cultures into palette.");
     }
     
-    public void AddAllTechsToBuilder()
+    public void AddAllCulturesToBuilder()
     {
         int currentIndex = 0;
-        foreach (var tech in availableTechs)
+        foreach (var culture in availableCultures)
         {
-            if (!techNodes.ContainsKey(tech))
+            if (!cultureNodes.ContainsKey(culture))
             {
                 // Calculate sequential grid position (left-to-right, top-to-bottom)
                 int gridX = currentIndex % gridColumns;
@@ -411,58 +411,57 @@ public class TechTreeBuilder : MonoBehaviour
                 // Make sure we don't exceed grid bounds
                 if (gridY >= gridRows)
                 {
-                    UpdateStatus($"Grid full! Can only place {gridColumns * gridRows} techs.");
+                    UpdateStatus($"Grid full! Can only place {gridColumns * gridRows} cultures.");
                     break;
                 }
                 
                 Vector2Int gridPos = new Vector2Int(gridX, gridY);
                 Vector2 worldPos = GetCellWorldPosition(gridX, gridY);
                 
-                AddTechToBuilder(tech, worldPos);
+                AddCultureToBuilder(culture, worldPos);
                 currentIndex++;
             }
         }
         
         RefreshConnections();
-        UpdateStatus($"Added {currentIndex} techs to builder in grid layout.");
+        UpdateStatus($"Added {currentIndex} cultures to builder in grid layout.");
     }
     
-    private void CreateTechPaletteItem(TechData tech)
+    private void CreateCulturePaletteItem(CultureData culture)
     {
-        if (techPalette == null)
+        if (culturePalette == null)
         {
-            Debug.LogError("Tech palette container not assigned!");
+            Debug.LogError("Culture palette container not assigned!");
             return;
         }
 
         // Create the palette item completely in code - no prefab needed!
-        GameObject paletteItem = new GameObject($"PaletteItem_{tech.techName}");
-        paletteItem.transform.SetParent(techPalette, false);
+        GameObject paletteItem = new GameObject($"PaletteItem_{culture.cultureName}");
+        paletteItem.transform.SetParent(culturePalette, false);
 
         // Add RectTransform and set it up
         RectTransform rect = paletteItem.AddComponent<RectTransform>();
         rect.sizeDelta = new Vector2(180, 50);
-        rect.anchorMin = new Vector2(0, 1); // top-left
-        rect.anchorMax = new Vector2(0, 1);
-        rect.pivot = new Vector2(0, 1);
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.zero;
+        rect.pivot = new Vector2(0.5f, 0.5f);
         rect.localScale = Vector3.one;
 
         // Add background image
         Image backgroundImage = paletteItem.AddComponent<Image>();
-        backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        backgroundImage.color = new Color(0.4f, 0.2f, 0.4f, 0.9f); // Purple background for culture
 
         // Create icon child object
         GameObject iconObj = new GameObject("Icon");
         iconObj.transform.SetParent(paletteItem.transform, false);
         RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-        iconRect.anchorMin = new Vector2(0, 0);
-        iconRect.anchorMax = new Vector2(0, 1);
-        iconRect.sizeDelta = new Vector2(42, 0);
-        iconRect.offsetMin = new Vector2(4, 4);
-        iconRect.offsetMax = new Vector2(46, -4);
+        iconRect.anchorMin = new Vector2(0, 0.2f);
+        iconRect.anchorMax = new Vector2(0.3f, 0.8f);
+        iconRect.offsetMin = new Vector2(5, 0);
+        iconRect.offsetMax = new Vector2(-5, 0);
 
         Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = tech.techIcon; // Use the tech's icon directly!
+        iconImage.sprite = culture.cultureIcon; // Use the culture's icon directly!
         iconImage.color = Color.white;
         iconImage.preserveAspect = true;
 
@@ -470,42 +469,35 @@ public class TechTreeBuilder : MonoBehaviour
         GameObject textObj = new GameObject("Text");
         textObj.transform.SetParent(paletteItem.transform, false);
         RectTransform textRect = textObj.AddComponent<RectTransform>();
-        textRect.anchorMin = new Vector2(0, 0);
-        textRect.anchorMax = new Vector2(1, 1);
-        textRect.offsetMin = new Vector2(50, 4);
-        textRect.offsetMax = new Vector2(-4, -4);
+        textRect.anchorMin = new Vector2(0.35f, 0.1f);
+        textRect.anchorMax = new Vector2(1f, 0.9f);
+        textRect.offsetMin = new Vector2(0, 0);
+        textRect.offsetMax = new Vector2(-5, 0);
 
         TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = tech.techName; // Use the tech's name directly!
-        text.fontSize = 11;
-        text.fontSizeMin = 8;
-        text.fontSizeMax = 14;
+        text.text = culture.cultureName; // Use the culture's name directly!
+        text.fontSize = 10;
+        text.fontSizeMin = 6;
+        text.fontSizeMax = 12;
         text.enableAutoSizing = true;
         text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+        text.alignment = TMPro.TextAlignmentOptions.Left;
 
-        // Add layout element for proper sizing
-        LayoutElement layoutElement = paletteItem.AddComponent<LayoutElement>();
-        layoutElement.minWidth = 140;
-        layoutElement.minHeight = 40;
-        layoutElement.preferredWidth = 180;
-        layoutElement.preferredHeight = 50;
+        // Add the CulturePaletteItem component and set it up
+        CulturePaletteItem paletteComponent = paletteItem.AddComponent<CulturePaletteItem>();
+        paletteComponent.cultureIcon = iconImage;
+        paletteComponent.cultureNameText = text;
+        paletteComponent.backgroundImage = backgroundImage;
+        paletteComponent.Initialize(culture, this);
 
-        // Add the TechPaletteItem component and set it up
-        TechPaletteItem item = paletteItem.AddComponent<TechPaletteItem>();
-        item.techIcon = iconImage;
-        item.techNameText = text;
-        item.backgroundImage = backgroundImage;
-        item.Initialize(tech, this);
-
-        Debug.Log($"[CreateTechPaletteItem] Created palette item for {tech.techName} with icon: {(tech.techIcon != null ? "YES" : "NO")}");
+        Debug.Log($"[CreateCulturePaletteItem] Created palette item for {culture.cultureName} with icon: {(culture.cultureIcon != null ? "YES" : "NO")}");
     }
     
-    public void AddTechToBuilder(TechData tech, Vector2 position)
+    public void AddCultureToBuilder(CultureData culture, Vector2 position)
     {
-        if (techNodes.ContainsKey(tech)) 
+        if (cultureNodes.ContainsKey(culture)) 
         {
-            UpdateStatus($"{tech.techName} is already in the builder.");
+            UpdateStatus($"{culture.cultureName} is already in the builder.");
             return;
         }
         
@@ -521,14 +513,14 @@ public class TechTreeBuilder : MonoBehaviour
             FindNearestEmptyCell(preferredGridPos) : preferredGridPos;
         
         // Debug logging for positioning
-        Debug.Log($"[AddTechToBuilder] {tech.techName}: input position={position}, preferred grid=({preferredGridPos.x},{preferredGridPos.y}), final grid=({finalGridPos.x},{finalGridPos.y})");
+        Debug.Log($"[AddCultureToBuilder] {culture.cultureName}: input position={position}, preferred grid=({preferredGridPos.x},{preferredGridPos.y}), final grid=({finalGridPos.x},{finalGridPos.y})");
         
         // Get the exact world position for this grid cell
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
-        Debug.Log($"[AddTechToBuilder] {tech.techName}: snap position={snapPosition}");
+        Debug.Log($"[AddCultureToBuilder] {culture.cultureName}: snap position={snapPosition}");
         
-        // Create the tech node completely in code - no prefab needed!
-        GameObject nodeObj = new GameObject($"TechNode_{tech.techName}");
+        // Create the culture node completely in code - no prefab needed!
+        GameObject nodeObj = new GameObject($"CultureNode_{culture.cultureName}");
         nodeObj.transform.SetParent(builderContent, false);
 
         // Add RectTransform and set it up
@@ -542,7 +534,7 @@ public class TechTreeBuilder : MonoBehaviour
 
         // Add background image
         Image backgroundImage = nodeObj.AddComponent<Image>();
-        backgroundImage.color = new Color(0.1f, 0.3f, 0.6f, 0.9f); // Blue background
+        backgroundImage.color = new Color(0.4f, 0.1f, 0.4f, 0.9f); // Purple background for culture
 
         // Create icon child object
         GameObject iconObj = new GameObject("Icon");
@@ -555,7 +547,7 @@ public class TechTreeBuilder : MonoBehaviour
         iconRect.offsetMax = Vector2.zero;
 
         Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = tech.techIcon; // Use the tech's icon directly!
+        iconImage.sprite = culture.cultureIcon; // Use the culture's icon directly!
         iconImage.color = Color.white;
         iconImage.preserveAspect = true;
 
@@ -570,102 +562,106 @@ public class TechTreeBuilder : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
 
         TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = tech.techName; // Use the tech's name directly!
+        text.text = culture.cultureName; // Use the culture's name directly!
         text.fontSize = 12;
         text.fontSizeMin = 8;
         text.fontSizeMax = 16;
         text.enableAutoSizing = true;
         text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.Center;
+        text.alignment = TMPro.TextAlignmentOptions.Left;
 
-        // Add the TechBuilderNode component and set it up
-        TechBuilderNode node = nodeObj.AddComponent<TechBuilderNode>();
-        node.techIcon = iconImage;
-        node.techNameText = text;
+        // Add the CultureBuilderNode component and set it up
+        CultureBuilderNode node = nodeObj.AddComponent<CultureBuilderNode>();
+        node.cultureIcon = iconImage;
+        node.cultureNameText = text;
         node.backgroundImage = backgroundImage;
-        node.Initialize(tech, this);
+        node.Initialize(culture, this);
         node.SetGridPosition(finalGridPos); // Set grid position
         
         // Register in our systems
-        techNodes[tech] = node;
+        cultureNodes[culture] = node;
         gridOccupancy[finalGridPos] = node;
         UpdateCellVisual(finalGridPos, true);
         
         RefreshConnections();
-        UpdateStatus($"Added {tech.techName} to builder at grid ({finalGridPos.x}, {finalGridPos.y}).");
+        UpdateStatus($"Added {culture.cultureName} to builder at grid ({finalGridPos.x}, {finalGridPos.y}).");
     }
     
-    public void RemoveTechFromBuilder(TechData tech)
+    public void RemoveCultureFromBuilder(CultureData culture)
     {
-        if (techNodes.TryGetValue(tech, out TechBuilderNode node))
+        if (cultureNodes.TryGetValue(culture, out CultureBuilderNode node))
         {
             if (selectedNode == node)
                 selectedNode = null;
-            
-            // Clear grid occupancy
+
             Vector2Int gridPos = node.GridPosition;
             if (gridOccupancy.ContainsKey(gridPos))
             {
                 gridOccupancy.Remove(gridPos);
                 UpdateCellVisual(gridPos, false);
             }
-            
+
+            cultureNodes.Remove(culture);
             Destroy(node.gameObject);
-            techNodes.Remove(tech);
             RefreshConnections();
-            UpdateStatus($"Removed {tech.techName} from builder.");
+            UpdateStatus($"Removed {culture.cultureName} from builder.");
         }
     }
     
-    public void SelectNode(TechBuilderNode node)
+    public void SelectNode(CultureBuilderNode node)
     {
         if (selectedNode != null)
             selectedNode.SetSelected(false);
-        
+
         selectedNode = node;
         if (selectedNode != null)
         {
             selectedNode.SetSelected(true);
-            UpdateStatus($"Selected {node.RepresentedTech.techName}. Ctrl+Click another tech to create connection.");
+            UpdateStatus($"Selected {selectedNode.RepresentedCulture.cultureName}. Ctrl+Click another culture to create connection.");
         }
     }
     
-    public void StartConnection(TechBuilderNode fromNode)
+    public void StartConnection(CultureBuilderNode fromNode)
     {
         if (selectedNode != null && selectedNode != fromNode)
         {
-            // Create connection between selected node and this node
-            CreateConnection(selectedNode.RepresentedTech, fromNode.RepresentedTech);
-            selectedNode.SetSelected(false);
-            selectedNode = null;
+            // Connect these two nodes
+            CreateConnection(selectedNode.RepresentedCulture, fromNode.RepresentedCulture);
+            isConnecting = false;
         }
         else
         {
+            selectedNode = fromNode;
+            fromNode.SetSelected(true);
             isConnecting = true;
-            SelectNode(fromNode);
-            UpdateStatus($"Click another tech to connect from {fromNode.RepresentedTech.techName}.");
+            UpdateStatus($"Connecting from {fromNode.RepresentedCulture.cultureName}. Click another culture to connect.");
         }
     }
     
-    public void CreateConnection(TechData from, TechData to)
+    public void CreateConnection(CultureData from, CultureData to)
     {
         if (from == null || to == null) return;
 
-        var dependencies = to.requiredTechnologies?.ToList() ?? new List<TechData>();
+        // Add dependency to the target culture
+        var dependencies = to.requiredCultures?.ToList() ?? new List<CultureData>();
         if (!dependencies.Contains(from))
         {
-            dependencies.Add(from);
-            to.requiredTechnologies = dependencies.ToArray();
 #if UNITY_EDITOR
-            UnityEditor.EditorUtility.SetDirty(to);
+            // In editor, we can modify the ScriptableObject
+            var newDeps = new CultureData[dependencies.Count + 1];
+            dependencies.CopyTo(newDeps);
+            newDeps[dependencies.Count] = from;
+            to.requiredCultures = newDeps;
+            EditorUtility.SetDirty(to);
 #endif
-            RefreshConnections();
-            UpdateStatus($"Created connection: {from.techName} → {to.techName}");
+            UpdateStatus($"Connected {from.cultureName} → {to.cultureName}");
         }
         else
         {
-            UpdateStatus($"Connection already exists: {from.techName} → {to.techName}");
+            UpdateStatus($"{from.cultureName} is already a prerequisite for {to.cultureName}");
         }
+
+        RefreshConnections();
     }
     
     public void RefreshConnections()
@@ -673,29 +669,30 @@ public class TechTreeBuilder : MonoBehaviour
         // Clear existing connection lines
         foreach (var line in connectionLines)
         {
-            if (line != null)
-                Destroy(line);
+            if (line != null) Destroy(line);
         }
         connectionLines.Clear();
 
-        // Create new connection lines based on current node dependencies
-        foreach (var kvp in techNodes)
+        // Create connection lines for all dependencies
+        foreach (var nodePair in cultureNodes)
         {
-            TechData tech = kvp.Key;
-            TechBuilderNode node = kvp.Value;
-            if (tech?.requiredTechnologies == null) continue;
+            var culture = nodePair.Key;
+            var node = nodePair.Value;
 
-            foreach (var dependency in tech.requiredTechnologies)
+            if (culture.requiredCultures != null)
             {
-                if (dependency != null && techNodes.TryGetValue(dependency, out var depNode))
+                foreach (var prerequisite in culture.requiredCultures)
                 {
-                    CreateConnectionLine(depNode, node);
+                    if (prerequisite != null && cultureNodes.TryGetValue(prerequisite, out CultureBuilderNode depNode))
+                    {
+                        CreateConnectionLine(depNode, node);
+                    }
                 }
             }
         }
     }
     
-    private void CreateConnectionLine(TechBuilderNode fromNode, TechBuilderNode toNode)
+    private void CreateConnectionLine(CultureBuilderNode fromNode, CultureBuilderNode toNode)
     {
         if (builderContent == null || fromNode == null || toNode == null) return;
 
@@ -703,7 +700,7 @@ public class TechTreeBuilder : MonoBehaviour
         GameObject lineObj = new GameObject("ConnectionLine", typeof(RectTransform), typeof(Image));
         lineObj.transform.SetParent(builderContent, false);
 
-        // CRITICAL: Place connection lines ABOVE all grid cells but BELOW tech nodes
+        // CRITICAL: Place connection lines ABOVE all grid cells but BELOW culture nodes
         // Grid cells are at indices 0 to (gridColumns * gridRows - 1)
         // So place connection lines after all grid cells
         int gridCellCount = gridColumns * gridRows;
@@ -714,7 +711,7 @@ public class TechTreeBuilder : MonoBehaviour
         img.color = validConnectionColor;
 
         var rect = lineObj.GetComponent<RectTransform>();
-        // CRITICAL: Use same anchor system as tech nodes (top-left)
+        // CRITICAL: Use same anchor system as culture nodes (top-left)
         rect.anchorMin = new Vector2(0, 1);
         rect.anchorMax = new Vector2(0, 1);
         rect.pivot = new Vector2(0.5f, 0.5f);
@@ -731,7 +728,7 @@ public class TechTreeBuilder : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Delete) && selectedNode != null)
         {
-            RemoveTechFromBuilder(selectedNode.RepresentedTech);
+            RemoveCultureFromBuilder(selectedNode.RepresentedCulture);
         }
         
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -752,14 +749,14 @@ public class TechTreeBuilder : MonoBehaviour
             {
                 connectionPreviewLine = new GameObject("ConnectionPreview", typeof(RectTransform), typeof(Image));
                 connectionPreviewLine.transform.SetParent(builderContent, false);
-                // CRITICAL: Place connection preview ABOVE all grid cells but BELOW tech nodes
+                // CRITICAL: Place connection preview ABOVE all grid cells but BELOW culture nodes
                 int gridCellCount = gridColumns * gridRows;
                 connectionPreviewLine.transform.SetSiblingIndex(gridCellCount);
                 connectionPreviewImage = connectionPreviewLine.GetComponent<Image>();
                 connectionPreviewImage.raycastTarget = false;
                 connectionPreviewImage.color = new Color(validConnectionColor.r, validConnectionColor.g, validConnectionColor.b, 0.6f);
                 var r = connectionPreviewLine.GetComponent<RectTransform>();
-                // CRITICAL: Use same anchor system as tech nodes (top-left)
+                // CRITICAL: Use same anchor system as culture nodes (top-left)
                 r.anchorMin = new Vector2(0, 1);
                 r.anchorMax = new Vector2(0, 1);
                 r.pivot = new Vector2(0.5f, 0.5f);
@@ -804,20 +801,20 @@ public class TechTreeBuilder : MonoBehaviour
     
     public void SaveLayout()
     {
-        TechTreeLayout layout = CreateLayoutData();
+        CultureTreeLayout layout = CreateLayoutData();
         string json = JsonUtility.ToJson(layout, true);
         
 #if UNITY_EDITOR
         string path = UnityEditor.EditorUtility.SaveFilePanel(
-            "Save Tech Tree Layout", Application.dataPath, "TechTreeLayout", "json");
+            "Save Culture Tree Layout", Application.dataPath, "CultureTreeLayout", "json");
         
         if (!string.IsNullOrEmpty(path))
         {
             System.IO.File.WriteAllText(path, json);
-            UpdateStatus($"Tech tree layout saved to: {path}");
+            UpdateStatus($"Culture tree layout saved to: {path}");
         }
 #else
-        string path = Application.persistentDataPath + "/TechTreeLayout.json";
+        string path = Application.persistentDataPath + "/CultureTreeLayout.json";
         System.IO.File.WriteAllText(path, json);
         UpdateStatus($"Layout saved to {path}");
 #endif
@@ -827,21 +824,21 @@ public class TechTreeBuilder : MonoBehaviour
     {
 #if UNITY_EDITOR
         string path = UnityEditor.EditorUtility.OpenFilePanel(
-            "Load Tech Tree Layout", Application.dataPath, "json");
+            "Load Culture Tree Layout", Application.dataPath, "json");
         
         if (!string.IsNullOrEmpty(path))
         {
             string json = System.IO.File.ReadAllText(path);
-            TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(json);
+            CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(json);
             ApplyLayoutData(layout);
-            UpdateStatus($"Tech tree layout loaded from: {path}");
+            UpdateStatus($"Layout loaded from {path}");
         }
 #else
-        string path = Application.persistentDataPath + "/TechTreeLayout.json";
+        string path = Application.persistentDataPath + "/CultureTreeLayout.json";
         if (System.IO.File.Exists(path))
         {
             string json = System.IO.File.ReadAllText(path);
-            TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(json);
+            CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(json);
             ApplyLayoutData(layout);
             UpdateStatus($"Layout loaded from {path}");
         }
@@ -850,18 +847,10 @@ public class TechTreeBuilder : MonoBehaviour
     
     public void ClearLayout()
     {
-        foreach (var node in techNodes.Values.ToList())
+        foreach (var node in cultureNodes.Values.ToList())
         {
-            Destroy(node.gameObject);
+            RemoveCultureFromBuilder(node.RepresentedCulture);
         }
-        techNodes.Clear();
-        
-        foreach (var line in connectionLines)
-        {
-            if (line != null)
-                Destroy(line);
-        }
-        connectionLines.Clear();
         
         selectedNode = null;
         UpdateStatus("Layout cleared.");
@@ -869,43 +858,43 @@ public class TechTreeBuilder : MonoBehaviour
     
     public void AutoLayout()
     {
-        if (availableTechs == null || availableTechs.Count == 0)
+        if (availableCultures == null || availableCultures.Count == 0)
         {
-            UpdateStatus("No techs available for auto-layout.");
+            UpdateStatus("No cultures available for auto-layout.");
             return;
         }
 
         // Clear existing layout
         ClearLayout();
 
-        // Build dependency graph and calculate tech levels
-        Dictionary<TechData, int> techLevels = CalculateTechLevels();
-        Dictionary<int, List<TechData>> techsByLevel = GroupTechsByLevel(techLevels);
+        // Build dependency graph and calculate culture levels
+        Dictionary<CultureData, int> cultureLevels = CalculateCultureLevels();
+        Dictionary<int, List<CultureData>> culturesByLevel = GroupCulturesByLevel(cultureLevels);
 
-        // Position techs level by level
+        // Position cultures level by level
         int currentX = 0;
-        foreach (var levelPair in techsByLevel.OrderBy(kvp => kvp.Key))
+        foreach (var levelPair in culturesByLevel.OrderBy(kvp => kvp.Key))
         {
             int level = levelPair.Key;
-            List<TechData> techsInLevel = levelPair.Value;
+            List<CultureData> culturesInLevel = levelPair.Value;
 
             // Calculate vertical spacing for this level
-            int startY = Mathf.Max(0, (gridRows - techsInLevel.Count) / 2);
+            int startY = Mathf.Max(0, (gridRows - culturesInLevel.Count) / 2);
 
-            for (int i = 0; i < techsInLevel.Count && startY + i < gridRows; i++)
+            for (int i = 0; i < culturesInLevel.Count && startY + i < gridRows; i++)
             {
-                TechData tech = techsInLevel[i];
+                CultureData culture = culturesInLevel[i];
                 Vector2Int gridPos = new Vector2Int(currentX, startY + i);
 
                 // Make sure we don't exceed grid bounds
                 if (gridPos.x >= gridColumns)
                 {
-                    UpdateStatus($"Auto-layout stopped: not enough horizontal space. Consider expanding grid or reducing tech count.");
+                    UpdateStatus($"Auto-layout stopped: not enough horizontal space. Consider expanding grid or reducing culture count.");
                     break;
                 }
 
                 Vector2 worldPos = GetCellWorldPosition(gridPos.x, gridPos.y);
-                AddTechToBuilder(tech, worldPos);
+                AddCultureToBuilder(culture, worldPos);
             }
 
             currentX++;
@@ -913,27 +902,27 @@ public class TechTreeBuilder : MonoBehaviour
         }
 
         RefreshConnections();
-        UpdateStatus($"Auto-arranged {techNodes.Count} techs by dependency levels.");
+        UpdateStatus($"Auto-arranged {cultureNodes.Count} cultures by dependency levels.");
     }
 
-    private Dictionary<TechData, int> CalculateTechLevels()
+    private Dictionary<CultureData, int> CalculateCultureLevels()
     {
-        Dictionary<TechData, int> levels = new Dictionary<TechData, int>();
-        Dictionary<TechData, HashSet<TechData>> dependencies = new Dictionary<TechData, HashSet<TechData>>();
+        Dictionary<CultureData, int> levels = new Dictionary<CultureData, int>();
+        Dictionary<CultureData, HashSet<CultureData>> dependencies = new Dictionary<CultureData, HashSet<CultureData>>();
 
-        // Initialize all techs and their dependencies
-        foreach (var tech in availableTechs)
+        // Initialize all cultures and their dependencies
+        foreach (var culture in availableCultures)
         {
-            levels[tech] = 0;
-            dependencies[tech] = new HashSet<TechData>();
+            levels[culture] = 0;
+            dependencies[culture] = new HashSet<CultureData>();
 
-            if (tech.requiredTechnologies != null)
+            if (culture.requiredCultures != null)
             {
-                foreach (var prereq in tech.requiredTechnologies)
+                foreach (var prereq in culture.requiredCultures)
                 {
-                    if (prereq != null && availableTechs.Contains(prereq))
+                    if (prereq != null && availableCultures.Contains(prereq))
                     {
-                        dependencies[tech].Add(prereq);
+                        dependencies[culture].Add(prereq);
                     }
                 }
             }
@@ -949,9 +938,9 @@ public class TechTreeBuilder : MonoBehaviour
             changed = false;
             iteration++;
 
-            foreach (var tech in availableTechs)
+            foreach (var culture in availableCultures)
             {
-                if (dependencies[tech].Count == 0)
+                if (dependencies[culture].Count == 0)
                 {
                     // No dependencies, stays at level 0
                     continue;
@@ -959,58 +948,58 @@ public class TechTreeBuilder : MonoBehaviour
 
                 // Calculate level based on highest prerequisite level + 1
                 int maxPrereqLevel = 0;
-                foreach (var prereq in dependencies[tech])
+                foreach (var prereq in dependencies[culture])
                 {
                     maxPrereqLevel = Mathf.Max(maxPrereqLevel, levels[prereq]);
                 }
 
                 int newLevel = maxPrereqLevel + 1;
-                if (newLevel != levels[tech])
+                if (newLevel != levels[culture])
                 {
-                    levels[tech] = newLevel;
+                    levels[culture] = newLevel;
                     changed = true;
                 }
             }
         }
 
         // Debug output
-        Debug.Log($"Calculated tech levels in {iteration} iterations:");
+        Debug.Log($"Calculated culture levels in {iteration} iterations:");
         foreach (var levelPair in levels.OrderBy(kvp => kvp.Value))
         {
-            Debug.Log($"  Level {levelPair.Value}: {levelPair.Key.techName}");
+            Debug.Log($"  Level {levelPair.Value}: {levelPair.Key.cultureName}");
         }
 
         return levels;
     }
 
-    private Dictionary<int, List<TechData>> GroupTechsByLevel(Dictionary<TechData, int> techLevels)
+    private Dictionary<int, List<CultureData>> GroupCulturesByLevel(Dictionary<CultureData, int> cultureLevels)
     {
-        Dictionary<int, List<TechData>> techsByLevel = new Dictionary<int, List<TechData>>();
+        Dictionary<int, List<CultureData>> culturesByLevel = new Dictionary<int, List<CultureData>>();
 
-        foreach (var pair in techLevels)
+        foreach (var pair in cultureLevels)
         {
             int level = pair.Value;
-            TechData tech = pair.Key;
+            CultureData culture = pair.Key;
 
-            if (!techsByLevel.ContainsKey(level))
+            if (!culturesByLevel.ContainsKey(level))
             {
-                techsByLevel[level] = new List<TechData>();
+                culturesByLevel[level] = new List<CultureData>();
             }
 
-            techsByLevel[level].Add(tech);
+            culturesByLevel[level].Add(culture);
         }
 
-        // Sort techs within each level by science cost or name for consistent ordering
-        foreach (var levelGroup in techsByLevel.Values)
+        // Sort cultures within each level by culture cost or name for consistent ordering
+        foreach (var levelGroup in culturesByLevel.Values)
         {
             levelGroup.Sort((a, b) => 
             {
-                int costCompare = a.scienceCost.CompareTo(b.scienceCost);
-                return costCompare != 0 ? costCompare : string.Compare(a.techName, b.techName);
+                int costCompare = a.cultureCost.CompareTo(b.cultureCost);
+                return costCompare != 0 ? costCompare : string.Compare(a.cultureName, b.cultureName);
             });
         }
 
-        return techsByLevel;
+        return culturesByLevel;
     }
     
     private void UpdateStatus(string message)
@@ -1018,7 +1007,7 @@ public class TechTreeBuilder : MonoBehaviour
         if (statusText != null)
             statusText.text = message;
         
-        Debug.Log($"[TechTreeBuilder] {message}");
+        Debug.Log($"[CultureTreeBuilder] {message}");
     }
     
     // Public methods for grid access
@@ -1032,49 +1021,50 @@ public class TechTreeBuilder : MonoBehaviour
         return GetNearestGridCell(worldPosition);
     }
     
-    private TechTreeLayout CreateLayoutData()
+    private CultureTreeLayout CreateLayoutData()
     {
-        TechTreeLayout layout = new TechTreeLayout();
-        layout.techPositions = new List<TechPosition>();
+        var layout = new CultureTreeLayout();
+        layout.culturePositions = new List<CulturePosition>();
         
-        foreach (var kvp in techNodes)
+        foreach (var pair in cultureNodes)
         {
-            TechPosition techPos = new TechPosition
+            layout.culturePositions.Add(new CulturePosition
             {
-                techName = kvp.Key.name,
-                position = kvp.Value.GetPosition()
-            };
-            layout.techPositions.Add(techPos);
+                cultureName = pair.Key.cultureName,
+                position = pair.Value.GetPosition()
+            });
         }
         
         return layout;
     }
     
-    private void ApplyLayoutData(TechTreeLayout layout)
+    private void ApplyLayoutData(CultureTreeLayout layout)
     {
         ClearLayout();
         
-        foreach (var techPos in layout.techPositions)
+        if (layout?.culturePositions == null) return;
+        
+        foreach (var culturePos in layout.culturePositions)
         {
-            techByName.TryGetValue(techPos.techName, out var tech);
-            if (tech != null)
+            if (cultureByName.TryGetValue(culturePos.cultureName, out CultureData culture))
             {
-                AddTechToBuilder(tech, techPos.position);
+                AddCultureToBuilder(culture, culturePos.position);
             }
         }
+        
+        RefreshConnections();
     }
-}
-
-// Layout data structure for saving/loading tech tree layouts
-[System.Serializable]
-public class TechTreeLayout
-{
-    public List<TechPosition> techPositions;
-}
-
-[System.Serializable]
-public class TechPosition
-{
-    public string techName;
-    public Vector2 position;
+    
+    [System.Serializable]
+    public class CultureTreeLayout
+    {
+        public List<CulturePosition> culturePositions;
+    }
+    
+    [System.Serializable]
+    public class CulturePosition
+    {
+        public string cultureName;
+        public Vector2 position;
+    }
 }

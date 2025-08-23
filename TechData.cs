@@ -113,10 +113,16 @@ public class TechData : ScriptableObject
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this technology.")]
     public UnitStatBonus[] unitBonuses;
+    [Tooltip("Per-unit per-turn yield bonuses granted by this technology.")]
+    public UnitYieldBonus[] unitYieldBonuses;
     [Tooltip("Per-worker stat bonuses granted by this technology.")]
     public WorkerUnitStatBonus[] workerBonuses;
+    [Tooltip("Per-worker per-turn yield bonuses granted by this technology.")]
+    public WorkerUnitYieldBonus[] workerYieldBonuses;
     [Tooltip("Per-equipment stat bonuses granted by this technology.")]
     public EquipmentStatBonus[] equipmentBonuses;
+    [Tooltip("Per-equipment per-turn yield bonuses granted by this technology (applies when equipped).")]
+    public EquipmentYieldBonus[] equipmentYieldBonuses;
     [Tooltip("Per-improvement yield bonuses granted by this technology.")]
     public ImprovementYieldBonus[] improvementBonuses;
     [Tooltip("Per-building yield bonuses granted by this technology.")]

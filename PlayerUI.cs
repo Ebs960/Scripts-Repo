@@ -21,6 +21,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private Button cultureButton;
     [SerializeField] private Button policyButton;
     [SerializeField] private Button diplomacyButton;
+    [SerializeField] private Button equipmentButton;
 
     [Header("Player Panel - Yields")]
     [SerializeField] private TextMeshProUGUI foodYieldText;
@@ -131,6 +132,32 @@ public class PlayerUI : MonoBehaviour
                     UIManager.Instance.ShowPanel("ReligionPanel"); // Placeholder - replace with actual policy panel logic
                 else
                     Debug.LogError("PlayerUI: UIManager.Instance is null when trying to show policy/religion panel!");
+            });
+        }
+
+        // Equipment panel button
+        if (equipmentButton != null)
+        {
+            equipmentButton.onClick.RemoveAllListeners();
+            equipmentButton.onClick.AddListener(() =>
+            {
+                Debug.Log("Equipment button clicked");
+
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null)
+                {
+                    civToUse = TurnManager.Instance.GetCurrentCivilization();
+                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback for equipment panel");
+                }
+
+                if (UIManager.Instance != null && civToUse != null)
+                {
+                    UIManager.Instance.ShowEquipmentPanel(civToUse);
+                }
+                else
+                {
+                    Debug.LogError($"PlayerUI: Cannot show equipment panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
+                }
             });
         }
         

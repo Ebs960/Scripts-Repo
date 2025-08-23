@@ -40,6 +40,15 @@ public class EquipmentData : ScriptableObject
     public int rangeBonus;
     public int attackPointsBonus;
 
+    [Header("Per-Turn Yields (optional)")]
+    [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]
+    public int foodPerTurn;
+    public int goldPerTurn;
+    public int sciencePerTurn;
+    public int culturePerTurn;
+    public int faithPerTurn;
+    public int policyPointsPerTurn;
+
     public bool IsValidForUnit(CombatUnit unit)
     {
         if (unit == null) return false;
