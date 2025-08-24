@@ -87,8 +87,9 @@ public class WorkerUnit : MonoBehaviour
     void Awake()
     {
         animator = GetComponent<Animator>();
-        // Use GameManager API for multi-planet support
-        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // FIXED: For civilization units, always use Earth (planet index 0)
+        // Don't use GetCurrentPlanetGenerator which can point to wrong planet during multi-planet generation
+        planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
         if (planet != null) grid = planet.Grid;
         unitAnimator = GetComponent<Animator>();
         UnitRegistry.Register(gameObject);
@@ -160,35 +161,51 @@ public class WorkerUnit : MonoBehaviour
     /// <summary>
     /// Properly positions and orients the unit on the planet surface
     /// </summary>
+    /// <summary>
+    /// Properly positions and orients the unit on the planet surface
+    /// </summary>
     private void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex)
     {
-        // Get the extruded center of the tile in world space
-        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
+        // FIXED: For civilization units, always use Earth (planet index 0)
+        // Get the extruded center of the tile in world space on Earth
+        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, 0f, 0); // Force Earth (planet index 0)
         
         // Set unit position directly on the surface
         transform.position = tileSurfaceCenter;
 
-        // The surface normal is just the direction from the planet's center to the tile's surface center
-        Vector3 surfaceNormal = (tileSurfaceCenter - planet.transform.position).normalized;
-
-        // Orient unit to stand upright on the surface
-        Vector3 planetUp = planet.transform.up;
-        Vector3 right = Vector3.Cross(planetUp, surfaceNormal);
-        
-        // Handle poles where right vector might be zero
-        if (right.sqrMagnitude < 0.01f)
+        // FIXED: Get Earth planet generator for proper orientation
+        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
+        if (earthPlanet == null)
         {
-            right = Vector3.Cross(Vector3.forward, surfaceNormal);
-            if (right.sqrMagnitude < 0.01f)
-            {
-                right = Vector3.Cross(Vector3.right, surfaceNormal);
-            }
+            Debug.LogError("[WorkerUnit] Cannot find Earth planet generator for unit positioning!");
+            return;
         }
-        right.Normalize();
+
+        // FIXED: Calculate proper surface normal pointing AWAY from planet center (toward atmosphere)
+        Vector3 surfaceNormal = (tileSurfaceCenter - earthPlanet.transform.position).normalized;
         
-        Vector3 forward = Vector3.Cross(right, surfaceNormal).normalized;
+        // FIXED: Use a more robust method to calculate forward direction
+        // Get a reference direction (north pole direction projected onto the surface)
+        Vector3 northDirection = Vector3.up;
+        Vector3 tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, northDirection), surfaceNormal).normalized;
         
-        transform.rotation = Quaternion.LookRotation(forward, surfaceNormal);
+        // If the cross product fails (at poles), use an alternative reference
+        if (tangentForward.magnitude < 0.1f)
+        {
+            Vector3 eastDirection = Vector3.right;
+            tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, eastDirection), surfaceNormal).normalized;
+        }
+        
+        // Final fallback if still problematic
+        if (tangentForward.magnitude < 0.1f)
+        {
+            tangentForward = Vector3.forward;
+        }
+        
+        // Set rotation so unit stands upright on the surface
+        transform.rotation = Quaternion.LookRotation(tangentForward, surfaceNormal);
+        
+        Debug.Log($"[WorkerUnit] Positioned {data.unitName} at tile {tileIndex}. Surface normal: {surfaceNormal}, Forward: {tangentForward}");
     }
 
     public bool CanBuild(ImprovementData imp, int tileIndex)

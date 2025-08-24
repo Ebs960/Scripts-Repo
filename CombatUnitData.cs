@@ -21,6 +21,13 @@ public enum TravelCapability
     Intergalactic       // Can travel to other galaxies (stub)
 }
 
+public enum AnimalBehaviorType
+{
+    Neutral,    // Standard random movement (default)
+    Predator,   // Actively hunts and attacks civilization units
+    Prey        // Avoids civilization units but fights back when recently attacked
+}
+
 public enum FormationShape { Square, Circle, Wedge }
 
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
@@ -42,6 +49,9 @@ public class CombatUnitData : ScriptableObject
     [Header("Category & Deployment")]
     public bool requiresAirport;
     public bool requiresSpaceport;
+    [Header("Animal Behavior")]
+    [Tooltip("Defines how this animal behaves towards civilization units (only applies to Animal category units)")]
+    public AnimalBehaviorType animalBehavior = AnimalBehaviorType.Neutral;
     [Header("Space Travel Capability (Stub Gates)")]
     [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;

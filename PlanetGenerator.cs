@@ -461,16 +461,36 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     {
         Debug.Log($"[PlanetGenerator] Awake called on {gameObject.name}. Current Instance = {(Instance == null ? "null" : Instance.gameObject.name)}");
         
-        // Set the static instance, but allow additional generators to exist for multi-planet mode
-        if (Instance == null)
+        // Check if we're in multi-planet mode
+        bool isMultiPlanet = GameManager.Instance?.enableMultiPlanetSystem == true;
+        
+        if (!isMultiPlanet)
         {
-            Instance = this;
-            Debug.Log($"[PlanetGenerator] {gameObject.name} became the singleton Instance");
+            // Single planet mode: Use traditional singleton pattern
+            if (Instance == null)
+            {
+                Instance = this;
+                Debug.Log($"[PlanetGenerator] {gameObject.name} became the singleton Instance (single planet mode)");
+            }
+            else if (Instance != this)
+            {
+                Debug.LogWarning($"[PlanetGenerator] Duplicate PlanetGenerator in single planet mode! Destroying {gameObject.name}");
+                Destroy(gameObject);
+                return;
+            }
         }
-        else if (Instance != this)
+        else
         {
-            Debug.LogWarning($"[PlanetGenerator] Multiple PlanetGenerators detected; keeping {Instance.gameObject.name} as default. This object will still run in multi-planet mode.");
-            // Do NOT destroy this object
+            // Multi-planet mode: Only set instance if it's null, but don't destroy others
+            if (Instance == null)
+            {
+                Instance = this;
+                Debug.Log($"[PlanetGenerator] {gameObject.name} became the default Instance (multi-planet mode)");
+            }
+            else
+            {
+                Debug.Log($"[PlanetGenerator] Multi-planet mode: {gameObject.name} created alongside existing Instance {Instance.gameObject.name}");
+            }
         }
         
 
@@ -483,8 +503,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
                 hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
-            // Pentagon prefabs are stored without debug spam
-            // (Mountains are their own biome, many biomes don't need hills, this is normal)
+            // Debug checks for pentagon prefabs
+            if (entry.pentagonFlatPrefabs == null || entry.pentagonFlatPrefabs.Length == 0)
+                Debug.LogWarning($"Pentagon flat prefabs NOT assigned for biome {entry.biome}");
+
+            if (entry.pentagonHillPrefabs == null || entry.pentagonHillPrefabs.Length == 0)
+                Debug.LogWarning($"Pentagon hill prefabs NOT assigned for biome {entry.biome}");
         }
 
         // Initialize the grid for this planet (will be configured by GameManager)
@@ -510,30 +534,23 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 #endif
     }
     
-    private ClimateManager planetClimateManager; // Store reference to this planet's climate manager
-    
     void Start()
     {
-        // Subscribe to season changes from the climate manager attached to this planet
-        planetClimateManager = GetComponent<ClimateManager>() ?? GetComponentInChildren<ClimateManager>() ?? GetComponentInParent<ClimateManager>();
-        if (planetClimateManager != null)
+        // Subscribe to season changes to update visuals
+        if (ClimateManager.Instance != null)
         {
-            planetClimateManager.OnSeasonChanged += HandleSeasonChange;
-            Debug.Log($"[PlanetGenerator] Subscribed to climate manager on planet");
-        }
-        else
-        {
-            Debug.LogWarning($"[PlanetGenerator] No ClimateManager found for this planet");
+            ClimateManager.Instance.OnSeasonChanged += HandleSeasonChange;
         }
     }
 
     void OnDestroy()
     {
         // Unsubscribe to prevent memory leaks
-        if (planetClimateManager != null)
+        if (ClimateManager.Instance != null)
         {
-            planetClimateManager.OnSeasonChanged -= HandleSeasonChange;
+            ClimateManager.Instance.OnSeasonChanged -= HandleSeasonChange;
         }
+
     }
 
     private void HandleSeasonChange(Season newSeason)
@@ -586,7 +603,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         // ---------- 2. Generate Deterministic Continent Seeds ------------------
         List<Vector3> continentSeeds = GenerateDeterministicSeeds(numberOfContinents, seed ^ 0xD00D);
-        Debug.Log($"Generated {continentSeeds.Count} deterministic continent seeds.");
 
         // ---------- 3. Find Noise Peak within each Mask ------------------------
         Dictionary<int, bool> isLandTile = new Dictionary<int, bool>();
@@ -697,8 +713,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // ---------- 4.6. Generate Polar Landmasses (NEW) ---------
         this.landTilesGenerated += GeneratePolarLandmasses(isLandTile, tileLatLon, tileNoiseCache, tileCount);
 
-        Debug.Log($"Generated {landTilesGenerated} land tiles. Method: Deterministic Seeds + Mask + Guaranteed Core + Islands. ({(float)landTilesGenerated / tileCount * 100:F1}% surface coverage)");
-
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceans)
         {
@@ -754,37 +768,15 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     // Use latitude distance from threshold to determine how "polar" it is
                     float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
                     
-                    // Planet-specific polar biomes
-                    if (isMarsWorldType) {
-                        biome = Biome.MartianPolarIce;
-                    } else if (isUranusWorldType) {
-                        biome = Biome.UranianIce;
-                    } else if (isNeptuneWorldType) {
-                        biome = Biome.NeptunianIce;
-                    } else if (isPlutoWorldType) {
-                        biome = Biome.PlutoCryo;
-                    } else if (isTitanWorldType) {
-                        biome = Biome.TitanIce;
-                    } else if (isJupiterWorldType) {
-                        biome = Biome.JovianStorm;
-                    } else if (isEuropaWorldType) {
-                        biome = Biome.EuropaIce;
-                    } else if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
-                               isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
-                        // These planets have NO polar regions - keep their standard biomes
-                        // Don't override the biome at all
+                    if (polarIntensity > 0.7f) {
+                        // Most extreme polar regions: Arctic (coldest of all)
+                        biome = Biome.Arctic;
+                    } else if (moisture > 0.3f) {
+                        // Less extreme but wet polar: Snow
+                        biome = Biome.Snow;
                     } else {
-                        // Earth and other planets use Earth polar logic
-                        if (polarIntensity > 0.7f) {
-                            // Most extreme polar regions: Arctic (coldest of all)
-                            biome = Biome.Arctic;
-                        } else if (moisture > 0.3f) {
-                            // Less extreme but wet polar: Snow
-                            biome = Biome.Snow;
-                        } else {
-                            // Less extreme and dry polar: Frozen
-                            biome = Biome.Frozen;
-                        }
+                        // Less extreme and dry polar: Frozen
+                        biome = Biome.Frozen;
                     }
                 }
 
@@ -795,22 +787,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             } else { // Water Biomes
                  finalElevation = 0f; // Water elevation is 0
-                 // Planet-specific water biomes
-                 if (isJupiterWorldType) {
-                     // Jupiter should always have Jovian biomes, never Earth water biomes
-                     if (absLatitude >= polarLatitudeThreshold) {
-                         biome = Biome.JovianStorm; // Polar water = storms
-                     } else {
-                         biome = Biome.JovianClouds; // Regular water = cloud layers
-                     }
+                 // Classify polar water tiles as glaciers, everything else as ocean
+                 if (absLatitude >= polarLatitudeThreshold) {
+                    biome = Biome.Glacier;
                  } else {
-                     // Classify polar water tiles as glaciers, everything else as ocean
-                     if (absLatitude >= polarLatitudeThreshold) {
-                        biome = Biome.Glacier;
-                     } else {
-                         biome = Biome.Ocean;
-                    }
-                 }
+                     biome = Biome.Ocean;
+                }
             }
 
             // *** Override for Glaciers: Treat them like land for elevation ***
@@ -871,9 +853,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
-            // Protect Snow, Glacier, and Jupiter biomes from ever becoming a coast or sea
-            if (data[i].biome == Biome.Snow || data[i].biome == Biome.Glacier ||
-                data[i].biome == Biome.JovianClouds || data[i].biome == Biome.JovianStorm) {
+            // Protect Snow and Glacier tiles from ever becoming a coast or sea
+            if (data[i].biome == Biome.Snow || data[i].biome == Biome.Glacier) {
                 postProcessProtectedTiles.Add(i);
                 continue;
             }
@@ -933,7 +914,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
-            // BIOME PROTECTION: Never modify Snow, Glacier, or Jupiter biomes
+            // BIOME PROTECTION: Never modify Snow or Glacier
             if (postProcessProtectedTiles.Contains(i)) continue;
 
             Biome currentBiome = data[i].biome;
@@ -996,7 +977,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         int landNow = data.Values.Count(d => d.isLand && d.biome != Biome.Glacier);
-        Debug.Log($"Post-coast true-land tiles: {landNow}");
 
         // ---------- 6.5 River Generation Pass (MOVED TO AFTER COAST/SEAS) ----
         if (allowRivers)
@@ -1012,7 +992,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
         {
-            Debug.Log("Generating Rivers...");
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
             HashSet<int> riverTiles = new HashSet<int>();
             int actualRiverCount = 0;
@@ -1137,7 +1116,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             }
 
-            Debug.Log($"Successfully generated {actualRiverCount} rivers using pathfinding. (Attempts: {totalAttempts})");
         }
 
         // --------------------------- Helper Functions ----------------------------
@@ -1145,7 +1123,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         IEnumerator GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
                            Dictionary<int, float> tileNoiseCache, int tileCount) {
             
-            Debug.Log($"Generating {GameSetupData.numberOfIslands} islands...");
             
             // Generate island seed positions
             List<Vector3> islandSeeds = GenerateIslandSeeds(GameSetupData.numberOfIslands, seed ^ 0xF15);
@@ -1253,7 +1230,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             }
             
-            Debug.Log($"Generated {localIslandTilesGenerated} island tiles from {islandSeeds.Count} island seeds.");
             this.landTilesGenerated += localIslandTilesGenerated;
         }
         
@@ -1397,7 +1373,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             }
             
-            Debug.Log($"Generated {polarTilesGenerated} polar land tiles to ensure solid polar regions.");
             return polarTilesGenerated;
         }
 
@@ -1416,60 +1391,26 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Populate the public tile list with the final tile data
         Tiles = data.Values.ToList();
 
-        // Debug: List biome quantities
-        LogBiomeQuantities();
-
         // Spawn visual prefabs if any are defined
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
         {
-            // Safety check to prevent MissingReferenceException
-            if (this == null || gameObject == null)
-            {
-                Debug.LogError($"[PlanetGenerator] GameObject became invalid during generation. Stopping prefab spawning.");
-                yield break;
-            }
+            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
             
-            // Can't use yield inside try-catch, so check validity and call directly
-            bool spawnSuccessful = true;
-            if (this != null && gameObject != null)
-            {
-                yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
-                
-                // Check again before spawning decorations
-                if (this != null && gameObject != null && spawnSuccessful)
-                {
-                    // Spawn decorations in batches after all tile prefabs are created
-                    if (decorationManager != null && decorationManager.enableDecorations)
-                        yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
-                }
-                else
-                {
-                    Debug.LogError($"[PlanetGenerator] GameObject became invalid during tile spawning. Stopping decoration spawning.");
-                }
-            }
-            else
-            {
-                Debug.LogError($"[PlanetGenerator] GameObject is invalid, cannot spawn prefabs.");
-            }
+            // Spawn decorations in batches after all tile prefabs are created
+            if (decorationManager != null && decorationManager.enableDecorations)
+                yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
         }
 
         // Normalize tile distances for uniform spacing (after everything else is done)
         if (enableExpensivePostProcessing && enableTileNormalization)
         {
-            // Safety check before starting normalization
-            if (this != null && gameObject != null)
-            {
-                StartCoroutine(NormalizeTileDistances());
-            }
-            else
-            {
-                Debug.LogWarning($"[PlanetGenerator] Cannot start tile normalization - GameObject is invalid");
-            }
+            StartCoroutine(NormalizeTileDistances());
         }
         else
         {
             Debug.Log("Skipping tile normalization for better performance");
+            HasGeneratedSurface = true; // Set the flag when normalization is skipped
         }
 
         // Generate global water mesh once terrain is ready
@@ -1582,44 +1523,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         Debug.Log("Tile distance normalization complete.");
         HasGeneratedSurface = true;
-    }
-
-    /// <summary>
-    /// Debug method to log the quantity of each biome on the map
-    /// </summary>
-    private void LogBiomeQuantities()
-    {
-        Dictionary<Biome, int> biomeCounts = new Dictionary<Biome, int>();
-        
-        // Count tiles for each biome
-        for (int i = 0; i < grid.TileCount; i++)
-        {
-            if (data.ContainsKey(i))
-            {
-                Biome biome = data[i].biome;
-                if (!biomeCounts.ContainsKey(biome))
-                    biomeCounts[biome] = 0;
-                biomeCounts[biome]++;
-            }
-        }
-        
-        // Log the results
-        Debug.Log("=== BIOME QUANTITY SUMMARY ===");
-        Debug.Log($"Total tiles: {grid.TileCount}");
-        Debug.Log($"Tiles with data: {data.Count}");
-        
-        foreach (var kvp in biomeCounts.OrderByDescending(x => x.Value))
-        {
-            float percentage = (float)kvp.Value / grid.TileCount * 100f;
-        }
-        
-        // Check for any tiles without data
-        int tilesWithoutData = grid.TileCount - data.Count;
-        if (tilesWithoutData > 0)
-        {
-            Debug.LogWarning($"Warning: {tilesWithoutData} tiles have no biome data assigned!");
-        }
-        
     }
 
     // Helper: lat/long (deg) → unit vector
@@ -2443,8 +2346,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             loadingPanelController.SetProgress(0.95f);
             loadingPanelController.SetStatus("Planet decoration spawning complete.");
         }
-
-        Debug.Log($"Spawned decorations for {tilesNeedingDecorations.Count} planet tiles");
     }
 
     /// Spawns decorations on a tile using the new BiomeDecorationManager system
@@ -2497,10 +2398,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Create rotation to orient the decoration away from planet center
             Quaternion decorationRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere, upDirection).normalized, upDirection);
             
-            // PERFORMANCE FIX: Use object pooling for decorations instead of Instantiate
-            GameObject decoration = SimpleObjectPool.Instance != null 
-                ? SimpleObjectPool.Instance.Get(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform)
-                : Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
+            // Instantiate the decoration
+            GameObject decoration = Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
             
             // Apply decoration scaling with variation
             float finalScale = decorationSettings.scaleMultiplier * decorationManager.globalScaleMultiplier;

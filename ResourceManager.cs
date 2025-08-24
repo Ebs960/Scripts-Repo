@@ -14,11 +14,22 @@ public class ResourceManager : MonoBehaviour
 
     private PlanetGenerator planetGenerator;
     private SphericalHexGrid grid;
+    
+    // Prevent multiple initialization
+    private bool _isInitialized = false;
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null) 
+        {
+            Instance = this;
+            Debug.Log("[ResourceManager] Instance set in Awake");
+        }
+        else 
+        {
+            Debug.LogWarning("[ResourceManager] Duplicate ResourceManager detected - destroying this instance");
+            Destroy(gameObject);
+        }
     }
 
     void Start()
@@ -48,6 +59,15 @@ public class ResourceManager : MonoBehaviour
     
     private void InitializeResourceManager()
     {
+        // GUARD: Prevent multiple initialization
+        if (_isInitialized)
+        {
+            Debug.Log("[ResourceManager] Already initialized, skipping...");
+            return;
+        }
+
+        Debug.Log("[ResourceManager] Starting initialization...");
+        
         // Find references to key components
         planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator != null)
@@ -59,16 +79,57 @@ public class ResourceManager : MonoBehaviour
             LoadResources();
         }
         
+        // CRITICAL FIX: Do NOT spawn resources immediately
+        // Wait for explicit call from GameManager when planets are ready
+        
         // Start listening to events
-        SpawnResources();
         if (TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+            
+        _isInitialized = true;
+        Debug.Log("[ResourceManager] Initialization complete");
+    }
+    
+    /// <summary>
+    /// Called by GameManager when planets are ready for resource spawning
+    /// </summary>
+    public void SpawnResourcesWhenReady()
+    {
+        if (!_isInitialized)
+        {
+            Debug.LogWarning("[ResourceManager] Cannot spawn resources - not initialized yet");
+            return;
+        }
+        
+        Debug.Log("[ResourceManager] Spawning resources on ready planets...");
+        SpawnResources();
     }
 
     void OnDestroy()
     {
         if (TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+    }
+    
+    /// <summary>
+    /// Reset ResourceManager state for a new game
+    /// </summary>
+    public void ResetForNewGame()
+    {
+        Debug.Log("[ResourceManager] Resetting for new game");
+        
+        // Clear existing resources
+        foreach (var resource in spawnedResources)
+        {
+            if (resource != null && resource.gameObject != null)
+                Destroy(resource.gameObject);
+        }
+        spawnedResources.Clear();
+        
+        // Reset initialization flag
+        _isInitialized = false;
+        
+        Debug.Log("[ResourceManager] Reset complete");
     }
 
     /// <summary>
@@ -80,7 +141,7 @@ public class ResourceManager : MonoBehaviour
         // SAFETY: Don't spawn if already spawned (prevents memory leak)
         if (spawnedResources.Count > 0)
         {
-            Debug.Log("[ResourceManager] Resources already spawned, skipping");
+            Debug.Log($"[ResourceManager] Resources already spawned ({spawnedResources.Count} resources), skipping");
             return;
         }
         
@@ -95,19 +156,26 @@ public class ResourceManager : MonoBehaviour
         // MULTI-PLANET FIX: Spawn resources on all planets, not just current one
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
+            Debug.Log("[ResourceManager] Multi-planet mode: spawning resources on all planets");
             // Multi-planet mode: iterate through all planets
-            foreach (var kvp in GameManager.Instance.GetPlanetData())
+            var planetData = GameManager.Instance.GetPlanetData();
+            foreach (var kvp in planetData)
             {
                 int planetIndex = kvp.Key;
                 var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
                 
-                if (planetGen == null || planetGen.Grid == null) continue;
+                if (planetGen == null || planetGen.Grid == null) 
+                {
+                    Debug.LogWarning($"[ResourceManager] Planet {planetIndex} generator or grid is null, skipping");
+                    continue;
+                }
                 
                 SpawnResourcesOnPlanet(planetGen, planetIndex);
             }
         }
         else
         {
+            Debug.Log("[ResourceManager] Single-planet mode: spawning resources on current planet");
             // Single planet mode: use current planet
             if (grid == null || planetGenerator == null)
             {

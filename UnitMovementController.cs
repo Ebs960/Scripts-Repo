@@ -124,8 +124,8 @@ public class UnitMovementController : MonoBehaviour
 
         startNode.gCost = 0;
         startNode.hCost = Vector3.Distance(
-            TileDataHelper.Instance.GetTileSurfacePosition(startIndex),
-            TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
+            TileDataHelper.Instance.GetTileSurfacePosition(startIndex, unitOffset: 0f),
+            TileDataHelper.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
 
 
         while (openSet.Count > 0)
@@ -166,8 +166,8 @@ public class UnitMovementController : MonoBehaviour
                     neighborNode.parent = currentNode;
                     neighborNode.gCost = tentativeGCost;
                     neighborNode.hCost = Vector3.Distance(
-                        TileDataHelper.Instance.GetTileSurfacePosition(neighborIndex),
-                        TileDataHelper.Instance.GetTileSurfacePosition(endIndex));
+                        TileDataHelper.Instance.GetTileSurfacePosition(neighborIndex, unitOffset: 0f),
+                        TileDataHelper.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
                     
                     if (openSet.Contains(neighborNode))
                         openSet.Remove(neighborNode);
@@ -358,7 +358,7 @@ public class UnitMovementController : MonoBehaviour
         SphericalHexGrid currentGrid = grid;
 
         // Get the extruded center of the tile. This is the new correct surface position.
-        Vector3 surfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
+        Vector3 surfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
         unitTransform.position = surfacePosition;
 
         Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;

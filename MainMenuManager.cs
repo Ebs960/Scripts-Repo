@@ -1172,4 +1172,61 @@ public class MainMenuManager : MonoBehaviour
 
     #endregion
 
+    #region Main Menu Navigation
+
+    /// <summary>
+    /// Show the options menu from main menu
+    /// </summary>
+    public void ShowOptionsMenu()
+    {
+        if (optionsPanel != null && mainMenuPanel != null)
+        {
+            mainMenuPanel.SetActive(false);
+            optionsPanel.SetActive(true);
+            Debug.Log("[MainMenuManager] Options menu opened");
+        }
+    }
+
+    /// <summary>
+    /// Show the save/load panel (this should integrate with your save system)
+    /// </summary>
+    public void ShowSaveLoadPanel()
+    {
+        // For now, just show a debug message
+        // In the future, this should open a save/load UI panel
+        Debug.Log("[MainMenuManager] Save/Load panel requested - implement your save/load UI here");
+        
+        // You could instantiate a save/load panel prefab here or 
+        // transition to a save/load scene
+    }
+
+    /// <summary>
+    /// Return to main menu from options
+    /// </summary>
+    public void ReturnToMainMenu()
+    {
+        if (optionsPanel != null && mainMenuPanel != null)
+        {
+            optionsPanel.SetActive(false);
+            mainMenuPanel.SetActive(true);
+            Debug.Log("[MainMenuManager] Returned to main menu");
+        }
+    }
+
+    /// <summary>
+    /// Quit the game application
+    /// </summary>
+    public void QuitGame()
+    {
+        Debug.Log("[MainMenuManager] Quitting game...");
+        Application.Quit();
+        
+        // For editor testing
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        #endif
+    }
+
+    #endregion
+
 } 

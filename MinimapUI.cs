@@ -36,7 +36,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public RectTransform positionIndicator;
 
     [Header("Minimap Settings")]
-    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(2048, 1024); // Reduced from 2048x1024 for performance
+    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(512, 256); // Fixed resolution for better performance
     [SerializeField] private MinimapColorProvider colorProvider;
     [SerializeField] private float maxZoom = 4f;
     [SerializeField] private float minZoom = 0.5f;
@@ -49,8 +49,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     [Header("Pre-generation Settings")]
     [SerializeField] private bool preGenerateAllMinimaps = false;
-    [SerializeField] private int minimapsPerFrame = 1;
-    [SerializeField] private int pixelsPerFrame = 200000; // Process pixels in batches for better performance
+    [SerializeField] private int maxPixelsPerFrameBatch = 50000; // Process pixels in batches for better performance
 
     // Private fields
     // Planet and Moon minimap caches
@@ -75,6 +74,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
+    public bool PreGenerateAll => preGenerateAllMinimaps;
 
     // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
     private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
@@ -221,19 +221,19 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private void OnEnable()
     {
         RefreshMirrorFlags();
+
+        // Subscribe to game completion event instead of individual planet events
+        if (_gameManager != null)
+        {
+            _gameManager.OnGameStarted += HandleGameStarted;
+        }
     }
 
     void Start()
     {
-        if (preGenerateAllMinimaps)
-        {
-            StartCoroutine(PreGenerateAllMinimaps());
-        }
-        else
-        {
-            BuildPlanetDropdown();
-            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
-        }
+        // Remove immediate pre-generation - wait for game completion instead
+        BuildPlanetDropdown();
+        ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
     }
 
     // Keep flags fresh if layout / anchors / scaling changes
@@ -251,7 +251,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
 
     /// <summary>
-    /// Pre-generate all minimaps during loading with progress updates
+    /// Pre-generate all minimaps with performance optimizations
     /// </summary>
     public IEnumerator PreGenerateAllMinimaps()
     {
@@ -261,24 +261,24 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             yield break;
         }
 
-        Debug.Log("[MinimapUI] Starting minimap pre-generation...");
+        Debug.Log("[MinimapUI] Starting optimized minimap pre-generation...");
         _minimapsPreGenerated = false;
 
         // Clear existing textures
         ClearMinimapCache();
+
+        Debug.Log($"[MinimapUI] Using resolution: {minimapResolution.x}x{minimapResolution.y}");
 
         int totalPlanets;
         if (_gameManager.enableMultiPlanetSystem)
         {
             var planetData = _gameManager.GetPlanetData();
             totalPlanets = planetData?.Count ?? 0;
-            Debug.Log($"[MinimapUI] Multi-planet system: Found {totalPlanets} planets in planet data");
             
-            // Fallback: try counting planet generators directly
             if (totalPlanets == 0)
             {
                 int generatorCount = 0;
-                for (int i = 0; i < 20; i++) // Check up to 20 planets
+                for (int i = 0; i < 20; i++)
                 {
                     if (_gameManager.GetPlanetGenerator(i) != null)
                     {
@@ -286,88 +286,251 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     }
                 }
                 totalPlanets = generatorCount;
-                Debug.Log($"[MinimapUI] Fallback: Found {totalPlanets} planets via generator count");
             }
         }
         else
         {
             totalPlanets = _gameManager.planetGenerator != null ? 1 : 0;
-            Debug.Log($"[MinimapUI] Single planet system: Found {totalPlanets} planets");
         }
 
         if (totalPlanets == 0)
         {
-            // Don't mark as pre-generated; allow GameManager to trigger this again once planets exist
-            Debug.LogWarning("[MinimapUI] No planets found for minimap generation (will retry when planets are ready)");
+            Debug.LogWarning("[MinimapUI] No planets found for minimap generation");
             _minimapsPreGenerated = false;
             yield break;
         }
 
-        Debug.Log($"[MinimapUI] Generating {totalPlanets} minimaps...");
+        Debug.Log($"[MinimapUI] Generating {totalPlanets} optimized minimaps...");
 
-    for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
+        // Generate minimaps with smaller batches and more frequent yields
+        for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
         {
-            string planetName = "Unknown";
-            if (_gameManager.enableMultiPlanetSystem)
-            {
-                var planetData = _gameManager.GetPlanetData();
-                if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
-                {
-                    planetName = pd.planetName;
-                }
-                else
-                {
-                    // Fallback: try to get name from planet generator
-                    var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
-                    if (planetGen != null)
-                    {
-                        planetName = planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
-                    }
-                }
-            }
-            else
-            {
-                planetName = "Planet";
-            }
-
+            string planetName = GetPlanetName(planetIndex);
             Debug.Log($"[MinimapUI] Generating minimap for {planetName} (index {planetIndex})...");
 
-            // Use coroutine-based generation for better performance (planet)
-            yield return StartCoroutine(GenerateMinimapTextureCoroutine(planetIndex));
+            // Generate planet minimap with optimizations
+            yield return StartCoroutine(GenerateMinimapTextureOptimized(planetIndex, minimapResolution));
 
-            // Also generate moon minimap if a moon exists for this planet
+            // Generate moon minimap if exists
             var moonGen = _gameManager.GetMoonGenerator(planetIndex);
             if (moonGen != null && moonGen.Grid != null && moonGen.Grid.TileCount > 0)
             {
-                yield return StartCoroutine(GenerateMoonMinimapTextureCoroutine(planetIndex));
+                yield return StartCoroutine(GenerateMoonMinimapTextureOptimized(planetIndex, minimapResolution));
             }
 
-            // Update loading progress
+            // Update loading progress more frequently
             if (_loadingPanel != null)
             {
-                float progress = (float)planetIndex / totalPlanets;
+                float progress = (float)(planetIndex + 1) / totalPlanets;
                 _loadingPanel.SetProgress(progress);
-                _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen!=null ? " (and moon)" : string.Empty)}");
+                _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen != null ? " (and moon)" : string.Empty)}");
             }
 
-            // Yield to prevent frame drops
-            if (planetIndex % minimapsPerFrame == 0)
-            {
-                yield return null;
-            }
+            // Yield every planet to prevent frame drops
+            yield return null;
         }
-
-        Debug.Log("[MinimapUI] Minimap pre-generation complete!");
+        
+        Debug.Log("[MinimapUI] Optimized minimap pre-generation complete!");
         _minimapsPreGenerated = true;
 
-        // Build dropdown after all minimaps are ready
         BuildPlanetDropdown();
-
-        // Show first planet's minimap
         if (totalPlanets > 0)
         {
             ShowMinimapForPlanet(0);
         }
+    }
+
+    private string GetPlanetName(int planetIndex)
+    {
+        if (_gameManager.enableMultiPlanetSystem)
+        {
+            var planetData = _gameManager.GetPlanetData();
+            if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
+            {
+                return pd.planetName;
+            }
+            else
+            {
+                var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
+                if (planetGen != null)
+                {
+                    return planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
+                }
+            }
+        }
+        return "Planet";
+    }
+
+    /// <summary>
+    /// Optimized minimap generation with batching
+    /// </summary>
+    private IEnumerator GenerateMinimapTextureOptimized(int planetIndex, Vector2Int resolution)
+    {
+        var planetGen = _gameManager.enableMultiPlanetSystem
+            ? _gameManager.GetPlanetGenerator(planetIndex)
+            : _gameManager.planetGenerator;
+
+        if (planetGen == null || planetGen.Grid == null)
+        {
+            Debug.LogWarning($"[MinimapUI] Planet generator or grid null for planet {planetIndex}");
+            yield break;
+        }
+
+        int width = resolution.x;
+        int height = resolution.y;
+        var tex = new Texture2D(width, height, TextureFormat.RGB24, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        var grid = planetGen.Grid;
+        var lut = EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
+        if (lut == null)
+        {
+            Debug.LogWarning($"[MinimapUI] Failed to build LUT for planet {planetIndex}");
+            yield break;
+        }
+
+        Debug.Log($"[MinimapUI] Pre-caching tile data for planet {planetIndex}...");
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            var tileData = planetGen.GetHexTileData(i);
+            if (tileData == null && TileDataHelper.Instance != null)
+            {
+                var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(i, planetIndex);
+                if (!isMoon && helperTileData != null) tileData = helperTileData;
+            }
+            if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(i))
+                tileData = planetGen.data[i];
+            if (tileData != null) tileDataCache[i] = tileData;
+        }
+        Debug.Log($"[MinimapUI] Cached {tileDataCache.Count} tiles for planet {planetIndex}");
+
+        var pixels = new Color32[width * height];
+        int totalPixels = width * height;
+        int batchSize = Mathf.Min(maxPixelsPerFrameBatch, Mathf.Max(1, totalPixels / 20));
+
+        for (int startIdx = 0; startIdx < totalPixels; startIdx += batchSize)
+        {
+            int endIdx = Mathf.Min(startIdx + batchSize, totalPixels);
+            for (int pixelIdx = startIdx; pixelIdx < endIdx; pixelIdx++)
+            {
+                int y = pixelIdx / width;
+                int x = pixelIdx % width;
+                int tileIndex = lut[pixelIdx];
+                Color color = Color.gray;
+                if (tileIndex >= 0 && tileDataCache.TryGetValue(tileIndex, out var tileData))
+                {
+                    if (colorProvider != null)
+                    {
+                        float u = (x + 0.5f) / width;
+                        float v = (y + 0.5f) / height;
+                        color = colorProvider.ColorFor(tileData, new Vector2(u, v));
+                    }
+                    else
+                    {
+                        color = GetDefaultBiomeColour(tileData.biome);
+                    }
+                }
+                pixels[pixelIdx] = color;
+            }
+            yield return null;
+        }
+
+        FlipPixelsVertically(pixels, width, height);
+        if (_isHorizontallyMirrored) FlipPixelsHorizontally(pixels, width, height);
+        tex.SetPixels32(pixels);
+        tex.Apply(false);
+        _minimapTextures[planetIndex] = tex;
+        Debug.Log($"[MinimapUI] Generated optimized minimap for planet {planetIndex} ({width}x{height})");
+    }
+
+    /// <summary>
+    /// Optimized moon minimap generation
+    /// </summary>
+    private IEnumerator GenerateMoonMinimapTextureOptimized(int planetIndex, Vector2Int resolution)
+    {
+        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+        if (moonGen == null || moonGen.Grid == null) 
+        {
+            Debug.LogWarning($"[MinimapUI] Moon generator or grid null for planet {planetIndex}");
+            yield break;
+        }
+
+        int width = resolution.x;
+        int height = resolution.y;
+        var tex = new Texture2D(width, height, TextureFormat.RGB24, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+
+        var grid = moonGen.Grid;
+        var lut = EnsureIndexLUTForBody(planetIndex, true, grid, width, height);
+        if (lut == null) 
+        {
+            Debug.LogWarning($"[MinimapUI] Failed to build LUT for moon {planetIndex}");
+            yield break;
+        }
+
+        Debug.Log($"[MinimapUI] Pre-caching moon tile data for planet {planetIndex}...");
+        // Pre-cache moon tile data
+        var tileDataCache = new Dictionary<int, HexTileData>();
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            var tileData = moonGen.GetHexTileData(i);
+            if (tileData.biome != Biome.Ocean) // Valid tile
+            {
+                tileDataCache[i] = tileData;
+            }
+        }
+        Debug.Log($"[MinimapUI] Cached {tileDataCache.Count} moon tiles for planet {planetIndex}");
+
+        var pixels = new Color32[width * height];
+        int totalPixels = width * height;
+        int batchSize = Mathf.Min(maxPixelsPerFrameBatch, totalPixels / 10); // Fewer yields for moon
+        
+        for (int startIdx = 0; startIdx < totalPixels; startIdx += batchSize)
+        {
+            int endIdx = Mathf.Min(startIdx + batchSize, totalPixels);
+            
+            for (int pixelIdx = startIdx; pixelIdx < endIdx; pixelIdx++)
+            {
+                int tileIndex = lut[pixelIdx];
+                Color color = Color.gray;
+                
+                if (tileIndex >= 0 && tileDataCache.TryGetValue(tileIndex, out var tileData))
+                {
+                    if (colorProvider != null)
+                    {
+                        int y = pixelIdx / width;
+                        int x = pixelIdx % width;
+                        float u = (x + 0.5f) / width;
+                        float v = (y + 0.5f) / height;
+                        color = colorProvider.ColorFor(tileData, new Vector2(u, v));
+                    }
+                    else
+                    {
+                        color = GetDefaultBiomeColour(tileData.biome);
+                    }
+                }
+                
+                pixels[pixelIdx] = color;
+            }
+            
+            if (startIdx % (batchSize * 3) == 0) yield return null; // Less frequent yields for moon
+        }
+
+        FlipPixelsVertically(pixels, width, height);
+        if (_isHorizontallyMirrored) FlipPixelsHorizontally(pixels, width, height);
+        
+        tex.SetPixels32(pixels);
+        tex.Apply(false);
+        
+        _moonMinimapTextures[planetIndex] = tex;
+        Debug.Log($"[MinimapUI] Generated optimized moon minimap for planet {planetIndex} ({width}x{height})");
     }
 
     private IEnumerator GenerateMoonMinimapTextureCoroutine(int planetIndex)
@@ -460,7 +623,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 int dstY = height - 1 - y;
                 pixels[dstY * width + dstX] = color;
                 processed++;
-                if (processed % pixelsPerFrame == 0)
+                if (processed % maxPixelsPerFrameBatch == 0)
                     yield return null;
             }
         }
@@ -578,7 +741,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         int dstY = height - 1 - y;
         pixels[dstY * width + dstX] = color;
                 processed++;
-                if (processed % pixelsPerFrame == 0)
+                if (processed % maxPixelsPerFrameBatch == 0)
                     yield return null;
             }
         }
@@ -609,6 +772,24 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _minimapsPreGenerated = false;
         Debug.Log("[MinimapUI] Minimap cache cleared. Restart generation to create new textures.");
     }
+
+    private void OnDisable()
+    {
+        if (_gameManager != null)
+        {
+            _gameManager.OnGameStarted -= HandleGameStarted;
+        }
+    }
+
+    // New method to handle complete game setup
+    private void HandleGameStarted()
+    {
+        Debug.Log("[MinimapUI] Game started - beginning minimap generation for all planets");
+        StartCoroutine(PreGenerateAllMinimaps());
+    }
+
+    // Remove the old planet-specific event handlers - no longer needed
+    // Minimaps will be generated when OnGameStarted fires
 
     /// <summary>
     /// Detect if the RawImage is mirrored by the UI transform stack.
@@ -718,6 +899,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
         bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+
+        Debug.Log($"[MinimapUI] ShowMinimapForPlanet called for planet {planetIndex}, isOnMoon: {isOnMoon}");
 
         if (_minimapsPreGenerated)
         {

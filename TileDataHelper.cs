@@ -347,6 +347,41 @@ public class TileDataHelper : MonoBehaviour
         return GetTileCenter(tileIndex);
     }
 
+    /// <summary>
+    /// Gets the surface position of a tile with optional height offset and specific planet
+    /// </summary>
+    public Vector3 GetTileSurfacePosition(int tileIndex, float heightOffset = 0f, int planetIndex = -1)
+    {
+        // If no planet specified, use current planet
+        if (planetIndex < 0)
+            planetIndex = GameManager.Instance?.currentPlanetIndex ?? 0;
+        
+        // Get the appropriate planet generator
+        var planetGen = GameManager.Instance?.GetPlanetGenerator(planetIndex);
+        if (planetGen == null || planetGen.Grid == null)
+        {
+            Debug.LogError($"Could not find planet generator for planet {planetIndex}");
+            return Vector3.zero;
+        }
+        
+        // Get tile center and calculate surface position
+        Vector3 tileCenter = planetGen.Grid.tileCenters[tileIndex];
+        Vector3 planetCenter = planetGen.transform.position;
+        Vector3 surfaceNormal = (tileCenter - planetCenter).normalized;
+        
+        // Get elevation from planet's tile elevation data
+        float elevation = planetGen.GetTileElevation(tileIndex);
+        var tileData = planetGen.GetHexTileData(tileIndex);
+        if (tileData != null && tileData.isHill)
+        {
+            elevation += planetGen.hillElevationBoost; // Add hill boost if it's a hill tile
+        }
+        float elevationScale = planetGen.Grid.Radius * 0.1f; // Same scale as used in generation
+        
+        // Apply height offset along the surface normal
+        return planetGen.transform.TransformPoint(surfaceNormal * (planetGen.Grid.Radius + elevation * elevationScale + heightOffset));
+    }
+
     public bool IsTileAccessible(int tileIndex, bool mustBeLand, int movePoints, int unitID, bool allowMoon = false)
     {
         var (data, isMoon) = GetTileData(tileIndex);

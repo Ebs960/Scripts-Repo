@@ -34,6 +34,7 @@ public class PauseMenuManager : MonoBehaviour
     public Toggle musicEnabledToggle;
 
     [Header("Save/Load System")]
+    public GameObject saveLoadPanel; // Panel containing all save/load UI elements
     public Transform saveSlotContainer;
     public GameObject saveSlotButtonPrefab;
     public Button createNewSaveButton;
@@ -127,6 +128,9 @@ public class PauseMenuManager : MonoBehaviour
         if (optionsPanel != null)
             optionsPanel.SetActive(false);
 
+        // Hide save/load UI elements at startup
+        HideSaveLoadUI();
+
         // Setup button events
         SetupButtonEvents();
         
@@ -145,9 +149,10 @@ public class PauseMenuManager : MonoBehaviour
 
     void Update()
     {
-        // Check for escape key
-        if (Input.GetKeyDown(KeyCode.Escape) && canTogglePause)
+        // Check for escape key - ONLY handle if we're the singleton instance
+        if (Input.GetKeyDown(KeyCode.Escape) && canTogglePause && Instance == this)
         {
+            Debug.Log($"[PauseMenuManager] Escape key pressed. canTogglePause: {canTogglePause}, isPaused: {isPaused}");
             TogglePause();
         }
     }
@@ -210,10 +215,13 @@ public class PauseMenuManager : MonoBehaviour
     private void EnablePauseToggle()
     {
         canTogglePause = true;
+        Debug.Log("[PauseMenuManager] Pause toggle enabled");
     }
 
     public void TogglePause()
     {
+        Debug.Log($"[PauseMenuManager] TogglePause called. Current state - isPaused: {isPaused}");
+        
         if (isPaused)
         {
             ResumeGame();
@@ -228,21 +236,30 @@ public class PauseMenuManager : MonoBehaviour
     {
         if (isPaused) return;
 
+        Debug.Log("[PauseMenuManager] PauseGame called");
         isPaused = true;
         Time.timeScale = 0f;
+
+        // Hide save/load UI when opening pause menu (start fresh)
+        HideSaveLoadUI();
 
         // Use UIManager to show pause menu
         if (UIManager.Instance != null)
         {
+            Debug.Log("[PauseMenuManager] Showing pause menu via UIManager");
             UIManager.Instance.ShowPauseMenu();
         }
         else if (pauseMenuPanel != null)
         {
-            // Fallback to direct control if UIManager not available
+            Debug.Log("[PauseMenuManager] Showing pause menu directly (UIManager not available)");
             pauseMenuPanel.SetActive(true);
         }
+        else
+        {
+            Debug.LogError("[PauseMenuManager] Cannot show pause menu - no UIManager and no pauseMenuPanel!");
+        }
 
-        // Update GameManager pause state (this will automatically trigger OnGamePaused event)
+        // Update GameManager pause state
         if (GameManager.Instance != null)
         {
             GameManager.Instance.gamePaused = true;
@@ -255,30 +272,115 @@ public class PauseMenuManager : MonoBehaviour
     {
         if (!isPaused) return;
 
+        Debug.Log("[PauseMenuManager] ResumeGame called");
         isPaused = false;
         Time.timeScale = 1f;
 
         // Use UIManager to hide pause menu
         if (UIManager.Instance != null)
         {
+            Debug.Log("[PauseMenuManager] Hiding pause menu via UIManager");
             UIManager.Instance.HidePauseMenu();
         }
         else if (pauseMenuPanel != null)
         {
-            // Fallback to direct control if UIManager not available
+            Debug.Log("[PauseMenuManager] Hiding pause menu directly");
             pauseMenuPanel.SetActive(false);
         }
 
         if (optionsPanel != null)
             optionsPanel.SetActive(false);
 
-        // Update GameManager pause state (this will automatically trigger OnGamePaused event)
+        // Update GameManager pause state
         if (GameManager.Instance != null)
         {
             GameManager.Instance.gamePaused = false;
         }
 
         Debug.Log("Game Resumed");
+    }
+
+    /// <summary>
+    /// Hide all save/load UI elements at startup
+    /// </summary>
+    private void HideSaveLoadUI()
+    {
+        Debug.Log("[PauseMenuManager] Hiding save/load UI elements at startup");
+        
+        // Hide the main save/load panel if it exists
+        if (saveLoadPanel != null)
+        {
+            saveLoadPanel.SetActive(false);
+            Debug.Log("[PauseMenuManager] Save/load panel hidden");
+        }
+        
+        // Hide individual save/load components as fallback
+        if (saveSlotContainer != null && saveSlotContainer.gameObject != null)
+        {
+            saveSlotContainer.gameObject.SetActive(false);
+            Debug.Log("[PauseMenuManager] Save slot container hidden");
+        }
+        
+        if (createNewSaveButton != null && createNewSaveButton.gameObject != null)
+        {
+            createNewSaveButton.gameObject.SetActive(false);
+        }
+        
+        if (deleteSaveButton != null && deleteSaveButton.gameObject != null)
+        {
+            deleteSaveButton.gameObject.SetActive(false);
+        }
+        
+        if (saveStatusText != null && saveStatusText.gameObject != null)
+        {
+            saveStatusText.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Show save/load UI elements when save/load is accessed
+    /// </summary>
+    private void ShowSaveLoadUI()
+    {
+        Debug.Log("[PauseMenuManager] Showing save/load UI elements");
+        
+        // Show the main save/load panel if it exists
+        if (saveLoadPanel != null)
+        {
+            saveLoadPanel.SetActive(true);
+            Debug.Log("[PauseMenuManager] Save/load panel shown");
+        }
+        
+        // Show individual save/load components as fallback
+        if (saveSlotContainer != null && saveSlotContainer.gameObject != null)
+        {
+            saveSlotContainer.gameObject.SetActive(true);
+        }
+        
+        if (createNewSaveButton != null && createNewSaveButton.gameObject != null)
+        {
+            createNewSaveButton.gameObject.SetActive(true);
+        }
+        
+        if (deleteSaveButton != null && deleteSaveButton.gameObject != null)
+        {
+            deleteSaveButton.gameObject.SetActive(true);
+        }
+        
+        if (saveStatusText != null && saveStatusText.gameObject != null)
+        {
+            saveStatusText.gameObject.SetActive(true);
+        }
+    }
+
+    /// <summary>
+    /// Return to main pause menu from save/load UI
+    /// </summary>
+    public void ReturnToPauseMenu()
+    {
+        Debug.Log("[PauseMenuManager] Returning to main pause menu from save/load");
+        HideSaveLoadUI();
+        // The main pause menu should already be active, so we don't need to show it again
     }
 
     public void SaveGame()
@@ -543,11 +645,15 @@ public class PauseMenuManager : MonoBehaviour
 
     private void InitializeSaveSystem()
     {
-        RefreshSaveSlots();
+        Debug.Log("[PauseMenuManager] Initializing save system (UI remains hidden until needed)");
+        // Don't refresh save slots immediately - wait until save/load is actually accessed
+        // This prevents save slot UI from appearing at startup
     }
 
     public void ShowSaveMenu()
     {
+        Debug.Log("[PauseMenuManager] ShowSaveMenu called");
+        ShowSaveLoadUI();
         RefreshSaveSlots();
         UpdateSaveStatus("Select a slot to save your game.");
         // You can add specific save menu UI here if needed
@@ -555,6 +661,8 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ShowLoadMenu()
     {
+        Debug.Log("[PauseMenuManager] ShowLoadMenu called");
+        ShowSaveLoadUI();
         RefreshSaveSlots();
         UpdateSaveStatus("Select a slot to load your game.");
         // You can add specific load menu UI here if needed
@@ -562,6 +670,8 @@ public class PauseMenuManager : MonoBehaviour
 
     private void RefreshSaveSlots()
     {
+        Debug.Log("[PauseMenuManager] RefreshSaveSlots called");
+        
         // Clear existing save slot buttons
         foreach (var button in saveSlotButtons)
         {
@@ -573,10 +683,15 @@ public class PauseMenuManager : MonoBehaviour
         // Create save slot buttons
         if (saveSlotContainer != null && saveSlotButtonPrefab != null)
         {
+            Debug.Log($"[PauseMenuManager] Creating {maxSaveSlots} save slot buttons");
             for (int i = 0; i < maxSaveSlots; i++)
             {
                 CreateSaveSlotButton(i);
             }
+        }
+        else
+        {
+            Debug.LogWarning("[PauseMenuManager] saveSlotContainer or saveSlotButtonPrefab is null - cannot create save slots");
         }
     }
 

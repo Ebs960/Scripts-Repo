@@ -400,7 +400,7 @@ public class SpaceRouteManager : MonoBehaviour
         if (tileData != null)
         {
                     // Get tile world position and place unit
-        Vector3 tileCenter = TileDataHelper.Instance.GetTileSurfacePosition(landingTile);
+        Vector3 tileCenter = TileDataHelper.Instance.GetTileSurfacePosition(landingTile, 0f, planetIndex);
             unit.transform.position = tileCenter;
             unit.transform.SetParent(planetGen.transform);
         }

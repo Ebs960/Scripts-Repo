@@ -18,6 +18,10 @@ public class AnimalManager : MonoBehaviour
 
     [Header("Configure each animal type here")]
     public AnimalSpawnRule[] spawnRules;
+    
+    // Track animals that were recently attacked (for prey behavior)
+    private Dictionary<CombatUnit, int> recentlyAttackedAnimals = new Dictionary<CombatUnit, int>();
+    private const int PREY_MEMORY_TURNS = 2;
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
 
@@ -29,9 +33,11 @@ public class AnimalManager : MonoBehaviour
 
     public void SpawnInitialAnimals()
     {
+        Debug.Log("[AnimalManager] SpawnInitialAnimals called");
         int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
         float[] multipliers = { 0f, 0.25f, 0.5f, 1f, 2f, 3f };
         float mult = multipliers[Mathf.Clamp(prevalence, 0, multipliers.Length - 1)];
+        Debug.Log($"[AnimalManager] Animal prevalence: {prevalence}, multiplier: {mult}");
         if (mult == 0f) return;
 
         foreach (var rule in spawnRules)
@@ -41,6 +47,94 @@ public class AnimalManager : MonoBehaviour
             for (int i = 0; i < count; i++)
                 TrySpawn(rule);
         }
+    }
+
+    /// <summary>
+    /// Call this when an animal takes damage to mark it as recently attacked
+    /// </summary>
+    public void MarkAnimalAsAttacked(CombatUnit animal)
+    {
+        if (animal != null && animal.data.unitType == CombatCategory.Animal)
+        {
+            recentlyAttackedAnimals[animal] = GameManager.Instance.currentTurn;
+            Debug.Log($"Animal {animal.data.unitName} marked as recently attacked on turn {GameManager.Instance.currentTurn}");
+        }
+    }
+    
+    /// <summary>
+    /// Check if an animal was recently attacked (within PREY_MEMORY_TURNS)
+    /// </summary>
+    private bool WasRecentlyAttacked(CombatUnit animal)
+    {
+        if (recentlyAttackedAnimals.TryGetValue(animal, out int attackTurn))
+        {
+            int turnsSinceAttack = GameManager.Instance.currentTurn - attackTurn;
+            return turnsSinceAttack <= PREY_MEMORY_TURNS;
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// Find the nearest civilization unit within movement range for predators to hunt
+    /// </summary>
+    private CombatUnit FindNearestCivilizationUnit(CombatUnit predator, int maxSearchRange = 3)
+    {
+        CombatUnit nearestTarget = null;
+        float nearestDistance = float.MaxValue;
+        
+        var allCivUnits = GameObject.FindObjectsByType<CombatUnit>(FindObjectsSortMode.None)
+            .Where(unit => unit != predator && 
+                   unit.data.unitType != CombatCategory.Animal &&
+                   unit.owner != null) // Ensure it belongs to a civilization
+            .ToList();
+        
+        foreach (var civUnit in allCivUnits)
+        {
+            float distance = TileDataHelper.Instance.GetTileDistance(predator.currentTileIndex, civUnit.currentTileIndex);
+            if (distance <= maxSearchRange && distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestTarget = civUnit;
+            }
+        }
+        
+        return nearestTarget;
+    }
+    
+    /// <summary>
+    /// Get direction away from the nearest civilization unit for prey to flee
+    /// </summary>
+    private int? GetFleeDirection(CombatUnit prey)
+    {
+        var nearestCivUnit = FindNearestCivilizationUnit(prey, 4); // Slightly larger range for detection
+        if (nearestCivUnit == null) return null;
+        
+        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(prey.currentTileIndex);
+        var validDestinations = neighborIndices
+            .Where(index =>
+            {
+                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                return neighbor != null && prey.CanMoveTo(index);
+            })
+            .ToList();
+        
+        if (validDestinations.Count == 0) return null;
+        
+        // Find the destination that is furthest from the civilization unit
+        int bestDestination = validDestinations[0];
+        float maxDistance = TileDataHelper.Instance.GetTileDistance(bestDestination, nearestCivUnit.currentTileIndex);
+        
+        foreach (var destination in validDestinations)
+        {
+            float distance = TileDataHelper.Instance.GetTileDistance(destination, nearestCivUnit.currentTileIndex);
+            if (distance > maxDistance)
+            {
+                maxDistance = distance;
+                bestDestination = destination;
+            }
+        }
+        
+        return bestDestination;
     }
 
     public void ProcessTurn()
@@ -72,6 +166,9 @@ public class AnimalManager : MonoBehaviour
 
     void MoveAllAnimals()
     {
+        // Clean up old attack records first
+        CleanupOldAttackRecords();
+        
         foreach (var unit in activeAnimals.ToList())
         {
             if (unit == null)
@@ -85,28 +182,148 @@ public class AnimalManager : MonoBehaviour
             var (tileData, _) = TileDataHelper.Instance.GetTileData(unit.currentTileIndex);
             if (tileData == null) continue;
 
-            var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(unit.currentTileIndex);
-            var validDestinations = neighborIndices
-                .Where(index =>
-                {
-                    var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
-                    return neighbor != null && unit.CanMoveTo(index);
-                })
-                .ToList();
-
-            if (validDestinations.Count > 0)
+            // Determine movement behavior based on animal type
+            bool moved = false;
+            switch (unit.data.animalBehavior)
             {
-                int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
-                unit.MoveTo(targetTile);
+                case AnimalBehaviorType.Predator:
+                    moved = HandlePredatorMovement(unit);
+                    break;
+                    
+                case AnimalBehaviorType.Prey:
+                    moved = HandlePreyMovement(unit);
+                    break;
+                    
+                case AnimalBehaviorType.Neutral:
+                default:
+                    moved = HandleNeutralMovement(unit);
+                    break;
+            }
+            
+            // If no special behavior movement occurred, fall back to random movement
+            if (!moved)
+            {
+                HandleNeutralMovement(unit);
             }
         }
+    }
+    
+    /// <summary>
+    /// Clean up attack records older than PREY_MEMORY_TURNS
+    /// </summary>
+    private void CleanupOldAttackRecords()
+    {
+        var currentTurn = GameManager.Instance.currentTurn;
+        var expiredRecords = recentlyAttackedAnimals
+            .Where(kvp => currentTurn - kvp.Value > PREY_MEMORY_TURNS)
+            .Select(kvp => kvp.Key)
+            .ToList();
+            
+        foreach (var expiredAnimal in expiredRecords)
+        {
+            recentlyAttackedAnimals.Remove(expiredAnimal);
+        }
+    }
+    
+    /// <summary>
+    /// Handle movement for predator animals - actively hunt civilization units
+    /// </summary>
+    private bool HandlePredatorMovement(CombatUnit predator)
+    {
+        var target = FindNearestCivilizationUnit(predator);
+        if (target == null) return false;
+        
+        // Try to move closer to the target
+        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(predator.currentTileIndex);
+        var validDestinations = neighborIndices
+            .Where(index =>
+            {
+                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                return neighbor != null && predator.CanMoveTo(index);
+            })
+            .ToList();
+        
+        if (validDestinations.Count == 0) return false;
+        
+        // Find the destination that gets us closest to the target
+        int bestDestination = validDestinations[0];
+        float minDistance = TileDataHelper.Instance.GetTileDistance(bestDestination, target.currentTileIndex);
+        
+        foreach (var destination in validDestinations)
+        {
+            float distance = TileDataHelper.Instance.GetTileDistance(destination, target.currentTileIndex);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                bestDestination = destination;
+            }
+        }
+        
+        predator.MoveTo(bestDestination);
+        Debug.Log($"Predator {predator.data.unitName} hunting towards {target.data.unitName}");
+        return true;
+    }
+    
+    /// <summary>
+    /// Handle movement for prey animals - avoid civilization units unless recently attacked
+    /// </summary>
+    private bool HandlePreyMovement(CombatUnit prey)
+    {
+        bool wasAttacked = WasRecentlyAttacked(prey);
+        
+        if (wasAttacked)
+        {
+            // Prey was recently attacked, so it's aggressive and will hunt like a predator
+            Debug.Log($"Prey {prey.data.unitName} is aggressively seeking revenge!");
+            return HandlePredatorMovement(prey); // Use predator logic for aggressive behavior
+        }
+        else
+        {
+            // Normal prey behavior - try to flee from civilization units
+            int? fleeDestination = GetFleeDirection(prey);
+            if (fleeDestination.HasValue)
+            {
+                prey.MoveTo(fleeDestination.Value);
+                Debug.Log($"Prey {prey.data.unitName} fleeing from civilization units");
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Handle movement for neutral animals - random movement (original behavior)
+    /// </summary>
+    private bool HandleNeutralMovement(CombatUnit unit)
+    {
+        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(unit.currentTileIndex);
+        var validDestinations = neighborIndices
+            .Where(index =>
+            {
+                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                return neighbor != null && unit.CanMoveTo(index);
+            })
+            .ToList();
+
+        if (validDestinations.Count > 0)
+        {
+            int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
+            unit.MoveTo(targetTile);
+            return true;
+        }
+        
+        return false;
     }
 
     void TrySpawn(AnimalSpawnRule rule)
     {
+        Debug.Log($"[AnimalManager] TrySpawn called for {rule.unitData.unitName}");
         var candidates = new List<int>();
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // FIXED: Always spawn animals on Earth (planet index 0) regardless of current planet
+        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+        Debug.Log($"[AnimalManager] Earth planet exists? {planet != null}, tile count: {tileCount}");
 
         for (int i = 0; i < tileCount; i++)
         {
@@ -124,7 +341,8 @@ public class AnimalManager : MonoBehaviour
         if (candidates.Count == 0) return;
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(chosenIndex, 0.5f);
+        // FIXED: Use Earth-specific positioning for animal spawning
+        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(chosenIndex, 0.5f, 0); // Force planet index 0 (Earth)
 
         var go = Instantiate(rule.unitData.prefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();
@@ -139,5 +357,6 @@ public class AnimalManager : MonoBehaviour
 
         activeAnimals.Add(unit);
         unit.OnDeath += () => activeAnimals.Remove(unit);
+        Debug.Log($"[AnimalManager] Successfully spawned {rule.unitData.unitName} at tile {chosenIndex}");
     }
 }

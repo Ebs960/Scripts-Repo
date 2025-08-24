@@ -599,6 +599,12 @@ public class CombatUnit : MonoBehaviour
         // Raise damage event
         GameEventManager.Instance.RaiseDamageAppliedEvent(null, this, damageAmount);
         
+        // Mark animal as recently attacked for predator/prey behavior system
+        if (data.unitType == CombatCategory.Animal && AnimalManager.Instance != null)
+        {
+            AnimalManager.Instance.MarkAnimalAsAttacked(this);
+        }
+        
         // Morale penalty proportional to HP lost
         ChangeMorale(-damageAmount * data.moraleLostPerHealth);
         
@@ -842,6 +848,9 @@ public class CombatUnit : MonoBehaviour
     /// <summary>
     /// Properly positions and orients the unit on the planet surface
     /// </summary>
+    /// <summary>
+    /// Properly positions and orients the unit on the planet surface
+    /// </summary>
     public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
         if (G == null)
@@ -850,35 +859,52 @@ public class CombatUnit : MonoBehaviour
             return;
         }
 
-        // Get the extruded center of the tile in world space. This is the new surface position.
-        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex);
+        // FIXED: For civilization units, always use Earth (planet index 0)
+        // Check if Earth surface is ready
+        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
+        if (earthPlanet == null)
+        {
+            Debug.LogError("Earth planet generator not found for unit positioning!");
+            return;
+        }
         
-        // Set unit position directly on the surface. Any small visual offset (like for unit height)
-        // should ideally be handled by the model's pivot point within the prefab itself.
+        if (!earthPlanet.HasGeneratedSurface)
+        {
+            Debug.LogError($"Earth planet not ready for unit positioning! HasGeneratedSurface = {earthPlanet.HasGeneratedSurface}");
+            return;
+        }
+        
+        // Get the extruded center of the tile in world space on Earth
+        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, 0f, 0); // Force Earth (planet index 0)
+        
+        // Set unit position directly on the surface
         transform.position = tileSurfaceCenter;
 
-        // The surface normal is just the direction from the planet's center to the tile's surface center
-        Vector3 calculatedSurfaceNormal = (tileSurfaceCenter - planet.transform.position).normalized;
+        // FIXED: Calculate proper surface normal pointing AWAY from planet center (toward atmosphere)
+        Vector3 surfaceNormal = (tileSurfaceCenter - earthPlanet.transform.position).normalized;
         
-        // Orient unit to stand upright on the surface
-        Vector3 worldUp = Vector3.up; // A general world up direction
-        if (Vector3.Dot(worldUp, calculatedSurfaceNormal) > 0.99f || Vector3.Dot(worldUp, calculatedSurfaceNormal) < -0.99f)
+        // FIXED: Use a more robust method to calculate forward direction
+        // Get a reference direction (north pole direction projected onto the surface)
+        Vector3 northDirection = Vector3.up;
+        Vector3 tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, northDirection), surfaceNormal).normalized;
+        
+        // If the cross product fails (at poles), use an alternative reference
+        if (tangentForward.magnitude < 0.1f)
         {
-            worldUp = Vector3.forward;
+            Vector3 eastDirection = Vector3.right;
+            tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, eastDirection), surfaceNormal).normalized;
         }
-
-        Vector3 unitForward = Vector3.Cross(transform.right, calculatedSurfaceNormal).normalized; 
-        if (unitForward.sqrMagnitude < 0.001f)
+        
+        // Final fallback if still problematic
+        if (tangentForward.magnitude < 0.1f)
         {
-            unitForward = Vector3.Cross(worldUp, calculatedSurfaceNormal).normalized;
-             if (unitForward.sqrMagnitude < 0.001f)
-            {
-                unitForward = Vector3.Cross(Vector3.left, calculatedSurfaceNormal).normalized;
-            }
+            tangentForward = Vector3.forward;
         }
-
-        transform.rotation = Quaternion.LookRotation(unitForward, calculatedSurfaceNormal);
-        currentTileIndex = tileIndex; // Update the unit's current tile index
+        
+        // Set rotation so unit stands upright on the surface
+        transform.rotation = Quaternion.LookRotation(tangentForward, surfaceNormal);
+        currentTileIndex = tileIndex;
+        
     }
 
     private void UpdateIdleAnimation()

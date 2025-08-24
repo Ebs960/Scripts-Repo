@@ -734,8 +734,10 @@ public class TechTreeBuilder : MonoBehaviour
             RemoveTechFromBuilder(selectedNode.RepresentedTech);
         }
         
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Only handle Escape if we have an active state to clear
+        if (Input.GetKeyDown(KeyCode.Escape) && (isConnecting || selectedNode != null))
         {
+            Debug.Log("[TechTreeBuilder] Escape pressed - clearing selection/connection state");
             isConnecting = false;
             if (selectedNode != null)
                 selectedNode.SetSelected(false);

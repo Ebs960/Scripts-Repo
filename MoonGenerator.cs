@@ -254,10 +254,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Populate the public tile list with the final tile data
         Tiles = data.Values.ToList();
-
-        // Debug: List biome quantities
-        LogBiomeQuantities();
-
         // Only spawn prefabs if any flat or hill prefabs are present
         if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
         {
@@ -414,46 +410,6 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         }
         
         Debug.Log("Moon tile distance normalization complete.");
-    }
-
-    /// <summary>
-    /// Debug method to log the quantity of each biome on the moon
-    /// </summary>
-    private void LogBiomeQuantities()
-    {
-        Dictionary<Biome, int> biomeCounts = new Dictionary<Biome, int>();
-        
-        // Count tiles for each biome
-        for (int i = 0; i < grid.TileCount; i++)
-        {
-            if (data.ContainsKey(i))
-            {
-                Biome biome = data[i].biome;
-                if (!biomeCounts.ContainsKey(biome))
-                    biomeCounts[biome] = 0;
-                biomeCounts[biome]++;
-            }
-        }
-        
-        // Log the results
-        Debug.Log("=== MOON BIOME QUANTITY SUMMARY ===");
-        Debug.Log($"Total moon tiles: {grid.TileCount}");
-        Debug.Log($"Moon tiles with data: {data.Count}");
-        
-        foreach (var kvp in biomeCounts.OrderByDescending(x => x.Value))
-        {
-            float percentage = (float)kvp.Value / grid.TileCount * 100f;
-            Debug.Log($"Moon Biome {kvp.Key}: {kvp.Value} tiles ({percentage:F1}%)");
-        }
-        
-        // Check for any tiles without data
-        int tilesWithoutData = grid.TileCount - data.Count;
-        if (tilesWithoutData > 0)
-        {
-            Debug.LogWarning($"Warning: {tilesWithoutData} moon tiles have no biome data assigned!");
-        }
-        
-        Debug.Log("=== END MOON BIOME QUANTITY SUMMARY ===");
     }
 
     // Helper: lat/long (deg) → unit vector

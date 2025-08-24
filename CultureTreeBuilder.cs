@@ -731,8 +731,10 @@ public class CultureTreeBuilder : MonoBehaviour
             RemoveCultureFromBuilder(selectedNode.RepresentedCulture);
         }
         
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Only handle Escape if we have an active state to clear
+        if (Input.GetKeyDown(KeyCode.Escape) && (isConnecting || selectedNode != null))
         {
+            Debug.Log("[CultureTreeBuilder] Escape pressed - clearing selection/connection state");
             isConnecting = false;
             if (selectedNode != null)
                 selectedNode.SetSelected(false);

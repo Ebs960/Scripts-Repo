@@ -361,7 +361,17 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ShowPauseMenu()
     {
-        ShowPanel("PauseMenuPanel");
+        Debug.Log("[UIManager] ShowPauseMenu called");
+        if (pauseMenuPanel != null)
+        {
+            pauseMenuPanel.SetActive(true);
+            WireButtons(pauseMenuPanel);
+            Debug.Log("[UIManager] Pause menu panel activated");
+        }
+        else
+        {
+            Debug.LogError("[UIManager] pauseMenuPanel is null! Cannot show pause menu.");
+        }
     }
 
     /// <summary>
@@ -369,7 +379,16 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void HidePauseMenu()
     {
-        HidePanel("PauseMenuPanel");
+        Debug.Log("[UIManager] HidePauseMenu called");
+        if (pauseMenuPanel != null)
+        {
+            pauseMenuPanel.SetActive(false);
+            Debug.Log("[UIManager] Pause menu panel deactivated");
+        }
+        else
+        {
+            Debug.LogError("[UIManager] pauseMenuPanel is null! Cannot hide pause menu.");
+        }
     }
 
     /// <summary>

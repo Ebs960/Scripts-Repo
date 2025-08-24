@@ -465,10 +465,14 @@ public class CivilizationManager : MonoBehaviour
         civs.Clear();
         currentCivIndex = -1;
         
-        // Use GameManager API for multi-planet support
-        var planet   = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
+        var planet   = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
         var grid      = planet != null ? planet.Grid : null;
         var occupied = new HashSet<int>();
+        
+        Debug.Log($"[CivilizationManager] Earth planet exists? {planet != null}");
+        Debug.Log($"[CivilizationManager] Earth grid exists? {grid != null}");
+        Debug.Log($"[CivilizationManager] Earth surface generated? {planet?.HasGeneratedSurface}");
 
         // Check if allCivDatas is populated
         if (allCivDatas == null || allCivDatas.Length == 0)
@@ -560,6 +564,12 @@ public class CivilizationManager : MonoBehaviour
             AdvanceTurn();
         }
         
+        // FIXED: Position camera to focus on player's pioneer starting tile
+        if (playerCiv != null && playerCiv.workerUnits.Count > 0)
+        {
+            PositionCameraOnPlayerStart();
+        }
+        
         Debug.Log($"Civilization spawning complete. Total civs spawned: {civs.Count}");
     }
 
@@ -576,12 +586,12 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         
-        // Use GameManager API for multi-planet support
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
+        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
         var grid  = planet != null ? planet.Grid : null;
         if (grid == null)
         {
-            Debug.LogError("SpawnOneCivilization: SphericalHexGrid not found!");
+            Debug.LogError("SpawnOneCivilization: Earth's SphericalHexGrid not found!");
             return;
         }
         
@@ -670,7 +680,8 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // Instantiate pioneer
-        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(tile, 0.5f);
+        // FIXED: Use Earth-specific positioning for pioneer
+        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(tile, 0.5f, 0); // Force planet index 0 (Earth)
         var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         if (wgo == null)
         {
@@ -689,6 +700,18 @@ public class CivilizationManager : MonoBehaviour
         pioneer.Initialize(pioneerData, civ, tile);
         civ.workerUnits.Add(pioneer);
         
+        // FIXED: Ensure pioneer is parented to Earth planet
+        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
+        if (earthPlanet != null)
+        {
+            pioneer.transform.SetParent(earthPlanet.transform);
+            Debug.Log($"[CivilizationManager] {data.civName} pioneer spawned on Earth at tile {tile}");
+        }
+        else
+        {
+            Debug.LogError("[CivilizationManager] Could not find Earth planet to parent pioneer!");
+        }
+        
     }
 
     /// <summary>
@@ -696,9 +719,29 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     int FindSpawnTile(CivData data, HashSet<int> occupied, bool enforceClimate)
     {
-        // Use GameManager API for multi-planet support
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-        var grid    = planet != null ? planet.Grid : null;
+        // FIXED: Always use Earth (planet index 0) for civilization spawning
+        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        
+        // Check if Earth surface is ready for spawning
+        if (planet == null)
+        {
+            Debug.LogError("FindSpawnTile: No Earth planet generator found!");
+            return -1;
+        }
+        
+        if (!planet.HasGeneratedSurface)
+        {
+            Debug.LogError($"FindSpawnTile: Earth surface not ready! HasGeneratedSurface = {planet.HasGeneratedSurface}");
+            return -1;
+        }
+        
+        var grid = planet.Grid;
+        if (grid == null || !grid.IsBuilt)
+        {
+            Debug.LogError("FindSpawnTile: Earth grid not ready!");
+            return -1;
+        }
+        
         var candidates = new List<int>();
 
         // Get the total tile count in a safer way
@@ -711,6 +754,9 @@ public class CivilizationManager : MonoBehaviour
             if (td == null) continue;
             if (!td.isLand) continue;
 
+            // FIXED: Ensure starting units never spawn on water tiles
+            if (IsWaterTile(td.biome)) continue;
+
             if (enforceClimate && data.climatePreferences.Length > 0)
             {
                 if (!data.climatePreferences.Contains(td.biome))
@@ -722,6 +768,72 @@ public class CivilizationManager : MonoBehaviour
         return candidates.Count > 0
             ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
             : -1;
+    }
+
+    /// <summary>
+    /// Checks if a biome is a water tile or inhospitable wetland (coast, glacier, river, seas, ocean, lakes, marshes, swamps, floodlands)
+    /// </summary>
+    private bool IsWaterTile(Biome biome)
+    {
+        return biome == Biome.Coast ||
+               biome == Biome.Glacier ||
+               biome == Biome.River ||
+               biome == Biome.Seas ||
+               biome == Biome.Ocean;
+    }
+
+    /// <summary>
+    /// Positions the camera to focus on the player's pioneer starting tile at game start
+    /// </summary>
+    private void PositionCameraOnPlayerStart()
+    {
+        if (playerCiv == null || playerCiv.workerUnits.Count == 0)
+        {
+            Debug.LogWarning("Cannot position camera: no player civilization or pioneer found");
+            return;
+        }
+
+        // Get the player's pioneer (starting unit)
+        var pioneer = playerCiv.workerUnits[0];
+        if (pioneer == null)
+        {
+            Debug.LogWarning("Cannot position camera: pioneer is null");
+            return;
+        }
+
+        // Get the tile index where the pioneer is located
+        int pioneerTileIndex = pioneer.currentTileIndex;
+        if (pioneerTileIndex < 0)
+        {
+            Debug.LogWarning("Cannot position camera: pioneer tile index is invalid");
+            return;
+        }
+
+        // Find the PlanetaryCameraManager in the scene
+        var cameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (cameraManager == null)
+        {
+            Debug.LogWarning("Cannot position camera: PlanetaryCameraManager not found in scene");
+            return;
+        }
+
+        // Get the planet generator (Earth - index 0)
+        var planet = GameManager.Instance?.GetPlanetGenerator(0);
+        if (planet == null || planet.Grid == null)
+        {
+            Debug.LogWarning("Cannot position camera: Earth planet generator not found");
+            return;
+        }
+
+        // Get the tile position and convert to direction from planet center
+        Vector3 tileWorldPosition = TileDataHelper.Instance.GetTileSurfacePosition(pioneerTileIndex, 0f, 0);
+        Vector3 planetCenter = planet.transform.position;
+        Vector3 directionToTile = (tileWorldPosition - planetCenter).normalized;
+
+        // Use the camera manager's JumpToDirection method to focus on the tile
+        cameraManager.JumpToDirection(directionToTile, false); // false = planet (not moon)
+
+        Debug.Log($"Camera positioned to focus on player pioneer at tile {pioneerTileIndex}");
     }
 
     /// <summary>
