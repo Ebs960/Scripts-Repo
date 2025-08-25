@@ -726,11 +726,6 @@ public class GameManager : MonoBehaviour
             // Configure planet generator with GameSetupData settings
             planetGenerator.SetMapTypeName(GameSetupData.mapTypeName);
 
-            // Climate settings
-            planetGenerator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
-            planetGenerator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
-            planetGenerator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
-
             // Moisture and temperature settings
             planetGenerator.moistureBias = GameSetupData.moistureBias;
             planetGenerator.temperatureBias = GameSetupData.temperatureBias;
@@ -827,12 +822,16 @@ public class GameManager : MonoBehaviour
             ResourceManager.Instance.ResetForNewGame();
         }
 
+        Debug.Log($"[GameManager] StartNewGame - enableMultiPlanetSystem: {enableMultiPlanetSystem}");
+        
         if (enableMultiPlanetSystem)
         {
+            Debug.Log("[GameManager] Using multi-planet game mode");
             yield return StartCoroutine(StartMultiPlanetGame());
         }
         else
         {
+            Debug.Log("[GameManager] Using single-planet game mode");
             yield return StartCoroutine(StartSinglePlanetGame());
         }
 
@@ -939,13 +938,19 @@ public class GameManager : MonoBehaviour
 
         // Generate minimap now that the planet is ready
         var minimapUI = FindAnyObjectByType<MinimapUI>();
+        Debug.Log($"[GameManager] Looking for MinimapUI component... Found: {minimapUI != null}");
         if (minimapUI != null)
         {
+            Debug.Log($"[GameManager] MinimapUI component found: {minimapUI.name}");
+            Debug.Log($"[GameManager] MinimapUI is active: {minimapUI.gameObject.activeSelf}");
+            Debug.Log($"[GameManager] MinimapUI PreGenerateAll setting: {minimapUI.PreGenerateAll}");
             Debug.Log("[GameManager] Starting minimap generation...");
+            UpdateLoadingProgress(0.8f, "Generating minimaps...");
             
             // Start minimap generation
             minimapUI.StartMinimapGeneration();
             
+            Debug.Log("[GameManager] Waiting for minimap generation to complete...");
             // Wait for minimaps to be pre-generated
             while (!minimapUI.MinimapsPreGenerated)
             {
@@ -953,6 +958,12 @@ public class GameManager : MonoBehaviour
             }
             
             Debug.Log("[GameManager] Minimap pre-generation complete");
+            UpdateLoadingProgress(0.9f, "Minimaps complete...");
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] MinimapUI component not found! Skipping minimap generation.");
+            UpdateLoadingProgress(0.9f, "Minimap generation skipped...");
         }
 
         // Spawn civilizations
@@ -969,11 +980,8 @@ public class GameManager : MonoBehaviour
                 numberOfCityStates,
                 numberOfTribes);
 
-            // Initialize the music manager with the newly spawned civs
-            if (MusicManager.Instance != null)
-            {
-                MusicManager.Instance.InitializeMusicTracks();
-            }
+            // REMOVED: Music initialization moved to end of CivilizationManager.SpawnCivilizations()
+            // This ensures all civs are fully spawned before music tracks are initialized
         }
         else
         {
@@ -1125,9 +1133,44 @@ public class GameManager : MonoBehaviour
         Debug.Log("=== MAP GENERATION COMPLETE (Multi-Planet) ===");
 
         // Trigger minimap generation now that planets are ready
+        // Try multiple ways to find MinimapUI
         var minimapUI = FindAnyObjectByType<MinimapUI>();
+        Debug.Log($"[GameManager] (Multi-Planet) FindAnyObjectByType result: {minimapUI != null}");
+        
+        if (minimapUI == null)
+        {
+            // Try the newer first object method
+            minimapUI = FindFirstObjectByType<MinimapUI>();
+            Debug.Log($"[GameManager] (Multi-Planet) FindFirstObjectByType result: {minimapUI != null}");
+        }
+        
+        if (minimapUI == null)
+        {
+            // Try including inactive objects
+            minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
+            Debug.Log($"[GameManager] (Multi-Planet) FindAnyObjectByType (include inactive) result: {minimapUI != null}");
+        }
+        
+        Debug.Log($"[GameManager] (Multi-Planet) Final MinimapUI found: {minimapUI != null}");
+        
+        // Debug: List all MinimapUI components in the scene
+        var allMinimapUIs = FindObjectsByType<MinimapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Debug.Log($"[GameManager] (Multi-Planet) Total MinimapUI components in scene (including inactive): {allMinimapUIs?.Length ?? 0}");
+        if (allMinimapUIs != null)
+        {
+            for (int i = 0; i < allMinimapUIs.Length; i++)
+            {
+                var ui = allMinimapUIs[i];
+                Debug.Log($"[GameManager] (Multi-Planet) MinimapUI #{i}: {ui.name}, GameObject active: {ui.gameObject.activeSelf}, In hierarchy: {ui.gameObject.activeInHierarchy}, Component enabled: {ui.enabled}");
+            }
+        }
+        
         if (minimapUI != null)
         {
+            Debug.Log($"[GameManager] (Multi-Planet) MinimapUI component found: {minimapUI.name}");
+            Debug.Log($"[GameManager] (Multi-Planet) MinimapUI is active: {minimapUI.gameObject.activeSelf}");
+            Debug.Log($"[GameManager] (Multi-Planet) MinimapUI PreGenerateAll setting: {minimapUI.PreGenerateAll}");
+            
             // Since we generate planets sequentially and wait for each to complete,
             // all surfaces should be ready by this point
             UpdateLoadingProgress(0.70f, "Generating minimaps...");
@@ -1136,16 +1179,25 @@ public class GameManager : MonoBehaviour
             // If the UI is configured to bulk pre-generate, run and wait; otherwise, rely on event-driven generation
             if (minimapUI.PreGenerateAll)
             {
+                Debug.Log("[GameManager] (Multi-Planet) PreGenerateAll is true, starting minimap generation...");
                 minimapUI.StartMinimapGeneration();
+                Debug.Log("[GameManager] (Multi-Planet) Waiting for minimap generation to complete...");
                 while (!minimapUI.MinimapsPreGenerated)
                     yield return null;
                 Debug.Log("[GameManager] Minimap pre-generation complete");
+                UpdateLoadingProgress(0.80f, "Minimaps complete...");
             }
             else
             {
                 // Event-driven mode: MinimapUI will generate textures per-planet as events fire; no blocking here
                 Debug.Log("[GameManager] Using event-driven minimap generation");
+                UpdateLoadingProgress(0.80f, "Minimap generation deferred...");
             }
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] (Multi-Planet) MinimapUI component not found! Skipping minimap generation.");
+            UpdateLoadingProgress(0.80f, "Minimap generation skipped...");
         }
 
         // Update loading progress - UI setup
@@ -1450,39 +1502,40 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("[GameManager] Starting civilization and animal spawning on all planets");
         
-        for (int planetIndex = 0; planetIndex < maxPlanets; planetIndex++)
+        // Spawn civilizations and animals only on Earth (planet 0)
+        var earthPlanetGen = GetPlanetGenerator(0);
+        if (earthPlanetGen != null && earthPlanetGen.HasGeneratedSurface)
         {
-            var planetGen = GetPlanetGenerator(planetIndex);
-            if (planetGen != null && planetGen.HasGeneratedSurface)
+            Debug.Log("[GameManager] Spawning on Earth (planet 0)");
+            
+            // Spawn civilizations on Earth
+            if (civilizationManager != null)
             {
-                Debug.Log($"[GameManager] Spawning on planet {planetIndex}");
-                
-                // Spawn civilizations (only on Earth for now)
-                if (planetIndex == 0 && civilizationManager != null)
+                Debug.Log("[GameManager] Spawning civilizations on Earth (planet 0)");
+                CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
+                if (playerCivData == null)
                 {
-                    Debug.Log($"[GameManager] Spawning civilizations on Earth (planet {planetIndex})");
-                    CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
-                    if (playerCivData == null)
-                    {
-                        Debug.LogWarning("No player civilization selected in GameSetupData. Using default.");
-                    }
-                    
-                    civilizationManager.SpawnCivilizations(playerCivData, 4, 2, 2);
+                    Debug.LogWarning("No player civilization selected in GameSetupData. Using default.");
                 }
                 
-                // Spawn animals on this planet
-                var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
-                if (animalManagerInstance != null)
-                {
-                    Debug.Log($"[GameManager] Spawning animals on planet {planetIndex}");
-                    animalManagerInstance.SpawnInitialAnimals();
-                }
-                
-                yield return null; // Spread across frames
+                civilizationManager.SpawnCivilizations(playerCivData, 4, 2, 2);
             }
+            
+            // Spawn animals on Earth (only once!)
+            var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+            if (animalManagerInstance != null)
+            {
+                Debug.Log("[GameManager] Spawning animals on Earth (planet 0) - single call only");
+                animalManagerInstance.SpawnInitialAnimals();
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Earth (planet 0) not ready for spawning");
         }
         
         Debug.Log("[GameManager] Civilization and animal spawning complete on all planets");
+        yield break;
     }
 
     /// <summary>
@@ -1773,9 +1826,6 @@ public class GameManager : MonoBehaviour
         if (body == "Earth")
         {
             generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
-            generator.polarLatitudeThreshold = GameSetupData.polarLatitudeThreshold;
-            generator.subPolarLatitudeThreshold = GameSetupData.subPolarLatitudeThreshold;
-            generator.equatorLatitudeThreshold = GameSetupData.equatorLatitudeThreshold;
             generator.moistureBias = GameSetupData.moistureBias;
             generator.temperatureBias = GameSetupData.temperatureBias;
             generator.landThreshold = GameSetupData.landThreshold;
@@ -1783,6 +1833,8 @@ public class GameManager : MonoBehaviour
 
     Debug.Log($"[GameManager] Starting surface generation for planet {planetIndex}");
     yield return StartCoroutine(generator.GenerateSurface());
+    // Safety: ensure visuals exist before registration/events
+    yield return StartCoroutine(generator.EnsureVisualsSpawned());
     Debug.Log($"[GameManager] Surface generation complete for planet {planetIndex}");
     
     // CRITICAL FIX: Register the planet generator BEFORE firing events
@@ -1858,6 +1910,8 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log($"[GameManager] Generating surface for planet {planetIndex}");
             yield return StartCoroutine(generator.GenerateSurface());
+            // Ensure visuals exist after generation when switching planets
+            yield return StartCoroutine(generator.EnsureVisualsSpawned());
         }
 
         if (moonGenerator != null && moonGenerator.Grid.TileCount > 0 && moonGenerator.Tiles.Count == 0)
@@ -1883,6 +1937,9 @@ public class GameManager : MonoBehaviour
         Debug.Log("Generating planet...");
         // Use GenerateSurface as a coroutine and wait for all map generation to finish
         yield return StartCoroutine(planetGenerator.GenerateSurface());
+        // Safety: ensure tile prefabs/decorations are spawned
+        if (planetGenerator != null)
+            yield return StartCoroutine(planetGenerator.EnsureVisualsSpawned());
 
         // Automatically update SunBillboard radius after planet is generated
         var sunBB = FindAnyObjectByType<SunBillboard>();

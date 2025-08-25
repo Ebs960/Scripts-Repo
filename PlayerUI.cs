@@ -199,10 +199,14 @@ public class PlayerUI : MonoBehaviour
     public void InitializePlayerDisplay(Civilization civ, int round)
     {
         Debug.Log($"PlayerUI: InitializePlayerDisplay called for {civ?.civData?.civName ?? "NULL"}, Round: {round}");
+        
+        // Only activate if loading is not active
+        bool shouldActivate = !IsLoadingActive();
+        
         if (playerPanel != null) 
         {
-            playerPanel.SetActive(true);
-            Debug.Log("PlayerUI: playerPanel activated by InitializePlayerDisplay.");
+            playerPanel.SetActive(shouldActivate);
+            Debug.Log($"PlayerUI: playerPanel activation set to {shouldActivate} by InitializePlayerDisplay.");
         }
         else
         {
@@ -218,6 +222,28 @@ public class PlayerUI : MonoBehaviour
             currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
         }
         UpdatePlayerPanel(civ, round);
+    }
+    
+    /// <summary>
+    /// Check if any loading panel is currently active or minimap generation is in progress
+    /// </summary>
+    private bool IsLoadingActive()
+    {
+        if (LoadingPanelController.Instance != null)
+        {
+            if (LoadingPanelController.Instance.gameObject.activeSelf)
+                return true;
+        }
+        
+        // Also check if minimap generation is still in progress
+        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
+        {
+            Debug.Log("[PlayerUI] Minimap generation still in progress, keeping UI hidden");
+            return true;
+        }
+        
+        return false;
     }
 
     void OnEnable()

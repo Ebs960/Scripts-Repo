@@ -27,6 +27,12 @@ public class UIManager : MonoBehaviour
     [Range(0f,1f)] public float uiClickVolume = 1f;
     private AudioSource uiAudioSource;
     private readonly HashSet<Button> wiredButtons = new HashSet<Button>();
+    private readonly HashSet<Toggle> wiredToggles = new HashSet<Toggle>();
+    private readonly HashSet<Dropdown> wiredDropdowns = new HashSet<Dropdown>();
+    private readonly HashSet<TMPro.TMP_Dropdown> wiredTMPDropdowns = new HashSet<TMPro.TMP_Dropdown>();
+    private readonly HashSet<Slider> wiredSliders = new HashSet<Slider>();
+    private readonly HashSet<Scrollbar> wiredScrollbars = new HashSet<Scrollbar>();
+    private readonly HashSet<ScrollRect> wiredScrollRects = new HashSet<ScrollRect>();
 
     [Header("Notification Settings")]
     public float notificationDuration = 3f;
@@ -41,7 +47,7 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        Instance = this;
+        UIManager.Instance = this;
         DontDestroyOnLoad(gameObject);
         panelDict = new Dictionary<string, GameObject>
         {
@@ -70,8 +76,9 @@ public class UIManager : MonoBehaviour
         };
         HideAllPanels();
         
-        // Keep PlayerUI active - it should be visible at game start
-        if (playerUI != null) playerUI.SetActive(true);
+        // Keep PlayerUI active - it should be visible at game start (unless loading is active)
+        if (playerUI != null && !IsLoadingActive()) 
+            playerUI.SetActive(true);
 
         // Ensure we have an AudioSource for UI sounds
         uiAudioSource = GetComponent<AudioSource>();
@@ -81,7 +88,30 @@ public class UIManager : MonoBehaviour
         uiAudioSource.spatialBlend = 0f;
 
         // Wire click sounds for all known panels/buttons
-        WireAllPanelsForClickSound();
+    WireAllPanelsForClickSound();
+    }
+    
+    /// <summary>
+    /// Check if any loading panel is currently active or minimap generation is in progress
+    /// </summary>
+    private bool IsLoadingActive()
+    {
+        if (LoadingPanelController.Instance != null)
+        {
+            // Check if the loading panel is active
+            if (LoadingPanelController.Instance.gameObject.activeSelf)
+                return true;
+        }
+        
+        // Also check if minimap generation is still in progress
+        var minimapUI = FindFirstObjectByType<MinimapUI>();
+        if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
+        {
+            Debug.Log("[UIManager] Minimap generation still in progress, treating as loading active");
+            return true;
+        }
+        
+        return false;
     }
 
     /// <summary>
@@ -89,13 +119,16 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ShowPanel(string name)
     {
+        // Don't show panels while loading is active
+        if (IsLoadingActive()) return;
+        
         HideAllPanels();
         if (!panelDict.TryGetValue(name, out var panel))
             panelDict.TryGetValue(name.ToLowerInvariant(), out panel);
         if (panel != null)
         {
             panel.SetActive(true);
-            WireButtons(panel);
+            WireUIInteractions(panel);
         }
     }
 
@@ -121,8 +154,8 @@ public class UIManager : MonoBehaviour
                 panel.SetActive(false);
         }
 
-        // Always keep the main PlayerUI visible
-        if (playerUI != null)
+        // Always keep the main PlayerUI visible (unless loading is active)
+        if (playerUI != null && !IsLoadingActive())
             playerUI.SetActive(true);
     }
 
@@ -222,8 +255,8 @@ public class UIManager : MonoBehaviour
             equipmentPanel.SendMessage("Show", civ, SendMessageOptions.DontRequireReceiver);
         else
             equipmentPanel.SendMessage("ShowDefault", SendMessageOptions.DontRequireReceiver);
-        ShowPanel("EquipmentPanel");
-    WireButtons(equipmentPanel);
+    ShowPanel("EquipmentPanel");
+    WireUIInteractions(equipmentPanel);
     }
 
     public void HideEquipmentPanel()
@@ -240,13 +273,16 @@ public class UIManager : MonoBehaviour
         {
             var panel = kvp.Value;
             if (panel != null)
-                WireButtons(panel);
+                WireUIInteractions(panel);
         }
     }
 
-    private void WireButtons(GameObject root)
+    // Public in case dynamic UIs want to call it after populating lists
+    public void WireUIInteractions(GameObject root)
     {
         if (root == null) return;
+
+        // Buttons
         var buttons = root.GetComponentsInChildren<Button>(true);
         foreach (var btn in buttons)
         {
@@ -254,14 +290,73 @@ public class UIManager : MonoBehaviour
             btn.onClick.AddListener(PlayUIClick);
             wiredButtons.Add(btn);
         }
+
+        // Toggles
+        var toggles = root.GetComponentsInChildren<Toggle>(true);
+        foreach (var t in toggles)
+        {
+            if (t == null || wiredToggles.Contains(t)) continue;
+            t.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredToggles.Add(t);
+        }
+
+        // Unity Dropdown
+        var dropdowns = root.GetComponentsInChildren<Dropdown>(true);
+        foreach (var d in dropdowns)
+        {
+            if (d == null || wiredDropdowns.Contains(d)) continue;
+            d.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredDropdowns.Add(d);
+        }
+
+        // TMP Dropdown
+        var tmpDropdowns = root.GetComponentsInChildren<TMPro.TMP_Dropdown>(true);
+        foreach (var d in tmpDropdowns)
+        {
+            if (d == null || wiredTMPDropdowns.Contains(d)) continue;
+            d.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredTMPDropdowns.Add(d);
+        }
+
+        // Sliders
+        var sliders = root.GetComponentsInChildren<Slider>(true);
+        foreach (var s in sliders)
+        {
+            if (s == null || wiredSliders.Contains(s)) continue;
+            s.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredSliders.Add(s);
+        }
+
+        // Scrollbars
+        var scrollbars = root.GetComponentsInChildren<Scrollbar>(true);
+        foreach (var sb in scrollbars)
+        {
+            if (sb == null || wiredScrollbars.Contains(sb)) continue;
+            sb.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredScrollbars.Add(sb);
+        }
+
+        // ScrollRects (Scroll View) — play a click on scroll interactions
+        var scrollRects = root.GetComponentsInChildren<ScrollRect>(true);
+        foreach (var sr in scrollRects)
+        {
+            if (sr == null || wiredScrollRects.Contains(sr)) continue;
+            sr.onValueChanged.AddListener(_ => PlayUIClick());
+            wiredScrollRects.Add(sr);
+        }
     }
 
     private void PlayUIClick()
     {
-        if (uiClickClip != null && uiAudioSource != null)
+        // Prefer the global GameManager audio so all UI sounds are consistent.
+        if (GameManager.Instance != null)
         {
-            uiAudioSource.PlayOneShot(uiClickClip, uiClickVolume);
+            GameManager.Instance.PlayUIClick();
+            return;
         }
+        // Fallback to local AudioSource if global is unavailable.
+        if (uiClickClip != null && uiAudioSource != null)
+            uiAudioSource.PlayOneShot(uiClickClip, uiClickVolume);
     }
 
     public void ShowDiplomacyPanel(Civilization civ)
@@ -276,6 +371,8 @@ public class UIManager : MonoBehaviour
         // First activate the diplomacy panel GameObject
         diplomacyPanel.SetActive(true);
         Debug.Log("[UIManager] Diplomacy panel GameObject activated");
+    // Wire interactions for click sounds (buttons, toggles, dropdowns, sliders, scrollbars, scrollrects)
+    WireUIInteractions(diplomacyPanel);
         
         // Then find and call the DiplomacyUI component
         var diplomacyUI = diplomacyPanel.GetComponent<DiplomacyUI>();
@@ -365,7 +462,7 @@ public class UIManager : MonoBehaviour
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(true);
-            WireButtons(pauseMenuPanel);
+            WireUIInteractions(pauseMenuPanel);
             Debug.Log("[UIManager] Pause menu panel activated");
         }
         else

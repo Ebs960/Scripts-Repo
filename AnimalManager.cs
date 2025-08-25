@@ -318,12 +318,10 @@ public class AnimalManager : MonoBehaviour
 
     void TrySpawn(AnimalSpawnRule rule)
     {
-        Debug.Log($"[AnimalManager] TrySpawn called for {rule.unitData.unitName}");
         var candidates = new List<int>();
         // FIXED: Always spawn animals on Earth (planet index 0) regardless of current planet
         var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
-        Debug.Log($"[AnimalManager] Earth planet exists? {planet != null}, tile count: {tileCount}");
 
         for (int i = 0; i < tileCount; i++)
         {
@@ -357,6 +355,5 @@ public class AnimalManager : MonoBehaviour
 
         activeAnimals.Add(unit);
         unit.OnDeath += () => activeAnimals.Remove(unit);
-        Debug.Log($"[AnimalManager] Successfully spawned {rule.unitData.unitName} at tile {chosenIndex}");
     }
 }

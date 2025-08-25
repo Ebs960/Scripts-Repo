@@ -156,7 +156,6 @@ public class ResourceManager : MonoBehaviour
         // MULTI-PLANET FIX: Spawn resources on all planets, not just current one
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
-            Debug.Log("[ResourceManager] Multi-planet mode: spawning resources on all planets");
             // Multi-planet mode: iterate through all planets
             var planetData = GameManager.Instance.GetPlanetData();
             foreach (var kvp in planetData)
@@ -186,7 +185,6 @@ public class ResourceManager : MonoBehaviour
             SpawnResourcesOnPlanet(planetGenerator, 0);
         }
         
-        Debug.Log($"[ResourceManager] Resource spawning completed. Total spawned: {spawnedResources.Count}");
     }
     
     /// <summary>

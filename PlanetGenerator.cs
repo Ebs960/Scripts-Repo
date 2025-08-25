@@ -393,17 +393,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
     public int initializationDelay = 1;
-    // [Extrusion Settings] Removed: no longer used in surface calculations
-    [Header("Climate Settings")]
-    [Range(0.65f, 0.95f)]
-    [Tooltip("Controls the size of polar regions. Lower values = larger polar regions (0.7=63° latitude, 0.8=72° latitude)")]
-    public float polarLatitudeThreshold = 0.8f;
-    [Range(0.45f, 0.6f)]
-    [Tooltip("Latitude above which Tundra/Taiga biomes appear. Must always be lower than Polar threshold.")]
-    public float subPolarLatitudeThreshold = 0.7f;
-    [Range(0.0f, 0.4f)]
-    [Tooltip("Latitude (absolute) below which the special Equator band applies (tropical/desert/savanna only). Must be lower than Sub-polar threshold.")]
-    public float equatorLatitudeThreshold = 0.2f;
 
     [Header("Map Type")]
     public string currentMapTypeName = ""; // The current map type name
@@ -494,21 +483,120 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         
 
-        // Build prefab lookup dictionaries for flat and hill tiles
+        // Build prefab lookup dictionaries. Prefer manual assignments if present; otherwise attempt auto-lookup by name under Resources.
         flatBiomePrefabs = new Dictionary<Biome, GameObject[]>();
         hillBiomePrefabs = new Dictionary<Biome, GameObject[]>();
+        bool anyManual = false;
         foreach (var entry in biomePrefabList)
         {
             if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+            {
                 flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
+                anyManual = true;
+            }
             if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+            {
                 hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
-            // Debug checks for pentagon prefabs
-            if (entry.pentagonFlatPrefabs == null || entry.pentagonFlatPrefabs.Length == 0)
-                Debug.LogWarning($"Pentagon flat prefabs NOT assigned for biome {entry.biome}");
+                anyManual = true;
+            }
+        }
 
-            if (entry.pentagonHillPrefabs == null || entry.pentagonHillPrefabs.Length == 0)
-                Debug.LogWarning($"Pentagon hill prefabs NOT assigned for biome {entry.biome}");
+        if (!anyManual)
+        {
+            // Auto-load prefabs named by convention from Resources/Tiles/**
+            // Expected names:
+            //   "{Biome} flat hex tile", "{Biome} flat hex tile 2", "{Biome} hills hex tile",
+            //   "{Biome} pentagon flat hex tile", "{Biome} pentagon hills hex tile",
+            //   Mountains: "Mountain Hex Tile", "Pentagon Mountain Tile"
+            var allPrefabs = Resources.LoadAll<GameObject>("Tiles");
+            if (allPrefabs == null || allPrefabs.Length == 0)
+            {
+                Debug.LogWarning("[PlanetGenerator] No prefabs found in Resources/Tiles. Name-based auto-loading will find nothing. Ensure your tile prefabs are placed under Assets/Resources/Tiles and named per the conventions.");
+            }
+            Dictionary<string, List<GameObject>> nameIndex = new Dictionary<string, List<GameObject>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var go in allPrefabs)
+            {
+                if (go == null) continue;
+                string n = go.name.Trim();
+                if (!nameIndex.TryGetValue(n, out var list)) { list = new List<GameObject>(); nameIndex[n] = list; }
+                list.Add(go);
+            }
+
+            // Helper to try get by exact or startswith
+            List<GameObject> FindMany(string exact, string startsWith = null)
+            {
+                if (nameIndex.TryGetValue(exact, out var list) && list.Count > 0)
+                    return list;
+                if (!string.IsNullOrEmpty(startsWith))
+                {
+                    var matches = new List<GameObject>();
+                    foreach (var kv in nameIndex)
+                    {
+                        if (kv.Key.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase))
+                            matches.AddRange(kv.Value);
+                    }
+                    if (matches.Count > 0) return matches;
+                }
+                return new List<GameObject>();
+            }
+
+            // Build entries for each biome
+            foreach (Biome biome in Enum.GetValues(typeof(Biome)))
+            {
+                // Skip Any pseudo-biome
+                if (biome == Biome.Any) continue;
+                string biomeName = biome.ToString();
+
+                // Mountains handled specially
+                if (biome == Biome.Mountain)
+                {
+                    var mountainHex = FindMany("Mountain Hex Tile", "Mountain Hex Tile");
+                    var mountainPent = FindMany("Pentagon Mountain Tile", "Pentagon Mountain Tile");
+                    var entry = new BiomePrefabEntry
+                    {
+                        biome = biome,
+                        mountainPrefabs = mountainHex.ToArray(),
+                        pentagonMountainPrefabs = mountainPent.ToArray(),
+                        flatPrefabs = Array.Empty<GameObject>(),
+                        hillPrefabs = Array.Empty<GameObject>(),
+                        pentagonFlatPrefabs = Array.Empty<GameObject>(),
+                        pentagonHillPrefabs = Array.Empty<GameObject>()
+                    };
+                    biomePrefabList.Add(entry);
+                    continue;
+                }
+
+                // Non-mountain sets
+                var flatA = FindMany($"{biomeName} flat hex tile", $"{biomeName} flat hex tile");
+                // Include optional secondary flat variant named "... 2"
+                flatA.AddRange(FindMany($"{biomeName} flat hex tile 2"));
+                var hills = FindMany($"{biomeName} hills hex tile", $"{biomeName} hills hex tile");
+                // New naming: "{Biome} pentagon flat tile" / "{Biome} pentagon hills tile"
+                var pFlat = FindMany($"{biomeName} flat pentagon tile", $"{biomeName} flat pentagon tile");
+                var pHills = FindMany($"{biomeName} pentagon hills tile", $"{biomeName} pentagon hills tile");
+                // Back-compat: also accept the older names with "hex"
+                if (pFlat.Count == 0)
+                    pFlat.AddRange(FindMany($"{biomeName} pentagon flat hex tile", $"{biomeName} pentagon flat hex tile"));
+                if (pHills.Count == 0)
+                    pHills.AddRange(FindMany($"{biomeName} pentagon hills hex tile", $"{biomeName} pentagon hills hex tile"));
+
+                if (flatA.Count == 0 && hills.Count == 0 && pFlat.Count == 0 && pHills.Count == 0)
+                    continue; // nothing found for this biome
+
+                var autoEntry = new BiomePrefabEntry
+                {
+                    biome = biome,
+                    flatPrefabs = flatA.ToArray(),
+                    hillPrefabs = hills.ToArray(),
+                    mountainPrefabs = Array.Empty<GameObject>(),
+                    pentagonFlatPrefabs = pFlat.ToArray(),
+                    pentagonHillPrefabs = pHills.ToArray(),
+                    pentagonMountainPrefabs = Array.Empty<GameObject>()
+                };
+                biomePrefabList.Add(autoEntry);
+                if (autoEntry.flatPrefabs.Length > 0) flatBiomePrefabs[biome] = autoEntry.flatPrefabs;
+                if (autoEntry.hillPrefabs.Length > 0) hillBiomePrefabs[biome] = autoEntry.hillPrefabs;
+            }
         }
 
         // Initialize the grid for this planet (will be configured by GameManager)
@@ -572,23 +660,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         tileElevation.Clear();
         Tiles.Clear();
         landTilesGenerated = 0;
-
-        // --- Validate Thresholds ---
-        if (hillThreshold >= mountainThreshold) {
-            hillThreshold = mountainThreshold - 0.01f;
-            if (hillThreshold < 0) hillThreshold = 0;
-            Debug.LogWarning("Hill threshold cannot be >= Mountain threshold. Adjusting Hill threshold to " + hillThreshold);
-        }
-        if (subPolarLatitudeThreshold >= polarLatitudeThreshold) {
-            subPolarLatitudeThreshold = polarLatitudeThreshold - 0.05f;
-            if (subPolarLatitudeThreshold < 0f) subPolarLatitudeThreshold = 0f;
-            Debug.LogWarning("SubPolar Latitude threshold cannot be >= Polar threshold. Adjusting SubPolar threshold to " + subPolarLatitudeThreshold);
-        }
-        if (equatorLatitudeThreshold >= subPolarLatitudeThreshold) {
-            equatorLatitudeThreshold = subPolarLatitudeThreshold - 0.05f;
-            if (equatorLatitudeThreshold < 0f) equatorLatitudeThreshold = 0f;
-            Debug.LogWarning("Equator Latitude threshold cannot be >= SubPolar threshold. Adjusting Equator threshold to " + equatorLatitudeThreshold);
-        }
 
         // ── 1. Noise Offset Setup (as before) ──────────────────────────────
         if (noiseOffset == Vector3.zero) {
@@ -710,9 +781,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (allowIslands)
             yield return StartCoroutine(GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount));
 
-        // ---------- 4.6. Generate Polar Landmasses (NEW) ---------
-        this.landTilesGenerated += GeneratePolarLandmasses(isLandTile, tileLatLon, tileNoiseCache, tileCount);
-
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceans)
         {
@@ -736,19 +804,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Vector2 latLon = tileLatLon[i];
             float absLatitude = Mathf.Abs(latLon.x) / 90f;
             
-            // Generate temperature from noise instead of latitude for non-polar areas
-            float temperature;
-            if (absLatitude >= polarLatitudeThreshold) {
-                // For polar areas, keep latitude-based temperature (cold)
-                temperature = noise.GetTemperature(absLatitude);
-            } else {
-                // For non-polar areas, blend latitude-based temperature with noise-based temperature
-                float latitudeTemp = 1f - Mathf.Pow(absLatitude / polarLatitudeThreshold, 0.7f); // Scaled to be 0 at polarThreshold, 1 at equator
-                float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
-                
-                // Blend: e.g., 70% latitude influence, 30% noise influence
-                temperature = (latitudeTemp * 0.7f) + (noiseTemp * 0.3f);
-            }
+            // Generate temperature from noise and latitude
+            float latitudeTemp = 1f - Mathf.Pow(absLatitude, 0.7f); 
+            float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
+            
+            // Blend: e.g., 70% latitude influence, 30% noise influence
+            float temperature = (latitudeTemp * 0.7f) + (noiseTemp * 0.3f);
             temperature = Mathf.Clamp01(temperature + temperatureBias);
 
             Biome biome;
@@ -763,36 +824,23 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Override polar land areas with frozen biomes
-                if (absLatitude >= polarLatitudeThreshold) {
-                    // Use latitude distance from threshold to determine how "polar" it is
-                    float polarIntensity = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
-                    
-                    if (polarIntensity > 0.7f) {
-                        // Most extreme polar regions: Arctic (coldest of all)
-                        biome = Biome.Arctic;
-                    } else if (moisture > 0.3f) {
-                        // Less extreme but wet polar: Snow
-                        biome = Biome.Snow;
-                    } else {
-                        // Less extreme and dry polar: Frozen
-                        biome = Biome.Frozen;
-                    }
-                }
+                // REMOVED: Earth-specific polar override that was overriding planet-specific biome logic
+                // BiomeHelper.GetBiome() now handles all planet-specific biome assignments correctly
+                // This polar override was forcing Earth biomes on all planets regardless of type
 
-                if (finalElevation > mountainThreshold) { 
-                    biome = Biome.Mountain;
+                // Mountain/Hill check, but protect polar biomes from being overridden
+                if (finalElevation > mountainThreshold) {
+                    if (biome != Biome.Glacier && biome != Biome.Arctic && biome != Biome.Frozen && biome != Biome.Tundra && biome != Biome.Snow)
+                    {
+                        biome = Biome.Mountain;
+                    }
                 } else if (finalElevation > hillThreshold) { 
                     isHill = true; // isHill is separate from biome type, can coexist unless biome is Mountain
                 }
             } else { // Water Biomes
                  finalElevation = 0f; // Water elevation is 0
-                 // Classify polar water tiles as glaciers, everything else as ocean
-                 if (absLatitude >= polarLatitudeThreshold) {
-                    biome = Biome.Glacier;
-                 } else {
-                     biome = Biome.Ocean;
-                }
+                 // FIXED: Use BiomeHelper for water biomes too - no hardcoded polar glaciers
+                 biome = GetBiomeForTile(i, false, temperature, moisture);
             }
 
             // *** Override for Glaciers: Treat them like land for elevation ***
@@ -989,6 +1037,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         yield return null;
 
+        // --- Visual Generation ---
+        Debug.Log("[PlanetGenerator] Spawning all tile prefabs...");
+        yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+        
+        Debug.Log("[PlanetGenerator] Spawning all tile decorations...");
+        yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+
+        // Finalize
+        HasGeneratedSurface = true;
+        Tiles = data.Values.ToList();
+        Debug.Log($"[PlanetGenerator] Surface generation complete. Total tiles: {Tiles.Count}");
+
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
         {
@@ -1072,7 +1132,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
 
                 // 2. Find path using greedy descent
-                List<int> path = FindPathGreedy(startTileIndex, coastTilesList, tileData, riverTiles);
+                List<int> path = FindPathGreedy(startTileIndex, coastTilesList, tileData, riverTiles, protectedBiomeTiles);
 
                 // 3. Validate the path
                 if (path == null || path.Count < minRiverLength || path.Count > maxRiverPathLength) {
@@ -1232,11 +1292,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             
             this.landTilesGenerated += localIslandTilesGenerated;
         }
+    }
         
         /// <summary>
         /// Generates seed positions for islands using a more random approach than continents
         /// </summary>
-        List<Vector3> GenerateIslandSeeds(int count, int rndSeed) {
+        private List<Vector3> GenerateIslandSeeds(int count, int rndSeed) {
             List<Vector3> seeds = new List<Vector3>();
             System.Random rand = new System.Random(rndSeed);
             
@@ -1332,223 +1393,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             return true;
         }
 
-        /// <summary>
-        /// Generate landmasses specifically in polar regions to ensure solid polar land
-        /// </summary>
-        int GeneratePolarLandmasses(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
-                                   Dictionary<int, float> tileNoiseCache, int tileCount) {
-            
-            
-            int polarTilesGenerated = 0;
-            float polarLandProbability = 0.4f; // 40% of polar tiles become land
-            System.Random rand = new System.Random(seed ^ 0x5674);
-            
-            for (int i = 0; i < tileCount; i++) {
-                // Skip tiles that are already land
-                if (isLandTile[i]) continue;
-                
-                Vector2 latLon = tileLatLon[i];
-                float absLatitude = Mathf.Abs(latLon.x) / 90f;
-                
-                // Only affect polar regions
-                if (absLatitude >= polarLatitudeThreshold) {
-                    // Use noise + probability to determine if this polar tile becomes land
-                    Vector3 tilePos = grid.tileCenters[i].normalized;
-                    float noiseValue;
-                    
-                    if (!tileNoiseCache.TryGetValue(i, out noiseValue)) {
-                        Vector3 noisePos = tilePos + noiseOffset;
-                        noiseValue = noise.GetContinent(noisePos * continentNoiseFrequency);
-                        tileNoiseCache[i] = noiseValue;
-                    }
-                    
-                    // Combine noise with probability and polar distance
-                    float polarStrength = (absLatitude - polarLatitudeThreshold) / (1f - polarLatitudeThreshold);
-                    float landChance = polarLandProbability + (noiseValue * 0.3f) + (polarStrength * 0.2f);
-                    
-                    if (rand.NextDouble() < landChance) {
-                        isLandTile[i] = true;
-                        polarTilesGenerated++;
-                    }
-                }
-            }
-            
-            return polarTilesGenerated;
-        }
-
-        // Visual textures no longer generated; tiles are represented by prefabs
-
-        // --- GPU river carving ---
-        List<int> riverTiles = new();
-        for (int i = 0; i < grid.TileCount; i++)
-            if (data[i].biome == Biome.River)
-                riverTiles.Add(i);
-
-        // River carving step removed in simplified prefab-based system
-
-        // Tile grid is ready; textures are no longer generated at runtime
-
-        // Populate the public tile list with the final tile data
-        Tiles = data.Values.ToList();
-
-        // Spawn visual prefabs if any are defined
-        // Only spawn prefabs if any flat or hill prefabs are present
-        if (flatBiomePrefabs.Count > 0 || hillBiomePrefabs.Count > 0)
-        {
-            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
-            
-            // Spawn decorations in batches after all tile prefabs are created
-            if (decorationManager != null && decorationManager.enableDecorations)
-                yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
-        }
-
-        // Normalize tile distances for uniform spacing (after everything else is done)
-        if (enableExpensivePostProcessing && enableTileNormalization)
-        {
-            StartCoroutine(NormalizeTileDistances());
-        }
-        else
-        {
-            Debug.Log("Skipping tile normalization for better performance");
-            HasGeneratedSurface = true; // Set the flag when normalization is skipped
-        }
-
-        // Generate global water mesh once terrain is ready
-        var waterGen = GetComponent<WaterMeshGenerator>();
-        if (waterGen != null)
-            waterGen.Generate(grid.Radius);
-    }
-
-    /// <summary>
-    /// Normalizes distances between neighboring tile centers using Lloyd's relaxation algorithm.
-    /// This creates uniform spacing between tiles with minimal sphere deformation.
-    /// </summary>
-    private System.Collections.IEnumerator NormalizeTileDistances()
-    {
-        if (loadingPanelController != null)
-        {
-            loadingPanelController.SetProgress(0.95f);
-            loadingPanelController.SetStatus("Normalizing tile spacing...");
-        }
-        
-        const int maxIterations = 5; // Number of relaxation iterations
-        const float relaxationFactor = 0.1f; // How much to move each iteration (0.1 = 10%)
-        const int batchSize = 200; // Process tiles in batches
-        
-        // Calculate target distance (average of all neighbor distances) with batching
-        float totalDistance = 0f;
-        int distanceCount = 0;
-        
-        for (int i = 0; i < grid.TileCount; i++)
-        {
-            Vector3 tileCenter = grid.tileCenters[i];
-            foreach (int neighborIndex in grid.neighbors[i])
-            {
-                float distance = Vector3.Distance(tileCenter, grid.tileCenters[neighborIndex]);
-                totalDistance += distance;
-                distanceCount++;
-            }
-            
-            // Yield periodically during distance calculation
-            if (i % batchSize == 0)
-                yield return null;
-        }
-        
-        float targetDistance = totalDistance / distanceCount;
-        Debug.Log($"Target tile distance: {targetDistance:F4}");
-        
-        // Perform relaxation iterations with batching
-        for (int iteration = 0; iteration < maxIterations; iteration++)
-        {
-            Vector3[] newPositions = new Vector3[grid.TileCount];
-            
-            // Copy current positions
-            for (int i = 0; i < grid.TileCount; i++)
-            {
-                newPositions[i] = grid.tileCenters[i];
-            }
-            
-            // Calculate new positions based on target distances in batches
-            for (int i = 0; i < grid.TileCount; i++)
-            {
-                Vector3 currentPos = grid.tileCenters[i];
-                Vector3 adjustment = Vector3.zero;
-                int neighborCount = 0;
-                
-                foreach (int neighborIndex in grid.neighbors[i])
-                {
-                    Vector3 neighborPos = grid.tileCenters[neighborIndex];
-                    Vector3 direction = (neighborPos - currentPos).normalized;
-                    float currentDistance = Vector3.Distance(currentPos, neighborPos);
-                    
-                    if (currentDistance > 0.001f) // Avoid division by zero
-                    {
-                        float distanceError = targetDistance - currentDistance;
-                        adjustment += direction * distanceError * 0.5f; // Move half the error distance
-                        neighborCount++;
-                    }
-                }
-                
-                if (neighborCount > 0)
-                {
-                    adjustment /= neighborCount; // Average adjustment
-                    newPositions[i] = currentPos + adjustment * relaxationFactor;
-                    
-                    // Project back onto sphere to maintain spherical shape (with slight deformation allowed)
-                    float originalRadius = currentPos.magnitude;
-                    newPositions[i] = newPositions[i].normalized * originalRadius;
-                }
-                
-                // Yield every batch to prevent frame drops
-                if (i % batchSize == 0)
-                {
-                    if (loadingPanelController != null)
-                    {
-                        float iterationProgress = (float)iteration / maxIterations;
-                        float batchProgress = (float)i / grid.TileCount;
-                        float totalProgress = 0.95f + (iterationProgress + batchProgress / maxIterations) * 0.05f;
-                        loadingPanelController.SetProgress(totalProgress);
-                        loadingPanelController.SetStatus($"Normalizing spacing... ({iteration + 1}/{maxIterations})");
-                    }
-                    yield return null;
-                }
-            }
-            
-            // Apply new positions
-            for (int i = 0; i < grid.TileCount; i++)
-            {
-                grid.tileCenters[i] = newPositions[i];
-            }
-        }
-        
-        Debug.Log("Tile distance normalization complete.");
-        HasGeneratedSurface = true;
-    }
-
-    // Helper: lat/long (deg) → unit vector
-    static Vector3 SphericalToCartesian(float latDeg, float lonDeg)
-    {
-        float lat = latDeg * Mathf.Deg2Rad;
-        float lon = lonDeg * Mathf.Deg2Rad;
-        float x = Mathf.Cos(lat) * Mathf.Cos(lon);
-        float y = Mathf.Sin(lat);
-        float z = Mathf.Cos(lat) * Mathf.Sin(lon);
-        return new Vector3(x, y, z);
-    }
-
-    // Helper: 3D direction vector -> 2D equirectangular texture coordinates
-    private static Vector2 WorldToEquirectangular(Vector3 direction, int textureWidth, int textureHeight)
-    {
-        direction.Normalize();
-        float longitude = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
-        float latitude = Mathf.Asin(direction.y) * Mathf.Rad2Deg;
-
-        float u = (longitude + 180f) / 360f;
-        float v = (180f - (latitude + 90f)) / 180f; // Invert V for texture space
-
-        return new Vector2(u * textureWidth, v * textureHeight);
-    }
-
     // --------------------------- API for other systems -----------------------
     public Biome GetBaseBiome(int tileIndex) =>
         baseData.TryGetValue(tileIndex, out HexTileData td) ? td.biome : Biome.Ocean;
@@ -1607,7 +1451,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
     }
 
-    // Method to set the current map type name and update flags
+    // Method to set the current map type and update flags
     public void SetMapTypeName(string mapTypeName)
     {
         currentMapTypeName = mapTypeName;
@@ -1619,15 +1463,34 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
-        return BiomeHelper.GetBiome(
+        // Calculate latitude and longitude for special biome rules
+        float latitude = 0f;
+        float longitude = 0f;
+        if (grid != null && grid.IsBuilt && tileIndex < grid.tileCenters.Length)
+        {
+            Vector3 tileCenter = grid.tileCenters[tileIndex];
+            // Convert to normalized latitude (-1 to +1, where ±1 are poles)
+            latitude = tileCenter.y / radius;
+            // Convert to longitude (-180 to +180 degrees)
+            longitude = Mathf.Atan2(tileCenter.z, tileCenter.x) * Mathf.Rad2Deg;
+        }
+        
+        Biome assignedBiome = BiomeHelper.GetBiome(
             isLand, temperature, moisture,
             isRainforestMapType, isScorchedMapType, isInfernalMapType, isDemonicMapType,
             isIceWorldMapType, isMonsoonMapType,
             isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
             isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
             isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
-            isCallistoWorldType, isLunaWorldType
+            isCallistoWorldType, isLunaWorldType, latitude, longitude
         );
+        
+        // Validate and log inappropriate biome assignments
+        return BiomeHelper.ValidateAndLogBiome(assignedBiome, 
+            isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
+            isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
+            isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
+            isCallistoWorldType, isLunaWorldType);
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)
@@ -1641,7 +1504,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// <summary>
     /// Finds a path from start tile to coast using greedy descent algorithm
     /// </summary>
-    private List<int> FindPathGreedy(int startTileIndex, List<int> coastTiles, Dictionary<int, HexTileData> tileData, HashSet<int> existingRiverTiles)
+    private List<int> FindPathGreedy(int startTileIndex, List<int> coastTiles, Dictionary<int, HexTileData> tileData, HashSet<int> existingRiverTiles, HashSet<int> protectedTiles)
     {
 
         List<int> path = new List<int>();
@@ -1657,7 +1520,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             // Find the lowest neighbor that isn't already in the path or another river
             foreach(int neighborIndex in neighbors) {
-                if (!pathSet.Contains(neighborIndex) && !existingRiverTiles.Contains(neighborIndex) && tileData.ContainsKey(neighborIndex)) {
+                if (!pathSet.Contains(neighborIndex) && !existingRiverTiles.Contains(neighborIndex) && !protectedTiles.Contains(neighborIndex) && tileData.ContainsKey(neighborIndex)) {
                     float neighborElevation = GetTileElevation(neighborIndex);
                     if (neighborElevation < minElevation) {
                         minElevation = neighborElevation;
@@ -2462,6 +2325,30 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Use the expected tile distance calculation
         float expectedDistance = CalculateExpectedTileDistance();
         return expectedDistance * 0.5f; // Radius is roughly half the distance to neighbors
+    }
+
+    /// <summary>
+    /// Safety net: ensure visual tiles and decorations exist. If not, spawn them now.
+    /// Use this from external callers right after GenerateSurface completes.
+    /// </summary>
+    public IEnumerator EnsureVisualsSpawned()
+    {
+        // If we already have a TilePrefabs container with children, assume visuals exist
+        var tileParent = transform.Find("TilePrefabs");
+        bool hasVisuals = tileParent != null && tileParent.childCount > 0;
+
+        if (!hasVisuals)
+        {
+            Debug.Log("[PlanetGenerator] EnsureVisualsSpawned: No tile visuals found, spawning now...");
+            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+            yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+            yield return null;
+        }
+        else
+        {
+            // Still allow a frame to settle when called in a chain
+            yield return null;
+        }
     }
 }
 

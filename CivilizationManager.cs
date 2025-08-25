@@ -459,7 +459,7 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     public void SpawnCivilizations(CivData playerCivData, int aiCount, int cityStateCount, int tribeCount)
     {
-        Debug.Log($"SpawnCivilizations called: AI={aiCount}, CityStates={cityStateCount}, Tribes={tribeCount}");
+        Debug.Log($"[CivilizationManager] SpawnCivilizations called: AI={aiCount}, CityStates={cityStateCount}, Tribes={tribeCount}");
         
         // Clear any existing civs
         civs.Clear();
@@ -481,12 +481,14 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         
+        Debug.Log($"[CivilizationManager] Found {allCivDatas.Length} civilization data assets");
 
         // Partition CivData pools
         var normalPool    = allCivDatas.Where(d => !d.isTribe && !d.isCityState).ToList();
         var tribePool     = allCivDatas.Where(d => d.isTribe).ToList();
         var cityStatePool = allCivDatas.Where(d => d.isCityState).ToList();
 
+        Debug.Log($"[CivilizationManager] Pool sizes - Normal: {normalPool.Count}, Tribes: {tribePool.Count}, City-States: {cityStatePool.Count}");
 
         // 1) Player civ
         if (playerCivData == null)
@@ -517,13 +519,14 @@ public class CivilizationManager : MonoBehaviour
         }
         
         // Spawn the player civilization
-        
+        Debug.Log($"[CivilizationManager] Spawning player civilization: {playerCivData.civName}");
         SpawnOneCivilization(playerCivData, occupied, isPlayer: true);
 
         // 2) AI civs
         Shuffle(normalPool);
         for (int i = 0; i < aiCount && i < normalPool.Count; i++)
         {
+            Debug.Log($"[CivilizationManager] Spawning AI civilization {i+1}/{aiCount}: {normalPool[i].civName}");
             SpawnOneCivilization(normalPool[i], occupied, isPlayer: false);
         }
 
@@ -531,6 +534,7 @@ public class CivilizationManager : MonoBehaviour
         Shuffle(cityStatePool);
         for (int i = 0; i < cityStateCount && i < cityStatePool.Count; i++)
         {
+            Debug.Log($"[CivilizationManager] Spawning city-state {i+1}/{cityStateCount}: {cityStatePool[i].civName}");
             SpawnOneCivilization(cityStatePool[i], occupied, isPlayer: false);
         }
 
@@ -538,6 +542,7 @@ public class CivilizationManager : MonoBehaviour
         Shuffle(tribePool);
         for (int i = 0; i < tribeCount && i < tribePool.Count; i++)
         {
+            Debug.Log($"[CivilizationManager] Spawning tribe {i+1}/{tribeCount}: {tribePool[i].civName}");
             SpawnOneCivilization(tribePool[i], occupied, isPlayer: false);
         }
 
@@ -569,8 +574,13 @@ public class CivilizationManager : MonoBehaviour
         {
             PositionCameraOnPlayerStart();
         }
+        else
+        {
+            Debug.LogWarning("[CivilizationManager] Cannot position camera: No player pioneer found!");
+        }
         
-        Debug.Log($"Civilization spawning complete. Total civs spawned: {civs.Count}");
+        Debug.Log($"[CivilizationManager] Civilization spawning complete. Total civs spawned: {civs.Count}");
+        Debug.Log($"[CivilizationManager] Total worker units spawned: {civs.Sum(c => c.workerUnits.Count)}");
     }
 
     /// <summary>
@@ -578,6 +588,7 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     void SpawnOneCivilization(CivData data, HashSet<int> occupied, bool isPlayer)
     {
+        Debug.Log($"[CivilizationManager] === SpawnOneCivilization START for {data?.civName} (isPlayer: {isPlayer}) ===");
         
         // Check for null data
         if (data == null)
@@ -595,6 +606,7 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         
+        Debug.Log($"[CivilizationManager] Finding spawn tile for {data.civName}...");
         var tile = FindSpawnTile(data, occupied, enforceClimate: true);
         if (tile < 0) tile = FindSpawnTile(data, occupied, enforceClimate: false);
         if (tile < 0)
@@ -603,6 +615,7 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
         occupied.Add(tile);
+        Debug.Log($"[CivilizationManager] Found spawn tile {tile} for {data.civName}");
 
         // Check if civilizationPrefab is assigned
         if (civilizationPrefab == null)
@@ -612,6 +625,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // Instantiate Civilization
+        Debug.Log($"[CivilizationManager] Instantiating civilization GameObject for {data.civName}...");
         GameObject civGO = Instantiate(civilizationPrefab);
         if (civGO == null)
         {
@@ -627,6 +641,8 @@ public class CivilizationManager : MonoBehaviour
             Destroy(civGO);
             return;
         }
+        
+        Debug.Log($"[CivilizationManager] Civilization GameObject created successfully for {data.civName}");
         
         // --- Leader Selection ---
         LeaderData chosenLeader = null;
@@ -658,12 +674,14 @@ public class CivilizationManager : MonoBehaviour
         }
         // --- End Leader Selection ---
 
+        Debug.Log($"[CivilizationManager] Initializing civilization {data.civName} with leader {chosenLeader.leaderName}...");
         civ.Initialize(data, chosenLeader, isPlayer, grid, planet);
         civs.Add(civ);
 
         if (isPlayer)
         {
             playerCiv = civ;
+            Debug.Log($"[CivilizationManager] Set player civilization to {data.civName}");
         }
 
         // Check if pioneerPrefab and pioneerData are assigned
@@ -679,15 +697,21 @@ public class CivilizationManager : MonoBehaviour
             return;
         }
 
-        // Instantiate pioneer
+        Debug.Log($"[CivilizationManager] Creating pioneer for {data.civName} at tile {tile}...");
+        
+        // Instantiate pioneer (same as animals - no parenting to planet)
         // FIXED: Use Earth-specific positioning for pioneer
         Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(tile, 0.5f, 0); // Force planet index 0 (Earth)
+        Debug.Log($"[CivilizationManager] Pioneer position calculated: {pos}");
+        
         var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         if (wgo == null)
         {
             Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");
             return;
         }
+        
+        Debug.Log($"[CivilizationManager] Pioneer GameObject instantiated for {data.civName}");
         
         var pioneer = wgo.GetComponent<WorkerUnit>();
         if (pioneer == null)
@@ -700,32 +724,41 @@ public class CivilizationManager : MonoBehaviour
         pioneer.Initialize(pioneerData, civ, tile);
         civ.workerUnits.Add(pioneer);
         
-        // FIXED: Ensure pioneer is parented to Earth planet
-        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
-        if (earthPlanet != null)
-        {
-            pioneer.transform.SetParent(earthPlanet.transform);
-            Debug.Log($"[CivilizationManager] {data.civName} pioneer spawned on Earth at tile {tile}");
-        }
-        else
-        {
-            Debug.LogError("[CivilizationManager] Could not find Earth planet to parent pioneer!");
-        }
+        Debug.Log($"[CivilizationManager] Pioneer added to civilization. WorkerUnits count: {civ.workerUnits.Count}");
         
+        
+        Debug.Log($"[CivilizationManager] === SpawnOneCivilization COMPLETE for {data.civName} ===");
     }
 
     /// <summary>
     /// Finds a random unoccupied land tile, optionally matching climate preferences.
+    /// Uses the same approach as AnimalManager for reliable tile finding.
     /// </summary>
     int FindSpawnTile(CivData data, HashSet<int> occupied, bool enforceClimate)
     {
-        // FIXED: Always use Earth (planet index 0) for civilization spawning
-        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        Debug.Log($"[CivilizationManager] FindSpawnTile for {data?.civName} (enforceClimate: {enforceClimate})");
         
-        // Check if Earth surface is ready for spawning
+        // COPIED FROM ANIMALMANAGER: Use exact same approach for reliability
+        var candidates = new List<int>();
+        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
+        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+
         if (planet == null)
         {
             Debug.LogError("FindSpawnTile: No Earth planet generator found!");
+            return -1;
+        }
+        
+        if (planet.Grid == null)
+        {
+            Debug.LogError("FindSpawnTile: Earth grid is null!");
+            return -1;
+        }
+        
+        if (!planet.Grid.IsBuilt)
+        {
+            Debug.LogError("FindSpawnTile: Earth grid is not built!");
             return -1;
         }
         
@@ -735,39 +768,60 @@ public class CivilizationManager : MonoBehaviour
             return -1;
         }
         
-        var grid = planet.Grid;
-        if (grid == null || !grid.IsBuilt)
-        {
-            Debug.LogError("FindSpawnTile: Earth grid not ready!");
-            return -1;
-        }
+        Debug.Log($"[CivilizationManager] Earth checks passed. Grid TileCount: {tileCount}");
         
-        var candidates = new List<int>();
+        int landTileCount = 0;
+        int waterTileCount = 0;
+        int invalidTileCount = 0;
+        int climateFilteredCount = 0;
 
-        // Get the total tile count in a safer way
-        int tileCount = grid.TileCount;
-
+        // COPIED FROM ANIMALMANAGER: Use TileDataHelper approach for tile checking
         for (int i = 0; i < tileCount; i++)
         {
             if (occupied.Contains(i)) continue;
-            var td = planet.GetHexTileData(i);
-            if (td == null) continue;
-            if (!td.isLand) continue;
+            
+            // Use same tile data retrieval as AnimalManager
+            var (tile, _) = TileDataHelper.Instance.GetTileData(i);
+            if (tile == null) {
+                invalidTileCount++;
+                continue;
+            }
+            if (!tile.isLand) {
+                waterTileCount++;
+                continue;
+            }
+
+            landTileCount++;
 
             // FIXED: Ensure starting units never spawn on water tiles
-            if (IsWaterTile(td.biome)) continue;
+            if (IsWaterTile(tile.biome)) {
+                waterTileCount++; // Count water biomes on land tiles
+                continue;
+            }
 
             if (enforceClimate && data.climatePreferences.Length > 0)
             {
-                if (!data.climatePreferences.Contains(td.biome))
+                if (!data.climatePreferences.Contains(tile.biome)) {
+                    climateFilteredCount++;
                     continue;
+                }
             }
             candidates.Add(i);
         }
+        
+        if (data.climatePreferences.Length > 0)
+        {
+            Debug.Log($"  Climate preferences: [{string.Join(", ", data.climatePreferences)}]");
+        }
 
-        return candidates.Count > 0
-            ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
-            : -1;
+        if (candidates.Count == 0) {
+            Debug.LogError($"[CivilizationManager] No valid spawn candidates found for {data.civName}!");
+            return -1;
+        }
+
+        int result = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        Debug.Log($"[CivilizationManager] FindSpawnTile result for {data.civName}: {result}");
+        return result;
     }
 
     /// <summary>

@@ -32,26 +32,27 @@ public enum Biome {
     MartianPolarIce,    // Mars - polar ice caps
     MartianDunes,       // Mars - sand dunes
     
-    VenusianLava,       // Venus - molten lava flows
+    VenusLava,       // Venus - molten lava flows
     VenusianPlains,     // Venus - rocky plains
-    VenusianHighlands,  // Venus - elevated terrain
+    VenusHighlands,  // Venus - elevated terrain
     
-    MercurianCraters,   // Mercury - heavily cratered surface
-    MercurianBasalt,    // Mercury - basaltic plains
-    MercurianScarp,     // Mercury - cliff-like scarps
+    MercuryCraters,   // Mercury - heavily cratered surface
+    MercuryBasalt,    // Mercury - basaltic plains
+    MercuryScarp,     // Mercury - cliff-like scarps
+    MercurianIce,       // Mercury - cold night side ice formations
     
     JovianClouds,       // Jupiter - gas giant cloud layers
     JovianStorm,        // Jupiter - storm systems like Great Red Spot
     
-    SaturnianRings,     // Saturn - ring particle fields
-    SaturnianClouds,    // Saturn - cloud layers
+    SaturnRings,     // Saturn - ring particle fields
+    SaturnSurface,    // Saturn - cloud layers
     
-    UranianIce,         // Uranus - ice giant surface
-    UranianMethane,     // Uranus - methane atmosphere
+    UranusIce,         // Uranus - ice giant surface
+    UranusSurface,     // Uranus - methane atmosphere
     
-    NeptunianWinds,     // Neptune - extreme wind patterns
-    NeptunianIce,       // Neptune - ice formations
-    NeptunianSurface,   // Neptune - standard surface terrain
+    NeptuneWinds,     // Neptune - extreme wind patterns
+    NeptuneIce,       // Neptune - ice formations
+    NeptuneSurface,   // Neptune - standard surface terrain
     
     PlutoCryo,          // Pluto - frozen nitrogen plains
     PlutoTholins,       // Pluto - organic compound deposits
@@ -98,80 +99,296 @@ public static class BiomeHelper {
         bool isNeptuneWorldType = false, bool isPlutoWorldType = false,
         bool isTitanWorldType = false, bool isEuropaWorldType = false,
         bool isIoWorldType = false, bool isGanymedeWorldType = false,
-        bool isCallistoWorldType = false, bool isLunaWorldType = false)
+        bool isCallistoWorldType = false, bool isLunaWorldType = false,
+        float latitude = 0f, float longitude = 0f)
     {
+        // Debug logging for planet-specific biome assignment (only for non-Earth planets)
+        if (isMarsWorldType || isVenusWorldType || isMercuryWorldType || isJupiterWorldType ||
+            isSaturnWorldType || isUranusWorldType || isNeptuneWorldType || isPlutoWorldType ||
+            isTitanWorldType || isEuropaWorldType || isIoWorldType || isGanymedeWorldType ||
+            isCallistoWorldType || isLunaWorldType)
+        {
+            string planetType = "";
+            if (isMarsWorldType) planetType = "Mars";
+            else if (isVenusWorldType) planetType = "Venus";
+            else if (isMercuryWorldType) planetType = "Mercury";
+            else if (isJupiterWorldType) planetType = "Jupiter";
+            else if (isSaturnWorldType) planetType = "Saturn";
+            else if (isUranusWorldType) planetType = "Uranus";
+            else if (isNeptuneWorldType) planetType = "Neptune";
+            else if (isPlutoWorldType) planetType = "Pluto";
+            else if (isTitanWorldType) planetType = "Titan";
+            else if (isEuropaWorldType) planetType = "Europa";
+            else if (isIoWorldType) planetType = "Io";
+            else if (isGanymedeWorldType) planetType = "Ganymede";
+            else if (isCallistoWorldType) planetType = "Callisto";
+            else if (isLunaWorldType) planetType = "Luna";
+            
+            // Only log a sample of biome assignments to avoid spam
+            if (UnityEngine.Random.Range(0, 1000) < 1) // 0.1% chance to log
+            {
+                UnityEngine.Debug.Log($"[BiomeHelper] {planetType} biome assignment - Land: {isLand}, Temp: {temperature:F2}, Moisture: {moisture:F2}");
+            }
+        }
+
+        // === EARTH-ONLY GUARANTEED POLAR OVERRIDE - FIRST PRIORITY ===
+        // This MUST execute before any other logic to guarantee polar regions
+        bool isEarthPlanet = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType && !isJupiterWorldType &&
+                            !isSaturnWorldType && !isUranusWorldType && !isNeptuneWorldType && !isPlutoWorldType &&
+                            !isTitanWorldType && !isEuropaWorldType && !isIoWorldType && !isGanymedeWorldType &&
+                            !isCallistoWorldType && !isLunaWorldType;
+        
+        if (isEarthPlanet)
+        {
+            float absLatitude = Mathf.Abs(latitude);
+            
+            // FORCE POLAR CAP: make the very top/bottom strictly Arctic for all tiles (no Glaciers).
+            // Using ~80° -> 0.80 in normalized [-1,1]. Adjust if you want a larger/smaller cap.
+            const float PolarArcticThreshold = 0.80f; // ~80°
+            if (absLatitude >= PolarArcticThreshold)
+            {
+                return Biome.Arctic;
+            }
+
+            // Sub-polar band (~60–80°): bias to Tundra/Taiga for land when cold enough.
+            if (absLatitude > 0.67f)
+            {
+                if (isLand && temperature <= 0.35f)
+                {
+                    return moisture > 0.6f ? Biome.Taiga : Biome.Tundra;
+                }
+                // Otherwise fall through to standard Earth logic
+            }
+        }
+
         if (!isLand) {
             return Biome.Ocean;
         }
-        // --- REAL SOLAR SYSTEM PLANET LOGIC ---
+        
+        // === EXPLICIT PLANET-SPECIFIC BIOME RULES - NO FALLBACKS ===
+        
+        // MARS - Complete temperature/moisture coverage
         if (isMarsWorldType) {
-            if (temperature < 0.15f && moisture > 0.5f) return Biome.MartianPolarIce;
-            if (temperature < 0.25f && moisture < 0.3f) return Biome.MartianDunes;
-            if (temperature > 0.25f && moisture < 0.3f) return Biome.MartianRegolith;
-            if (temperature > 0.2f && moisture > 0.3f) return Biome.MartianCanyon;
-            return Biome.MartianRegolith;
+            // Polar regions (coldest)
+            if (temperature <= 0.15f) {
+                if (moisture > 0.5f) return Biome.MartianPolarIce;
+                return Biome.MartianDunes; // Cold, dry
+            }
+            // Cold regions
+            if (temperature <= 0.25f) {
+                if (moisture < 0.3f) return Biome.MartianDunes;
+                return Biome.MartianRegolith;
+            }
+            // Warm regions
+            if (temperature <= 0.5f) {
+                if (moisture > 0.3f) return Biome.MartianCanyon;
+                return Biome.MartianRegolith;
+            }
+            // Hot regions
+            if (moisture > 0.4f) return Biome.MartianCanyon;
+            return Biome.MartianRegolith; // Default Mars
         }
+        
+        // VENUS - Complete temperature/moisture coverage
         if (isVenusWorldType) {
-            if (temperature > 0.6f && moisture < 0.2f) return Biome.VenusianLava;
-            if (temperature > 0.5f && moisture < 0.5f) return Biome.VenusianPlains;
-            if (temperature > 0.4f && moisture > 0.2f) return Biome.VenusianHighlands;
-            return Biome.VenusianPlains;
+            // Hottest regions
+            if (temperature > 0.6f) {
+                if (moisture < 0.2f) return Biome.VenusLava;
+                return Biome.VenusHighlands;
+            }
+            // Warm regions
+            if (temperature > 0.4f) {
+                if (moisture < 0.5f) return Biome.VenusianPlains;
+                return Biome.VenusHighlands;
+            }
+            // All other regions
+            if (moisture > 0.3f) return Biome.VenusHighlands;
+            return Biome.VenusianPlains; // Default Venus
         }
+        
+        // MERCURY - Day/Night hemispheres based on longitude
         if (isMercuryWorldType) {
-            if (temperature > 0.5f && moisture < 0.2f) return Biome.MercurianCraters;
-            if (temperature > 0.3f && moisture < 0.3f) return Biome.MercurianBasalt;
-            if (temperature < 0.3f && moisture < 0.2f) return Biome.MercurianScarp;
-            return Biome.MercurianCraters;
+            // Determine if this is day side (longitude -90 to +90) or night side (longitude 90 to 270 or -90 to -270)
+            float normalizedLong = longitude; // longitude should be in range -180 to +180
+            bool isDaySide = (normalizedLong >= -90f && normalizedLong <= 90f);
+            
+            // Debug logging for Mercury hemisphere assignment
+            if (UnityEngine.Random.Range(0, 1000) < 5) // 0.5% chance to log
+            {
+                string side = isDaySide ? "Day" : "Night";
+                UnityEngine.Debug.Log($"[BiomeHelper] Mercury hemisphere - Long: {longitude:F1}°, Side: {side}");
+            }
+            
+            if (isDaySide) {
+                // Day side - Hot hemisphere gets traditional Mercury biomes
+                if (temperature > 0.5f) {
+                    if (moisture < 0.2f) return Biome.MercuryCraters;
+                    return Biome.MercuryBasalt;
+                }
+                // Moderate day side regions
+                if (temperature > 0.3f) {
+                    if (moisture < 0.3f) return Biome.MercuryBasalt;
+                    return Biome.MercuryScarp;
+                }
+                // Cooler day side areas
+                if (moisture < 0.2f) return Biome.MercuryScarp;
+                return Biome.MercuryCraters;
+            }
+            else {
+                // Night side - ENTIRE hemisphere gets MercurianIce (realistic tidally locked planet)
+                return Biome.MercurianIce;
+            }
         }
+        
+        // JUPITER - Latitude-based: storms at poles, clouds elsewhere
         if (isJupiterWorldType) {
-            // Jupiter should always have Jovian biomes, never Earth biomes
-            if (temperature <= 0.08f) return Biome.JovianStorm; // Polar regions = storms
-            if (temperature < 0.0f) return Biome.JovianStorm; // Cold regions = storms
-            return Biome.JovianClouds; // Default = cloud layers
+            // Latitude is expected in radians normalized to [-PI/2, PI/2] and then scaled to [-1,1] or already normalized [-1,1].
+            // In this project latitude is passed in normalized range [-1,1]. Use absolute value to detect polar caps.
+            float absLat = Mathf.Abs(latitude);
+            // Consider 70+ degrees latitude as polar region (0.78 in normalized [-1,1])
+            if (absLat >= 0.78f) return Biome.JovianStorm; // Polar storms
+            return Biome.JovianClouds; // Elsewhere
         }
+        
+        // SATURN - Complete temperature/moisture coverage
         if (isSaturnWorldType) {
-            if (temperature < 0.0f && moisture > 0.5f) return Biome.SaturnianClouds;
-            if (temperature < -0.2f && moisture > 0.7f) return Biome.SaturnianRings;
-            return Biome.SaturnianClouds;
+            // Cold regions
+            if (temperature < -0.2f) {
+                if (moisture > 0.7f) return Biome.SaturnRings;
+                return Biome.SaturnSurface;
+            }
+            // Moderate cold regions
+            if (temperature < 0.0f) {
+                if (moisture > 0.5f) return Biome.SaturnSurface;
+                return Biome.SaturnRings;
+            }
+            // All other regions
+            if (moisture > 0.4f) return Biome.SaturnSurface;
+            return Biome.SaturnRings; // Default Saturn
         }
+        
+        // URANUS - Complete temperature/moisture coverage
         if (isUranusWorldType) {
-            if (temperature < -0.3f && moisture > 0.5f) return Biome.UranianIce;
-            if (temperature < -0.4f && moisture > 0.7f) return Biome.UranianMethane;
-            return Biome.UranianIce;
+            // Very cold regions
+            if (temperature < -0.4f) {
+                if (moisture > 0.7f) return Biome.UranusSurface;
+                return Biome.UranusIce;
+            }
+            // Cold regions
+            if (temperature < -0.2f) {
+                if (moisture > 0.5f) return Biome.UranusIce;
+                return Biome.UranusSurface;
+            }
+            // All other regions
+            if (moisture > 0.6f) return Biome.UranusIce;
+            return Biome.UranusSurface; // Default Uranus
         }
+        
+        // NEPTUNE - Complete temperature/moisture coverage
         if (isNeptuneWorldType) {
-            if (temperature < -0.3f && moisture > 0.5f) return Biome.NeptunianIce;
-            if (temperature < -0.4f && moisture > 0.7f) return Biome.NeptunianWinds;
-            return Biome.NeptunianSurface; // Default Neptune biome
+            // Very cold regions
+            if (temperature < -0.4f) {
+                if (moisture > 0.7f) return Biome.NeptuneWinds;
+                return Biome.NeptuneIce;
+            }
+            // Cold regions
+            if (temperature < -0.2f) {
+                if (moisture > 0.5f) return Biome.NeptuneIce;
+                return Biome.NeptuneWinds;
+            }
+            // All other regions
+            if (moisture > 0.6f) return Biome.NeptuneWinds;
+            return Biome.NeptuneSurface; // Default Neptune
         }
+        
+        // PLUTO - Complete temperature/moisture coverage
         if (isPlutoWorldType) {
-            if (temperature < -0.5f && moisture > 0.5f) return Biome.PlutoCryo;
-            if (temperature < -0.4f && moisture < 0.3f) return Biome.PlutoTholins;
-            if (temperature < -0.3f && moisture > 0.3f) return Biome.PlutoMountains;
-            return Biome.PlutoCryo;
+            // Extremely cold regions
+            if (temperature < -0.5f) {
+                if (moisture > 0.5f) return Biome.PlutoCryo;
+                return Biome.PlutoTholins;
+            }
+            // Very cold regions
+            if (temperature < -0.3f) {
+                if (moisture > 0.3f) return Biome.PlutoMountains;
+                return Biome.PlutoTholins;
+            }
+            // All other regions
+            if (moisture > 0.4f) return Biome.PlutoCryo;
+            return Biome.PlutoTholins; // Default Pluto
         }
+        
+        // TITAN - Complete temperature/moisture coverage
         if (isTitanWorldType) {
-            if (temperature < -0.4f && moisture > 0.5f) return Biome.TitanLakes;
-            if (temperature < -0.3f && moisture < 0.3f) return Biome.TitanDunes;
-            if (temperature < -0.2f && moisture > 0.3f) return Biome.TitanIce;
-            return Biome.TitanLakes;
+            // Very cold regions
+            if (temperature < -0.4f) {
+                if (moisture > 0.5f) return Biome.TitanLakes;
+                return Biome.TitanIce;
+            }
+            // Cold regions
+            if (temperature < -0.2f) {
+                if (moisture < 0.3f) return Biome.TitanDunes;
+                return Biome.TitanIce;
+            }
+            // All other regions
+            if (moisture > 0.6f) return Biome.TitanLakes;
+            if (moisture < 0.4f) return Biome.TitanDunes;
+            return Biome.TitanIce; // Default Titan
         }
+        
+        // EUROPA - Complete temperature/moisture coverage
         if (isEuropaWorldType) {
-            if (temperature < -0.5f && moisture > 0.5f) return Biome.EuropaIce;
-            if (temperature < -0.4f && moisture > 0.3f) return Biome.EuropaRidges;
-            return Biome.EuropaIce;
+            // Very cold regions
+            if (temperature < -0.5f) {
+                if (moisture > 0.5f) return Biome.EuropaIce;
+                return Biome.EuropaRidges;
+            }
+            // Cold regions
+            if (temperature < -0.3f) {
+                if (moisture > 0.3f) return Biome.EuropaRidges;
+                return Biome.EuropaIce;
+            }
+            // All other regions
+            if (moisture > 0.4f) return Biome.EuropaIce;
+            return Biome.EuropaRidges; // Default Europa
         }
+        
+        // IO - Complete temperature/moisture coverage
         if (isIoWorldType) {
-            if (temperature < -0.3f && moisture < 0.2f) return Biome.IoSulfur;
-            if (temperature < -0.2f && moisture > 0.2f) return Biome.IoVolcanic;
-            return Biome.IoVolcanic;
+            // Cold regions
+            if (temperature < -0.3f) {
+                if (moisture < 0.2f) return Biome.IoSulfur;
+                return Biome.IoVolcanic;
+            }
+            // Moderate regions
+            if (temperature < 0.0f) {
+                if (moisture > 0.2f) return Biome.IoVolcanic;
+                return Biome.IoSulfur;
+            }
+            // All other regions
+            if (moisture > 0.3f) return Biome.IoVolcanic;
+            return Biome.IoSulfur; // Default Io
         }
+        
+        // LUNA/GANYMEDE/CALLISTO - Complete temperature/moisture coverage
         if (isLunaWorldType || isGanymedeWorldType || isCallistoWorldType) {
-            if (temperature < 0.0f && moisture < 0.2f) return Biome.MoonDunes;
-            if (temperature < 0.1f && moisture > 0.2f) return Biome.MoonCaves;
-            return Biome.MoonDunes;
+            // Cold regions
+            if (temperature < 0.0f) {
+                if (moisture < 0.2f) return Biome.MoonDunes;
+                return Biome.MoonCaves;
+            }
+            // Moderate regions
+            if (temperature < 0.2f) {
+                if (moisture > 0.2f) return Biome.MoonCaves;
+                return Biome.MoonDunes;
+            }
+            // All other regions
+            if (moisture > 0.3f) return Biome.MoonCaves;
+            return Biome.MoonDunes; // Default moon
         }
 
+        // === EARTH-ONLY SPECIAL MAP TYPES ===
+        
         // ICE WORLD: Exclusive biomes
         if (isIceWorldMapType)
         {
@@ -221,9 +438,45 @@ public static class BiomeHelper {
         {
             return Biome.Floodlands;
         }
-    // --- ICE WORLD FEATURES ---
-    // Permafrost Cracks: impassable terrain feature, can be checked elsewhere by biome and map type
-    // Frost Geysers: hazardous feature, can be checked elsewhere by biome and map type
+
+        // === EARTH-ONLY STANDARD BIOME LOGIC ===
+        // This section only executes for Earth (when no planet flags are set)
+        
+        // CRITICAL: Return early if ANY planet flag is set to prevent Earth biomes on other planets
+        if (isMarsWorldType || isVenusWorldType || isMercuryWorldType || isJupiterWorldType ||
+            isSaturnWorldType || isUranusWorldType || isNeptuneWorldType || isPlutoWorldType ||
+            isTitanWorldType || isEuropaWorldType || isIoWorldType || isGanymedeWorldType ||
+            isCallistoWorldType || isLunaWorldType)
+        {
+            // If we reach here, the planet-specific logic above missed a temperature/moisture combination
+            UnityEngine.Debug.LogError($"[BiomeHelper] CRITICAL ERROR: Planet-specific biome logic failed! " +
+                $"Temp: {temperature:F2}, Moisture: {moisture:F2}. " +
+                $"Planet: Mars={isMarsWorldType}, Venus={isVenusWorldType}, Mercury={isMercuryWorldType}, " +
+                $"Jupiter={isJupiterWorldType}, Saturn={isSaturnWorldType}, Uranus={isUranusWorldType}, " +
+                $"Neptune={isNeptuneWorldType}, Pluto={isPlutoWorldType}, Titan={isTitanWorldType}, " +
+                $"Europa={isEuropaWorldType}, Io={isIoWorldType}, Ganymede={isGanymedeWorldType}, " +
+                $"Callisto={isCallistoWorldType}, Luna={isLunaWorldType}");
+
+            // Emergency fallback - return first planet-specific biome we can find
+            
+            Debug.LogWarning("[BiomeHelper] EMERGENCY FALLBACK: Assigning first available planet-specific biome.");
+            if (isMarsWorldType) return Biome.MartianRegolith;
+            if (isVenusWorldType) return Biome.VenusianPlains;
+            if (isMercuryWorldType) return Biome.MercuryBasalt;
+            if (isJupiterWorldType) return Biome.JovianClouds;
+            if (isSaturnWorldType) return Biome.SaturnSurface;
+            if (isUranusWorldType) return Biome.UranusIce;
+            if (isNeptuneWorldType) return Biome.NeptuneSurface;
+            if (isPlutoWorldType) return Biome.PlutoTholins;
+            if (isTitanWorldType) return Biome.TitanIce;
+            if (isEuropaWorldType) return Biome.EuropaIce;
+            if (isIoWorldType) return Biome.IoSulfur;
+            if (isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) return Biome.MoonDunes;
+            
+            // This should NEVER be reached
+            UnityEngine.Debug.LogError("[BiomeHelper] EMERGENCY FALLBACK FAILED! Returning Plains as last resort.");
+            return Biome.Plains;
+        }
 
         // Hot climates
         if (temperature > 0.8f) {
@@ -254,64 +507,48 @@ public static class BiomeHelper {
             return Biome.PineForest;
         }
 
-        // Cold climates
+        // Cold climates (Earth only)
         if (temperature > 0.20f) {
             if (moisture < 0.20f) return Biome.Tundra;
             if (moisture < 0.75f) return Biome.Taiga;
             return Biome.Marsh;
         }
 
-        // POLAR BIOMES - Planet-specific polar logic (temperature <= 0.08f)
-        if (temperature <= 0.08f) {
-            // Mars polar regions
-            if (isMarsWorldType) {
-                return Biome.MartianPolarIce;
-            }
-            
-            // Uranus polar regions
-            if (isUranusWorldType) {
-                return Biome.UranianIce;
-            }
-
-            // Jupiter polar logic is now handled in the main Jupiter section above
-            // No need for duplicate check here
-            
-            // Neptune polar regions
-            if (isNeptuneWorldType) {
-                return Biome.NeptunianIce;
-            }
-            
-            // Pluto polar regions
-            if (isPlutoWorldType) {
-                return Biome.PlutoCryo;
-            }
-            
-            // Titan polar regions
-            if (isTitanWorldType) {
-                return Biome.TitanIce;
-            }
-            
-            // Europa polar regions
-            if (isEuropaWorldType) {
-                return Biome.EuropaIce;
-            }
-            
-            // Venus, Mercury, Saturn, Io, Ganymede, Callisto, Luna have NO polar regions
-            // They should use their standard biomes even in cold temperatures
-            if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || 
-                isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType) {
-                // Return their standard biomes - no polar override
-                // This will fall through to the normal biome logic below
-            }
-        }
-
-        // Frozen climates
-        if (temperature > 0.08f) {
+        // EARTH POLAR BIOMES ONLY (temperature <= 0.20f) - Should never be reached by other planets
+        if (temperature <= 0.20f) {
             if (moisture < 0.35f) return Biome.Frozen;
             if (moisture < 0.75f) return Biome.Tundra;
             return Biome.Snow;
         }
-        return Biome.Arctic;
+
+        // Fallback for any missed cases (should rarely be reached)
+        UnityEngine.Debug.LogWarning($"[BiomeHelper] Unexpected biome assignment fallback reached - Temp: {temperature:F2}, Moisture: {moisture:F2}, Planet flags set: {isMarsWorldType || isVenusWorldType || isMercuryWorldType || isJupiterWorldType || isSaturnWorldType || isUranusWorldType || isNeptuneWorldType || isPlutoWorldType || isTitanWorldType || isEuropaWorldType || isIoWorldType || isGanymedeWorldType || isCallistoWorldType || isLunaWorldType}");
+        return Biome.Plains;
+    }
+
+    /// <summary>
+    /// Validate biome assignment - log if inappropriate biomes are assigned to specific planets
+    /// </summary>
+    public static Biome ValidateAndLogBiome(Biome assignedBiome, bool isMarsWorldType, bool isVenusWorldType, 
+        bool isMercuryWorldType, bool isJupiterWorldType, bool isSaturnWorldType, bool isUranusWorldType,
+        bool isNeptuneWorldType, bool isPlutoWorldType, bool isTitanWorldType, bool isEuropaWorldType,
+        bool isIoWorldType, bool isGanymedeWorldType, bool isCallistoWorldType, bool isLunaWorldType)
+    {
+        // Check for inappropriate snow/polar biomes on planets that shouldn't have them
+        if (assignedBiome == Biome.Snow || assignedBiome == Biome.Glacier || assignedBiome == Biome.Tundra || 
+            assignedBiome == Biome.Frozen || assignedBiome == Biome.Arctic)
+        {
+            if (isVenusWorldType || isMercuryWorldType || isSaturnWorldType || isIoWorldType || 
+                isGanymedeWorldType || isCallistoWorldType || isLunaWorldType)
+            {
+                string planetType = isVenusWorldType ? "Venus" : isMercuryWorldType ? "Mercury" : 
+                                   isSaturnWorldType ? "Saturn" : isIoWorldType ? "Io" :
+                                   isGanymedeWorldType ? "Ganymede" : isCallistoWorldType ? "Callisto" : "Luna";
+                UnityEngine.Debug.LogWarning($"[BiomeHelper] WARNING: {planetType} incorrectly assigned {assignedBiome} biome!");
+            }
+        }
+        
+        return assignedBiome;
     }
 
 
@@ -358,27 +595,28 @@ public static class BiomeHelper {
         Biome.MartianDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 }, // Barren but explorable
         
         // Venus Biomes - Extreme/Hostile
-        Biome.VenusianLava => new YieldValues { food = 0, prod = 5, gold = 3, sci = 1, cult = 0 }, // Extreme production
+        Biome.VenusLava => new YieldValues { food = 0, prod = 5, gold = 3, sci = 1, cult = 0 }, // Extreme production
         Biome.VenusianPlains => new YieldValues { food = 0, prod = 3, gold = 2, sci = 1, cult = 0 }, // Industrial potential
-        Biome.VenusianHighlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 2, cult = 0 }, // Elevated research
+        Biome.VenusHighlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 2, cult = 0 }, // Elevated research
         
         // Mercury Biomes - Extreme conditions
-        Biome.MercurianCraters => new YieldValues { food = 0, prod = 1, gold = 3, sci = 2, cult = 0 }, // Rare metals
-        Biome.MercurianBasalt => new YieldValues { food = 0, prod = 4, gold = 1, sci = 1, cult = 0 }, // Construction materials
-        Biome.MercurianScarp => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 0 }, // Geological interest
+        Biome.MercuryCraters => new YieldValues { food = 0, prod = 1, gold = 3, sci = 2, cult = 0 }, // Rare metals
+        Biome.MercuryBasalt => new YieldValues { food = 0, prod = 4, gold = 1, sci = 1, cult = 0 }, // Construction materials
+        Biome.MercuryScarp => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 0 }, // Geological interest
+        Biome.MercurianIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 4, cult = 0 }, // Water ice + cold research
         
         // Gas Giant Biomes - Atmospheric/Energy
         Biome.JovianClouds => new YieldValues { food = 0, prod = 2, gold = 4, sci = 3, cult = 1 }, // Gas harvesting
         Biome.JovianStorm => new YieldValues { food = 0, prod = 1, gold = 2, sci = 5, cult = 0 }, // Energy research
-        Biome.SaturnianRings => new YieldValues { food = 0, prod = 3, gold = 5, sci = 2, cult = 1 }, // Ring mining
-        Biome.SaturnianClouds => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 0 }, // Gas processing
+        Biome.SaturnRings => new YieldValues { food = 0, prod = 3, gold = 5, sci = 2, cult = 1 }, // Ring mining
+        Biome.SaturnSurface => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 0 }, // Gas processing
         
         // Ice Giant Biomes
-        Biome.UranianIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 4, cult = 0 }, // Cryogenic research
-        Biome.UranianMethane => new YieldValues { food = 0, prod = 3, gold = 2, sci = 3, cult = 0 }, // Fuel production
-        Biome.NeptunianWinds => new YieldValues { food = 0, prod = 1, gold = 1, sci = 5, cult = 0 }, // Atmospheric dynamics
-        Biome.NeptunianIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice resources
-        Biome.NeptunianSurface => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 1 }, // Standard Neptune terrain
+        Biome.UranusIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 4, cult = 0 }, // Cryogenic research
+        Biome.UranusSurface => new YieldValues { food = 0, prod = 3, gold = 2, sci = 3, cult = 0 }, // Fuel production
+        Biome.NeptuneWinds => new YieldValues { food = 0, prod = 1, gold = 1, sci = 5, cult = 0 }, // Atmospheric dynamics
+        Biome.NeptuneIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice resources
+        Biome.NeptuneSurface => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 1 }, // Standard Neptune terrain
         
         // Pluto Biomes - Extreme cold/distance
         Biome.PlutoCryo => new YieldValues { food = 0, prod = 1, gold = 1, sci = 4, cult = 2 }, // Frontier science
@@ -433,24 +671,25 @@ public static class BiomeHelper {
         Biome.MartianPolarIce => 1,   // Some cover from ice formations
         Biome.MartianDunes => 0,      // Shifting sands provide no cover
         
-        Biome.VenusianLava => 0,      // Too hostile for defensive positions
+        Biome.VenusLava => 0,      // Too hostile for defensive positions
         Biome.VenusianPlains => 0,    // Flat, no cover
-        Biome.VenusianHighlands => 2, // Elevated defensive positions
+        Biome.VenusHighlands => 2, // Elevated defensive positions
         
-        Biome.MercurianCraters => 2,  // Crater rims provide cover
-        Biome.MercurianBasalt => 0,   // Flat rocky plains
-        Biome.MercurianScarp => 3,    // Cliff walls excellent for defense
+        Biome.MercuryCraters => 2,  // Crater rims provide cover
+        Biome.MercuryBasalt => 0,   // Flat rocky plains
+        Biome.MercuryScarp => 3,    // Cliff walls excellent for defense
+        Biome.MercurianIce => 1,      // Some cover from ice formations
         
         Biome.JovianClouds => 1,      // Limited visibility in clouds
         Biome.JovianStorm => 0,       // Too chaotic for defense
-        Biome.SaturnianRings => 1,    // Ring particles provide some cover
-        Biome.SaturnianClouds => 1,   // Cloud cover
+        Biome.SaturnRings => 1,    // Ring particles provide some cover
+        Biome.SaturnSurface => 1,   // Cloud cover
         
-        Biome.UranianIce => 0,        // Flat ice surface
-        Biome.UranianMethane => 0,    // Gaseous atmosphere
-        Biome.NeptunianWinds => 0,    // Too chaotic for defense
-        Biome.NeptunianIce => 0,      // Flat ice surface
-        Biome.NeptunianSurface => 1,  // Some terrain features for cover
+        Biome.UranusIce => 0,        // Flat ice surface
+        Biome.UranusSurface => 0,    // Gaseous atmosphere
+        Biome.NeptuneWinds => 0,    // Too chaotic for defense
+        Biome.NeptuneIce => 0,      // Flat ice surface
+        Biome.NeptuneSurface => 1,  // Some terrain features for cover
         
         Biome.PlutoMountains => 3,    // Mountain terrain
         Biome.PlutoCryo => 0,         // Flat frozen plains
@@ -509,24 +748,25 @@ public static class BiomeHelper {
         Biome.MartianPolarIce => 2,   // Slippery ice surfaces
         Biome.MartianDunes => 3,      // Shifting sand dunes
         
-        Biome.VenusianLava => 4,      // Extremely dangerous to traverse
+        Biome.VenusLava => 4,      // Extremely dangerous to traverse
         Biome.VenusianPlains => 2,    // Rocky but navigable
-        Biome.VenusianHighlands => 2, // Elevated terrain
+        Biome.VenusHighlands => 2, // Elevated terrain
         
-        Biome.MercurianCraters => 3,  // Navigating crater rims
-        Biome.MercurianBasalt => 1,   // Solid rock surface
-        Biome.MercurianScarp => 4,    // Steep cliff traversal
+        Biome.MercuryCraters => 3,  // Navigating crater rims
+        Biome.MercuryBasalt => 1,   // Solid rock surface
+        Biome.MercuryScarp => 4,    // Steep cliff traversal
+        Biome.MercurianIce => 2,      // Slippery ice surfaces
         
         Biome.JovianClouds => 2,      // Atmospheric flight
         Biome.JovianStorm => 4,       // Dangerous storm navigation
-        Biome.SaturnianRings => 3,    // Navigating ring particles
-        Biome.SaturnianClouds => 2,   // Standard atmospheric travel
+        Biome.SaturnRings => 3,    // Navigating ring particles
+        Biome.SaturnSurface => 2,   // Standard atmospheric travel
         
-        Biome.UranianIce => 2,        // Ice surface travel
-        Biome.UranianMethane => 3,    // Hazardous atmosphere
-        Biome.NeptunianWinds => 4,    // Extreme wind resistance
-        Biome.NeptunianIce => 2,      // Standard ice travel
-        Biome.NeptunianSurface => 2,  // Standard Neptune terrain
+        Biome.UranusIce => 2,        // Ice surface travel
+        Biome.UranusSurface => 3,    // Hazardous atmosphere
+        Biome.NeptuneWinds => 4,    // Extreme wind resistance
+        Biome.NeptuneIce => 2,      // Standard ice travel
+        Biome.NeptuneSurface => 2,  // Standard Neptune terrain
         
         Biome.PlutoCryo => 3,         // Extreme cold conditions
         Biome.PlutoTholins => 2,      // Organic compound terrain
@@ -561,14 +801,15 @@ public static class BiomeHelper {
             Biome.IcicleField => true,      // Extreme cold damage
             
             // Real Planet Damaging Biomes
-            Biome.VenusianLava => true,     // Molten lava damage
-            Biome.MercurianCraters => true, // Radiation exposure
-            Biome.MercurianBasalt => true,  // Extreme temperature swings
-            Biome.MercurianScarp => true,   // Radiation exposure
+            Biome.VenusLava => true,     // Molten lava damage
+            Biome.MercuryCraters => true, // Radiation exposure
+            Biome.MercuryBasalt => true,  // Extreme temperature swings
+            Biome.MercuryScarp => true,   // Radiation exposure
+            Biome.MercurianIce => true,     // Extreme cold damage
             Biome.JovianStorm => true,      // Storm damage
-            Biome.UranianMethane => true,   // Toxic atmosphere
-            Biome.NeptunianWinds => true,   // Extreme wind damage
-            Biome.NeptunianSurface => true, // Harsh Neptune conditions
+            Biome.UranusSurface => true,   // Toxic atmosphere
+            Biome.NeptuneWinds => true,   // Extreme wind damage
+            Biome.NeptuneSurface => true, // Harsh Neptune conditions
             Biome.PlutoCryo => true,        // Extreme cold
             Biome.IoVolcanic => true,       // Volcanic activity
             Biome.IoSulfur => true,         // Toxic sulfur exposure
@@ -595,14 +836,15 @@ public static class BiomeHelper {
             Biome.IcicleField => 0.15f, // Piercing ice damage
             
             // Real Planet Damage Values
-            Biome.VenusianLava => 0.50f,     // Extreme heat damage
-            Biome.MercurianCraters => 0.20f,  // Radiation damage
-            Biome.MercurianBasalt => 0.15f,   // Temperature extremes
-            Biome.MercurianScarp => 0.25f,    // High radiation exposure
+            Biome.VenusLava => 0.50f,     // Extreme heat damage
+            Biome.MercuryCraters => 0.20f,  // Radiation damage
+            Biome.MercuryBasalt => 0.15f,   // Temperature extremes
+            Biome.MercuryScarp => 0.25f,    // High radiation exposure
+            Biome.MercurianIce => 0.10f,      // Cold damage (less than other Mercury biomes)
             Biome.JovianStorm => 0.40f,       // Severe storm damage
-            Biome.UranianMethane => 0.25f,    // Toxic atmosphere
-            Biome.NeptunianWinds => 0.30f,    // Extreme wind shear
-            Biome.NeptunianSurface => 0.15f,  // Harsh Neptune conditions
+            Biome.UranusSurface => 0.25f,    // Toxic atmosphere
+            Biome.NeptuneWinds => 0.30f,    // Extreme wind shear
+            Biome.NeptuneSurface => 0.15f,  // Harsh Neptune conditions
             Biome.PlutoCryo => 0.20f,         // Extreme cold damage
             Biome.IoVolcanic => 0.60f,        // Highest damage - active volcanism
             Biome.IoSulfur => 0.20f,          // Sulfur toxicity

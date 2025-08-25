@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class MusicManager : MonoBehaviour
 {
@@ -45,8 +46,11 @@ public class MusicManager : MonoBehaviour
 
     public void PlayMusic()
     {
+        Debug.Log("[MusicManager] PlayMusic() called");
+        
         // Check if music is enabled
         bool musicEnabled = PlayerPrefs.GetInt("MusicEnabled", 1) == 1;
+        Debug.Log($"[MusicManager] Music enabled: {musicEnabled}");
         if (!musicEnabled)
         {
             Debug.Log("MusicManager: Music is disabled, not playing.");
@@ -56,16 +60,38 @@ public class MusicManager : MonoBehaviour
         // Play the current playlist if available
         if (currentPlaylist != null && currentPlaylist.Count > 0)
         {
+            Debug.Log($"[MusicManager] Current playlist has {currentPlaylist.Count} tracks, playing...");
             PlayMusicFromList(currentPlaylist);
         }
         else
         {
-            Debug.LogWarning("MusicManager: No playlist available to play.");
+            Debug.LogWarning($"[MusicManager] No playlist available to play. currentPlaylist null: {currentPlaylist == null}, count: {currentPlaylist?.Count ?? 0}");
+            Debug.LogWarning($"[MusicManager] Total available playlists: {musicPlaylists.Count}");
+            
+            // List all available playlists for debugging
+            foreach (var playlist in musicPlaylists)
+            {
+                Debug.Log($"[MusicManager] Available playlist: {playlist.Key.Item1}, {playlist.Key.Item2}, {playlist.Key.Item3} with {playlist.Value.Count} tracks");
+            }
+            
+            // FALLBACK: Try to play any available playlist
+            if (musicPlaylists.Count > 0)
+            {
+                var firstPlaylist = musicPlaylists.First();
+                Debug.Log($"[MusicManager] FALLBACK: Playing first available playlist: {firstPlaylist.Key.Item1}, {firstPlaylist.Key.Item2}, {firstPlaylist.Key.Item3}");
+                PlayMusicFromList(firstPlaylist.Value);
+            }
+            else
+            {
+                Debug.LogError("[MusicManager] No playlists available at all! Music cannot play.");
+            }
         }
     }
 
     private void PlayMusicFromList(List<AudioClip> musicList)
     {
+        Debug.Log($"[MusicManager] PlayMusicFromList called with {musicList?.Count ?? 0} tracks");
+        
         if (musicList == null || musicList.Count == 0)
         {
             Debug.LogWarning("MusicManager: PlayMusicFromList called with empty list.");
@@ -74,45 +100,91 @@ public class MusicManager : MonoBehaviour
 
         // If already playing from same playlist, don't restart
         if (currentPlaylist == musicList && musicSource.isPlaying)
+        {
+            Debug.Log("[MusicManager] Already playing from same playlist, not restarting");
             return;
+        }
 
         currentPlaylist = new List<AudioClip>(musicList);
         currentTrackIndex = 0;
 
+        Debug.Log($"[MusicManager] Setting up new playlist with {currentPlaylist.Count} tracks");
+
         if (shufflePlaylists)
+        {
+            Debug.Log("[MusicManager] Shuffling playlist");
             ShufflePlaylist(currentPlaylist);
+        }
 
         if (!isChangingTrack)
+        {
+            Debug.Log("[MusicManager] Starting coroutine to fade and play from playlist");
             StartCoroutine(FadeAndPlayFromPlaylist());
+        }
+        else
+        {
+            Debug.LogWarning("[MusicManager] Already changing track, not starting new coroutine");
+        }
     }
 
     public void InitializeMusicTracks()
     {
+        Debug.Log("[MusicManager] InitializeMusicTracks() starting...");
         musicPlaylists.Clear();
 
-        // Build playlists for each civilization
-        foreach (var civ in CivilizationManager.Instance.GetAllCivs())
+        // Check if CivilizationManager exists
+        if (CivilizationManager.Instance == null)
         {
-            if (civ.civData?.musicData == null) continue;
+            Debug.LogError("[MusicManager] CivilizationManager.Instance is null! Cannot initialize music tracks.");
+            return;
+        }
+
+        var allCivs = CivilizationManager.Instance.GetAllCivs();
+
+        // Build playlists for each civilization
+        foreach (var civ in allCivs)
+        {
+            
+            if (civ.civData?.musicData == null) 
+            {
+                Debug.LogWarning($"[MusicManager] Civilization {civ?.civData?.civName ?? "NULL"} has no musicData! Skipping...");
+                continue;
+            }
+
 
             foreach (var ageMusic in civ.civData.musicData.ageMusicTracks)
             {
                 if (ageMusic.peaceMusicTracks?.Count > 0)
-                    musicPlaylists[(civ.civData.civName, ageMusic.age, DiplomaticState.Peace)] = 
-                        new List<AudioClip>(ageMusic.peaceMusicTracks);
+                {
+                    var peaceKey = (civ.civData.civName, ageMusic.age, DiplomaticState.Peace);
+                    musicPlaylists[peaceKey] = new List<AudioClip>(ageMusic.peaceMusicTracks);
+                }
 
                 if (ageMusic.warMusicTracks?.Count > 0)
-                    musicPlaylists[(civ.civData.civName, ageMusic.age, DiplomaticState.War)] = 
-                        new List<AudioClip>(ageMusic.warMusicTracks);
+                {
+                    var warKey = (civ.civData.civName, ageMusic.age, DiplomaticState.War);
+                    musicPlaylists[warKey] = new List<AudioClip>(ageMusic.warMusicTracks);
+                }
             }
         }
+
+        Debug.Log($"[MusicManager] Total playlists created: {musicPlaylists.Count}");
 
         // Set initial music for player civilization
         var playerCiv = CivilizationManager.Instance.playerCiv;
         if (playerCiv != null)
         {
-            UpdateMusic(playerCiv, playerCiv.GetCurrentAge(), DiplomaticState.Peace);
+            Debug.Log($"[MusicManager] Setting initial music for player civilization: {playerCiv.civData?.civName ?? "NULL"}");
+            var currentAge = playerCiv.GetCurrentAge();
+            Debug.Log($"[MusicManager] Player civ current age: {currentAge}");
+            UpdateMusic(playerCiv, currentAge, DiplomaticState.Peace);
         }
+        else
+        {
+            Debug.LogWarning("[MusicManager] No player civilization found! Cannot set initial music.");
+        }
+
+        Debug.Log("[MusicManager] InitializeMusicTracks() completed");
     }
 
     public void UpdateMusic(Civilization civ, TechAge currentAge, DiplomaticState currentState)
@@ -170,22 +242,36 @@ public class MusicManager : MonoBehaviour
 
     private IEnumerator FadeAndPlayFromPlaylist()
     {
+        Debug.Log("[MusicManager] FadeAndPlayFromPlaylist coroutine started");
         isChangingTrack = true;
 
         if (currentPlaylist == null || currentPlaylist.Count == 0)
         {
+            Debug.LogWarning("[MusicManager] FadeAndPlayFromPlaylist: currentPlaylist is null or empty");
             isChangingTrack = false;
             yield break;
         }
 
         if (currentTrackIndex >= currentPlaylist.Count)
+        {
+            Debug.Log("[MusicManager] Track index reset to 0");
             currentTrackIndex = 0;
+        }
 
         AudioClip nextTrack = currentPlaylist[currentTrackIndex];
+        Debug.Log($"[MusicManager] Playing track {currentTrackIndex}: {nextTrack?.name ?? "NULL"}");
+
+        if (nextTrack == null)
+        {
+            Debug.LogError("[MusicManager] Next track is null! Cannot play.");
+            isChangingTrack = false;
+            yield break;
+        }
 
         // Fade out
         float startVolume = musicSource.volume;
         float elapsedTime = 0f;
+        Debug.Log($"[MusicManager] Starting fade out from volume {startVolume}");
 
         while (elapsedTime < fadeDuration)
         {
@@ -195,12 +281,16 @@ public class MusicManager : MonoBehaviour
         }
 
         // Change track
+        Debug.Log("[MusicManager] Stopping current track and setting new one");
         musicSource.Stop();
         musicSource.clip = nextTrack;
         musicSource.Play();
 
+        Debug.Log($"[MusicManager] Started playing: {nextTrack.name}, isPlaying: {musicSource.isPlaying}");
+
         // Fade in
         elapsedTime = 0f;
+        Debug.Log($"[MusicManager] Starting fade in to volume {startVolume}");
         while (elapsedTime < fadeDuration)
         {
             musicSource.volume = Mathf.Lerp(0f, startVolume, elapsedTime / fadeDuration);
@@ -208,6 +298,7 @@ public class MusicManager : MonoBehaviour
             yield return null;
         }
 
+        Debug.Log("[MusicManager] FadeAndPlayFromPlaylist coroutine completed");
         isChangingTrack = false;
     }
 

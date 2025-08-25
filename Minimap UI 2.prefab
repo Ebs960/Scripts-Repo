@@ -1123,6 +1123,7 @@ GameObject:
   - component: {fileID: 5217262724751344565}
   - component: {fileID: 1678259087901350983}
   - component: {fileID: 6087927045441414453}
+  - component: {fileID: 7062323449701757668}
   m_Layer: 5
   m_Name: Minimap UI 2
   m_TagString: Untagged
@@ -1227,6 +1228,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3859075980690561143}
   m_CullTransparentMesh: 1
+--- !u!114 &7062323449701757668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3859075980690561143}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eee0c42f50db1b742a977f63b13ee482, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minimapImage: {fileID: 8280042980049759750}
+  planetDropdown: {fileID: 4068761577598587462}
+  minimapContainer: {fileID: 2569911654292508293}
+  zoomInButton: {fileID: 6924044681161247334}
+  zoomOutButton: {fileID: 551640169055990870}
+  moonButton: {fileID: 3172175531367859731}
+  mainPlanetButton: {fileID: 286983583296350513}
+  zoomLevelText: {fileID: 3513231434145898316}
+  positionIndicator: {fileID: 8306577482277223502}
+  minimapResolution: {x: 512, y: 256}
+  colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
+  maxZoom: 4
+  minZoom: 1
+  zoomSpeed: 0.25
+  buttonZoomStep: 1
+  mainPlanetIndex: 0
+  preGenerateAllMinimaps: 1
+  maxPixelsPerFrameBatch: 100000
+  uiCamera: {fileID: 0}
 --- !u!1 &3992384041759471822
 GameObject:
   m_ObjectHideFlags: 0
@@ -1510,7 +1542,6 @@ GameObject:
   - component: {fileID: 2569911654292508293}
   - component: {fileID: 8543203846736315478}
   - component: {fileID: 8280042980049759750}
-  - component: {fileID: 875205624139326854}
   m_Layer: 5
   m_Name: Minimap Panel
   m_TagString: Untagged
@@ -1573,38 +1604,6 @@ MonoBehaviour:
     y: 0
     width: 1
     height: 1
---- !u!114 &875205624139326854
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5149133270246262176}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eee0c42f50db1b742a977f63b13ee482, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  minimapImage: {fileID: 8280042980049759750}
-  planetDropdown: {fileID: 4068761577598587462}
-  minimapContainer: {fileID: 2569911654292508293}
-  zoomInButton: {fileID: 6924044681161247334}
-  zoomOutButton: {fileID: 551640169055990870}
-  moonButton: {fileID: 3172175531367859731}
-  mainPlanetButton: {fileID: 286983583296350513}
-  zoomLevelText: {fileID: 3513231434145898316}
-  positionIndicator: {fileID: 8306577482277223502}
-  minimapResolution: {x: 512, y: 256}
-  colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
-  maxZoom: 4
-  minZoom: 1
-  zoomSpeed: 0.25
-  buttonZoomStep: 1
-  mainPlanetIndex: 0
-  preGenerateAllMinimaps: 1
-  minimapsPerFrame: 1
-  pixelsPerFrame: 900000
-  uiCamera: {fileID: 0}
 --- !u!1 &5186900336430570707
 GameObject:
   m_ObjectHideFlags: 0

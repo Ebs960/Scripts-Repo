@@ -36,10 +36,24 @@ public class TileClickDetector : MonoBehaviour
     
     void Start()
     {
-        // Auto-detect references if not assigned
+        // Auto-detect camera if not assigned
         if (mainCamera == null)
             mainCamera = Camera.main;
         
+        // Wait for game to be ready before accessing planet generators
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStarted += InitializeTileDetection;
+        }
+        else
+        {
+            Debug.LogWarning("[TileClickDetector] GameManager not found, will not initialize properly");
+        }
+    }
+    
+    private void InitializeTileDetection()
+    {
+        // Now safely access planet generators after game is ready
         if (planetGenerator == null)
             planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         
@@ -55,8 +69,26 @@ public class TileClickDetector : MonoBehaviour
         
         if (planetGrid == null)
         {
-            Debug.LogWarning("[TileClickDetector] PlanetGenerator or its Grid not found!");
+            Debug.LogWarning("[TileClickDetector] PlanetGenerator or its Grid not found after game started!");
         }
+        else
+        {
+            Debug.Log("[TileClickDetector] Successfully initialized tile detection after game started");
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // Unsubscribe from GameManager events
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStarted -= InitializeTileDetection;
+        }
+        
+        // Clear static events to prevent memory leaks
+        OnTileClicked = null;
+        OnTileHovered = null;
+        OnTileExited = null;
     }
     
     void Update()
@@ -226,13 +258,5 @@ public class TileClickDetector : MonoBehaviour
     public (int tileIndex, bool isMoon) GetCurrentHoveredTile()
     {
         return (lastHoveredTileIndex, lastHoverWasMoon);
-    }
-    
-    void OnDestroy()
-    {
-        // Clear static events to prevent memory leaks
-        OnTileClicked = null;
-        OnTileHovered = null;
-        OnTileExited = null;
     }
 } 

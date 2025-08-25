@@ -43,13 +43,30 @@ public class AtmosphereController : MonoBehaviour
         if (planetGenerator == null)
             planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
 
-        // Check if this planet should have an atmosphere
+        // Wait for game to be ready before checking atmosphere compatibility
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStarted += HandleGameStarted;
+        }
+
+        // Don't generate mesh immediately, wait for planet to be ready
+    }
+    
+    private void HandleGameStarted()
+    {
+        // Check if this planet should have an atmosphere (now that game is ready)
         if (checkPlanetTypeForAtmosphere)
         {
             CheckAtmosphereCompatibility();
         }
-
-        // Don't generate mesh immediately, wait for planet to be ready
+    }
+    
+    void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnGameStarted -= HandleGameStarted;
+        }
     }
 
     void Update()

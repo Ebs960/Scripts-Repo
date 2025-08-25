@@ -128,21 +128,83 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         cavePlacementNoise = new NoiseSampler(seed + 1); // Different seed for cave placement
 
 
-        flatBiomePrefabs.Clear();
-        hillBiomePrefabs.Clear();
-        // Build dictionaries for all prefab types
-        foreach (var entry in biomePrefabList)
-        {
-            if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
-                flatBiomePrefabs[entry.biome] = entry.flatPrefabs;
-            if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
-                hillBiomePrefabs[entry.biome] = entry.hillPrefabs;
-            // Pentagon support
-            if (entry.pentagonFlatPrefabs != null && entry.pentagonFlatPrefabs.Length > 0)
-                flatBiomePrefabs[(Biome)((int)entry.biome + 1000)] = entry.pentagonFlatPrefabs; // Key offset for pentagon
-            if (entry.pentagonHillPrefabs != null && entry.pentagonHillPrefabs.Length > 0)
-                hillBiomePrefabs[(Biome)((int)entry.biome + 1000)] = entry.pentagonHillPrefabs;
-        }
+            flatBiomePrefabs.Clear();
+            hillBiomePrefabs.Clear();
+
+            bool anyManual = false;
+            foreach (var entry in biomePrefabList)
+            {
+                if (entry.flatPrefabs != null && entry.flatPrefabs.Length > 0)
+                { flatBiomePrefabs[entry.biome] = entry.flatPrefabs; anyManual = true; }
+                if (entry.hillPrefabs != null && entry.hillPrefabs.Length > 0)
+                { hillBiomePrefabs[entry.biome] = entry.hillPrefabs; anyManual = true; }
+            }
+
+            if (!anyManual)
+            {
+                var allPrefabs = Resources.LoadAll<GameObject>("Tiles");
+                if (allPrefabs == null || allPrefabs.Length == 0)
+                {
+                    Debug.LogWarning("[MoonGenerator] No prefabs found in Resources/Tiles. Name-based auto-loading will find nothing. Ensure your tile prefabs are placed under Assets/Resources/Tiles and named per the conventions.");
+                }
+                var nameIndex = new Dictionary<string, List<GameObject>>(StringComparer.OrdinalIgnoreCase);
+                foreach (var go in allPrefabs)
+                {
+                    if (go == null) continue;
+                    string n = go.name.Trim();
+                    if (!nameIndex.TryGetValue(n, out var list)) { list = new List<GameObject>(); nameIndex[n] = list; }
+                    list.Add(go);
+                }
+
+                List<GameObject> FindMany(string exact, string startsWith = null)
+                {
+                    if (nameIndex.TryGetValue(exact, out var list) && list.Count > 0)
+                        return list;
+                    if (!string.IsNullOrEmpty(startsWith))
+                    {
+                        var matches = new List<GameObject>();
+                        foreach (var kv in nameIndex)
+                        {
+                            if (kv.Key.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase))
+                                matches.AddRange(kv.Value);
+                        }
+                        if (matches.Count > 0) return matches;
+                    }
+                    return new List<GameObject>();
+                }
+
+                foreach (Biome biome in Enum.GetValues(typeof(Biome)))
+                {
+                    if (biome == Biome.Any) continue;
+                    string biomeName = biome.ToString();
+                    var flatA = FindMany($"{biomeName} flat hex tile", $"{biomeName} flat hex tile");
+                    flatA.AddRange(FindMany($"{biomeName} flat hex tile 2"));
+                    var hills = FindMany($"{biomeName} hills hex tile", $"{biomeName} hills hex tile");
+                    // New naming: "{Biome} pentagon flat tile" / "{Biome} pentagon hills tile"
+                    var pFlat = FindMany($"{biomeName} flat pentagon tile", $"{biomeName} flat pentagon tile");
+                    var pHills = FindMany($"{biomeName} pentagon hills tile", $"{biomeName} pentagon hills tile");
+                    // Back-compat: also accept the older names with "hex"
+                    if (pFlat.Count == 0)
+                        pFlat.AddRange(FindMany($"{biomeName} pentagon flat hex tile", $"{biomeName} pentagon flat hex tile"));
+                    if (pHills.Count == 0)
+                        pHills.AddRange(FindMany($"{biomeName} pentagon hills hex tile", $"{biomeName} pentagon hills hex tile"));
+
+                    if (flatA.Count == 0 && hills.Count == 0 && pFlat.Count == 0 && pHills.Count == 0)
+                        continue;
+
+                    var autoEntry = new BiomePrefabEntry
+                    {
+                        biome = biome,
+                        flatPrefabs = flatA.ToArray(),
+                        hillPrefabs = hills.ToArray(),
+                        pentagonFlatPrefabs = pFlat.ToArray(),
+                        pentagonHillPrefabs = pHills.ToArray()
+                    };
+                    biomePrefabList.Add(autoEntry);
+                    if (autoEntry.flatPrefabs.Length > 0) flatBiomePrefabs[biome] = autoEntry.flatPrefabs;
+                    if (autoEntry.hillPrefabs.Length > 0) hillBiomePrefabs[biome] = autoEntry.hillPrefabs;
+                }
+            }
     }
 
     void Start()
@@ -1239,5 +1301,27 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
         // Use the expected tile distance calculation
         float expectedDistance = CalculateExpectedTileDistance();
         return expectedDistance * 0.5f; // Radius is roughly half the distance to neighbors
+    }
+
+    /// <summary>
+    /// Safety net: ensure moon tile visuals and decorations exist. If not, spawn them now.
+    /// </summary>
+    public System.Collections.IEnumerator EnsureVisualsSpawned()
+    {
+        var tileParent = transform.Find("MoonTilePrefabs");
+        bool hasVisuals = tileParent != null && tileParent.childCount > 0;
+
+        if (!hasVisuals)
+        {
+            Debug.Log("[MoonGenerator] EnsureVisualsSpawned: No tile visuals found, spawning now...");
+            yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
+            if (decorationManager != null && decorationManager.enableDecorations)
+                yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
+            yield return null;
+        }
+        else
+        {
+            yield return null;
+        }
     }
 }
