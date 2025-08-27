@@ -404,7 +404,9 @@ public class WorkerUnit : MonoBehaviour
 
     public bool CanFoundCityOnCurrentTile()
     {
-        if (!data.canFoundCity || owner == null) return false;
+    if (!data.canFoundCity || owner == null) return false;
+    // City-cap gate: nomads cannot settle until tech raises cap
+    if (!owner.CanFoundMoreCities()) return false;
 
         // Basic check: is the tile land and not occupied by another city?
         var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);

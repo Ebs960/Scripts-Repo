@@ -572,6 +572,16 @@ public class City : MonoBehaviour
                 Debug.LogWarning($"Cannot build {b.buildingName} - city is not coastal!");
                 return false;
             }
+            // Tech/Culture requirements
+            if (!b.AreRequirementsMet(owner)) {
+                Debug.LogWarning($"Cannot build {b.buildingName} - missing required techs/cultures");
+                return false;
+            }
+            // Population requirement
+            if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
+                Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
+                return false;
+            }
             
             if (!CanProduce(b.requiredResources, b.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(b, b.productionCost, b.goldCost,
@@ -760,6 +770,16 @@ public class City : MonoBehaviour
             reqRes = b.requiredResources;
             reqTerr = b.requiredTerrains;
             isHarborBuilding = b.providesHarbor;
+            // Tech/Culture
+            if (!b.AreRequirementsMet(owner)) {
+                Debug.LogWarning($"Cannot buy {b.buildingName} - missing required techs/cultures");
+                return false;
+            }
+            // Population
+            if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
+                Debug.LogWarning($"Cannot buy {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
+                return false;
+            }
         }
         else if (d is DistrictData district) {
             cost = district.goldCost;
@@ -970,10 +990,9 @@ public class City : MonoBehaviour
             buildingInstance = Instantiate(b.buildingPrefab, transform.position, Quaternion.identity);
             buildingInstance.transform.SetParent(transform); // Parent to city for organization
         }
-        else if (b.prefab != null) // Fall back to prefab if buildingPrefab is null
+        else
         {
-            buildingInstance = Instantiate(b.prefab, transform.position, Quaternion.identity);
-            buildingInstance.transform.SetParent(transform);
+            Debug.LogWarning($"Building {b.buildingName} has no prefab assigned!");
         }
         
         // Track the building and its instance

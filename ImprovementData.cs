@@ -96,7 +96,7 @@ public class ResourceCost
     public int amount;
 }
 
-[CreateAssetMenu(fileName = "NewImprovementData", menuName = "CivGame/Improvement Data")]
+[CreateAssetMenu(fileName = "NewImprovementData", menuName = "Data/Improvement Data")]
 public class ImprovementData : ScriptableObject
 {
     [Header("Identity")]

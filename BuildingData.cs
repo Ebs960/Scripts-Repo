@@ -1,7 +1,7 @@
 // Assets/Scripts/Data/BuildingData.cs
 using UnityEngine;
 
-[CreateAssetMenu(menuName="CivGame/Building Data")]
+[CreateAssetMenu(menuName="Data/Building Data")]
 public class BuildingData : ScriptableObject
 {
     [Header("Identity")]
@@ -11,8 +11,6 @@ public class BuildingData : ScriptableObject
 
     [Header("Prefab")]
     public GameObject buildingPrefab;
-    public GameObject prefab;
-    public GameObject constructionPrefab;
 
     [Header("Replacement (Upgrade)")]
     [Tooltip("If non-null, this building will replace the specified older building when completed")]
@@ -37,21 +35,23 @@ public class BuildingData : ScriptableObject
     [Header("Special Flags")]
     [Tooltip("Grants harbor functionality (lets city build ships/subs)")]
     public bool providesHarbor;
-    [Tooltip("Is this building a market?")]
-    public bool isMarket;
-    [Tooltip("Is this building a bank?")]
-    public bool isBank;
-    [Tooltip("Is this building a mill?")]
-    public bool isMill;
-    [Tooltip("Is this building a factory?")]
-    public bool isFactory;
-    [Tooltip("Is this building a granary?")]
-    public bool isGranary;
-    [Tooltip("Is this building a farm?")]
-    public bool isFarm;
+
+    public bool isScienceBuilding;
+
+    public bool isFoodBuilding;
+
+    public bool isProductionBuilding;
+
+    public bool isGoldBuilding;
+
+    public bool isCultureBuilding;
+  
+
 
     [Header("Requirements")]
     public TechData[] requiredTechs;
+    [Tooltip("All these cultures must be adopted to build this building")]
+    public CultureData[] requiredCultures;
     public int requiredPopulation;
 
     [Header("Building Limits")]
@@ -74,6 +74,48 @@ public class BuildingData : ScriptableObject
     [Header("Other Effects")]
     public float defenseBonus;
     public float happinessBonus;
+}
+
+[System.Serializable]
+public class BuildingRequirements
+{
+    // Reserved for future grouping if needed
+}
+
+public static class BuildingDataExtensions
+{
+    /// <summary>
+    /// Checks if the civilization meets this building's tech/culture requirements.
+    /// Note: Resource/terrain/coastal checks are handled by City.CanProduce and related logic.
+    /// </summary>
+    public static bool AreRequirementsMet(this BuildingData building, Civilization civ)
+    {
+        if (building == null || civ == null) return false;
+
+        // Tech requirements
+        if (building.requiredTechs != null && building.requiredTechs.Length > 0)
+        {
+            foreach (var tech in building.requiredTechs)
+            {
+                if (tech == null) continue;
+                if (!civ.researchedTechs.Contains(tech))
+                    return false;
+            }
+        }
+
+        // Culture requirements
+        if (building.requiredCultures != null && building.requiredCultures.Length > 0)
+        {
+            foreach (var culture in building.requiredCultures)
+            {
+                if (culture == null) continue;
+                if (!civ.researchedCultures.Contains(culture))
+                    return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 [System.Serializable]

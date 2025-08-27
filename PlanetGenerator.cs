@@ -444,6 +444,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     public bool HasGeneratedSurface { get; private set; } = false;
     private LoadingPanelController loadingPanelController;
 
+    [Header("Prefab loading")]
+    [Tooltip("When enabled, ignore any manually assigned BiomePrefabEntry lists and always load tile prefabs by name from Resources/Tiles.")]
+    public bool forceNameBasedPrefabs = true;
+
 
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
@@ -483,7 +487,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         
 
-        // Build prefab lookup dictionaries. Prefer manual assignments if present; otherwise attempt auto-lookup by name under Resources.
+    // Build prefab lookup dictionaries. Prefer manual assignments unless forcing name-based; otherwise attempt auto-lookup by name under Resources.
         flatBiomePrefabs = new Dictionary<Biome, GameObject[]>();
         hillBiomePrefabs = new Dictionary<Biome, GameObject[]>();
         bool anyManual = false;
@@ -501,12 +505,22 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
         }
 
-        if (!anyManual)
+        bool shouldAutoLoad = forceNameBasedPrefabs || !anyManual;
+        if (forceNameBasedPrefabs)
+        {
+            // Clear any manually assigned entries so name-based entries are used exclusively
+            biomePrefabList.Clear();
+            flatBiomePrefabs.Clear();
+            hillBiomePrefabs.Clear();
+            Debug.Log("[PlanetGenerator] Forcing name-based prefab loading (ignoring manually assigned biome prefabs).");
+        }
+
+        if (shouldAutoLoad)
         {
             // Auto-load prefabs named by convention from Resources/Tiles/**
             // Expected names:
             //   "{Biome} flat hex tile", "{Biome} flat hex tile 2", "{Biome} hills hex tile",
-            //   "{Biome} pentagon flat hex tile", "{Biome} pentagon hills hex tile",
+            //   "{Biome} pentagon flat tile", "{Biome} pentagon hills tile" (back-compat: ... hex tile),
             //   Mountains: "Mountain Hex Tile", "Pentagon Mountain Tile"
             var allPrefabs = Resources.LoadAll<GameObject>("Tiles");
             if (allPrefabs == null || allPrefabs.Length == 0)
@@ -572,7 +586,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 flatA.AddRange(FindMany($"{biomeName} flat hex tile 2"));
                 var hills = FindMany($"{biomeName} hills hex tile", $"{biomeName} hills hex tile");
                 // New naming: "{Biome} pentagon flat tile" / "{Biome} pentagon hills tile"
-                var pFlat = FindMany($"{biomeName} flat pentagon tile", $"{biomeName} flat pentagon tile");
+                var pFlat = FindMany($"{biomeName} pentagon flat tile", $"{biomeName} pentagon flat tile");
                 var pHills = FindMany($"{biomeName} pentagon hills tile", $"{biomeName} pentagon hills tile");
                 // Back-compat: also accept the older names with "hex"
                 if (pFlat.Count == 0)

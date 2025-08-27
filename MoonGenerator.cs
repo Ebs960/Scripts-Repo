@@ -48,6 +48,10 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Header("Tile Prefabs")]
     public List<BiomePrefabEntry> biomePrefabList = new();
+
+    [Header("Prefab loading")]
+    [Tooltip("When enabled, ignore any manually assigned BiomePrefabEntry lists and always load tile prefabs by name from Resources/Tiles.")]
+    public bool forceNameBasedPrefabs = true;
     [Tooltip("Number of tile prefabs to spawn each frame")]
     public int tileSpawnBatchSize = 100;
     [Tooltip("Number of tile decorations to spawn each frame (smaller batches for performance)")]
@@ -140,7 +144,16 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 { hillBiomePrefabs[entry.biome] = entry.hillPrefabs; anyManual = true; }
             }
 
-            if (!anyManual)
+            bool shouldAutoLoad = forceNameBasedPrefabs || !anyManual;
+            if (forceNameBasedPrefabs)
+            {
+                biomePrefabList.Clear();
+                flatBiomePrefabs.Clear();
+                hillBiomePrefabs.Clear();
+                Debug.Log("[MoonGenerator] Forcing name-based prefab loading (ignoring manually assigned biome prefabs).");
+            }
+
+            if (shouldAutoLoad)
             {
                 var allPrefabs = Resources.LoadAll<GameObject>("Tiles");
                 if (allPrefabs == null || allPrefabs.Length == 0)
@@ -181,7 +194,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                     flatA.AddRange(FindMany($"{biomeName} flat hex tile 2"));
                     var hills = FindMany($"{biomeName} hills hex tile", $"{biomeName} hills hex tile");
                     // New naming: "{Biome} pentagon flat tile" / "{Biome} pentagon hills tile"
-                    var pFlat = FindMany($"{biomeName} flat pentagon tile", $"{biomeName} flat pentagon tile");
+                    var pFlat = FindMany($"{biomeName} pentagon flat tile", $"{biomeName} pentagon flat tile");
                     var pHills = FindMany($"{biomeName} pentagon hills tile", $"{biomeName} pentagon hills tile");
                     // Back-compat: also accept the older names with "hex"
                     if (pFlat.Count == 0)
@@ -265,7 +278,7 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                     loadingPanelController.SetProgress((float)i / tileCount * 0.2f); // Progress 0% to 20%
                     loadingPanelController.SetStatus("Sculpting moon dunes...");
                 }
-        yield return null;
+                yield return null;
             }
         }
 

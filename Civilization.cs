@@ -137,6 +137,20 @@ public class Civilization : MonoBehaviour
     // List of governor traits this civ has unlocked (for trait assignment UI)
     public List<GovernorTrait> unlockedGovernorTraits = new List<GovernorTrait>();
     
+    [Header("City Cap")]
+    [Tooltip("Base maximum number of cities this civilization may own. Set to 0 for Paleolithic nomads.")]
+    [SerializeField] private int baseCityCap = 0;
+    [Tooltip("Additional city capacity gained from technologies, policies, etc. Computed at runtime.")]
+    [SerializeField] private int cityCapFromBonuses = 0;
+    /// <summary>
+    /// Current max cities allowed = base + bonuses. Default 0 so early ages are nomadic.
+    /// </summary>
+    public int CurrentCityCap => Mathf.Max(0, baseCityCap + cityCapFromBonuses);
+    /// <summary>
+    /// Returns true if this civ may found/own another city given the cap.
+    /// </summary>
+    public bool CanFoundMoreCities() => cities == null || cities.Count < CurrentCityCap;
+    
 
     // Increase the number of governors this civ can create
     public void IncreaseGovernorCount(int amount = 1)
@@ -1219,6 +1233,12 @@ public class Civilization : MonoBehaviour
 
         // Apply tech bonuses
         ApplyTechBonuses(tech);
+        
+        // City-cap increase from this technology (enables settlement when first >0 is researched)
+        if (tech.cityCapIncrease != 0)
+        {
+            cityCapFromBonuses = Mathf.Max(0, cityCapFromBonuses + tech.cityCapIncrease);
+        }
 
         // Add any unlocked equipment to inventory
         AddUnlockedEquipment(tech);
@@ -1492,6 +1512,12 @@ public class Civilization : MonoBehaviour
     public void FoundNewCity(int tileIndex, SphericalHexGrid gridOverride = null, PlanetGenerator planetOverride = null)
     {
         Debug.Log($"[FoundNewCity] Called for civ {civData?.civName ?? "NULL"} at tile {tileIndex}. cityPrefab={(cityPrefab != null ? cityPrefab.name : "NULL")}");
+        // City-cap gating
+        if (!CanFoundMoreCities())
+        {
+            Debug.LogWarning($"[{civData?.civName ?? "Civ"}] cannot found a new city: at city cap ({cities?.Count ?? 0}/{CurrentCityCap}).");
+            return;
+        }
         if (cityPrefab == null)
         {
             Debug.LogError("[FoundNewCity] City prefab not assigned to civilization!");

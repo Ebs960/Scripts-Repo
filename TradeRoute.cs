@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -17,6 +18,10 @@ public class TradeRoute
     public int goldPerTurn;
     public int foodPerTurn;
     public int productionPerTurn;
+
+    public int sciencePerTurn;
+
+    public int culturePerTurn;
     
     // Constants for trade route configuration
     private const int BASE_GOLD_PER_TURN = 2;
@@ -75,12 +80,16 @@ public class TradeRoute
             // Original city trade calculation
             foreach (var (building, _) in destinationCity.builtBuildings)
             {
-                if (building.isMarket || building.isBank)
+                if (building.isGoldBuilding)
                     goldPerTurn += 1;
-                if (building.isMill || building.isFactory)
+                if (building.isProductionBuilding)
                     productionPerTurn += 1;
-                if (building.isGranary || building.isFarm)
+                if (building.isFoodBuilding)
                     foodPerTurn += 1;
+                if (building.isScienceBuilding)
+                    sciencePerTurn += 1;
+                if (building.isCultureBuilding)
+                    culturePerTurn += 1;
             }
         }
     }

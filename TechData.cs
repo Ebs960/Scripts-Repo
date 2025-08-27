@@ -138,4 +138,8 @@ public class TechData : ScriptableObject
     [Tooltip("Increases the limit for specific units/buildings")]
     public UnitLimitModifier[] unitLimitModifiers;
     public BuildingLimitModifier[] buildingLimitModifiers;
+
+    [Header("Cities & Settlement")]
+    [Tooltip("How much this technology increases the maximum number of cities a civilization may found. Use 1 on the first sedentary tech to allow the first city." )]
+    public int cityCapIncrease = 0;
 }
