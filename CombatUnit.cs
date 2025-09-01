@@ -28,20 +28,119 @@ public class CombatUnit : MonoBehaviour
     [Tooltip("Transform where projectiles will spawn from")]
     public Transform projectileSpawnPoint;
     
+    [Header("Holder-based Attachment (no IK)")]
+    [Tooltip("If true, equipment will be attached using simple holder transforms. IK is disabled.")]
+    public bool useHolderAttachment = true;
+    
     // Dictionary to track instantiated equipment GameObjects
     protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
     
     // Equipment in use (beyond just the single 'equipped' reference)
-    protected EquipmentData equippedWeapon;
-    protected EquipmentData equippedShield;
-    protected EquipmentData equippedArmor;
-    protected EquipmentData equippedMiscellaneous;
+    [Header("Equipped Items (Editable)")]
+    [SerializeField] private EquipmentData _equippedWeapon;
+    [SerializeField] private EquipmentData _equippedShield;
+    [SerializeField] private EquipmentData _equippedArmor;
+    [SerializeField] private EquipmentData _equippedMiscellaneous;
+    
+    [Header("Editor")]
+    [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
+    [SerializeField] private bool updateEquipmentInEditor = true;
+    
+    public EquipmentData Weapon => equippedWeapon;
+    public EquipmentData Shield => equippedShield;
+    public EquipmentData Armor => equippedArmor;
+    public EquipmentData Miscellaneous => equippedMiscellaneous;
+
+    public EquipmentData equippedWeapon
+    {
+        get => _equippedWeapon;  // Simplified getter - no fallback
+        set
+        {
+            if (_equippedWeapon == value) return;
+            // Prevent equipping worker-only items on combat units
+            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedWeapon = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedShield {
+        get => _equippedShield; // Remove fallback logic
+        set {
+            if (_equippedShield == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedShield = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedArmor {
+        get => _equippedArmor; // Remove fallback logic
+        set {
+            if (_equippedArmor == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedArmor = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedMiscellaneous {
+        get => _equippedMiscellaneous; // Remove fallback logic
+        set {
+            if (_equippedMiscellaneous == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedMiscellaneous = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    /// <summary>
+    /// Editor button to equip all default equipment from the assigned data asset.
+    /// </summary>
+    [ContextMenu("Equip Default Equipment (Editor)")]
+    public void EquipDefaultEquipmentEditor()
+    {
+        if (data == null)
+        {
+            Debug.LogWarning("No CombatUnitData assigned. Cannot equip defaults.");
+            return;
+        }
+        equippedWeapon = data.defaultWeapon;
+        equippedShield = data.defaultShield;
+        equippedArmor = data.defaultArmor;
+        equippedMiscellaneous = data.defaultMiscellaneous;
+        #if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+        #endif
+        Debug.Log($"Equipped default equipment for {gameObject.name} in editor.");
+    }
     
     SphericalHexGrid grid;
     PlanetGenerator planet;
     Animator animator;
 
-    public CombatUnitData data { get; private set; }
+    // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
+    private Transform _weaponGrip;
+    // Neutral root for equipment if needed (kept for backwards compatibility)
+    private Transform equipmentRoot;
+
+    [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
     public Civilization owner { get; private set; }
 
     // Remove old events and use GameEventManager instead
@@ -95,6 +194,18 @@ public class CombatUnit : MonoBehaviour
     [SerializeField] private GameObject unitLabelPrefab;
     private UnitLabel unitLabelInstance;
 
+
+
+    void Start()
+    {
+        // If equipment was assigned in Inspector before play mode, ensure visuals are created at runtime
+        if (Application.isPlaying)
+        {
+            UpdateEquipmentVisuals();
+        }
+    }
+
+
     void Awake()
     {
         animator = GetComponent<Animator>();
@@ -102,6 +213,81 @@ public class CombatUnit : MonoBehaviour
         planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null) grid = planet.Grid;
         UnitRegistry.Register(gameObject);
+
+        // Improved fallback: Auto-assign defaults if data exists
+        if (data != null)
+        {
+            if (_equippedWeapon == null && data.defaultWeapon != null)
+            {
+                _equippedWeapon = data.defaultWeapon;
+                Debug.Log($"[Awake] Auto-assigned default weapon {data.defaultWeapon.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedShield == null && data.defaultShield != null)
+            {
+                _equippedShield = data.defaultShield;
+                Debug.Log($"[Awake] Auto-assigned default shield {data.defaultShield.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedArmor == null && data.defaultArmor != null)
+            {
+                _equippedArmor = data.defaultArmor;
+                Debug.Log($"[Awake] Auto-assigned default armor {data.defaultArmor.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedMiscellaneous == null && data.defaultMiscellaneous != null)
+            {
+                _equippedMiscellaneous = data.defaultMiscellaneous;
+                Debug.Log($"[Awake] Auto-assigned default miscellaneous {data.defaultMiscellaneous.equipmentName} to {gameObject.name}");
+            }
+        }
+        // Always update visuals
+        UpdateEquipmentVisuals();
+    }
+
+    // Ensure equipment visuals update in edit mode when fields are changed
+    void OnValidate()
+    {
+        // Only run in edit mode, not during play mode
+        if (!Application.isPlaying && updateEquipmentInEditor)
+        {
+            // Use a more direct approach to avoid timing issues
+            // Schedule the update for the next frame to ensure all inspector changes are processed
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this != null && !Application.isPlaying && updateEquipmentInEditor)
+                {
+                    UpdateEquipmentVisuals();
+                    // Mark the object as dirty so changes are saved
+                    UnityEditor.EditorUtility.SetDirty(this);
+                }
+            };
+
+            // Editor-time validation: ensure assigned equipment is compatible with CombatUnit
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null) return;
+                if (_equippedWeapon != null && _equippedWeapon.targetUnit == EquipmentTarget.WorkerUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedWeapon.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
+                    _equippedWeapon = null;
+                }
+                if (_equippedShield != null && _equippedShield.targetUnit == EquipmentTarget.WorkerUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedShield.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
+                    _equippedShield = null;
+                }
+                if (_equippedArmor != null && _equippedArmor.targetUnit == EquipmentTarget.WorkerUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedArmor.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
+                    _equippedArmor = null;
+                }
+                if (_equippedMiscellaneous != null && _equippedMiscellaneous.targetUnit == EquipmentTarget.WorkerUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedMiscellaneous.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
+                    _equippedMiscellaneous = null;
+                }
+                UpdateEquipmentVisuals();
+                UnityEditor.EditorUtility.SetDirty(this);
+            };
+        }
     }
 
     void OnDestroy()
@@ -128,18 +314,19 @@ public class CombatUnit : MonoBehaviour
         owner = unitOwner;
         level = 1;
         experience = 0;
-        equipped = data.defaultEquipment;
-    // Weather susceptibility from data
-    takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
-        
-        if (data.defaultEquipment != null)
-        {
-            EquipItem(data.defaultEquipment);
-        }
-        
+
+        // Equip all default equipment slots
+        if (data.defaultWeapon != null) EquipItem(data.defaultWeapon);
+        if (data.defaultShield != null) EquipItem(data.defaultShield);
+        if (data.defaultArmor != null) EquipItem(data.defaultArmor);
+        if (data.defaultMiscellaneous != null) EquipItem(data.defaultMiscellaneous);
+
+        // Weather susceptibility from data
+        takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
+
         currentHealth = MaxHealth;
         currentMorale = useOverrideStats && morale > 0 ? morale : data.baseMorale;
-        
+
         RecalculateStats();
 
         animator = GetComponent<Animator>();
@@ -152,9 +339,9 @@ public class CombatUnit : MonoBehaviour
         {
             Debug.LogWarning($"CombatUnit {gameObject.name} is missing an Animator component.");
         }
-        
+
         UpdateEquipmentVisuals();
-        
+
         if (UnitFormationManager.Instance != null)
         {
             UnitFormationManager.Instance.RegisterFormation(this);
@@ -196,36 +383,37 @@ public class CombatUnit : MonoBehaviour
     public int BaseAttackPoints => useOverrideStats && attackPoints > 0 ? attackPoints : data.baseAttackPoints;
 
     // Equipment bonuses (sum across all equipped slots)
-    public int EquipmentAttackBonus
-        => (equippedWeapon?.attackBonus ?? 0)
-         + (equippedShield?.attackBonus ?? 0)
-         + (equippedArmor?.attackBonus ?? 0)
-         + (equippedMiscellaneous?.attackBonus ?? 0);
-    public int EquipmentDefenseBonus
-        => (equippedWeapon?.defenseBonus ?? 0)
-         + (equippedShield?.defenseBonus ?? 0)
-         + (equippedArmor?.defenseBonus ?? 0)
-         + (equippedMiscellaneous?.defenseBonus ?? 0);
-    public int EquipmentHealthBonus
-        => (equippedWeapon?.healthBonus ?? 0)
-         + (equippedShield?.healthBonus ?? 0)
-         + (equippedArmor?.healthBonus ?? 0)
-         + (equippedMiscellaneous?.healthBonus ?? 0);
-    public int EquipmentMoveBonus
-        => (equippedWeapon?.movementBonus ?? 0)
-         + (equippedShield?.movementBonus ?? 0)
-         + (equippedArmor?.movementBonus ?? 0)
-         + (equippedMiscellaneous?.movementBonus ?? 0);
-    public int EquipmentRangeBonus
-        => (equippedWeapon?.rangeBonus ?? 0)
-         + (equippedShield?.rangeBonus ?? 0)
-         + (equippedArmor?.rangeBonus ?? 0)
-         + (equippedMiscellaneous?.rangeBonus ?? 0);
-    public int EquipmentAttackPointsBonus
-        => (equippedWeapon?.attackPointsBonus ?? 0)
-         + (equippedShield?.attackPointsBonus ?? 0)
-         + (equippedArmor?.attackPointsBonus ?? 0)
-         + (equippedMiscellaneous?.attackPointsBonus ?? 0);
+    // Equipment bonuses aggregated as floats (can be fractional)
+    public float EquipmentAttackBonus
+        => (equippedWeapon?.attackBonus ?? 0f)
+         + (equippedShield?.attackBonus ?? 0f)
+         + (equippedArmor?.attackBonus ?? 0f)
+         + (equippedMiscellaneous?.attackBonus ?? 0f);
+    public float EquipmentDefenseBonus
+        => (equippedWeapon?.defenseBonus ?? 0f)
+         + (equippedShield?.defenseBonus ?? 0f)
+         + (equippedArmor?.defenseBonus ?? 0f)
+         + (equippedMiscellaneous?.defenseBonus ?? 0f);
+    public float EquipmentHealthBonus
+        => (equippedWeapon?.healthBonus ?? 0f)
+         + (equippedShield?.healthBonus ?? 0f)
+         + (equippedArmor?.healthBonus ?? 0f)
+         + (equippedMiscellaneous?.healthBonus ?? 0f);
+    public float EquipmentMoveBonus
+        => (equippedWeapon?.movementBonus ?? 0f)
+         + (equippedShield?.movementBonus ?? 0f)
+         + (equippedArmor?.movementBonus ?? 0f)
+         + (equippedMiscellaneous?.movementBonus ?? 0f);
+    public float EquipmentRangeBonus
+        => (equippedWeapon?.rangeBonus ?? 0f)
+         + (equippedShield?.rangeBonus ?? 0f)
+         + (equippedArmor?.rangeBonus ?? 0f)
+         + (equippedMiscellaneous?.rangeBonus ?? 0f);
+    public float EquipmentAttackPointsBonus
+        => (equippedWeapon?.attackPointsBonus ?? 0f)
+         + (equippedShield?.attackPointsBonus ?? 0f)
+         + (equippedArmor?.attackPointsBonus ?? 0f)
+         + (equippedMiscellaneous?.attackPointsBonus ?? 0f);
 
     // Ability modifiers - ADDED
     public int GetAbilityAttackModifier()
@@ -368,82 +556,80 @@ public class CombatUnit : MonoBehaviour
     {
         get
         {
-            int val = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
+            // Use floats internally for accuracy, then round when returning an int for gameplay values that expect ints.
+            float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
             if (owner != null && data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
-                val = Mathf.RoundToInt((val + u.attackAdd) * (1f + u.attackPct));
+                valF = (valF + u.attackAdd) * (1f + u.attackPct);
             }
             if (owner != null)
             {
                 var e = AggregateAllEquippedBonusesLocal(owner);
-                val = Mathf.RoundToInt((val + e.attackAdd) * (1f + e.attackPct));
+                valF = (valF + e.attackAdd) * (1f + e.attackPct);
             }
-            return val;
+            // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
+            return Mathf.RoundToInt(valF);
         }
     }
     public int CurrentDefense
     {
         get
         {
-            int val = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+            float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
             if (owner != null && data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
-                val = Mathf.RoundToInt((val + u.defenseAdd) * (1f + u.defensePct));
+                valF = (valF + u.defenseAdd) * (1f + u.defensePct);
             }
             if (owner != null)
             {
                 var e = AggregateAllEquippedBonusesLocal(owner);
-                val = Mathf.RoundToInt((val + e.defenseAdd) * (1f + e.defensePct));
+                valF = (valF + e.defenseAdd) * (1f + e.defensePct);
             }
-            return val;
+            return Mathf.RoundToInt(valF);
         }
     }
     public int MaxHealth
     {
         get
         {
-            int val = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
+            float valF = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
             if (owner != null && data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
-                val = Mathf.RoundToInt((val + u.healthAdd) * (1f + u.healthPct));
+                valF = (valF + u.healthAdd) * (1f + u.healthPct);
             }
             if (owner != null)
             {
                 var e = AggregateAllEquippedBonusesLocal(owner);
-                val = Mathf.RoundToInt((val + e.healthAdd) * (1f + e.healthPct));
+                valF = (valF + e.healthAdd) * (1f + e.healthPct);
             }
-            return val;
+            return Mathf.RoundToInt(valF);
         }
     }
     public int CurrentRange
     {
         get
         {
-            int val = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+            float valF = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
             if (owner != null && data != null)
             {
                 var u = AggregateUnitBonusesLocal(owner, data);
-                val = Mathf.RoundToInt((val + u.rangeAdd) * (1f + u.rangePct));
+                valF = (valF + u.rangeAdd) * (1f + u.rangePct);
             }
             if (owner != null)
             {
                 var e = AggregateAllEquippedBonusesLocal(owner);
-                val = Mathf.RoundToInt((val + e.rangeAdd) * (1f + e.rangePct));
+                valF = (valF + e.rangeAdd) * (1f + e.rangePct);
             }
-            return val;
+            return Mathf.RoundToInt(valF);
         }
     }
-    public int MaxAttackPoints   => BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
+    public int MaxAttackPoints   => Mathf.RoundToInt(BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier());
     public int MaxMorale         => useOverrideStats && morale > 0 ? morale : data.baseMorale;
     
-    // Equipment Properties
-    public EquipmentData Weapon => equippedWeapon;
-    public EquipmentData Shield => equippedShield;
-    public EquipmentData Armor => equippedArmor;
-    public EquipmentData Miscellaneous => equippedMiscellaneous;
+
 
     // Only land units can move on land, naval on water
     public bool CanMoveTo(int tileIndex)
@@ -547,7 +733,7 @@ public class CombatUnit : MonoBehaviour
 
         animator.SetTrigger("attack");
         OnAnimationTrigger?.Invoke("attack");
-        
+
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;
         var (tileData, _) = TileDataHelper.Instance.GetTileData(target.currentTileIndex);
@@ -557,11 +743,15 @@ public class CombatUnit : MonoBehaviour
             if (tileData.isHill)
                 tileBonus += 2;
         }
-        
-        // Damage calculation
+
+        // Damage calculation using floats and per-target equipment modifiers
         float dmgMul = GetAbilityDamageMultiplier();
-        int raw = Mathf.Max(0, CurrentAttack - target.CurrentDefense - tileBonus);
-        int damage = Mathf.RoundToInt(raw * dmgMul);
+
+        float attackerValue = GetBaseAttackFloat() + GetEquipmentAttackBonusAgainst(target.data.unitType);
+        float defenderValue = target.GetBaseDefenseFloat() + target.GetEquipmentDefenseBonusAgainst(this.data.unitType);
+
+        float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
+        int damage = Mathf.RoundToInt(rawF * dmgMul);
 
         // Flanking: adjacent allied units give +10% per extra unit
         int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
@@ -695,8 +885,12 @@ public class CombatUnit : MonoBehaviour
         }
 
         float dmgMul = GetAbilityDamageMultiplier();
-        int raw = Mathf.Max(0, CurrentAttack - attacker.CurrentDefense - tileBonus);
-        int damage = Mathf.RoundToInt(raw * dmgMul);
+
+        float attackerValue = GetBaseAttackFloat() + GetEquipmentAttackBonusAgainst(attacker.data.unitType);
+        float defenderValue = attacker.GetBaseDefenseFloat() + attacker.GetEquipmentDefenseBonusAgainst(this.data.unitType);
+
+        float rawF = Mathf.Max(0f, attackerValue - defenderValue - tileBonus);
+        int damage = Mathf.RoundToInt(rawF * dmgMul);
 
         // Flanking for counter-attacks too
         int flankCount = CountAdjacentAllies(attacker.currentTileIndex) - 1;
@@ -728,6 +922,54 @@ public class CombatUnit : MonoBehaviour
             // Flee one tile away
             AttemptFlee();
         }
+    }
+
+    // --- Float helpers for combat that include equipment per-target modifiers ---
+    private float GetBaseAttackFloat()
+    {
+        // BaseAttack is int; equipment and abilities may be fractional
+        return BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
+    }
+
+    private float GetBaseDefenseFloat()
+    {
+        return BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+    }
+
+    private float GetEquipmentAttackBonusAgainst(CombatCategory targetType)
+    {
+        float add = 0f;
+        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
+        foreach (var it in items)
+        {
+            if (it == null) continue;
+            if (it.attackBonusAgainst != null)
+            {
+                foreach (var entry in it.attackBonusAgainst)
+                {
+                    if (entry.unitType == targetType) add += entry.value;
+                }
+            }
+        }
+        return add;
+    }
+
+    private float GetEquipmentDefenseBonusAgainst(CombatCategory attackerType)
+    {
+        float add = 0f;
+        EquipmentData[] items = { equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous };
+        foreach (var it in items)
+        {
+            if (it == null) continue;
+            if (it.defenseBonusAgainst != null)
+            {
+                foreach (var entry in it.defenseBonusAgainst)
+                {
+                    if (entry.unitType == attackerType) add += entry.value;
+                }
+            }
+        }
+        return add;
     }
 
     /// <summary>
@@ -775,45 +1017,44 @@ public class CombatUnit : MonoBehaviour
 
     public void Equip(EquipmentData newEquip)
     {
-        equipped = newEquip;
-        // Optionally update visuals:
-        if (equipped.equipmentPrefab != null)
-            Instantiate(equipped.equipmentPrefab, transform);
-        // Recalculate move/attack points and health
-        RecalculateStats();
+    equipped = newEquip;
+    // Use the central visual update path to avoid duplicate instantiation
+    UpdateEquipmentVisuals();
+    // Recalculate move/attack points and health
+    RecalculateStats();
     }
     
     // New helper method to recalculate stats affected by equipment and abilities
     private void RecalculateStats()
     {
         // Base + equipment + abilities are already encapsulated in properties
-        int baseMove = BaseMovePoints + EquipmentMoveBonus;
-    int baseAP = BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
-    int maxHP = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
+        float baseMoveF = BaseMovePoints + EquipmentMoveBonus;
+        float baseAPF = BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
+        float maxHPF = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
 
         // Apply targeted bonuses from techs/cultures
-    if (owner != null && data != null)
+        if (owner != null && data != null)
         {
             var agg = AggregateUnitBonusesLocal(owner, data);
             // Apply additive first
-            baseMove += agg.moveAdd;
-            baseAP += agg.apAdd;
-            maxHP += agg.healthAdd;
+            baseMoveF += agg.moveAdd;
+            baseAPF += agg.apAdd;
+            maxHPF += agg.healthAdd;
             // Apply multiplicative
-            baseMove = Mathf.RoundToInt(baseMove * (1f + agg.movePct));
-            baseAP = Mathf.RoundToInt(baseAP * (1f + agg.apPct));
-            maxHP = Mathf.RoundToInt(maxHP * (1f + agg.healthPct));
+            baseMoveF = baseMoveF * (1f + agg.movePct);
+            baseAPF = baseAPF * (1f + agg.apPct);
+            maxHPF = maxHPF * (1f + agg.healthPct);
             // Attack/Defense/Range/Morale handled dynamically via getters or in combat; keep HP/move/AP here
             // Apply equipment-targeted bonuses across all equipped items
             var eagg = AggregateAllEquippedBonusesLocal(owner);
-            baseMove = Mathf.RoundToInt((baseMove + eagg.moveAdd) * (1f + eagg.movePct));
-            baseAP = Mathf.RoundToInt((baseAP + eagg.apAdd) * (1f + eagg.apPct));
-            maxHP = Mathf.RoundToInt((maxHP + eagg.healthAdd) * (1f + eagg.healthPct));
+            baseMoveF = (baseMoveF + eagg.moveAdd) * (1f + eagg.movePct);
+            baseAPF = (baseAPF + eagg.apAdd) * (1f + eagg.apPct);
+            maxHPF = (maxHPF + eagg.healthAdd) * (1f + eagg.healthPct);
         }
 
-        currentMovePoints = baseMove;
-        currentAttackPoints = baseAP;
-        currentHealth = Mathf.Min(currentHealth, maxHP);
+        currentMovePoints = Mathf.RoundToInt(baseMoveF);
+        currentAttackPoints = Mathf.RoundToInt(baseAPF);
+        currentHealth = Mathf.Min(currentHealth, Mathf.RoundToInt(maxHPF));
     }
 
     // Added helper method for City.cs usage
@@ -939,8 +1180,8 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public void ResetForNewTurn()
     {
-        // Calculate base move points including equipment bonuses
-        int baseMove = BaseMovePoints + EquipmentMoveBonus;
+    // Calculate base move points including equipment bonuses (float intermediate)
+    float baseMoveF = BaseMovePoints + EquipmentMoveBonus;
         
         // If trapped, decrement duration and block movement for this turn
         if (IsTrapped)
@@ -954,11 +1195,11 @@ public class CombatUnit : MonoBehaviour
         if (hasWinterPenalty && ClimateManager.Instance != null && 
             ClimateManager.Instance.currentSeason == Season.Winter)
         {
-            currentMovePoints = Mathf.Max(1, baseMove - 1);
+            currentMovePoints = Mathf.Max(1, Mathf.RoundToInt(baseMoveF) - 1);
         }
         else
         {
-            currentMovePoints = baseMove;
+            currentMovePoints = Mathf.RoundToInt(baseMoveF);
         }
         }
         
@@ -1288,39 +1529,68 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public virtual void UpdateEquipmentVisuals()
     {
+        Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name}");
+        
+    // Clear cached grips before replacing visuals
+    _weaponGrip = null;
+        
         // Remove any existing equipment visual objects
         foreach (var item in equippedItemObjects.Values)
         {
             if (item != null)
-                Destroy(item);
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(item);
+                else
+#endif
+                    UnityEngine.Object.Destroy(item);
+            }
         }
         equippedItemObjects.Clear();
-        
-        // Dictionary to batch update all slots
-        var slotsToUpdate = new Dictionary<EquipmentType, (EquipmentData data, Transform holder)>();
-        
-        // Only add slots with valid holders and equipment
-        if (weaponHolder != null && equippedWeapon != null)
-            slotsToUpdate[EquipmentType.Weapon] = (equippedWeapon, weaponHolder);
-            
-        if (shieldHolder != null && equippedShield != null)
-            slotsToUpdate[EquipmentType.Shield] = (equippedShield, shieldHolder);
-            
-        if (armorHolder != null && equippedArmor != null)
-            slotsToUpdate[EquipmentType.Armor] = (equippedArmor, armorHolder);
-            
-        if (miscHolder != null && equippedMiscellaneous != null)
-            slotsToUpdate[EquipmentType.Miscellaneous] = (equippedMiscellaneous, miscHolder);
-        
-        // Process all slots
-        foreach (var entry in slotsToUpdate)
+
+        // Process ALL slots, including empty ones to ensure proper cleanup
+        ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon, weaponHolder);
+        ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
+        ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
+        ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
+    }
+    
+    /// <summary>
+    /// Process a single equipment slot - handles both equipping and clearing
+    /// </summary>
+    private void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
+    {
+        if (holder == null)
         {
-            EquipmentType type = entry.Key;
-            EquipmentData itemData = entry.Value.data;
-            Transform holder = entry.Value.holder;
-            
-            UpdateEquipmentSlot(type, itemData, holder);
+            Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name}");
+            return;
         }
+        
+        // Clear existing equipment in this slot first
+        for (int i = holder.childCount - 1; i >= 0; i--)
+        {
+            var child = holder.GetChild(i);
+            if (child != null)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(child.gameObject);
+                else
+#endif
+                    UnityEngine.Object.Destroy(child.gameObject);
+            }
+        }
+        
+        // If no equipment data, slot is now empty - we're done
+        if (itemData == null)
+        {
+            Debug.Log($"[ProcessEquipmentSlot] Slot {type} is empty on {gameObject.name}");
+            return;
+        }
+        
+        // Process the equipment data
+        UpdateEquipmentSlot(type, itemData, holder);
     }
     
     /// <summary>
@@ -1328,22 +1598,139 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     protected virtual void UpdateEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
-        if (holder == null || itemData == null || itemData.equipmentPrefab == null)
-            return;
-            
-        // Clear existing equipment in this slot
-        for (int i = 0; i < holder.childCount; i++)
+        if (holder == null)
         {
-            Destroy(holder.GetChild(i).gameObject);
+            Debug.LogWarning($"[UpdateEquipmentSlot] Holder is null for {type} on {gameObject.name}");
+            return;
         }
-        
-        // Instantiate the new equipment
-        GameObject equipObj = Instantiate(itemData.equipmentPrefab, holder);
-        equipObj.transform.localPosition = Vector3.zero;
-        equipObj.transform.localRotation = Quaternion.identity;
-        
-        // Store reference to the instantiated object
-        equippedItemObjects[type] = equipObj;
+        if (itemData == null)
+        {
+            Debug.LogWarning($"[UpdateEquipmentSlot] itemData is null for {type} on {gameObject.name}");
+            return;
+        }
+        if (itemData.equipmentPrefab == null)
+        {
+            Debug.LogWarning($"[UpdateEquipmentSlot] equipmentPrefab is null for {itemData.equipmentName} on {gameObject.name}");
+            return;
+        }
+
+        Debug.Log($"[UpdateEquipmentSlot] Instantiating {itemData.equipmentName} prefab for {type} on {gameObject.name}");
+
+        try
+        {
+            // Instantiate the new equipment UNPARENTED so we can align its grip transform properly
+            GameObject equipObj = Instantiate(itemData.equipmentPrefab);
+            if (equipObj == null)
+            {
+                Debug.LogError($"[UpdateEquipmentSlot] Failed to instantiate {itemData.equipmentName} prefab");
+                return;
+            }
+
+            // Disable physics on the instantiated equipment to prevent gravity or physics from moving grips
+            var rbs = equipObj.GetComponentsInChildren<Rigidbody>();
+            if (rbs != null && rbs.Length > 0)
+            {
+                Debug.Log($"[UpdateEquipmentSlot] Disabling {rbs.Length} Rigidbodies on {equipObj.name} for {gameObject.name}");
+                foreach (var rb in rbs)
+                {
+                    if (rb != null)
+                    {
+                        rb.isKinematic = true;
+                        rb.useGravity = false;
+                    }
+                }
+            }
+
+            var cols = equipObj.GetComponentsInChildren<Collider>();
+            if (cols != null && cols.Length > 0)
+            {
+                Debug.Log($"[UpdateEquipmentSlot] Disabling {cols.Length} Colliders on {equipObj.name} for {gameObject.name}");
+                foreach (var c in cols)
+                {
+                    if (c != null)
+                    {
+                        c.enabled = false;
+                    }
+                }
+            }
+
+            // Cache grip sockets by convention for Animation Rigging targets
+            if (useHolderAttachment)
+            {
+                if (type == EquipmentType.Weapon)
+                {
+                    // Prefer a WeaponGripPoints component (supports named grip transforms), fall back to naming convention
+                    WeaponGripPoints wg = equipObj.GetComponentInChildren<WeaponGripPoints>();
+                    _weaponGrip = null;
+                    if (wg != null)
+                    {
+                        if (wg.rightHandGrip != null) _weaponGrip = wg.rightHandGrip;
+                        else if (wg.leftHandGrip != null) _weaponGrip = wg.leftHandGrip;
+                    }
+
+                    if (_weaponGrip == null)
+                        _weaponGrip = FindChildRecursive(equipObj.transform, "Grip_R") ?? FindChildRecursive(equipObj.transform, "Grip_L");
+
+                    // If a grip exists, align that grip to the unit's weaponHolder so the weapon sits correctly.
+                    if (_weaponGrip != null && weaponHolder != null)
+                    {
+                        Vector3 gripWorld = _weaponGrip.position;
+                        Quaternion gripRot = _weaponGrip.rotation;
+                        Vector3 desiredPos = weaponHolder.position;
+                        Quaternion desiredRot = weaponHolder.rotation;
+
+                        // Move weapon so grip aligns with weaponHolder
+                        Vector3 delta = desiredPos - gripWorld;
+                        equipObj.transform.position += delta;
+
+                        // Rotate so the grip's orientation matches the holder's orientation
+                        Quaternion fromTo = desiredRot * Quaternion.Inverse(gripRot);
+                        equipObj.transform.rotation = fromTo * equipObj.transform.rotation;
+                    }
+                }
+                else if (type == EquipmentType.Shield)
+                {
+                    // Shields typically bind left hand - no special grip handling here
+                }
+                else if (type == EquipmentType.Miscellaneous)
+                {
+                    // No per-hand grips are needed for miscellaneous items in the holder-based system.
+                }
+
+                // Parent the equipment to the holder but preserve the world transform we just set
+                equipObj.transform.SetParent(holder, true);
+            }
+            else
+            {
+                // If not using holder attachment, parent under holder with local reset
+                equipObj.transform.SetParent(holder, false);
+                equipObj.transform.localPosition = Vector3.zero;
+                equipObj.transform.localRotation = Quaternion.identity;
+            }
+
+            // Store reference to the instantiated object
+            equippedItemObjects[type] = equipObj;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[UpdateEquipmentSlot] Exception while instantiating {itemData.equipmentName}: {ex.Message}");
+        }
+    }
+
+    // LateUpdate intentionally left empty: holder-based system handles placement at equip time.
+    
+    // No IK target updates: holder-based attachment takes place at equip time.
+
+    private static Transform FindChildRecursive(Transform root, string name)
+    {
+        if (root == null || string.IsNullOrEmpty(name)) return null;
+        foreach (Transform child in root)
+        {
+            if (child.name == name) return child;
+            var found = FindChildRecursive(child, name);
+            if (found != null) return found;
+        }
+        return null;
     }
     
     /// <summary>
@@ -1387,12 +1774,8 @@ public class CombatUnit : MonoBehaviour
         
         if (changed)
         {
-            // Clear the visual for this slot
-            if (equippedItemObjects.TryGetValue(type, out GameObject equipObj) && equipObj != null)
-            {
-                Destroy(equipObj);
-                equippedItemObjects.Remove(type);
-            }
+            // Use the centralized visual update system for consistency
+            UpdateEquipmentVisuals();
             
             // Recalculate stats
             RecalculateStats();

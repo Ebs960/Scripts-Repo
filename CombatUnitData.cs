@@ -133,8 +133,15 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Unique identifier for units that share the same limit (leave empty for individual limits)")]
     public string limitCategory = "";
 
-    [Header("Equipment")]
-    public EquipmentData defaultEquipment;
+    [Header("Default Equipment")]
+    [Tooltip("Default weapon equipped by this unit (optional)")]
+    public EquipmentData defaultWeapon;
+    [Tooltip("Default shield equipped by this unit (optional)")]
+    public EquipmentData defaultShield;
+    [Tooltip("Default armor equipped by this unit (optional)")]
+    public EquipmentData defaultArmor;
+    [Tooltip("Default miscellaneous equipment equipped by this unit (optional)")]
+    public EquipmentData defaultMiscellaneous;
 
     [Header("Yield")]
     public int foodOnKill;

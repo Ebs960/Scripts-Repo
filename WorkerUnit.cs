@@ -1,3 +1,5 @@
+    // Add this stub so property setters compile. Implement visuals as needed.
+
 using UnityEngine;
 using System.Collections;
 using System.Linq; // Add this for array extension methods like Contains
@@ -7,6 +9,15 @@ using TMPro;
 public class WorkerUnit : MonoBehaviour
 {
     [SerializeField] SphericalHexGrid grid;
+    [Header("Equipment Attachment Points")]
+    [Tooltip("Transform where weapons will be attached")]
+    public Transform weaponHolder;
+    [Tooltip("Transform where shields will be attached")]
+    public Transform shieldHolder;
+    [Tooltip("Transform where armor will be displayed")]
+    public Transform armorHolder;
+    [Tooltip("Transform where miscellaneous items will be attached")]
+    public Transform miscHolder;
     PlanetGenerator planet;
     Animator animator;
 
@@ -46,6 +57,211 @@ public class WorkerUnit : MonoBehaviour
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
     public bool takesWeatherDamage = true;
 
+
+    [Header("Equipped Items (Editable)")]
+    [SerializeField] private EquipmentData _equippedWeapon;
+    [SerializeField] private EquipmentData _equippedShield;
+    [SerializeField] private EquipmentData _equippedArmor;
+    [SerializeField] private EquipmentData _equippedMiscellaneous;
+
+    [Header("Editor")]
+    [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
+    [SerializeField] private bool updateEquipmentInEditor = true;
+
+    // Track instantiated equipment objects by slot
+    private readonly System.Collections.Generic.Dictionary<EquipmentType, GameObject> equippedItemObjects = new System.Collections.Generic.Dictionary<EquipmentType, GameObject>();
+
+    // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
+    private Transform _weaponGrip;
+
+    private void UpdateEquipmentVisuals()
+    {
+    // Clear cached grip before replacing visuals
+    _weaponGrip = null;
+        
+        // Remove old visuals
+        foreach (var obj in equippedItemObjects.Values)
+        {
+            if (obj != null)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(obj);
+                else
+#endif
+                    UnityEngine.Object.Destroy(obj);
+            }
+        }
+        equippedItemObjects.Clear();
+
+        // Process all equipment slots, including empty ones
+        ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon);
+        ProcessEquipmentSlot(EquipmentType.Shield, equippedShield);
+        ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor);
+        ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous);
+    }
+    
+    private void ProcessEquipmentSlot(EquipmentType type, EquipmentData equipment)
+    {
+        // If no equipment data, slot is empty - we're done
+        if (equipment == null || equipment.equipmentPrefab == null)
+        {
+            Debug.Log($"[ProcessEquipmentSlot] Slot {type} is empty on {gameObject.name}");
+            return;
+        }
+        
+    // Instantiate the equipment UNPARENTED so we can align grips correctly, then parent preserving world transform
+    var go = Instantiate(equipment.equipmentPrefab);
+
+    // Disable physics early
+    foreach (var rb in go.GetComponentsInChildren<Rigidbody>())
+    {
+        rb.isKinematic = true;
+        rb.useGravity = false;
+    }
+    foreach (var c in go.GetComponentsInChildren<Collider>())
+        c.enabled = false;
+
+    // Determine the target parent/holder for parenting later
+    Transform targetParent = transform;
+    if (type == EquipmentType.Weapon && weaponHolder != null) targetParent = weaponHolder;
+    else if (type == EquipmentType.Shield && shieldHolder != null) targetParent = shieldHolder;
+    else if (type == EquipmentType.Armor && armorHolder != null) targetParent = armorHolder;
+    else if (type == EquipmentType.Miscellaneous && miscHolder != null) targetParent = miscHolder;
+
+    // Cache grip sockets by convention (support WeaponGripPoints component)
+    if (type == EquipmentType.Weapon && targetParent != null)
+    {
+        WeaponGripPoints wg = go.GetComponentInChildren<WeaponGripPoints>();
+        _weaponGrip = null;
+        if (wg != null)
+        {
+            if (wg.rightHandGrip != null) _weaponGrip = wg.rightHandGrip;
+            else if (wg.leftHandGrip != null) _weaponGrip = wg.leftHandGrip;
+        }
+        if (_weaponGrip == null)
+            _weaponGrip = FindChildRecursive(go.transform, "Grip_R") ?? FindChildRecursive(go.transform, "Grip_L");
+
+        if (_weaponGrip != null && weaponHolder != null)
+        {
+            Vector3 gripWorld = _weaponGrip.position;
+            Quaternion gripRot = _weaponGrip.rotation;
+            Vector3 desiredPos = weaponHolder.position;
+            Quaternion desiredRot = weaponHolder.rotation;
+
+            Vector3 delta = desiredPos - gripWorld;
+            go.transform.position += delta;
+            Quaternion fromTo = desiredRot * Quaternion.Inverse(gripRot);
+            go.transform.rotation = fromTo * go.transform.rotation;
+        }
+
+        // Parent while preserving the world transform we just set
+        go.transform.SetParent(targetParent, true);
+    }
+    else
+    {
+        // Default parenting behavior for non-weapon slots or when no holder is available
+        go.transform.SetParent(targetParent, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+    }
+
+    equippedItemObjects[type] = go;
+        Debug.Log($"[ProcessEquipmentSlot] Equipped {equipment.equipmentName} in {type} slot on {gameObject.name}");
+    }
+
+    private static Transform FindChildRecursive(Transform root, string name)
+    {
+        if (root == null || string.IsNullOrEmpty(name)) return null;
+        foreach (Transform child in root)
+        {
+            if (child.name == name) return child;
+            var found = FindChildRecursive(child, name);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    public EquipmentData equippedWeapon
+    {
+        get => _equippedWeapon; // Remove fallback logic
+        set
+        {
+            if (_equippedWeapon == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip combat-only item '{value.equipmentName}' onto worker {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedWeapon = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedShield {
+        get => _equippedShield; // Remove fallback logic
+        set {
+            if (_equippedShield == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip combat-only item '{value.equipmentName}' onto worker {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedShield = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedArmor {
+        get => _equippedArmor; // Remove fallback logic
+        set {
+            if (_equippedArmor == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip combat-only item '{value.equipmentName}' onto worker {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedArmor = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+    public EquipmentData equippedMiscellaneous {
+        get => _equippedMiscellaneous; // Remove fallback logic
+        set {
+            if (_equippedMiscellaneous == value) return;
+            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
+            {
+                Debug.LogWarning($"[Equip] Tried to equip combat-only item '{value.equipmentName}' onto worker {gameObject.name}. Ignored.");
+                return;
+            }
+            _equippedMiscellaneous = value;
+            if (Application.isPlaying || updateEquipmentInEditor)
+                UpdateEquipmentVisuals();
+        }
+    }
+
+    /// <summary>
+    /// Editor button to equip all default equipment from the assigned data asset.
+    /// </summary>
+    [ContextMenu("Equip Default Equipment (Editor)")]
+    public void EquipDefaultEquipmentEditor()
+    {
+        if (data == null)
+        {
+            Debug.LogWarning("No WorkerUnitData assigned. Cannot equip defaults.");
+            return;
+        }
+        equippedWeapon = data.defaultWeapon;
+        equippedShield = data.defaultShield;
+        equippedArmor = data.defaultArmor;
+        equippedMiscellaneous = data.defaultMiscellaneous;
+        #if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+        #endif
+        Debug.Log($"Equipped default equipment for {gameObject.name} in editor.");
+    }
+
     // --- Combat Stats (if applicable) ---
     public int CurrentAttack => (data != null) ? data.baseAttack : 0;
     public int CurrentDefense => (data != null) ? data.baseDefense : 0;
@@ -55,7 +271,8 @@ public class WorkerUnit : MonoBehaviour
     private UnitLabel unitLabelInstance;
 
     // Local worker bonus aggregation
-    private struct WorkerAgg { public int workAdd, moveAdd, healthAdd; public float workPct, movePct, healthPct; }
+    // Note: work/move/health flat adds are floats to support fractional bonuses from tools/equipment
+    private struct WorkerAgg { public float workAdd, moveAdd, healthAdd; public float workPct, movePct, healthPct; }
     private WorkerAgg AggregateWorkerBonusesLocal(Civilization civ, WorkerUnitData wu)
     {
         WorkerAgg a = new WorkerAgg(); if (civ == null || wu == null) return a;
@@ -81,6 +298,19 @@ public class WorkerUnit : MonoBehaviour
                         a.workPct += b.workPointsPct; a.movePct += b.movePointsPct; a.healthPct += b.healthPct;
                     }
             }
+
+        // Include equipped items (tools) that grant work/move/health bonuses.
+        // Only include equipment that is valid for workers (EquipmentTarget.WorkerUnit or Both).
+        var equippedList = new EquipmentData[] { _equippedWeapon, _equippedShield, _equippedArmor, _equippedMiscellaneous };
+        foreach (var eq in equippedList)
+        {
+            if (eq == null) continue;
+            if (eq.targetUnit == EquipmentTarget.CombatUnit) continue; // skip combat-only items
+            a.workAdd += eq.workPointsBonus;
+            a.moveAdd += eq.movementBonus;
+            a.healthAdd += eq.healthBonus;
+        }
+
         return a;
     }
 
@@ -93,6 +323,90 @@ public class WorkerUnit : MonoBehaviour
         if (planet != null) grid = planet.Grid;
         unitAnimator = GetComponent<Animator>();
         UnitRegistry.Register(gameObject);
+
+        // Fallback: If any equipped slot is null but data/default exists, auto-equip it
+        bool equippedAny = false;
+        if (data != null)
+        {
+            if (_equippedWeapon == null && data.defaultWeapon != null)
+            {
+                _equippedWeapon = data.defaultWeapon;
+                equippedAny = true;
+                Debug.Log($"[Awake] Auto-assigned default weapon {data.defaultWeapon.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedShield == null && data.defaultShield != null)
+            {
+                _equippedShield = data.defaultShield;
+                equippedAny = true;
+                Debug.Log($"[Awake] Auto-assigned default shield {data.defaultShield.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedArmor == null && data.defaultArmor != null)
+            {
+                _equippedArmor = data.defaultArmor;
+                equippedAny = true;
+                Debug.Log($"[Awake] Auto-assigned default armor {data.defaultArmor.equipmentName} to {gameObject.name}");
+            }
+            if (_equippedMiscellaneous == null && data.defaultMiscellaneous != null)
+            {
+                _equippedMiscellaneous = data.defaultMiscellaneous;
+                equippedAny = true;
+                Debug.Log($"[Awake] Auto-assigned default miscellaneous {data.defaultMiscellaneous.equipmentName} to {gameObject.name}");
+            }
+        }
+        if (equippedAny)
+        {
+            Debug.Log($"[Awake] Auto-equipped default equipment for {gameObject.name}.");
+        }
+        // If you have visuals, update them here (add UpdateEquipmentVisuals if needed)
+    }
+
+    // Ensure equipment visuals update in edit mode when fields are changed
+    void OnValidate()
+    {
+        // Only run in edit mode, not during play mode
+    if (!Application.isPlaying && updateEquipmentInEditor)
+        {
+            // Use a more direct approach to avoid timing issues
+            // Schedule the update for the next frame to ensure all inspector changes are processed
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this != null && !Application.isPlaying && updateEquipmentInEditor)
+                {
+                    UpdateEquipmentVisuals();
+                    // Mark the object as dirty so changes are saved
+                    UnityEditor.EditorUtility.SetDirty(this);
+                }
+            };
+
+            // Editor-time validation: ensure assigned equipment is compatible with WorkerUnit
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null) return;
+                // If an equipment asset is explicitly assigned that targets CombatUnit only, clear it and warn
+                if (_equippedWeapon != null && _equippedWeapon.targetUnit == EquipmentTarget.CombatUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedWeapon.equipmentName}' from worker '{gameObject.name}' (combat-only).");
+                    _equippedWeapon = null;
+                }
+                if (_equippedShield != null && _equippedShield.targetUnit == EquipmentTarget.CombatUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedShield.equipmentName}' from worker '{gameObject.name}' (combat-only).");
+                    _equippedShield = null;
+                }
+                if (_equippedArmor != null && _equippedArmor.targetUnit == EquipmentTarget.CombatUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedArmor.equipmentName}' from worker '{gameObject.name}' (combat-only).");
+                    _equippedArmor = null;
+                }
+                if (_equippedMiscellaneous != null && _equippedMiscellaneous.targetUnit == EquipmentTarget.CombatUnit)
+                {
+                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedMiscellaneous.equipmentName}' from worker '{gameObject.name}' (combat-only).");
+                    _equippedMiscellaneous = null;
+                }
+                UpdateEquipmentVisuals();
+                UnityEditor.EditorUtility.SetDirty(this);
+            };
+        }
     }
 
     void OnDestroy()
@@ -286,10 +600,11 @@ public class WorkerUnit : MonoBehaviour
     /// </summary>
     public void ContributeWork()
     {
-        if (currentWorkPoints <= 0) return;
+    if (currentWorkPoints <= 0) return;
 
-        ImprovementManager.Instance.AddWork(currentTileIndex, data.baseWorkPoints);
-        currentWorkPoints = 0;  // worker is spent for this turn
+    int toAdd = currentWorkPoints;
+    ImprovementManager.Instance.AddWork(currentTileIndex, toAdd);
+    currentWorkPoints = 0;  // worker is spent for this turn
     }
 
     /// <summary>
@@ -297,9 +612,10 @@ public class WorkerUnit : MonoBehaviour
     /// </summary>
     public void ContributeWorkToUnit()
     {
-        if (currentWorkPoints <= 0) return;
-        ImprovementManager.Instance.AddUnitWork(currentTileIndex, data.baseWorkPoints);
-        currentWorkPoints = 0;
+    if (currentWorkPoints <= 0) return;
+    int toAdd = currentWorkPoints;
+    ImprovementManager.Instance.AddUnitWork(currentTileIndex, toAdd);
+    currentWorkPoints = 0;
     }
 
     /// <summary>
@@ -307,9 +623,10 @@ public class WorkerUnit : MonoBehaviour
     /// </summary>
     public void ContributeWorkToWorker()
     {
-        if (currentWorkPoints <= 0) return;
-        ImprovementManager.Instance.AddWorkerWork(currentTileIndex, data.baseWorkPoints);
-        currentWorkPoints = 0;
+    if (currentWorkPoints <= 0) return;
+    int toAdd = currentWorkPoints;
+    ImprovementManager.Instance.AddWorkerWork(currentTileIndex, toAdd);
+    currentWorkPoints = 0;
     }
 
     public bool CanForage(ResourceData resource, int tileIndex)

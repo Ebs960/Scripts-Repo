@@ -2,9 +2,18 @@ using UnityEngine;
 
 public enum RouteType { Road, Railroad }
 
-[CreateAssetMenu(fileName = "NewWorkerUnitData", menuName = "Data/Worker Unit Data")]
+ [CreateAssetMenu(fileName = "NewWorkerUnitData", menuName = "Data/Worker Unit Data")]
 public class WorkerUnitData : ScriptableObject
 {
+    [Header("Default Equipment")]
+    [Tooltip("Default weapon equipped by this worker (optional)")]
+    public EquipmentData defaultWeapon;
+    [Tooltip("Default shield equipped by this worker (optional)")]
+    public EquipmentData defaultShield;
+    [Tooltip("Default armor equipped by this worker (optional)")]
+    public EquipmentData defaultArmor;
+    [Tooltip("Default miscellaneous equipment equipped by this worker (optional)")]
+    public EquipmentData defaultMiscellaneous;
     public string unitName;
     public Sprite icon;
     public GameObject prefab;

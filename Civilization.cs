@@ -1350,6 +1350,43 @@ public class Civilization : MonoBehaviour
         
         Debug.Log($"{civData.civName} added {count} {equipment.equipmentName} to inventory. Now have {equipmentInventory[equipment]}");
     }
+
+    /// <summary>
+    /// Produce equipment and add it to inventory (consumes production cost)
+    /// </summary>
+    public bool ProduceEquipment(EquipmentData equipment, int count = 1)
+    {
+        if (equipment == null || count <= 0) return false;
+        
+        // Check if we can produce this equipment
+        if (!equipment.CanBeProducedBy(this))
+        {
+            Debug.LogWarning($"{civData.civName} cannot produce {equipment.equipmentName} - requirements not met");
+            return false;
+        }
+        
+        // Calculate total cost
+        int totalCost = equipment.productionCost * count;
+        
+        // Check if we have enough gold
+        if (totalCost > 0 && gold < totalCost)
+        {
+            Debug.LogWarning($"{civData.civName} cannot produce {equipment.equipmentName} - not enough gold ({gold}/{totalCost})");
+            return false;
+        }
+        
+        // Deduct production cost
+        if (totalCost > 0)
+        {
+            gold -= totalCost;
+            Debug.Log($"{civData.civName} spent {totalCost} gold to produce {count} {equipment.equipmentName}");
+        }
+        
+        // Add equipment to inventory
+        AddEquipment(equipment, count);
+        
+        return true;
+    }
     
     /// <summary>
     /// Consume equipment from the civilization's inventory
@@ -1414,6 +1451,13 @@ public class Civilization : MonoBehaviour
             return false;
         }
         
+        // Validate that the equipment is suitable for this unit
+        if (!equipment.IsValidForUnit(unit, this))
+        {
+            Debug.LogWarning($"Cannot equip unit: {equipment.equipmentName} is not valid for {unit.data.unitName}");
+            return false;
+        }
+        
         // Get the currently equipped item of this type (if any)
         EquipmentData currentEquipment = null;
         
@@ -1433,14 +1477,18 @@ public class Civilization : MonoBehaviour
                 break;
         }
         
+        // Consume the new equipment from inventory FIRST
+        if (!ConsumeEquipment(equipment))
+        {
+            Debug.LogError($"Failed to consume {equipment.equipmentName} from inventory");
+            return false;
+        }
+        
         // Return the existing equipment to inventory if any
         if (currentEquipment != null)
         {
             AddEquipment(currentEquipment);
         }
-        
-        // Consume the new equipment from inventory
-        ConsumeEquipment(equipment);
         
         // Equip the unit with the new item
         unit.EquipItem(equipment);

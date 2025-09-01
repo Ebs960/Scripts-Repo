@@ -22,13 +22,6 @@ public class UnitInfoPanel : MonoBehaviour
     // Optional: Add a dedicated TextMeshProUGUI for Work Points if you modify the prefab
     // [SerializeField] private TextMeshProUGUI workPointsText; 
 
-
-    [Header("Equipment")]
-    [SerializeField] private Transform equipmentButtonContainer;
-    [SerializeField] private GameObject equipmentButtonPrefab;
-    [SerializeField] private Button openEquipmentButton;
-    [SerializeField] private GameObject equipmentSelectionPanel;
-
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
     [Header("Worker Build Units UI")] 
@@ -38,18 +31,10 @@ public class UnitInfoPanel : MonoBehaviour
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
-    private List<EquipmentButton> equipmentButtons = new List<EquipmentButton>();
     private readonly List<GameObject> buildUnitButtons = new List<GameObject>();
 
     private void Awake()
     {
-        // Equipment management moved to Equipment Manager panel; hide in unit panel
-        if (openEquipmentButton != null)
-        {
-            openEquipmentButton.onClick.RemoveAllListeners();
-            openEquipmentButton.gameObject.SetActive(false);
-        }
-        
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
 
@@ -75,8 +60,6 @@ public class UnitInfoPanel : MonoBehaviour
             unitNameForLog = currentCombatUnit.data.unitName;
             Debug.Log($"UnitInfoPanel.ShowPanel: Processing CombatUnit: {unitNameForLog}");
             PopulateForCombatUnit(currentCombatUnit);
-            if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false); // Equipment UI disabled
-            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false); // Hidden in this panel
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
         }
         else if (unitObject is WorkerUnit workerUnit)
@@ -86,8 +69,6 @@ public class UnitInfoPanel : MonoBehaviour
             unitNameForLog = currentWorkerUnit.data.unitName;
             Debug.Log($"UnitInfoPanel.ShowPanel: Processing WorkerUnit: {unitNameForLog}");
             PopulateForWorkerUnit(currentWorkerUnit);
-            if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
-            if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false); // Hidden in this panel
 
             // Show or hide the Settle City button
             if (settleCityButton != null)
@@ -144,8 +125,6 @@ public class UnitInfoPanel : MonoBehaviour
         if (moraleText != null) { moraleText.text = "Morale: -"; moraleText.gameObject.SetActive(true); }
 
         // Hide buttons that require a unit
-        if (openEquipmentButton != null) openEquipmentButton.gameObject.SetActive(false);
-        if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
         if (buildUnitsContainer != null)
         {
@@ -234,60 +213,6 @@ public class UnitInfoPanel : MonoBehaviour
         if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(true);
     }
 
-    private void ToggleEquipmentPanel()
-    {
-    // Deprecated: equipment selection is now handled by EquipmentManagerPanel.
-    if (equipmentSelectionPanel != null) equipmentSelectionPanel.SetActive(false);
-    Debug.Log("UnitInfoPanel: Equipment panel disabled. Use Equipment Manager panel instead.");
-    }
-
-    private void PopulateEquipmentOptions()
-    {
-        if (currentCombatUnit == null) return; // Ensure we have a combat unit
-
-        // Clear existing buttons
-        foreach (var button in equipmentButtons)
-        {
-            if (button != null)
-                Destroy(button.gameObject);
-        }
-        equipmentButtons.Clear();
-
-        var civilization = currentCombatUnit.owner;
-        if (civilization == null) return;
-
-        var availableEquipment = civilization.GetAvailableEquipment();
-        foreach (var equipment in availableEquipment)
-        {
-            if (equipment.IsValidForUnit(currentCombatUnit))
-            {
-                CreateEquipmentButton(equipment);
-            }
-        }
-    }
-
-    private void CreateEquipmentButton(EquipmentData equipment)
-    {
-        var buttonObj = Instantiate(equipmentButtonPrefab, equipmentButtonContainer);
-        var equipmentButton = buttonObj.GetComponent<EquipmentButton>();
-        
-        if (equipmentButton != null)
-        {
-            equipmentButton.Setup(equipment, OnEquipmentSelected);
-            equipmentButtons.Add(equipmentButton);
-        }
-    }
-
-    private void OnEquipmentSelected(EquipmentData equipment)
-    {
-        if (currentCombatUnit != null) // Use currentCombatUnit
-        {
-            currentCombatUnit.EquipItem(equipment);
-            UpdateUnitInfoForCombatUnit(); // Refresh combat unit info
-            equipmentSelectionPanel.SetActive(false);
-        }
-    }
-
     private void OnSettleCityClicked()
     {
         if (currentWorkerUnit != null)
@@ -299,9 +224,6 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (openEquipmentButton != null)
-            openEquipmentButton.onClick.RemoveListener(ToggleEquipmentPanel);
-        
         if (settleCityButton != null)
             settleCityButton.onClick.RemoveListener(OnSettleCityClicked);
         if (contributeWorkButton != null)

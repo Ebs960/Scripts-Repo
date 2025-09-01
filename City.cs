@@ -572,17 +572,29 @@ public class City : MonoBehaviour
                 Debug.LogWarning($"Cannot build {b.buildingName} - city is not coastal!");
                 return false;
             }
-            // Tech/Culture requirements
-            if (!b.AreRequirementsMet(owner)) {
-                Debug.LogWarning($"Cannot build {b.buildingName} - missing required techs/cultures");
-                return false;
+            // Tech requirements
+            if (b.requiredTechs != null && b.requiredTechs.Length > 0) {
+                foreach (var tech in b.requiredTechs) {
+                    if (tech == null || owner == null || owner.researchedTechs == null || !owner.researchedTechs.Contains(tech)) {
+                        Debug.LogWarning($"Cannot build {b.buildingName} - missing required tech: {tech?.techName ?? "(null)"}");
+                        return false;
+                    }
+                }
+            }
+            // Culture requirements
+            if (b.requiredCultures != null && b.requiredCultures.Length > 0) {
+                foreach (var culture in b.requiredCultures) {
+                    if (culture == null || owner == null || owner.researchedCultures == null || !owner.researchedCultures.Contains(culture)) {
+                        Debug.LogWarning($"Cannot build {b.buildingName} - missing required culture: {culture?.cultureName ?? "(null)"}");
+                        return false;
+                    }
+                }
             }
             // Population requirement
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
                 return false;
             }
-            
             if (!CanProduce(b.requiredResources, b.requiredTerrains)) return false;
             productionQueue.Add(new ProdEntry(b, b.productionCost, b.goldCost,
                                             b.requiredResources, b.requiredTerrains,
@@ -770,10 +782,23 @@ public class City : MonoBehaviour
             reqRes = b.requiredResources;
             reqTerr = b.requiredTerrains;
             isHarborBuilding = b.providesHarbor;
-            // Tech/Culture
-            if (!b.AreRequirementsMet(owner)) {
-                Debug.LogWarning($"Cannot buy {b.buildingName} - missing required techs/cultures");
-                return false;
+            // Tech requirements
+            if (b.requiredTechs != null && b.requiredTechs.Length > 0) {
+                foreach (var tech in b.requiredTechs) {
+                    if (tech == null || owner == null || owner.researchedTechs == null || !owner.researchedTechs.Contains(tech)) {
+                        Debug.LogWarning($"Cannot buy {b.buildingName} - missing required tech: {tech?.techName ?? "(null)"}");
+                        return false;
+                    }
+                }
+            }
+            // Culture requirements
+            if (b.requiredCultures != null && b.requiredCultures.Length > 0) {
+                foreach (var culture in b.requiredCultures) {
+                    if (culture == null || owner == null || owner.researchedCultures == null || !owner.researchedCultures.Contains(culture)) {
+                        Debug.LogWarning($"Cannot buy {b.buildingName} - missing required culture: {culture?.cultureName ?? "(null)"}");
+                        return false;
+                    }
+                }
             }
             // Population
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
@@ -1008,8 +1033,16 @@ public class City : MonoBehaviour
             {
                 if (production.equipment != null && production.quantity > 0)
                 {
-                    owner.AddEquipment(production.equipment, production.quantity);
-                    Debug.Log($"Building {b.buildingName} produced {production.quantity} {production.equipment.equipmentName} for {owner.civData.civName}");
+                    // Use the new production system that handles costs
+                    bool success = owner.ProduceEquipment(production.equipment, production.quantity);
+                    if (success)
+                    {
+                        Debug.Log($"Building {b.buildingName} produced {production.quantity} {production.equipment.equipmentName} for {owner.civData.civName}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Building {b.buildingName} failed to produce {production.quantity} {production.equipment.equipmentName} for {owner.civData.civName} - requirements not met");
+                    }
                 }
             }
         }

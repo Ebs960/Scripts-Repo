@@ -8,7 +8,22 @@ public enum EquipmentType
     Weapon,
     Shield,
     Armor,
-    Miscellaneous
+    Miscellaneous,
+    Tool
+}
+
+public enum EquipmentTarget
+{
+    CombatUnit,
+    WorkerUnit,
+    Both
+}
+
+[System.Serializable]
+public struct UnitTypeFloat
+{
+    public CombatCategory unitType;
+    public float value;
 }
 
 [CreateAssetMenu(fileName = "NewEquipmentData", menuName = "Data/Equipment Data")]
@@ -23,6 +38,23 @@ public class EquipmentData : ScriptableObject
     [Header("Type")]
     [Tooltip("Equipment slot this item will occupy")]
     public EquipmentType equipmentType = EquipmentType.Weapon;
+    [Header("Grip & Usage")]
+    [Tooltip("If true, this weapon requires two hands. The left grip (Grip_L) will be aligned to the unit's shield holder when equipped.")]
+    public bool isTwoHanded = false;
+
+    [Header("Targeting")]
+    [Tooltip("Defines which unit types this equipment can be used by")]
+    public EquipmentTarget targetUnit;
+
+    [Header("Per-Unit-Type Modifiers")]
+    [Tooltip("Additional flat attack bonus against specific unit types (additive, can be fractional)")]
+    public UnitTypeFloat[] attackBonusAgainst;
+    [Tooltip("Additional flat defense bonus against specific unit types (additive, can be fractional)")]
+    public UnitTypeFloat[] defenseBonusAgainst;
+
+    [Header("Work / Tool Bonuses")]
+    [Tooltip("If this equipment is a tool, grants additional work points to worker units (can be fractional)")]
+    public float workPointsBonus;
 
     [Header("Requirements")]
     [Tooltip("Unit types that can equip this item")]
@@ -30,15 +62,23 @@ public class EquipmentData : ScriptableObject
     [Tooltip("Minimum unit level required to equip this item")]
     public int minimumLevel = 1;
     public TechData[] requiredTechs;
+    [Tooltip("Cultures required to unlock this equipment (optional)")]
+    public CultureData[] requiredCultures;
     public int productionCost;
 
     [Header("Stat Bonuses")]
-    public int attackBonus;
-    public int defenseBonus;
-    public int healthBonus;
-    public int movementBonus;
-    public int rangeBonus;
-    public int attackPointsBonus;
+    [Tooltip("Flat attack bonus provided by this equipment (can be fractional)")]
+    public float attackBonus;
+    [Tooltip("Flat defense bonus provided by this equipment (can be fractional)")]
+    public float defenseBonus;
+    [Tooltip("Flat health bonus provided by this equipment (can be fractional)")]
+    public float healthBonus;
+    [Tooltip("Flat movement bonus provided by this equipment (can be fractional)")]
+    public float movementBonus;
+    [Tooltip("Flat range bonus provided by this equipment (can be fractional)")]
+    public float rangeBonus;
+    [Tooltip("Flat attack points bonus provided by this equipment (can be fractional)")]
+    public float attackPointsBonus;
 
     [Header("Per-Turn Yields (optional)")]
     [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]
@@ -49,7 +89,7 @@ public class EquipmentData : ScriptableObject
     public int faithPerTurn;
     public int policyPointsPerTurn;
 
-    public bool IsValidForUnit(CombatUnit unit)
+    public bool IsValidForUnit(CombatUnit unit, Civilization civ = null)
     {
         if (unit == null) return false;
 
@@ -71,8 +111,76 @@ public class EquipmentData : ScriptableObject
         // Check minimum level requirement
         if (unit.level < minimumLevel) return false;
 
-        // Add any additional validation logic here
-        
+        // Check tech requirements (if civ provided)
+        if (civ != null && requiredTechs != null && requiredTechs.Length > 0)
+        {
+            foreach (var tech in requiredTechs)
+            {
+                if (tech == null || civ.researchedTechs == null || !civ.researchedTechs.Contains(tech))
+                    return false;
+            }
+        }
+
+        // Check culture requirements (if civ provided)
+        if (civ != null && requiredCultures != null && requiredCultures.Length > 0)
+        {
+            foreach (var culture in requiredCultures)
+            {
+                if (culture == null || civ.researchedCultures == null || !civ.researchedCultures.Contains(culture))
+                    return false;
+            }
+        }
+
+        // Check if civilization has this equipment in inventory (if civ provided)
+        if (civ != null && !civ.HasEquipment(this))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Check if a civilization can produce this equipment (has required resources, etc.)
+    /// </summary>
+    public bool CanBeProducedBy(Civilization civ)
+    {
+        if (civ == null) return false;
+
+        // Check tech requirements
+        if (requiredTechs != null && requiredTechs.Length > 0)
+        {
+            foreach (var tech in requiredTechs)
+            {
+                if (tech == null || civ.researchedTechs == null || !civ.researchedTechs.Contains(tech))
+                    return false;
+            }
+        }
+
+        // Check culture requirements
+        if (requiredCultures != null && requiredCultures.Length > 0)
+        {
+            foreach (var culture in requiredCultures)
+            {
+                if (culture == null || civ.researchedCultures == null || !civ.researchedCultures.Contains(culture))
+                    return false;
+            }
+        }
+
+        // Check if civilization has enough gold for production cost
+        if (productionCost > 0 && civ.gold < productionCost)
+            return false;
+
+        // TODO: Add resource requirement checks when resource system is implemented
+        // if (requiredResources != null && requiredResources.Length > 0)
+        // {
+        //     foreach (var resource in requiredResources)
+        //     {
+        //         if (!civ.HasResource(resource, 1))
+        //             return false;
+        //     }
+        // }
+
         return true;
     }
 } 

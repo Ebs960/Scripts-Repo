@@ -155,10 +155,13 @@ public class EquipmentManagerPanel : MonoBehaviour
         var all = currentCiv.GetAvailableEquipment();
         if (all == null) all = new List<EquipmentData>();
 
-        weaponOptions = Filter(all, unitData, EquipmentType.Weapon);
-        shieldOptions = Filter(all, unitData, EquipmentType.Shield);
-        armorOptions  = Filter(all, unitData, EquipmentType.Armor);
-        miscOptions   = Filter(all, unitData, EquipmentType.Miscellaneous);
+        // Filter equipment that the civilization actually has in inventory
+        var availableEquipment = all.Where(e => currentCiv.HasEquipment(e)).ToList();
+
+        weaponOptions = Filter(availableEquipment, unitData, EquipmentType.Weapon);
+        shieldOptions = Filter(availableEquipment, unitData, EquipmentType.Shield);
+        armorOptions  = Filter(availableEquipment, unitData, EquipmentType.Armor);
+        miscOptions   = Filter(availableEquipment, unitData, EquipmentType.Miscellaneous);
 
         Populate(weaponDropdown, weaponOptions, includeNone: true);
         Populate(shieldDropdown, shieldOptions, includeNone: true);
@@ -168,10 +171,11 @@ public class EquipmentManagerPanel : MonoBehaviour
 
     private List<EquipmentData> Filter(List<EquipmentData> list, CombatUnitData unit, EquipmentType type)
     {
+        if (unit == null) return new List<EquipmentData>();
+        
         return list.Where(e => e != null
                             && e.equipmentType == type
-                            && (e.allowedUnitTypes == null || e.allowedUnitTypes.Length == 0 || e.allowedUnitTypes.Contains(unit.unitType))
-                            && (unit != null))
+                            && (e.allowedUnitTypes == null || e.allowedUnitTypes.Length == 0 || e.allowedUnitTypes.Contains(unit.unitType)))
                    .ToList();
     }
 
