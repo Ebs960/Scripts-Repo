@@ -1529,11 +1529,31 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public virtual void UpdateEquipmentVisuals()
     {
+        // Animals don't use equipment; skip any equipment processing or editor logs for them.
+        if (data != null && data.unitType == CombatCategory.Animal)
+        {
+            // Quietly destroy any lingering equipment visuals without logging (editor or play)
+            foreach (var item in equippedItemObjects.Values)
+            {
+                if (item != null)
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying)
+                        UnityEngine.Object.DestroyImmediate(item);
+                    else
+#endif
+                        UnityEngine.Object.Destroy(item);
+                }
+            }
+            equippedItemObjects.Clear();
+            return;
+        }
+
         Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name}");
-        
-    // Clear cached grips before replacing visuals
-    _weaponGrip = null;
-        
+
+        // Clear cached grips before replacing visuals
+        _weaponGrip = null;
+
         // Remove any existing equipment visual objects
         foreach (var item in equippedItemObjects.Values)
         {
@@ -1561,6 +1581,29 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     private void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
+        // Animals don't use equipment; skip processing and avoid editor/runtime warnings/logs for them.
+        if (data != null && data.unitType == CombatCategory.Animal)
+        {
+            // If there is a holder, quietly remove any children without logging
+            if (holder != null)
+            {
+                for (int i = holder.childCount - 1; i >= 0; i--)
+                {
+                    var child = holder.GetChild(i);
+                    if (child != null)
+                    {
+#if UNITY_EDITOR
+                        if (!Application.isPlaying)
+                            UnityEngine.Object.DestroyImmediate(child.gameObject);
+                        else
+#endif
+                            UnityEngine.Object.Destroy(child.gameObject);
+                    }
+                }
+            }
+            return;
+        }
+
         if (holder == null)
         {
             Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name}");

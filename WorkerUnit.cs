@@ -39,7 +39,7 @@ public class WorkerUnit : MonoBehaviour
     [Header("Progression")]
     public int level = 1;  // starts at 1
 
-    public WorkerUnitData data { get; private set; }
+    [field: SerializeField] public WorkerUnitData data { get; private set; }
     public Civilization owner { get; private set; }
 
     public int currentHealth { get; private set; }
@@ -64,6 +64,10 @@ public class WorkerUnit : MonoBehaviour
     [SerializeField] private EquipmentData _equippedArmor;
     [SerializeField] private EquipmentData _equippedMiscellaneous;
 
+    [Header("Holder-based Attachment (no IK)")]
+    [Tooltip("If true, equipment will be attached using holder alignment. When true, weapons will align their grip transforms to the holder; when false, items are parented with local zero.")]
+    public bool useHolderAttachment = true;
+
     [Header("Editor")]
     [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
     [SerializeField] private bool updateEquipmentInEditor = true;
@@ -76,98 +80,178 @@ public class WorkerUnit : MonoBehaviour
 
     private void UpdateEquipmentVisuals()
     {
-    // Clear cached grip before replacing visuals
-    _weaponGrip = null;
-        
-        // Remove old visuals
-        foreach (var obj in equippedItemObjects.Values)
+        Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name}");
+
+        // Clear cached grip before replacing visuals
+        _weaponGrip = null;
+
+        // Remove any existing equipment visual objects
+        foreach (var item in equippedItemObjects.Values)
         {
-            if (obj != null)
+            if (item != null)
             {
 #if UNITY_EDITOR
                 if (!Application.isPlaying)
-                    UnityEngine.Object.DestroyImmediate(obj);
+                    UnityEngine.Object.DestroyImmediate(item);
                 else
 #endif
-                    UnityEngine.Object.Destroy(obj);
+                    UnityEngine.Object.Destroy(item);
             }
         }
         equippedItemObjects.Clear();
 
-        // Process all equipment slots, including empty ones
-        ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon);
-        ProcessEquipmentSlot(EquipmentType.Shield, equippedShield);
-        ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor);
-        ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous);
+        // Process ALL slots, including empty ones to ensure proper cleanup
+        ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon, weaponHolder);
+        ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
+        ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
+        ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
     }
     
-    private void ProcessEquipmentSlot(EquipmentType type, EquipmentData equipment)
+    private void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
-        // If no equipment data, slot is empty - we're done
-        if (equipment == null || equipment.equipmentPrefab == null)
+        if (holder == null)
+        {
+            Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name}");
+            return;
+        }
+
+        // Clear existing equipment in this slot first
+        for (int i = holder.childCount - 1; i >= 0; i--)
+        {
+            var child = holder.GetChild(i);
+            if (child != null)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(child.gameObject);
+                else
+#endif
+                    UnityEngine.Object.Destroy(child.gameObject);
+            }
+        }
+
+        // If no equipment data, slot is now empty - we're done
+        if (itemData == null)
         {
             Debug.Log($"[ProcessEquipmentSlot] Slot {type} is empty on {gameObject.name}");
             return;
         }
-        
-    // Instantiate the equipment UNPARENTED so we can align grips correctly, then parent preserving world transform
-    var go = Instantiate(equipment.equipmentPrefab);
 
-    // Disable physics early
-    foreach (var rb in go.GetComponentsInChildren<Rigidbody>())
-    {
-        rb.isKinematic = true;
-        rb.useGravity = false;
+        // Process the equipment data
+        UpdateEquipmentSlot(type, itemData, holder);
     }
-    foreach (var c in go.GetComponentsInChildren<Collider>())
-        c.enabled = false;
 
-    // Determine the target parent/holder for parenting later
-    Transform targetParent = transform;
-    if (type == EquipmentType.Weapon && weaponHolder != null) targetParent = weaponHolder;
-    else if (type == EquipmentType.Shield && shieldHolder != null) targetParent = shieldHolder;
-    else if (type == EquipmentType.Armor && armorHolder != null) targetParent = armorHolder;
-    else if (type == EquipmentType.Miscellaneous && miscHolder != null) targetParent = miscHolder;
-
-    // Cache grip sockets by convention (support WeaponGripPoints component)
-    if (type == EquipmentType.Weapon && targetParent != null)
+    protected virtual void UpdateEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
-        WeaponGripPoints wg = go.GetComponentInChildren<WeaponGripPoints>();
-        _weaponGrip = null;
-        if (wg != null)
+        if (holder == null)
         {
-            if (wg.rightHandGrip != null) _weaponGrip = wg.rightHandGrip;
-            else if (wg.leftHandGrip != null) _weaponGrip = wg.leftHandGrip;
+            Debug.LogWarning($"[UpdateEquipmentSlot] Holder is null for {type} on {gameObject.name}");
+            return;
         }
-        if (_weaponGrip == null)
-            _weaponGrip = FindChildRecursive(go.transform, "Grip_R") ?? FindChildRecursive(go.transform, "Grip_L");
-
-        if (_weaponGrip != null && weaponHolder != null)
+        if (itemData == null)
         {
-            Vector3 gripWorld = _weaponGrip.position;
-            Quaternion gripRot = _weaponGrip.rotation;
-            Vector3 desiredPos = weaponHolder.position;
-            Quaternion desiredRot = weaponHolder.rotation;
-
-            Vector3 delta = desiredPos - gripWorld;
-            go.transform.position += delta;
-            Quaternion fromTo = desiredRot * Quaternion.Inverse(gripRot);
-            go.transform.rotation = fromTo * go.transform.rotation;
+            Debug.LogWarning($"[UpdateEquipmentSlot] itemData is null for {type} on {gameObject.name}");
+            return;
+        }
+        if (itemData.equipmentPrefab == null)
+        {
+            Debug.LogWarning($"[UpdateEquipmentSlot] equipmentPrefab is null for {itemData.equipmentName} on {gameObject.name}");
+            return;
         }
 
-        // Parent while preserving the world transform we just set
-        go.transform.SetParent(targetParent, true);
-    }
-    else
-    {
-        // Default parenting behavior for non-weapon slots or when no holder is available
-        go.transform.SetParent(targetParent, false);
-        go.transform.localPosition = Vector3.zero;
-        go.transform.localRotation = Quaternion.identity;
-    }
+        Debug.Log($"[UpdateEquipmentSlot] Instantiating {itemData.equipmentName} prefab for {type} on {gameObject.name}");
 
-    equippedItemObjects[type] = go;
-        Debug.Log($"[ProcessEquipmentSlot] Equipped {equipment.equipmentName} in {type} slot on {gameObject.name}");
+        try
+        {
+            // Instantiate the new equipment UNPARENTED so we can align its grip transform properly
+            GameObject equipObj = Instantiate(itemData.equipmentPrefab);
+            if (equipObj == null)
+            {
+                Debug.LogError($"[UpdateEquipmentSlot] Failed to instantiate {itemData.equipmentName} prefab");
+                return;
+            }
+
+            // Disable physics on the instantiated equipment to prevent gravity or physics from moving grips
+            var rbs = equipObj.GetComponentsInChildren<Rigidbody>();
+            if (rbs != null && rbs.Length > 0)
+            {
+                Debug.Log($"[UpdateEquipmentSlot] Disabling {rbs.Length} Rigidbodies on {equipObj.name} for {gameObject.name}");
+                foreach (var rb in rbs)
+                {
+                    if (rb != null)
+                    {
+                        rb.isKinematic = true;
+                        rb.useGravity = false;
+                    }
+                }
+            }
+
+            var cols = equipObj.GetComponentsInChildren<Collider>();
+            if (cols != null && cols.Length > 0)
+            {
+                Debug.Log($"[UpdateEquipmentSlot] Disabling {cols.Length} Colliders on {equipObj.name} for {gameObject.name}");
+                foreach (var c in cols)
+                {
+                    if (c != null)
+                    {
+                        c.enabled = false;
+                    }
+                }
+            }
+
+            // Cache grip sockets by convention for Animation Rigging targets
+            if (useHolderAttachment)
+            {
+                if (type == EquipmentType.Weapon)
+                {
+                    // Prefer a WeaponGripPoints component (supports named grip transforms), fall back to naming convention
+                    WeaponGripPoints wg = equipObj.GetComponentInChildren<WeaponGripPoints>();
+                    _weaponGrip = null;
+                    if (wg != null)
+                    {
+                        if (wg.rightHandGrip != null) _weaponGrip = wg.rightHandGrip;
+                        else if (wg.leftHandGrip != null) _weaponGrip = wg.leftHandGrip;
+                    }
+
+                    if (_weaponGrip == null)
+                        _weaponGrip = FindChildRecursive(equipObj.transform, "Grip_R") ?? FindChildRecursive(equipObj.transform, "Grip_L");
+
+                    // If a grip exists, align that grip to the unit's weaponHolder so the weapon sits correctly.
+                    if (_weaponGrip != null && weaponHolder != null)
+                    {
+                        Vector3 gripWorld = _weaponGrip.position;
+                        Quaternion gripRot = _weaponGrip.rotation;
+                        Vector3 desiredPos = weaponHolder.position;
+                        Quaternion desiredRot = weaponHolder.rotation;
+
+                        // Move weapon so grip aligns with weaponHolder
+                        Vector3 delta = desiredPos - gripWorld;
+                        equipObj.transform.position += delta;
+
+                        // Rotate so the grip's orientation matches the holder's orientation
+                        Quaternion fromTo = desiredRot * Quaternion.Inverse(gripRot);
+                        equipObj.transform.rotation = fromTo * equipObj.transform.rotation;
+                    }
+                }
+
+                // Parent the equipment to the holder but preserve the world transform we just set
+                equipObj.transform.SetParent(holder, true);
+            }
+            else
+            {
+                // If not using holder attachment, parent under holder with local reset
+                equipObj.transform.SetParent(holder, false);
+                equipObj.transform.localPosition = Vector3.zero;
+                equipObj.transform.localRotation = Quaternion.identity;
+            }
+
+            // Store reference to the instantiated object
+            equippedItemObjects[type] = equipObj;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[UpdateEquipmentSlot] Exception while instantiating {itemData.equipmentName}: {ex.Message}");
+        }
     }
 
     private static Transform FindChildRecursive(Transform root, string name)
@@ -332,35 +416,30 @@ public class WorkerUnit : MonoBehaviour
             {
                 _equippedWeapon = data.defaultWeapon;
                 equippedAny = true;
-                Debug.Log($"[Awake] Auto-assigned default weapon {data.defaultWeapon.equipmentName} to {gameObject.name}");
             }
             if (_equippedShield == null && data.defaultShield != null)
             {
                 _equippedShield = data.defaultShield;
                 equippedAny = true;
-                Debug.Log($"[Awake] Auto-assigned default shield {data.defaultShield.equipmentName} to {gameObject.name}");
             }
             if (_equippedArmor == null && data.defaultArmor != null)
             {
                 _equippedArmor = data.defaultArmor;
                 equippedAny = true;
-                Debug.Log($"[Awake] Auto-assigned default armor {data.defaultArmor.equipmentName} to {gameObject.name}");
+                
             }
             if (_equippedMiscellaneous == null && data.defaultMiscellaneous != null)
             {
                 _equippedMiscellaneous = data.defaultMiscellaneous;
                 equippedAny = true;
-                Debug.Log($"[Awake] Auto-assigned default miscellaneous {data.defaultMiscellaneous.equipmentName} to {gameObject.name}");
             }
         }
         if (equippedAny)
         {
-            Debug.Log($"[Awake] Auto-equipped default equipment for {gameObject.name}.");
+            UpdateEquipmentVisuals();
         }
-        // If you have visuals, update them here (add UpdateEquipmentVisuals if needed)
     }
 
-    // Ensure equipment visuals update in edit mode when fields are changed
     void OnValidate()
     {
         // Only run in edit mode, not during play mode
@@ -420,19 +499,58 @@ public class WorkerUnit : MonoBehaviour
     {
         data = unitData;
         owner = unitOwner;
-        level = 1;                    // reset
-    // Apply targeted bonuses (health affects max/current)
-    var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
-    int maxHealth = Mathf.RoundToInt((data.baseHealth + wb.healthAdd) * (1f + wb.healthPct));
-    currentHealth    = maxHealth;
-    currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
-    currentMovePoints = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
-    // Weather susceptibility from data
-    takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
-        unitAnimator.SetTrigger("IdleYoung");  // explicit initial idle
+        level = 1; // reset
+
+        // If data provided at runtime, auto-equip defaults like CombatUnit.Initialize does
+        bool equippedAny = false;
+        if (data != null)
+        {
+            if (_equippedWeapon == null && data.defaultWeapon != null)
+            {
+                _equippedWeapon = data.defaultWeapon;
+                equippedAny = true;
+            }
+            if (_equippedShield == null && data.defaultShield != null)
+            {
+                _equippedShield = data.defaultShield;
+                equippedAny = true;
+            }
+            if (_equippedArmor == null && data.defaultArmor != null)
+            {
+                _equippedArmor = data.defaultArmor;
+                equippedAny = true;
+            }
+            if (_equippedMiscellaneous == null && data.defaultMiscellaneous != null)
+            {
+                _equippedMiscellaneous = data.defaultMiscellaneous;
+                equippedAny = true;
+            }
+        }
+
+        // Apply targeted bonuses (health affects max/current)
+        var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
+        int maxHealth = Mathf.RoundToInt((data != null ? data.baseHealth : 0) + wb.healthAdd);
+        maxHealth = Mathf.RoundToInt(maxHealth * (1f + wb.healthPct));
+        currentHealth = maxHealth;
+        currentWorkPoints = Mathf.RoundToInt(((data != null) ? data.baseWorkPoints : 0) + wb.workAdd);
+        currentWorkPoints = Mathf.RoundToInt(currentWorkPoints * (1f + wb.workPct));
+        currentMovePoints = Mathf.RoundToInt(((data != null) ? data.baseMovePoints : 0) + wb.moveAdd);
+        currentMovePoints = Mathf.RoundToInt(currentMovePoints * (1f + wb.movePct));
+
+        // Weather susceptibility from data
+        takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
+
+        unitAnimator.SetTrigger("IdleYoung"); // explicit initial idle
 
         // Subscribe to events
         GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+
+        // If we assigned defaults, update visuals now
+        if (equippedAny)
+        {
+            UpdateEquipmentVisuals();
+           
+        }
 
         // Instantiate and initialize the unit label
         if (unitLabelPrefab != null && unitLabelInstance == null)
@@ -442,7 +560,7 @@ public class WorkerUnit : MonoBehaviour
             if (unitLabelInstance != null)
             {
                 string ownerName = owner != null && owner.civData != null ? owner.civData.civName : "Unknown";
-                unitLabelInstance.Initialize(transform, data.unitName, ownerName, currentHealth, data.baseHealth);
+                unitLabelInstance.Initialize(transform, data != null ? data.unitName : "", ownerName, currentHealth, data != null ? data.baseHealth : 0);
 
                 // Disable raycast targets on the label's text components
                 var textComponents = unitLabelInstance.GetComponentsInChildren<TextMeshProUGUI>();
