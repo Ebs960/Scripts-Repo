@@ -77,16 +77,29 @@ public class WorkerUnit : MonoBehaviour
 
     // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
     private Transform _weaponGrip;
+    // neutral root for visuals and follow maps
+    private Transform equipmentRoot;
+    private readonly System.Collections.Generic.Dictionary<EquipmentType, Transform> equippedHolderMap = new System.Collections.Generic.Dictionary<EquipmentType, Transform>();
+    private readonly System.Collections.Generic.Dictionary<EquipmentType, Quaternion> equippedAuthLocal = new System.Collections.Generic.Dictionary<EquipmentType, Quaternion>();
+    private readonly System.Collections.Generic.Dictionary<EquipmentType, Transform> equippedVisualRoots = new System.Collections.Generic.Dictionary<EquipmentType, Transform>();
 
     private void UpdateEquipmentVisuals()
     {
-        Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name}");
+    // Root transform snapshot for diagnostics
+    var root = this.transform;
+    Vector3 rootWorldPosBefore = root.position;
+    Vector3 rootWorldRotBefore = root.rotation.eulerAngles;
+    Vector3 rootLocalRotBefore = root.localRotation.eulerAngles;
+    Debug.Log($"[UpdateEquipmentVisuals] ROOT BEFORE for {gameObject.name} -> worldPos={rootWorldPosBefore} worldRot={rootWorldRotBefore} localRot={rootLocalRotBefore}");
+    Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name} -- equippedWeapon={(equippedWeapon!=null?equippedWeapon.equipmentName:"(none)")}, equippedShield={(equippedShield!=null?equippedShield.equipmentName:"(none)")}, equippedArmor={(equippedArmor!=null?equippedArmor.equipmentName:"(none)")}, equippedMiscellaneous={(equippedMiscellaneous!=null?equippedMiscellaneous.equipmentName:"(none)")}");
+    Debug.Log($"[UpdateEquipmentVisuals] Holders -- weapon:{(weaponHolder==null?"null":weaponHolder.name+" (children="+weaponHolder.childCount+")")}, shield:{(shieldHolder==null?"null":shieldHolder.name+" (children="+shieldHolder.childCount+")")}, armor:{(armorHolder==null?"null":armorHolder.name+" (children="+armorHolder.childCount+")")}, misc:{(miscHolder==null?"null":miscHolder.name+" (children="+miscHolder.childCount+")")} ");
 
         // Clear cached grip before replacing visuals
         _weaponGrip = null;
 
-        // Remove any existing equipment visual objects
-        foreach (var item in equippedItemObjects.Values)
+    // Remove any existing equipment visual objects
+    Debug.Log($"[UpdateEquipmentVisuals] Destroying {equippedItemObjects.Count} cached equippedItemObjects for {gameObject.name}");
+    foreach (var item in equippedItemObjects.Values)
         {
             if (item != null)
             {
@@ -111,8 +124,12 @@ public class WorkerUnit : MonoBehaviour
     {
         if (holder == null)
         {
-            Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name}");
-            return;
+            Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name} -- creating temporary holder.");
+            var tempHolderGO = new GameObject($"{gameObject.name}_{type}_Holder");
+            tempHolderGO.transform.SetParent(this.transform, false);
+            tempHolderGO.transform.localPosition = Vector3.zero;
+            tempHolderGO.transform.localRotation = Quaternion.identity;
+            holder = tempHolderGO.transform;
         }
 
         // Clear existing equipment in this slot first
@@ -158,103 +175,85 @@ public class WorkerUnit : MonoBehaviour
             Debug.LogWarning($"[UpdateEquipmentSlot] equipmentPrefab is null for {itemData.equipmentName} on {gameObject.name}");
             return;
         }
+    Debug.Log($"[UpdateEquipmentSlot] Instantiating {itemData.equipmentName} prefab for {type} on {gameObject.name} (simple attach)");
 
-        Debug.Log($"[UpdateEquipmentSlot] Instantiating {itemData.equipmentName} prefab for {type} on {gameObject.name}");
+    // Record holder transform so we can detect unexpected changes during instantiation
+    Quaternion holderWorldBefore = holder.rotation;
+    Quaternion holderLocalBefore = holder.localRotation;
+    Vector3 holderWorldPosBefore = holder.position;
+    Vector3 holderLocalPosBefore = holder.localPosition;
+    Transform holderParentBefore = holder.parent;
+    int holderChildCountBefore = holder.childCount;
 
-        try
+    // Remove any existing visuals under the holder
+        for (int i = holder.childCount - 1; i >= 0; i--)
         {
-            // Instantiate the new equipment UNPARENTED so we can align its grip transform properly
-            GameObject equipObj = Instantiate(itemData.equipmentPrefab);
-            if (equipObj == null)
+            var child = holder.GetChild(i);
+            if (child != null)
             {
-                Debug.LogError($"[UpdateEquipmentSlot] Failed to instantiate {itemData.equipmentName} prefab");
-                return;
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(child.gameObject);
+                else
+#endif
+                    UnityEngine.Object.Destroy(child.gameObject);
             }
-
-            // Disable physics on the instantiated equipment to prevent gravity or physics from moving grips
-            var rbs = equipObj.GetComponentsInChildren<Rigidbody>();
-            if (rbs != null && rbs.Length > 0)
-            {
-                Debug.Log($"[UpdateEquipmentSlot] Disabling {rbs.Length} Rigidbodies on {equipObj.name} for {gameObject.name}");
-                foreach (var rb in rbs)
-                {
-                    if (rb != null)
-                    {
-                        rb.isKinematic = true;
-                        rb.useGravity = false;
-                    }
-                }
-            }
-
-            var cols = equipObj.GetComponentsInChildren<Collider>();
-            if (cols != null && cols.Length > 0)
-            {
-                Debug.Log($"[UpdateEquipmentSlot] Disabling {cols.Length} Colliders on {equipObj.name} for {gameObject.name}");
-                foreach (var c in cols)
-                {
-                    if (c != null)
-                    {
-                        c.enabled = false;
-                    }
-                }
-            }
-
-            // Cache grip sockets by convention for Animation Rigging targets
-            if (useHolderAttachment)
-            {
-                if (type == EquipmentType.Weapon)
-                {
-                    // Prefer a WeaponGripPoints component (supports named grip transforms), fall back to naming convention
-                    WeaponGripPoints wg = equipObj.GetComponentInChildren<WeaponGripPoints>();
-                    _weaponGrip = null;
-                    if (wg != null)
-                    {
-                        if (wg.rightHandGrip != null) _weaponGrip = wg.rightHandGrip;
-                        else if (wg.leftHandGrip != null) _weaponGrip = wg.leftHandGrip;
-                    }
-
-                    if (_weaponGrip == null)
-                        _weaponGrip = FindChildRecursive(equipObj.transform, "Grip_R") ?? FindChildRecursive(equipObj.transform, "Grip_L");
-
-                    // If a grip exists, align that grip to the unit's weaponHolder so the weapon sits correctly.
-                    if (_weaponGrip != null && weaponHolder != null)
-                    {
-                        Vector3 gripWorld = _weaponGrip.position;
-                        Quaternion gripRot = _weaponGrip.rotation;
-                        Vector3 desiredPos = weaponHolder.position;
-                        Quaternion desiredRot = weaponHolder.rotation;
-
-                        // Move weapon so grip aligns with weaponHolder
-                        Vector3 delta = desiredPos - gripWorld;
-                        equipObj.transform.position += delta;
-
-                        // Rotate so the grip's orientation matches the holder's orientation
-                        Quaternion fromTo = desiredRot * Quaternion.Inverse(gripRot);
-                        equipObj.transform.rotation = fromTo * equipObj.transform.rotation;
-                    }
-                }
-
-                // Parent the equipment to the holder but preserve the world transform we just set
-                equipObj.transform.SetParent(holder, true);
-            }
-            else
-            {
-                // If not using holder attachment, parent under holder with local reset
-                equipObj.transform.SetParent(holder, false);
-                equipObj.transform.localPosition = Vector3.zero;
-                equipObj.transform.localRotation = Quaternion.identity;
-            }
-
-            // Store reference to the instantiated object
-            equippedItemObjects[type] = equipObj;
         }
-        catch (System.Exception ex)
+
+        // Instantiate the equipment and parent it; protect holder from unexpected modifications
+        GameObject equipObj = Instantiate(itemData.equipmentPrefab);
+
+        if (equipmentRoot == null)
         {
-            Debug.LogError($"[UpdateEquipmentSlot] Exception while instantiating {itemData.equipmentName}: {ex.Message}");
+            var rootGO = new GameObject($"{gameObject.name}_EquipmentRoot");
+            rootGO.transform.SetParent(this.transform, false);
+            rootGO.transform.localPosition = Vector3.zero;
+            rootGO.transform.localRotation = Quaternion.identity;
+            equipmentRoot = rootGO.transform;
         }
-    }
 
-    private static Transform FindChildRecursive(Transform root, string name)
+        // Destroy previous slot if present
+        if (equippedVisualRoots.ContainsKey(type) && equippedVisualRoots[type] != null)
+        {
+            var old = equippedVisualRoots[type];
+            if (Application.isPlaying) Destroy(old.gameObject); else DestroyImmediate(old.gameObject);
+            equippedVisualRoots.Remove(type);
+        }
+
+        var slotGO = new GameObject($"{gameObject.name}_{type}_Visual");
+        slotGO.transform.SetParent(equipmentRoot, false);
+        slotGO.transform.SetPositionAndRotation(holder.position, holder.rotation);
+        var slotRoot = slotGO.transform;
+
+        Quaternion authoredLocal = equipObj.transform.localRotation;
+        equipObj.transform.SetParent(slotRoot, false);
+        equipObj.transform.localPosition = Vector3.zero;
+        equipObj.transform.localRotation = authoredLocal;
+
+        equippedHolderMap[type] = holder;
+        equippedAuthLocal[type] = authoredLocal;
+        equippedVisualRoots[type] = slotRoot;
+
+        Debug.Log($"[UpdateEquipmentSlot] Instantiated object '{equipObj.name}' -> worldPos={equipObj.transform.position} worldRot={equipObj.transform.rotation.eulerAngles} localPos={equipObj.transform.localPosition} localRot={equipObj.transform.localRotation.eulerAngles}");
+
+        // Detect if the holder was modified by any side-effect during instantiation
+        if (holder.rotation != holderWorldBefore || holder.localRotation != holderLocalBefore || holder.position != holderWorldPosBefore || holder.localPosition != holderLocalPosBefore || holder.parent != holderParentBefore || holder.childCount != holderChildCountBefore + 1)
+        {
+            Debug.LogWarning($"[UpdateEquipmentSlot] Holder transform changed during equip on {gameObject.name}.\n" +
+                             $"Before: worldPos={holderWorldPosBefore} worldRot={holderWorldBefore.eulerAngles} localPos={holderLocalPosBefore} localRot={holderLocalBefore.eulerAngles} parent={(holderParentBefore!=null?holderParentBefore.name:"null")} children={holderChildCountBefore}\n" +
+                             $"After: worldPos={holder.position} worldRot={holder.rotation.eulerAngles} localPos={holder.localPosition} localRot={holder.localRotation.eulerAngles} parent={(holder.parent!=null?holder.parent.name:"null")} children={holder.childCount}\n" +
+                             $"Equip object: {equipObj.name}. Stack:\n{System.Environment.StackTrace}");
+
+            // Restore holder to previous local rotation and position to enforce invariant
+            holder.localRotation = holderLocalBefore;
+            holder.localPosition = holderLocalPosBefore;
+        }
+
+        if (type == EquipmentType.Weapon)
+            _weaponGrip = null;
+
+        equippedItemObjects[type] = equipObj;
+    }    private static Transform FindChildRecursive(Transform root, string name)
     {
         if (root == null || string.IsNullOrEmpty(name)) return null;
         foreach (Transform child in root)
@@ -493,6 +492,35 @@ public class WorkerUnit : MonoBehaviour
         // Unsubscribe from events
         GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
         UnitRegistry.Unregister(gameObject);
+        // Destroy instantiated equipment visuals and equipment root
+        if (equippedItemObjects != null)
+        {
+            foreach (var it in equippedItemObjects.Values)
+            {
+                if (it != null)
+                {
+#if UNITY_EDITOR
+                    if (!Application.isPlaying)
+                        UnityEngine.Object.DestroyImmediate(it);
+                    else
+#endif
+                        UnityEngine.Object.Destroy(it);
+                }
+            }
+            equippedItemObjects.Clear();
+        }
+        if (equipmentRoot != null)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UnityEngine.Object.DestroyImmediate(equipmentRoot.gameObject);
+            else
+#endif
+                UnityEngine.Object.Destroy(equipmentRoot.gameObject);
+            equipmentRoot = null;
+        }
+        equippedHolderMap.Clear();
+        equippedAuthLocal.Clear();
     }
 
     public void Initialize(WorkerUnitData unitData, Civilization unitOwner)
@@ -611,6 +639,23 @@ public class WorkerUnit : MonoBehaviour
         {
             Debug.LogError("[WorkerUnit] Cannot find Earth planet generator for unit positioning!");
             return;
+        void LateUpdate()
+        {
+            if (equippedItemObjects == null) return;
+            foreach (var kvp in equippedItemObjects)
+            {
+                var type = kvp.Key;
+                var obj = kvp.Value;
+                if (obj == null) continue;
+                if (!equippedHolderMap.ContainsKey(type) || !equippedAuthLocal.ContainsKey(type)) continue;
+                var holder = equippedHolderMap[type];
+                var authLocal = equippedAuthLocal[type];
+                if (holder == null) continue;
+
+                obj.transform.position = holder.position;
+                obj.transform.rotation = holder.rotation * authLocal;
+            }
+        }
         }
 
         // FIXED: Calculate proper surface normal pointing AWAY from planet center (toward atmosphere)
