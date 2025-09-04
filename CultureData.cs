@@ -66,6 +66,12 @@ public class CultureData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Per-worker per-turn yield bonuses granted by this culture.")]
     public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Flat work points added to ALL worker units when this culture is adopted.")]
+    public int allWorkersWorkPoints = 0;
+
+    // Backwards-compatible aliases for older code that referenced globalWorkerWorkBonus/globalWorkerWorkModifier
+    public int globalWorkerWorkBonus => allWorkersWorkPoints;
+    public float globalWorkerWorkModifier => 0f;
     [Tooltip("Per-equipment stat bonuses granted by this culture.")]
     public EquipmentStatBonus[] equipmentBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this culture (applies when equipped).")]

@@ -28,9 +28,6 @@ public class CombatUnit : MonoBehaviour
     [Tooltip("Transform where projectiles will spawn from")]
     public Transform projectileSpawnPoint;
     
-    [Header("Holder-based Attachment (no IK)")]
-    [Tooltip("If true, equipment will be attached using simple holder transforms. IK is disabled.")]
-    public bool useHolderAttachment = true;
     
     // Dictionary to track instantiated equipment GameObjects
     protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
@@ -60,7 +57,6 @@ public class CombatUnit : MonoBehaviour
             // Prevent equipping worker-only items on combat units
             if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
             {
-                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
                 return;
             }
             _equippedWeapon = value;
@@ -74,7 +70,6 @@ public class CombatUnit : MonoBehaviour
             if (_equippedShield == value) return;
             if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
             {
-                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
                 return;
             }
             _equippedShield = value;
@@ -88,7 +83,6 @@ public class CombatUnit : MonoBehaviour
             if (_equippedArmor == value) return;
             if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
             {
-                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
                 return;
             }
             _equippedArmor = value;
@@ -102,7 +96,6 @@ public class CombatUnit : MonoBehaviour
             if (_equippedMiscellaneous == value) return;
             if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
             {
-                Debug.LogWarning($"[Equip] Tried to equip worker-only item '{value.equipmentName}' onto combat unit {gameObject.name}. Ignored.");
                 return;
             }
             _equippedMiscellaneous = value;
@@ -118,7 +111,6 @@ public class CombatUnit : MonoBehaviour
     {
         if (data == null)
         {
-            Debug.LogWarning("No CombatUnitData assigned. Cannot equip defaults.");
             return;
         }
         equippedWeapon = data.defaultWeapon;
@@ -128,7 +120,6 @@ public class CombatUnit : MonoBehaviour
         #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
         #endif
-        Debug.Log($"Equipped default equipment for {gameObject.name} in editor.");
     }
     
     SphericalHexGrid grid;
@@ -137,12 +128,6 @@ public class CombatUnit : MonoBehaviour
 
     // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
     private Transform _weaponGrip;
-    // Neutral root for equipment if needed (kept for backwards compatibility)
-    private Transform equipmentRoot;
-    // mapping for visual-follow approach
-    protected Dictionary<EquipmentType, Transform> equippedHolderMap = new Dictionary<EquipmentType, Transform>();
-    protected Dictionary<EquipmentType, Quaternion> equippedAuthLocal = new Dictionary<EquipmentType, Quaternion>();
-    protected Dictionary<EquipmentType, Transform> equippedVisualRoots = new Dictionary<EquipmentType, Transform>();
 
     [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
     public Civilization owner { get; private set; }
@@ -224,22 +209,18 @@ public class CombatUnit : MonoBehaviour
             if (_equippedWeapon == null && data.defaultWeapon != null)
             {
                 _equippedWeapon = data.defaultWeapon;
-                Debug.Log($"[Awake] Auto-assigned default weapon {data.defaultWeapon.equipmentName} to {gameObject.name}");
             }
             if (_equippedShield == null && data.defaultShield != null)
             {
                 _equippedShield = data.defaultShield;
-                Debug.Log($"[Awake] Auto-assigned default shield {data.defaultShield.equipmentName} to {gameObject.name}");
             }
             if (_equippedArmor == null && data.defaultArmor != null)
             {
                 _equippedArmor = data.defaultArmor;
-                Debug.Log($"[Awake] Auto-assigned default armor {data.defaultArmor.equipmentName} to {gameObject.name}");
             }
             if (_equippedMiscellaneous == null && data.defaultMiscellaneous != null)
             {
                 _equippedMiscellaneous = data.defaultMiscellaneous;
-                Debug.Log($"[Awake] Auto-assigned default miscellaneous {data.defaultMiscellaneous.equipmentName} to {gameObject.name}");
             }
         }
         // Always update visuals
@@ -268,28 +249,27 @@ public class CombatUnit : MonoBehaviour
             UnityEditor.EditorApplication.delayCall += () =>
             {
                 if (this == null) return;
-                if (_equippedWeapon != null && _equippedWeapon.targetUnit == EquipmentTarget.WorkerUnit)
+                if (!Application.isPlaying)
                 {
-                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedWeapon.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
-                    _equippedWeapon = null;
+                    if (_equippedWeapon != null && _equippedWeapon.targetUnit == EquipmentTarget.WorkerUnit)
+                    {
+                        _equippedWeapon = null;
+                    }
+                    if (_equippedShield != null && _equippedShield.targetUnit == EquipmentTarget.WorkerUnit)
+                    {
+                        _equippedShield = null;
+                    }
+                    if (_equippedArmor != null && _equippedArmor.targetUnit == EquipmentTarget.WorkerUnit)
+                    {
+                        _equippedArmor = null;
+                    }
+                    if (_equippedMiscellaneous != null && _equippedMiscellaneous.targetUnit == EquipmentTarget.WorkerUnit)
+                    {
+                        _equippedMiscellaneous = null;
+                    }
+                    UpdateEquipmentVisuals();
+                    UnityEditor.EditorUtility.SetDirty(this);
                 }
-                if (_equippedShield != null && _equippedShield.targetUnit == EquipmentTarget.WorkerUnit)
-                {
-                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedShield.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
-                    _equippedShield = null;
-                }
-                if (_equippedArmor != null && _equippedArmor.targetUnit == EquipmentTarget.WorkerUnit)
-                {
-                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedArmor.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
-                    _equippedArmor = null;
-                }
-                if (_equippedMiscellaneous != null && _equippedMiscellaneous.targetUnit == EquipmentTarget.WorkerUnit)
-                {
-                    Debug.LogWarning($"[OnValidate] Clearing incompatible equipment '{_equippedMiscellaneous.equipmentName}' from combat unit '{gameObject.name}' (worker-only).");
-                    _equippedMiscellaneous = null;
-                }
-                UpdateEquipmentVisuals();
-                UnityEditor.EditorUtility.SetDirty(this);
             };
         }
     }
@@ -303,17 +283,6 @@ public class CombatUnit : MonoBehaviour
                 Destroy(item);
         }
         equippedItemObjects.Clear();
-        // Clean up equipment root and maps
-        if (equipmentRoot != null)
-        {
-            if (Application.isPlaying)
-                Destroy(equipmentRoot.gameObject);
-            else
-                DestroyImmediate(equipmentRoot.gameObject);
-            equipmentRoot = null;
-        }
-        equippedHolderMap.Clear();
-        equippedAuthLocal.Clear();
         
         // Unsubscribe from events
         GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
@@ -1544,12 +1513,6 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public virtual void UpdateEquipmentVisuals()
     {
-        // Root transform snapshot for diagnostics
-        var root = this.transform;
-        Vector3 rootWorldPosBefore = root.position;
-        Vector3 rootWorldRotBefore = root.rotation.eulerAngles;
-        Vector3 rootLocalRotBefore = root.localRotation.eulerAngles;
-        Debug.Log($"[UpdateEquipmentVisuals] ROOT BEFORE for {gameObject.name} -> worldPos={rootWorldPosBefore} worldRot={rootWorldRotBefore} localRot={rootLocalRotBefore}");
         // Animals don't use equipment; skip any equipment processing or editor logs for them.
         if (data != null && data.unitType == CombatCategory.Animal)
         {
@@ -1570,14 +1533,10 @@ public class CombatUnit : MonoBehaviour
             return;
         }
 
-    Debug.Log($"[UpdateEquipmentVisuals] Called on {gameObject.name} -- equippedWeapon={(equippedWeapon!=null?equippedWeapon.equipmentName:"(none)")}, equippedShield={(equippedShield!=null?equippedShield.equipmentName:"(none)")}, equippedArmor={(equippedArmor!=null?equippedArmor.equipmentName:"(none)")}, equippedMiscellaneous={(equippedMiscellaneous!=null?equippedMiscellaneous.equipmentName:"(none)")}");
-    Debug.Log($"[UpdateEquipmentVisuals] Holders -- weapon:{(weaponHolder==null?"null":weaponHolder.name+" (children="+weaponHolder.childCount+")")}, shield:{(shieldHolder==null?"null":shieldHolder.name+" (children="+shieldHolder.childCount+")")}, armor:{(armorHolder==null?"null":armorHolder.name+" (children="+armorHolder.childCount+")")}, misc:{(miscHolder==null?"null":miscHolder.name+" (children="+miscHolder.childCount+")")} ");
-
         // Clear cached grips before replacing visuals
         _weaponGrip = null;
 
     // Remove any existing equipment visual objects
-    Debug.Log($"[UpdateEquipmentVisuals] Destroying {equippedItemObjects.Count} cached equippedItemObjects for {gameObject.name}");
     foreach (var item in equippedItemObjects.Values)
         {
             if (item != null)
@@ -1597,11 +1556,6 @@ public class CombatUnit : MonoBehaviour
     ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
     ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
     ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
-
-    Vector3 rootWorldPosAfter = root.position;
-    Vector3 rootWorldRotAfter = root.rotation.eulerAngles;
-    Vector3 rootLocalRotAfter = root.localRotation.eulerAngles;
-    Debug.Log($"[UpdateEquipmentVisuals] ROOT AFTER for {gameObject.name} -> worldPos={rootWorldPosAfter} worldRot={rootWorldRotAfter} localRot={rootLocalRotAfter}");
     }
     
     /// <summary>
@@ -1631,17 +1585,6 @@ public class CombatUnit : MonoBehaviour
             }
             return;
         }
-
-        if (holder == null)
-        {
-            Debug.LogWarning($"[ProcessEquipmentSlot] Holder is null for {type} on {gameObject.name} -- creating temporary holder.");
-            // Create a temporary holder at runtime so equipment can still be instantiated.
-            var tempHolderGO = new GameObject($"{gameObject.name}_{type}_Holder");
-            tempHolderGO.transform.SetParent(this.transform, false);
-            tempHolderGO.transform.localPosition = Vector3.zero;
-            tempHolderGO.transform.localRotation = Quaternion.identity;
-            holder = tempHolderGO.transform;
-        }
         
         // Clear existing equipment in this slot first
         for (int i = holder.childCount - 1; i >= 0; i--)
@@ -1661,7 +1604,6 @@ public class CombatUnit : MonoBehaviour
         // If no equipment data, slot is now empty - we're done
         if (itemData == null)
         {
-            Debug.Log($"[ProcessEquipmentSlot] Slot {type} is empty on {gameObject.name}");
             return;
         }
         
@@ -1676,23 +1618,18 @@ public class CombatUnit : MonoBehaviour
     {
         if (holder == null)
         {
-            Debug.LogWarning($"[UpdateEquipmentSlot] Holder is null for {type} on {gameObject.name}");
             return;
         }
         if (itemData == null)
         {
-            Debug.LogWarning($"[UpdateEquipmentSlot] itemData is null for {type} on {gameObject.name}");
             return;
         }
         if (itemData.equipmentPrefab == null)
         {
-            Debug.LogWarning($"[UpdateEquipmentSlot] equipmentPrefab is null for {itemData.equipmentName} on {gameObject.name}");
             return;
         }
 
-    Debug.Log($"[UpdateEquipmentSlot] Instantiating {itemData.equipmentName} prefab for {type} on {gameObject.name} (direct attach)");
-
-    // Record holder transform so we can detect unexpected changes
+    // Record holder transform so we can detect unexpected changes during instantiation
     Quaternion holderWorldBefore = holder.rotation;
     Quaternion holderLocalBefore = holder.localRotation;
     Vector3 holderWorldPosBefore = holder.position;
@@ -1715,102 +1652,73 @@ public class CombatUnit : MonoBehaviour
             }
         }
 
-        // Instantiate the equipment and attach it under an equipmentRoot so the holder is never re-parented/modified.
+        // Instantiate the equipment and parent it directly to holder
         GameObject equipObj = Instantiate(itemData.equipmentPrefab);
 
-        // Ensure we have an equipment root (kept as a child of the unit but separate from the holder)
-        if (equipmentRoot == null)
-        {
-            var rootGO = new GameObject($"{gameObject.name}_EquipmentRoot");
-            rootGO.transform.SetParent(this.transform, false);
-            rootGO.transform.localPosition = Vector3.zero;
-            rootGO.transform.localRotation = Quaternion.identity;
-            equipmentRoot = rootGO.transform;
-        }
-
-        // Create or replace a per-slot visual root under equipmentRoot so it can be positioned to the holder
-        if (equippedVisualRoots.ContainsKey(type) && equippedVisualRoots[type] != null)
-        {
-            // destroy previous visual root
-            var old = equippedVisualRoots[type];
-            if (Application.isPlaying) Destroy(old.gameObject); else DestroyImmediate(old.gameObject);
-            equippedVisualRoots.Remove(type);
-        }
-
-        var slotGO = new GameObject($"{gameObject.name}_{type}_Visual");
-        slotGO.transform.SetParent(equipmentRoot, false);
-        // place slot at holder world transform
-        slotGO.transform.SetPositionAndRotation(holder.position, holder.rotation);
-        var slotRoot = slotGO.transform;
-
-        // Diagnostic dump: print holder identity, hierarchy path and positions so we can confirm we're using the correct transform
-        try
-        {
-            string holderPath = GetTransformPath(holder);
-            Debug.Log($"[UpdateEquipmentSlot][DIAG] holder.name={holder.name} id={holder.GetInstanceID()} path={holderPath} worldPos={holder.position} localPos={holder.localPosition} parent={(holder.parent!=null?holder.parent.name:"null")}");
-            Debug.Log($"[UpdateEquipmentSlot][DIAG] slotRoot parent={(slotRoot.parent!=null?slotRoot.parent.name:"null")} slotPos={slotRoot.position} slotRot={slotRoot.rotation.eulerAngles}");
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning("[UpdateEquipmentSlot][DIAG] failed to print holder diagnostics: " + ex);
-        }
-
-        // Capture authored local rotation relative to the prefab root
         Quaternion authoredLocal = equipObj.transform.localRotation;
-
-        // Parent the instantiated object under the slot root and zero local transform so inspector shows clean values
-        equipObj.transform.SetParent(slotRoot, false);
+        equipObj.transform.SetParent(holder, false);
         equipObj.transform.localPosition = Vector3.zero;
         equipObj.transform.localRotation = authoredLocal;
 
-        // Track mapping so LateUpdate can keep slotRoot following the holder
-        equippedHolderMap[type] = holder;
-        equippedAuthLocal[type] = authoredLocal;
-        equippedVisualRoots[type] = slotRoot;
+            // Defensive: ensure the instantiated prefab actually has visible renderers.
+            // Attempt to repair SkinnedMeshRenderer bone bindings if they reference external bones,
+            // enable disabled renderers, and fall back to a placeholder if nothing is visible.
+            var allRenderers = equipObj.GetComponentsInChildren<Renderer>(true);
+            if (allRenderers == null || allRenderers.Length == 0)
+            {
+                var placeholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                placeholder.name = equipObj.name + "_placeholder";
+                placeholder.transform.SetParent(holder, false);
+                placeholder.transform.localPosition = Vector3.zero;
+                placeholder.transform.localRotation = Quaternion.identity;
+                placeholder.transform.localScale = Vector3.one * 0.2f;
+                equippedItemObjects[type] = placeholder;
+            }
+            else
+            {
+                foreach (var r in allRenderers)
+                {
+                    if (r == null) continue;
+                    if (!r.enabled) r.enabled = true;
 
-        // Log the instantiated object's transforms for diagnostics
-        Debug.Log($"[UpdateEquipmentSlot] Instantiated object '{equipObj.name}' -> worldPos={equipObj.transform.position} worldRot={equipObj.transform.rotation.eulerAngles} localPos={equipObj.transform.localPosition} localRot={equipObj.transform.localRotation.eulerAngles}");
+                    var smr = r as SkinnedMeshRenderer;
+                    if (smr != null)
+                    {
+                        // Equipment is already rigged to use unit bones - don't try to repair
+                        // The bone binding repair code was causing equipment to move with animations
+                        // by incorrectly replacing unit bone references with equipment bone references
+                    }
+                }
+                // keep equipObj as the tracked item unless we explicitly replaced it above
+                if (!equippedItemObjects.ContainsKey(type) || equippedItemObjects[type] == null)
+                    equippedItemObjects[type] = equipObj;
+            }
 
-        // Detect if the holder's transform changed unexpectedly during instantiation/parenting
+        // Detect if the holder was modified by any side-effect during instantiation
         if (holder.rotation != holderWorldBefore || holder.localRotation != holderLocalBefore || holder.position != holderWorldPosBefore || holder.localPosition != holderLocalPosBefore || holder.parent != holderParentBefore || holder.childCount != holderChildCountBefore + 1)
         {
-            Debug.LogWarning($"[UpdateEquipmentSlot] Holder transform changed during equip on {gameObject.name}.\n" +
-                             $"Holder before: worldPos={holderWorldPosBefore} worldRot={holderWorldBefore.eulerAngles} localPos={holderLocalPosBefore} localRot={holderLocalBefore.eulerAngles} parent={(holderParentBefore!=null?holderParentBefore.name:"null")} children={holderChildCountBefore}\n" +
-                             $"Holder after: worldPos={holder.position} worldRot={holder.rotation.eulerAngles} localPos={holder.localPosition} localRot={holder.localRotation.eulerAngles} parent={(holder.parent!=null?holder.parent.name:"null")} children={holder.childCount}\n" +
-                             $"Equip object: {equipObj.name}. Stack:\n{System.Environment.StackTrace}");
-
-            // Restore holder local rotation and local position to prior values to enforce invariant
+            // Restore holder to previous local rotation and position to enforce invariant
             holder.localRotation = holderLocalBefore;
             holder.localPosition = holderLocalPosBefore;
         }
 
-        // We don't provide an external grip Transform from equipment prefabs in this direct system
         if (type == EquipmentType.Weapon)
             _weaponGrip = null;
 
-    equippedItemObjects[type] = equipObj;
+        equippedItemObjects[type] = equipObj;
     }
 
-    // LateUpdate intentionally left empty: holder-based system handles placement at equip time.
-    void LateUpdate()
+    private static bool IsDescendantOf(Transform node, Transform potentialAncestor)
     {
-        // Drive equipment visuals to follow the holders without reparenting the holder
-        if (equippedItemObjects == null) return;
-        foreach (var kvp in equippedVisualRoots)
+        if (node == null || potentialAncestor == null) return false;
+        var cur = node;
+        while (cur != null)
         {
-            var type = kvp.Key;
-            var slotRoot = kvp.Value;
-            if (slotRoot == null) continue;
-            if (!equippedHolderMap.ContainsKey(type)) continue;
-            var holder = equippedHolderMap[type];
-            if (holder == null) continue;
-
-            // Move the slot root to the holder transform; the equip object stays local(0) under the slot
-            slotRoot.position = holder.position;
-            slotRoot.rotation = holder.rotation;
+            if (cur == potentialAncestor) return true;
+            cur = cur.parent;
         }
+        return false;
     }
-    // No IK target updates: holder-based attachment takes place at equip time.
 
     private static Transform FindChildRecursive(Transform root, string name)
     {
@@ -1822,20 +1730,6 @@ public class CombatUnit : MonoBehaviour
             if (found != null) return found;
         }
         return null;
-    }
-
-    private string GetTransformPath(Transform t)
-    {
-        if (t == null) return "(null)";
-        var parts = new System.Collections.Generic.List<string>();
-        var cur = t;
-        while (cur != null)
-        {
-            parts.Add(cur.name);
-            cur = cur.parent;
-        }
-        parts.Reverse();
-        return string.Join("/", parts.ToArray());
     }
     
     /// <summary>

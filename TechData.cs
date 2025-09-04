@@ -119,6 +119,13 @@ public class TechData : ScriptableObject
     public WorkerUnitStatBonus[] workerBonuses;
     [Tooltip("Per-worker per-turn yield bonuses granted by this technology.")]
     public WorkerUnitYieldBonus[] workerYieldBonuses;
+    [Tooltip("Flat work points added to ALL worker units when this technology is researched.")]
+    public int allWorkersWorkPoints = 0;
+
+    // Backwards-compatible aliases for older code that referenced globalWorkerWorkBonus/globalWorkerWorkModifier
+    // These expose the same flat value and a zero multiplier to avoid changing runtime behavior.
+    public int globalWorkerWorkBonus => allWorkersWorkPoints;
+    public float globalWorkerWorkModifier => 0f;
     [Tooltip("Per-equipment stat bonuses granted by this technology.")]
     public EquipmentStatBonus[] equipmentBonuses;
     [Tooltip("Per-equipment per-turn yield bonuses granted by this technology (applies when equipped).")]

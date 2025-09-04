@@ -335,13 +335,13 @@ public class Civilization : MonoBehaviour
         }
 
         // 3.6) Per-unit yields (combat units). Applies after city yields, before research/culture processing.
-        if (combatUnits != null && combatUnits.Count > 0)
+    if (combatUnits != null && combatUnits.Count > 0)
         {
             int addFood = 0, addGold = 0, addSci = 0, addCul = 0, addFai = 0, addPol = 0;
             foreach (var u in combatUnits)
             {
                 if (u == null || u.data == null) continue;
-                var yields = BonusAggregator.ComputeUnitPerTurnYield(this, u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+        var yields = ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci  += yields.science;
@@ -366,7 +366,7 @@ public class Civilization : MonoBehaviour
             foreach (var w in workerUnits)
             {
                 if (w == null || w.data == null) continue;
-                var yields = BonusAggregator.ComputeWorkerPerTurnYield(this, w.data);
+                var yields = ComputeWorkerPerTurnYield(w.data);
                 addFood += yields.food;
                 addGold += yields.gold;
                 addSci  += yields.science;
@@ -1274,8 +1274,51 @@ public class Civilization : MonoBehaviour
             Debug.LogWarning($"[Civilization] Refresh after tech research threw: {ex}");
         }
 
+    // Ensure flat all-workers work point bonuses are applied to already-spawned workers
+    ApplyAllWorkersWorkPointsToExisting();
+
     // Notify listeners that unlock-driven availability may have changed
     OnUnlocksChanged?.Invoke();
+    }
+
+    // Compute aggregated flat work points granted to ALL workers by techs/cultures/policies/government
+    public int GetAggregatedAllWorkersWorkPoints()
+    {
+        int total = 0;
+        if (researchedTechs != null)
+        {
+            foreach (var t in researchedTechs)
+                if (t != null) total += t.allWorkersWorkPoints;
+        }
+        if (researchedCultures != null)
+        {
+            foreach (var c in researchedCultures)
+                if (c != null) total += c.allWorkersWorkPoints;
+        }
+    // Note: policies and government currently do not expose allWorkersWorkPoints
+    // If they gain that field in the future, include them here.
+        return total;
+    }
+
+    // Apply current aggregated all-worker flat bonuses to all existing WorkerUnit instances
+    private void ApplyAllWorkersWorkPointsToExisting()
+    {
+        int flat = GetAggregatedAllWorkersWorkPoints();
+        if (flat == 0) return;
+        if (workerUnits == null) return;
+
+        foreach (var w in workerUnits)
+        {
+            if (w == null) continue;
+            // Prefer an explicit API on WorkerUnit to receive civ-level updates
+            try {
+                w.OnCivBonusesChanged(); // allow worker to recompute its effective work points
+                // Also ensure any persistent field is adjusted if WorkerUnit exposes one
+                // e.g., if WorkerUnit has AddTemporaryWorkPoints(int), call it here. We'll rely on OnCivBonusesChanged for now.
+            } catch (System.Exception ex) {
+                Debug.LogWarning($"[Civilization] Failed to apply allWorkersWorkPoints to worker {w.name}: {ex}");
+            }
+        }
     }
     
     /// <summary>
@@ -1326,6 +1369,9 @@ public class Civilization : MonoBehaviour
         {
             Debug.LogWarning($"[Civilization] Refresh after culture adoption threw: {ex}");
         }
+
+    // Ensure flat all-workers work point bonuses are applied to already-spawned workers
+    ApplyAllWorkersWorkPointsToExisting();
 
     // Notify listeners that unlock-driven availability may have changed
     OnUnlocksChanged?.Invoke();
@@ -1853,6 +1899,536 @@ public class Civilization : MonoBehaviour
                 AddEquipment(item, 5); // Start with a default quantity
             }
         }
+    }
+
+    // --- Consolidated bonus aggregation & calculation (moved from BonusAggregator.cs / BonusCalculator.cs) ---
+
+    public struct UnitBonusAgg
+    {
+        public int attackAdd, defenseAdd, healthAdd, movePointsAdd, rangeAdd, attackPointsAdd, moraleAdd;
+        public float attackPct, defensePct, healthPct, movePointsPct, rangePct, attackPointsPct, moralePct;
+    }
+
+    public struct WorkerBonusAgg
+    {
+        public int workPointsAdd, movePointsAdd, healthAdd;
+        public float workPointsPct, movePointsPct, healthPct;
+    }
+
+    public struct YieldBonusAgg
+    {
+        public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyPointsAdd;
+        public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPointsPct;
+    }
+
+    public struct EquipBonusAgg
+    {
+        public int attackAdd, defenseAdd, healthAdd, movePointsAdd, rangeAdd, attackPointsAdd;
+        public float attackPct, defensePct, healthPct, movePointsPct, rangePct, attackPointsPct;
+    }
+
+    private YieldBonusAgg AggregateUnitYieldBonuses(CombatUnitData unit)
+    {
+        YieldBonusAgg agg = new YieldBonusAgg();
+        if (unit == null) return agg;
+
+        // Techs
+        if (researchedTechs != null)
+        {
+            foreach (var tech in researchedTechs)
+            {
+                if (tech == null || tech.unitYieldBonuses == null) continue;
+                foreach (var b in tech.unitYieldBonuses)
+                {
+                    if (b != null && b.unit == unit)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
+                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
+                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Cultures
+        if (researchedCultures != null)
+        {
+            foreach (var culture in researchedCultures)
+            {
+                if (culture == null || culture.unitYieldBonuses == null) continue;
+                foreach (var b in culture.unitYieldBonuses)
+                {
+                    if (b != null && b.unit == unit)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
+                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
+                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Policies
+        if (activePolicies != null)
+        {
+            foreach (var policy in activePolicies)
+            {
+                if (policy == null || policy.unitYieldBonuses == null) continue;
+                foreach (var b in policy.unitYieldBonuses)
+                {
+                    if (b != null && b.unit == unit)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
+                        agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
+                        agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Government
+        if (currentGovernment != null && currentGovernment.unitYieldBonuses != null)
+        {
+            foreach (var b in currentGovernment.unitYieldBonuses)
+            {
+                if (b != null && b.unit == unit)
+                {
+                    agg.foodAdd += b.foodAdd; agg.productionAdd += b.productionAdd; agg.goldAdd += b.goldAdd;
+                    agg.scienceAdd += b.scienceAdd; agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                    agg.foodPct += b.foodPct; agg.productionPct += b.productionPct; agg.goldPct += b.goldPct;
+                    agg.sciencePct += b.sciencePct; agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                }
+            }
+        }
+
+        return agg;
+    }
+
+    private YieldBonusAgg AggregateEquipmentYieldBonuses(EquipmentData equip)
+    {
+        YieldBonusAgg agg = new YieldBonusAgg();
+        if (equip == null) return agg;
+
+        // Techs
+        if (researchedTechs != null)
+        {
+            foreach (var tech in researchedTechs)
+            {
+                if (tech == null || tech.equipmentYieldBonuses == null) continue;
+                foreach (var b in tech.equipmentYieldBonuses)
+                {
+                    if (b != null && b.equipment == equip)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Cultures
+        if (researchedCultures != null)
+        {
+            foreach (var culture in researchedCultures)
+            {
+                if (culture == null || culture.equipmentYieldBonuses == null) continue;
+                foreach (var b in culture.equipmentYieldBonuses)
+                {
+                    if (b != null && b.equipment == equip)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Policies
+        if (activePolicies != null)
+        {
+            foreach (var policy in activePolicies)
+            {
+                if (policy == null || policy.equipmentYieldBonuses == null) continue;
+                foreach (var b in policy.equipmentYieldBonuses)
+                {
+                    if (b != null && b.equipment == equip)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        // Government
+        if (currentGovernment != null && currentGovernment.equipmentYieldBonuses != null)
+        {
+            foreach (var b in currentGovernment.equipmentYieldBonuses)
+            {
+                if (b != null && b.equipment == equip)
+                {
+                    agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                    agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                    agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                    agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                }
+            }
+        }
+
+        return agg;
+    }
+
+    public (int food, int gold, int science, int culture, int faith, int policy) ComputeUnitPerTurnYield(CombatUnitData unit, params EquipmentData[] equippedItems)
+    {
+        if (unit == null) return (0,0,0,0,0,0);
+        int baseFood = unit.foodPerTurn;
+        int baseGold = unit.goldPerTurn;
+        int baseSci  = unit.sciencePerTurn;
+        int baseCul  = unit.culturePerTurn;
+        int baseFai  = unit.faithPerTurn;
+        int basePol  = unit.policyPointsPerTurn;
+
+        // Include base equipment yields from all equipped items
+        if (equippedItems != null)
+        {
+            foreach (var eq in equippedItems)
+            {
+                if (eq == null) continue;
+                baseFood += eq.foodPerTurn;
+                baseGold += eq.goldPerTurn;
+                baseSci  += eq.sciencePerTurn;
+                baseCul  += eq.culturePerTurn;
+                baseFai  += eq.faithPerTurn;
+                basePol  += eq.policyPointsPerTurn;
+            }
+        }
+
+        var u = AggregateUnitYieldBonuses(unit);
+        // Sum equipment-based yield modifiers from bonuses too
+        YieldBonusAgg eAgg = new YieldBonusAgg();
+        if (equippedItems != null)
+        {
+            foreach (var eq in equippedItems)
+            {
+                var e = AggregateEquipmentYieldBonuses(eq);
+                eAgg.foodAdd += e.foodAdd; eAgg.goldAdd += e.goldAdd; eAgg.scienceAdd += e.scienceAdd; eAgg.cultureAdd += e.cultureAdd; eAgg.faithAdd += e.faithAdd; eAgg.policyPointsAdd += e.policyPointsAdd;
+                eAgg.foodPct += e.foodPct; eAgg.goldPct += e.goldPct; eAgg.sciencePct += e.sciencePct; eAgg.culturePct += e.culturePct; eAgg.faithPct += e.faithPct; eAgg.policyPointsPct += e.policyPointsPct;
+            }
+        }
+
+        int food = Mathf.RoundToInt((baseFood + u.foodAdd + eAgg.foodAdd) * (1f + u.foodPct + eAgg.foodPct));
+        int gold = Mathf.RoundToInt((baseGold + u.goldAdd + eAgg.goldAdd) * (1f + u.goldPct + eAgg.goldPct));
+        int sci  = Mathf.RoundToInt((baseSci  + u.scienceAdd + eAgg.scienceAdd) * (1f + u.sciencePct + eAgg.sciencePct));
+        int cul  = Mathf.RoundToInt((baseCul  + u.cultureAdd + eAgg.cultureAdd) * (1f + u.culturePct + eAgg.culturePct));
+        int fai  = Mathf.RoundToInt((baseFai  + u.faithAdd + eAgg.faithAdd) * (1f + u.faithPct + eAgg.faithPct));
+        int pol  = Mathf.RoundToInt((basePol  + u.policyPointsAdd + eAgg.policyPointsAdd) * (1f + u.policyPointsPct + eAgg.policyPointsPct));
+
+        return (food, gold, sci, cul, fai, pol);
+    }
+
+    private YieldBonusAgg AggregateWorkerYieldBonuses(WorkerUnitData worker)
+    {
+        YieldBonusAgg agg = new YieldBonusAgg();
+        if (worker == null) return agg;
+
+        if (researchedTechs != null)
+        {
+            foreach (var tech in researchedTechs)
+            {
+                if (tech == null || tech.workerYieldBonuses == null) continue;
+                foreach (var b in tech.workerYieldBonuses)
+                {
+                    if (b != null && b.worker == worker)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        if (researchedCultures != null)
+        {
+            foreach (var culture in researchedCultures)
+            {
+                if (culture == null || culture.workerYieldBonuses == null) continue;
+                foreach (var b in culture.workerYieldBonuses)
+                {
+                    if (b != null && b.worker == worker)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        if (activePolicies != null)
+        {
+            foreach (var policy in activePolicies)
+            {
+                if (policy == null || policy.workerYieldBonuses == null) continue;
+                foreach (var b in policy.workerYieldBonuses)
+                {
+                    if (b != null && b.worker == worker)
+                    {
+                        agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                        agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                        agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                        agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                    }
+                }
+            }
+        }
+        if (currentGovernment != null && currentGovernment.workerYieldBonuses != null)
+        {
+            foreach (var b in currentGovernment.workerYieldBonuses)
+            {
+                if (b != null && b.worker == worker)
+                {
+                    agg.foodAdd += b.foodAdd; agg.goldAdd += b.goldAdd; agg.scienceAdd += b.scienceAdd;
+                    agg.cultureAdd += b.cultureAdd; agg.faithAdd += b.faithAdd; agg.policyPointsAdd += b.policyPointsAdd;
+                    agg.foodPct += b.foodPct; agg.goldPct += b.goldPct; agg.sciencePct += b.sciencePct;
+                    agg.culturePct += b.culturePct; agg.faithPct += b.faithPct; agg.policyPointsPct += b.policyPointsPct;
+                }
+            }
+        }
+        return agg;
+    }
+
+    public (int food, int gold, int science, int culture, int faith, int policy) ComputeWorkerPerTurnYield(WorkerUnitData worker)
+    {
+        if (worker == null) return (0,0,0,0,0,0);
+        int baseFood = worker.foodPerTurn;
+        int baseGold = worker.goldPerTurn;
+        int baseSci  = worker.sciencePerTurn;
+        int baseCul  = worker.culturePerTurn;
+        int baseFai  = worker.faithPerTurn;
+        int basePol  = worker.policyPointsPerTurn;
+
+        var w = AggregateWorkerYieldBonuses(worker);
+        int food = Mathf.RoundToInt((baseFood + w.foodAdd) * (1f + w.foodPct));
+        int gold = Mathf.RoundToInt((baseGold + w.goldAdd) * (1f + w.goldPct));
+        int sci  = Mathf.RoundToInt((baseSci  + w.scienceAdd) * (1f + w.sciencePct));
+        int cul  = Mathf.RoundToInt((baseCul  + w.cultureAdd) * (1f + w.culturePct));
+        int fai  = Mathf.RoundToInt((baseFai  + w.faithAdd) * (1f + w.faithPct));
+        int pol  = Mathf.RoundToInt((basePol  + w.policyPointsAdd) * (1f + w.policyPointsPct));
+        return (food, gold, sci, cul, fai, pol);
+    }
+
+    // --- CombinedBonuses (from BonusCalculator) ---
+    [System.Serializable]
+    public struct CombinedBonuses
+    {
+        public float foodModifier;
+        public float productionModifier;
+        public float goldModifier;
+        public float scienceModifier;
+        public float cultureModifier;
+        public float faithModifier;
+        public float attackBonus;
+        public float defenseBonus;
+        public float movementBonus;
+
+        public int flatFoodBonus;
+        public int flatProductionBonus;
+        public int flatGoldBonus;
+        public int flatScienceBonus;
+        public int flatCultureBonus;
+        public int flatFaithBonus;
+
+        public int additionalGovernorSlots;
+
+        public List<UnitLimitModifier> unitLimitModifiers;
+        public List<BuildingLimitModifier> buildingLimitModifiers;
+    }
+
+    public CombinedBonuses CalculateTechBonuses(List<TechData> technologies)
+    {
+        CombinedBonuses result = new CombinedBonuses();
+        if (technologies == null || technologies.Count == 0)
+            return result;
+        foreach (var tech in technologies)
+        {
+            if (tech == null) continue;
+            result.foodModifier += tech.foodModifier;
+            result.productionModifier += tech.productionModifier;
+            result.goldModifier += tech.goldModifier;
+            result.scienceModifier += tech.scienceModifier;
+            result.cultureModifier += tech.cultureModifier;
+            result.faithModifier += tech.faithModifier;
+            result.attackBonus += tech.attackBonus;
+            result.defenseBonus += tech.defenseBonus;
+            result.movementBonus += tech.movementBonus;
+
+            result.flatFoodBonus += tech.flatFoodBonus;
+            result.flatProductionBonus += tech.flatProductionBonus;
+            result.flatGoldBonus += tech.flatGoldBonus;
+            result.flatScienceBonus += tech.flatScienceBonus;
+            result.flatCultureBonus += tech.flatCultureBonus;
+            result.flatFaithBonus += tech.flatFaithBonus;
+
+            result.additionalGovernorSlots += tech.additionalGovernorSlots;
+
+            if (result.unitLimitModifiers == null)
+                result.unitLimitModifiers = new List<UnitLimitModifier>();
+            if (result.buildingLimitModifiers == null)
+                result.buildingLimitModifiers = new List<BuildingLimitModifier>();
+
+            if (tech.unitLimitModifiers != null)
+                result.unitLimitModifiers.AddRange(tech.unitLimitModifiers);
+            if (tech.buildingLimitModifiers != null)
+                result.buildingLimitModifiers.AddRange(tech.buildingLimitModifiers);
+        }
+        return result;
+    }
+
+    public CombinedBonuses CalculateCultureBonuses(List<CultureData> cultures)
+    {
+        CombinedBonuses result = new CombinedBonuses();
+        if (cultures == null || cultures.Count == 0)
+            return result;
+        foreach (var culture in cultures)
+        {
+            if (culture == null) continue;
+            result.foodModifier += culture.foodModifier;
+            result.productionModifier += culture.productionModifier;
+            result.goldModifier += culture.goldModifier;
+            result.scienceModifier += culture.scienceModifier;
+            result.cultureModifier += culture.cultureModifier;
+            result.faithModifier += culture.faithModifier;
+            result.attackBonus += culture.attackBonus;
+            result.defenseBonus += culture.defenseBonus;
+            result.movementBonus += culture.movementBonus;
+
+            result.flatFoodBonus += culture.flatFoodBonus;
+            result.flatProductionBonus += culture.flatProductionBonus;
+            result.flatGoldBonus += culture.flatGoldBonus;
+            result.flatScienceBonus += culture.flatScienceBonus;
+            result.flatCultureBonus += culture.flatCultureBonus;
+            result.flatFaithBonus += culture.flatFaithBonus;
+
+            result.additionalGovernorSlots += culture.additionalGovernorSlots;
+
+            if (result.unitLimitModifiers == null)
+                result.unitLimitModifiers = new List<UnitLimitModifier>();
+            if (result.buildingLimitModifiers == null)
+                result.buildingLimitModifiers = new List<BuildingLimitModifier>();
+
+            if (culture.unitLimitModifiers != null)
+                result.unitLimitModifiers.AddRange(culture.unitLimitModifiers);
+            if (culture.buildingLimitModifiers != null)
+                result.buildingLimitModifiers.AddRange(culture.buildingLimitModifiers);
+        }
+        return result;
+    }
+
+    public CombinedBonuses CalculateTotalBonuses(List<TechData> technologies, List<CultureData> cultures)
+    {
+        var techBonuses = CalculateTechBonuses(technologies);
+        var cultureBonuses = CalculateCultureBonuses(cultures);
+        return CombineBonuses(techBonuses, cultureBonuses);
+    }
+
+    public CombinedBonuses CombineBonuses(CombinedBonuses bonuses1, CombinedBonuses bonuses2)
+    {
+        CombinedBonuses result = new CombinedBonuses();
+        result.foodModifier = bonuses1.foodModifier + bonuses2.foodModifier;
+        result.productionModifier = bonuses1.productionModifier + bonuses2.productionModifier;
+        result.goldModifier = bonuses1.goldModifier + bonuses2.goldModifier;
+        result.scienceModifier = bonuses1.scienceModifier + bonuses2.scienceModifier;
+        result.cultureModifier = bonuses1.cultureModifier + bonuses2.cultureModifier;
+        result.faithModifier = bonuses1.faithModifier + bonuses2.faithModifier;
+        result.attackBonus = bonuses1.attackBonus + bonuses2.attackBonus;
+        result.defenseBonus = bonuses1.defenseBonus + bonuses2.defenseBonus;
+        result.movementBonus = bonuses1.movementBonus + bonuses2.movementBonus;
+
+        result.flatFoodBonus = bonuses1.flatFoodBonus + bonuses2.flatFoodBonus;
+        result.flatProductionBonus = bonuses1.flatProductionBonus + bonuses2.flatProductionBonus;
+        result.flatGoldBonus = bonuses1.flatGoldBonus + bonuses2.flatGoldBonus;
+        result.flatScienceBonus = bonuses1.flatScienceBonus + bonuses2.flatScienceBonus;
+        result.flatCultureBonus = bonuses1.flatCultureBonus + bonuses2.flatCultureBonus;
+        result.flatFaithBonus = bonuses1.flatFaithBonus + bonuses2.flatFaithBonus;
+
+        result.additionalGovernorSlots = bonuses1.additionalGovernorSlots + bonuses2.additionalGovernorSlots;
+
+        result.unitLimitModifiers = new List<UnitLimitModifier>();
+        result.buildingLimitModifiers = new List<BuildingLimitModifier>();
+        if (bonuses1.unitLimitModifiers != null)
+            result.unitLimitModifiers.AddRange(bonuses1.unitLimitModifiers);
+        if (bonuses2.unitLimitModifiers != null)
+            result.unitLimitModifiers.AddRange(bonuses2.unitLimitModifiers);
+        if (bonuses1.buildingLimitModifiers != null)
+            result.buildingLimitModifiers.AddRange(bonuses1.buildingLimitModifiers);
+        if (bonuses2.buildingLimitModifiers != null)
+            result.buildingLimitModifiers.AddRange(bonuses2.buildingLimitModifiers);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Simple yield collection used by bonus calculations and application helpers.
+    /// This replaces the type that used to live in BonusCalculator.cs which was removed.
+    /// </summary>
+    [System.Serializable]
+    public struct YieldCollection
+    {
+        public int food;
+        public int production;
+        public int gold;
+        public int science;
+        public int culture;
+        public int faith;
+
+        public YieldCollection(int food = 0, int production = 0, int gold = 0, int science = 0, int culture = 0, int faith = 0)
+        {
+            this.food = food;
+            this.production = production;
+            this.gold = gold;
+            this.science = science;
+            this.culture = culture;
+            this.faith = faith;
+        }
+
+        public static YieldCollection operator +(YieldCollection a, YieldCollection b)
+        {
+            return new YieldCollection(
+                a.food + b.food,
+                a.production + b.production,
+                a.gold + b.gold,
+                a.science + b.science,
+                a.culture + b.culture,
+                a.faith + b.faith
+            );
+        }
+
+        public override string ToString()
+        {
+            return $"food:{food} prod:{production} gold:{gold} sci:{science} cul:{culture} faith:{faith}";
+        }
+    }
+
+    public int ApplyBonuses(int baseYield, float percentageModifier, int flatBonus)
+    {
+        float modifiedYield = baseYield * (1f + percentageModifier);
+        return Mathf.RoundToInt(modifiedYield) + flatBonus;
+    }
+
+    public YieldCollection ApplyYieldBonuses(YieldCollection baseYields, CombinedBonuses bonuses)
+    {
+        YieldCollection finalYields = new YieldCollection();
+        finalYields.food = ApplyBonuses(baseYields.food, bonuses.foodModifier, bonuses.flatFoodBonus);
+        finalYields.production = ApplyBonuses(baseYields.production, bonuses.productionModifier, bonuses.flatProductionBonus);
+        finalYields.gold = ApplyBonuses(baseYields.gold, bonuses.goldModifier, bonuses.flatGoldBonus);
+        finalYields.science = ApplyBonuses(baseYields.science, bonuses.scienceModifier, bonuses.flatScienceBonus);
+        finalYields.culture = ApplyBonuses(baseYields.culture, bonuses.cultureModifier, bonuses.flatCultureBonus);
+        finalYields.faith = ApplyBonuses(baseYields.faith, bonuses.faithModifier, bonuses.flatFaithBonus);
+        return finalYields;
     }
 
     public SphericalHexGrid planetGrid; // Add this field to store the main planet's grid
