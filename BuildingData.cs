@@ -126,4 +126,13 @@ public class EquipmentProduction
     
     [Tooltip("The quantity produced when the building is completed")]
     public int quantity = 1;
+    
+    [Tooltip("Optional override of production cost (production points) for this building's produced equipment. If 0, uses EquipmentData.productionCost.")]
+    public int productionCostOverride = 0;
+
+    [Tooltip("Optional override of gold cost for instant buy of this produced equipment. If 0, no gold cost is applied.")]
+    public int goldCostOverride = 0;
+    
+    [Tooltip("If true, this equipment is granted to the civilization immediately when the building completes instead of being enqueued in the city's production queue.")]
+    public bool produceImmediately = false;
 }

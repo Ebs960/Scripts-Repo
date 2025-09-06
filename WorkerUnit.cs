@@ -623,8 +623,6 @@ public class WorkerUnit : MonoBehaviour
         
         // Set rotation so unit stands upright on the surface
         transform.rotation = Quaternion.LookRotation(tangentForward, surfaceNormal);
-        
-        Debug.Log($"[WorkerUnit] Positioned {data.unitName} at tile {tileIndex}. Surface normal: {surfaceNormal}, Forward: {tangentForward}");
     }
 
     public bool CanBuild(ImprovementData imp, int tileIndex)
@@ -1060,8 +1058,6 @@ public class WorkerUnit : MonoBehaviour
             return;
         }
         
-        Debug.Log($"[WorkerUnit] Clicked on {data.unitName}. Owner: {owner?.civData?.civName ?? "Unknown"}");
-
         // Use the UnitSelectionManager for selection
         if (UnitSelectionManager.Instance != null)
         {

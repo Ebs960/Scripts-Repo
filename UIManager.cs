@@ -14,6 +14,8 @@ public class UIManager : MonoBehaviour
     public GameObject culturePanel;
     public GameObject religionPanel;
     public GameObject tradePanel;
+    [Header("Trade UI")]
+    public UnityEngine.UI.Button tradeButton; // Optional: main trade button on player UI
     public GameObject diplomacyPanel;
     public GameObject equipmentPanel;
     public GameObject unitInfoPanel;
@@ -89,6 +91,22 @@ public class UIManager : MonoBehaviour
 
         // Wire click sounds for all known panels/buttons
     WireAllPanelsForClickSound();
+
+        // Subscribe to TradeManager events if available
+        if (TradeManager.Instance != null)
+        {
+            TradeManager.Instance.OnGlobalTradeEnabled += HandleGlobalTradeEnabled;
+            TradeManager.Instance.OnCivilizationTradeEnabled += HandleCivilizationTradeEnabled;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (TradeManager.Instance != null)
+        {
+            TradeManager.Instance.OnGlobalTradeEnabled -= HandleGlobalTradeEnabled;
+            TradeManager.Instance.OnCivilizationTradeEnabled -= HandleCivilizationTradeEnabled;
+        }
     }
     
     /// <summary>
@@ -237,10 +255,65 @@ public class UIManager : MonoBehaviour
     public void ShowTradePanel(Civilization civ)
     {
         if (tradePanel == null) return;
+        if (civ == null)
+        {
+            ShowNotification("No civilization selected for trade.");
+            return;
+        }
+        // Check via TradeManager so global unlocks are respected
+        if (TradeManager.Instance != null)
+        {
+            if (!TradeManager.Instance.IsTradeEnabledForCivilization(civ))
+            {
+                ShowNotification($"{civ.civData.civName} has not unlocked trade yet.");
+                return;
+            }
+        }
+        else
+        {
+            if (!civ.tradeEnabled)
+            {
+                ShowNotification($"{civ.civData.civName} has not unlocked trade yet.");
+                return;
+            }
+        }
         var tradeUI = tradePanel.GetComponent<TradePanel>();
         if (tradeUI != null)
             tradeUI.Show(civ);
         ShowPanel("TradePanel");
+    }
+
+    /// <summary>
+    /// Update the trade button interactable state for a given civilization.
+    /// Call this when the selected civ changes or after unlock events.
+    /// </summary>
+    public void UpdateTradeButtonState(Civilization civ)
+    {
+        if (tradeButton == null) return;
+        bool enabled = false;
+        if (TradeManager.Instance != null)
+            enabled = TradeManager.Instance.IsTradeEnabledForCivilization(civ);
+        else if (civ != null)
+            enabled = civ.tradeEnabled;
+
+        tradeButton.interactable = enabled;
+    }
+
+    private void HandleGlobalTradeEnabled()
+    {
+        // Enable the button for the local player UI
+        if (tradeButton != null)
+            tradeButton.interactable = true;
+    }
+
+    private void HandleCivilizationTradeEnabled(Civilization civ)
+    {
+        // If the enabled civ is the player's civ, enable the button
+        if (CivilizationManager.Instance != null && CivilizationManager.Instance.playerCiv == civ)
+        {
+            if (tradeButton != null)
+                tradeButton.interactable = true;
+        }
     }
 
     public void ShowEquipmentPanel(Civilization civ)

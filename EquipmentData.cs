@@ -1,4 +1,5 @@
 using UnityEngine;
+using GameCombat;
 
 /// <summary>
 /// Types of equipment that can be equipped by units
@@ -38,6 +39,14 @@ public class EquipmentData : ScriptableObject
     [Header("Type")]
     [Tooltip("Equipment slot this item will occupy")]
     public EquipmentType equipmentType = EquipmentType.Weapon;
+    
+    [Header("Projectile")]
+    [Tooltip("Optional projectile data used when this equipment fires a projectile (arrows, bolts, magic, etc.)")]
+    public ProjectileData projectileData;
+    [Tooltip("Name of the child transform on the equipment prefab to use as the projectile spawn point. If empty, a sensible holder (projectileWeaponHolder or weaponHolder) will be used.")]
+    public string projectileSpawnName = "ProjectileSpawn";
+    [Tooltip("If true and a spawn transform is found on the equipment prefab, use it instead of the unit's projectile spawn point.")]
+    public bool useEquipmentProjectileSpawn = true;
     [Header("Grip & Usage")]
     [Tooltip("If true, this weapon requires two hands. The left grip (Grip_L) will be aligned to the unit's shield holder when equipped.")]
     public bool isTwoHanded = false;

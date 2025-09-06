@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using System.Text;
 
@@ -103,3 +104,4 @@ public class EquipDiagnostics : MonoBehaviour
         return string.Join("/", parts.ToArray());
     }
 }
+#endif

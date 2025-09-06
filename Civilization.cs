@@ -39,6 +39,10 @@ public class Civilization : MonoBehaviour
     [Header("Interplanetary Trade")]
     public List<TradeRoute> interplanetaryTradeRoutes = new List<TradeRoute>();
     
+    [Header("Trade System")]
+    [Tooltip("When true this civilization may initiate trade routes (set when adopting certain cultures)")]
+    public bool tradeEnabled = false;
+    
     [Header("Resources")]
     public Dictionary<ResourceData, int> resourceStockpile = new Dictionary<ResourceData, int>();
     
@@ -610,22 +614,21 @@ public class Civilization : MonoBehaviour
     // --- Tech & Culture API ---
     public bool CanResearch(TechData tech)
     {
-        if (tech == null) { Debug.Log("[Civilization] CanResearch: tech is null"); return false; }
-        if (currentTech != null) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Already researching {currentTech.techName}"); return false; }
-        if (researchedTechs.Contains(tech)) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Already researched."); return false; }
+        if (tech == null) return false;
+        if (currentTech != null) return false;
+        if (researchedTechs.Contains(tech)) return false;
         // if (science <= 0) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Science output is <= 0."); return false; } // Usually, we allow selection even with 0 science, it just won't progress.
 
         foreach (var req in tech.requiredTechnologies)
         {
-            if (!researchedTechs.Contains(req)) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Missing tech prerequisite: {req.techName}"); return false; }
+            if (!researchedTechs.Contains(req)) return false;
         }
         foreach (var req in tech.requiredCultures)
         {
-            if (!researchedCultures.Contains(req)) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Missing culture prerequisite: {req.cultureName}"); return false; }
+            if (!researchedCultures.Contains(req)) return false;
         }
-        if (cities.Count < tech.requiredCityCount) { Debug.Log($"[Civilization] CanResearch ({tech.techName}): Insufficient cities. Have {cities.Count}, need {tech.requiredCityCount}"); return false; }
+        if (cities.Count < tech.requiredCityCount) return false;
         // Add biome check if needed
-        Debug.Log($"[Civilization] CanResearch ({tech.techName}): All conditions met. Returning true.");
         return true;
     }
 
@@ -640,17 +643,16 @@ public class Civilization : MonoBehaviour
 
     public bool CanCultivate(CultureData cult)
     {
-        if (cult == null) { Debug.Log("[Civilization] CanCultivate: culture is null"); return false; }
-        if (currentCulture != null) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Already adopting {currentCulture.cultureName}"); return false; }
-        if (researchedCultures.Contains(cult)) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Already adopted."); return false; }
+        if (cult == null) return false;
+        if (currentCulture != null) return false;
+        if (researchedCultures.Contains(cult)) return false;
         // if (culture <= 0) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Culture output is <= 0."); return false; }
         foreach (var req in cult.requiredCultures)
         {
-            if (!researchedCultures.Contains(req)) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Missing culture prerequisite: {req.cultureName}"); return false; }
+            if (!researchedCultures.Contains(req)) return false;
         }
-        if (cities.Count < cult.requiredCityCount) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Insufficient cities. Have {cities.Count}, need {cult.requiredCityCount}"); return false; }
+        if (cities.Count < cult.requiredCityCount) return false;
         // Add biome check if needed
-        Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): All conditions met. Returning true.");
         return true;
     }
 
@@ -1375,6 +1377,13 @@ public class Civilization : MonoBehaviour
 
     // Notify listeners that unlock-driven availability may have changed
     OnUnlocksChanged?.Invoke();
+
+        // If this culture enables the trade system, enable it for this civ and notify player
+        if (cult.enablesTradeSystem)
+        {
+            tradeEnabled = true;
+            UIManager.Instance?.ShowNotification($"{civData.civName} has unlocked the Trade system!");
+        }
     }
 
     // --- NEW: Equipment Inventory Methods ---
@@ -1666,7 +1675,6 @@ public class Civilization : MonoBehaviour
             float baseOffset = 0.1f; // Slightly above surface
             Vector3 surfacePosition = planetCenter + surfaceNormal * (planetRadius + baseOffset);
             cityGO.transform.position = surfacePosition;
-            Debug.Log($"[FoundNewCity] City positioned at {surfacePosition}");
 
             // Orient city to stand upright on the surface
             Vector3 planetUp = planetToUse.transform.up;
@@ -1682,7 +1690,6 @@ public class Civilization : MonoBehaviour
             right.Normalize();
             Vector3 forward = Vector3.Cross(right, surfaceNormal).normalized;
             cityGO.transform.rotation = Quaternion.LookRotation(forward, surfaceNormal);
-            Debug.Log($"[FoundNewCity] City rotation set. Forward={forward}, Up={surfaceNormal}");
         }
         else
         {
@@ -1710,11 +1717,7 @@ public class Civilization : MonoBehaviour
         }
         newCity.centerTileIndex = tileIndex;
         newCity.Initialize(cityName, this);
-        Debug.Log($"[FoundNewCity] City initialized with name: {cityName}, owner: {this.civData.civName}");
-        Debug.Log($"[FoundNewCity] City GameObject active: {cityGO.activeSelf}, position: {cityGO.transform.position}, scale: {cityGO.transform.localScale}");
-        Debug.Log($"[FoundNewCity] Adding city to civilization's city list...");
         AddCity(newCity);
-        Debug.Log($"[FoundNewCity] City added to civilization. Total cities: {cities.Count}");
     }
 
     public List<EquipmentData> GetAvailableEquipment()

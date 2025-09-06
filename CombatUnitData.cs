@@ -143,6 +143,14 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Default miscellaneous equipment equipped by this unit (optional)")]
     public EquipmentData defaultMiscellaneous;
 
+    [Header("Weapon Slots")]
+    [Tooltip("Default melee weapon equipped by this unit (used when engaged in close combat)")]
+    public EquipmentData defaultMeleeWeapon;
+    [Tooltip("Default projectile/ranged weapon equipped by this unit (used when firing) ")]
+    public EquipmentData defaultProjectileWeapon;
+    [Tooltip("How many seconds a unit stays 'engaged in melee' after receiving a melee hit before reverting to ranged behavior.")]
+    public float meleeEngageDuration = 8f;
+
     [Header("Yield")]
     public int foodOnKill;
     

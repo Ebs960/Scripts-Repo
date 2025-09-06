@@ -97,6 +97,22 @@ public class CultureManager : MonoBehaviour
         civ.currentCulture = null;
         civ.currentCultureProgress = 0;
 
+        // If this culture enables the trade system, unlock it for the civ (or globally if desired)
+        if (cult.enablesTradeSystem)
+        {
+            // If a TradeManager exists, prefer using it so the unlock is centralized
+            if (TradeManager.Instance != null)
+            {
+                TradeManager.Instance.UnlockTradeForCivilization(civ);
+            }
+            else
+            {
+                // Fallback: set per-civ flag and notify UI
+                civ.tradeEnabled = true;
+                UIManager.Instance?.ShowNotification($"{civ.civData.civName} has unlocked the Trade system!");
+            }
+        }
+
         // TODO: Trigger UI updates or other game events as needed
         // For example, an event like:
         // OnCultureFullyAdopted?.Invoke(civ, cult);

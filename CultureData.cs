@@ -15,6 +15,10 @@ public class CultureData : ScriptableObject
     [Tooltip("Icon sprite for the culture")]
     public Sprite cultureIcon;
 
+    [Header("Gameplay")]
+    [Tooltip("If true this culture enables the global trade system when adopted.")]
+    public bool enablesTradeSystem = false;
+
     [Header("Cost & Requirements")]
     public int cultureCost;
     public CultureData[] requiredCultures;

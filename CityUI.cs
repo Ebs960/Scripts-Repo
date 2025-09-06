@@ -64,7 +64,7 @@ public class CityUI : MonoBehaviour
     private List<BuildingData> availableBuildings = new List<BuildingData>();
     private List<CombatUnitData> availableUnits = new List<CombatUnitData>();
     private List<WorkerUnitData> availableWorkerUnits = new List<WorkerUnitData>();
-    // private List<EquipmentData> availableEquipment = new List<EquipmentData>(); // Equipment production to be handled later
+    private List<EquipmentData> availableEquipment = new List<EquipmentData>();
 
     // Removed tab buttons and panel references
 
@@ -342,6 +342,28 @@ public class CityUI : MonoBehaviour
                 }
             }
         }
+
+        // Equipment: show equipment unlocked by civ/effects
+        availableEquipment.Clear();
+        // From civilization inventory and unlocked equipment via civ data
+        if (ownerCiv != null)
+        {
+            // Equipment types that the civ already has in inventory
+            if (ownerCiv.equipmentInventory != null)
+            {
+                foreach (var kv in ownerCiv.equipmentInventory)
+                {
+                    if (kv.Key != null && !availableEquipment.Contains(kv.Key))
+                        availableEquipment.Add(kv.Key);
+                }
+            }
+
+            // Also include equipment unlocked from CivData
+            if (ownerCiv.civData != null && ownerCiv.civData.uniqueUnits != null)
+            {
+                // no-op: uniqueness handled elsewhere
+            }
+        }
     }
     
     private void PopulateBuildOptionsList()
@@ -369,8 +391,11 @@ public class CityUI : MonoBehaviour
             CreateBuildOptionButton(workerUnit, workerUnit.icon, workerUnit.unitName, workerUnit.productionCost, unitsContainer);
         }
         
-        // Equipment would be added to equipment container if City.QueueProduction supported EquipmentData
-        // For now, leave equipment container empty until implemented
+        // Equipment options
+        foreach (var eq in availableEquipment.OrderBy(e => e.productionCost))
+        {
+            CreateBuildOptionButton(eq, eq.icon, eq.equipmentName, eq.productionCost, equipmentContainer);
+        }
     }
 
     private void CreateBuildOptionButton(ScriptableObject itemData, Sprite itemIcon, string itemName, int itemCost, Transform container)
@@ -385,6 +410,28 @@ public class CityUI : MonoBehaviour
         if (iconImg != null) iconImg.sprite = itemIcon; else Debug.LogWarning($"BuildOptionPrefab missing Icon Image for {itemName}");
         if (nameText != null) nameText.text = itemName; else Debug.LogWarning($"BuildOptionPrefab missing Name Text for {itemName}");
         if (costText != null) costText.text = itemCost.ToString(); else Debug.LogWarning($"BuildOptionPrefab missing Cost Text for {itemName}");
+
+        // If this is equipment, show owned count if available
+        if (itemData is EquipmentData ed)
+        {
+            var ownedText = btnGO.transform.Find("OwnedCount")?.GetComponent<TextMeshProUGUI>();
+            if (ownedText != null && currentCity != null && currentCity.owner != null)
+            {
+                ownedText.text = $"Owned: {currentCity.owner.GetEquipmentCount(ed)}";
+            }
+            // Wire BuyButton if present
+            var buyBtn = btnGO.transform.Find("BuyButton")?.GetComponent<Button>();
+            if (buyBtn != null)
+            {
+                buyBtn.onClick.RemoveAllListeners();
+                buyBtn.onClick.AddListener(() =>
+                {
+                    bool bought = currentCity.BuyProduction(itemData);
+                    if (bought) RefreshUI();
+                    else Debug.LogWarning($"Failed to buy {itemName} in {currentCity.cityName}");
+                });
+            }
+        }
 
         var button = btnGO.GetComponent<Button>();
         if (button != null)

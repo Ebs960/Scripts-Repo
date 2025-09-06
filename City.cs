@@ -7,7 +7,7 @@ public class City : MonoBehaviour
 {
     // Production Queue Entry Definition
     public class ProdEntry {
-        public enum Type { Unit, Worker, Building, District }
+        public enum Type { Unit, Worker, Building, District, Equipment }
         public Type       type;
         public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, or DistrictData
         public int        remainingPts;    // turns left in production
@@ -602,6 +602,14 @@ public class City : MonoBehaviour
                                             ProdEntry.Type.Building));
             return true;
         }
+        if (d is EquipmentData eq)
+        {
+            // Equipment is produced like other items: consumes production points over time
+            // Validate equipment-specific production prereqs via EquipmentData
+            if (!eq.CanBeProducedBy(owner)) return false;
+            productionQueue.Add(new ProdEntry(eq, eq.productionCost, 0, null, null, false, false, ProdEntry.Type.Equipment));
+            return true;
+        }
         if (d is DistrictData district) {
             // For districts, we need to select a tile instead of immediately queueing
             var districtPlacement = FindAnyObjectByType<DistrictPlacementController>();
@@ -818,6 +826,16 @@ public class City : MonoBehaviour
                 return false;
             }
         }
+        else if (d is EquipmentData e)
+        {
+            cost = e.productionCost;
+            // Equipment may have civ-level requirements
+            if (!e.CanBeProducedBy(owner))
+            {
+                Debug.LogWarning($"Cannot buy {e.equipmentName} - requirements not met");
+                return false;
+            }
+        }
         
         if (owner.gold < cost) return false;
         
@@ -962,6 +980,17 @@ public class City : MonoBehaviour
                     governor.RecordStat(TraitTrigger.BuildingsConstructed);
                 }
                 break;
+            case EquipmentData eq:
+                // Add produced equipment to city's producedEquipment list and give to owner inventory
+                if (eq != null)
+                {
+                    producedEquipment.Add(eq);
+                    if (owner != null)
+                    {
+                        owner.AddEquipment(eq);
+                    }
+                }
+                break;
                 
             case DistrictData district:
                 // Use the stored target tile if available
@@ -1033,15 +1062,30 @@ public class City : MonoBehaviour
             {
                 if (production.equipment != null && production.quantity > 0)
                 {
-                    // Use the new production system that handles costs
-                    bool success = owner.ProduceEquipment(production.equipment, production.quantity);
-                    if (success)
+                    // Optionally produce immediately or enqueue
+                    if (production.produceImmediately)
                     {
-                        Debug.Log($"Building {b.buildingName} produced {production.quantity} {production.equipment.equipmentName} for {owner.civData.civName}");
+                        bool ok = owner.ProduceEquipment(production.equipment, production.quantity);
+                        if (ok)
+                            Debug.Log($"Building {b.buildingName} immediately granted {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
+                        else
+                            Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
                     }
                     else
                     {
-                        Debug.LogWarning($"Building {b.buildingName} failed to produce {production.quantity} {production.equipment.equipmentName} for {owner.civData.civName} - requirements not met");
+                        int prodCost = production.productionCostOverride > 0 ? production.productionCostOverride : production.equipment.productionCost;
+                        int goldCost = production.goldCostOverride > 0 ? production.goldCostOverride : 0;
+                        for (int i = 0; i < production.quantity; i++)
+                        {
+                            // Validate production prerequisites using EquipmentData
+                            if (!production.equipment.CanBeProducedBy(owner))
+                            {
+                                Debug.LogWarning($"Building {b.buildingName} could not enqueue {production.equipment.equipmentName} production in {cityName} - requirements not met");
+                                break;
+                            }
+                            productionQueue.Add(new ProdEntry(production.equipment, prodCost, goldCost, null, null, false, false, ProdEntry.Type.Equipment));
+                        }
+                        Debug.Log($"Building {b.buildingName} enqueued {production.quantity}x {production.equipment.equipmentName} in {cityName} (cost {prodCost} each)");
                     }
                 }
             }
