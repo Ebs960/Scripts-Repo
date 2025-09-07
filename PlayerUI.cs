@@ -123,15 +123,28 @@ public class PlayerUI : MonoBehaviour
         }
 
         // Assuming you have a policyButton and want to toggle a policy panel (ReligionPanel used as placeholder)
-        if (policyButton != null) 
+        if (policyButton != null)
         {
             policyButton.onClick.RemoveAllListeners();
-            policyButton.onClick.AddListener(() => 
+            policyButton.onClick.AddListener(() =>
             {
-                if (UIManager.Instance != null)
-                    UIManager.Instance.ShowPanel("ReligionPanel"); // Placeholder - replace with actual policy panel logic
+                // Prefer a direct GovernmentPanel component if present in scene
+                var govPanel = FindFirstObjectByType<GovernmentPanel>();
+                Civilization civToUse = currentCiv;
+                if (civToUse == null && TurnManager.Instance != null) civToUse = TurnManager.Instance.GetCurrentCivilization();
+                if (govPanel != null && civToUse != null)
+                {
+                    govPanel.ShowForCivilization(civToUse);
+                }
+                else if (UIManager.Instance != null)
+                {
+                    // Fallback: try to open a named panel if UIManager manages it
+                    UIManager.Instance.ShowPanel("GovernmentPanel");
+                }
                 else
-                    Debug.LogError("PlayerUI: UIManager.Instance is null when trying to show policy/religion panel!");
+                {
+                    Debug.LogError("PlayerUI: Cannot open GovernmentPanel - no govPanel or UIManager available.");
+                }
             });
         }
 
