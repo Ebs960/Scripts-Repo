@@ -155,6 +155,9 @@ public class Civilization : MonoBehaviour
     // --- Governor System ---
     public int governorCount = 1; // Number of governors this civ can create (modifiable by events, policies, etc.)
     public List<Governor> governors = new List<Governor>(); // All created governors
+    // Whether this civilization has the governor feature unlocked (via cultures/policies/tech)
+    [Tooltip("If true this civilization may create and assign governors.")]
+    public bool governorsEnabled = false;
 
     // List of governor traits this civ has unlocked (for trait assignment UI)
     public List<GovernorTrait> unlockedGovernorTraits = new List<GovernorTrait>();
@@ -183,7 +186,8 @@ public class Civilization : MonoBehaviour
     // Create a new governor if there is an available slot
     public Governor CreateGovernor(string name, Governor.Specialization specialization)
     {
-        if (governors.Count >= governorCount)
+    if (!governorsEnabled) return null;
+    if (governors.Count >= governorCount)
             return null; // No available slots
         int newId = governors.Count > 0 ? governors[governors.Count - 1].Id + 1 : 1;
         var gov = new Governor(newId, name, specialization);
@@ -194,6 +198,7 @@ public class Civilization : MonoBehaviour
     // Assign a governor to a city (removes from previous city if needed)
     public bool AssignGovernorToCity(Governor governor, City city)
     {
+    if (!governorsEnabled) return false;
         if (governor == null || city == null) return false;
         // Remove from any previous city
         foreach (var c in governors.SelectMany(g => g.Cities).ToList())
@@ -269,6 +274,19 @@ public class Civilization : MonoBehaviour
 
         // Register with the turn order
         CivilizationManager.Instance.RegisterCiv(this);
+
+        // If loading from a save or starting with pre-researched cultures, ensure governorsEnabled reflects those cultures
+        if (!governorsEnabled && researchedCultures != null)
+        {
+            foreach (var cult in researchedCultures)
+            {
+                if (cult != null && cult.enablesGovernors)
+                {
+                    governorsEnabled = true;
+                    break;
+                }
+            }
+        }
     }
     
     /// <summary>
@@ -1477,6 +1495,12 @@ public class Civilization : MonoBehaviour
         {
             tradeEnabled = true;
             UIManager.Instance?.ShowNotification($"{civData.civName} has unlocked the Trade system!");
+        }
+        // If this culture enables the governor mechanic, enable it for this civ and notify player
+        if (cult.enablesGovernors)
+        {
+            governorsEnabled = true;
+            UIManager.Instance?.ShowNotification($"{civData.civName} has unlocked Governors!");
         }
         // Apply pantheon cap increase from culture
         if (cult.pantheonCapIncrease != 0)

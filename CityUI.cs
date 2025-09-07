@@ -22,22 +22,8 @@ public class CityUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI faithPerTurnText;
     // Note: Production Points display from the image might need a separate Text field if it's different from city's direct productionPerTurn.
 
-    [Header("Governor Display")]
-    [SerializeField] private GameObject governorPanel;
-    [SerializeField] private TextMeshProUGUI governorNameText;
-    [SerializeField] private TextMeshProUGUI governorLevelText;
-    [SerializeField] private TextMeshProUGUI governorExperienceText;
-    [SerializeField] private TextMeshProUGUI governorTraitsText;
-    [SerializeField] private Button assignGovernorButton;
-    [SerializeField] private Button removeGovernorButton;
-
-    [Header("Governor Assignment UI")]
-    [SerializeField] private GameObject governorAssignmentPanel;
-    [SerializeField] private TMP_InputField governorNameInput;
-    [SerializeField] private TMP_Dropdown specializationDropdown;
-    [SerializeField] private Button createGovernorButton;
-    [SerializeField] private Transform existingGovernorsContainer;
-    [SerializeField] private GameObject governorEntryPrefab;
+    [Header("Governor UI")]
+    [SerializeField] private GovernorPanel governorPanel;
 
     [Header("Production Queue Display - Current Item")] // Placeholder for "Thing we are making"
     [SerializeField] private TextMeshProUGUI currentProductionItemNameText;
@@ -50,11 +36,11 @@ public class CityUI : MonoBehaviour
     [SerializeField] private Transform equipmentContainer; // Container for equipment options
     [SerializeField] private GameObject buildOptionPrefab; // button + icon + cost
 
-    [Header("Governor Trait Assignment UI")]
-    [SerializeField] private GameObject traitPanel;
-    [SerializeField] private Transform traitListContainer;
-    [SerializeField] private GameObject traitEntryPrefab;
-    [SerializeField] private Button manageTraitsButton;
+    [Header("Governor Info")]
+    [SerializeField] private TextMeshProUGUI governorNameText;
+    [SerializeField] private TextMeshProUGUI governorLevelText;
+    [SerializeField] private TextMeshProUGUI governorExperienceText;
+    [SerializeField] private TMP_Dropdown governorDropdown;
     [SerializeField] private Button closeButton; // Assign this in the Inspector to your UI's X/close button
 
     private City currentCity;
@@ -73,60 +59,18 @@ public class CityUI : MonoBehaviour
         // Removed tab button listeners
     }
 
+    // Mapping of dropdown entries (index-1 => governor in this list). Index 0 is "None".
+    private System.Collections.Generic.List<Governor> dropdownGovernors = new System.Collections.Generic.List<Governor>();
+
     private void Awake()
     {
-        if (manageTraitsButton != null)
-            manageTraitsButton.onClick.AddListener(OnManageTraitsClicked);
-        if (traitPanel != null)
-            traitPanel.SetActive(false);
+        if (governorDropdown != null)
+        {
+            governorDropdown.onValueChanged.RemoveAllListeners();
+            governorDropdown.onValueChanged.AddListener(OnGovernorDropdownChanged);
+        }
         if (closeButton != null)
             closeButton.onClick.AddListener(Hide);
-    }
-
-    private void OnManageTraitsClicked()
-    {
-        if (traitPanel == null || currentCity == null || currentCity.governor == null) return;
-        traitPanel.SetActive(true);
-        PopulateTraitList();
-    }
-
-    private void PopulateTraitList()
-    {
-        // Clear old entries
-        foreach (Transform t in traitListContainer) Destroy(t.gameObject);
-        var civ = currentCity.owner;
-        var governor = currentCity.governor;
-        foreach (var trait in civ.unlockedGovernorTraits)
-        {
-            if (governor.Traits.Contains(trait)) continue; // Already has
-            var entry = Instantiate(traitEntryPrefab, traitListContainer);
-            var nameText = entry.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
-            var descText = entry.transform.Find("Description")?.GetComponent<TextMeshProUGUI>();
-            var costText = entry.transform.Find("Cost")?.GetComponent<TextMeshProUGUI>();
-            var assignButton = entry.transform.Find("AssignButton")?.GetComponent<Button>();
-            if (nameText != null) nameText.text = trait.traitName;
-            if (descText != null) descText.text = trait.description;
-            if (costText != null) costText.text = $"Cost: 1 Policy Point";
-            if (assignButton != null)
-            {
-                bool canAssign = civ.policyPoints > 0; // Add more requirements as needed
-                assignButton.interactable = canAssign;
-                assignButton.onClick.AddListener(() => AssignTraitToGovernor(trait));
-            }
-        }
-    }
-
-    private void AssignTraitToGovernor(GovernorTrait trait)
-    {
-        var civ = currentCity.owner;
-        var governor = currentCity.governor;
-        if (civ.policyPoints > 0 && !governor.Traits.Contains(trait))
-        {
-            governor.Traits.Add(trait);
-            civ.policyPoints -= 1;
-            traitPanel.SetActive(false);
-            RefreshUI();
-        }
     }
 
     public void ShowForCity(City city)
@@ -139,7 +83,7 @@ public class CityUI : MonoBehaviour
             gameObject.SetActive(false);
             return;
         }
-        
+
         // Hide the unit info panel when the city UI is opened
         if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
         {
@@ -151,16 +95,34 @@ public class CityUI : MonoBehaviour
         Debug.Log($"[CityUI] ShowForCity finished. UI should now be active: {gameObject.activeSelf}");
     }
 
-    public void Hide()
+    private void OnGovernorDropdownChanged(int idx)
     {
-        gameObject.SetActive(false);
-        // Always restore the unit info panel when the city UI is closed.
-        if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
+        if (currentCity == null || currentCity.owner == null) return;
+        var civ = currentCity.owner;
+        // None selected
+        if (idx == 0)
         {
-            UIManager.Instance.unitInfoPanel.SetActive(true);
+            // Remove governor from this city if any
+            if (currentCity.governor != null)
+            {
+                civ.RemoveGovernorFromCity(currentCity.governor, currentCity);
+            }
         }
+        else
+        {
+            int govIndex = idx - 1;
+            if (govIndex >= 0 && govIndex < dropdownGovernors.Count)
+            {
+                var selected = dropdownGovernors[govIndex];
+                if (selected != null)
+                {
+                    civ.AssignGovernorToCity(selected, currentCity);
+                }
+            }
+        }
+        // Refresh UI after change
+        RefreshUI();
     }
-
     public void RefreshUI()
     {
         Debug.Log($"[CityUI] RefreshUI called. currentCity: {currentCity?.cityName ?? "NULL"}, UI: {gameObject.name}, activeSelf: {gameObject.activeSelf}");
@@ -169,12 +131,6 @@ public class CityUI : MonoBehaviour
             Hide();
             return;
         }
-
-        cityNameText.text = currentCity.cityName;
-        levelText.text = $"Level {currentCity.level}";
-
-        // Yields Display
-        foodStorageText.text = $"Food Storage: {currentCity.foodStorage}/{currentCity.foodGrowthRequirement}";
 
         int netFood = currentCity.GetFoodPerTurn();
         netFoodPerTurnText.text = $"Net Food: {netFood:+#;-#;0}/turn"; // Shows + for positive, - for negative
@@ -455,135 +411,100 @@ public class CityUI : MonoBehaviour
 
     private void UpdateGovernorDisplay()
     {
-        if (currentCity == null)
+        // Simple city-level governor info and dropdown (detailed management is in GovernorPanel)
+        if (currentCity == null || currentCity.owner == null)
         {
-            if (governorPanel != null) governorPanel.SetActive(false);
+            if (governorNameText != null) governorNameText.text = "(No City)";
+            if (governorLevelText != null) governorLevelText.text = "";
+            if (governorExperienceText != null) governorExperienceText.text = "";
+            if (governorDropdown != null) governorDropdown.interactable = false;
             return;
         }
 
-        if (governorPanel != null) governorPanel.SetActive(true);
+        var civ = currentCity.owner;
+        // If governors are not enabled for this civ, show locked state
+        if (!civ.governorsEnabled)
+        {
+            if (governorNameText != null) governorNameText.text = "(Governors Locked)";
+            if (governorLevelText != null) governorLevelText.text = "";
+            if (governorExperienceText != null) governorExperienceText.text = "";
+            if (governorDropdown != null) governorDropdown.interactable = false;
+            return;
+        }
 
-        // Show/hide assign button based on whether city has a governor
-        if (assignGovernorButton != null)
-            assignGovernorButton.gameObject.SetActive(currentCity.governor == null);
+        var gov = currentCity.governor;
+        if (gov == null)
+        {
+            if (governorNameText != null) governorNameText.text = "(No Governor)";
+            if (governorLevelText != null) governorLevelText.text = "";
+            if (governorExperienceText != null) governorExperienceText.text = "";
+        }
+        else
+        {
+            if (governorNameText != null) governorNameText.text = gov.Name;
+            if (governorLevelText != null) governorLevelText.text = $"Level {gov.Level}";
+            if (governorExperienceText != null) governorExperienceText.text = $"XP: {gov.Experience}";
+        }
 
-        // Show/hide remove button based on whether city has a governor
-        if (removeGovernorButton != null)
-            removeGovernorButton.gameObject.SetActive(currentCity.governor != null);
+        // Populate dropdown
+        PopulateGovernorDropdown();
+    }
 
+    private void PopulateGovernorDropdown()
+    {
+        dropdownGovernors.Clear();
+        if (governorDropdown == null) return;
+        governorDropdown.ClearOptions();
+        var options = new System.Collections.Generic.List<string>();
+        // None option
+        options.Add("None");
+        if (currentCity == null || currentCity.owner == null)
+        {
+            governorDropdown.AddOptions(options);
+            governorDropdown.value = 0;
+            governorDropdown.interactable = false;
+            return;
+        }
+
+        var civ = currentCity.owner;
+        if (!civ.governorsEnabled)
+        {
+            governorDropdown.AddOptions(options);
+            governorDropdown.value = 0;
+            governorDropdown.interactable = false;
+            return;
+        }
+
+        // Add all civ governors
+        if (civ.governors != null)
+        {
+            foreach (var g in civ.governors)
+            {
+                if (g == null) continue;
+                dropdownGovernors.Add(g);
+                options.Add($"{g.Name} ({g.specialization})");
+            }
+        }
+
+        governorDropdown.AddOptions(options);
+        // Set selected index to current city's governor
         if (currentCity.governor == null)
+            governorDropdown.value = 0;
+        else
         {
-            if (governorNameText != null) governorNameText.text = "No Governor Assigned";
-            if (governorTraitsText != null) governorTraitsText.text = "";
-            return;
+            int idx = dropdownGovernors.IndexOf(currentCity.governor);
+            governorDropdown.value = (idx >= 0) ? idx + 1 : 0;
         }
-
-        var governor = currentCity.governor;
-
-        if (governorNameText != null)
-            governorNameText.text = $"{governor.Name} ({governor.specialization})";
-
-        if (governorTraitsText != null)
-        {
-            if (governor.Traits.Count > 0)
-            {
-                var traitNames = new List<string>();
-                foreach (var trait in governor.Traits)
-                    traitNames.Add(trait.traitName);
-                governorTraitsText.text = $"Traits: {string.Join(", ", traitNames)}";
-            }
-            else
-            {
-                governorTraitsText.text = "Traits: None";
-            }
-        }
+        governorDropdown.interactable = true;
     }
 
-    public void ShowGovernorAssignmentUI()
+    public void Hide()
     {
-        if (governorAssignmentPanel == null || currentCity == null) return;
-        governorAssignmentPanel.SetActive(true);
-
-        // Clear and populate specialization dropdown
-        if (specializationDropdown != null)
+        gameObject.SetActive(false);
+        // Always restore the unit info panel when the city UI is closed.
+        if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
         {
-            specializationDropdown.ClearOptions();
-            specializationDropdown.AddOptions(System.Enum.GetNames(typeof(Governor.Specialization)).ToList());
+            UIManager.Instance.unitInfoPanel.SetActive(true);
         }
-
-        // Clear name input
-        if (governorNameInput != null)
-            governorNameInput.text = "";
-
-        // Update create button interactability
-        if (createGovernorButton != null)
-            createGovernorButton.interactable = currentCity.owner.governors.Count < currentCity.owner.governorCount;
-
-        // Populate existing governors list
-        PopulateExistingGovernors();
-    }
-
-    private void PopulateExistingGovernors()
-    {
-        if (existingGovernorsContainer == null || governorEntryPrefab == null) return;
-
-        // Clear existing entries
-        foreach (Transform child in existingGovernorsContainer)
-            Destroy(child.gameObject);
-
-        // Add entry for each existing governor
-        foreach (var governor in currentCity.owner.governors)
-        {
-            var entry = Instantiate(governorEntryPrefab, existingGovernorsContainer);
-            
-            // Assuming the prefab has these components
-            var nameText = entry.GetComponentInChildren<TextMeshProUGUI>();
-            var assignButton = entry.GetComponentInChildren<Button>();
-
-            if (nameText != null)
-                nameText.text = $"{governor.Name} ({governor.specialization})";
-
-            if (assignButton != null)
-            {
-                assignButton.onClick.AddListener(() => AssignExistingGovernor(governor));
-                // Disable button if governor is already assigned to this city
-                assignButton.interactable = !governor.Cities.Contains(currentCity);
-            }
-        }
-    }
-
-    public void CreateAndAssignNewGovernor()
-    {
-        if (currentCity == null || governorNameInput == null || specializationDropdown == null) return;
-
-        string name = governorNameInput.text.Trim();
-        if (string.IsNullOrEmpty(name)) return;
-
-        var specialization = (Governor.Specialization)specializationDropdown.value;
-        
-        var governor = currentCity.owner.CreateGovernor(name, specialization);
-        if (governor != null)
-        {
-            currentCity.owner.AssignGovernorToCity(governor, currentCity);
-            governorAssignmentPanel.SetActive(false);
-            UpdateGovernorDisplay();
-        }
-    }
-
-    private void AssignExistingGovernor(Governor governor)
-    {
-        if (currentCity == null || governor == null) return;
-        
-        currentCity.owner.AssignGovernorToCity(governor, currentCity);
-        governorAssignmentPanel.SetActive(false);
-        UpdateGovernorDisplay();
-    }
-
-    public void RemoveCurrentGovernor()
-    {
-        if (currentCity == null || currentCity.governor == null) return;
-        
-        currentCity.owner.RemoveGovernorFromCity(currentCity.governor, currentCity);
-        UpdateGovernorDisplay();
     }
 }

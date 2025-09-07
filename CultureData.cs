@@ -66,6 +66,8 @@ public class CultureData : ScriptableObject
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;
+    [Tooltip("If true, adopting this culture enables the governor mechanic for the civilization (allows creating/assigning governors).")]
+    public bool enablesGovernors = false;
 
     [Header("Targeted Bonuses")]
     [Tooltip("Per-unit stat bonuses granted by this culture.")]
