@@ -783,6 +783,31 @@ public static class BiomeHelper {
         _ => 1  // Default cost
     };
     
+    
+    /// <summary>
+    /// Returns the effective movement cost for a specific tile, taking into account
+    /// improvements on the tile (e.g., roads that provide movement bonuses).
+    /// Unit parameter is optional for future expansion (unit-specific effects).
+    /// </summary>
+    public static int GetMovementCost(HexTileData tile, UnityEngine.MonoBehaviour unit = null)
+    {
+        if (tile == null) return 99;
+        int baseCost = GetMovementCost(tile.biome);
+
+        // If there's an improvement that modifies movement, apply it as a flat reduction
+        // NOTE: We interpret ImprovementData.movementSpeedBonus as a flat movement-cost reducer
+        // (rounded), which has the same gameplay effect as "adds movement points when moving on this tile".
+        if (tile.improvement != null)
+        {
+            float bonus = tile.improvement.movementSpeedBonus;
+            int reduced = Mathf.RoundToInt(baseCost - bonus);
+            // Keep impassable/high-cost sentinel values intact
+            if (baseCost >= 99) return baseCost;
+            return Mathf.Clamp(reduced, 1, 98);
+        }
+
+        return baseCost;
+    }
     /// <summary>
     /// Checks if a biome causes damage to units
     /// </summary>

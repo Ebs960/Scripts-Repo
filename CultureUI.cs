@@ -14,7 +14,7 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private GameObject cultureButtonPrefab; // Prefab for culture buttons
     
     [Header("Culture Tree Integration")]
-    [SerializeField] private TechTreeBackgroundData backgroundData; // Background system
+    [SerializeField] private CultureTreeBackgroundData backgroundData; // Background system
     [SerializeField] private bool useCustomLayout = true; // Use saved layout vs list layout
     [SerializeField] private string layoutFileName = "CultureTreeLayout.json"; // JSON file from CultureTreeBuilder
     [SerializeField] private Vector2 cultureNodeSize = new Vector2(200, 100); // Size of each culture node

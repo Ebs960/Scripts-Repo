@@ -15,7 +15,7 @@ public class CultureTreeBuilder : MonoBehaviour
 {
     [Header("Background Settings")]
     [Tooltip("ScriptableObject containing age-based background images")]
-    public TechTreeBackgroundData backgroundData;
+    public CultureTreeBackgroundData backgroundData;
     
     [Header("Builder UI")]
     public ScrollRect builderScrollRect;

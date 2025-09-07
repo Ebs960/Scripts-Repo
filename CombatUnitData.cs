@@ -3,7 +3,7 @@ using UnityEngine;
 
 public enum CombatCategory
 {
-    Spearman, Swordsman, Clubman, Artillery,
+    Spearman, Swordsman, Axeman, Clubman, Artillery,
     Archer, Crossbowman, SpearThrower, Spaceship, Aircraft,
     Submarine, Ship, Boat, SeaCrawler,
     Gunman, Robot, Mutant, Cyborg,
@@ -144,8 +144,7 @@ public class CombatUnitData : ScriptableObject
     public EquipmentData defaultMiscellaneous;
 
     [Header("Weapon Slots")]
-    [Tooltip("Default melee weapon equipped by this unit (used when engaged in close combat)")]
-    public EquipmentData defaultMeleeWeapon;
+    // defaultWeapon is the authoritative melee weapon. Legacy 'defaultMeleeWeapon' removed.
     [Tooltip("Default projectile/ranged weapon equipped by this unit (used when firing) ")]
     public EquipmentData defaultProjectileWeapon;
     [Tooltip("How many seconds a unit stays 'engaged in melee' after receiving a melee hit before reverting to ranged behavior.")]
@@ -198,4 +197,6 @@ public class CombatUnitData : ScriptableObject
         
         return true;
     }
+
+    // No editor-time migration: legacy defaultMeleeWeapon removed.
 }

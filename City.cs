@@ -100,6 +100,7 @@ public class City : MonoBehaviour
 
     // Cached yields from last turn
     private int cachedGold;
+    private int cachedProduction;
     private int cachedFood;
     private int cachedScience;
     private int cachedCulture;
@@ -302,6 +303,15 @@ public class City : MonoBehaviour
         cachedCulture = GetCulturePerTurn();
         cachedPolicyPoints = GetPolicyPointPerTurn();
         cachedFaith = GetFaithPerTurn();
+    // Add connected-city bonuses from roads/improvements
+    var roadY = RoadConnectivityHelper.AggregateConnectedBonusesForCity(this);
+    cachedGold += roadY.Gold;
+    cachedProduction = Mathf.RoundToInt(GetProductionPerTurn() + roadY.Production); // ensure production cached too
+    cachedFood += roadY.Food;
+    cachedScience += roadY.Science;
+    cachedCulture += roadY.Culture;
+    cachedPolicyPoints += roadY.Policy;
+    cachedFaith += roadY.Faith;
         
         // 2) Process loyalty
         ProcessLoyalty();
@@ -1259,6 +1269,17 @@ public class City : MonoBehaviour
             baseGold += bonuses.gold;
         }
         return baseGold;
+    }
+
+    public int GetProductionPerTurn()
+    {
+        int baseProd = SumYield(t => t.production) + SumBuiltWithBonuses(BuildingYieldType.Production);
+        if (governor != null)
+        {
+            var bonuses = governor.GetTotalBonuses();
+            baseProd += bonuses.production;
+        }
+        return baseProd;
     }
     
     public int GetSciencePerTurn()

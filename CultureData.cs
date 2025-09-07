@@ -43,6 +43,12 @@ public class CultureData : ScriptableObject
     public float cultureModifier;               // Percentage modifier (e.g. 0.1 = +10%)
     public float faithModifier;                 // Percentage modifier (e.g. 0.1 = +10%)
 
+    [Header("Religion Unlocks")]
+    [Tooltip("If true, adopting this culture allows the civ to found pantheons (e.g., spirits).")]
+    public bool unlocksPantheon = false;
+    [Tooltip("If true, adopting this culture enables religion founding mechanics for the civ (e.g., holy sites, religions).")]
+    public bool unlocksReligion = false;
+
     [Header("Flat Bonuses")]
     [Tooltip("Flat food bonus per turn (e.g. +2 food per turn)")]
     public int flatFoodBonus;
@@ -86,6 +92,16 @@ public class CultureData : ScriptableObject
     public BuildingYieldBonus[] buildingBonuses;
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
+
+    [Header("Limits")]
+    [Tooltip("How much this culture increases the maximum number of pantheons a civilization may found.")]
+    public int pantheonCapIncrease = 0;
+
+    [Header("Religion Unlocks (features)")]
+    [Tooltip("Pantheons unlocked for the adopting civ when this culture is adopted")]
+    public PantheonData[] unlocksPantheons;
+    [Tooltip("Founder beliefs unlocked for the adopting civ when this culture is adopted")]
+    public BeliefData[] unlocksBeliefs;
 
     [Header("Unit & Building Limits")]
     [Tooltip("Increases the limit for specific units/buildings")]

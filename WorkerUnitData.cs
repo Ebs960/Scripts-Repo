@@ -8,6 +8,10 @@ public class WorkerUnitData : ScriptableObject
     [Header("Default Equipment")]
     [Tooltip("Default weapon equipped by this worker (optional)")]
     public EquipmentData defaultWeapon;
+    [Tooltip("Default projectile/ranged weapon equipped by this worker (used when firing)")]
+    public EquipmentData defaultProjectileWeapon;
+    [Tooltip("How many seconds a unit stays 'engaged in melee' after receiving a melee hit before reverting to ranged behavior.")]
+    public float meleeEngageDuration = 8f;
     [Tooltip("Default shield equipped by this worker (optional)")]
     public EquipmentData defaultShield;
     [Tooltip("Default armor equipped by this worker (optional)")]

@@ -139,11 +139,9 @@ public class CombatUnit : MonoBehaviour
         {
             return;
         }
-    // Map default weapon slots: prefer explicit projectile weapon; melee uses the main defaultWeapon or defaultMeleeWeapon
+    // Map default weapon slots: prefer explicit projectile weapon; melee uses the authoritative defaultWeapon
     if (data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
-    if (data.defaultMeleeWeapon != null) EquipItem(data.defaultMeleeWeapon);
-    // Fallback to legacy single defaultWeapon for compatibility
-    if (equippedWeapon == null && data.defaultWeapon != null) EquipItem(data.defaultWeapon);
+    if (data.defaultWeapon != null) EquipItem(data.defaultWeapon);
         equippedShield = data.defaultShield;
         equippedArmor = data.defaultArmor;
         equippedMiscellaneous = data.defaultMiscellaneous;
@@ -345,10 +343,8 @@ public class CombatUnit : MonoBehaviour
         experience = 0;
 
         // Equip all default equipment slots
-    // Equip melee/projectile defaults if provided
-    if (data.defaultMeleeWeapon != null) EquipItem(data.defaultMeleeWeapon);
+    // Equip projectile and melee defaults (defaultWeapon is authoritative melee)
     if (data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
-    // Legacy fallback
     if (data.defaultWeapon != null) EquipItem(data.defaultWeapon);
     if (data.defaultShield != null) EquipItem(data.defaultShield);
     if (data.defaultArmor != null) EquipItem(data.defaultArmor);
@@ -678,7 +674,7 @@ public class CombatUnit : MonoBehaviour
             if (!isSpaceshipWithMoonAccess)
                 return false;
                 
-            if (currentMovePoints < tileData.movementCost) return false;
+            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
             
             if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
                 return false;
@@ -703,7 +699,7 @@ public class CombatUnit : MonoBehaviour
             }
         }
 
-        if (currentMovePoints < tileData.movementCost) return false;
+    if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
 
         if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
             return false;
@@ -720,7 +716,7 @@ public class CombatUnit : MonoBehaviour
         {
             var (currentTileData, _) = TileDataHelper.Instance.GetTileData(idx);
 
-            int cost = currentTileData.movementCost;
+            int cost = BiomeHelper.GetMovementCost(currentTileData, this);
             currentMovePoints -= cost;
 
             Vector3 pos = currentGrid.tileCenters[idx];
@@ -895,7 +891,7 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public bool ApplyDamage(int damageAmount, CombatUnit attacker, bool attackerIsMelee)
     {
-        if (attackerIsMelee && data != null && data.defaultMeleeWeapon != null)
+        if (attackerIsMelee && data != null && data.defaultWeapon != null)
         {
             // Mark engaged in melee and start/restart the timer
             engagedInMelee = true;
@@ -2020,8 +2016,8 @@ public class CombatUnit : MonoBehaviour
     [ContextMenu("Equip Melee Weapon (Editor)")]
     public void EquipMeleeWeaponEditor()
     {
-        if (data == null || data.defaultMeleeWeapon == null) return;
-        EquipMeleeWeapon(data.defaultMeleeWeapon);
+    if (data == null || data.defaultWeapon == null) return;
+    EquipMeleeWeapon(data.defaultWeapon);
     }
 
     public void EquipMeleeWeapon(EquipmentData weapon)

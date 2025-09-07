@@ -47,6 +47,16 @@ public class ReligionUI : MonoBehaviour
     [Tooltip("Current faith amount")]
     public TextMeshProUGUI faithAmountText;
     
+    [Header("Pantheon Upgrade UI")]
+    [Tooltip("Panel that contains pantheon upgrade controls")]
+    public GameObject pantheonUpgradePanel;
+    [Tooltip("Dropdown to select which founded pantheon to upgrade")]
+    public TMP_Dropdown pantheonUpgradeDropdown;
+    [Tooltip("Button to perform the upgrade")]
+    public Button upgradePantheonButton;
+    [Tooltip("Info text describing the selected upgrade")]
+    public TextMeshProUGUI upgradeInfoText;
+    
     // Current data
     private Civilization playerCiv;
     private List<PantheonData> availablePantheons = new List<PantheonData>();
@@ -59,9 +69,14 @@ public class ReligionUI : MonoBehaviour
         // Set up event listeners
         foundPantheonButton.onClick.AddListener(OnFoundPantheonClicked);
         foundReligionButton.onClick.AddListener(OnFoundReligionClicked);
+        // Upgrade listeners
+        if (upgradePantheonButton != null)
+            upgradePantheonButton.onClick.AddListener(OnUpgradePantheonClicked);
         
         // Set up dropdown change listeners
         pantheonDropdown.onValueChanged.AddListener(OnPantheonSelected);
+        if (pantheonUpgradeDropdown != null)
+            pantheonUpgradeDropdown.onValueChanged.AddListener(OnPantheonUpgradeSelected);
         religionDropdown.onValueChanged.AddListener(OnReligionSelected);
         
         // Hide the panel initially
@@ -109,16 +124,21 @@ public class ReligionUI : MonoBehaviour
         }
         faithPerTurnText.text = $"Faith Per Turn: +{faithPerTurn}";
         
-        // Check pantheon state
-        if (!playerCiv.hasFoundedPantheon)
+    // Check pantheon state (support multiple pantheons)
+        if (playerCiv.foundedPantheons == null || playerCiv.foundedPantheons.Count == 0)
         {
             // Show pantheon founding panel
             pantheonFoundingPanel.SetActive(true);
             religionFoundingPanel.SetActive(false);
             religionInfoPanel.SetActive(false);
             
-            // Get available pantheons from ReligionManager
+            // Get available pantheons from ReligionManager, plus any unlocked by adopted cultures
             availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
+            if (playerCiv.cultureUnlockedPantheons != null)
+            {
+                foreach (var cp in playerCiv.cultureUnlockedPantheons)
+                    if (cp != null && !availablePantheons.Contains(cp)) availablePantheons.Add(cp);
+            }
             
             // Update pantheon dropdown
             pantheonDropdown.ClearOptions();
@@ -133,7 +153,15 @@ public class ReligionUI : MonoBehaviour
             if (availablePantheons.Count > 0 && pantheonDropdown.value >= 0)
             {
                 PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-                availableFounderBeliefs = new List<BeliefData>(selectedPantheon.possibleFounderBeliefs);
+                // Combine pantheon-specified founder beliefs with any culture-unlocked beliefs
+                var combinedBeliefs = new List<BeliefData>();
+                if (selectedPantheon.possibleFounderBeliefs != null) combinedBeliefs.AddRange(selectedPantheon.possibleFounderBeliefs);
+                if (playerCiv.cultureUnlockedBeliefs != null)
+                {
+                    foreach (var b in playerCiv.cultureUnlockedBeliefs)
+                        if (b != null && !combinedBeliefs.Contains(b)) combinedBeliefs.Add(b);
+                }
+                availableFounderBeliefs = combinedBeliefs;
                 
                 founderBeliefDropdown.ClearOptions();
                 List<string> beliefNames = new List<string>();
@@ -163,24 +191,40 @@ public class ReligionUI : MonoBehaviour
             // Show pantheon info
             pantheonFoundingPanel.SetActive(false);
             religionInfoPanel.SetActive(true);
+            // Display the first founded pantheon as the primary one in the UI
+            var primaryPantheon = playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Count > 0 ? playerCiv.foundedPantheons[0] : null;
+            var primaryBelief = (primaryPantheon != null && playerCiv.chosenFounderBeliefs != null && playerCiv.chosenFounderBeliefs.ContainsKey(primaryPantheon)) ? playerCiv.chosenFounderBeliefs[primaryPantheon] : null;
+            religionNameText.text = primaryPantheon != null ? primaryPantheon.pantheonName : "-";
+            beliefDescriptionText.text = primaryBelief != null ? primaryBelief.description : "-";
             
-            religionNameText.text = playerCiv.foundedPantheon.pantheonName;
-            beliefDescriptionText.text = playerCiv.chosenFounderBelief.description;
-            
-            if (playerCiv.foundedPantheon.icon != null)
-                religionIcon.sprite = playerCiv.foundedPantheon.icon;
+            if (primaryPantheon != null && primaryPantheon.icon != null)
+                religionIcon.sprite = primaryPantheon.icon;
             
             // If player has a pantheon but no religion, show religion founding panel
             if (!playerCiv.hasFoundedReligion)
             {
-                // Check if player has researched the required tech
+                // Check if player has researched the required tech or adopted a culture that unlocks religion
                 bool hasUnlockedReligion = false;
-                foreach (var tech in playerCiv.researchedTechs)
+                if (playerCiv.researchedTechs != null)
                 {
-                    if (tech.unlocksReligion)
+                    foreach (var tech in playerCiv.researchedTechs)
                     {
-                        hasUnlockedReligion = true;
-                        break;
+                        if (tech != null && tech.unlocksReligion)
+                        {
+                            hasUnlockedReligion = true;
+                            break;
+                        }
+                    }
+                }
+                if (!hasUnlockedReligion && playerCiv.researchedCultures != null)
+                {
+                    foreach (var cult in playerCiv.researchedCultures)
+                    {
+                        if (cult != null && cult.unlocksReligion)
+                        {
+                            hasUnlockedReligion = true;
+                            break;
+                        }
                     }
                 }
                 
@@ -233,7 +277,8 @@ public class ReligionUI : MonoBehaviour
                     List<string> religionNames = new List<string>();
                     foreach (ReligionData religion in availableReligions)
                     {
-                        if (religion.requiredPantheon == playerCiv.foundedPantheon)
+                            // Only list religions that require any of the pantheons this civ has founded
+                            if (playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Contains(religion.requiredPantheon))
                             religionNames.Add(religion.religionName);
                     }
                     
@@ -295,6 +340,95 @@ public class ReligionUI : MonoBehaviour
                     foundReligionButton.interactable = false;
                 }
             }
+        }
+            // Populate pantheon upgrade UI: list founded pantheons that are spirits and can upgrade
+            if (pantheonUpgradePanel != null && pantheonUpgradeDropdown != null && upgradePantheonButton != null && upgradeInfoText != null)
+            {
+                var upgradable = new List<PantheonData>();
+                if (playerCiv.foundedPantheons != null)
+                {
+                    foreach (var p in playerCiv.foundedPantheons)
+                    {
+                        if (p == null) continue;
+                        if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                            upgradable.Add(p);
+                    }
+                }
+
+                if (upgradable.Count > 0)
+                {
+                    pantheonUpgradePanel.SetActive(true);
+                    pantheonUpgradeDropdown.ClearOptions();
+                    List<string> names = new List<string>();
+                    foreach (var p in upgradable) names.Add(p.pantheonName);
+                    pantheonUpgradeDropdown.AddOptions(names);
+                    pantheonUpgradeDropdown.value = 0;
+                    pantheonUpgradeDropdown.RefreshShownValue();
+                    upgradePantheonButton.interactable = true;
+                    // Show info for first
+                    var sel = upgradable[0];
+                    upgradeInfoText.text = sel.upgradedPantheon != null ? $"Upgrades to: {sel.upgradedPantheon.pantheonName}" : "No upgrade configured.";
+                }
+                else
+                {
+                    pantheonUpgradePanel.SetActive(false);
+                }
+            }
+    }
+
+    /// <summary>
+    /// Called when the user selects a pantheon from the upgrade dropdown
+    /// </summary>
+    private void OnPantheonUpgradeSelected(int index)
+    {
+        if (playerCiv == null || pantheonUpgradeDropdown == null || pantheonUpgradePanel == null) return;
+        // Rebuild the same eligible list to find selected asset
+        var upgradable = new List<PantheonData>();
+        if (playerCiv.foundedPantheons != null)
+        {
+            foreach (var p in playerCiv.foundedPantheons)
+            {
+                if (p == null) continue;
+                if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                    upgradable.Add(p);
+            }
+        }
+        if (index < 0 || index >= upgradable.Count)
+        {
+            upgradeInfoText.text = "";
+            upgradePantheonButton.interactable = false;
+            return;
+        }
+        var selected = upgradable[index];
+        upgradeInfoText.text = selected.upgradedPantheon != null ? $"Upgrades to: {selected.upgradedPantheon.pantheonName}" : "No upgrade configured.";
+        upgradePantheonButton.interactable = true;
+    }
+
+    /// <summary>
+    /// Called when the user clicks the Upgrade button
+    /// </summary>
+    private void OnUpgradePantheonClicked()
+    {
+        if (playerCiv == null || pantheonUpgradeDropdown == null) return;
+        // Find selected pantheon in the eligible list
+        var upgradable = new List<PantheonData>();
+        if (playerCiv.foundedPantheons != null)
+        {
+            foreach (var p in playerCiv.foundedPantheons)
+            {
+                if (p == null) continue;
+                if (p.isSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
+                    upgradable.Add(p);
+            }
+        }
+        int idx = pantheonUpgradeDropdown.value;
+        if (idx < 0 || idx >= upgradable.Count) return;
+        var toUpgrade = upgradable[idx];
+        bool ok = playerCiv.UpgradePantheon(toUpgrade);
+        if (ok)
+        {
+            // Refresh UI state
+            UpdateUIState();
         }
     }
     

@@ -261,12 +261,13 @@ public class ReligionManager : MonoBehaviour
             result.AddRange(availablePantheons);
         }
         
-        // Remove already chosen pantheons
+        // Remove pantheons that have already been chosen by any civilization
         foreach (var civ in civManager.civilizations)
         {
-            if (civ.hasFoundedPantheon && civ.foundedPantheon != null)
+            if (civ == null || civ.foundedPantheons == null) continue;
+            foreach (var p in civ.foundedPantheons)
             {
-                result.Remove(civ.foundedPantheon);
+                if (p != null) result.Remove(p);
             }
         }
         

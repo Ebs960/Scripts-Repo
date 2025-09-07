@@ -2,8 +2,10 @@
 
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq; // Add this for array extension methods like Contains
 using TMPro;
+using GameCombat;
 
 [RequireComponent(typeof(Animator))]
 public class WorkerUnit : MonoBehaviour
@@ -18,6 +20,8 @@ public class WorkerUnit : MonoBehaviour
     public Transform armorHolder;
     [Tooltip("Transform where miscellaneous items will be attached")]
     public Transform miscHolder;
+    [Tooltip("Transform where projectile/ranged weapon visuals will be attached (separate from melee weapon)")]
+    public Transform projectileWeaponHolder;
     PlanetGenerator planet;
     Animator animator;
 
@@ -44,6 +48,7 @@ public class WorkerUnit : MonoBehaviour
 
     public int currentHealth { get; private set; }
     public int currentWorkPoints { get; private set; }
+    public int currentAttackPoints { get; private set; }
     public int currentMovePoints { get; private set; }
     
     // Trap immobilization state
@@ -63,6 +68,7 @@ public class WorkerUnit : MonoBehaviour
     [SerializeField] private EquipmentData _equippedShield;
     [SerializeField] private EquipmentData _equippedArmor;
     [SerializeField] private EquipmentData _equippedMiscellaneous;
+    [SerializeField] private EquipmentData _equippedProjectileWeapon;
 
     [Header("Holder-based Attachment (no IK)")]
     [Tooltip("If true, equipment will be attached using holder alignment. When true, weapons will align their grip transforms to the holder; when false, items are parented with local zero.")]
@@ -77,6 +83,22 @@ public class WorkerUnit : MonoBehaviour
 
     // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
     private Transform _weaponGrip;
+    // Projectile / queued projectile support (parity with CombatUnit)
+    [Header("Projectiles")]
+    [Tooltip("If true, projectiles from weapons will be fired via an animation event calling FireQueuedProjectile(); if false they fire immediately during Attack.")]
+    public bool useAnimationEventForProjectiles = true;
+    private EquipmentData queuedProjectileEquipment;
+    private CombatUnit queuedProjectileTargetUnit;
+    private Vector3 queuedProjectileTargetPosition;
+    private int queuedProjectileDamage = -1;
+    private bool hasQueuedProjectile = false;
+    private bool engagedInMelee = false;
+    private Coroutine meleeEngageCoroutine = null;
+
+    // Backwards-compatible current equipped reference and abilities list
+    public EquipmentData equipped { get; private set; }
+    public List<Ability> unlockedAbilities { get; private set; } = new List<Ability>();
+    public event System.Action OnEquipmentChanged;
     // neutral root for visuals and follow maps
     private Transform equipmentRoot;
     private readonly System.Collections.Generic.Dictionary<EquipmentType, Transform> equippedHolderMap = new System.Collections.Generic.Dictionary<EquipmentType, Transform>();
@@ -105,6 +127,8 @@ public class WorkerUnit : MonoBehaviour
 
         // Process ALL slots, including empty ones to ensure proper cleanup
         ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon, weaponHolder);
+    // Projectile slot (worker may have a projectile tool)
+    ProcessEquipmentSlot(EquipmentType.Weapon, equippedProjectileWeapon, projectileWeaponHolder);
         ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
         ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
         ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
@@ -278,6 +302,14 @@ public class WorkerUnit : MonoBehaviour
                 UpdateEquipmentVisuals();
         }
     }
+    public EquipmentData equippedProjectileWeapon {
+        get => _equippedProjectileWeapon;
+        private set {
+            if (_equippedProjectileWeapon == value) return;
+            _equippedProjectileWeapon = value;
+            if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals();
+        }
+    }
     public EquipmentData equippedShield {
         get => _equippedShield; // Remove fallback logic
         set {
@@ -332,14 +364,280 @@ public class WorkerUnit : MonoBehaviour
         equippedShield = data.defaultShield;
         equippedArmor = data.defaultArmor;
         equippedMiscellaneous = data.defaultMiscellaneous;
+        if (data.defaultProjectileWeapon != null) equippedProjectileWeapon = data.defaultProjectileWeapon;
         #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
         #endif
     }
 
+    /// <summary>
+    /// Equips an item in the appropriate slot based on its type
+    /// </summary>
+    public virtual void EquipItem(EquipmentData equipmentData)
+    {
+        if (equipmentData == null) return;
+        bool changed = false;
+        switch (equipmentData.equipmentType)
+        {
+            case EquipmentType.Weapon:
+                if (equipmentData.projectileData != null)
+                {
+                    if (equippedProjectileWeapon != equipmentData)
+                    {
+                        equippedProjectileWeapon = equipmentData;
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    if (equippedWeapon != equipmentData)
+                    {
+                        equippedWeapon = equipmentData;
+                        changed = true;
+                    }
+                }
+                break;
+            case EquipmentType.Shield:
+                if (equippedShield != equipmentData)
+                {
+                    equippedShield = equipmentData; changed = true;
+                }
+                break;
+            case EquipmentType.Armor:
+                if (equippedArmor != equipmentData)
+                {
+                    equippedArmor = equipmentData; changed = true;
+                }
+                break;
+            case EquipmentType.Miscellaneous:
+                if (equippedMiscellaneous != equipmentData)
+                {
+                    equippedMiscellaneous = equipmentData; changed = true;
+                }
+                break;
+        }
+        equipped = equipmentData;
+        if (changed)
+        {
+            UpdateEquipmentVisuals();
+            OnEquipmentChanged?.Invoke();
+        }
+    }
+
+    [ContextMenu("Equip Melee Weapon (Editor)")]
+    public void EquipMeleeWeaponEditor()
+    {
+        if (data == null || data.defaultWeapon == null) return;
+        EquipMeleeWeapon(data.defaultWeapon);
+    }
+
+    public void EquipMeleeWeapon(EquipmentData weapon)
+    {
+        if (weapon == null) return;
+        _equippedWeapon = weapon;
+        UpdateEquipmentVisuals();
+        OnEquipmentChanged?.Invoke();
+    }
+
+    [ContextMenu("Equip Projectile Weapon (Editor)")]
+    public void EquipProjectileWeaponEditor()
+    {
+        if (data == null || data.defaultProjectileWeapon == null) return;
+        EquipProjectileWeapon(data.defaultProjectileWeapon);
+    }
+
+    public void EquipProjectileWeapon(EquipmentData weapon)
+    {
+        if (weapon == null) return;
+        _equippedProjectileWeapon = weapon;
+        UpdateEquipmentVisuals();
+        OnEquipmentChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Finds a projectile spawn transform on the currently equipped item of the given type.
+    /// Falls back to sensible holders when equipment doesn't specify a specific spawn transform.
+    /// </summary>
+    public Transform GetProjectileSpawnTransform(EquipmentData equipment)
+    {
+        if (equipment != null && equipment.useEquipmentProjectileSpawn && !string.IsNullOrEmpty(equipment.projectileSpawnName))
+        {
+            if (equippedItemObjects != null)
+            {
+                foreach (var kv in equippedItemObjects)
+                {
+                    var go = kv.Value; if (go == null) continue;
+                    if (go.name.Contains(equipment.equipmentPrefab != null ? equipment.equipmentPrefab.name : equipment.equipmentName))
+                    {
+                        var found = FindChildRecursive(go.transform, equipment.projectileSpawnName);
+                        if (found != null) return found;
+                    }
+                }
+            }
+        }
+
+        if (projectileWeaponHolder != null) return projectileWeaponHolder;
+        if (weaponHolder != null) return weaponHolder;
+        return this.transform;
+    }
+
+    public void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit = null, int overrideDamage = -1)
+    {
+        if (equipment == null || equipment.projectileData == null || equipment.projectileData.projectilePrefab == null) return;
+        Transform spawn = GetProjectileSpawnTransform(equipment);
+        Vector3 startPos = spawn != null ? spawn.position : transform.position;
+        GameObject projGO = null;
+        if (ProjectilePool.Instance != null)
+        {
+            projGO = ProjectilePool.Instance.Spawn(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
+        }
+        else
+        {
+            projGO = Instantiate(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
+            var marker = projGO.GetComponent<PooledPrefabMarker>(); if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>(); marker.originalPrefab = equipment.projectileData.projectilePrefab;
+        }
+        if (projGO == null) return;
+        Projectile proj = projGO.GetComponent<Projectile>(); if (proj == null) proj = projGO.AddComponent<Projectile>();
+        proj.Initialize(equipment.projectileData, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
+    }
+
+    public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit, int damage)
+    {
+        queuedProjectileEquipment = equipment; queuedProjectileTargetUnit = targetUnit; queuedProjectileTargetPosition = targetPosition; queuedProjectileDamage = damage; hasQueuedProjectile = (equipment != null && equipment.projectileData != null);
+    }
+
+    public void FireQueuedProjectile()
+    {
+        if (!hasQueuedProjectile || queuedProjectileEquipment == null) return;
+        SpawnProjectileFromEquipment(queuedProjectileEquipment, queuedProjectileTargetPosition, queuedProjectileTargetUnit, queuedProjectileDamage);
+        hasQueuedProjectile = false; queuedProjectileEquipment = null; queuedProjectileTargetUnit = null; queuedProjectileDamage = -1;
+    }
+
+    public void CancelQueuedProjectile()
+    {
+        hasQueuedProjectile = false; queuedProjectileEquipment = null; queuedProjectileTargetUnit = null; queuedProjectileDamage = -1;
+    }
+
+    // Melee engage handling
+    public bool ApplyDamage(int damageAmount, CombatUnit attacker, bool attackerIsMelee)
+    {
+        if (attackerIsMelee && data != null)
+        {
+            engagedInMelee = true;
+            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
+            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));
+        }
+        return ApplyDamage(damageAmount);
+    }
+
+    private System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
+    {
+        float t = 0f; while (t < delay) { t += Time.deltaTime; yield return null; }
+        engagedInMelee = false; meleeEngageCoroutine = null;
+    }
+
     // --- Combat Stats (if applicable) ---
-    public int CurrentAttack => (data != null) ? data.baseAttack : 0;
-    public int CurrentDefense => (data != null) ? data.baseDefense : 0;
+    public int BaseAttack => (data != null) ? data.baseAttack : 0;
+    public int BaseDefense => (data != null) ? data.baseDefense : 0;
+    public int BaseRange => 1; // Worker data doesn't define range; default to 1
+    public int BaseAttackPoints => 1; // Default attack points for worker
+
+    public float EquipmentAttackBonus
+        => (_equippedWeapon?.attackBonus ?? 0f)
+         + (_equippedShield?.attackBonus ?? 0f)
+         + (_equippedArmor?.attackBonus ?? 0f)
+         + (_equippedMiscellaneous?.attackBonus ?? 0f);
+    public float EquipmentDefenseBonus
+        => (_equippedWeapon?.defenseBonus ?? 0f)
+         + (_equippedShield?.defenseBonus ?? 0f)
+         + (_equippedArmor?.defenseBonus ?? 0f)
+         + (_equippedMiscellaneous?.defenseBonus ?? 0f);
+    public float EquipmentHealthBonus
+        => (_equippedWeapon?.healthBonus ?? 0f)
+         + (_equippedShield?.healthBonus ?? 0f)
+         + (_equippedArmor?.healthBonus ?? 0f)
+         + (_equippedMiscellaneous?.healthBonus ?? 0f);
+    public float EquipmentMoveBonus
+        => (_equippedWeapon?.movementBonus ?? 0f)
+         + (_equippedShield?.movementBonus ?? 0f)
+         + (_equippedArmor?.movementBonus ?? 0f)
+         + (_equippedMiscellaneous?.movementBonus ?? 0f);
+    public float EquipmentRangeBonus
+        => (_equippedWeapon?.rangeBonus ?? 0f)
+         + (_equippedShield?.rangeBonus ?? 0f)
+         + (_equippedArmor?.rangeBonus ?? 0f)
+         + (_equippedMiscellaneous?.rangeBonus ?? 0f);
+    public float EquipmentAttackPointsBonus
+        => (_equippedWeapon?.attackPointsBonus ?? 0f)
+         + (_equippedShield?.attackPointsBonus ?? 0f)
+         + (_equippedArmor?.attackPointsBonus ?? 0f)
+         + (_equippedMiscellaneous?.attackPointsBonus ?? 0f);
+
+    // Ability modifiers (workers may gain abilities)
+    public int GetAbilityAttackModifier()
+    {
+        int total = 0; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            total += ability.attackModifier;
+        return total;
+    }
+    public int GetAbilityDefenseModifier()
+    {
+        int total = 0; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            total += ability.defenseModifier;
+        return total;
+    }
+    public int GetAbilityHealthModifier()
+    {
+        int total = 0; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            total += ability.healthModifier;
+        return total;
+    }
+    public int GetAbilityRangeModifier()
+    {
+        int total = 0; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            total += ability.rangeModifier;
+        return total;
+    }
+    public int GetAbilityAttackPointsModifier()
+    {
+        int total = 0; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities)
+            total += ability.attackPointsModifier;
+        return total;
+    }
+    public float GetAbilityDamageMultiplier()
+    {
+        float total = 1f; if (unlockedAbilities == null) return total;
+        foreach (var ability in unlockedAbilities) total *= ability.damageMultiplier;
+        return total;
+    }
+
+    public int CurrentAttack
+    {
+        get
+        {
+            float valF = BaseAttack + EquipmentAttackBonus + GetAbilityAttackModifier();
+            if (owner != null && data != null)
+            {
+                // Workers may have tech/culture bonuses but those hooks are handled elsewhere; keep simple
+            }
+            return Mathf.RoundToInt(valF);
+        }
+    }
+    public int CurrentDefense
+    {
+        get
+        {
+            float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+            return Mathf.RoundToInt(valF);
+        }
+    }
+
+    public int MaxAttackPoints => Mathf.RoundToInt(BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier());
 
     [Header("UI")]
     [SerializeField] private GameObject unitLabelPrefab;
@@ -478,7 +776,7 @@ public class WorkerUnit : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
-        GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
+    GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
         UnitRegistry.Unregister(gameObject);
     }
 
@@ -1023,7 +1321,7 @@ public class WorkerUnit : MonoBehaviour
         if (isMoonTile)
         {
             // Get movement cost
-            if (currentMovePoints < tileData.movementCost) return false;
+            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
             
             // occupant check
             if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
@@ -1036,13 +1334,102 @@ public class WorkerUnit : MonoBehaviour
         if (!tileData.isLand) return false;
         
         // Check movement points
-        if (currentMovePoints < tileData.movementCost) return false;
+            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
         
         // occupant check
         if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
             return false;
             
         return true;
+    }
+
+    public bool CanAttack(WorkerUnit targetUnit)
+    {
+        if (currentAttackPoints <= 0) return false;
+        if (targetUnit == null) return false;
+        float dist = Vector3.Distance(transform.position, targetUnit.transform.position);
+        return dist <= BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+    }
+
+    public void Attack(WorkerUnit target)
+    {
+        if (target == null) return;
+        if (!CanAttack(target)) return;
+
+        EquipmentData activeWeapon = null;
+        if (engagedInMelee && _equippedWeapon != null) activeWeapon = _equippedWeapon;
+        else if (_equippedProjectileWeapon != null) activeWeapon = _equippedProjectileWeapon;
+        else if (_equippedWeapon != null) activeWeapon = _equippedWeapon;
+
+        bool isRanged = activeWeapon != null && activeWeapon.projectileData != null;
+    if (isRanged)
+        {
+            if (useAnimationEventForProjectiles)
+            {
+        QueueProjectileForAnimation(activeWeapon, target.transform.position, null, 1);
+        currentAttackPoints--;
+                return;
+            }
+            else
+            {
+        SpawnProjectileFromEquipment(activeWeapon, target.transform.position, null, 1);
+        currentAttackPoints--;
+                return;
+            }
+        }
+
+        int damage = Mathf.RoundToInt(Mathf.Max(0f, (CurrentAttack - target.CurrentDefense)) * GetAbilityDamageMultiplier());
+        bool died = target.ApplyDamage(damage);
+        if (died)
+        {
+            // possible morale/bonus
+        }
+        else
+        {
+            if (target.CanAttack(this))
+                target.CounterAttack(this);
+        }
+
+    currentAttackPoints--;
+        GainExperience(1);
+    }
+
+    public void CounterAttack(WorkerUnit attacker)
+    {
+        if (currentAttackPoints <= 0) return;
+        int damage = Mathf.RoundToInt(Mathf.Max(0f, (CurrentAttack - attacker.CurrentDefense)) * GetAbilityDamageMultiplier());
+        attacker.ApplyDamage(damage);
+        currentAttackPoints--;
+        GainExperience(1);
+    }
+
+    private int CountAdjacentAllies(int tileIndex)
+    {
+        int count = 0;
+        var neighbours = TileDataHelper.Instance.GetTileNeighbors(tileIndex);
+        if (neighbours == null) return 0;
+        foreach (int idx in neighbours)
+        {
+            var (tdata, _) = TileDataHelper.Instance.GetTileData(idx);
+            if (tdata == null) continue;
+            if (tdata.occupantId == 0) continue;
+            var obj = UnitRegistry.GetObject(tdata.occupantId);
+            if (obj == null) continue;
+            var cu = obj.GetComponent<WorkerUnit>();
+            if (cu != null && cu.owner == this.owner) count++;
+        }
+        return count;
+    }
+
+    public void GainExperience(int xp)
+    {
+        // Placeholder: workers may not level by default; hook in if desired
+    }
+
+    private void RecalculateStats()
+    {
+        float maxHPF = BaseRange + EquipmentHealthBonus + GetAbilityHealthModifier();
+        // Not enforcing many recalculations; keep minimal
     }
 
     /// <summary>

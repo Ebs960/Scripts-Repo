@@ -106,11 +106,29 @@ public class Civilization : MonoBehaviour
     public float faithModifier;
 
     [Header("Religion")]
-    public PantheonData foundedPantheon;
-    public BeliefData chosenFounderBelief;
+    // Support multiple pantheons (spirits/gods). Key: the pantheon asset, Value: chosen founder belief for that pantheon
+    public List<PantheonData> foundedPantheons = new List<PantheonData>();
+    public Dictionary<PantheonData, BeliefData> chosenFounderBeliefs = new Dictionary<PantheonData, BeliefData>();
     public ReligionData foundedReligion;
-    public bool hasFoundedPantheon;
     public bool hasFoundedReligion;
+    // Pantheons/beliefs unlocked by adopted cultures (in addition to global available list)
+    public List<PantheonData> cultureUnlockedPantheons = new List<PantheonData>();
+    public List<BeliefData> cultureUnlockedBeliefs = new List<BeliefData>();
+
+    [Header("Pantheon Limits")]
+    [Tooltip("Base maximum number of pantheons this civilization may found (default 1).")]
+    public int basePantheonCap = 1;
+    [Tooltip("Additional pantheon capacity gained from techs/cultures/policies (computed at runtime)")]
+    public int pantheonCapFromBonuses = 0;
+
+    public int CurrentPantheonCap => Mathf.Max(0, basePantheonCap + pantheonCapFromBonuses);
+
+    public bool CanFoundMorePantheons()
+    {
+    // Count actual founded pantheons
+    int owned = (foundedPantheons != null) ? foundedPantheons.Count : 0;
+        return owned < CurrentPantheonCap;
+    }
 
 
     [Header("Unlocked Units")]
@@ -955,27 +973,43 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool FoundPantheon(PantheonData pantheon, BeliefData founderBelief)
     {
-        // Check if the Mysticism tech (or equivalent) is researched
-        bool hasMysticism = false;
-        foreach (var tech in researchedTechs)
+        // Check if the civilization meets a pantheon founding prereq:
+        // either a tech that unlocks religion or an adopted culture that unlocks pantheons.
+        bool hasPantheonPrereq = false;
+        if (researchedTechs != null)
         {
-            if (tech.unlocksReligion)
+            foreach (var tech in researchedTechs)
             {
-                hasMysticism = true;
-                break;
+                if (tech != null && tech.unlocksReligion)
+                {
+                    hasPantheonPrereq = true;
+                    break;
+                }
             }
         }
-        
-        if (!hasMysticism)
+        // Also allow cultures to enable pantheon founding
+        if (!hasPantheonPrereq && researchedCultures != null)
         {
-            Debug.Log($"{civData.civName} cannot found a pantheon: missing required technology.");
+            foreach (var cult in researchedCultures)
+            {
+                if (cult != null && cult.unlocksPantheon)
+                {
+                    hasPantheonPrereq = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasPantheonPrereq)
+        {
+            Debug.Log($"{civData.civName} cannot found a pantheon: missing required tech or culture unlock.");
             return false;
         }
         
-        // Check if already has a pantheon
-        if (hasFoundedPantheon || foundedPantheon != null)
+        // Check pantheon cap
+        if (!CanFoundMorePantheons())
         {
-            Debug.Log($"{civData.civName} already has a pantheon.");
+            Debug.Log($"{civData.civName} cannot found a pantheon: pantheon cap reached ({CurrentPantheonCap}).");
             return false;
         }
         
@@ -1003,17 +1037,18 @@ public class Civilization : MonoBehaviour
             return false;
         }
         
-        // Found the pantheon
-        faith -= pantheon.faithCost;
-        foundedPantheon = pantheon;
-        chosenFounderBelief = founderBelief;
-        hasFoundedPantheon = true;
-        
-        // Apply any faith yield modifiers from the founder belief
-        UpdateFaithYieldModifier();
-        
-        Debug.Log($"{civData.civName} founded the {pantheon.pantheonName} pantheon with the {founderBelief.beliefName} belief.");
-        return true;
+    // Found the pantheon: add to list and store chosen belief
+    faith -= pantheon.faithCost;
+    if (foundedPantheons == null) foundedPantheons = new List<PantheonData>();
+    foundedPantheons.Add(pantheon);
+    if (chosenFounderBeliefs == null) chosenFounderBeliefs = new Dictionary<PantheonData, BeliefData>();
+    chosenFounderBeliefs[pantheon] = founderBelief;
+
+    // Apply any faith yield modifiers from beliefs (recompute across all)
+    UpdateFaithYieldModifier();
+
+    Debug.Log($"{civData.civName} founded the {pantheon.pantheonName} pantheon (spirit/god) with the {founderBelief.beliefName} belief.");
+    return true;
     }
     
     /// <summary>
@@ -1021,16 +1056,10 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool FoundReligion(ReligionData religion, City holySiteCity)
     {
-        // Check prerequisites
-        if (!hasFoundedPantheon || foundedPantheon == null)
+        // Check prerequisites: civ must have founded the required pantheon
+        if (foundedPantheons == null || !foundedPantheons.Contains(religion.requiredPantheon))
         {
-            Debug.Log($"{civData.civName} cannot found a religion: no pantheon.");
-            return false;
-        }
-        
-        if (foundedPantheon != religion.requiredPantheon)
-        {
-            Debug.Log($"{civData.civName} cannot found {religion.religionName}: wrong pantheon.");
+            Debug.Log($"{civData.civName} cannot found a religion: required pantheon not owned.");
             return false;
         }
         
@@ -1104,6 +1133,42 @@ public class Civilization : MonoBehaviour
         Debug.Log($"{civData.civName} founded {religion.religionName} in {holySiteCity.cityName}.");
         return true;
     }
+
+    /// <summary>
+    /// Upgrade an existing founded pantheon (spirit) into its upgraded pantheon (God), if available.
+    /// Preserves the chosen founder belief mapping where possible.
+    /// </summary>
+    public bool UpgradePantheon(PantheonData spiritPantheon)
+    {
+        if (spiritPantheon == null) return false;
+        if (foundedPantheons == null || !foundedPantheons.Contains(spiritPantheon)) return false;
+        if (!spiritPantheon.isSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null) return false;
+
+        var god = spiritPantheon.upgradedPantheon;
+
+        // Replace in the list, preserving order (replace first occurrence)
+        int idx = foundedPantheons.IndexOf(spiritPantheon);
+        if (idx < 0) return false;
+
+        foundedPantheons[idx] = god;
+
+        // Preserve chosen belief mapping if the belief is still valid for the upgraded pantheon,
+        // otherwise remove the mapping for that pantheon.
+        if (chosenFounderBeliefs != null && chosenFounderBeliefs.TryGetValue(spiritPantheon, out BeliefData oldBelief))
+        {
+            chosenFounderBeliefs.Remove(spiritPantheon);
+            if (oldBelief != null && god.possibleFounderBeliefs != null && System.Array.Exists(god.possibleFounderBeliefs, b => b == oldBelief))
+            {
+                chosenFounderBeliefs[god] = oldBelief;
+            }
+        }
+
+        Debug.Log($"{civData.civName} upgraded pantheon {spiritPantheon.pantheonName} -> {god.pantheonName}.");
+
+        // Recompute belief-based modifiers
+        UpdateFaithYieldModifier();
+        return true;
+    }
     
     /// <summary>
     /// Update faith yield modifier based on pantheon and religion beliefs
@@ -1120,14 +1185,20 @@ public class Civilization : MonoBehaviour
 
         // For now, this just adds belief modifiers. Ensure it's called appropriately.
 
-        if (hasFoundedPantheon && chosenFounderBelief != null)
+        // Apply modifiers from all founded pantheons' chosen founder beliefs
+        if (foundedPantheons != null && foundedPantheons.Count > 0 && chosenFounderBeliefs != null)
         {
-            foodModifier += chosenFounderBelief.foodModifier;
-            productionModifier += chosenFounderBelief.productionModifier;
-            goldModifier += chosenFounderBelief.goldModifier;
-            scienceModifier += chosenFounderBelief.scienceModifier;
-            cultureModifier += chosenFounderBelief.cultureModifier;
-            faithModifier += chosenFounderBelief.faithModifier;
+            foreach (var p in foundedPantheons)
+            {
+                if (p == null) continue;
+                if (!chosenFounderBeliefs.TryGetValue(p, out BeliefData b) || b == null) continue;
+                foodModifier += b.foodModifier;
+                productionModifier += b.productionModifier;
+                goldModifier += b.goldModifier;
+                scienceModifier += b.scienceModifier;
+                cultureModifier += b.cultureModifier;
+                faithModifier += b.faithModifier;
+            }
         }
         
         if (hasFoundedReligion && foundedReligion != null && foundedReligion.founderBelief != null) // The religion's own founder belief
@@ -1241,6 +1312,11 @@ public class Civilization : MonoBehaviour
         {
             cityCapFromBonuses = Mathf.Max(0, cityCapFromBonuses + tech.cityCapIncrease);
         }
+        // Pantheon cap increase
+        if (tech.pantheonCapIncrease != 0)
+        {
+            pantheonCapFromBonuses = Mathf.Max(0, pantheonCapFromBonuses + tech.pantheonCapIncrease);
+        }
 
         // Add any unlocked equipment to inventory
         AddUnlockedEquipment(tech);
@@ -1339,6 +1415,24 @@ public class Civilization : MonoBehaviour
         // Apply bonuses from the adopted culture
         ApplyCultureBonuses(cult);
 
+        // Apply culture unlocks for religion/pantheons
+        if (cult.unlocksPantheons != null)
+        {
+            if (cultureUnlockedPantheons == null) cultureUnlockedPantheons = new List<PantheonData>();
+            foreach (var p in cult.unlocksPantheons)
+            {
+                if (p != null && !cultureUnlockedPantheons.Contains(p)) cultureUnlockedPantheons.Add(p);
+            }
+        }
+        if (cult.unlocksBeliefs != null)
+        {
+            if (cultureUnlockedBeliefs == null) cultureUnlockedBeliefs = new List<BeliefData>();
+            foreach (var b in cult.unlocksBeliefs)
+            {
+                if (b != null && !cultureUnlockedBeliefs.Contains(b)) cultureUnlockedBeliefs.Add(b);
+            }
+        }
+
         // Trigger the event for other systems (like UI) to update
         OnCultureCompleted?.Invoke(cult); 
 
@@ -1383,6 +1477,11 @@ public class Civilization : MonoBehaviour
         {
             tradeEnabled = true;
             UIManager.Instance?.ShowNotification($"{civData.civName} has unlocked the Trade system!");
+        }
+        // Apply pantheon cap increase from culture
+        if (cult.pantheonCapIncrease != 0)
+        {
+            pantheonCapFromBonuses = Mathf.Max(0, pantheonCapFromBonuses + cult.pantheonCapIncrease);
         }
     }
 

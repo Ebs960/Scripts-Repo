@@ -150,7 +150,7 @@ public class UnitMovementController : MonoBehaviour
                 var (neighborTileData, _) = TileDataHelper.Instance.GetTileData(neighborIndex);
                 if (neighborTileData == null) continue; // Skip invalid tiles
 
-                int moveCost = BiomeHelper.GetMovementCost(neighborTileData.biome);
+                int moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
                 if (moveCost >= 99) continue; // Unpassable
 
                 float tentativeGCost = currentNode.gCost + moveCost;
@@ -228,11 +228,9 @@ public class UnitMovementController : MonoBehaviour
         {
             int targetTileIndex = path[i];
             
-            // Get movement cost for this step
-            int movementCost = 1; // Default
+            // Get movement cost for this step (tile-aware: improvements may alter cost)
             var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(targetTileIndex);
-            if (tileData != null)
-                movementCost = BiomeHelper.GetMovementCost(tileData.biome);
+            int movementCost = BiomeHelper.GetMovementCost(tileData, null);
             
             // Deduct movement points
             if (combatUnit != null)

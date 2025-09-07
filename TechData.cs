@@ -149,4 +149,6 @@ public class TechData : ScriptableObject
     [Header("Cities & Settlement")]
     [Tooltip("How much this technology increases the maximum number of cities a civilization may found. Use 1 on the first sedentary tech to allow the first city." )]
     public int cityCapIncrease = 0;
+    [Tooltip("How much this technology increases the maximum number of pantheons a civilization may found.")]
+    public int pantheonCapIncrease = 0;
 }

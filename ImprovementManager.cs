@@ -6,6 +6,24 @@ public class ImprovementManager : MonoBehaviour
 {
     public static ImprovementManager Instance { get; private set; }
 
+    [Header("Runtime")]
+    [Tooltip("Incremented whenever road improvements change so cached road-network data can be invalidated")]
+    public int roadNetworkVersion = 0;
+
+    [System.Serializable]
+    public class RoadConnectionConfig
+    {
+        [Tooltip("The improvement asset that acts as this road type")]
+        public ImprovementData improvement;
+
+        [Tooltip("Yield granted per connected city when this road type forms the connection")]
+        public TileYield connectionYield;
+    }
+
+    [Header("Road Connection Settings")]
+    [Tooltip("Define per-improvement connection yields here. If an improvement is listed, its connectionYield will be used when that improvement participates in a city-to-city connection.")]
+    public List<RoadConnectionConfig> roadConnectionConfigs = new List<RoadConnectionConfig>();
+
     // All active build jobs on the map
     private readonly List<BuildJob> jobs = new();
     // Parallel pipeline for worker-built combat units
@@ -70,6 +88,20 @@ public class ImprovementManager : MonoBehaviour
     void Start()
     {
         InitializeReferences();
+    }
+
+    /// <summary>
+    /// Get the configured per-connection yield for a given improvement type.
+    /// Returns an empty TileYield if not configured.
+    /// </summary>
+    public TileYield GetConnectionYieldForImprovement(ImprovementData imp)
+    {
+        if (imp == null) return new TileYield();
+        foreach (var cfg in roadConnectionConfigs)
+        {
+            if (cfg != null && cfg.improvement == imp) return cfg.connectionYield;
+        }
+        return new TileYield();
     }
 
     /// <summary>
@@ -236,6 +268,12 @@ public class ImprovementManager : MonoBehaviour
         {
             tileData.improvement = job.data;
             TileDataHelper.Instance.SetTileData(job.tileIndex, tileData);
+        }
+
+        // If the completed improvement is a road, bump the network version to invalidate caches
+        if (job.data != null && job.data.isRoad)
+        {
+            roadNetworkVersion++;
         }
 
         // Register trap runtime state if this improvement is a trap

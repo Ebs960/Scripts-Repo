@@ -141,6 +141,21 @@ public class ImprovementData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
 
+    [Header("Movement")]
+    [Tooltip("Flat movement bonus (can be fractional) applied to units moving on this tile (adds to their movement points).")]
+    public float movementSpeedBonus = 0f;
+
+    [Header("Road Settings")]
+    [Tooltip("If true, this improvement is considered a road. Roads can connect cities and provide connected-city bonuses.")]
+    public bool isRoad = false;
+    [Tooltip("When two cities are connected by continuous roads (improvements with isRoad=true), each connected city gains these flat per-turn bonuses. Each ImprovementData can specify its own bonus magnitudes.")]
+    public int connectedGoldPerTurn = 0;
+    public int connectedProductionPerTurn = 0;
+    public int connectedSciencePerTurn = 0;
+    public int connectedCulturePerTurn = 0;
+    public int connectedFaithPerTurn = 0;
+    public int connectedPolicyPointsPerTurn = 0;
+
     [Header("Trap Settings")]
     [Tooltip("If true, this improvement acts as a trap that can trigger on unit entry.")]
     public bool isTrap = false;
