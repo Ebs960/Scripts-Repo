@@ -45,6 +45,9 @@ public class BuildingData : ScriptableObject
     public bool isGoldBuilding;
 
     public bool isCultureBuilding;
+    
+    [Tooltip("Marks this building as a perimeter wall (special handling in City/Tile logic)")]
+    public bool isPerimeterWall;
   
 
 

@@ -2223,6 +2223,75 @@ public class GameManager : MonoBehaviour
         // Implement your load game logic here
     }
 
+    /// <summary>
+    /// Apply a loaded GameSaveData to the current runtime. This method will orchestrate
+    /// initialization of core managers and then apply the save fields, finally importing
+    /// improvement manager job assignments after units are registered.
+    /// </summary>
+    public void LoadGameFromSaveData(PauseMenuManager.GameSaveData saveData)
+    {
+        StartCoroutine(LoadGameFromSaveDataRoutine(saveData));
+    }
+
+    private System.Collections.IEnumerator LoadGameFromSaveDataRoutine(PauseMenuManager.GameSaveData saveData)
+    {
+        Debug.Log("[GameManager] LoadGameFromSaveData started");
+
+        // Basic fields
+        currentTurn = saveData.currentTurn;
+        gameInProgress = saveData.gameInProgress;
+        mapSize = saveData.mapSize;
+        enableMultiPlanetSystem = saveData.enableMultiPlanetSystem;
+        currentPlanetIndex = saveData.currentPlanetIndex;
+
+        // Apply camera transform after scene objects exist
+        yield return null; // wait a frame
+        if (Camera.main != null)
+        {
+            Camera.main.transform.position = saveData.cameraPosition;
+            Camera.main.transform.eulerAngles = saveData.cameraRotation;
+        }
+
+        // Ensure core managers are present
+        FindCoreManagersInScene();
+
+        // Wait a frame so that managers/units created in FindCoreManagersInScene have Awake/Start called
+        yield return null;
+
+        // If CivilizationManager needs to restore player civ index, attempt to do so
+        try
+        {
+            if (CivilizationManager.Instance != null && saveData.playerCivIndex >= 0)
+            {
+                var allCivs = CivilizationManager.Instance.GetAllCivs();
+                if (saveData.playerCivIndex < allCivs.Count)
+                    CivilizationManager.Instance.playerCiv = allCivs[saveData.playerCivIndex];
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore player civ index: {e.Message}");
+        }
+
+        // Import improvement manager assignments AFTER units are present and registered
+        if (saveData.jobAssignments != null && saveData.jobAssignments.Count > 0)
+        {
+            // Allow a small delay for UnitRegistry to populate (in case units are spawned next frame)
+            yield return null;
+            try
+            {
+                ImprovementManager.Instance?.ImportJobAssignments(saveData.jobAssignments);
+                Debug.Log("[GameManager] Imported job assignments from save data");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Failed to import job assignments: {e.Message}");
+            }
+        }
+
+        Debug.Log("[GameManager] LoadGameFromSaveData completed");
+    }
+
     // --- Global UI Audio System ---
     
     /// <summary>

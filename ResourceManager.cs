@@ -1,5 +1,6 @@
 // Assets/Scripts/Managers/ResourceManager.cs
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class ResourceManager : MonoBehaviour
@@ -286,6 +287,15 @@ public class ResourceManager : MonoBehaviour
             }
         }
         return dict;
+    }
+
+    /// <summary>
+    /// Returns the spawned ResourceInstance at the given tile index, or null if none.
+    /// </summary>
+    public ResourceInstance GetResourceInstanceAtTile(int tileIndex)
+    {
+        if (spawnedResources == null || spawnedResources.Count == 0) return null;
+        return spawnedResources.FirstOrDefault(r => r != null && r.tileIndex == tileIndex);
     }
 
     /// <summary>

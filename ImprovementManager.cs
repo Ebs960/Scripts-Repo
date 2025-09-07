@@ -37,6 +37,13 @@ public class ImprovementManager : MonoBehaviour
     // Active traps by tile index
     private readonly Dictionary<int, TrapRuntime> traps = new Dictionary<int, TrapRuntime>();
 
+    [System.Serializable]
+    public class JobAssignmentSaveData
+    {
+        public int tileIndex;
+        public List<string> assignedWorkerPersistentIds = new List<string>();
+    }
+
     private struct TrapRuntime
     {
         public int tileIndex;
@@ -184,6 +191,89 @@ public class ImprovementManager : MonoBehaviour
 
         workerJobs.Add(new WorkerJob(tileIndex, owner, unit));
         return true;
+    }
+
+    /// <summary>
+    /// Assign a worker to an existing build job on tileIndex. Returns true when assigned.
+    /// Worker identity is tracked by GameObject InstanceID.
+    /// </summary>
+    public bool AssignWorkerToJob(int tileIndex, WorkerUnit worker)
+    {
+    if (worker == null) return false;
+    var job = jobs.Find(j => j.tileIndex == tileIndex);
+    if (job == null) return false;
+    string pid = worker.PersistentId;
+    if (job.assignedWorkerPersistentIds == null) job.assignedWorkerPersistentIds = new List<string>();
+    if (!job.assignedWorkerPersistentIds.Contains(pid)) job.assignedWorkerPersistentIds.Add(pid);
+    return true;
+    }
+
+    /// <summary>
+    /// Unassign a worker from a specific job.
+    /// </summary>
+    public void UnassignWorkerFromJob(int tileIndex, WorkerUnit worker)
+    {
+    if (worker == null) return;
+    var job = jobs.Find(j => j.tileIndex == tileIndex);
+    if (job == null) return;
+    string pid = worker.PersistentId;
+    job.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    }
+
+    /// <summary>
+    /// Remove any assignment references for this worker across all jobs (called on death/move cleanup).
+    /// </summary>
+    public void UnassignWorkerFromAllJobs(WorkerUnit worker)
+    {
+        if (worker == null) return;
+        string pid = worker.PersistentId;
+        foreach (var j in jobs)
+        {
+            if (j.assignedWorkerPersistentIds != null && j.assignedWorkerPersistentIds.Contains(pid))
+                j.assignedWorkerPersistentIds.RemoveAll(x => x == pid);
+        }
+    }
+
+    /// <summary>
+    /// Check if a worker is assigned to the build job on tileIndex.
+    /// </summary>
+    public bool JobAssignedToWorker(int tileIndex, WorkerUnit worker)
+    {
+        if (worker == null) return false;
+        var job = jobs.Find(j => j.tileIndex == tileIndex);
+        if (job == null) return false;
+        string pid = worker.PersistentId;
+        return job.assignedWorkerPersistentIds != null && job.assignedWorkerPersistentIds.Contains(pid);
+    }
+
+    /// <summary>
+    /// Export current job assignments (persistent worker ids) for saving.
+    /// </summary>
+    public List<JobAssignmentSaveData> ExportJobAssignments()
+    {
+        var outList = new List<JobAssignmentSaveData>();
+        foreach (var j in jobs)
+        {
+            if (j.assignedWorkerPersistentIds != null && j.assignedWorkerPersistentIds.Count > 0)
+            {
+                outList.Add(new JobAssignmentSaveData { tileIndex = j.tileIndex, assignedWorkerPersistentIds = new List<string>(j.assignedWorkerPersistentIds) });
+            }
+        }
+        return outList;
+    }
+
+    /// <summary>
+    /// Restore job assignments from saved persistent ids. Call after jobs and units are restored.
+    /// </summary>
+    public void ImportJobAssignments(List<JobAssignmentSaveData> data)
+    {
+        if (data == null) return;
+        foreach (var d in data)
+        {
+            var job = jobs.Find(j => j.tileIndex == d.tileIndex);
+            if (job == null) continue;
+            job.assignedWorkerPersistentIds = new List<string>(d.assignedWorkerPersistentIds ?? new List<string>());
+        }
     }
 
     /// <summary>
@@ -385,6 +475,10 @@ public class ImprovementManager : MonoBehaviour
         public Civilization owner;
         public ImprovementData data;
         public int remainingWork;
+    // Track assigned workers by GameObject InstanceID so workers can auto-contribute each turn
+    public List<int> assignedWorkerInstanceIds = new List<int>();
+    // Persistent worker identifiers (GUIDs) to survive save/load
+    public List<string> assignedWorkerPersistentIds = new List<string>();
 
         public BuildJob(int tileIndex, Civilization owner, ImprovementData data)
         {

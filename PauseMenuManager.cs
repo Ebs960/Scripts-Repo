@@ -75,8 +75,10 @@ public class PauseMenuManager : MonoBehaviour
         // Add more save data fields as needed
         public Vector3 cameraPosition;
         public Vector3 cameraRotation;
-        public bool gameInProgress;
-        public bool isAutosave; // Mark if this is an autosave
+    public bool gameInProgress;
+    public bool isAutosave; // Mark if this is an autosave
+    // Persisted manager/job state
+    public List<ImprovementManager.JobAssignmentSaveData> jobAssignments;
         
         public GameSaveData()
         {
@@ -495,26 +497,46 @@ public class PauseMenuManager : MonoBehaviour
         // Generate save name based on current game state
         saveData.saveName = GenerateSaveName();
 
+        // Export improvement manager job assignments if available
+        try
+        {
+            saveData.jobAssignments = ImprovementManager.Instance?.ExportJobAssignments();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to export job assignments: {e.Message}");
+            saveData.jobAssignments = null;
+        }
+
         return saveData;
     }
 
     private void ApplySaveData(GameSaveData saveData)
     {
+        // Delegate full apply/load orchestration to GameManager so it can ensure
+        // managers and units are initialized in the correct order before importing assignments.
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.currentTurn = saveData.currentTurn;
-            GameManager.Instance.gameInProgress = saveData.gameInProgress;
-            
-            // Apply camera position if available
+            GameManager.Instance.LoadGameFromSaveData(saveData);
+        }
+        else
+        {
+            // Fallback: apply simple fields now
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.currentTurn = saveData.currentTurn;
+                GameManager.Instance.gameInProgress = saveData.gameInProgress;
+            }
+
             Camera mainCamera = Camera.main;
             if (mainCamera != null)
             {
                 mainCamera.transform.position = saveData.cameraPosition;
                 mainCamera.transform.eulerAngles = saveData.cameraRotation;
             }
-        }
 
-        Debug.Log($"Applied save data: Turn {saveData.currentTurn}, Player: {saveData.playerCivName}");
+            Debug.Log($"Applied save data (partial): Turn {saveData.currentTurn}, Player: {saveData.playerCivName}");
+        }
     }
 
     private string GenerateSaveName()

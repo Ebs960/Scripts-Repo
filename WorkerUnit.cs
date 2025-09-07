@@ -1,4 +1,4 @@
-    // Add this stub so property setters compile. Implement visuals as needed.
+// Add this stub so property setters compile. Implement visuals as needed.
 
 using UnityEngine;
 using System.Collections;
@@ -61,6 +61,22 @@ public class WorkerUnit : MonoBehaviour
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
     public bool takesWeatherDamage = true;
+
+    // Persistent ID used for save/load to identify this worker across sessions
+    [SerializeField]
+    private string persistentId;
+    public string PersistentId
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(persistentId))
+            {
+                persistentId = System.Guid.NewGuid().ToString();
+            }
+            return persistentId;
+        }
+        private set { persistentId = value; }
+    }
 
 
     [Header("Equipped Items (Editable)")]
@@ -696,6 +712,8 @@ public class WorkerUnit : MonoBehaviour
         if (planet != null) grid = planet.Grid;
         unitAnimator = GetComponent<Animator>();
         UnitRegistry.Register(gameObject);
+    // Ensure the unit is accessible by persistent id as well
+    UnitRegistry.RegisterPersistent(this.PersistentId, gameObject);
 
         // Fallback: If any equipped slot is null but data/default exists, auto-equip it
         bool equippedAny = false;
@@ -941,6 +959,9 @@ public class WorkerUnit : MonoBehaviour
         bool started = ImprovementManager.Instance
             .CreateBuildJob(imp, tileIndex, owner);
         if (!started) return;
+
+    // Assign this worker to the created build job so it will auto-contribute each turn
+    ImprovementManager.Instance?.AssignWorkerToJob(tileIndex, this);
 
         // Show construction prefab
         Vector3 pos = grid.tileCenters[tileIndex];
@@ -1211,8 +1232,11 @@ public class WorkerUnit : MonoBehaviour
         {
             Destroy(unitLabelInstance.gameObject);
         }
+
+        // Unassign from any improvement jobs to avoid stale references in the manager
+        ImprovementManager.Instance?.UnassignWorkerFromAllJobs(this);
     }
-    
+
     public int currentTileIndex;
     public float moveSpeed = 2f;
     public bool isMoving { get; set; }
@@ -1251,6 +1275,28 @@ public class WorkerUnit : MonoBehaviour
         
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
+
+        // Auto-contribute: if this worker is assigned to a build job on its current tile,
+        // automatically apply its work points to the job (persistent contribution each turn)
+        if (currentWorkPoints > 0 && ImprovementManager.Instance != null)
+        {
+            bool assigned = ImprovementManager.Instance.JobAssignedToWorker(currentTileIndex, this);
+            if (assigned)
+            {
+                // Prefer improvement jobs first
+                var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+                if (tileData != null && tileData.improvement != null)
+                {
+                    ContributeWork();
+                }
+                else
+                {
+                    // Try unit/worker jobs
+                    ContributeWorkToUnit();
+                    ContributeWorkToWorker();
+                }
+            }
+        }
     }
 
     // Apply immobilization effect from traps

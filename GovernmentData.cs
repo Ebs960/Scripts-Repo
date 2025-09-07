@@ -6,6 +6,7 @@ public class GovernmentData : ScriptableObject
     [Header("Identity")]
     public string governmentName;
     public string leaderTitleSuffix;    // e.g. "Emperor", "Chieftain"
+    [TextArea] public string description;
 
     [Header("Cost & Requirements")]
     [Tooltip("Policy points to enact this government")]

@@ -24,6 +24,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
+    [SerializeField] private Button forageButton; // new forage action for workers
     [Header("Worker Build Units UI")] 
     [SerializeField] private Transform buildUnitsContainer; // vertical layout group
     [SerializeField] private GameObject buildUnitButtonPrefab; // simple button with icon/text
@@ -40,6 +41,9 @@ public class UnitInfoPanel : MonoBehaviour
 
         if (contributeWorkButton != null)
             contributeWorkButton.onClick.AddListener(OnContributeWorkClicked);
+
+        if (forageButton != null)
+            forageButton.onClick.AddListener(OnForageClicked);
 
         // On start, clear the panel to show a "no unit selected" state.
         ClearPanelInfo();
@@ -228,6 +232,8 @@ public class UnitInfoPanel : MonoBehaviour
             settleCityButton.onClick.RemoveListener(OnSettleCityClicked);
         if (contributeWorkButton != null)
             contributeWorkButton.onClick.RemoveListener(OnContributeWorkClicked);
+        if (forageButton != null)
+            forageButton.onClick.RemoveListener(OnForageClicked);
     }
 
     private void HideAllSections()
@@ -247,10 +253,53 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void PopulateForWorkerUnit(WorkerUnit workerUnit)
     {
-        // Implement the logic to populate the panel for a WorkerUnit
-        // This is a placeholder and should be replaced with the actual implementation
         Debug.Log("UnitInfoPanel: Populating for WorkerUnit");
         UpdateUnitInfoForWorkerUnit();
+
+        // Default forage button state
+        if (forageButton != null)
+        {
+            forageButton.gameObject.SetActive(false);
+            forageButton.interactable = false;
+        }
+
+        if (workerUnit == null) return;
+
+        var rm = ResourceManager.Instance;
+        if (rm == null) return;
+
+        // Only allow foraging of the tile the worker is standing on
+        int tile = workerUnit.currentTileIndex;
+        var inst = rm.GetResourceInstanceAtTile(tile);
+        if (inst != null && workerUnit.CanForage(inst.data, tile))
+        {
+            if (forageButton != null)
+            {
+                forageButton.gameObject.SetActive(true);
+                forageButton.interactable = true;
+            }
+            return;
+        }
+    }
+
+
+    private void OnForageClicked()
+    {
+        if (currentWorkerUnit == null) return;
+
+        // Try current tile first then adjacent tiles
+        var rm = ResourceManager.Instance;
+        if (rm == null) return;
+
+        // Only attempt to forage the tile the worker is standing on
+        int tile = currentWorkerUnit.currentTileIndex;
+        var inst = rm.GetResourceInstanceAtTile(tile);
+        if (inst != null && currentWorkerUnit.CanForage(inst.data, tile))
+        {
+            currentWorkerUnit.Forage(inst.data, tile);
+            rm.ForageResource(inst, currentWorkerUnit.owner);
+            UpdateUnitInfoForWorkerUnit();
+        }
     }
 
     private void PopulateWorkerBuildUnits(WorkerUnit worker)
@@ -263,6 +312,31 @@ public class UnitInfoPanel : MonoBehaviour
 
         var civ = worker.owner;
         if (civ == null) return;
+
+        // First, list buildable improvements
+        var improvements = civ.GetAvailableImprovementsForWorker(worker.data, worker.currentTileIndex);
+        if (improvements != null)
+        {
+            foreach (var imp in improvements)
+            {
+                if (imp == null) continue;
+
+                var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+                buildUnitButtons.Add(btnGO);
+
+                var txt = btnGO.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null) txt.text = $"Build {imp.improvementName} ({imp.workCost} WP)";
+                var img = btnGO.GetComponentInChildren<Image>();
+                if (img != null && imp.icon != null) img.sprite = imp.icon;
+
+                var button = btnGO.GetComponent<Button>();
+                if (button != null)
+                {
+                    var impLocal = imp;
+                    button.onClick.AddListener(() => OnStartWorkerBuildImprovement(impLocal));
+                }
+            }
+        }
 
     // Gather units unlocked by civ (tech/culture/unique)
     var units = civ.unlockedCombatUnits;
@@ -341,6 +415,13 @@ public class UnitInfoPanel : MonoBehaviour
     {
         if (currentWorkerUnit == null || workerData == null) return;
         currentWorkerUnit.StartBuildingWorker(workerData, currentWorkerUnit.currentTileIndex);
+        UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void OnStartWorkerBuildImprovement(ImprovementData imp)
+    {
+        if (currentWorkerUnit == null || imp == null) return;
+        currentWorkerUnit.StartBuilding(imp, currentWorkerUnit.currentTileIndex);
         UpdateUnitInfoForWorkerUnit();
     }
 }
