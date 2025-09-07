@@ -21,6 +21,16 @@ public class ReligionUI : MonoBehaviour
     [Tooltip("Text showing pantheon faith cost")]
     public TextMeshProUGUI pantheonCostText;
     
+    // Pantheon upgrade controls are now part of the Pantheon UI (place these inside the pantheon panel in the Inspector)
+    [Tooltip("Panel or container that contains pantheon upgrade controls (place inside the pantheon UI)")]
+    public GameObject pantheonUpgradePanel;
+    [Tooltip("Dropdown to select which founded pantheon to upgrade")]
+    public TMP_Dropdown pantheonUpgradeDropdown;
+    [Tooltip("Button to perform the upgrade")]
+    public Button upgradePantheonButton;
+    [Tooltip("Info text describing the selected upgrade")]
+    public TextMeshProUGUI upgradeInfoText;
+    
     [Header("Religion UI")]
     [Tooltip("Container for religion founding UI elements")]
     public GameObject religionFoundingPanel;
@@ -46,16 +56,6 @@ public class ReligionUI : MonoBehaviour
     public TextMeshProUGUI faithPerTurnText;
     [Tooltip("Current faith amount")]
     public TextMeshProUGUI faithAmountText;
-    
-    [Header("Pantheon Upgrade UI")]
-    [Tooltip("Panel that contains pantheon upgrade controls")]
-    public GameObject pantheonUpgradePanel;
-    [Tooltip("Dropdown to select which founded pantheon to upgrade")]
-    public TMP_Dropdown pantheonUpgradeDropdown;
-    [Tooltip("Button to perform the upgrade")]
-    public Button upgradePantheonButton;
-    [Tooltip("Info text describing the selected upgrade")]
-    public TextMeshProUGUI upgradeInfoText;
     
     // Current data
     private Civilization playerCiv;

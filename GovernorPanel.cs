@@ -7,12 +7,15 @@ public class GovernorPanel : MonoBehaviour
 {
     [Header("Panel Root")]
     [SerializeField] private GameObject panelRoot;
+    [Header("Close")]
+    [SerializeField] private Button closeButton;
 
     [Header("Display")]
     [SerializeField] private TextMeshProUGUI governorNameText;
     [SerializeField] private TextMeshProUGUI governorLevelText;
     [SerializeField] private TextMeshProUGUI governorExperienceText;
     [SerializeField] private TextMeshProUGUI governorTraitsText;
+    [SerializeField] private TextMeshProUGUI governorBonusesText;
 
 
     [Header("Assignment UI")]
@@ -44,8 +47,22 @@ public class GovernorPanel : MonoBehaviour
             removeGovernorButton.onClick.AddListener(OnRemoveGovernorClicked);
         }
 
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveAllListeners();
+            closeButton.onClick.AddListener(Hide);
+        }
+
     if (assignmentPanel != null) assignmentPanel.SetActive(false);
     if (traitPanel != null) traitPanel.SetActive(false);
+    }
+
+    private void Update()
+    {
+        if (panelRoot != null && panelRoot.activeSelf && Input.GetKeyDown(KeyCode.Escape))
+        {
+            Hide();
+        }
     }
 
     public void ShowForCity(City city)
@@ -87,6 +104,7 @@ public class GovernorPanel : MonoBehaviour
             if (governorLevelText != null) governorLevelText.text = "";
             if (governorExperienceText != null) governorExperienceText.text = "";
             if (governorTraitsText != null) governorTraitsText.text = "This civilization has not unlocked governors.";
+            if (governorBonusesText != null) governorBonusesText.text = "";
             // Clear existing governors list
             if (existingGovernorsContainer != null)
             {
@@ -104,6 +122,7 @@ public class GovernorPanel : MonoBehaviour
             if (governorLevelText != null) governorLevelText.text = "";
             if (governorExperienceText != null) governorExperienceText.text = "";
             if (governorTraitsText != null) governorTraitsText.text = "";
+            if (governorBonusesText != null) governorBonusesText.text = "";
             // Populate existing governors list for assignment
             PopulateExistingGovernors();
             return;
@@ -126,6 +145,12 @@ public class GovernorPanel : MonoBehaviour
             {
                 governorTraitsText.text = "(No traits)";
             }
+        }
+        // Show numeric bonus breakdown
+        if (governorBonusesText != null)
+        {
+            var b = gov.GetTotalBonuses();
+            governorBonusesText.text = $"Gold: {b.gold}\nProduction: {b.production}\nFood: {b.food}\nScience: {b.science}\nCulture: {b.culture}\nFaith: {b.faith}\nCombat: {b.combat}\nCity Defense: {b.cityDefense}";
         }
         // Hide trait panel when viewing governor summary
         if (traitPanel != null) traitPanel.SetActive(false);
