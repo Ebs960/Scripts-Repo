@@ -532,15 +532,32 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             {
                 if (go == null) continue;
                 string n = go.name.Trim();
+                // Primary key: original trimmed name
                 if (!nameIndex.TryGetValue(n, out var list)) { list = new List<GameObject>(); nameIndex[n] = list; }
-                list.Add(go);
+                if (!list.Contains(go)) list.Add(go);
+
+                // Also index a normalized version with spaces removed so "Jovian Clouds" and "JovianClouds" both match
+                string normalized = n.Replace(" ", "");
+                if (!string.Equals(normalized, n, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!nameIndex.TryGetValue(normalized, out var normList)) { normList = new List<GameObject>(); nameIndex[normalized] = normList; }
+                    if (!normList.Contains(go)) normList.Add(go);
+                }
             }
 
             // Helper to try get by exact or startswith
             List<GameObject> FindMany(string exact, string startsWith = null)
             {
+                // Try exact name first
                 if (nameIndex.TryGetValue(exact, out var list) && list.Count > 0)
                     return list;
+
+                // Try normalized exact (spaces removed)
+                string exactNorm = exact?.Replace(" ", "");
+                if (!string.IsNullOrEmpty(exactNorm) && nameIndex.TryGetValue(exactNorm, out var listNorm) && listNorm.Count > 0)
+                    return listNorm;
+
+                // Try startsWith on original keys
                 if (!string.IsNullOrEmpty(startsWith))
                 {
                     var matches = new List<GameObject>();
@@ -550,6 +567,19 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                             matches.AddRange(kv.Value);
                     }
                     if (matches.Count > 0) return matches;
+
+                    // Try normalized startsWith (remove spaces from pattern)
+                    string startsNorm = startsWith.Replace(" ", "");
+                    if (!string.IsNullOrEmpty(startsNorm))
+                    {
+                        var matchesNorm = new List<GameObject>();
+                        foreach (var kv in nameIndex)
+                        {
+                            if (kv.Key.StartsWith(startsNorm, StringComparison.OrdinalIgnoreCase))
+                                matchesNorm.AddRange(kv.Value);
+                        }
+                        if (matchesNorm.Count > 0) return matchesNorm;
+                    }
                 }
                 return new List<GameObject>();
             }

@@ -241,7 +241,8 @@ public class GovernorPanel : MonoBehaviour
         var gov = civ.CreateGovernor(name, spec);
         if (gov != null)
         {
-            civ.AssignGovernorToCity(gov, currentCity);
+            // Use centralized helper to assign so logic is consistent
+            TryAssignGovernor(gov);
             if (assignmentPanel != null) assignmentPanel.SetActive(false);
             RefreshDisplay();
         }
@@ -253,11 +254,8 @@ public class GovernorPanel : MonoBehaviour
 
     private void OnRemoveGovernorClicked()
     {
-        if (currentCity == null || currentCity.owner == null) return;
-        var gov = currentCity.governor;
-        if (gov == null) return;
-        currentCity.owner.RemoveGovernorFromCity(gov, currentCity);
-        RefreshDisplay();
+    // Centralized removal helper
+    TryRemoveGovernor();
     }
 
     private void PopulateExistingGovernors()
@@ -279,13 +277,38 @@ public class GovernorPanel : MonoBehaviour
             if (assignButton != null)
             {
                 assignButton.onClick.RemoveAllListeners();
-                assignButton.onClick.AddListener(() =>
-                {
-                    currentCity.owner.AssignGovernorToCity(governor, currentCity);
-                    RefreshDisplay();
-                });
+                // Use centralized helper to assign
+                assignButton.onClick.AddListener(() => { TryAssignGovernor(governor); });
                 assignButton.interactable = civ.governorsEnabled && !governor.Cities.Contains(currentCity);
             }
         }
+    }
+
+    /// <summary>
+    /// Try to assign the given governor to the current city. Returns true on success.
+    /// Centralizes checks and refresh logic so multiple UI callsites behave the same.
+    /// </summary>
+    private bool TryAssignGovernor(Governor governor)
+    {
+        if (governor == null || currentCity == null || currentCity.owner == null) return false;
+        // Already assigned
+        if (currentCity.governor == governor) return false;
+
+        currentCity.owner.AssignGovernorToCity(governor, currentCity);
+        RefreshDisplay();
+        return true;
+    }
+
+    /// <summary>
+    /// Try to remove the governor from the current city. Returns true on success.
+    /// </summary>
+    private bool TryRemoveGovernor()
+    {
+        if (currentCity == null || currentCity.owner == null) return false;
+        var gov = currentCity.governor;
+        if (gov == null) return false;
+        currentCity.owner.RemoveGovernorFromCity(gov, currentCity);
+        RefreshDisplay();
+        return true;
     }
 }

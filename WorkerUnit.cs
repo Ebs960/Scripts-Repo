@@ -152,13 +152,10 @@ public class WorkerUnit : MonoBehaviour
     
     private void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
+        // If no holder is assigned, skip visual processing. We no longer create temporary holder GameObjects.
         if (holder == null)
         {
-            var tempHolderGO = new GameObject($"{gameObject.name}_{type}_Holder");
-            tempHolderGO.transform.SetParent(this.transform, false);
-            tempHolderGO.transform.localPosition = Vector3.zero;
-            tempHolderGO.transform.localRotation = Quaternion.identity;
-            holder = tempHolderGO.transform;
+            return;
         }
 
         // Clear existing equipment in this slot first
@@ -238,13 +235,9 @@ public class WorkerUnit : MonoBehaviour
             var allRenderers = equipObj.GetComponentsInChildren<Renderer>(true);
             if (allRenderers == null || allRenderers.Length == 0)
             {
-                var placeholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                placeholder.name = equipObj.name + "_placeholder";
-                placeholder.transform.SetParent(holder, false);
-                placeholder.transform.localPosition = Vector3.zero;
-                placeholder.transform.localRotation = Quaternion.identity;
-                placeholder.transform.localScale = Vector3.one * 0.2f;
-                equippedItemObjects[type] = placeholder;
+                // No visible renderers found on the instantiated prefab. Keep the instantiated object as the visual root
+                // instead of creating a primitive placeholder.
+                equippedItemObjects[type] = equipObj;
             }
             else
             {

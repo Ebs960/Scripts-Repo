@@ -1764,6 +1764,12 @@ public class CombatUnit : MonoBehaviour
             return;
         }
         
+        // If holder is null we intentionally skip visual processing. Temporary holder creation was removed.
+        if (holder == null)
+        {
+            return;
+        }
+
         // Clear existing equipment in this slot first
         for (int i = holder.childCount - 1; i >= 0; i--)
         {
@@ -1844,13 +1850,8 @@ public class CombatUnit : MonoBehaviour
             var allRenderers = equipObj.GetComponentsInChildren<Renderer>(true);
             if (allRenderers == null || allRenderers.Length == 0)
             {
-                var placeholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                placeholder.name = equipObj.name + "_placeholder";
-                placeholder.transform.SetParent(holder, false);
-                placeholder.transform.localPosition = Vector3.zero;
-                placeholder.transform.localRotation = Quaternion.identity;
-                placeholder.transform.localScale = Vector3.one * 0.2f;
-                equippedItemObjects[type] = placeholder;
+                // Keep the instantiated object as the visual root even if it has no renderers, instead of creating a primitive placeholder.
+                equippedItemObjects[type] = equipObj;
             }
             else
             {

@@ -165,14 +165,31 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                 {
                     if (go == null) continue;
                     string n = go.name.Trim();
+                    // primary key: original trimmed name
                     if (!nameIndex.TryGetValue(n, out var list)) { list = new List<GameObject>(); nameIndex[n] = list; }
-                    list.Add(go);
+                    if (!list.Contains(go)) list.Add(go);
+
+                    // also index normalized no-space key so "Jovian Clouds" and "JovianClouds" both match
+                    string normalized = n.Replace(" ", "");
+                    if (!string.Equals(normalized, n, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!nameIndex.TryGetValue(normalized, out var normList)) { normList = new List<GameObject>(); nameIndex[normalized] = normList; }
+                        if (!normList.Contains(go)) normList.Add(go);
+                    }
                 }
 
                 List<GameObject> FindMany(string exact, string startsWith = null)
                 {
+                    // Try exact name first
                     if (nameIndex.TryGetValue(exact, out var list) && list.Count > 0)
                         return list;
+
+                    // Try normalized exact (spaces removed)
+                    string exactNorm = exact?.Replace(" ", "");
+                    if (!string.IsNullOrEmpty(exactNorm) && nameIndex.TryGetValue(exactNorm, out var listNorm) && listNorm.Count > 0)
+                        return listNorm;
+
+                    // Try startsWith on original keys
                     if (!string.IsNullOrEmpty(startsWith))
                     {
                         var matches = new List<GameObject>();
@@ -182,6 +199,19 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
                                 matches.AddRange(kv.Value);
                         }
                         if (matches.Count > 0) return matches;
+
+                        // Try normalized startsWith (remove spaces from pattern)
+                        string startsNorm = startsWith.Replace(" ", "");
+                        if (!string.IsNullOrEmpty(startsNorm))
+                        {
+                            var matchesNorm = new List<GameObject>();
+                            foreach (var kv in nameIndex)
+                            {
+                                if (kv.Key.StartsWith(startsNorm, StringComparison.OrdinalIgnoreCase))
+                                    matchesNorm.AddRange(kv.Value);
+                            }
+                            if (matchesNorm.Count > 0) return matchesNorm;
+                        }
                     }
                     return new List<GameObject>();
                 }

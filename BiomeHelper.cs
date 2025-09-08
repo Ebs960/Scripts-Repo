@@ -741,6 +741,7 @@ public static class BiomeHelper {
         Biome.Arctic => 2,        // Higher movement cost - extremely harsh conditions
         Biome.IcicleField => 3,   // Difficult traversal through ice spikes
         Biome.CryoForest => 2,    // Frozen trees slow movement
+        Biome.Glacier => 4,      // Very high movement cost - glacier traversal
         
         // Real Planet Movement Costs
         Biome.MartianRegolith => 2,   // Dusty, shifting surface
