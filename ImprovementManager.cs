@@ -337,13 +337,18 @@ public class ImprovementManager : MonoBehaviour
         if (job.data.completePrefab != null)
         {
             GameObject completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
-            
-            // TODO: Add click handler for upgrades when ImprovementClickHandler is available
-            // var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
-            // if (clickHandler == null)
-            //     clickHandler = completedImprovement.AddComponent<ImprovementClickHandler>();
-            // clickHandler.Initialize(job.tileIndex, job.data);
-            
+
+            // Attach ImprovementInstance component to track applied upgrades and attached parts
+            var instance = completedImprovement.GetComponent<ImprovementInstance>();
+            if (instance == null) instance = completedImprovement.AddComponent<ImprovementInstance>();
+            instance.tileIndex = job.tileIndex;
+            instance.data = job.data;
+
+            // Ensure the click handler exists and is initialized so the UI can open
+            var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
+            if (clickHandler == null) clickHandler = completedImprovement.AddComponent<ImprovementClickHandler>();
+            clickHandler.Initialize(job.tileIndex, job.data);
+
             // Add collider if needed for clicking
             if (completedImprovement.GetComponent<Collider>() == null)
             {
@@ -351,14 +356,17 @@ public class ImprovementManager : MonoBehaviour
                 // Adjust collider size as needed
                 collider.size = Vector3.one * 2f;
             }
+
+            // Store runtime reference on the tile data for later upgrade application
+            var (tileData, _) = TileDataHelper.Instance.GetTileData(job.tileIndex);
+            if (tileData != null)
+            {
+                tileData.improvement = job.data;
+                tileData.improvementInstanceObject = completedImprovement;
+                TileDataHelper.Instance.SetTileData(job.tileIndex, tileData);
+            }
         }
 
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(job.tileIndex);
-        if (tileData != null)
-        {
-            tileData.improvement = job.data;
-            TileDataHelper.Instance.SetTileData(job.tileIndex, tileData);
-        }
 
         // If the completed improvement is a road, bump the network version to invalidate caches
         if (job.data != null && job.data.isRoad)
@@ -648,5 +656,82 @@ public class ImprovementManager : MonoBehaviour
         TileDataHelper.Instance.SetTileData(tileIndex, tileData);
 
         traps.Remove(tileIndex);
+    }
+
+    /// <summary>
+    /// Re-apply saved built upgrades to the runtime instantiated improvement on a tile.
+    /// Call this after loading the map to rehydrate visual attachments for modular upgrades.
+    /// </summary>
+    public void RehydrateTileUpgrades(int tileIndex)
+    {
+        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        if (tileData == null) return;
+        if (tileData.improvement == null || tileData.improvementInstanceObject == null) return;
+
+        var instanceObj = tileData.improvementInstanceObject;
+        var impInstance = instanceObj.GetComponent<ImprovementInstance>();
+        if (impInstance == null) impInstance = instanceObj.AddComponent<ImprovementInstance>();
+        impInstance.tileIndex = tileIndex;
+        impInstance.data = tileData.improvement;
+
+        if (tileData.builtUpgrades == null || tileData.builtUpgrades.Count == 0) return;
+
+        foreach (var built in tileData.builtUpgrades)
+        {
+            // Find the corresponding upgrade definition on the improvement
+            var found = System.Array.Find(tileData.improvement.availableUpgrades, u => (!string.IsNullOrEmpty(u.upgradeId) ? u.upgradeId == built : u.upgradeName == built));
+            if (found == null) continue;
+
+            // Apply visuals the same way BuildUpgrade would (attach or replace)
+            string upgradeKey = !string.IsNullOrEmpty(found.upgradeId) ? found.upgradeId : found.upgradeName;
+            if (impInstance.HasApplied(upgradeKey)) continue;
+
+            if (found.makesVisualChange)
+            {
+                if (found.replacePrefab != null)
+                {
+                    Vector3 pos = instanceObj.transform.position;
+                    Quaternion rot = instanceObj.transform.rotation;
+                    var newObj = Instantiate(found.replacePrefab, pos, rot);
+                    var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
+                    newInst.tileIndex = tileIndex;
+                    newInst.data = impInstance.data;
+                    newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
+
+                    var ch = newObj.GetComponent<ImprovementClickHandler>() ?? newObj.AddComponent<ImprovementClickHandler>();
+                    ch.Initialize(tileIndex, tileData.improvement);
+
+                    tileData.improvementInstanceObject = newObj;
+                    TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+
+                    Destroy(instanceObj);
+                    instanceObj = newObj;
+                    impInstance = newInst;
+                }
+                else if (found.attachPrefabs != null)
+                {
+                    foreach (var prefab in found.attachPrefabs)
+                    {
+                        if (prefab == null) continue;
+                        bool already = false;
+                        foreach (var child in impInstance.attachedParts)
+                        {
+                            if (child != null && child.name.Contains(prefab.name)) { already = true; break; }
+                        }
+                        if (already) continue;
+
+                        var go = Instantiate(prefab, instanceObj.transform);
+                        go.transform.localPosition = Vector3.zero;
+                        go.transform.localRotation = Quaternion.identity;
+                        impInstance.attachedParts.Add(go);
+                    }
+                }
+
+                impInstance.MarkApplied(upgradeKey);
+            }
+        }
+    // After applying all visuals, recompute defense aggregates and persist tile data
+    tileData.RecomputeImprovementDefenseAggregates();
+    TileDataHelper.Instance.SetTileData(tileIndex, tileData);
     }
 }

@@ -1026,7 +1026,18 @@ public class CombatUnit : MonoBehaviour
 
     private float GetBaseDefenseFloat()
     {
-        return BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+        float val = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+        // Include tile-based improvement defense modifiers
+        if (currentTileIndex >= 0)
+        {
+            var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+            if (tileData != null)
+            {
+                val += tileData.improvementDefenseAddCombat;
+                val = val * (1f + tileData.improvementDefensePctCombat);
+            }
+        }
+        return val;
     }
 
     private float GetEquipmentAttackBonusAgainst(CombatCategory targetType)

@@ -143,26 +143,93 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     private void BuildUpgrade(ImprovementUpgradeData upgrade)
     {
-        // Spawn upgrade prefab if available
-        if (upgrade.upgradePrefab != null)
+        // Apply visual changes on the instantiated improvement when requested
+        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        GameObject instanceObj = tileData?.improvementInstanceObject;
+
+        if (upgrade.makesVisualChange && instanceObj != null)
         {
-            Vector3 position = TileDataHelper.Instance.GetTileCenter(currentTileIndex);
-            // Offset slightly to avoid z-fighting
-            position.y += 0.1f;
-            Instantiate(upgrade.upgradePrefab, position, Quaternion.identity);
+            var impInstance = instanceObj.GetComponent<ImprovementInstance>();
+            if (impInstance == null)
+                impInstance = instanceObj.AddComponent<ImprovementInstance>();
+
+            // Use upgradeId if provided, otherwise fallback to upgradeName
+            string upgradeKey = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+
+            // If already applied on this runtime instance, skip
+            if (!impInstance.HasApplied(upgradeKey))
+            {
+                // Replace the whole improvement object if a replacePrefab is defined
+                if (upgrade.replacePrefab != null)
+                {
+                    Vector3 pos = instanceObj.transform.position;
+                    Quaternion rot = instanceObj.transform.rotation;
+                    // Instantiate replacement
+                    var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
+                    // Transfer ImprovementInstance state
+                    var newInst = newObj.GetComponent<ImprovementInstance>();
+                    if (newInst == null) newInst = newObj.AddComponent<ImprovementInstance>();
+                    newInst.tileIndex = impInstance.tileIndex;
+                    newInst.data = impInstance.data;
+                    newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
+
+                    // Ensure click handler
+                    var ch = newObj.GetComponent<ImprovementClickHandler>();
+                    if (ch == null) ch = newObj.AddComponent<ImprovementClickHandler>();
+                    ch.Initialize(currentTileIndex, tileData.improvement);
+
+                    // Replace reference on tile data
+                    tileData.improvementInstanceObject = newObj;
+                    TileDataHelper.Instance.SetTileData(currentTileIndex, tileData);
+
+                    // Destroy old instance
+                    Destroy(instanceObj);
+                    instanceObj = newObj;
+                    impInstance = newInst;
+                }
+                else if (upgrade.attachPrefabs != null && upgrade.attachPrefabs.Length > 0)
+                {
+                    foreach (var prefab in upgrade.attachPrefabs)
+                    {
+                        if (prefab == null) continue;
+                        // Avoid duplicating identical attachment by name
+                        bool already = false;
+                        foreach (var child in impInstance.attachedParts)
+                        {
+                            if (child != null && child.name.Contains(prefab.name)) { already = true; break; }
+                        }
+                        if (already) continue;
+
+                        var go = Instantiate(prefab, instanceObj.transform);
+                        go.transform.localPosition = Vector3.zero;
+                        go.transform.localRotation = Quaternion.identity;
+                        impInstance.attachedParts.Add(go);
+                    }
+                }
+
+                // Mark upgrade applied on runtime instance
+                impInstance.MarkApplied(upgradeKey);
+            }
+        }
+        else
+        {
+            // No runtime improvement instance available to apply visuals to.
+            // We no longer support spawning standalone upgrade prefabs; log and return.
+            Debug.LogWarning($"Upgrade {upgrade.upgradeName} requires an instantiated improvement on tile {currentTileIndex} to apply visuals. No action taken.");
+            return;
         }
 
         // Store upgrade in tile data for persistence
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
         if (tileData != null)
         {
-            // Add to the list of built upgrades
             if (tileData.builtUpgrades == null)
                 tileData.builtUpgrades = new System.Collections.Generic.List<string>();
-            
-            if (!tileData.builtUpgrades.Contains(upgrade.upgradeName))
-                tileData.builtUpgrades.Add(upgrade.upgradeName);
-            
+
+            string keyToPersist = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+            if (!tileData.builtUpgrades.Contains(keyToPersist))
+                tileData.builtUpgrades.Add(keyToPersist);
+            // Recompute aggregated defense modifiers and persist
+            tileData.RecomputeImprovementDefenseAggregates();
             TileDataHelper.Instance.SetTileData(currentTileIndex, tileData);
             Debug.Log($"Upgrade {upgrade.upgradeName} built on tile {currentTileIndex}");
         }

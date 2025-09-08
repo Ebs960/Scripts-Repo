@@ -565,7 +565,23 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 tileData = planetGen.data[i];
             if (tileData != null) tileDataCache[i] = tileData;
         }
-        
+
+        // Precompute one representative color per tile (big speedup)
+        var tileColorCache = new Dictionary<int, Color32>(tileDataCache.Count);
+        if (colorProvider != null)
+        {
+            foreach (var kv in tileDataCache)
+            {
+                int ti = kv.Key; var td = kv.Value;
+                int hash = ti * 9781 + 7;
+                float ox = ((hash >> 8) & 0xFF) / 255f;
+                float oy = (hash & 0xFF) / 255f;
+                float sampleU = Mathf.Repeat(0.5f + ox, 1f);
+                float sampleV = Mathf.Repeat(0.5f + oy, 1f);
+                Color c = colorProvider.ColorFor(td, new Vector2(sampleU, sampleV));
+                tileColorCache[ti] = (Color32)c;
+            }
+        }
 
         var pixels = new Color32[width * height];
         int totalPixels = width * height;
@@ -576,24 +592,21 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             int endIdx = Mathf.Min(startIdx + batchSize, totalPixels);
             for (int pixelIdx = startIdx; pixelIdx < endIdx; pixelIdx++)
             {
-                int y = pixelIdx / width;
-                int x = pixelIdx % width;
                 int tileIndex = lut[pixelIdx];
-                Color color = Color.gray;
-                if (tileIndex >= 0 && tileDataCache.TryGetValue(tileIndex, out var tileData))
+                Color32 outCol = new Color32(120, 120, 120, 255); // default gray
+                if (tileIndex >= 0)
                 {
-                    if (colorProvider != null)
+                    if (tileColorCache.TryGetValue(tileIndex, out var col32))
                     {
-                        float u = (x + 0.5f) / width;
-                        float v = (y + 0.5f) / height;
-                        color = colorProvider.ColorFor(tileData, new Vector2(u, v));
+                        outCol = col32;
                     }
-                    else
+                    else if (tileDataCache.TryGetValue(tileIndex, out var td2))
                     {
-                        color = GetDefaultBiomeColour(tileData.biome);
+                        // fallback: solid biome color
+                        outCol = (Color32)GetDefaultBiomeColour(td2.biome);
                     }
                 }
-                pixels[pixelIdx] = color;
+                pixels[pixelIdx] = outCol;
             }
             yield return null;
         }
@@ -636,17 +649,33 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         for (int i = 0; i < grid.TileCount; i++)
         {
             var tileData = moonGen.GetHexTileData(i);
-            if (tileData.biome != Biome.Ocean) // Valid tile
+            if (tileData != null && tileData.biome != Biome.Ocean) // Valid tile
             {
                 tileDataCache[i] = tileData;
             }
         }
-        
+
+        // Precompute one representative color per tile
+        var tileColorCache = new Dictionary<int, Color32>(tileDataCache.Count);
+        if (colorProvider != null)
+        {
+            foreach (var kv in tileDataCache)
+            {
+                int ti = kv.Key; var td = kv.Value;
+                int hash = ti * 9781 + 7;
+                float ox = ((hash >> 8) & 0xFF) / 255f;
+                float oy = (hash & 0xFF) / 255f;
+                float sampleU = Mathf.Repeat(0.5f + ox, 1f);
+                float sampleV = Mathf.Repeat(0.5f + oy, 1f);
+                Color c = colorProvider.ColorFor(td, new Vector2(sampleU, sampleV));
+                tileColorCache[ti] = (Color32)c;
+            }
+        }
 
         var pixels = new Color32[width * height];
         int totalPixels = width * height;
         int batchSize = Mathf.Min(maxPixelsPerFrameBatch, totalPixels / 10); // Fewer yields for moon
-        
+
         for (int startIdx = 0; startIdx < totalPixels; startIdx += batchSize)
         {
             int endIdx = Mathf.Min(startIdx + batchSize, totalPixels);
@@ -654,25 +683,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             for (int pixelIdx = startIdx; pixelIdx < endIdx; pixelIdx++)
             {
                 int tileIndex = lut[pixelIdx];
-                Color color = Color.gray;
-                
-                if (tileIndex >= 0 && tileDataCache.TryGetValue(tileIndex, out var tileData))
+                Color32 outCol = new Color32(120, 120, 120, 255);
+                if (tileIndex >= 0)
                 {
-                    if (colorProvider != null)
-                    {
-                        int y = pixelIdx / width;
-                        int x = pixelIdx % width;
-                        float u = (x + 0.5f) / width;
-                        float v = (y + 0.5f) / height;
-                        color = colorProvider.ColorFor(tileData, new Vector2(u, v));
-                    }
-                    else
-                    {
-                        color = GetDefaultBiomeColour(tileData.biome);
-                    }
+                    if (tileColorCache.TryGetValue(tileIndex, out var c32)) outCol = c32;
+                    else if (tileDataCache.TryGetValue(tileIndex, out var td2)) outCol = (Color32)GetDefaultBiomeColour(td2.biome);
                 }
-                
-                pixels[pixelIdx] = color;
+                pixels[pixelIdx] = outCol;
             }
             
             if (startIdx % (batchSize * 3) == 0) yield return null; // Less frequent yields for moon
@@ -720,59 +737,77 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileOffsetCache = new Dictionary<int, Vector2>();
         var pixels = new Color32[width * height];
+
         // Precompute UVs for sampling
         float[] vArr = new float[height];
         for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
         float[] uArr = new float[width];
         for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
 
-        int processed = 0;
+        // Precompute per-tile color cache to avoid repeated texture sampling
+        var tileColorCache = new Dictionary<int, Color32>();
         for (int y = 0; y < height; y++)
         {
-            float v = vArr[y];
-
+            int yBase = y * width;
             for (int x = 0; x < width; x++)
             {
-                int idx = y * width + x;
+                int idx = yBase + x;
                 int tileIndex = lut[idx];
+                if (tileIndex < 0) continue;
+                if (tileColorCache.ContainsKey(tileIndex)) continue;
 
-                Color color;
-                if (tileIndex < 0)
+                var tileData = moonGen.GetHexTileData(tileIndex);
+                tileDataCache[tileIndex] = tileData;
+                if (tileData == null)
                 {
-                    color = Color.magenta;
+                    tileColorCache[tileIndex] = (Color32)new Color(0.35f, 0.35f, 0.35f);
                 }
                 else
                 {
-                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
-                    {
-                        tileData = moonGen.GetHexTileData(tileIndex);
-                        tileDataCache[tileIndex] = tileData; // may be null; avoids repeated lookups
-                    }
+                    int hash = tileIndex * 9781 + 7;
+                    float ox = ((hash >> 8) & 0xFF) / 255f;
+                    float oy = (hash & 0xFF) / 255f;
+                    float sampleU = Mathf.Repeat(0.5f + ox, 1f);
+                    float sampleV = Mathf.Repeat(0.5f + oy, 1f);
+                    Color c = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                    tileColorCache[tileIndex] = (Color32)c;
+                }
+            }
+        }
 
-                    if (tileData == null)
+        int processed = 0;
+        for (int y = 0; y < height; y++)
+        {
+            float v = vArr[y]; int yBase = y * width;
+
+            for (int x = 0; x < width; x++)
+            {
+                int idx = yBase + x;
+                int tileIndex = lut[idx];
+
+                Color32 outC = new Color32(255, 0, 255, 255); // magenta default
+                if (tileIndex < 0)
+                {
+                    outC = new Color32(255, 0, 255, 255);
+                }
+                else
+                {
+                    if (!tileColorCache.TryGetValue(tileIndex, out outC))
                     {
-                        color = new Color(0.35f, 0.35f, 0.35f);
-                    }
-                    else
-                    {
-                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
+                        if (tileDataCache.TryGetValue(tileIndex, out var td) && td != null)
                         {
-                            int hash = tileIndex * 9781 + 7;
-                            float ox = ((hash >> 8) & 0xFF) / 255f;
-                            float oy = (hash & 0xFF) / 255f;
-                            offset = new Vector2(ox, oy);
-                            tileOffsetCache[tileIndex] = offset;
+                            outC = (Color32)GetDefaultBiomeColour(td.biome);
                         }
-                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
-                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
-                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                        else
+                        {
+                            outC = new Color32(89, 89, 89, 255);
+                        }
                     }
                 }
 
-                // Write directly with final orientation (flip X & Y inline)
                 int dstX = width - 1 - x;
                 int dstY = height - 1 - y;
-                pixels[dstY * width + dstX] = color;
+                pixels[dstY * width + dstX] = outC;
                 processed++;
                 if (processed % maxPixelsPerFrameBatch == 0)
                     yield return null;
@@ -821,9 +856,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             yield break;
         }
 
-        // Cache tile data and per-tile sample offsets (no color pre-cache)
+        // Precompute per-tile color cache to avoid repeated texture sampling
         var tileDataCache = new Dictionary<int, HexTileData>();
-        var tileOffsetCache = new Dictionary<int, Vector2>();
+        var tileColorCache = new Dictionary<int, Color32>();
         var pixels = new Color32[width * height];
 
     // Precompute sampling UV arrays
@@ -832,65 +867,77 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     float[] uArr = new float[width];
     for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
 
+    // First pass: find unique tile indices used and compute representative color
+    for (int y = 0; y < height; y++)
+    {
+        int yBase = y * width;
+        for (int x = 0; x < width; x++)
+        {
+            int tileIndex = lut[yBase + x];
+            if (tileIndex < 0 || tileColorCache.ContainsKey(tileIndex)) continue;
+            var tileData = planetGen.GetHexTileData(tileIndex);
+            if (tileData == null && TileDataHelper.Instance != null)
+            {
+                var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
+                if (!isMoon && helperTileData != null) tileData = helperTileData;
+            }
+            if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
+                tileData = planetGen.data[tileIndex];
+
+            tileDataCache[tileIndex] = tileData;
+            if (tileData == null)
+            {
+                tileColorCache[tileIndex] = (Color32)new Color(0.35f, 0.35f, 0.35f);
+            }
+            else
+            {
+                int hash = tileIndex * 9781 + 7;
+                float ox = ((hash >> 8) & 0xFF) / 255f;
+                float oy = (hash & 0xFF) / 255f;
+                float sampleU = Mathf.Repeat(0.5f + ox, 1f);
+                float sampleV = Mathf.Repeat(0.5f + oy, 1f);
+                Color c = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                tileColorCache[tileIndex] = (Color32)c;
+            }
+        }
+    }
+
     int processed = 0;
         for (int y = 0; y < height; y++)
         {
-        float v = vArr[y];
+        float v = vArr[y]; int yBase = y * width;
 
             for (int x = 0; x < width; x++)
             {
-        int tileIndex = lut[y * width + x];
+        int tileIndex = lut[yBase + x];
 
-                Color color;
+                Color32 outC;
                 if (tileIndex < 0)
                 {
-                    color = Color.magenta;
+                    outC = new Color32(255, 0, 255, 255);
+                }
+                else if (tileColorCache.TryGetValue(tileIndex, out outC))
+                {
+                    // already have
+                }
+                else if (tileDataCache.TryGetValue(tileIndex, out var td) && td != null)
+                {
+                    outC = (Color32)GetDefaultBiomeColour(td.biome);
                 }
                 else
                 {
-                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
-                    {
-                        tileData = planetGen.GetHexTileData(tileIndex);
-                        if (tileData == null && TileDataHelper.Instance != null)
-                        {
-                            var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
-                            if (!isMoon && helperTileData != null) tileData = helperTileData;
-                        }
-                        if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
-                            tileData = planetGen.data[tileIndex];
-
-                        tileDataCache[tileIndex] = tileData; // may be null; avoids repeated lookups
-                    }
-
-                    if (tileData == null)
-                    {
-                        color = new Color(0.35f, 0.35f, 0.35f);
-                    }
-                    else
-                    {
-                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
-                        {
-                            int hash = tileIndex * 9781 + 7;
-                            float ox = ((hash >> 8) & 0xFF) / 255f;
-                            float oy = (hash & 0xFF) / 255f;
-                            offset = new Vector2(ox, oy);
-                            tileOffsetCache[tileIndex] = offset;
-                        }
-            float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
-            float sampleV = Mathf.Repeat(v + offset.y, 1f);
-                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
-                    }
+                    outC = new Color32(89, 89, 89, 255);
                 }
 
         int dstX = width - 1 - x;
         int dstY = height - 1 - y;
-        pixels[dstY * width + dstX] = color;
+        pixels[dstY * width + dstX] = outC;
                 processed++;
                 if (processed % maxPixelsPerFrameBatch == 0)
                     yield return null;
             }
         }
-    
+
     tex.SetPixels32(pixels);
         tex.Apply();
     _minimapTextures[planetIndex] = tex;

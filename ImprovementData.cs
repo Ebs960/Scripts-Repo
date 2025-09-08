@@ -6,8 +6,18 @@ public class ImprovementUpgradeData
 {
     [Header("Identity")]
     public string upgradeName;
+    [Tooltip("Unique identifier for this upgrade. If empty, upgradeName will be used.")]
+    public string upgradeId;
     public Sprite icon;
     [TextArea] public string description;
+
+    [Header("Visual / Prefab")]
+    [Tooltip("If true, this upgrade will alter the improvement's visual appearance (attach parts or replace the base prefab)")]
+    public bool makesVisualChange = false;
+    [Tooltip("Prefabs that will be instantiated as children of the improvement when this upgrade is applied (good for modular pieces like walls, moats, keeps)")]
+    public GameObject[] attachPrefabs;
+    [Tooltip("Optional: fully replace the improvement GameObject when this upgrade is applied. Use for complex visual reworks.")]
+    public GameObject replacePrefab;
 
     [Header("Requirements")]
     [Tooltip("Technology required to unlock this upgrade")]
@@ -28,8 +38,16 @@ public class ImprovementUpgradeData
     public int additionalCulture;
     public int additionalFaith;
 
-    [Tooltip("Prefab to spawn when this upgrade is built")]
-    public GameObject upgradePrefab;
+    [Header("Defense Effects")]
+    [Tooltip("Flat defense added to combat units standing on this tile when this upgrade is built")]
+    public int defenseAddCombat = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to combat units on this tile")]
+    public float defensePctCombat = 0f;
+    [Tooltip("Flat defense added to worker units standing on this tile when this upgrade is built")]
+    public int defenseAddWorker = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to worker units on this tile")]
+    public float defensePctWorker = 0f;
+
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;
 

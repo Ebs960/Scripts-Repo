@@ -37,7 +37,11 @@ In your ImprovementData assets:
    - **Required Culture**: Dancing Culture asset
    - **Resource Costs**: Wood x3
    - **Gold Cost**: 50
-   - **Upgrade Prefab**: Visual model to spawn
+   - **Upgrade Prefab**: Visual model to spawn (used when no runtime improvement instance exists)
+   - **Makes Visual Change**: (new) Check this if the upgrade should change the improvement's appearance.
+   - **Attach Prefabs**: (new) One or more prefabs to instantiate as children of the improvement when applied (ideal for modular parts like walls, moats, keeps).
+   - **Replace Prefab**: (new) Optional prefab to fully replace the base improvement instance when the upgrade is applied (use for complex visual reconstructions).
+   - **Upgrade ID**: (optional) A stable unique id string to persist upgrades across renames; if left blank `upgradeName` will be used.
 
 ### 2. Example: Tent Camp + Dance Hut
 ```csharp
@@ -48,7 +52,6 @@ availableUpgrades[0] = {
     goldCost: 50,
     resourceCosts: [{ resource: WoodResource, amount: 3 }],
     additionalCulture: 2,
-    upgradePrefab: DanceHutPrefab,
     uniqueUpgrade: true
 }
 ```
@@ -68,6 +71,13 @@ availableUpgrades[0] = {
 4. Click on the Tent Camp
 5. Select "Dance Hut" from the upgrade menu
 
+### 5. Rehydration After Load
+If you save/load the game or instantiate tile improvements at runtime, call the following after the improvements' GameObjects exist so visual attachments are re-applied from `HexTileData.builtUpgrades`:
+
+ImprovementManager.Instance.RehydrateTileUpgrades(tileIndex);
+
+You can call this for each tile with an improvement after loading the map. In the future this will be automatically invoked by the map load flow.
+
 ## Technical Notes
 
 ### Upgrade Persistence
@@ -85,3 +95,7 @@ Integrates with existing UI systems via `FindObjectOfType<ImprovementUpgradeUI>(
 - [ ] Visual feedback for upgraded improvements
 - [ ] Upgrade chains (prerequisites between upgrades)
 - [ ] Removal/downgrade functionality
+
+## Notes
+- The new modular approach favors attaching small prefabs to a base improvement prefab. Author attachable prefabs with neutral local transforms so they align when parented. If precise placement is needed, consider adding named attach points (empty transforms) on improvement prefabs and add code to find and parent attachments to those anchors.
+- Use `replacePrefab` for upgrades that fundamentally change the object's shape (e.g., castle replaced by fortified castle) since this cleanly swaps the GameObject while preserving upgrade state.

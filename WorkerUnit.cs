@@ -642,6 +642,16 @@ public class WorkerUnit : MonoBehaviour
         get
         {
             float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+            // Include tile-based improvement defense modifiers for workers
+            if (currentTileIndex >= 0)
+            {
+                var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+                if (tileData != null)
+                {
+                    valF += tileData.improvementDefenseAddWorker;
+                    valF = valF * (1f + tileData.improvementDefensePctWorker);
+                }
+            }
             return Mathf.RoundToInt(valF);
         }
     }

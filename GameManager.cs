@@ -342,8 +342,8 @@ public class GameManager : MonoBehaviour
     {
         switch (size)
         {
-            case MapSize.Small: subdivisions = 3; radius = 20f; break;   // 162 tiles
-            case MapSize.Standard: subdivisions = 4; radius = 25f; break;   // 642 tiles
+            case MapSize.Small: subdivisions = 4; radius = 20f; break;   // 642 tiles
+            case MapSize.Standard: subdivisions = 5; radius = 80f; break;   // 2 562 tiles
             case MapSize.Large: subdivisions = 5; radius = 100f; break;   // 2 562 tiles
             default: subdivisions = 4; radius = 25f; break;
         }

@@ -145,9 +145,9 @@ public class MainMenuManager : MonoBehaviour
     private readonly LandPresetData[] landPresets = new[] {
         new LandPresetData { name = "Archipelago", landThreshold = 0.50f, continents = 0, islands = 25, description = "Many small scattered islands", minWidth = 10f, maxWidth = 50f, minHeight = 20f, maxHeight = 30f },
         new LandPresetData { name = "Islands", landThreshold = 0.40f, continents = 2, islands = 15, description = "A few large islands with smaller ones", minWidth = 25f, maxWidth = 70f, minHeight = 25f, maxHeight = 50f },
-        new LandPresetData { name = "Standard", landThreshold = 0.38f, continents = 5, islands = 9, description = "Balanced continents and islands", minWidth = 75f, maxWidth = 140f, minHeight = 60f, maxHeight = 150f },
-        new LandPresetData { name = "Large Continents", landThreshold = 0.35f, continents = 4, islands = 5, description = "Multiple large continents", minWidth = 140f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
-        new LandPresetData { name = "Pangaea", landThreshold = 0.30f, continents = 1, islands = 4, description = "One massive supercontinent", minWidth = 180f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
+        new LandPresetData { name = "Standard", landThreshold = 0.35f, continents = 5, islands = 9, description = "Balanced continents and islands", minWidth = 100f, maxWidth = 180f, minHeight = 60f, maxHeight = 150f },
+        new LandPresetData { name = "Large Continents", landThreshold = 0.30f, continents = 6, islands = 5, description = "Multiple large continents", minWidth = 180f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
+        new LandPresetData { name = "Pangaea", landThreshold = 0.20f, continents = 2, islands = 4, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
     };
 
     // Moisture preset values
