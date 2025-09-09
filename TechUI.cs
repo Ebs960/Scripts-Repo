@@ -48,6 +48,9 @@ public class TechUI : MonoBehaviour
                     if (techPanel != null) techPanel.SetActive(false); 
                 }
             });
+            // Ensure inspector-assigned close button is wired for UI interactions (click sound, etc.)
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(closeButton.gameObject);
         }
     }
 
@@ -298,6 +301,10 @@ public class TechUI : MonoBehaviour
         Button button = techNode.AddComponent<Button>();
         button.targetGraphic = background;
         button.onClick.AddListener(() => SelectTech(tech));
+
+        // Wire UI interactions for dynamically created tech node
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(techNode);
 
         // Create icon
         if (tech.techIcon != null)

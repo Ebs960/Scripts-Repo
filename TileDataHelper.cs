@@ -202,6 +202,33 @@ public class TileDataHelper : MonoBehaviour
         var (data, isMoon) = GetTileData(tileIndex);
         if (data == null) return;
 
+        // If setting to null, allow clearing occupant unconditionally
+        if (occupant == null)
+        {
+            data.occupantId = 0;
+            SetTileData(tileIndex, data);
+            return;
+        }
+
+        // If this tile has an improvement owner (e.g., a fort), prevent other civs from occupying it
+        if (data.improvementOwner != null)
+        {
+            Civilization unitOwner = null;
+            var cu = occupant.GetComponent<CombatUnit>();
+            if (cu != null) unitOwner = cu.owner;
+            else
+            {
+                var wu = occupant.GetComponent<WorkerUnit>();
+                if (wu != null) unitOwner = wu.owner;
+            }
+
+            if (unitOwner != null && unitOwner != data.improvementOwner)
+            {
+                Debug.LogWarning($"Prevented {occupant.name} (owner={unitOwner?.civData?.civName}) from occupying tile {tileIndex} owned by {data.improvementOwner.civData?.civName}.");
+                return;
+            }
+        }
+
         data.occupantId = occupant ? occupant.GetInstanceID() : 0;
         SetTileData(tileIndex, data);
     }
@@ -532,5 +559,52 @@ public class TileDataHelper : MonoBehaviour
         {
             targetPlanet?.SetHexTileData(tileIndex, tileData);
         }
+    }
+
+    // --- Religion helpers ---
+    /// <summary>
+    /// Add religious pressure to a tile and persist the change.
+    /// Centralizes religion writes so callers don't need to manipulate HexTileData directly.
+    /// </summary>
+    public void AddReligionPressure(int tileIndex, ReligionData religion, float amount)
+    {
+        if (religion == null || amount == 0f) return;
+        var (tileData, isMoon) = GetTileData(tileIndex);
+        if (tileData == null) return;
+
+        if (tileData.religionStatus.pressures == null)
+            tileData.religionStatus.Initialize();
+
+        tileData.religionStatus.AddPressure(religion, amount);
+        SetTileData(tileIndex, tileData);
+    }
+
+    /// <summary>
+    /// Returns the dominant religion for the tile, or null if none.
+    /// </summary>
+    public ReligionData GetDominantReligion(int tileIndex)
+    {
+        var (tileData, isMoon) = GetTileData(tileIndex);
+        if (tileData == null) return null;
+        return tileData.religionStatus.GetDominantReligion();
+    }
+
+    /// <summary>
+    /// Checks whether the supplied civilization may occupy the tile.
+    /// This enforces improvement ownership rules and requires the tile to be empty.
+    /// Note: callers that will actually set the occupant should use SetTileOccupant to perform
+    /// the final write (it performs owner checks against the specific GameObject).
+    /// </summary>
+    public bool CanOccupyTile(int tileIndex, Civilization civ)
+    {
+        var (data, isMoon) = GetTileData(tileIndex);
+        if (data == null) return false;
+
+        // If an improvement owns this tile, only that civ may occupy it
+        if (data.improvementOwner != null && civ != data.improvementOwner)
+            return false;
+
+        // Require there to be no existing occupant
+        return data.occupantId == 0;
     }
 }

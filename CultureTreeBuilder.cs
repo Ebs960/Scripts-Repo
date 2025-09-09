@@ -490,6 +490,10 @@ public class CultureTreeBuilder : MonoBehaviour
         paletteComponent.backgroundImage = backgroundImage;
         paletteComponent.Initialize(culture, this);
 
+        // Wire UI interactions for dynamic palette item (click sounds, focus, etc.)
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(paletteItem);
+
         Debug.Log($"[CreateCulturePaletteItem] Created palette item for {culture.cultureName} with icon: {(culture.cultureIcon != null ? "YES" : "NO")}");
     }
     
@@ -583,6 +587,10 @@ public class CultureTreeBuilder : MonoBehaviour
         gridOccupancy[finalGridPos] = node;
         UpdateCellVisual(finalGridPos, true);
         
+        // Wire UI interactions for the dynamic culture node
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(nodeObj);
+
         RefreshConnections();
         UpdateStatus($"Added {culture.cultureName} to builder at grid ({finalGridPos.x}, {finalGridPos.y}).");
     }

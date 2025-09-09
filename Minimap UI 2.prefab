@@ -1199,6 +1199,8 @@ MonoBehaviour:
   mainPlanetIndex: 0
   preGenerateAllMinimaps: 1
   maxPixelsPerFrameBatch: 100000
+  useTileColorAtlas: 1
+  minimapComputeShader: {fileID: 7200000, guid: db872d5b896072443989b31c28d23070, type: 3}
   uiCamera: {fileID: 0}
 --- !u!1 &3992384041759471822
 GameObject:

@@ -191,6 +191,9 @@ public class SpaceMapUI : MonoBehaviour
         closeRect.anchorMax = new Vector2(1, 1);
         closeRect.offsetMin = Vector2.zero;
         closeRect.offsetMax = Vector2.zero;
+        // Ensure runtime-created close button is wired to UIManager (click sounds, etc.)
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(closeGO);
 
         // Solar system view
         GameObject solarViewGO = CreateUIElement("SolarSystemView", spaceMapPanel.transform);
@@ -253,6 +256,10 @@ public class SpaceMapUI : MonoBehaviour
         travelRect.anchorMax = new Vector2(0.95f, 0.3f);
         travelRect.offsetMin = Vector2.zero;
         travelRect.offsetMax = Vector2.zero;
+
+        // Wire interactions for the runtime-created travel button
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(travelGO);
 
         // Civilization container
         GameObject civContainerGO = CreateUIElement("CivilizationContainer", planetInfoPanel.transform);
@@ -399,6 +406,10 @@ public class SpaceMapUI : MonoBehaviour
 
         // Setup button click
         button.onClick.AddListener(() => SelectPlanet(planet));
+
+        // Wire UI interactions for dynamic planet buttons
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(buttonGO);
 
         planetButton.Initialize(planet, this);
         planetButtons.Add(planetButton);

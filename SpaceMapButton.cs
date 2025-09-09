@@ -108,18 +108,25 @@ public class SpaceMapButton : MonoBehaviour
             {
                 buttonTMP.text = this.buttonText;
             }
+            // Wire UI interactions for the assigned space map button
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(spaceMapButton.gameObject);
         }
 
         if (tradeButton != null)
         {
             // This assumes you have a panel to show. A more robust solution would be needed.
             tradeButton.onClick.AddListener(() => Debug.Log("Trade button clicked."));
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(tradeButton.gameObject);
         }
 
         if (ruinsButton != null)
         {
             // We might not have a specific panel for ruins, but we can log something.
             ruinsButton.onClick.AddListener(() => Debug.Log("Ancient Ruins button clicked."));
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(ruinsButton.gameObject);
         }
     }
 
@@ -265,5 +272,8 @@ public class QuickSpaceMapSetup : MonoBehaviour
         SpaceMapButton spaceMapButton = buttonGO.AddComponent<SpaceMapButton>();
         
         Debug.Log("[QuickSpaceMapSetup] Space map button created. Consider using SpaceMapButton component directly.");
+        // Wire UI interactions for the runtime-created object (if it creates UI later)
+        if (UIManager.Instance != null)
+            UIManager.Instance.WireUIInteractions(buttonGO);
     }
 }

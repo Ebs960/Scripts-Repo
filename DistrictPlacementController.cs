@@ -16,6 +16,9 @@ public class DistrictPlacementController : MonoBehaviour
     private DistrictData districtData;
     private List<int> validTileIndices = new List<int>();
     private Dictionary<int, GameObject> tileHighlights = new();
+    // Shared material and property block for highlights to avoid allocations
+    private static Material s_highlightMaterial;
+    private static UnityEngine.MaterialPropertyBlock s_highlightMPB;
     private int currentHoveredTileIndex = -1;
 
     // Components references
@@ -30,6 +33,19 @@ public class DistrictPlacementController : MonoBehaviour
         // Use GameManager API for multi-planet support
         planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         grid = planet != null ? planet.Grid : null;
+
+        // Prepare shared highlight material and MPB
+        if (s_highlightMaterial == null)
+        {
+            var shader = Shader.Find("Standard");
+            if (shader != null)
+            {
+                s_highlightMaterial = new Material(shader);
+                s_highlightMaterial.SetFloat("_Mode", 3);
+                s_highlightMaterial.renderQueue = 3000;
+            }
+            s_highlightMPB = new UnityEngine.MaterialPropertyBlock();
+        }
     }
     
     void Update()
@@ -201,7 +217,9 @@ public class DistrictPlacementController : MonoBehaviour
     private int GetHoveredTileIndex()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        var detector = ServiceRegistry.Get<TileClickDetector>();
+        int layerMask = detector != null ? detector.tileRaycastMask.value : Physics.DefaultRaycastLayers;
+        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
         {
             if (grid == null) return -1;
             Vector3 localDir = (hit.point - planet.transform.position).normalized;
@@ -254,25 +272,40 @@ public class DistrictPlacementController : MonoBehaviour
 
         if (!tileHighlights.ContainsKey(tileIndex))
         {
-            GameObject highlightObj = highlightPrefab != null ?
-                Instantiate(highlightPrefab) : GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            highlightObj.name = $"TileHighlight_{tileIndex}";
+            GameObject highlightObj;
+            if (tileHighlights.TryGetValue(tileIndex, out var existing))
+            {
+                highlightObj = existing;
+            }
+            else
+            {
+                highlightObj = highlightPrefab != null ? Instantiate(highlightPrefab) : GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                highlightObj.name = $"TileHighlight_{tileIndex}";
+                tileHighlights[tileIndex] = highlightObj;
+            }
 
             Vector3 worldPos = planet.transform.TransformPoint(grid.tileCenters[tileIndex]);
             highlightObj.transform.position = worldPos + Vector3.up * 0.05f;
             float tileSize = 0.2f;
             highlightObj.transform.localScale = new Vector3(tileSize, tileSize, tileSize);
 
-            var mat = new Material(Shader.Find("Standard")) { color = color };
             var rend = highlightObj.GetComponent<MeshRenderer>();
-            rend.material = mat;
-
-            tileHighlights[tileIndex] = highlightObj;
+            if (rend != null)
+            {
+                if (s_highlightMaterial != null)
+                    rend.sharedMaterial = s_highlightMaterial;
+                s_highlightMPB.SetColor("_Color", color);
+                rend.SetPropertyBlock(s_highlightMPB);
+            }
         }
         else
         {
             var rend = tileHighlights[tileIndex].GetComponent<MeshRenderer>();
-            rend.material.color = color;
+            if (rend != null)
+            {
+                s_highlightMPB.SetColor("_Color", color);
+                rend.SetPropertyBlock(s_highlightMPB);
+            }
         }
     }
 

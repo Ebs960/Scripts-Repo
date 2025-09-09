@@ -9,6 +9,8 @@ public class ImprovementInstance : MonoBehaviour
 {
     public int tileIndex = -1;
     public ImprovementData data;
+    // Civilization that built/owns this improvement instance (runtime only)
+    public Civilization owner;
     // Track applied upgrades by id/name
     public HashSet<string> appliedUpgrades = new HashSet<string>();
     // Track instantiated child parts so we don't duplicate them

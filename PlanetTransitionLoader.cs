@@ -78,6 +78,12 @@ public class PlanetTransitionLoader : MonoBehaviour
             CreateLoadingPanel();
         }
 
+        // Wire UI interactions for dynamically-created loading UI
+        if (UIManager.Instance != null && loadingPanel != null)
+        {
+            UIManager.Instance.WireUIInteractions(loadingPanel);
+        }
+
         // Start hidden
         Hide();
     }

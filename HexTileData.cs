@@ -43,6 +43,8 @@ public class HexTileData
     public ResourceData resource;
     [Tooltip("District built on this tile, if any")]
     public DistrictData district;
+    [Tooltip("Which civilization built or currently owns the improvement on this tile (used for ownership checks and traps)")]
+    public Civilization improvementOwner;
 
     // --- Religion Status ---
     [Tooltip("Religious pressure data for this tile")]

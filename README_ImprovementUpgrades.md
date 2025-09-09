@@ -72,11 +72,17 @@ availableUpgrades[0] = {
 5. Select "Dance Hut" from the upgrade menu
 
 ### 5. Rehydration After Load
-If you save/load the game or instantiate tile improvements at runtime, call the following after the improvements' GameObjects exist so visual attachments are re-applied from `HexTileData.builtUpgrades`:
+Rehydration of visual upgrade parts is now automatic: `ImprovementManager` subscribes to the game's `OnPlanetReady` event and will attempt to rehydrate (re-apply) saved upgrades for every tile on a planet once that planet finishes generation.
 
-ImprovementManager.Instance.RehydrateTileUpgrades(tileIndex);
+If you need to trigger rehydration manually (for example, when spawning improvements at runtime on a specific planet), use the planet-aware API:
 
-You can call this for each tile with an improvement after loading the map. In the future this will be automatically invoked by the map load flow.
+ImprovementManager.Instance.RehydrateTileUpgrades(tileIndex, planetIndex);
+
+You can also rehydrate an entire planet with:
+
+ImprovementManager.Instance.RehydrateAllUpgradesOnPlanet(planetIndex);
+
+Both methods will safely no-op if the runtime GameObject for the improvement is missing.
 
 ## Technical Notes
 

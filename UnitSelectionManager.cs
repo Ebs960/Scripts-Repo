@@ -16,6 +16,9 @@ public class UnitSelectionManager : MonoBehaviour
     // Currently selected unit
     private MonoBehaviour selectedUnit; // Can be CombatUnit or WorkerUnit
     private GameObject selectionIndicator;
+    // Cached highlight/selection materials to avoid allocations
+    private static Material s_selectionIndicatorMaterial;
+    private static UnityEngine.MaterialPropertyBlock s_selectionMPB;
     
     // References
     private Camera mainCamera;
@@ -40,6 +43,25 @@ public class UnitSelectionManager : MonoBehaviour
         mainCamera = Camera.main;
         if (mainCamera == null)
             mainCamera = FindAnyObjectByType<Camera>();
+        
+        // Cache selection material once
+        if (s_selectionIndicatorMaterial == null)
+        {
+            var shader = Shader.Find("Standard");
+            if (shader != null)
+            {
+                s_selectionIndicatorMaterial = new Material(shader);
+                s_selectionIndicatorMaterial.SetFloat("_Mode", 3);
+                s_selectionIndicatorMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                s_selectionIndicatorMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                s_selectionIndicatorMaterial.SetInt("_ZWrite", 0);
+                s_selectionIndicatorMaterial.DisableKeyword("_ALPHATEST_ON");
+                s_selectionIndicatorMaterial.EnableKeyword("_ALPHABLEND_ON");
+                s_selectionIndicatorMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                s_selectionIndicatorMaterial.renderQueue = 3000;
+            }
+            s_selectionMPB = new UnityEngine.MaterialPropertyBlock();
+        }
             
     }
     
@@ -115,7 +137,8 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         }
         
-        var hitInfo = GetMouseHitInfo();
+    // Use the same raycast mask as TileClickDetector when available so clicks are consistent
+    var hitInfo = GetMouseHitInfo();
         if (hitInfo.hit)
         {
             int targetTileIndex = hitInfo.tileIndex;
@@ -136,7 +159,13 @@ public class UnitSelectionManager : MonoBehaviour
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hitInfo))
+        // If a TileClickDetector exists, use its configured layer mask for raycasts; otherwise use default
+        int layerMask = Physics.DefaultRaycastLayers;
+        var detector = ServiceRegistry.Get<TileClickDetector>();
+        if (detector != null)
+            layerMask = detector.tileRaycastMask.value;
+
+        if (Physics.Raycast(ray, out RaycastHit hitInfo, Mathf.Infinity, layerMask))
         {
             var holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
             if (holder != null)
@@ -281,30 +310,24 @@ public class UnitSelectionManager : MonoBehaviour
         }
         else
         {
-            // Fallback: create a simple colored sphere
+            // Fallback: create a simple colored sphere and reuse a shared material to avoid allocations
             selectionIndicator = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             selectionIndicator.name = "SelectionIndicator";
             selectionIndicator.transform.SetParent(selectedUnit.transform);
             selectionIndicator.transform.localPosition = Vector3.up * 0.5f;
             selectionIndicator.transform.localScale = Vector3.one * 0.3f;
-            
-            // Make it transparent and colored
+
             var renderer = selectionIndicator.GetComponent<Renderer>();
             if (renderer != null)
             {
-                var material = new Material(Shader.Find("Standard"));
-                material.color = selectedUnitHighlightColor;
-                material.SetFloat("_Mode", 3); // Transparent mode
-                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                material.SetInt("_ZWrite", 0);
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.EnableKeyword("_ALPHABLEND_ON");
-                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                material.renderQueue = 3000;
-                renderer.material = material;
+                if (s_selectionIndicatorMaterial != null)
+                    renderer.sharedMaterial = s_selectionIndicatorMaterial;
+
+                // Set color using MaterialPropertyBlock to avoid creating instance materials
+                s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
+                renderer.SetPropertyBlock(s_selectionMPB);
             }
-            
+
             // Remove collider so it doesn't interfere with clicking
             var collider = selectionIndicator.GetComponent<Collider>();
             if (collider != null)

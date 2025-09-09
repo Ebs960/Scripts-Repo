@@ -95,6 +95,23 @@ public class ImprovementManager : MonoBehaviour
     void Start()
     {
         InitializeReferences();
+        // Subscribe to planet-ready event so we can rehydrate upgrades after a planet is fully generated
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+    }
+
+    private void HandlePlanetReady(int planetIndex)
+    {
+        // Rehydrate all tile upgrades for the planet that just became ready
+        RehydrateAllUpgradesOnPlanet(planetIndex);
     }
 
     /// <summary>
@@ -343,6 +360,8 @@ public class ImprovementManager : MonoBehaviour
             if (instance == null) instance = completedImprovement.AddComponent<ImprovementInstance>();
             instance.tileIndex = job.tileIndex;
             instance.data = job.data;
+            // Record owning civ on runtime instance
+            instance.owner = job.owner;
 
             // Ensure the click handler exists and is initialized so the UI can open
             var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
@@ -362,6 +381,8 @@ public class ImprovementManager : MonoBehaviour
             if (tileData != null)
             {
                 tileData.improvement = job.data;
+                // Persist owner on tile data for save/load and gameplay checks
+                tileData.improvementOwner = job.owner;
                 tileData.improvementInstanceObject = completedImprovement;
                 TileDataHelper.Instance.SetTileData(job.tileIndex, tileData);
             }
@@ -662,9 +683,24 @@ public class ImprovementManager : MonoBehaviour
     /// Re-apply saved built upgrades to the runtime instantiated improvement on a tile.
     /// Call this after loading the map to rehydrate visual attachments for modular upgrades.
     /// </summary>
-    public void RehydrateTileUpgrades(int tileIndex)
+    // Planet-aware rehydration: if planetIndex >= 0, use planet-aware tile lookup so this works in multi-planet mode
+    public void RehydrateTileUpgrades(int tileIndex, int planetIndex = -1)
     {
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        HexTileData tileData = null;
+        bool isMoon = false;
+        if (planetIndex >= 0)
+        {
+            var tuple = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
+            tileData = tuple.tileData;
+            isMoon = tuple.isMoonTile;
+        }
+        else
+        {
+            var tuple = TileDataHelper.Instance.GetTileData(tileIndex);
+            tileData = tuple.tileData;
+            isMoon = tuple.isMoonTile;
+        }
+
         if (tileData == null) return;
         if (tileData.improvement == null || tileData.improvementInstanceObject == null) return;
 
@@ -673,6 +709,8 @@ public class ImprovementManager : MonoBehaviour
         if (impInstance == null) impInstance = instanceObj.AddComponent<ImprovementInstance>();
         impInstance.tileIndex = tileIndex;
         impInstance.data = tileData.improvement;
+        // Restore owner on runtime instance from persisted tile data
+        impInstance.owner = tileData.improvementOwner;
 
         if (tileData.builtUpgrades == null || tileData.builtUpgrades.Count == 0) return;
 
@@ -702,7 +740,9 @@ public class ImprovementManager : MonoBehaviour
                     ch.Initialize(tileIndex, tileData.improvement);
 
                     tileData.improvementInstanceObject = newObj;
-                    TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+                    // Persist change back to the correct planet
+                    if (planetIndex >= 0) TileDataHelper.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+                    else TileDataHelper.Instance.SetTileData(tileIndex, tileData);
 
                     Destroy(instanceObj);
                     instanceObj = newObj;
@@ -730,8 +770,31 @@ public class ImprovementManager : MonoBehaviour
                 impInstance.MarkApplied(upgradeKey);
             }
         }
-    // After applying all visuals, recompute defense aggregates and persist tile data
-    tileData.RecomputeImprovementDefenseAggregates();
-    TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+
+        // After applying all visuals, recompute defense aggregates and persist tile data
+        tileData.RecomputeImprovementDefenseAggregates();
+        if (planetIndex >= 0) TileDataHelper.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+        else TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+    }
+
+    /// <summary>
+    /// Rehydrate all saved upgrades on every tile of the given planet.
+    /// Uses planet-aware tile lookup so multi-planet games rehydrate correctly.
+    /// </summary>
+    public void RehydrateAllUpgradesOnPlanet(int planetIndex)
+    {
+        if (GameManager.Instance == null) return;
+        var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+        if (planetGen == null) return;
+
+        int count = planetGen.Grid?.TileCount ?? 0;
+        for (int i = 0; i < count; i++)
+        {
+            var (tileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(i, planetIndex);
+            if (tileData == null) continue;
+            if (tileData.improvement == null) continue;
+            // Attempt to rehydrate this tile (no-op if runtime instance not present)
+            RehydrateTileUpgrades(i, planetIndex);
+        }
     }
 }

@@ -12,6 +12,7 @@ public class UIManager : MonoBehaviour
     public GameObject cityPanel;
     public GameObject techPanel;
     public GameObject culturePanel;
+    public GameObject governmentPanel;
     public GameObject religionPanel;
     public GameObject tradePanel;
     [Header("Trade UI")]
@@ -71,16 +72,27 @@ public class UIManager : MonoBehaviour
             { "equipmentPanel", equipmentPanel },
             { "UnitInfoPanel", unitInfoPanel },
             { "unitInfoPanel", unitInfoPanel },
+            { "GovernmentPanel", governmentPanel },
+            { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
             { "pauseMenuPanel", pauseMenuPanel },
             { "PlayerUI", playerUI },
             { "playerUI", playerUI }
         };
         HideAllPanels();
-        
+
         // Keep PlayerUI active - it should be visible at game start (unless loading is active)
         if (playerUI != null && !IsLoadingActive()) 
             playerUI.SetActive(true);
+
+        // Ensure the Unit Info panel is visible at startup by default (it will be hidden
+        // automatically when other top-level panels are shown via ShowPanel()). Only
+        // enable it if loading is not active.
+        if (unitInfoPanel != null && !IsLoadingActive())
+        {
+            unitInfoPanel.SetActive(true);
+            WireUIInteractions(unitInfoPanel);
+        }
 
         // Ensure we have an AudioSource for UI sounds
         uiAudioSource = GetComponent<AudioSource>();
@@ -97,6 +109,25 @@ public class UIManager : MonoBehaviour
         {
             TradeManager.Instance.OnGlobalTradeEnabled += HandleGlobalTradeEnabled;
             TradeManager.Instance.OnCivilizationTradeEnabled += HandleCivilizationTradeEnabled;
+        }
+    }
+
+    void OnEnable()
+    {
+        // Subscribe to TradeManager events if available (in case it was created after Awake)
+        if (TradeManager.Instance != null)
+        {
+            TradeManager.Instance.OnGlobalTradeEnabled += HandleGlobalTradeEnabled;
+            TradeManager.Instance.OnCivilizationTradeEnabled += HandleCivilizationTradeEnabled;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TradeManager.Instance != null)
+        {
+            TradeManager.Instance.OnGlobalTradeEnabled -= HandleGlobalTradeEnabled;
+            TradeManager.Instance.OnCivilizationTradeEnabled -= HandleCivilizationTradeEnabled;
         }
     }
 

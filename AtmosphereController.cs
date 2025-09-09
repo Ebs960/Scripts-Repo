@@ -23,6 +23,7 @@ public class AtmosphereController : MonoBehaviour
     private MeshRenderer meshRenderer;
     private bool meshGenerated = false;
     private bool atmosphereEnabled = true;
+    private GameManager gameManager;
 
     void Awake()
     {
@@ -43,10 +44,11 @@ public class AtmosphereController : MonoBehaviour
         if (planetGenerator == null)
             planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
 
+        gameManager = GameManager.Instance;
         // Wait for game to be ready before checking atmosphere compatibility
-        if (GameManager.Instance != null)
+        if (gameManager != null)
         {
-            GameManager.Instance.OnGameStarted += HandleGameStarted;
+            gameManager.OnGameStarted += HandleGameStarted;
         }
 
         // Don't generate mesh immediately, wait for planet to be ready
@@ -54,6 +56,7 @@ public class AtmosphereController : MonoBehaviour
     
     private void HandleGameStarted()
     {
+        if (planetGenerator == null) return;
         // Check if this planet should have an atmosphere (now that game is ready)
         if (checkPlanetTypeForAtmosphere)
         {
@@ -63,15 +66,16 @@ public class AtmosphereController : MonoBehaviour
     
     void OnDestroy()
     {
-        if (GameManager.Instance != null)
+        if (gameManager != null)
         {
-            GameManager.Instance.OnGameStarted -= HandleGameStarted;
+            gameManager.OnGameStarted -= HandleGameStarted;
         }
     }
 
     void Update()
     {
-        var grid = planetGenerator != null ? planetGenerator.Grid : null;
+        if (planetGenerator == null) return;
+        var grid = planetGenerator.Grid;
         if (grid == null || grid.TileCount == 0)
             return;
 

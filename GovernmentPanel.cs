@@ -55,8 +55,15 @@ public class GovernmentPanel : MonoBehaviour
     public void ShowForCivilization(Civilization civ)
     {
         this.civ = civ;
-        if (panelRoot != null) panelRoot.SetActive(true);
-    EnsureRuntimeUI();
+        // Use UIManager to show panel so other panels are hidden consistently
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowPanel("governmentPanel");
+        }
+        else if (panelRoot != null)
+            panelRoot.SetActive(true);
+
+        EnsureRuntimeUI();
         if (headerText != null)
             headerText.text = civ != null ? ( (civ.civData != null ? civ.civData.civName : civ.gameObject.name) + " - Government & Policies" ) : "Government & Policies";
         RefreshAll();
@@ -99,7 +106,13 @@ public class GovernmentPanel : MonoBehaviour
                     autoCloseButton = closeButton.gameObject;
                     // Ensure listener is set
                     closeButton.onClick.RemoveAllListeners();
-                    closeButton.onClick.AddListener(() => Close());
+                    closeButton.onClick.AddListener(() => {
+                        // Prefer UIManager hide so panels restore consistently
+                        if (UIManager.Instance != null) UIManager.Instance.HidePanel("governmentPanel");
+                        else Close();
+                    });
+                    // Ensure click sound wiring
+                    if (UIManager.Instance != null) UIManager.Instance.WireUIInteractions(closeButton.gameObject);
                 }
                 else
                 {
@@ -119,6 +132,8 @@ public class GovernmentPanel : MonoBehaviour
                     rt.sizeDelta = new Vector2(30, 30);
                     btn.onClick.RemoveAllListeners();
                     btn.onClick.AddListener(() => Close());
+                    // Wire click sounds for runtime-created close button
+                    if (UIManager.Instance != null) UIManager.Instance.WireUIInteractions(autoCloseButton);
                 }
         }
 
@@ -216,12 +231,23 @@ public class GovernmentPanel : MonoBehaviour
 
             if (confirmDialog != null)
                 confirmDialog.SetActive(false);
+            // Ensure dialog buttons have click sounds wired via UIManager
+            if (UIManager.Instance != null && confirmDialog != null)
+                UIManager.Instance.WireUIInteractions(confirmDialog);
         }
     }
 
     public void Hide()
     {
-        if (panelRoot != null) panelRoot.SetActive(false);
+        // Prefer using UIManager so other panels (e.g. unit info) are restored consistently
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HidePanel("governmentPanel");
+        }
+        else if (panelRoot != null)
+        {
+            panelRoot.SetActive(false);
+        }
     }
 
     public void RefreshAll()

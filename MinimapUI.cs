@@ -1,9 +1,13 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
+using Unity.Jobs;
+using Unity.Burst;
+using Unity.Collections;
 
 /// <summary>
 /// Runtime minimap for multi-planet support.
@@ -15,6 +19,41 @@ using TMPro;
 /// </summary>
 public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler
 {
+    [BurstCompile]
+    private struct LUTJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Vector3> tileCenters;
+        [ReadOnly] public NativeArray<float> sinLatArr;
+        [ReadOnly] public NativeArray<float> cosLatArr;
+        [ReadOnly] public NativeArray<float> sinLonArr;
+        [ReadOnly] public NativeArray<float> cosLonArr;
+        [ReadOnly] public int width;
+        [ReadOnly] public int height;
+        [WriteOnly] public NativeArray<int> lut;
+
+        public void Execute(int index)
+        {
+            int y = index / width;
+            int x = index % width;
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            float sinLon = sinLonArr[x];
+            float cosLon = cosLonArr[x];
+            Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat).normalized;
+            float maxDot = -2f;
+            int bestIdx = -1;
+            for (int i = 0; i < tileCenters.Length; i++)
+            {
+                float d = Vector3.Dot(dir, tileCenters[i].normalized);
+                if (d > maxDot)
+                {
+                    maxDot = d;
+                    bestIdx = i;
+                }
+            }
+            lut[index] = bestIdx;
+        }
+    }
     [Header("UI References")]
     [Tooltip("RawImage used to display the generated minimap texture")]
     public RawImage minimapImage;
@@ -50,14 +89,31 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [Header("Pre-generation Settings")]
     [SerializeField] private bool preGenerateAllMinimaps = true;
     [SerializeField] private int maxPixelsPerFrameBatch = 50000; // Process pixels in batches for better performance
+    [Header("Atlas Settings")]
+    [Tooltip("When enabled, build a per-tile color atlas (array) and use it as a fast lookup during minimap generation.")]
+    [SerializeField] private bool useTileColorAtlas = true;
+    [Tooltip("Optional compute shader to accelerate minimap generation on GPU (uses LUT + tile atlas texture).")]
+    [SerializeField] private ComputeShader minimapComputeShader;
+    [Tooltip("When true, require a compute shader for atlas-only generation; do not run CPU per-pixel fallbacks.")]
+    [SerializeField] private bool requireGPUForAtlas = true;
 
     // Private fields
     // Planet and Moon minimap caches
-    private readonly Dictionary<int, Texture2D> _minimapTextures = new();
-    private readonly Dictionary<int, Texture2D> _moonMinimapTextures = new();
+    private readonly Dictionary<int, Texture> _minimapTextures = new();
+    private readonly Dictionary<int, Texture> _moonMinimapTextures = new();
     // Fast path: per-body (planet or moon) LUT cache mapping pixel -> tile index
     // Key: P{planetIndex}_M{0|1}_W{w}_H{h}
     private static readonly Dictionary<string, int[]> _bodyIndexLUT = new();
+    // Optional per-body tile color atlas cache. Key format matches LUT keys but without resolution.
+    private static readonly Dictionary<string, Color32[]> _tileAtlasCache = new();
+    // GPU resources cache (per-resolution key)
+    private static readonly Dictionary<string, ComputeBuffer> _lutComputeBufferCache = new();
+    private static readonly Dictionary<string, RenderTexture> _gpuResultCache = new();
+    private static readonly Dictionary<string, Texture2D> _gpuAtlasTextureCache = new();
+    // CPU-side reusable buffers to avoid allocations during minimap generation
+    private static readonly Dictionary<string, Color32[]> _cpuPixelBufferCache = new();
+    private static readonly Dictionary<string, byte[]> _cpuRawBufferCache = new();
+    private static readonly Dictionary<string, Texture2D> _cpuTextureCache = new();
     private float _currentZoom = 1f;
     private Vector2 _panOffset = Vector2.zero; // For panning around the zoomed minimap
     private bool _isDragging = false;
@@ -76,6 +132,41 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
     public bool PreGenerateAll => preGenerateAllMinimaps;
 
+    // Reuse a Color32[] for the given resolution to avoid allocating per-generation
+    private Color32[] GetOrCreatePixelBuffer(int width, int height)
+    {
+        string key = $"{width}x{height}";
+        if (!_cpuPixelBufferCache.TryGetValue(key, out var buf))
+        {
+            buf = new Color32[width * height];
+            _cpuPixelBufferCache[key] = buf;
+        }
+        return buf;
+    }
+
+    // Reuse a raw byte[] sized for RGBA32 uploads
+    private byte[] GetOrCreateRawBuffer(int width, int height)
+    {
+        string key = $"{width}x{height}-raw";
+        if (!_cpuRawBufferCache.TryGetValue(key, out var buf))
+        {
+            buf = new byte[width * height * 4];
+            _cpuRawBufferCache[key] = buf;
+        }
+        return buf;
+    }
+
+    // Create a CPU Texture2D for reuse (keeps same format and settings)
+    private Texture2D CreateCpuTexture(int width, int height)
+    {
+        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+        return tex;
+    }
+
     // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
     private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
     {
@@ -86,8 +177,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var lut = new int[width * height];
 
         // Precompute trig
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
+        var sinLatArr = new NativeArray<float>(height, Allocator.TempJob);
+        var cosLatArr = new NativeArray<float>(height, Allocator.TempJob);
         for (int y = 0; y < height; y++)
         {
             float v = (y + 0.5f) / height;
@@ -95,8 +186,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             sinLatArr[y] = Mathf.Sin(latRad);
             cosLatArr[y] = Mathf.Cos(latRad);
         }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
+        var sinLonArr = new NativeArray<float>(width, Allocator.TempJob);
+        var cosLonArr = new NativeArray<float>(width, Allocator.TempJob);
         for (int x = 0; x < width; x++)
         {
             float u = (x + 0.5f) / width;
@@ -105,23 +196,39 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             cosLonArr[x] = Mathf.Cos(lonRad);
         }
 
-        for (int y = 0; y < height; y++)
+        var tileCenters = new NativeArray<Vector3>(grid.tileCenters.Length, Allocator.TempJob);
+        for (int i = 0; i < grid.tileCenters.Length; i++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            int yBase = y * width;
-            for (int x = 0; x < width; x++)
-            {
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
-                lut[yBase + x] = tileIndex;
-            }
+            tileCenters[i] = grid.tileCenters[i];
         }
+        var lutNative = new NativeArray<int>(lut.Length, Allocator.TempJob);
 
-    _bodyIndexLUT[key] = lut;
-    return lut;
+        var job = new LUTJob
+        {
+            tileCenters = tileCenters,
+            sinLatArr = sinLatArr,
+            cosLatArr = cosLatArr,
+            sinLonArr = sinLonArr,
+            cosLonArr = cosLonArr,
+            width = width,
+            height = height,
+            lut = lutNative
+        };
+
+        JobHandle handle = job.Schedule(lut.Length, 64);
+        handle.Complete();
+
+        lutNative.CopyTo(lut);
+
+        sinLatArr.Dispose();
+        cosLatArr.Dispose();
+        sinLonArr.Dispose();
+        cosLonArr.Dispose();
+        tileCenters.Dispose();
+        lutNative.Dispose();
+
+        _bodyIndexLUT[key] = lut;
+        return lut;
     }
 
     // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
@@ -162,6 +269,137 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 pixels[rightIndex] = temp;
             }
         }
+    }
+
+    // Build or fetch a compact per-tile color atlas for a body (planet or moon).
+    // Atlas layout: square texture array flattened to Color32[] where index -> tileIndex mapping is stored in parallel by tile order.
+    private Color32[] EnsureTileColorAtlas(int planetIndex, bool isMoon, SphericalHexGrid grid)
+    {
+        if (!useTileColorAtlas || grid == null) return null;
+        string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}";
+        if (_tileAtlasCache.TryGetValue(key, out var cached)) return cached;
+
+        int tileCount = grid.TileCount;
+        var atlas = new Color32[tileCount];
+
+        for (int i = 0; i < tileCount; i++)
+        {
+            var tileData = isMoon ? _gameManager.GetMoonGenerator(planetIndex)?.GetHexTileData(i) : _gameManager.GetPlanetGenerator(planetIndex)?.GetHexTileData(i);
+            if (tileData == null && TileDataHelper.Instance != null)
+            {
+                var (helperTileData, helperIsMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(i, planetIndex);
+                if (!helperIsMoon && helperTileData != null) tileData = helperTileData;
+            }
+
+            Color c;
+            if (tileData == null)
+            {
+                c = new Color(0.35f, 0.35f, 0.35f);
+            }
+            else
+            {
+                int hash = i * 9781 + 7;
+                float ox = ((hash >> 8) & 0xFF) / 255f;
+                float oy = (hash & 0xFF) / 255f;
+                float sampleU = Mathf.Repeat(0.5f + ox, 1f);
+                float sampleV = Mathf.Repeat(0.5f + oy, 1f);
+                c = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+            }
+            atlas[i] = (Color32)c;
+        }
+
+        _tileAtlasCache[key] = atlas;
+    Debug.Log($"[MinimapUI] Built tile atlas for {key} ({tileCount} tiles)");
+        return atlas;
+    }
+
+    // Convert a Color32[] atlas into a GPU Texture2D (1-row) for the compute shader
+    private Texture2D BuildAtlasTextureForGPU(Color32[] atlas, string cacheKey)
+    {
+        if (atlas == null || atlas.Length == 0) return null;
+        int w = atlas.Length;
+        if (_gpuAtlasTextureCache.TryGetValue(cacheKey, out var existing))
+        {
+            if (existing.width == w) return existing;
+            UnityEngine.Object.DestroyImmediate(existing);
+            _gpuAtlasTextureCache.Remove(cacheKey);
+        }
+        var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Point
+        };
+    // Fast upload using raw buffer to avoid temporary GC from SetPixels32
+    var raw = GetOrCreateRawBuffer(w, 1);
+    Buffer.BlockCopy(atlas, 0, raw, 0, w * 4);
+    tex.LoadRawTextureData(raw);
+    tex.Apply(false, false);
+        _gpuAtlasTextureCache[cacheKey] = tex;
+        return tex;
+    }
+
+    // Create or fetch a compute buffer for a LUT array for given key
+    private ComputeBuffer EnsureLUTComputeBuffer(string key, int[] lut)
+    {
+        if (lut == null) return null;
+        if (_lutComputeBufferCache.TryGetValue(key, out var buf))
+        {
+            if (buf.count == lut.Length) return buf;
+            buf.Release();
+            _lutComputeBufferCache.Remove(key);
+        }
+        var newBuf = new ComputeBuffer(lut.Length, sizeof(int));
+        newBuf.SetData(lut);
+        _lutComputeBufferCache[key] = newBuf;
+        return newBuf;
+    }
+
+    // Dispatch compute shader to fill a RenderTexture result. Returns a Texture2D (CPU) ready to be used by UI.
+    // Run compute shader and return the RenderTexture result (no CPU readback).
+    private RenderTexture RunComputeMinimap(int planetIndex, bool isMoon, int width, int height, int[] lut, Color32[] atlas)
+    {
+        if (minimapComputeShader == null || lut == null || atlas == null) return null;
+
+        string key = $"P{planetIndex}_M{(isMoon?1:0)}_W{width}_H{height}";
+
+        // Ensure LUT compute buffer
+        var lutBuf = EnsureLUTComputeBuffer(key, lut);
+        if (lutBuf == null) return null;
+
+        // Build atlas texture (cached)
+        string atlasKey = $"P{planetIndex}_M{(isMoon?1:0)}_ATLAS_{atlas.Length}";
+        var atlasTex = BuildAtlasTextureForGPU(atlas, atlasKey);
+        if (atlasTex == null) return null;
+
+        // Ensure result render texture
+        RenderTexture rt;
+        if (!_gpuResultCache.TryGetValue(key, out rt) || rt == null || rt.width != width || rt.height != height)
+        {
+            if (rt != null) rt.Release();
+            rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
+            {
+                enableRandomWrite = true,
+                filterMode = FilterMode.Point
+            };
+            rt.Create();
+            _gpuResultCache[key] = rt;
+        }
+
+        int kernel = minimapComputeShader.FindKernel("CSMain");
+        minimapComputeShader.SetBuffer(kernel, "_LUT", lutBuf);
+        minimapComputeShader.SetTexture(kernel, "_TileAtlas", atlasTex);
+        minimapComputeShader.SetTexture(kernel, "_Result", rt);
+        minimapComputeShader.SetInt("_Width", width);
+        minimapComputeShader.SetInt("_Height", height);
+        minimapComputeShader.SetInt("_TileCount", atlas.Length);
+
+        int tx = Mathf.CeilToInt(width / 8f);
+        int ty = Mathf.CeilToInt(height / 8f);
+        minimapComputeShader.Dispatch(kernel, tx, ty, 1);
+
+        Debug.Log($"[MinimapUI] GPU minimap generated for {key} (atlas {atlas.Length})");
+
+        return rt;
     }
 
     void Awake()
@@ -552,7 +790,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             yield break;
         }
         
-        var tileDataCache = new Dictionary<int, HexTileData>();
+    var tileDataCache = new Dictionary<int, HexTileData>();
         for (int i = 0; i < grid.TileCount; i++)
         {
             var tileData = planetGen.GetHexTileData(i);
@@ -567,8 +805,27 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
         // Precompute one representative color per tile (big speedup)
+        // Try to use a per-tile color atlas for even faster lookups
+        Color32[] tileAtlas = EnsureTileColorAtlas(planetIndex, false, grid);
+        // If compute shader and atlas present, dispatch GPU path to generate texture quickly
+        if (minimapComputeShader != null && tileAtlas != null)
+        {
+            var gpuRT = RunComputeMinimap(planetIndex, false, width, height, lut, tileAtlas);
+            if (gpuRT != null)
+            {
+                Debug.Log($"[MinimapUI] Using GPU path for planet {planetIndex}");
+                _minimapTextures[planetIndex] = gpuRT;
+                yield break;
+            }
+        }
+        if (requireGPUForAtlas && (minimapComputeShader == null || tileAtlas == null))
+        {
+            Debug.LogWarning($"[MinimapUI] requireGPUForAtlas is set but GPU path unavailable for planet {planetIndex}; skipping minimap generation.");
+            yield break;
+        }
+        Debug.Log($"[MinimapUI] Falling back to CPU path for planet {planetIndex}");
         var tileColorCache = new Dictionary<int, Color32>(tileDataCache.Count);
-        if (colorProvider != null)
+        if (tileAtlas == null && colorProvider != null)
         {
             foreach (var kv in tileDataCache)
             {
@@ -583,7 +840,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        var pixels = new Color32[width * height];
+    var pixels = GetOrCreatePixelBuffer(width, height);
         int totalPixels = width * height;
         int batchSize = Mathf.Min(maxPixelsPerFrameBatch, Mathf.Max(1, totalPixels / 20));
 
@@ -596,7 +853,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 Color32 outCol = new Color32(120, 120, 120, 255); // default gray
                 if (tileIndex >= 0)
                 {
-                    if (tileColorCache.TryGetValue(tileIndex, out var col32))
+                    if (tileAtlas != null && tileIndex < tileAtlas.Length)
+                    {
+                        outCol = tileAtlas[tileIndex];
+                    }
+                    else if (tileColorCache.TryGetValue(tileIndex, out var col32))
                     {
                         outCol = col32;
                     }
@@ -613,7 +874,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         FlipPixelsVertically(pixels, width, height);
         if (_isHorizontallyMirrored) FlipPixelsHorizontally(pixels, width, height);
-        tex.SetPixels32(pixels);
+        var rawBuf = GetOrCreateRawBuffer(width, height);
+        Buffer.BlockCopy(pixels, 0, rawBuf, 0, width * height * 4);
+        tex.LoadRawTextureData(rawBuf);
         tex.Apply(false);
     _minimapTextures[planetIndex] = tex;
     }
@@ -655,9 +918,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        // Precompute one representative color per tile
+        // Try tile atlas first
+        Color32[] tileAtlas = EnsureTileColorAtlas(planetIndex, true, grid);
+        // If the user requested atlas-only and no GPU is available, abort to avoid CPU per-pixel work
+        if (requireGPUForAtlas && (minimapComputeShader == null || tileAtlas == null))
+        {
+            Debug.LogWarning($"[MinimapUI] requireGPUForAtlas is set but GPU path unavailable for moon {planetIndex}; skipping minimap generation.");
+            yield break;
+        }
         var tileColorCache = new Dictionary<int, Color32>(tileDataCache.Count);
-        if (colorProvider != null)
+        if (tileAtlas == null && colorProvider != null)
         {
             foreach (var kv in tileDataCache)
             {
@@ -672,7 +942,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        var pixels = new Color32[width * height];
+    var pixels = GetOrCreatePixelBuffer(width, height);
         int totalPixels = width * height;
         int batchSize = Mathf.Min(maxPixelsPerFrameBatch, totalPixels / 10); // Fewer yields for moon
 
@@ -686,7 +956,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 Color32 outCol = new Color32(120, 120, 120, 255);
                 if (tileIndex >= 0)
                 {
-                    if (tileColorCache.TryGetValue(tileIndex, out var c32)) outCol = c32;
+                    if (tileAtlas != null && tileIndex < tileAtlas.Length) outCol = tileAtlas[tileIndex];
+                    else if (tileColorCache.TryGetValue(tileIndex, out var c32)) outCol = c32;
                     else if (tileDataCache.TryGetValue(tileIndex, out var td2)) outCol = (Color32)GetDefaultBiomeColour(td2.biome);
                 }
                 pixels[pixelIdx] = outCol;
@@ -697,8 +968,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         FlipPixelsVertically(pixels, width, height);
         if (_isHorizontallyMirrored) FlipPixelsHorizontally(pixels, width, height);
-        
-        tex.SetPixels32(pixels);
+        var rawBufM = GetOrCreateRawBuffer(width, height);
+        Buffer.BlockCopy(pixels, 0, rawBufM, 0, width * height * 4);
+        tex.LoadRawTextureData(rawBufM);
         tex.Apply(false);
         
     _moonMinimapTextures[planetIndex] = tex;
@@ -736,7 +1008,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileOffsetCache = new Dictionary<int, Vector2>();
-        var pixels = new Color32[width * height];
+    var pixels = GetOrCreatePixelBuffer(width, height);
 
         // Precompute UVs for sampling
         float[] vArr = new float[height];
@@ -814,8 +1086,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        tex.SetPixels32(pixels);
-        tex.Apply();
+    var rawM = GetOrCreateRawBuffer(width, height);
+    Buffer.BlockCopy(pixels, 0, rawM, 0, width * height * 4);
+    tex.LoadRawTextureData(rawM);
+    tex.Apply();
     _moonMinimapTextures[planetIndex] = tex;
     }
 
@@ -859,7 +1133,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // Precompute per-tile color cache to avoid repeated texture sampling
         var tileDataCache = new Dictionary<int, HexTileData>();
         var tileColorCache = new Dictionary<int, Color32>();
-        var pixels = new Color32[width * height];
+    var pixels = GetOrCreatePixelBuffer(width, height);
 
     // Precompute sampling UV arrays
     float[] vArr = new float[height];
@@ -938,7 +1212,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-    tex.SetPixels32(pixels);
+    var raw = GetOrCreateRawBuffer(width, height);
+        Buffer.BlockCopy(pixels, 0, raw, 0, width * height * 4);
+        tex.LoadRawTextureData(raw);
         tex.Apply();
     _minimapTextures[planetIndex] = tex;
     }
@@ -949,17 +1225,58 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [ContextMenu("Clear Minimap Cache")]
     public void ClearMinimapCache()
     {
+        // Release and destroy CPU and GPU textures safely
         foreach (var tex in _minimapTextures.Values)
         {
-            if (tex != null) DestroyImmediate(tex);
+            if (tex == null) continue;
+            if (tex is RenderTexture rt)
+            {
+                rt.Release();
+                UnityEngine.Object.DestroyImmediate(rt);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(tex);
+            }
         }
         _minimapTextures.Clear();
         foreach (var tex in _moonMinimapTextures.Values)
         {
-            if (tex != null) DestroyImmediate(tex);
+            if (tex == null) continue;
+            if (tex is RenderTexture rt)
+            {
+                rt.Release();
+                UnityEngine.Object.DestroyImmediate(rt);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(tex);
+            }
         }
         _moonMinimapTextures.Clear();
         _minimapsPreGenerated = false;
+    // Clear per-body tile atlas cache as it depends on tile data
+    _tileAtlasCache.Clear();
+        // Release GPU resources
+        foreach (var kv in _lutComputeBufferCache)
+        {
+            kv.Value?.Release();
+        }
+        _lutComputeBufferCache.Clear();
+        foreach (var kv in _gpuResultCache)
+        {
+            if (kv.Value != null)
+            {
+                kv.Value.Release();
+                UnityEngine.Object.DestroyImmediate(kv.Value);
+            }
+        }
+        _gpuResultCache.Clear();
+        foreach (var kv in _gpuAtlasTextureCache)
+        {
+            if (kv.Value != null) UnityEngine.Object.DestroyImmediate(kv.Value);
+        }
+        _gpuAtlasTextureCache.Clear();
     }
 
     private void OnDisable()
@@ -1131,7 +1448,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             {
                 if (_minimapTextures.TryGetValue(planetIndex, out var tex) && tex != null)
                 {
-                    if (minimapImage != null) minimapImage.texture = tex;
+                    if (minimapImage != null)
+                    {
+                        // If the cached texture is a GPU RenderTexture, assign it directly to the RawImage
+                        if (tex is RenderTexture rt)
+                            minimapImage.texture = rt;
+                        else
+                            minimapImage.texture = tex;
+                    }
                     SetZoom(1f);
                 }
                 else
@@ -1149,7 +1473,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             {
                 if (_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) && mtex != null)
                 {
-                    if (minimapImage != null) minimapImage.texture = mtex;
+                    if (minimapImage != null)
+                    {
+                        if (mtex is RenderTexture mrt)
+                            minimapImage.texture = mrt;
+                        else
+                            minimapImage.texture = mtex;
+                    }
                     SetZoom(1f);
                 }
                 else
@@ -1175,7 +1505,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     _minimapTextures[planetIndex] = tex;
                 }
 
-                if (minimapImage != null) minimapImage.texture = tex;
+                if (minimapImage != null)
+                {
+                    if (tex is RenderTexture rt) minimapImage.texture = rt;
+                    else minimapImage.texture = tex;
+                }
                 SetZoom(1f);
             }
             else
@@ -1186,7 +1520,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     _moonMinimapTextures[planetIndex] = mtex;
                 }
 
-                if (minimapImage != null) minimapImage.texture = mtex;
+                if (minimapImage != null)
+                {
+                    if (mtex is RenderTexture mrt) minimapImage.texture = mrt;
+                    else minimapImage.texture = mtex;
+                }
                 SetZoom(1f);
             }
         }
@@ -1194,6 +1532,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private Texture2D GenerateMoonMinimapTexture(int planetIndex)
     {
+    Debug.Log($"[MinimapUI] CPU GenerateMoonMinimapTexture called for planet {planetIndex}");
         if (_gameManager == null)
         {
             return null;
@@ -1270,13 +1609,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        tex.SetPixels32(pixels);
-        tex.Apply();
-        return tex;
+    var raw = GetOrCreateRawBuffer(width, height);
+    Buffer.BlockCopy(pixels, 0, raw, 0, width * height * 4);
+    tex.LoadRawTextureData(raw);
+    tex.Apply();
+    return tex;
     }
 
     private Texture2D GenerateMinimapTexture(int planetIndex)
     {
+    Debug.Log($"[MinimapUI] CPU GenerateMinimapTexture called for planet {planetIndex}");
         if (_gameManager == null)
         {
             return null;
@@ -1366,7 +1708,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-    tex.SetPixels32(pixels);
+    var raw = GetOrCreateRawBuffer(width, height);
+        Buffer.BlockCopy(pixels, 0, raw, 0, width * height * 4);
+        tex.LoadRawTextureData(raw);
         tex.Apply();
         return tex;
     }

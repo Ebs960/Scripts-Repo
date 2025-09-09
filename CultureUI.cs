@@ -59,6 +59,13 @@ public class CultureUI : MonoBehaviour
             Debug.LogError("CultureUI Show called with null civ");
             return;
         }
+        // Hide other panels (unit info, city, etc) when Culture UI is shown to match app conventions
+        if (UIManager.Instance != null) {
+            if (UIManager.Instance.unitInfoPanel != null)
+                UIManager.Instance.unitInfoPanel.SetActive(false);
+            if (UIManager.Instance.cityPanel != null)
+                UIManager.Instance.cityPanel.SetActive(false);
+        }
         UIManager.Instance.ShowPanel("culturePanel");
         
         if (useCustomLayout)
@@ -91,11 +98,14 @@ public class CultureUI : MonoBehaviour
         }
         cultureButtons.Clear();
 
-        if (CultureManager.Instance == null || CultureManager.Instance.allCultures == null)
+    if (CultureManager.Instance == null || CultureManager.Instance.allCultures == null)
         {
             Debug.LogError("CultureManager or its cultures not available.");
             return;
         }
+
+    // Create background first (mirror TechUI behaviour)
+    CreateCultureTreeBackground();
 
         foreach (CultureData culture in CultureManager.Instance.allCultures.OrderBy(c => c.cultureCost))
         {
@@ -106,6 +116,9 @@ public class CultureUI : MonoBehaviour
                 cultureButtonUI.Initialize(culture, this);
                 cultureButtons.Add(cultureButtonUI);
                 UpdateCultureButtonState(cultureButtonUI, culture);
+                // Ensure click sounds and UI wiring for dynamic buttons
+                if (UIManager.Instance != null)
+                    UIManager.Instance.WireUIInteractions(buttonGO);
             }
             else
             {
@@ -113,6 +126,8 @@ public class CultureUI : MonoBehaviour
                 TextMeshProUGUI buttonText = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
                 if (buttonText != null) buttonText.text = culture.cultureName;
                 if (button != null) button.onClick.AddListener(() => SelectCulture(culture));
+                if (UIManager.Instance != null)
+                    UIManager.Instance.WireUIInteractions(buttonGO);
             }
         }
         RefreshCultureButtonStates();
@@ -192,63 +207,70 @@ public class CultureUI : MonoBehaviour
     
     private void CreateBackgroundImages()
     {
+        // Replace with CreateCultureTreeBackground which mirrors TechUI's implementation
+        CreateCultureTreeBackground();
+    }
+
+    private void CreateCultureTreeBackground()
+    {
         if (backgroundData == null || cultureContent == null) return;
-        
-        // Get all backgrounds in age order
-        Sprite[] backgroundImages = backgroundData.GetAllBackgroundsInOrder();
-        
-        if (backgroundImages.Length == 0) return;
-        
+
+        // Remove any existing background container to avoid duplicates
+        var existing = cultureContent.Find("BackgroundContainer");
+        if (existing != null) Destroy(existing.gameObject);
+
         // Calculate total background width
-        float totalBackgroundWidth = backgroundData.GetTotalWidth();
+        float totalWidth = backgroundData.GetTotalWidth();
         float imageHeight = 1024f * backgroundData.backgroundScale;
-        
+
+        // Adjust content size
+        float contentWidth = Mathf.Max(totalWidth, 2000f);
+        float contentHeight = Mathf.Max(imageHeight, 1200f);
+        cultureContent.sizeDelta = new Vector2(contentWidth, contentHeight);
+
         // Create background container
         GameObject backgroundContainer = new GameObject("BackgroundContainer");
         backgroundContainer.transform.SetParent(cultureContent, false);
-        
+
         RectTransform bgRect = backgroundContainer.AddComponent<RectTransform>();
-        bgRect.anchorMin = new Vector2(0, 1); // Top-left origin
+        bgRect.anchorMin = new Vector2(0, 1);
         bgRect.anchorMax = new Vector2(0, 1);
         bgRect.pivot = new Vector2(0, 1);
-        bgRect.sizeDelta = new Vector2(totalBackgroundWidth, imageHeight);
+        bgRect.sizeDelta = new Vector2(totalWidth, imageHeight);
         bgRect.anchoredPosition = Vector2.zero;
-        
-        // Set background to render behind everything else
-        backgroundContainer.transform.SetAsFirstSibling();
-        
-        // Create individual background images for each age
+        bgRect.transform.SetAsFirstSibling(); // Behind everything
+
+        // Create age backgrounds in order
         var allAges = System.Enum.GetValues(typeof(TechAge));
         float currentX = 0f;
-        int imageIndex = 0;
-        
+
         foreach (TechAge age in allAges)
         {
             Sprite ageBackground = backgroundData.GetBackgroundForAge(age);
             if (ageBackground == null) continue;
-            
-            GameObject ageImageObj = new GameObject($"Background_{age}");
-            ageImageObj.transform.SetParent(backgroundContainer.transform, false);
-            
-            Image ageImage = ageImageObj.AddComponent<Image>();
-            ageImage.sprite = ageBackground;
-            ageImage.type = Image.Type.Sliced;
-            
-            float imageWidth = ageBackground.texture.width * backgroundData.backgroundScale;
-            
-            RectTransform ageRect = ageImage.rectTransform;
-            ageRect.anchorMin = new Vector2(0, 0);
-            ageRect.anchorMax = new Vector2(0, 1);
-            ageRect.pivot = new Vector2(0, 0.5f);
-            ageRect.sizeDelta = new Vector2(imageWidth, imageHeight);
-            ageRect.anchoredPosition = new Vector2(currentX, 0);
-            
-            currentX += imageWidth + backgroundData.imageSpacing;
-            imageIndex++;
+
+            GameObject bgImageObj = new GameObject($"Background_{age}");
+            bgImageObj.transform.SetParent(backgroundContainer.transform, false);
+
+            RectTransform imageRect = bgImageObj.AddComponent<RectTransform>();
+            imageRect.anchorMin = new Vector2(0, 1);
+            imageRect.anchorMax = new Vector2(0, 1);
+            imageRect.pivot = new Vector2(0, 1);
+
+            float ageWidth = backgroundData.GetWidthForAge(age);
+            imageRect.sizeDelta = new Vector2(ageWidth, imageHeight);
+            imageRect.anchoredPosition = new Vector2(currentX, 0);
+
+            Image bgImage = bgImageObj.AddComponent<Image>();
+            bgImage.sprite = ageBackground;
+            bgImage.type = Image.Type.Simple;
+            bgImage.raycastTarget = false;
+            bgImage.preserveAspect = true;
+
+            currentX += ageWidth + backgroundData.imageSpacing;
         }
-        
-        Debug.Log($"Created {imageIndex} age-based background images for culture tree");
     }
+
     
     private void CreateCultureNode(CultureData culture, Vector2 position)
     {
@@ -275,6 +297,9 @@ public class CultureUI : MonoBehaviour
             cultureButtonUI.Initialize(culture, this);
             cultureButtons.Add(cultureButtonUI);
             UpdateCultureButtonState(cultureButtonUI, culture);
+            // Wire click sounds for runtime-created nodes
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(buttonGO);
         }
         else
         {
@@ -283,6 +308,8 @@ public class CultureUI : MonoBehaviour
             TextMeshProUGUI buttonText = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
             if (buttonText != null) buttonText.text = culture.cultureName;
             if (button != null) button.onClick.AddListener(() => SelectCulture(culture));
+            if (UIManager.Instance != null)
+                UIManager.Instance.WireUIInteractions(buttonGO);
         }
     }
     

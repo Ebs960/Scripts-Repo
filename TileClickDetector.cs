@@ -21,6 +21,11 @@ public class TileClickDetector : MonoBehaviour
     
     [Header("Visual Feedback")]
     public GameObject tileHighlightPrefab;
+    [Header("Event Hooks")]
+    [Tooltip("Optional ScriptableObject event raised when a tile is clicked (no payload)")]
+    public GameEvent onTileClickedEvent;
+    [Tooltip("Optional ScriptableObject event raised when a tile is hovered (no payload)")]
+    public GameEvent onTileHoveredEvent;
     
     // Events for tile interactions
     public static event Action<int, Vector3, bool> OnTileClicked; // (tileIndex, worldPosition, isMoonTile)
@@ -49,6 +54,9 @@ public class TileClickDetector : MonoBehaviour
         {
             Debug.LogWarning("[TileClickDetector] GameManager not found, will not initialize properly");
         }
+
+        // Register service for other systems to reference instead of FindAnyObjectByType
+        ServiceRegistry.Register<TileClickDetector>(this);
     }
     
     private void InitializeTileDetection()
@@ -85,10 +93,13 @@ public class TileClickDetector : MonoBehaviour
             GameManager.Instance.OnGameStarted -= InitializeTileDetection;
         }
         
-        // Clear static events to prevent memory leaks
-        OnTileClicked = null;
-        OnTileHovered = null;
-        OnTileExited = null;
+    // Clear static events to prevent memory leaks
+    OnTileClicked = null;
+    OnTileHovered = null;
+    OnTileExited = null;
+
+    // Unregister service
+    ServiceRegistry.Unregister<TileClickDetector>();
     }
     
     void Update()
@@ -121,6 +132,7 @@ public class TileClickDetector : MonoBehaviour
                     Debug.Log($"[TileClickDetector] Tile Data - Biome: {tileData.biome}, Elevation: {tileData.elevation:F2}");
 
                 OnTileClicked?.Invoke(tileIndex, hitInfo.tileTransform.position, hitInfo.isMoon);
+                onTileClickedEvent?.Raise();
 
                 if (tileHighlightPrefab != null)
                 {
@@ -155,6 +167,7 @@ public class TileClickDetector : MonoBehaviour
                 lastHoverWasMoon = hitInfo.isMoon;
 
                 OnTileHovered?.Invoke(tileIndex, hitInfo.tileTransform.position, hitInfo.isMoon);
+                    onTileHoveredEvent?.Raise();
 
                 if (tileHighlightPrefab != null)
                 {
@@ -182,6 +195,28 @@ public class TileClickDetector : MonoBehaviour
                     currentHighlight.SetActive(false);
             }
         }
+    }
+
+    /// <summary>
+    /// Public API for other systems to perform the canonical tile raycast and hit resolution.
+    /// Returns the same tuple as internal GetMouseHitInfo but for an arbitrary screen point.
+    /// </summary>
+    public (bool hit, int tileIndex, Transform tileTransform, bool isMoon) PerformTileRaycast(Vector2 screenPoint)
+    {
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+
+        Ray ray = mainCamera.ScreenPointToRay(screenPoint);
+        if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, tileRaycastMask))
+        {
+            TileIndexHolder holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
+            if (holder != null)
+            {
+                bool isMoonTile = moonGenerator != null && IsPartOfObject(holder.transform, moonGenerator.transform);
+                return (true, holder.tileIndex, holder.transform, isMoonTile);
+            }
+        }
+        return (false, -1, null, false);
     }
     
     /// <summary>

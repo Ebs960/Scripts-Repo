@@ -92,8 +92,8 @@ public class ReligionManager : MonoBehaviour
                 // Check if this tile has a Holy Site
                 if (tileData.HasHolySite)
                 {
-                    // Add pressure to this tile
-                    AddPressureToTile(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
+                    // Add pressure to this tile via TileDataHelper
+                    TileDataHelper.Instance.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
                     
                     // Spread pressure to nearby tiles
                     SpreadPressure(tileIndex, civ.foundedReligion);
@@ -142,21 +142,7 @@ public class ReligionManager : MonoBehaviour
     /// <summary>
     /// Adds religious pressure to a specific tile
     /// </summary>
-    private void AddPressureToTile(int tileIndex, ReligionData religion, float pressureAmount)
-    {
-        if (planetGenerator == null || religion == null)
-            return;
-            
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-        if (tileData == null)
-            return;
-            
-        // Add pressure to the tile
-        tileData.religionStatus.AddPressure(religion, pressureAmount);
-        
-        // Update the tile data
-        TileDataHelper.Instance.SetTileData(tileIndex, tileData);
-    }
+    // Note: religion writes are now centralized via TileDataHelper.AddReligionPressure
     
     /// <summary>
     /// Spreads religious pressure from a Holy Site to nearby tiles
@@ -177,13 +163,13 @@ public class ReligionManager : MonoBehaviour
             var (currentIndex, currentDist) = queue.Dequeue();
 
             if (currentDist > 0) // Don't apply pressure to the source tile itself
-            {
-                 float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
-                 if (pressure > 0)
                  {
-                    AddPressureToTile(currentIndex, religion, pressure);
+                     float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
+                     if (pressure > 0)
+                     {
+                        TileDataHelper.Instance.AddReligionPressure(currentIndex, religion, pressure);
+                     }
                  }
-            }
 
             if (currentDist < maxPressureSpreadDistance)
             {
@@ -307,7 +293,7 @@ public class ReligionManager : MonoBehaviour
         // Get all tiles within city radius
         var tiles = GetTilesInRadius(city.centerTileIndex, city.TerritoryRadius);
         
-        // Count total pressure for each religion
+        // Count total pressure for each religion (using serializable pressure list)
         Dictionary<ReligionData, float> religionPressures = new Dictionary<ReligionData, float>();
         
         foreach (int tileIndex in tiles)
@@ -315,17 +301,15 @@ public class ReligionManager : MonoBehaviour
             var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
             if (tileData == null)
                 continue;
-                
-            // If tile has religion pressure, add it to totals
-            if (tileData.religionStatus.religionPressures != null)
+
+            var pressures = tileData.religionStatus.pressures;
+            if (pressures == null) continue;
+
+            foreach (var entry in pressures)
             {
-                foreach (var kvp in tileData.religionStatus.religionPressures)
-                {
-                    if (!religionPressures.ContainsKey(kvp.Key))
-                        religionPressures[kvp.Key] = 0f;
-                        
-                    religionPressures[kvp.Key] += kvp.Value;
-                }
+                if (entry.religion == null) continue;
+                if (!religionPressures.ContainsKey(entry.religion)) religionPressures[entry.religion] = 0f;
+                religionPressures[entry.religion] += entry.pressure;
             }
         }
         
