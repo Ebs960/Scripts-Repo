@@ -157,9 +157,9 @@ public class TransportUIManager : MonoBehaviour
             
         // Find unit on this tile
         GameObject unitObj = null;
-        // Use GameManager API for multi-planet support
-        MoonGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
-        PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+    // Use GameManager API for multi-planet support
+    PlanetGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
+    PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         
         var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
         
@@ -307,8 +307,8 @@ public class TransportUIManager : MonoBehaviour
         foreach (int tileIndex in tilesToCheck)
         {
                     // Use GameManager API for multi-planet support
-        PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-        MoonGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
+    PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+    PlanetGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
             
             GameObject unitObj = null;
             var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);

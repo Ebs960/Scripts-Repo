@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
     public GameObject planetGeneratorPrefab;
     [Tooltip("Generic planet prefab for non-Earth planets (Mars, Venus, etc.)")]
     public GameObject genericPlanetPrefab;
-    [Tooltip("MoonGenerator prefab to instantiate - assign 'New Map Shit/Moon.prefab'")]
+    [Tooltip("Moon prefab (PlanetGenerator) to instantiate - assign 'New Map Shit/Moon.prefab'")]
     public GameObject moonGeneratorPrefab;
 
     [Header("Manager Prefabs")]
@@ -68,7 +68,7 @@ public class GameManager : MonoBehaviour
 
     [Header("References")]
     public PlanetGenerator planetGenerator;
-    public MoonGenerator moonGenerator;
+    public PlanetGenerator moonGenerator;
     public CivilizationManager civilizationManager;
     public ClimateManager climateManager;
     public DiplomacyManager diplomacyManager;
@@ -83,7 +83,7 @@ public class GameManager : MonoBehaviour
 
     // Multi-planet storage
     private Dictionary<int, PlanetGenerator> planetGenerators = new Dictionary<int, PlanetGenerator>();
-    private Dictionary<int, MoonGenerator> moonGenerators = new Dictionary<int, MoonGenerator>();
+    private Dictionary<int, PlanetGenerator> moonGenerators = new Dictionary<int, PlanetGenerator>();
     private Dictionary<int, CivilizationManager> planetCivManagers = new Dictionary<int, CivilizationManager>();
     private Dictionary<int, PlanetData> planetData = new Dictionary<int, PlanetData>();
     
@@ -97,7 +97,7 @@ public class GameManager : MonoBehaviour
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
-    public MoonGenerator GetMoonGenerator(int planetIndex) => moonGenerators.TryGetValue(planetIndex, out var moon) ? moon : null;
+    public PlanetGenerator GetMoonGenerator(int planetIndex) => moonGenerators.TryGetValue(planetIndex, out var moon) ? moon : null;
     public ClimateManager GetClimateManager(int planetIndex) => ClimateManager.Instance;
     public Dictionary<int, PlanetData> GetPlanetData() => planetData;
     
@@ -125,7 +125,7 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Get the currently active moon generator (multi-planet aware)
     /// </summary>
-    public MoonGenerator GetCurrentMoonGenerator()
+    public PlanetGenerator GetCurrentMoonGenerator()
     {
         if (enableMultiPlanetSystem)
         {
@@ -759,83 +759,55 @@ public class GameManager : MonoBehaviour
             Debug.LogError("PlanetGenerator prefab is not assigned in GameManager!");
         }
 
-        // Instantiate MoonGenerator from prefab if moon generation is enabled
-        if (generateMoon && moonGeneratorPrefab != null)
-        {
-            GameObject moonGO = Instantiate(moonGeneratorPrefab);
-            moonGenerator = moonGO.GetComponent<MoonGenerator>();
-
-            // Position the moon away from the planet
-            moonGO.transform.position = new Vector3(15f, 40f, 0f); // offset position
-
-            if (moonGenerator != null)
-            {
-                // Configure moon generator with reduced subdivisions proportional to size
-                GetMapSizeParams(mapSize, out int planetSubdivisions, out float planetRadius);
-                float moonRadius = planetRadius / 2.5f;
-
-                // Scale moon subdivisions: since radius is 1/5th, reduce subdivisions by 2 levels
-                // This gives approximately 1/5th the tile count
-                int moonSubdivisions = Mathf.Max(2, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
-
-                // Assign loading panel controller if present
-                var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-                if (loadingPanelController != null)
-                {
-                    moonGenerator.SetLoadingPanel(loadingPanelController);
-                }
-
-                // Configure moon with correct radius and reduced subdivisions
-                moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
-
-                Debug.Log($"[GameManager] Moon configured with subdivisions: {moonSubdivisions} (planet: {planetSubdivisions}), radius: {moonRadius:F1} (planet: {planetRadius:F1})");
-
-                // No more hexasphereRenderer setup needed for moon
-
-                // Notify TileDataHelper of the new generator
-                if (TileDataHelper.Instance != null)
-                {
-                    TileDataHelper.Instance.UpdateReferences();
-                }
-            }
-            else
-            {
-                Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
-            }
-        }
+        // Instantiate moon generator (separated into its own method)
+        InstantiateMoonGenerator();
     }
 
     /// <summary>
-    /// Starts a new game with current settings
+    /// Instantiate and configure the moon generator from prefab (if enabled)
     /// </summary>
-    public IEnumerator StartNewGame()
+    private void InstantiateMoonGenerator()
     {
-        Debug.Log("[GameManager] StartNewGame called");
-        
-        // Reset manager initialization flag for new game
-        _managersInitialized = false;
-        Debug.Log("[GameManager] Reset manager initialization flag for new game");
-        
-        // Reset ResourceManager if it exists
-        if (ResourceManager.Instance != null)
+        if (!generateMoon || moonGeneratorPrefab == null)
+            return;
+
+        GameObject moonGO = Instantiate(moonGeneratorPrefab);
+    // Prefer PlanetGenerator component on moon prefab; fallback to an older moon component if necessary
+        var pg = moonGO.GetComponent<PlanetGenerator>();
+        if (pg == null)
         {
-            ResourceManager.Instance.ResetForNewGame();
+            var mg = moonGO.GetComponent<PlanetGenerator>();
+            if (mg != null)
+            {
+                pg = mg;
+            }
         }
 
-        Debug.Log($"[GameManager] StartNewGame - enableMultiPlanetSystem: {enableMultiPlanetSystem}");
-        
-        if (enableMultiPlanetSystem)
+        // Position the moon away from the planet
+        moonGO.transform.position = new Vector3(15f, 40f, 0f);
+
+        if (pg != null)
         {
-            Debug.Log("[GameManager] Using multi-planet game mode");
-            yield return StartCoroutine(StartMultiPlanetGame());
+            GetMapSizeParams(mapSize, out int planetSubdivisions, out float planetRadius);
+            float moonRadius = planetRadius / 2.5f;
+            int moonSubdivisions = Mathf.Max(2, planetSubdivisions - 2);
+
+            var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
+            if (loadingPanelController != null)
+                pg.SetLoadingPanel(loadingPanelController);
+
+            pg.ConfigureMoon(moonSubdivisions, moonRadius);
+            moonGenerator = pg;
+
+            if (TileDataHelper.Instance != null)
+                TileDataHelper.Instance.UpdateReferences();
+
+            Debug.Log($"[GameManager] Moon configured with subdivisions: {moonSubdivisions} (planet: {planetSubdivisions}), radius: {moonRadius:F1} (planet: {planetRadius:F1})");
         }
         else
         {
-            Debug.Log("[GameManager] Using single-planet game mode");
-            yield return StartCoroutine(StartSinglePlanetGame());
+            Debug.LogError("Moon prefab does not contain a PlanetGenerator (or compatible) component.");
         }
-
-        yield return null;
     }
 
     /// <summary>
@@ -1326,9 +1298,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private MoonGenerator CreateMoonForPlanet(int planetIndex, PlanetGenerator generator, string bodyName)
+    private PlanetGenerator CreateMoonForPlanet(int planetIndex, PlanetGenerator generator, string bodyName)
     {
-        MoonGenerator moonGen = null;
+        PlanetGenerator moonGen = null;
 
         switch (bodyName)
         {
@@ -1341,7 +1313,13 @@ public class GameManager : MonoBehaviour
                         moonGO.name = $"Planet_{planetIndex}_Moon";
                         moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
 
-                        moonGen = moonGO.GetComponent<MoonGenerator>();
+                        // Prefer PlanetGenerator on the prefab; if missing, add one
+                        moonGen = moonGO.GetComponent<PlanetGenerator>();
+                        if (moonGen == null)
+                        {
+                            moonGen = moonGO.AddComponent<PlanetGenerator>();
+                        }
+
                         if (moonGen != null)
                         {
                             float moonRadius = generator.radius / 2.5f;
@@ -1355,16 +1333,16 @@ public class GameManager : MonoBehaviour
                         }
                         else
                         {
-                            Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
+                            Debug.LogError("Failed to create PlanetGenerator on moon prefab!");
                         }
                     }
                     else
                     {
-                        Debug.LogWarning($"[GameManager] moonGeneratorPrefab is NULL for Earth! Creating basic MoonGenerator.");
+                        Debug.LogWarning($"[GameManager] moonGeneratorPrefab is NULL for Earth! Creating basic PlanetGenerator.");
                         GameObject moonGO = new GameObject($"Planet_{planetIndex}_Moon");
                         moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
                         
-                        moonGen = moonGO.AddComponent<MoonGenerator>();
+                        moonGen = moonGO.AddComponent<PlanetGenerator>();
                         float moonRadius = generator.radius / 2.5f;
                         int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
 
@@ -1377,7 +1355,6 @@ public class GameManager : MonoBehaviour
                 }
                 break;
 
-            // Future moons for other bodies can be handled here
             default:
                 break;
         }

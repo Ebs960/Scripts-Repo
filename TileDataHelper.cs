@@ -11,13 +11,13 @@ public class TileDataHelper : MonoBehaviour
 
     [Header("Single Planet References (Legacy)")]
     private PlanetGenerator planet;
-    private MoonGenerator moon;
+    private PlanetGenerator moon;
     
     [Header("Multi-Planet System")]
     [Tooltip("Dictionary of planet generators for multi-planet system")]
     private Dictionary<int, PlanetGenerator> planets = new Dictionary<int, PlanetGenerator>();
     [Tooltip("Dictionary of moon generators for multi-planet system")]
-    private Dictionary<int, MoonGenerator> moons = new Dictionary<int, MoonGenerator>();
+    private Dictionary<int, PlanetGenerator> moons = new Dictionary<int, PlanetGenerator>();
 
     private Dictionary<int, CachedTileData> tileDataCache = new();
     // Planet-aware cache to avoid cross-planet collisions when the same tileIndex exists on multiple planets
@@ -48,8 +48,8 @@ public class TileDataHelper : MonoBehaviour
 
     public void UpdateReferences()
     {
-        planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
-        moon = GameManager.Instance?.moonGenerator ?? FindAnyObjectByType<MoonGenerator>();
+    planet = GameManager.Instance?.planetGenerator ?? FindAnyObjectByType<PlanetGenerator>();
+    moon = GameManager.Instance?.moonGenerator ?? FindAnyObjectByType<PlanetGenerator>();
         
         // Update multi-planet references
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
@@ -72,7 +72,7 @@ public class TileDataHelper : MonoBehaviour
     /// <summary>
     /// Register a moon generator for multi-planet support
     /// </summary>
-    public void RegisterMoon(int planetIndex, MoonGenerator moonGen)
+    public void RegisterMoon(int planetIndex, PlanetGenerator moonGen)
     {
         moons[planetIndex] = moonGen;
         Debug.Log($"[TileDataHelper] Registered moon for planet {planetIndex}");

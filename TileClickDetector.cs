@@ -10,7 +10,7 @@ public class TileClickDetector : MonoBehaviour
     [Header("References")]
     public Camera mainCamera; // Assign in inspector or auto-detect
     public PlanetGenerator planetGenerator; // Assign in inspector or auto-detect
-    public MoonGenerator moonGenerator; // Optional - for moon tile clicks
+    public PlanetGenerator moonGenerator; // Optional - for moon tile clicks (now uses PlanetGenerator as moon)
     
     [Header("Settings")]
     [Tooltip("Maximum raycast distance")]

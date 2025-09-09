@@ -1543,6 +1543,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
+    /// <summary>
+    /// Configure this generator to act as a moon: set subdivisions and radius and generate the grid.
+    /// This provides compatibility for previous MoonGenerator.ConfigureMoon calls.
+    /// </summary>
+    public void ConfigureMoon(int subdivisions, float radius)
+    {
+        this.subdivisions = subdivisions;
+        this.radius = radius;
+        if (grid != null)
+        {
+            grid.GenerateFromSubdivision(subdivisions, radius);
+        }
+        Debug.Log($"[PlanetGenerator] Configured as moon with subdivisions={subdivisions}, radius={radius}");
+    }
+
 
 
     /// <summary>

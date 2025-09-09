@@ -9,7 +9,7 @@ public class UnitMovementController : MonoBehaviour
     public static UnitMovementController Instance { get; private set; }
     private SphericalHexGrid grid;
     private PlanetGenerator planet;
-    private MoonGenerator moon;
+    private PlanetGenerator moon;
     
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 10f;
@@ -47,7 +47,7 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Set references from GameManager after generators are created
     /// </summary>
-    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, MoonGenerator moonGen)
+    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, PlanetGenerator moonGen)
     {
         grid = icoGrid;
         planet = planetGen;
