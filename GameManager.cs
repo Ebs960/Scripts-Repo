@@ -813,6 +813,18 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Start single planet game (original behavior)
     /// </summary>
+    /// <summary>
+    /// Public compatibility shim used by external initializers.
+    /// Calls the appropriate start coroutine depending on single vs multi-planet mode.
+    /// </summary>
+    public IEnumerator StartNewGame()
+    {
+        if (enableMultiPlanetSystem)
+            yield return StartCoroutine(StartMultiPlanetGame());
+        else
+            yield return StartCoroutine(StartSinglePlanetGame());
+    }
+
     private IEnumerator StartSinglePlanetGame()
     {
         Debug.Log("[GameManager] StartNewGame coroutine started.");
