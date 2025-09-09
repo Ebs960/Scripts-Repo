@@ -217,22 +217,7 @@ public class ResourceManager : MonoBehaviour
 
                 if (Random.value <= rd.spawnChance)
                 {
-                    Vector3 pos = TileDataHelper.Instance.GetTileCenterFromPlanet(idx, planetIndex);
-                    
-                    // Use object pooling if available
-                    GameObject go = SimpleObjectPool.Instance != null 
-                        ? SimpleObjectPool.Instance.Get(rd.prefab, pos, Quaternion.identity)
-                        : Instantiate(rd.prefab, pos, Quaternion.identity);
-                        
-                    var inst = go.AddComponent<ResourceInstance>();
-                    inst.data = rd;
-                    inst.tileIndex = idx;
-                    spawnedResources.Add(inst);
-
-                    // Mirror into the tile data
-                    tileData.resource = rd;
-                    TileDataHelper.Instance.SetTileDataOnPlanet(idx, tileData, planetIndex);
-                    
+                    SpawnResourceInstance(rd, idx, planetIndex);
                     resourcesSpawned++;
                 }
             }
@@ -322,7 +307,7 @@ public class ResourceManager : MonoBehaviour
     }
 
     // Method to spawn a resource instance
-   private void SpawnResourceInstance(ResourceData resource, int tileIndex)
+    private void SpawnResourceInstance(ResourceData resource, int tileIndex, int planetIndex)
     {
         if (resource == null) return;
 
@@ -332,22 +317,25 @@ public class ResourceManager : MonoBehaviour
 
         if (grid == null) return;
 
-        // Get the position for the resource
-        Vector3 position = TileDataHelper.Instance.GetTileCenter(tileIndex);
+        // Get the position for the resource on the specified planet
+        Vector3 position = TileDataHelper.Instance.GetTileCenterFromPlanet(tileIndex, planetIndex);
 
-        // Instantiate the resource prefab at the tile position
-        var go = Instantiate(resource.prefab, position, Quaternion.identity);
-        var inst = go.AddComponent<ResourceInstance>();
+        // Use object pooling if available
+        GameObject go = SimpleObjectPool.Instance != null
+            ? SimpleObjectPool.Instance.Get(resource.prefab, position, Quaternion.identity)
+            : Instantiate(resource.prefab, position, Quaternion.identity);
+
+        var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
         inst.data = resource;
         inst.tileIndex = tileIndex;
         spawnedResources.Add(inst);
 
         // Update the tile data to reflect the new resource
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+        var (tileData, _) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
         if (tileData != null)
         {
             tileData.resource = resource;
-            TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+            TileDataHelper.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
         }
     }
 }
