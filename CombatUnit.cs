@@ -663,39 +663,21 @@ public class CombatUnit : MonoBehaviour
     // Only land units can move on land, naval on water
     public bool CanMoveTo(int tileIndex)
     {
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if(tileData == null || !tileData.isPassable) return false;
         
-        // Special case for Moon: ONLY spaceships with canTravelToMoon flag can go there
-        if (isMoonTile)
+        // Regular planet rules: water check for naval units
+        if (!tileData.isLand)
         {
-            bool isSpaceshipWithMoonAccess = data.unitType == CombatCategory.Spaceship && data.canTravelToMoon;
-            
-            if (!isSpaceshipWithMoonAccess)
-                return false;
-                
-            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
-            
-            if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
-                return false;
-                
-            return true;
-        }
-        else
-        {
-            // Regular planet rules: water check for naval units
-            if (!tileData.isLand)
+            switch (data.unitType)
             {
-                switch (data.unitType)
-                {
-                    case CombatCategory.Ship:
-                    case CombatCategory.Boat:
-                    case CombatCategory.Submarine:
-                    case CombatCategory.SeaCrawler:
-                        break;
-                    default:
-                        return false;
-                }
+                case CombatCategory.Ship:
+                case CombatCategory.Boat:
+                case CombatCategory.Submarine:
+                case CombatCategory.SeaCrawler:
+                    break;
+                default:
+                    return false;
             }
         }
 
@@ -709,21 +691,20 @@ public class CombatUnit : MonoBehaviour
 
     public void MoveAlongPath(List<int> path)
     {
-        var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(path[0]);
         SphericalHexGrid currentGrid = grid;
 
         foreach (int idx in path)
         {
-            var (currentTileData, _) = TileDataHelper.Instance.GetTileData(idx);
+            var currentTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
 
             int cost = BiomeHelper.GetMovementCost(currentTileData, this);
             currentMovePoints -= cost;
 
-            Vector3 pos = currentGrid.tileCenters[idx];
+            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenter(idx) : currentGrid.tileCenters[idx];
             transform.position = pos;
 
             // Update tile occupancy
-            TileDataHelper.Instance.SetTileOccupant(idx, gameObject);
+            if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(idx, gameObject);
             
             currentTileIndex = idx;
         }
@@ -779,7 +760,7 @@ public class CombatUnit : MonoBehaviour
 
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(target.currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(target.currentTileIndex) : null;
         if (tileData != null)
         {
             tileBonus = BiomeHelper.GetDefenseBonus(tileData.biome);
@@ -875,7 +856,7 @@ public class CombatUnit : MonoBehaviour
         if (owner != null && owner.isPlayerControlled && UIManager.Instance != null)
         {
             // Get tile data to show biome in notification
-            var (tileDataForNotification, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+            var tileDataForNotification = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
             if (tileDataForNotification != null)
             {
                 UIManager.Instance.ShowNotification($"{data.unitName} took {damageAmount} damage from {tileDataForNotification.biome} terrain!");
@@ -945,7 +926,7 @@ public class CombatUnit : MonoBehaviour
         
         if (currentTileIndex >= 0)
         {
-            TileDataHelper.Instance.ClearTileOccupant(currentTileIndex);
+            if (TileSystem.Instance != null) TileSystem.Instance.ClearTileOccupant(currentTileIndex);
         }
         
         if (unitLabelInstance != null)
@@ -969,7 +950,7 @@ public class CombatUnit : MonoBehaviour
         OnAnimationTrigger?.Invoke("attack");
 
         int tileBonus = 0;
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(attacker.currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(attacker.currentTileIndex) : null;
         if (tileData != null)
         {
             tileBonus = BiomeHelper.GetDefenseBonus(tileData.biome);
@@ -1030,7 +1011,7 @@ public class CombatUnit : MonoBehaviour
         // Include tile-based improvement defense modifiers
         if (currentTileIndex >= 0)
         {
-            var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
             if (tileData != null)
             {
                 val += tileData.improvementDefenseAddCombat;
@@ -1083,7 +1064,7 @@ public class CombatUnit : MonoBehaviour
     {
         if (grid == null) return;
 
-        int[] neighbours = grid.neighbors[currentTileIndex].ToArray();
+        int[] neighbours = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : grid.neighbors[currentTileIndex].ToArray();
         if (neighbours == null || neighbours.Length == 0) return;
 
         // Build a list of viable tiles we can move to
@@ -1231,7 +1212,7 @@ public class CombatUnit : MonoBehaviour
         }
         
         // Get the extruded center of the tile in world space on Earth
-        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, 0f, 0); // Force Earth (planet index 0)
+    Vector3 tileSurfaceCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0f, 0) : Vector3.zero; // Force Earth (planet index 0)
         
         // Set unit position directly on the surface
         transform.position = tileSurfaceCenter;
@@ -1340,7 +1321,7 @@ public class CombatUnit : MonoBehaviour
         if (currentTileIndex < 0) return;
         
         // Get tile data
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
         if (tileData == null) return;
         
         // Check if the biome can cause damage
@@ -1387,18 +1368,15 @@ public class CombatUnit : MonoBehaviour
     private int CountAdjacentAllies(int tileIndex)
     {
         int count = 0;
-        var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return 0;
 
-        SphericalHexGrid currentGrid = grid;
-        if (currentGrid == null) return 0;
-
-        int[] neighbours = TileDataHelper.Instance.GetTileNeighbors(tileIndex);
+        int[] neighbours = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : null;
         if (neighbours != null)
         {
             foreach (int idx in neighbours)
             {
-                var (neighborTileData, _) = TileDataHelper.Instance.GetTileData(idx);
+                var neighborTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
                 if (neighborTileData != null)
                 {
                     // Get the GameObject from the occupantId
@@ -1452,9 +1430,7 @@ public class CombatUnit : MonoBehaviour
         }
         else
         {
-            var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-            SphericalHexGrid currentGrid = grid;
-            int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(currentTileIndex);
+            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : null;
             foreach (int neighbor in neighbors)
             {
                 if (unit.currentTileIndex == neighbor)
@@ -1505,9 +1481,7 @@ public class CombatUnit : MonoBehaviour
         }
         else
         {
-            var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-            SphericalHexGrid currentGrid = grid;
-            int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(currentTileIndex);
+            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : null;
             foreach (int neighbor in neighbors)
             {
                 if (targetTileIndex == neighbor)
@@ -1535,13 +1509,12 @@ public class CombatUnit : MonoBehaviour
         
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
-        var (targetTileData, isTargetMoon) = TileDataHelper.Instance.GetTileData(targetTileIndex);
-        SphericalHexGrid targetGrid = grid;
-        unit.transform.position = targetGrid.tileCenters[targetTileIndex];
+    var targetTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(targetTileIndex) : null;
+    unit.transform.position = (TileSystem.Instance != null ? TileSystem.Instance.GetTileCenter(targetTileIndex) : (grid != null ? grid.tileCenters[targetTileIndex] : unit.transform.position));
         unit.currentTileIndex = targetTileIndex;
         
         // Update tile occupancy
-        TileDataHelper.Instance.SetTileOccupant(targetTileIndex, unit.gameObject);
+    if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(targetTileIndex, unit.gameObject);
 
     // Trigger trap if unloading onto a trapped tile
     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
@@ -1976,20 +1949,20 @@ public class CombatUnit : MonoBehaviour
 
     private bool HasEnemyAdjacent()
     {
-        if (TileDataHelper.Instance == null) return false;
+        if (TileSystem.Instance == null) return false;
         if (currentTileIndex < 0) return false;
 
         // Check this tile and neighbours for enemy occupants
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        var tileData = TileSystem.Instance.GetTileData(currentTileIndex);
         if (tileData == null) return false;
 
         List<int> tilesToCheck = new List<int> { currentTileIndex };
-        var neighbours = TileDataHelper.Instance.GetTileNeighbors(currentTileIndex);
+        var neighbours = TileSystem.Instance.GetNeighbors(currentTileIndex);
         if (neighbours != null) tilesToCheck.AddRange(neighbours);
 
         foreach (int idx in tilesToCheck)
         {
-            var (tdata, _) = TileDataHelper.Instance.GetTileData(idx);
+            var tdata = TileSystem.Instance.GetTileData(idx);
             if (tdata == null) continue;
             if (tdata.occupantId == 0) continue;
             var obj = UnitRegistry.GetObject(tdata.occupantId);

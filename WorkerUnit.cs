@@ -645,7 +645,7 @@ public class WorkerUnit : MonoBehaviour
             // Include tile-based improvement defense modifiers for workers
             if (currentTileIndex >= 0)
             {
-                var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+                        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
                 if (tileData != null)
                 {
                     valF += tileData.improvementDefenseAddWorker;
@@ -890,10 +890,7 @@ public class WorkerUnit : MonoBehaviour
         currentTileIndex = tileIndex;
         
         // Update the unit's transform position with proper surface orientation
-        if (grid != null)
-        {
             PositionUnitOnSurface(grid, tileIndex);
-        }
     }
 
     /// <summary>
@@ -906,7 +903,7 @@ public class WorkerUnit : MonoBehaviour
     {
         // FIXED: For civilization units, always use Earth (planet index 0)
         // Get the extruded center of the tile in world space on Earth
-        Vector3 tileSurfaceCenter = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, 0f, 0); // Force Earth (planet index 0)
+    Vector3 tileSurfaceCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0f, 0) : transform.position; // Force Earth (planet index 0)
         
         // Set unit position directly on the surface
         transform.position = tileSurfaceCenter;
@@ -946,7 +943,7 @@ public class WorkerUnit : MonoBehaviour
 
     public bool CanBuild(ImprovementData imp, int tileIndex)
     {
-    var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
     if (tileData == null) return false;
 
     // Use civ helper to respect obsolescence filtering
@@ -982,7 +979,7 @@ public class WorkerUnit : MonoBehaviour
         if (!unitData.AreRequirementsMet(owner)) return false;
         if (!LimitManager.Instance.CanCreateCombatUnit(owner, unitData)) return false;
 
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
         if (!tileData.isLand) return false; // simple rule for now
         if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID()) return false;
@@ -1005,7 +1002,7 @@ public class WorkerUnit : MonoBehaviour
         if (!workerData.AreRequirementsMet(owner)) return false;
         if (!LimitManager.Instance.CanCreateWorkerUnit(owner, workerData)) return false;
 
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
         if (!tileData.isLand) return false;
         if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID()) return false;
@@ -1150,9 +1147,9 @@ public class WorkerUnit : MonoBehaviour
     // City-cap gate: nomads cannot settle until tech raises cap
     if (!owner.CanFoundMoreCities()) return false;
 
-        // Basic check: is the tile land and not occupied by another city?
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-        if (tileData == null || !tileData.isLand) return false;
+    // Basic check: is the tile land and not occupied by another city?
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+    if (tileData == null || !tileData.isLand) return false;
 
         // More robust check: is there another city (owned by anyone) too close?
         // Let's define a minimum distance between cities.
@@ -1225,7 +1222,7 @@ public class WorkerUnit : MonoBehaviour
         // Clean up any references or occupancy
         if (currentTileIndex >= 0)
         {
-            TileDataHelper.Instance.ClearTileOccupant(currentTileIndex);
+                TileSystem.Instance?.ClearTileOccupant(currentTileIndex);
         }
         
         // Destroy the GameObject with a delay for death animation
@@ -1248,7 +1245,7 @@ public class WorkerUnit : MonoBehaviour
     {
         var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex);
         if (path == null || path.Count == 0) return;
-        StopAllCoroutines();
+        StopAllCoroutines(); 
         StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
     }
 
@@ -1287,10 +1284,10 @@ public class WorkerUnit : MonoBehaviour
             if (assigned)
             {
                 // Prefer improvement jobs first
-                var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
                 if (tileData != null && tileData.improvement != null)
                 {
-                    ContributeWork();
+                        ContributeWork();
                 }
                 else
                 {
@@ -1316,8 +1313,8 @@ public class WorkerUnit : MonoBehaviour
         if (currentTileIndex < 0) return;
         
         // Get tile data
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
-        if (tileData == null) return;
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+    if (tileData == null) return;
         
         // Check if the biome can cause damage
         if (BiomeHelper.IsDamagingBiome(tileData.biome))
@@ -1363,32 +1360,11 @@ public class WorkerUnit : MonoBehaviour
 
     public bool CanMoveTo(int tileIndex)
     {
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-        if (tileData == null || !tileData.isPassable) return false;
-        
-        // Special case for moon tiles: workers can move freely on moon
-        if (isMoonTile)
-        {
-            // Get movement cost
-            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
-            
-            // occupant check
-            if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
-                return false;
-                
-            return true;
-        }
-        
-        // For planet tiles: must be land
-        if (!tileData.isLand) return false;
-        
-        // Check movement points
-            if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
-        
-        // occupant check
-        if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
-            return false;
-            
+        var td = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        if (td == null || !td.isPassable) return false;
+        if (!td.isLand) return false;
+        if (currentMovePoints < BiomeHelper.GetMovementCost(td, this)) return false;
+        if (td.occupantId != 0 && td.occupantId != gameObject.GetInstanceID()) return false;
         return true;
     }
 
@@ -1455,11 +1431,11 @@ public class WorkerUnit : MonoBehaviour
     private int CountAdjacentAllies(int tileIndex)
     {
         int count = 0;
-        var neighbours = TileDataHelper.Instance.GetTileNeighbors(tileIndex);
+        var neighbours = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : null;
         if (neighbours == null) return 0;
         foreach (int idx in neighbours)
         {
-            var (tdata, _) = TileDataHelper.Instance.GetTileData(idx);
+            var tdata = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
             if (tdata == null) continue;
             if (tdata.occupantId == 0) continue;
             var obj = UnitRegistry.GetObject(tdata.occupantId);

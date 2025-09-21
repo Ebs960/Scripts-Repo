@@ -21,10 +21,10 @@ public static class RoadConnectivityHelper
         var queue = new Queue<int>();
 
         // Start BFS only from adjacent road tiles (roads must touch the city territory)
-        var neighborTiles = TileDataHelper.Instance.GetTileNeighbors(sourceCity.centerTileIndex);
+        var neighborTiles = TileSystem.Instance.GetNeighbors(sourceCity.centerTileIndex);
         foreach (int t in neighborTiles)
         {
-            var (td, _) = TileDataHelper.Instance.GetTileData(t);
+            var td = TileSystem.Instance.GetTileData(t);
             if (td == null) continue;
             if (td.improvement != null && td.improvement.isRoad)
             {
@@ -36,7 +36,7 @@ public static class RoadConnectivityHelper
         while (queue.Count > 0)
         {
             int idx = queue.Dequeue();
-            var (td, _) = TileDataHelper.Instance.GetTileData(idx);
+            var td = TileSystem.Instance.GetTileData(idx);
             if (td == null) continue;
 
             // If the tile has a city that's not the source, add it
@@ -46,10 +46,10 @@ public static class RoadConnectivityHelper
             }
 
             // Explore neighbors that are roads
-            foreach (int n in TileDataHelper.Instance.GetTileNeighbors(idx))
+            foreach (int n in TileSystem.Instance.GetNeighbors(idx))
             {
                 if (visited.Contains(n)) continue;
-                var (nd, _) = TileDataHelper.Instance.GetTileData(n);
+                var nd = TileSystem.Instance.GetTileData(n);
                 if (nd == null) continue;
                 if (nd.improvement != null && nd.improvement.isRoad)
                 {
@@ -81,7 +81,7 @@ public static class RoadConnectivityHelper
         // We will perform a BFS from road tiles adjacent to the city and compute, for each reachable city,
         // the best bottleneck (min along path) of connected*PerTurn values for that path. Then sum those per-connection yields.
 
-        var neighborTiles = TileDataHelper.Instance.GetTileNeighbors(city.centerTileIndex);
+    var neighborTiles = TileSystem.Instance.GetNeighbors(city.centerTileIndex);
         var queue = new Queue<int>();
 
         // Track best known bottleneck sum metric for a tile to avoid reprocessing poor paths
@@ -90,7 +90,7 @@ public static class RoadConnectivityHelper
         // Initialize queue with adjacent road tiles, each with initial bottleneck equal to that tile's configured connection yield
         foreach (int t in neighborTiles)
         {
-            var (td, _) = TileDataHelper.Instance.GetTileData(t);
+            var td = TileSystem.Instance.GetTileData(t);
             if (td == null || td.improvement == null) continue;
             var imp = td.improvement;
             if (!imp.isRoad) continue;
@@ -111,7 +111,7 @@ public static class RoadConnectivityHelper
         foreach (var kv in bestMetric)
         {
             int t = kv.Key;
-            var (td, _) = TileDataHelper.Instance.GetTileData(t);
+            var td = TileSystem.Instance.GetTileData(t);
             var imp = td.improvement;
             var by = ImprovementManager.Instance != null ? ImprovementManager.Instance.GetConnectionYieldForImprovement(imp) : new TileYield();
             tileBottlenecks[t] = by;
@@ -120,7 +120,7 @@ public static class RoadConnectivityHelper
         while (queue.Count > 0)
         {
             int idx = queue.Dequeue();
-            var (td, _) = TileDataHelper.Instance.GetTileData(idx);
+            var td = TileSystem.Instance.GetTileData(idx);
             if (td == null) continue;
 
             // If this tile has an adjacent city that's not the source, record the current bottleneck as a candidate
@@ -142,9 +142,9 @@ public static class RoadConnectivityHelper
             }
 
             // Expand neighbors (only along road tiles)
-            foreach (int n in TileDataHelper.Instance.GetTileNeighbors(idx))
+            foreach (int n in TileSystem.Instance.GetNeighbors(idx))
             {
-                var (nd, _) = TileDataHelper.Instance.GetTileData(n);
+                var nd = TileSystem.Instance.GetTileData(n);
                 if (nd == null || nd.improvement == null || !nd.improvement.isRoad) continue;
 
                 // Compute new bottleneck as min of current bottleneck and this neighbor's configured connection yield

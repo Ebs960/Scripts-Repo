@@ -343,7 +343,7 @@ public class SpaceRouteManager : MonoBehaviour
         var combatUnit = unit.GetComponent<CombatUnit>();
         if (combatUnit != null && combatUnit.currentTileIndex >= 0)
         {
-            TileDataHelper.Instance.ClearTileOccupant(combatUnit.currentTileIndex);
+            if (TileSystem.Instance != null) TileSystem.Instance.ClearTileOccupant(combatUnit.currentTileIndex);
         }
 
         // Unit remains visible but is now "in space"
@@ -399,8 +399,8 @@ public class SpaceRouteManager : MonoBehaviour
         var tileData = planetGen.GetHexTileData(landingTile);
         if (tileData != null)
         {
-                    // Get tile world position and place unit
-        Vector3 tileCenter = TileDataHelper.Instance.GetTileSurfacePosition(landingTile, 0f, planetIndex);
+            // Get tile world position and place unit
+            Vector3 tileCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(landingTile, 0f, planetIndex) : planetGen.Grid.tileCenters[landingTile];
             unit.transform.position = tileCenter;
             unit.transform.SetParent(planetGen.transform);
         }

@@ -429,12 +429,12 @@ public class City : MonoBehaviour
             List<int> territoryTiles = GetTerritoryTiles(radius);
             foreach (int idx in territoryTiles)
             {
-                var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(idx);
+                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
                 if (tileData != null)
                 {
                     tileData.owner = rebelCiv;
                     tileData.controllingCity = this;
-                    TileDataHelper.Instance.SetTileData(idx, tileData);
+                    TileSystem.Instance?.SetTileData(idx, tileData);
                 }
             }
         }
@@ -452,7 +452,7 @@ public class City : MonoBehaviour
         
         // Start with center and direct neighbors
         tiles.Add(centerTileIndex);
-        foreach (int neighbor in TileDataHelper.Instance.GetTileNeighbors(centerTileIndex))
+        foreach (int neighbor in TileSystem.Instance.GetNeighbors(centerTileIndex))
         {
             tiles.Add(neighbor);
         }
@@ -464,7 +464,7 @@ public class City : MonoBehaviour
             List<int> newTiles = new List<int>();
             foreach (int tile in tiles)
             {
-                foreach (int neighbor in TileDataHelper.Instance.GetTileNeighbors(tile))
+                foreach (int neighbor in TileSystem.Instance.GetNeighbors(tile))
                 {
                     if (!processed.Contains(neighbor))
                     {
@@ -489,7 +489,7 @@ public class City : MonoBehaviour
         var prodEntry = productionQueue[0];
         
         // Apply production points from this turn
-        prodEntry.remainingPts -= productionPerTurn;
+    prodEntry.remainingPts -= GetProductionPerTurn();
         
         // Check if completed
         if (prodEntry.remainingPts <= 0)
@@ -530,9 +530,9 @@ public class City : MonoBehaviour
     {
         if (planetGenerator == null) throw new System.Exception("City references not set!");
         
-        foreach (int idx in TileDataHelper.Instance.GetTileNeighbors(centerTileIndex))
+        foreach (int idx in TileSystem.Instance.GetNeighbors(centerTileIndex))
         {
-            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(idx);
+            var tileData = TileSystem.Instance.GetTileData(idx);
             if (tileData == null) continue;
             var biome = tileData.biome;
             if (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean)
@@ -677,7 +677,7 @@ public class City : MonoBehaviour
         if (planetGenerator == null) throw new System.Exception("City references not set!");
         
         // Get tile data
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance.GetTileData(tileIndex);
         if (tileData == null) return false;
         
         // Check if tile is owned by this city's civilization
@@ -718,9 +718,9 @@ public class City : MonoBehaviour
         if (district.requiresRiver)
         {
             bool hasRiver = false;
-            foreach (int neighborIdx in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIdx);
+                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
                 if (neighborData != null && neighborData.biome == Biome.River)
                 {
                     hasRiver = true;
@@ -734,9 +734,9 @@ public class City : MonoBehaviour
         if (district.requiresCoastal)
         {
             bool hasWater = false;
-            foreach (int neighborIdx in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIdx);
+                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
                 if (neighborData != null && 
                    (neighborData.biome == Biome.Ocean || 
                     neighborData.biome == Biome.Seas || 
@@ -753,9 +753,9 @@ public class City : MonoBehaviour
         if (district.requiresMountainAdjacent)
         {
             bool hasMountain = false;
-            foreach (int neighborIdx in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIdx);
+                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
                 if (neighborData != null && neighborData.biome == Biome.Mountain)
                 {
                     hasMountain = true;
@@ -932,9 +932,9 @@ public class City : MonoBehaviour
             
             // gather city‐radius tiles (1 tile for simplicity)
             bool found = false;
-            foreach (int n in TileDataHelper.Instance.GetTileNeighbors(centerTileIndex)) {
+            foreach (int n in TileSystem.Instance.GetNeighbors(centerTileIndex)) {
                 if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-                var (tdOpt, _) = TileDataHelper.Instance.GetTileData(n);
+                var tdOpt = TileSystem.Instance.GetTileData(n);
                 
                 if (tdOpt == null) continue;
                 if (System.Array.IndexOf(reqTerrains, tdOpt.biome) >= 0) {
@@ -1123,27 +1123,23 @@ public class City : MonoBehaviour
         }
         
         // Update the tile data to include this district
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-        if (tileData != null)
+        var tileData2 = TileSystem.Instance.GetTileData(tileIndex);
+        if (tileData2 != null)
         {
             // Mark the district on the tile
-            tileData.district = district;
+            tileData2.district = district;
             
-            // If it's a Holy Site, update the religion status
+            // If it's a Holy Site, mark via TileSystem and seed pressure
             if (district.isHolySite)
             {
-                tileData.religionStatus.hasHolySite = true;
-                tileData.religionStatus.holySiteDistrict = district;
-                
-                // If the civilization has a founded religion, apply pressure
+                TileSystem.Instance.SetHolySite(tileIndex, true, district);
                 if (owner.hasFoundedReligion && owner.foundedReligion != null)
                 {
-                    tileData.religionStatus.AddPressure(owner.foundedReligion, 100f); // Initial pressure
+                    TileSystem.Instance.AddReligionPressure(tileIndex, owner.foundedReligion, 100f);
                 }
             }
-            
-            // Update the tile data
-            TileDataHelper.Instance.SetTileData(tileIndex, tileData);
+            // Update the tile data (district placement)
+            TileSystem.Instance.SetTileData(tileIndex, tileData2);
         }
         
         // Add to city's districts
@@ -1329,7 +1325,7 @@ public class City : MonoBehaviour
             Vector3 tilePos = planetGenerator.Grid.tileCenters[idx];
             if (Vector3.Distance(cityCenterPos, tilePos) <= maxDist)
             {
-                var (maybe, _) = TileDataHelper.Instance.GetTileData(idx);
+                var maybe = TileSystem.Instance.GetTileData(idx);
                 if (maybe != null)
                 {
                     total += selector(maybe);
@@ -1338,7 +1334,7 @@ public class City : MonoBehaviour
             }
         }
         // Add yield from city center tile itself (if not covered by loop)
-        var (centerMaybe, _) = TileDataHelper.Instance.GetTileData(centerTileIndex);
+        var centerMaybe = TileSystem.Instance.GetTileData(centerTileIndex);
         if(centerMaybe != null) {
              // Decide if center tile yield counts or if it's replaced by city flat yields
         }
@@ -1399,19 +1395,13 @@ public class City : MonoBehaviour
             faith += district.baseFaith;
             if (district.isHolySite)
             {
-                var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+                var tileData = TileSystem.Instance.GetTileData(tileIndex);
                 if (tileData == null) continue;
-                var adjacentTiles = TileDataHelper.Instance.GetTileNeighbors(tileIndex);
+                var adjacentTiles = TileSystem.Instance.GetNeighbors(tileIndex);
                 faith += Mathf.RoundToInt(adjacentTiles.Length * district.adjacencyBonusPerAdjacentTile);
-                ReligionData dominantReligion = null;
-                if (owner.hasFoundedReligion && owner.foundedReligion != null)
-                {
-                    dominantReligion = owner.foundedReligion;
-                }
-                else
-                {
-                    dominantReligion = tileData.religionStatus.GetDominantReligion();
-                }
+                ReligionData dominantReligion = owner.hasFoundedReligion && owner.foundedReligion != null
+                    ? owner.foundedReligion
+                    : TileSystem.Instance.GetDominantReligion(tileIndex);
             }
         }
         return faith;
@@ -1425,8 +1415,8 @@ public class City : MonoBehaviour
         if (planetGenerator == null) throw new System.Exception("City references not set!");
         
         // Check city center and neighbors
-        var tiles = new List<int> { centerTileIndex };
-        tiles.AddRange(TileDataHelper.Instance.GetTileNeighbors(centerTileIndex));
+    var tiles = new List<int> { centerTileIndex };
+    tiles.AddRange(TileSystem.Instance.GetNeighbors(centerTileIndex));
         
         foreach (int tileIndex in tiles)
         {
@@ -1488,7 +1478,7 @@ public class City : MonoBehaviour
             {
                 if (city == this) continue; // Skip self
                 
-                int distance = Mathf.RoundToInt(TileDataHelper.Instance.GetTileDistance(centerTileIndex, city.centerTileIndex));
+                int distance = Mathf.RoundToInt(TileSystem.Instance.GetTileDistance(centerTileIndex, city.centerTileIndex));
                 if (distance <= tradeRange)
                 {
                     citiesInRange.Add(city);

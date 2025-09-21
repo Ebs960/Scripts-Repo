@@ -157,17 +157,12 @@ public class TransportUIManager : MonoBehaviour
             
         // Find unit on this tile
         GameObject unitObj = null;
-    // Use GameManager API for multi-planet support
-    PlanetGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
-    PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // Use GameManager API for multi-planet support
+        MoonGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
+        PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-        
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData != null && tileData.occupantId != 0)
-        {
-            unitObj = UnitRegistry.GetObject(tileData.occupantId);
-        }
-        else if (isMoonTile && tileData != null && tileData.occupantId != 0)
         {
             unitObj = UnitRegistry.GetObject(tileData.occupantId);
         }
@@ -205,7 +200,7 @@ public class TransportUIManager : MonoBehaviour
         }
         else
         {
-            int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(selectedTransport.currentTileIndex);
+            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
             foreach (int neighbor in neighbors)
             {
                 if (neighbor == tileIndex)
@@ -297,7 +292,7 @@ public class TransportUIManager : MonoBehaviour
         List<int> tilesToCheck = new List<int>();
         tilesToCheck.Add(selectedTransport.currentTileIndex);
         
-        int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(selectedTransport.currentTileIndex);
+        int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
         if (neighbors != null)
         {
             tilesToCheck.AddRange(neighbors);
@@ -307,17 +302,12 @@ public class TransportUIManager : MonoBehaviour
         foreach (int tileIndex in tilesToCheck)
         {
                     // Use GameManager API for multi-planet support
-    PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-    PlanetGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
+        PlanetGenerator planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        MoonGenerator moon = GameManager.Instance?.GetCurrentMoonGenerator();
             
             GameObject unitObj = null;
-            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-
+            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
             if (tileData != null && tileData.occupantId != 0)
-            {
-                unitObj = UnitRegistry.GetObject(tileData.occupantId);
-            }
-            else if (isMoonTile && tileData != null && tileData.occupantId != 0)
             {
                 unitObj = UnitRegistry.GetObject(tileData.occupantId);
             }
@@ -345,7 +335,7 @@ public class TransportUIManager : MonoBehaviour
         List<int> tilesToCheck = new List<int>();
         tilesToCheck.Add(selectedTransport.currentTileIndex);
         
-        int[] neighbors = TileDataHelper.Instance.GetTileNeighbors(selectedTransport.currentTileIndex);
+    int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
         if (neighbors != null)
         {
             tilesToCheck.AddRange(neighbors);

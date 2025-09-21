@@ -144,7 +144,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private void BuildUpgrade(ImprovementUpgradeData upgrade)
     {
         // Apply visual changes on the instantiated improvement when requested
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
         GameObject instanceObj = tileData?.improvementInstanceObject;
 
         if (upgrade.makesVisualChange && instanceObj != null)
@@ -180,7 +180,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
                     // Replace reference on tile data
                     tileData.improvementInstanceObject = newObj;
-                    TileDataHelper.Instance.SetTileData(currentTileIndex, tileData);
+                    if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(currentTileIndex, tileData);
 
                     // Destroy old instance
                     Destroy(instanceObj);
@@ -230,7 +230,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
                 tileData.builtUpgrades.Add(keyToPersist);
             // Recompute aggregated defense modifiers and persist
             tileData.RecomputeImprovementDefenseAggregates();
-            TileDataHelper.Instance.SetTileData(currentTileIndex, tileData);
+            if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(currentTileIndex, tileData);
             Debug.Log($"Upgrade {upgrade.upgradeName} built on tile {currentTileIndex}");
         }
 
@@ -242,7 +242,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private bool HasUpgrade(ImprovementUpgradeData upgrade)
     {
         // Check if this upgrade has already been built on this tile
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
         if (tileData?.builtUpgrades == null) return false;
         
         return tileData.builtUpgrades.Contains(upgrade.upgradeName);

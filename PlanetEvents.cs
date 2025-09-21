@@ -10,7 +10,7 @@ public sealed class PlanetContext
     public PlanetGenerator Generator;
     public SphericalHexGrid Grid;
     public ClimateManager Climate;
-    public PlanetGenerator Moon;
+    public MoonGenerator Moon;
     public GameObject Root; // planet root GameObject
 }
 

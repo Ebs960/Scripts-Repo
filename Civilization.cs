@@ -1097,10 +1097,10 @@ public class Civilization : MonoBehaviour
         bool hasHolySite = false;
         
         // Get the hex tile data for the city's center tile
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(holySiteCity.centerTileIndex);
-        if (tileData != null)
+        var tileDataHS = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(holySiteCity.centerTileIndex) : null;
+        if (tileDataHS != null)
         {
-            hasHolySite = tileData.HasHolySite;
+            hasHolySite = tileDataHS.HasHolySite;
         }
         
         if (!hasHolySite)
@@ -1261,10 +1261,10 @@ public class Civilization : MonoBehaviour
         bool hasHolySite = false;
         
         // Get the hex tile data for the city's center tile
-        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(city.centerTileIndex);
-        if (tileData != null)
+        var tileDataMS = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(city.centerTileIndex) : null;
+        if (tileDataMS != null)
         {
-            hasHolySite = tileData.HasHolySite;
+            hasHolySite = tileDataMS.HasHolySite;
         }
         
         if (!hasHolySite)
@@ -1280,7 +1280,7 @@ public class Civilization : MonoBehaviour
         var grid = planetGenerator != null ? planetGenerator.Grid : null;
         if (grid != null)
         {
-            Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(city.centerTileIndex, 0.5f);
+            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(city.centerTileIndex, 0.5f) : Vector3.zero;
             var missionaryGO = Instantiate(missionaryData.prefab, pos, Quaternion.identity);
             var missionaryUnit = missionaryGO.GetComponent<CombatUnit>();
             missionaryUnit.Initialize(missionaryData, this);
@@ -1917,8 +1917,7 @@ public class Civilization : MonoBehaviour
         HexTileData tileData = null;
         if (tileIndex >= 0)
         {
-            var (td, _) = TileDataHelper.Instance.GetTileData(tileIndex);
-            tileData = td;
+            tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         }
 
         // Precompute unlocked replacements for tile-aware obsolescence

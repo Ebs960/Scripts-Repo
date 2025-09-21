@@ -1190,7 +1190,7 @@ MonoBehaviour:
   mainPlanetButton: {fileID: 286983583296350513}
   zoomLevelText: {fileID: 3513231434145898316}
   positionIndicator: {fileID: 8306577482277223502}
-  minimapResolution: {x: 512, y: 256}
+  minimapResolution: {x: 256, y: 128}
   colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
   maxZoom: 4
   minZoom: 1
@@ -1201,6 +1201,7 @@ MonoBehaviour:
   maxPixelsPerFrameBatch: 100000
   useTileColorAtlas: 1
   minimapComputeShader: {fileID: 7200000, guid: db872d5b896072443989b31c28d23070, type: 3}
+  requireGPUForAtlas: 1
   uiCamera: {fileID: 0}
 --- !u!1 &3992384041759471822
 GameObject:

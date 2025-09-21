@@ -14,31 +14,26 @@ public class ImprovementClickHandler : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-        {
-            // Click was on UI, ignore
-            return;
-        }
-
+        if (UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
         if (improvementData == null || tileIndex < 0) return;
 
-        // Get the tile owner to check if player controls it
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
-        if (tileData?.owner == null) return;
-
-        // Only show upgrade UI for player-controlled improvements
-        if (!tileData.owner.isPlayerControlled) return;
-
-        // Show the improvement upgrade UI
-        var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
-        if (upgradeUI != null)
+        // Delegate to TileSystem central handler if present
+        if (TileSystem.Instance != null && TileSystem.Instance.isReady)
         {
-            upgradeUI.ShowUpgradePanel(improvementData, tileIndex, tileData.owner);
+            var data = TileSystem.Instance.GetTileData(tileIndex);
+            if (data?.owner == null || !data.owner.isPlayerControlled) return;
+            var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
+            if (upgradeUI != null) upgradeUI.ShowUpgradePanel(improvementData, tileIndex, data.owner);
+            else Debug.LogWarning("ImprovementUpgradeUI not found in scene!");
         }
         else
         {
-            Debug.LogWarning("ImprovementUpgradeUI not found in scene!");
+            // Fallback to centralized TileSystem query even if not fully ready
+            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+            if (tileData?.owner == null || !tileData.owner.isPlayerControlled) return;
+            var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
+            if (upgradeUI != null) upgradeUI.ShowUpgradePanel(improvementData, tileIndex, tileData.owner);
         }
     }
 }

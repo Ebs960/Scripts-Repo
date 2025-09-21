@@ -47,8 +47,7 @@ public class HexTileData
     public Civilization improvementOwner;
 
     // --- Religion Status ---
-    [Tooltip("Religious pressure data for this tile")]
-    public TileReligionStatus religionStatus;
+    // Centralized in TileSystem; kept no per-tile storage here.
 
     // --- Yields (per-turn) ---
     [Header("Tile Yields")]
@@ -84,7 +83,15 @@ public class HexTileData
     public bool HasCity => controllingCity != null;
     public bool HasDistrict => district != null;
     public bool HasHolySite => HasDistrict && district.isHolySite;
-    public bool HasReligion => religionStatus.GetDominantReligion() != null;
+    public bool HasReligion
+    {
+        get
+        {
+            if (TileSystem.Instance == null) return false;
+            // Without tile index here, callers should check via TileSystem APIs directly.
+            return false;
+        }
+    }
 
     // Local yield bonus aggregator
     private struct YieldAgg { public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyAdd; public float foodPct, productionPct, goldPct, sciencePct, culturePct, faithPct, policyPct; }
@@ -241,12 +248,8 @@ public class HexTileData
             // Apply adjacency bonuses if this is a Holy Site
             if (HasHolySite)
             {
-                // Get dominant religion to apply bonuses if applicable
-                ReligionData dominantReligion = religionStatus.GetDominantReligion();
-                if (dominantReligion != null)
-                {
-                    // Update to use founder belief bonuses if needed.
-                }
+                // Dominant religion is managed by TileSystem; if needed, retrieve via owning systems using tile index.
+                // Placeholder hook remains for future belief-based bonuses.
             }
         }
 

@@ -9,7 +9,7 @@ public class UnitMovementController : MonoBehaviour
     public static UnitMovementController Instance { get; private set; }
     private SphericalHexGrid grid;
     private PlanetGenerator planet;
-    private PlanetGenerator moon;
+    private MoonGenerator moon;
     
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 10f;
@@ -47,7 +47,7 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Set references from GameManager after generators are created
     /// </summary>
-    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, PlanetGenerator moonGen)
+    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, MoonGenerator moonGen)
     {
         grid = icoGrid;
         planet = planetGen;
@@ -95,12 +95,12 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public List<int> FindPath(int startIndex, int endIndex)
     {
-        var (startTile, isStartMoon) = TileDataHelper.Instance.GetTileData(startIndex);
-        var (endTile, isEndMoon) = TileDataHelper.Instance.GetTileData(endIndex);
+        var startTile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(startIndex) : null;
+        var endTile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(endIndex) : null;
 
-        if (startTile == null || endTile == null || isStartMoon != isEndMoon)
+        if (startTile == null || endTile == null)
         {
-            Debug.LogWarning($"[UnitMovementController] Pathfinding error: Tiles are on different celestial bodies or invalid. Start: {startIndex}, End: {endIndex}");
+            Debug.LogWarning($"[UnitMovementController] Pathfinding error: Tiles invalid. Start: {startIndex}, End: {endIndex}");
             return null;
         }
 
@@ -124,8 +124,8 @@ public class UnitMovementController : MonoBehaviour
 
         startNode.gCost = 0;
         startNode.hCost = Vector3.Distance(
-            TileDataHelper.Instance.GetTileSurfacePosition(startIndex, unitOffset: 0f),
-            TileDataHelper.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
+            TileSystem.Instance.GetTileSurfacePosition(startIndex, unitOffset: 0f),
+            TileSystem.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
 
 
         while (openSet.Count > 0)
@@ -140,14 +140,14 @@ public class UnitMovementController : MonoBehaviour
             openSet.Remove(currentNode);
             closedSet.Add(currentNode.tileIndex);
 
-            foreach (int neighborIndex in TileDataHelper.Instance.GetTileNeighbors(currentNode.tileIndex))
+            foreach (int neighborIndex in TileSystem.Instance.GetNeighbors(currentNode.tileIndex))
             {
                 if (closedSet.Contains(neighborIndex))
                 {
                     continue;
                 }
 
-                var (neighborTileData, _) = TileDataHelper.Instance.GetTileData(neighborIndex);
+                var neighborTileData = TileSystem.Instance.GetTileData(neighborIndex);
                 if (neighborTileData == null) continue; // Skip invalid tiles
 
                 int moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
@@ -166,8 +166,8 @@ public class UnitMovementController : MonoBehaviour
                     neighborNode.parent = currentNode;
                     neighborNode.gCost = tentativeGCost;
                     neighborNode.hCost = Vector3.Distance(
-                        TileDataHelper.Instance.GetTileSurfacePosition(neighborIndex, unitOffset: 0f),
-                        TileDataHelper.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
+                        TileSystem.Instance.GetTileSurfacePosition(neighborIndex, unitOffset: 0f),
+                        TileSystem.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
                     
                     if (openSet.Contains(neighborNode))
                         openSet.Remove(neighborNode);
@@ -229,7 +229,7 @@ public class UnitMovementController : MonoBehaviour
             int targetTileIndex = path[i];
             
             // Get movement cost for this step (tile-aware: improvements may alter cost)
-            var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(targetTileIndex);
+            var tileData = TileSystem.Instance.GetTileData(targetTileIndex);
             int movementCost = BiomeHelper.GetMovementCost(tileData, null);
             
             // Deduct movement points
@@ -241,7 +241,7 @@ public class UnitMovementController : MonoBehaviour
             // Calculate positions including extrusion
             Vector3 startPosition = unitTransform.position;
             SphericalHexGrid currentGrid = grid;
-            Vector3 endPosition = TileDataHelper.Instance.GetTileSurfacePosition(targetTileIndex, 0f);
+            Vector3 endPosition = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex, 0f);
             Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;
 
             // Get normals and radii for spherical interpolation
@@ -296,7 +296,7 @@ public class UnitMovementController : MonoBehaviour
             if (combatUnit != null)
             {
                 combatUnit.currentTileIndex = targetTileIndex;
-                TileDataHelper.Instance.SetTileOccupant(targetTileIndex, combatUnit.gameObject);
+                TileSystem.Instance.SetTileOccupant(targetTileIndex, combatUnit.gameObject);
                 // Check for traps on arrival
                 ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
 
@@ -312,7 +312,7 @@ public class UnitMovementController : MonoBehaviour
             else
             {
                 workerUnit.currentTileIndex = targetTileIndex;
-                TileDataHelper.Instance.SetTileOccupant(targetTileIndex, workerUnit.gameObject);
+                TileSystem.Instance.SetTileOccupant(targetTileIndex, workerUnit.gameObject);
                 // Check for traps on arrival
                 ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
 
@@ -350,13 +350,13 @@ public class UnitMovementController : MonoBehaviour
     {
         if (grid == null) return;
         
-        var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return;
 
         SphericalHexGrid currentGrid = grid;
 
         // Get the extruded center of the tile. This is the new correct surface position.
-        Vector3 surfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
+    Vector3 surfacePosition = TileSystem.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
         unitTransform.position = surfacePosition;
 
         Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;

@@ -22,6 +22,10 @@ public class UnitSelectionManager : MonoBehaviour
     
     // References
     private Camera mainCamera;
+    // Cached hover info provided by TileSystem events
+    private int cachedHoveredTileIndex = -1;
+    private Vector3 cachedHoveredWorldPos = Vector3.zero;
+    private bool isHoveringTile = false;
     
     void Awake()
     {
@@ -69,6 +73,48 @@ public class UnitSelectionManager : MonoBehaviour
     {
         HandleInput();
     }
+
+    private void OnEnable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered += OnTileHoveredTileSystem;
+            TileSystem.Instance.OnTileHoverExited += OnTileExitedTileSystem;
+            TileSystem.Instance.OnTileClicked += OnTileClickedTileSystem;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered -= OnTileHoveredTileSystem;
+            TileSystem.Instance.OnTileHoverExited -= OnTileExitedTileSystem;
+            TileSystem.Instance.OnTileClicked -= OnTileClickedTileSystem;
+        }
+    }
+
+    private void OnTileHoveredTileSystem(int tileIndex, Vector3 worldPos)
+    {
+        cachedHoveredTileIndex = tileIndex;
+        cachedHoveredWorldPos = worldPos;
+        isHoveringTile = true;
+    }
+
+    private void OnTileExitedTileSystem()
+    {
+        cachedHoveredTileIndex = -1;
+        cachedHoveredWorldPos = Vector3.zero;
+        isHoveringTile = false;
+    }
+
+    private void OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
+    {
+        // Left-click selection is routed via TileSystem; select/deselect units here
+        var clickedUnit = GetUnitAtPosition(worldPos);
+        if (clickedUnit != null) SelectUnit(clickedUnit); else DeselectUnit();
+        // Note: Right-click movement remains handled in Update() to detect mouse button 1
+    }
     
     /// <summary>
     /// Handle mouse input for unit selection and movement
@@ -78,12 +124,6 @@ public class UnitSelectionManager : MonoBehaviour
         // Ignore input if over UI
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             return;
-        
-        // Left click: Select unit
-        if (Input.GetMouseButtonDown(0))
-        {
-            HandleLeftClick();
-        }
         
         // Right click: Move selected unit
         if (Input.GetMouseButtonDown(1))
@@ -109,21 +149,7 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleLeftClick()
     {
-        var hitInfo = GetMouseHitInfo();
-        if (hitInfo.hit)
-        {
-            // Check if we clicked on a unit
-            var clickedUnit = GetUnitAtPosition(hitInfo.worldPosition);
-            if (clickedUnit != null)
-            {
-                SelectUnit(clickedUnit);
-            }
-            else
-            {
-                // Clicked on empty tile, deselect
-                DeselectUnit();
-            }
-        }
+        // Deprecated: Selection via TileSystem.OnTileClicked
     }
     
     /// <summary>
@@ -136,16 +162,18 @@ public class UnitSelectionManager : MonoBehaviour
             Debug.Log("[UnitSelectionManager] No unit selected for movement command");
             return;
         }
-        
-    // Use the same raycast mask as TileClickDetector when available so clicks are consistent
-    var hitInfo = GetMouseHitInfo();
-        if (hitInfo.hit)
+        // Prefer authoritative hovered tile info
+        if (isHoveringTile && cachedHoveredTileIndex >= 0)
         {
-            int targetTileIndex = hitInfo.tileIndex;
-            if (targetTileIndex >= 0)
-            {
-                MoveSelectedUnitToTile(targetTileIndex);
-            }
+            MoveSelectedUnitToTile(cachedHoveredTileIndex);
+            return;
+        }
+
+    // Fallback: perform a raycast using TileSystem's mask if available
+        var hitInfo = GetMouseHitInfo();
+        if (hitInfo.hit && hitInfo.tileIndex >= 0)
+        {
+            MoveSelectedUnitToTile(hitInfo.tileIndex);
         }
     }
     
@@ -159,11 +187,10 @@ public class UnitSelectionManager : MonoBehaviour
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
-        // If a TileClickDetector exists, use its configured layer mask for raycasts; otherwise use default
+        // Use TileSystem raycast mask if available; otherwise default
         int layerMask = Physics.DefaultRaycastLayers;
-        var detector = ServiceRegistry.Get<TileClickDetector>();
-        if (detector != null)
-            layerMask = detector.tileRaycastMask.value;
+        if (TileSystem.Instance != null)
+            layerMask = TileSystem.Instance.tileRaycastMask.value;
 
         if (Physics.Raycast(ray, out RaycastHit hitInfo, Mathf.Infinity, layerMask))
         {
@@ -396,4 +423,4 @@ public class UnitSelectionManager : MonoBehaviour
             Debug.LogWarning("[UnitSelectionManager] UIManager.Instance is null - cannot open space map");
         }
     }
-} 
+}

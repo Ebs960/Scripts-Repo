@@ -26,7 +26,7 @@ public class ReligionManager : MonoBehaviour
     // Track founded religions in the game
     private List<(ReligionData religion, Civilization founder)> foundedReligions = new List<(ReligionData, Civilization)>();
     
-    // References to other systems
+    // References (kept for now, but neighbors/data are via TileSystem)
     private PlanetGenerator planetGenerator;
     private SphericalHexGrid grid;
     
@@ -73,7 +73,8 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     private void UpdateReligiousPressure(Civilization civ)
     {
-        if (planetGenerator == null || grid == null)
+        // Use TileSystem for tile data and neighbors
+        if (TileSystem.Instance == null)
             return;
             
         // Find all Holy Sites belonging to this civilization
@@ -85,19 +86,11 @@ public class ReligionManager : MonoBehaviour
             
             foreach (int tileIndex in cityTiles)
             {
-                var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-                if (tileData == null)
+                if (!TileSystem.Instance.HasHolySite(tileIndex))
                     continue;
-                    
-                // Check if this tile has a Holy Site
-                if (tileData.HasHolySite)
-                {
-                    // Add pressure to this tile via TileDataHelper
-                    TileDataHelper.Instance.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
-                    
-                    // Spread pressure to nearby tiles
-                    SpreadPressure(tileIndex, civ.foundedReligion);
-                }
+
+                TileSystem.Instance.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
+                SpreadPressure(tileIndex, civ.foundedReligion);
             }
         }
     }
@@ -108,7 +101,7 @@ public class ReligionManager : MonoBehaviour
     private List<int> GetTilesInRadius(int centerTileIndex, int radius)
     {
         List<int> result = new List<int>();
-        if (grid == null || radius <= 0)
+        if (TileSystem.Instance == null || radius <= 0)
             return result;
             
         Queue<(int index, int dist)> queue = new Queue<(int, int)>();
@@ -124,7 +117,7 @@ public class ReligionManager : MonoBehaviour
 
             if (currentDist < radius)
             {
-                var neighbors = grid.neighbors[currentIndex];
+                var neighbors = TileSystem.Instance.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
                     if (!visited.Contains(neighbor))
@@ -140,16 +133,15 @@ public class ReligionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Adds religious pressure to a specific tile
+    /// Adds religious pressure to a specific tile (handled via TileSystem)
     /// </summary>
-    // Note: religion writes are now centralized via TileDataHelper.AddReligionPressure
     
     /// <summary>
     /// Spreads religious pressure from a Holy Site to nearby tiles
     /// </summary>
     private void SpreadPressure(int sourceTileIndex, ReligionData religion)
     {
-        if (grid == null || planetGenerator == null)
+        if (TileSystem.Instance == null)
             return;
             
         Queue<(int index, int dist)> queue = new Queue<(int, int)>();
@@ -163,17 +155,17 @@ public class ReligionManager : MonoBehaviour
             var (currentIndex, currentDist) = queue.Dequeue();
 
             if (currentDist > 0) // Don't apply pressure to the source tile itself
-                 {
-                     float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
-                     if (pressure > 0)
-                     {
-                        TileDataHelper.Instance.AddReligionPressure(currentIndex, religion, pressure);
-                     }
-                 }
+            {
+                float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
+                if (pressure > 0)
+                {
+                    TileSystem.Instance.AddReligionPressure(currentIndex, religion, pressure);
+                }
+            }
 
             if (currentDist < maxPressureSpreadDistance)
             {
-                var neighbors = grid.neighbors[currentIndex];
+                var neighbors = TileSystem.Instance.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
                     if (!visited.Contains(neighbor))
@@ -287,7 +279,7 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     public ReligionData GetCityMajorityReligion(City city)
     {
-        if (city == null || planetGenerator == null || grid == null)
+        if (city == null)
             return null;
             
         // Get all tiles within city radius
@@ -298,18 +290,14 @@ public class ReligionManager : MonoBehaviour
         
         foreach (int tileIndex in tiles)
         {
-            var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(tileIndex);
-            if (tileData == null)
-                continue;
-
-            var pressures = tileData.religionStatus.pressures;
-            if (pressures == null) continue;
-
-            foreach (var entry in pressures)
+            var list = TileSystem.Instance?.GetReligionPressures(tileIndex);
+            if (list == null) continue;
+            for (int i = 0; i < list.Count; i++)
             {
-                if (entry.religion == null) continue;
-                if (!religionPressures.ContainsKey(entry.religion)) religionPressures[entry.religion] = 0f;
-                religionPressures[entry.religion] += entry.pressure;
+                var e = list[i];
+                if (e.religion == null || e.pressure <= 0f) continue;
+                if (!religionPressures.TryGetValue(e.religion, out var acc)) acc = 0f;
+                religionPressures[e.religion] = acc + e.pressure;
             }
         }
         

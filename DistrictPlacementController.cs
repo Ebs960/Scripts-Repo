@@ -47,36 +47,32 @@ public class DistrictPlacementController : MonoBehaviour
             s_highlightMPB = new UnityEngine.MaterialPropertyBlock();
         }
     }
+    private void OnEnable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered += HandleTileHovered;
+            TileSystem.Instance.OnTileHoverExited += HandleTileExited;
+            TileSystem.Instance.OnTileClicked += HandleTileClicked;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered -= HandleTileHovered;
+            TileSystem.Instance.OnTileHoverExited -= HandleTileExited;
+            TileSystem.Instance.OnTileClicked -= HandleTileClicked;
+        }
+    }
     
     void Update()
     {
         if (!isPlacingDistrict) return;
-        
-        // Handle hovering over tiles
-        int hoverTileIndex = GetHoveredTileIndex();
-        if (hoverTileIndex != currentHoveredTileIndex)
-        {
-            // Reset previous hover effect
-            if (currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
-            {
-                ResetTileHighlight(currentHoveredTileIndex);
-            }
-            
-            // Apply new hover effect if it's a valid tile
-            currentHoveredTileIndex = hoverTileIndex;
-            if (currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
-            {
-                HighlightHoveredTile(currentHoveredTileIndex);
-            }
-        }
-        
-        // Handle clicking on a valid tile
-        if (Input.GetMouseButtonDown(0) && currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
-        {
-            PlaceDistrictOnTile(currentHoveredTileIndex);
-        }
-        
-        // Cancel district placement with right-click
+
+        // Clicking is now handled via OnTileClicked subscription (HandleTileClicked)
+        // Right-click cancels placement as before
         if (Input.GetMouseButtonDown(1))
         {
             CancelDistrictPlacement();
@@ -114,7 +110,7 @@ public class DistrictPlacementController : MonoBehaviour
         int centerTileIndex = sourceCity.centerTileIndex;
         int radius = sourceCity.TerritoryRadius;
         
-        var tilesInRange = TileDataHelper.Instance.GetTilesWithinSteps(centerTileIndex, radius);
+    var tilesInRange = (TileSystem.Instance != null && TileSystem.Instance.IsReady()) ? TileSystem.Instance.GetTilesWithinSteps(centerTileIndex, radius) : null;
         if (tilesInRange == null) return;
         
         foreach (int tileIndex in tilesInRange)
@@ -132,7 +128,7 @@ public class DistrictPlacementController : MonoBehaviour
     private bool IsValidTileForDistrict(int tileIndex, DistrictData district)
     {
         // Check if tile is owned by the city's civilization
-        var (tileData, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
         
         // Check if tile is already occupied by a district, unit, or improvement
@@ -163,9 +159,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresRiver)
         {
             bool adjacentToRiver = false;
-            foreach (int neighborIndex in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIndex);
+                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
                 if (neighborData != null && neighborData.biome == Biome.River)
                 {
                     adjacentToRiver = true;
@@ -178,9 +174,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresCoastal)
         {
             bool adjacentToWater = false;
-            foreach (int neighborIndex in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIndex);
+                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
                 if (neighborData != null && 
                     (neighborData.biome == Biome.Ocean || 
                      neighborData.biome == Biome.Seas || 
@@ -196,9 +192,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresMountainAdjacent)
         {
             bool adjacentToMountain = false;
-            foreach (int neighborIndex in TileDataHelper.Instance.GetTileNeighbors(tileIndex))
+            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
             {
-                var (neighborData, _) = TileDataHelper.Instance.GetTileData(neighborIndex);
+                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
                 if (neighborData != null && neighborData.biome == Biome.Mountain)
                 {
                     adjacentToMountain = true;
@@ -211,21 +207,38 @@ public class DistrictPlacementController : MonoBehaviour
         return true;
     }
     
-    /// <summary>
-    /// Get the tile index under the mouse cursor
-    /// </summary>
-    private int GetHoveredTileIndex()
+    // Event handlers from TileSystem
+    private void HandleTileHovered(int tileIndex, Vector3 worldPos)
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        var detector = ServiceRegistry.Get<TileClickDetector>();
-        int layerMask = detector != null ? detector.tileRaycastMask.value : Physics.DefaultRaycastLayers;
-        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
+        if (!isPlacingDistrict) return;
+
+        int hoverTileIndex = tileIndex;
+        if (hoverTileIndex != currentHoveredTileIndex)
         {
-            if (grid == null) return -1;
-            Vector3 localDir = (hit.point - planet.transform.position).normalized;
-            return grid.GetTileAtPosition(localDir);
+            if (currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
+                ResetTileHighlight(currentHoveredTileIndex);
+
+            currentHoveredTileIndex = hoverTileIndex;
+            if (currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
+                HighlightHoveredTile(currentHoveredTileIndex);
         }
-        return -1;
+    }
+
+    private void HandleTileExited()
+    {
+        if (!isPlacingDistrict) return;
+        if (currentHoveredTileIndex >= 0 && validTileIndices.Contains(currentHoveredTileIndex))
+            ResetTileHighlight(currentHoveredTileIndex);
+        currentHoveredTileIndex = -1;
+    }
+
+    private void HandleTileClicked(int tileIndex, Vector3 worldPos)
+    {
+        if (!isPlacingDistrict) return;
+        if (tileIndex >= 0 && validTileIndices.Contains(tileIndex))
+        {
+            PlaceDistrictOnTile(tileIndex);
+        }
     }
     
     /// <summary>

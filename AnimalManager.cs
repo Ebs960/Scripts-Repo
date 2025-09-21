@@ -90,7 +90,7 @@ public class AnimalManager : MonoBehaviour
         
         foreach (var civUnit in allCivUnits)
         {
-            float distance = TileDataHelper.Instance.GetTileDistance(predator.currentTileIndex, civUnit.currentTileIndex);
+            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(predator.currentTileIndex, civUnit.currentTileIndex) : float.MaxValue;
             if (distance <= maxSearchRange && distance < nearestDistance)
             {
                 nearestDistance = distance;
@@ -109,11 +109,11 @@ public class AnimalManager : MonoBehaviour
         var nearestCivUnit = FindNearestCivilizationUnit(prey, 4); // Slightly larger range for detection
         if (nearestCivUnit == null) return null;
         
-        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(prey.currentTileIndex);
+    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
                 return neighbor != null && prey.CanMoveTo(index);
             })
             .ToList();
@@ -122,11 +122,11 @@ public class AnimalManager : MonoBehaviour
         
         // Find the destination that is furthest from the civilization unit
         int bestDestination = validDestinations[0];
-        float maxDistance = TileDataHelper.Instance.GetTileDistance(bestDestination, nearestCivUnit.currentTileIndex);
+    float maxDistance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(bestDestination, nearestCivUnit.currentTileIndex) : 0f;
         
         foreach (var destination in validDestinations)
         {
-            float distance = TileDataHelper.Instance.GetTileDistance(destination, nearestCivUnit.currentTileIndex);
+            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(destination, nearestCivUnit.currentTileIndex) : 0f;
             if (distance > maxDistance)
             {
                 maxDistance = distance;
@@ -179,7 +179,7 @@ public class AnimalManager : MonoBehaviour
 
             unit.ResetForNewTurn();
 
-            var (tileData, _) = TileDataHelper.Instance.GetTileData(unit.currentTileIndex);
+            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(unit.currentTileIndex) : null;
             if (tileData == null) continue;
 
             // Determine movement behavior based on animal type
@@ -234,11 +234,11 @@ public class AnimalManager : MonoBehaviour
         if (target == null) return false;
         
         // Try to move closer to the target
-        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(predator.currentTileIndex);
+    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(predator.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
                 return neighbor != null && predator.CanMoveTo(index);
             })
             .ToList();
@@ -247,11 +247,11 @@ public class AnimalManager : MonoBehaviour
         
         // Find the destination that gets us closest to the target
         int bestDestination = validDestinations[0];
-        float minDistance = TileDataHelper.Instance.GetTileDistance(bestDestination, target.currentTileIndex);
+    float minDistance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(bestDestination, target.currentTileIndex) : float.MaxValue;
         
         foreach (var destination in validDestinations)
         {
-            float distance = TileDataHelper.Instance.GetTileDistance(destination, target.currentTileIndex);
+            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(destination, target.currentTileIndex) : float.MaxValue;
             if (distance < minDistance)
             {
                 minDistance = distance;
@@ -297,11 +297,11 @@ public class AnimalManager : MonoBehaviour
     /// </summary>
     private bool HandleNeutralMovement(CombatUnit unit)
     {
-        var neighborIndices = TileDataHelper.Instance.GetTileNeighbors(unit.currentTileIndex);
+    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var (neighbor, _) = TileDataHelper.Instance.GetTileData(index);
+                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
                 return neighbor != null && unit.CanMoveTo(index);
             })
             .ToList();
@@ -325,7 +325,7 @@ public class AnimalManager : MonoBehaviour
 
         for (int i = 0; i < tileCount; i++)
         {
-            var (tile, _) = TileDataHelper.Instance.GetTileData(i);
+            var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(i) : null;
             if (tile == null || !tile.isLand) continue;
 
             if (rule.allowedBiomes != null && rule.allowedBiomes.Length > 0)
@@ -340,7 +340,7 @@ public class AnimalManager : MonoBehaviour
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
         // FIXED: Use Earth-specific positioning for animal spawning
-        Vector3 pos = TileDataHelper.Instance.GetTileSurfacePosition(chosenIndex, 0.5f, 0); // Force planet index 0 (Earth)
+    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(chosenIndex, 0.5f, 0) : planet.transform.TransformPoint(planet.Grid.tileCenters[chosenIndex]);
 
         var go = Instantiate(rule.unitData.prefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();

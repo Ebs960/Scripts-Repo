@@ -212,7 +212,7 @@ public class PlanetaryCameraManager : MonoBehaviour
                     if (tileIndex >= 0)
                     {
                         Debug.Log($"Clicked on planet tile index: {tileIndex}");
-                        var (tile, _) = TileDataHelper.Instance.GetTileData(tileIndex);
+                        var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
                         if (tile != null)
                         {
                             Debug.Log($"Planet Biome: {tile.biome}, Elevation: {tile.elevation}, Food: {tile.food}");

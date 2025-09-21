@@ -32,14 +32,9 @@ public class TileInfoDisplay : MonoBehaviour
     readonly StringBuilder sb = new StringBuilder();
     bool isReady = false;           // stays false until map is finished
     
-    // Optimization: only update when hovering over a different tile
+    // State for current hover
     int lastHoveredTileIndex = -1;
-    bool wasHoveringLastFrame = false;
-    
-    // Performance optimization: only raycast when mouse moves
-    private Vector3 lastMousePosition = Vector3.zero;
-    private bool forceRaycastNextFrame = false;
-    private const float MOUSE_MOVEMENT_THRESHOLD = 1f; // pixels
+
 
     // ─────────────────────────────────────────────────────────────
     // Unity - Awake
@@ -87,104 +82,66 @@ public class TileInfoDisplay : MonoBehaviour
         {
             highlightMarker.SetActive(false);
             lastHoveredTileIndex = -1;
-            wasHoveringLastFrame = false;
+            lastHoveredTileIndex = -1;
         }
     }
 
     // ─────────────────────────────────────────────────────────────
     // Unity - Update
     // ─────────────────────────────────────────────────────────────
-    void Update()
+    void Update() { }
+
+    private void OnEnable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered += OnTileHoveredEvent;
+            TileSystem.Instance.OnTileHoverExited += OnTileExitedEvent;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileHovered -= OnTileHoveredEvent;
+            TileSystem.Instance.OnTileHoverExited -= OnTileExitedEvent;
+        }
+    }
+
+    private void OnTileHoveredEvent(int tileIndex, Vector3 worldPos)
     {
         if (!isReady) return;
 
-        // PERFORMANCE FIX: Only raycast when mouse actually moves
-        Vector3 currentMousePosition = Input.mousePosition;
-        float mouseDistance = Vector3.Distance(currentMousePosition, lastMousePosition);
-        
-        if (mouseDistance < MOUSE_MOVEMENT_THRESHOLD && !forceRaycastNextFrame)
-        {
-            // Mouse hasn't moved enough, skip expensive raycast
-            return;
-        }
-        
-        lastMousePosition = currentMousePosition;
-        forceRaycastNextFrame = false;
+    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        if (tileData == null) return;
+    Vector3 tileSurfacePosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0.1f) : worldPos;
+        highlightMarker.transform.position = tileSurfacePosition;
+        highlightMarker.transform.up = tileSurfacePosition.normalized;
+        highlightMarker.SetActive(true);
 
-        bool hovering = false;
-        int currentTileIndex = -1;
+        sb.Clear();
+        string bodyName = "Planet";
+        string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
+        sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
+        sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
+        sb.AppendLine($"  Food: {tileData.food}   Prod: {tileData.production}");
+        sb.AppendLine($"  Gold: {tileData.gold}   Sci: {tileData.science}");
+        sb.AppendLine($"  Culture: {tileData.culture}");
+        sb.AppendLine($"  <i><color=#888888>{bodyName} Tile #{tileIndex}</color></i>");
 
-        // Use TileDataHelper which is aware of both Planet and Moon generators
-        if (TileDataHelper.Instance != null && Camera.main != null)
-        {
-            var ray = Camera.main.ScreenPointToRay(currentMousePosition);
-            
-            // Raycast with layer filtering to avoid atmosphere and other non-tile objects
-            // Use a reasonable layermask - typically tiles are on Default layer (0)
-            int layerMask = ~(1 << LayerMask.NameToLayer("Atmosphere")); // Exclude atmosphere layer
-            
-            if (Physics.Raycast(ray, out var hit, 2000f, layerMask))
-            {
-                // Check if the hit object is a tile by looking for TileIndexHolder
-                var tileIndexHolder = hit.collider.GetComponent<TileIndexHolder>();
-                if (tileIndexHolder != null)
-                {
-                    hovering = true;
-                    currentTileIndex = tileIndexHolder.tileIndex;
-                    
-                    // Only update if we're hovering over a different tile than last frame
-                    if (currentTileIndex != lastHoveredTileIndex)
-                    {
-                        // Use the modern TileDataHelper to get unified tile data
-                        var (tileData, isMoonTile) = TileDataHelper.Instance.GetTileData(currentTileIndex);
+        infoText.text = sb.ToString();
+        lastHoveredTileIndex = tileIndex;
+        // tracked via lastHoveredTileIndex only
+    }
 
-                        if (tileData != null)
-                        {
-                            // Position the highlight marker at the elevated tile surface, not the base center
-                            Vector3 tileSurfacePosition = TileDataHelper.Instance.GetTileSurfacePosition(currentTileIndex, 0.1f); // 0.1f offset to sit slightly above surface
-                            highlightMarker.transform.position = tileSurfacePosition;
-                            // Align the marker with the radial direction from planet center
-                            highlightMarker.transform.up = tileSurfacePosition.normalized;
-                            highlightMarker.SetActive(true);
-
-                            // Build the info string using the modern HexTileData structure
-                            sb.Clear();
-                            string bodyName = isMoonTile ? "Moon" : "Planet";
-                            string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
-                            
-                            sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
-                            sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
-                            sb.AppendLine($"  Food: {tileData.food}   Prod: {tileData.production}");
-                            sb.AppendLine($"  Gold: {tileData.gold}   Sci: {tileData.science}");
-                            sb.AppendLine($"  Culture: {tileData.culture}");
-                            sb.AppendLine($"  <i><color=#888888>{bodyName} Tile #{currentTileIndex}</color></i>");
-
-                            infoText.text = sb.ToString();
-                        }
-                        
-                        lastHoveredTileIndex = currentTileIndex;
-                    }
-                    else if (!wasHoveringLastFrame)
-                    {
-                        // We're hovering over the same tile but weren't hovering last frame, show the marker
-                        highlightMarker.SetActive(true);
-                    }
-                }
-            }
-        }
-
-        // Always keep the display active once we've hovered over a tile
-        // Don't hide the marker or clear text - just keep showing the last hovered tile
-        wasHoveringLastFrame = hovering;
+    private void OnTileExitedEvent()
+    {
+        // keep UI visible as before; hide marker
+        highlightMarker.SetActive(false);
     }
     
-    /// <summary>
-    /// Force a raycast on the next frame (useful when planet switches, etc.)
-    /// </summary>
-    public void ForceRefresh()
-    {
-        forceRaycastNextFrame = true;
-    }
+    // Event-driven: no manual refresh required
 
     void ClearDisplay() => infoText.text = "";
 }

@@ -112,25 +112,6 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void OnEnable()
-    {
-        // Subscribe to TradeManager events if available (in case it was created after Awake)
-        if (TradeManager.Instance != null)
-        {
-            TradeManager.Instance.OnGlobalTradeEnabled += HandleGlobalTradeEnabled;
-            TradeManager.Instance.OnCivilizationTradeEnabled += HandleCivilizationTradeEnabled;
-        }
-    }
-
-    void OnDisable()
-    {
-        if (TradeManager.Instance != null)
-        {
-            TradeManager.Instance.OnGlobalTradeEnabled -= HandleGlobalTradeEnabled;
-            TradeManager.Instance.OnCivilizationTradeEnabled -= HandleCivilizationTradeEnabled;
-        }
-    }
-
     void OnDestroy()
     {
         if (TradeManager.Instance != null)
@@ -156,7 +137,6 @@ public class UIManager : MonoBehaviour
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
         {
-            Debug.Log("[UIManager] Minimap generation still in progress, treating as loading active");
             return true;
         }
         
@@ -465,7 +445,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowDiplomacyPanel(Civilization civ)
     {
-        Debug.Log("[UIManager] ShowDiplomacyPanel called");
+        
         if (diplomacyPanel == null) 
         {
             Debug.LogError("[UIManager] diplomacyPanel is null! Cannot show diplomacy UI.");
@@ -474,7 +454,7 @@ public class UIManager : MonoBehaviour
         
         // First activate the diplomacy panel GameObject
         diplomacyPanel.SetActive(true);
-        Debug.Log("[UIManager] Diplomacy panel GameObject activated");
+        
     // Wire interactions for click sounds (buttons, toggles, dropdowns, sliders, scrollbars, scrollrects)
     WireUIInteractions(diplomacyPanel);
         
@@ -482,7 +462,7 @@ public class UIManager : MonoBehaviour
         var diplomacyUI = diplomacyPanel.GetComponent<DiplomacyUI>();
         if (diplomacyUI != null)
         {
-            Debug.Log("[UIManager] Found DiplomacyUI component, calling Show()");
+            
             diplomacyUI.Show(civ);
         }
         else
@@ -491,7 +471,7 @@ public class UIManager : MonoBehaviour
             diplomacyUI = diplomacyPanel.GetComponentInChildren<DiplomacyUI>();
             if (diplomacyUI != null)
             {
-                Debug.Log("[UIManager] Found DiplomacyUI component in children, calling Show()");
+                
                 diplomacyUI.Show(civ);
             }
             else
@@ -537,7 +517,7 @@ public class UIManager : MonoBehaviour
     {
         if (spaceMapUI != null)
         {
-            Debug.Log("[UIManager] Opening Space Map UI");
+            
             spaceMapUI.Show();
         }
         else
@@ -562,12 +542,12 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ShowPauseMenu()
     {
-        Debug.Log("[UIManager] ShowPauseMenu called");
+        
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(true);
             WireUIInteractions(pauseMenuPanel);
-            Debug.Log("[UIManager] Pause menu panel activated");
+            
         }
         else
         {
@@ -580,11 +560,11 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void HidePauseMenu()
     {
-        Debug.Log("[UIManager] HidePauseMenu called");
+        
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(false);
-            Debug.Log("[UIManager] Pause menu panel deactivated");
+            
         }
         else
         {

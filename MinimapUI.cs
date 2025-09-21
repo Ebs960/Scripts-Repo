@@ -5,9 +5,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using Unity.Jobs;
-using Unity.Burst;
-using Unity.Collections;
 
 /// <summary>
 /// Runtime minimap for multi-planet support.
@@ -19,41 +16,6 @@ using Unity.Collections;
 /// </summary>
 public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler
 {
-    [BurstCompile]
-    private struct LUTJob : IJobParallelFor
-    {
-        [ReadOnly] public NativeArray<Vector3> tileCenters;
-        [ReadOnly] public NativeArray<float> sinLatArr;
-        [ReadOnly] public NativeArray<float> cosLatArr;
-        [ReadOnly] public NativeArray<float> sinLonArr;
-        [ReadOnly] public NativeArray<float> cosLonArr;
-        [ReadOnly] public int width;
-        [ReadOnly] public int height;
-        [WriteOnly] public NativeArray<int> lut;
-
-        public void Execute(int index)
-        {
-            int y = index / width;
-            int x = index % width;
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
-            float sinLon = sinLonArr[x];
-            float cosLon = cosLonArr[x];
-            Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat).normalized;
-            float maxDot = -2f;
-            int bestIdx = -1;
-            for (int i = 0; i < tileCenters.Length; i++)
-            {
-                float d = Vector3.Dot(dir, tileCenters[i].normalized);
-                if (d > maxDot)
-                {
-                    maxDot = d;
-                    bestIdx = i;
-                }
-            }
-            lut[index] = bestIdx;
-        }
-    }
     [Header("UI References")]
     [Tooltip("RawImage used to display the generated minimap texture")]
     public RawImage minimapImage;
@@ -86,16 +48,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [Tooltip("Index of the main planet to switch back to when pressing the main planet button (0 = Earth by default)")]
     [SerializeField] private int mainPlanetIndex = 0;
 
-    [Header("Pre-generation Settings")]
-    [SerializeField] private bool preGenerateAllMinimaps = true;
-    [SerializeField] private int maxPixelsPerFrameBatch = 50000; // Process pixels in batches for better performance
+    // Pre-generation is always on.
     [Header("Atlas Settings")]
     [Tooltip("When enabled, build a per-tile color atlas (array) and use it as a fast lookup during minimap generation.")]
     [SerializeField] private bool useTileColorAtlas = true;
     [Tooltip("Optional compute shader to accelerate minimap generation on GPU (uses LUT + tile atlas texture).")]
     [SerializeField] private ComputeShader minimapComputeShader;
-    [Tooltip("When true, require a compute shader for atlas-only generation; do not run CPU per-pixel fallbacks.")]
-    [SerializeField] private bool requireGPUForAtlas = true;
+    [Tooltip("When true, require a compute shader for atlas-only generation; minimap is GPU-only.")]
+    
 
     // Private fields
     // Planet and Moon minimap caches
@@ -110,8 +70,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private static readonly Dictionary<string, ComputeBuffer> _lutComputeBufferCache = new();
     private static readonly Dictionary<string, RenderTexture> _gpuResultCache = new();
     private static readonly Dictionary<string, Texture2D> _gpuAtlasTextureCache = new();
-    private static readonly Dictionary<string, byte[]> _cpuRawBufferCache = new();
-    // NOTE: CPU per-pixel fallbacks were removed - this class now requires the compute shader + atlas LUT path
+    // Removed CPU pixel/texture caches (GPU-only path)
     private float _currentZoom = 1f;
     private Vector2 _panOffset = Vector2.zero; // For panning around the zoomed minimap
     private bool _isDragging = false;
@@ -128,19 +87,52 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Public property for GameManager to check
     public bool MinimapsPreGenerated => _minimapsPreGenerated;
-    public bool PreGenerateAll => preGenerateAllMinimaps;
+    // Backward compatibility: external code can still query this; always true
+    public bool PreGenerateAll => true;
 
-    // Reuse a raw byte[] sized for RGBA32 uploads (used by GPU atlas uploads)
-    private byte[] GetOrCreateRawBuffer(int width, int height)
+    // Expose LUT + atlas (planet-only accessors for overlay system)
+    public int[] GetPlanetLUT(int planetIndex, out int width, out int height)
     {
-        string key = $"{width}x{height}-raw";
-        if (!_cpuRawBufferCache.TryGetValue(key, out var buf))
-        {
-            buf = new byte[width * height * 4];
-            _cpuRawBufferCache[key] = buf;
-        }
-        return buf;
+        width = minimapResolution.x; height = minimapResolution.y;
+        string key = $"P{planetIndex}_M0_W{width}_H{height}";
+        if (_bodyIndexLUT.TryGetValue(key, out var lut)) return lut;
+        // Attempt to build if planet exists
+        var planetGenRef = _gameManager != null ? (_gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator) : null;
+        var grid = planetGenRef?.Grid;
+        if (grid == null) return null;
+        return EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
     }
+
+    public Color32[] GetTileAtlasColors(int planetIndex, bool isMoon)
+    {
+        string key = $"P{planetIndex}_M{(isMoon?1:0)}";
+        if (_tileAtlasCache.TryGetValue(key, out var atlas)) return atlas;
+        // Attempt build (separate branches to avoid mixed type in ternary)
+        SphericalHexGrid grid = null;
+        if (isMoon)
+        {
+            var moonGen = _gameManager?.GetMoonGenerator(planetIndex);
+            grid = moonGen?.Grid;
+        }
+        else
+        {
+            PlanetGenerator planetGen = null;
+            if (_gameManager != null)
+                planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            grid = planetGen?.Grid;
+        }
+        if (grid == null) return null;
+        return EnsureTileColorAtlas(planetIndex, isMoon, grid);
+    }
+
+    public Texture GetPlanetMinimapTexture(int planetIndex)
+    {
+        _minimapTextures.TryGetValue(planetIndex, out var tex);
+        return tex;
+    }
+
+    // Removed CPU helpers (UploadPixels, GetOrCreatePixelBuffer, CreateCpuTexture)
+
     // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
     private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
     {
@@ -151,8 +143,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var lut = new int[width * height];
 
         // Precompute trig
-        var sinLatArr = new NativeArray<float>(height, Allocator.TempJob);
-        var cosLatArr = new NativeArray<float>(height, Allocator.TempJob);
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
         for (int y = 0; y < height; y++)
         {
             float v = (y + 0.5f) / height;
@@ -160,8 +152,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             sinLatArr[y] = Mathf.Sin(latRad);
             cosLatArr[y] = Mathf.Cos(latRad);
         }
-        var sinLonArr = new NativeArray<float>(width, Allocator.TempJob);
-        var cosLonArr = new NativeArray<float>(width, Allocator.TempJob);
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
         for (int x = 0; x < width; x++)
         {
             float u = (x + 0.5f) / width;
@@ -170,41 +162,66 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             cosLonArr[x] = Mathf.Cos(lonRad);
         }
 
-        var tileCenters = new NativeArray<Vector3>(grid.tileCenters.Length, Allocator.TempJob);
-        for (int i = 0; i < grid.tileCenters.Length; i++)
+        for (int y = 0; y < height; y++)
         {
-            tileCenters[i] = grid.tileCenters[i];
+            float sinLat = sinLatArr[y];
+            float cosLat = cosLatArr[y];
+            int yBase = y * width;
+            for (int x = 0; x < width; x++)
+            {
+                float sinLon = sinLonArr[x];
+                float cosLon = cosLonArr[x];
+                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
+                int tileIndex = grid.GetTileAtPosition(dir);
+                lut[yBase + x] = tileIndex;
+            }
         }
-        var lutNative = new NativeArray<int>(lut.Length, Allocator.TempJob);
 
-        var job = new LUTJob
-        {
-            tileCenters = tileCenters,
-            sinLatArr = sinLatArr,
-            cosLatArr = cosLatArr,
-            sinLonArr = sinLonArr,
-            cosLonArr = cosLonArr,
-            width = width,
-            height = height,
-            lut = lutNative
-        };
-
-        JobHandle handle = job.Schedule(lut.Length, 64);
-        handle.Complete();
-
-        lutNative.CopyTo(lut);
-
-        sinLatArr.Dispose();
-        cosLatArr.Dispose();
-        sinLonArr.Dispose();
-        cosLonArr.Dispose();
-        tileCenters.Dispose();
-        lutNative.Dispose();
-
-        _bodyIndexLUT[key] = lut;
-        return lut;
+    _bodyIndexLUT[key] = lut;
+    return lut;
     }
-        // Build or fetch a compact per-tile color atlas for a body (planet or moon).
+
+    // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
+    // bottom-left origin (Texture2D) to a top-left display orientation.
+    private static void FlipPixelsVertically(Color32[] pixels, int width, int height)
+    {
+        if (pixels == null || pixels.Length != width * height) return;
+        int half = height / 2;
+        var rowBuffer = new Color32[width];
+        for (int y = 0; y < half; y++)
+        {
+            int topRowStart = (height - 1 - y) * width;
+            int bottomRowStart = y * width;
+
+            // Swap rows using a small buffer
+            System.Array.Copy(pixels, bottomRowStart, rowBuffer, 0, width);
+            System.Array.Copy(pixels, topRowStart, pixels, bottomRowStart, width);
+            System.Array.Copy(rowBuffer, 0, pixels, topRowStart, width);
+        }
+    }
+
+    // Flip a Color32 pixel buffer horizontally in-place (column swap) to fix horizontal orientation
+    private static void FlipPixelsHorizontally(Color32[] pixels, int width, int height)
+    {
+        if (pixels == null || pixels.Length != width * height) return;
+        int half = width / 2;
+        for (int y = 0; y < height; y++)
+        {
+            int rowStart = y * width;
+            for (int x = 0; x < half; x++)
+            {
+                int leftIndex = rowStart + x;
+                int rightIndex = rowStart + (width - 1 - x);
+                
+                // Swap pixels
+                Color32 temp = pixels[leftIndex];
+                pixels[leftIndex] = pixels[rightIndex];
+                pixels[rightIndex] = temp;
+            }
+        }
+    }
+
+    // Build or fetch a compact per-tile color atlas for a body (planet or moon).
     // Atlas layout: square texture array flattened to Color32[] where index -> tileIndex mapping is stored in parallel by tile order.
     private Color32[] EnsureTileColorAtlas(int planetIndex, bool isMoon, SphericalHexGrid grid)
     {
@@ -217,11 +234,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         for (int i = 0; i < tileCount; i++)
         {
-                var tileData = isMoon ? _gameManager.GetMoonGenerator(planetIndex)?.GetHexTileData(i) : _gameManager.GetPlanetGenerator(planetIndex)?.GetHexTileData(i);
-            if (tileData == null && TileDataHelper.Instance != null)
+            var tileData = isMoon ? _gameManager.GetMoonGenerator(planetIndex)?.GetHexTileData(i) : _gameManager.GetPlanetGenerator(planetIndex)?.GetHexTileData(i);
+            if (tileData == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
             {
-                var (helperTileData, helperIsMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(i, planetIndex);
-                if (!helperIsMoon && helperTileData != null) tileData = helperTileData;
+                tileData = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
             }
 
             Color c;
@@ -242,7 +258,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
         _tileAtlasCache[key] = atlas;
-    Debug.Log($"[MinimapUI] Built tile atlas for {key} ({tileCount} tiles)");
+    
         return atlas;
     }
 
@@ -262,10 +278,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             wrapMode = TextureWrapMode.Clamp,
             filterMode = FilterMode.Point
         };
-    // Fast upload using raw buffer to avoid temporary GC from SetPixels32
-    var raw = GetOrCreateRawBuffer(w, 1);
-    Buffer.BlockCopy(atlas, 0, raw, 0, w * 4);
-    tex.LoadRawTextureData(raw);
+    // Safe upload: 1-row atlas; SetPixels32 cost negligible vs. crash risk.
+    // (Previous BlockCopy on Color32[] triggered ArgumentException on some runtimes.)
+    tex.SetPixels32(atlas);
     tex.Apply(false, false);
         _gpuAtlasTextureCache[cacheKey] = tex;
         return tex;
@@ -330,7 +345,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         int ty = Mathf.CeilToInt(height / 8f);
         minimapComputeShader.Dispatch(kernel, tx, ty, 1);
 
-        Debug.Log($"[MinimapUI] GPU minimap generated for {key} (atlas {atlas.Length})");
+        
 
         return rt;
     }
@@ -368,10 +383,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
         
         // Hide individual UI elements during loading, but keep GameObject active for coroutines
-        if (IsLoadingActive() || !_minimapsPreGenerated)
-        {
-            HideUIElements();
-        }
+        // Hide UI while we generate minimaps (always pre-generation now)
+        if (IsLoadingActive() || !_minimapsPreGenerated) HideUIElements();
 
     }
 
@@ -577,7 +590,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             gameObject.SetActive(true);
         }
         
-    StartCoroutine(PreGenerateAllMinimaps());
+        StartCoroutine(PreGenerateAllMinimaps());
     }
 
     /// <summary>
@@ -585,10 +598,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     public IEnumerator PreGenerateAllMinimaps()
     {
-        if (_minimapsPreGenerated)
-        {
-            yield break;
-        }
+        if (_minimapsPreGenerated) yield break; // guard if called twice
         _minimapsPreGenerated = false;
 
         // Clear existing textures
@@ -628,38 +638,35 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
 
-        // Generate minimaps with smaller batches and more frequent yields
+        // Unified generation loop
         for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
         {
             string planetName = GetPlanetName(planetIndex);
 
-            // Generate planet minimap with optimizations (GPU-only path)
-            yield return StartCoroutine(GenerateMinimapTextureOptimized(planetIndex, minimapResolution));
+            // Planet
+            yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, false, minimapResolution));
 
-                // Generate moon minimap if exists (use current moon generator API)
-                var moonGen = _gameManager.GetMoonGenerator(planetIndex);
-                if (moonGen != null && moonGen.Grid != null && moonGen.Grid.TileCount > 0)
-                {
-                    // Moon minimap generation is handled by the same optimized GPU path
-                    yield return StartCoroutine(GenerateMinimapTextureOptimized(planetIndex, minimapResolution, true));
-                }
+            // Moon (if any)
+            var moonGen = _gameManager.GetMoonGenerator(planetIndex);
+            if (moonGen != null && moonGen.Grid != null && moonGen.Grid.TileCount > 0)
+            {
+                yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, true, minimapResolution));
+            }
 
-            // Update loading progress more frequently
             if (_loadingPanel != null)
             {
-                float progress = 0.8f + (0.1f * (float)(planetIndex + 1) / totalPlanets); // Use 0.8-0.9 range for minimap generation
+                float progress = 0.8f + (0.1f * (float)(planetIndex + 1) / totalPlanets);
                 _loadingPanel.SetProgress(progress);
                 _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen != null ? " (and moon)" : string.Empty)}");
             }
 
-
-            // Minimap generation now uses the optimized LUT + Atlas + ComputeShader GPU path only.
+            yield return null; // yield between bodies
         }
-
-        // Mark completed and finish UI setup
+        
         _minimapsPreGenerated = true;
+
         // Show the UI elements now that generation is complete
-        ShowUIElements();
+    ShowUIElements();
 
         // Signal LoadingPanelController that minimap generation is complete
         if (LoadingPanelController.Instance != null)
@@ -674,44 +681,83 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
     }
 
-    /// <summary>
-    /// Optimized minimap generation with batching using LUT + atlas + compute shader.
-    /// </summary>
-    private IEnumerator GenerateMinimapTextureOptimized(int planetIndex, Vector2Int resolution, bool isMoon = false)
+    private string GetPlanetName(int planetIndex)
     {
-        var planetGen = _gameManager.enableMultiPlanetSystem
-            ? _gameManager.GetPlanetGenerator(planetIndex)
-            : _gameManager.planetGenerator;
+        if (_gameManager.enableMultiPlanetSystem)
+        {
+            var planetData = _gameManager.GetPlanetData();
+            if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
+            {
+                return pd.planetName;
+            }
+            else
+            {
+                var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
+                if (planetGen != null)
+                {
+                    return planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
+                }
+            }
+        }
+        return "Planet";
+    }
 
-        if (planetGen == null) yield break;
+    // Unified coroutine (GPU-only) for planet or moon
+    private IEnumerator GenerateBodyMinimapCoroutine(int planetIndex, bool isMoon, Vector2Int resolution)
+    {
+        PlanetGenerator planetGenRef = null;
+        MoonGenerator moonGenRef = null;
+        if (isMoon)
+            moonGenRef = _gameManager.GetMoonGenerator(planetIndex);
+        else
+            planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
 
-        // Decide target generator (moon if requested)
-        var targetGen = isMoon ? (_gameManager.GetMoonGenerator(planetIndex) ?? planetGen) : planetGen;
-        var grid = targetGen?.Grid;
-        if (grid == null) yield break;
+        var grid = isMoon ? moonGenRef?.Grid : planetGenRef?.Grid;
+        if (grid == null || grid.TileCount == 0) yield break;
 
         int width = resolution.x;
         int height = resolution.y;
-
         var lut = EnsureIndexLUTForBody(planetIndex, isMoon, grid, width, height);
         if (lut == null) yield break;
 
-        var tileAtlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
-        if (minimapComputeShader == null || tileAtlas == null)
+        // Try GPU path
+        Color32[] tileAtlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
+        if (minimapComputeShader != null && tileAtlas != null)
         {
-            Debug.LogWarning($"[MinimapUI] GPU path unavailable for planet {planetIndex} (compute shader or atlas missing). Skipping minimap generation.");
-            yield break;
+            var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, tileAtlas);
+            if (gpuRT != null)
+            {
+                if (isMoon) _moonMinimapTextures[planetIndex] = gpuRT; else _minimapTextures[planetIndex] = gpuRT;
+                yield break;
+            }
         }
 
-        var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, tileAtlas);
-        if (gpuRT != null)
-        {
-            Debug.Log($"[MinimapUI] Using GPU path for {(isMoon?"moon":"planet")} {planetIndex}");
-            if (isMoon) _moonMinimapTextures[planetIndex] = gpuRT;
-            else _minimapTextures[planetIndex] = gpuRT;
-        }
-        yield break;
+        // GPU unavailable or atlas missing: skip (no CPU fallback)
+        Debug.LogWarning($"[MinimapUI] {(isMoon ? "Moon" : "Planet")} {planetIndex} minimap skipped (GPU path unavailable).");
     }
+
+    // Immediate generation (no yielding) used only if something missing at display time
+    private Texture GenerateBodyMinimapImmediate(int planetIndex, bool isMoon)
+    {
+        MoonGenerator moonGenRef = null; PlanetGenerator planetGenRef = null;
+        if (isMoon) moonGenRef = _gameManager.GetMoonGenerator(planetIndex); else planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+        var grid = isMoon ? moonGenRef?.Grid : planetGenRef?.Grid;
+        if (grid == null || grid.TileCount == 0) return null;
+        int width = minimapResolution.x; int height = minimapResolution.y;
+        var lut = EnsureIndexLUTForBody(planetIndex, isMoon, grid, width, height); if (lut == null) return null;
+        var atlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
+        if (minimapComputeShader != null && atlas != null)
+        {
+            var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, atlas);
+            if (gpuRT != null)
+            {
+                if (isMoon) _moonMinimapTextures[planetIndex] = gpuRT; else _minimapTextures[planetIndex] = gpuRT;
+                return gpuRT;
+            }
+        }
+        return null; // no CPU fallback
+    }
+
 
     /// <summary>
     /// Clear the minimap cache (useful for debugging and forcing regeneration)
@@ -863,28 +909,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     }
 
-    private string GetPlanetName(int planetIndex)
-    {
-        if (_gameManager == null) return "Planet";
-        if (_gameManager.enableMultiPlanetSystem)
-        {
-            var planetData = _gameManager.GetPlanetData();
-            if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
-            {
-                return pd.planetName ?? "Planet";
-            }
-            else
-            {
-                var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
-                if (planetGen != null)
-                {
-                    return planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
-                }
-            }
-        }
-        return "Planet";
-    }
-
     private void BuildPlanetDropdown()
     {
         if (planetDropdown == null || _gameManager == null) return;
@@ -976,13 +1000,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 }
                 else
                 {
-                    var generated = GenerateMinimapTexture(planetIndex);
-                    if (generated != null)
-                    {
-                        _minimapTextures[planetIndex] = generated;
-                        if (minimapImage != null) minimapImage.texture = generated;
-                        SetZoom(1f);
-                    }
+                    var generated = GenerateBodyMinimapImmediate(planetIndex, false);
+                    if (generated != null && minimapImage != null) minimapImage.texture = generated;
+                    SetZoom(1f);
                 }
             }
             else
@@ -1000,13 +1020,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 }
                 else
                 {
-                    var generated = GenerateMoonMinimapTexture(planetIndex);
-                    if (generated != null)
-                    {
-                        _moonMinimapTextures[planetIndex] = generated;
-                        if (minimapImage != null) minimapImage.texture = generated;
-                        SetZoom(1f);
-                    }
+                    var generated = GenerateBodyMinimapImmediate(planetIndex, true);
+                    if (generated != null && minimapImage != null) minimapImage.texture = generated;
+                    SetZoom(1f);
                 }
             }
         }
@@ -1016,220 +1032,20 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (!isOnMoon)
             {
                 if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
-                {
-                    tex = GenerateMinimapTexture(planetIndex);
-                    _minimapTextures[planetIndex] = tex;
-                }
-
-                if (minimapImage != null)
-                {
-                    if (tex is RenderTexture rt) minimapImage.texture = rt;
-                    else minimapImage.texture = tex;
-                }
+                    tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
+                if (minimapImage != null && tex != null) minimapImage.texture = tex;
                 SetZoom(1f);
             }
             else
             {
                 if (!_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) || mtex == null)
-                {
-                    mtex = GenerateMoonMinimapTexture(planetIndex);
-                    _moonMinimapTextures[planetIndex] = mtex;
-                }
-
-                if (minimapImage != null)
-                {
-                    if (mtex is RenderTexture mrt) minimapImage.texture = mrt;
-                    else minimapImage.texture = mtex;
-                }
+                    mtex = GenerateBodyMinimapImmediate(planetIndex, true) as Texture;
+                if (minimapImage != null && mtex != null) minimapImage.texture = mtex;
                 SetZoom(1f);
             }
         }
     }
 
-    private Texture2D GenerateMoonMinimapTexture(int planetIndex)
-    {
-    Debug.Log($"[MinimapUI] CPU GenerateMoonMinimapTexture called for planet {planetIndex}");
-        if (_gameManager == null)
-        {
-            return null;
-        }
-
-        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
-        if (moonGen == null)
-        {
-            return null;
-        }
-
-        var grid = moonGen.Grid;
-        if (grid == null)
-        {
-            return null;
-        }
-
-        int width = minimapResolution.x;
-        int height = minimapResolution.y;
-        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear
-        };
-
-        var lut = EnsureIndexLUTForBody(planetIndex, true, grid, width, height);
-        if (lut == null) return null;
-
-        var tileDataCache = new Dictionary<int, HexTileData>();
-        var tileOffsetCache = new Dictionary<int, Vector2>();
-        var pixels = new Color32[width * height];
-        float[] vArr = new float[height]; for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
-        float[] uArr = new float[width]; for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
-
-        for (int y = 0; y < height; y++)
-        {
-            float v = vArr[y]; int yBase = y * width;
-            for (int x = 0; x < width; x++)
-            {
-                int tileIndex = lut[yBase + x];
-                Color color;
-                if (tileIndex < 0)
-                {
-                    color = Color.magenta;
-                }
-                else
-                {
-                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
-                    {
-                        tileData = moonGen.GetHexTileData(tileIndex);
-                        tileDataCache[tileIndex] = tileData;
-                    }
-                    if (tileData == null)
-                    {
-                        color = new Color(0.35f, 0.35f, 0.35f);
-                    }
-                    else
-                    {
-                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
-                        {
-                            int hash = tileIndex * 9781 + 7;
-                            float ox = ((hash >> 8) & 0xFF) / 255f;
-                            float oy = (hash & 0xFF) / 255f;
-                            offset = new Vector2(ox, oy);
-                            tileOffsetCache[tileIndex] = offset;
-                        }
-                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
-                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
-                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
-                    }
-                }
-                int dstX = width - 1 - x; int dstY = height - 1 - y;
-                pixels[dstY * width + dstX] = color;
-            }
-        }
-
-    var raw = GetOrCreateRawBuffer(width, height);
-    Buffer.BlockCopy(pixels, 0, raw, 0, width * height * 4);
-    tex.LoadRawTextureData(raw);
-    tex.Apply();
-    return tex;
-    }
-
-    private Texture2D GenerateMinimapTexture(int planetIndex)
-    {
-    Debug.Log($"[MinimapUI] CPU GenerateMinimapTexture called for planet {planetIndex}");
-        if (_gameManager == null)
-        {
-            return null;
-        }
-
-        var planetGen = _gameManager.enableMultiPlanetSystem
-            ? _gameManager.GetPlanetGenerator(planetIndex)
-            : _gameManager.planetGenerator;
-
-        if (planetGen == null)
-        {
-            return null;
-        }
-
-        var grid = planetGen.Grid;
-        if (grid == null)
-        {
-            return null;
-        }
-
-    // Debug info removed
-
-        int width = minimapResolution.x;
-        int height = minimapResolution.y;
-        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear
-        };
-
-    var lut = EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
-    if (lut == null) return null;
-
-        var tileDataCache = new Dictionary<int, HexTileData>();
-        var tileOffsetCache = new Dictionary<int, Vector2>();
-        var pixels = new Color32[width * height];
-
-        float[] vArr = new float[height]; for (int y = 0; y < height; y++) vArr[y] = (y + 0.5f) / height;
-        float[] uArr = new float[width]; for (int x = 0; x < width; x++) uArr[x] = (x + 0.5f) / width;
-
-        for (int y = 0; y < height; y++)
-        {
-            float v = vArr[y]; int yBase = y * width;
-            for (int x = 0; x < width; x++)
-            {
-                int tileIndex = lut[yBase + x];
-                Color color;
-                if (tileIndex < 0)
-                {
-                    color = Color.magenta;
-                }
-                else
-                {
-                    if (!tileDataCache.TryGetValue(tileIndex, out var tileData) || tileData == null)
-                    {
-                        tileData = planetGen.GetHexTileData(tileIndex);
-                        if (tileData == null && TileDataHelper.Instance != null)
-                        {
-                            var (helperTileData, isMoon) = TileDataHelper.Instance.GetTileDataFromPlanet(tileIndex, planetIndex);
-                            if (!isMoon && helperTileData != null) tileData = helperTileData;
-                        }
-                        if (tileData == null && planetGen.data != null && planetGen.data.ContainsKey(tileIndex))
-                            tileData = planetGen.data[tileIndex];
-                        tileDataCache[tileIndex] = tileData;
-                    }
-                    if (tileData == null)
-                    {
-                        color = new Color(0.35f, 0.35f, 0.35f);
-                    }
-                    else
-                    {
-                        if (!tileOffsetCache.TryGetValue(tileIndex, out var offset))
-                        {
-                            int hash = tileIndex * 9781 + 7;
-                            float ox = ((hash >> 8) & 0xFF) / 255f;
-                            float oy = (hash & 0xFF) / 255f;
-                            offset = new Vector2(ox, oy);
-                            tileOffsetCache[tileIndex] = offset;
-                        }
-                        float sampleU = Mathf.Repeat(uArr[x] + offset.x, 1f);
-                        float sampleV = Mathf.Repeat(v + offset.y, 1f);
-                        color = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
-                    }
-                }
-                int dstX = width - 1 - x; int dstY = height - 1 - y;
-                pixels[dstY * width + dstX] = color;
-            }
-        }
-
-    var raw = GetOrCreateRawBuffer(width, height);
-        Buffer.BlockCopy(pixels, 0, raw, 0, width * height * 4);
-        tex.LoadRawTextureData(raw);
-        tex.Apply();
-        return tex;
-    }
 
     private Color GetDefaultBiomeColour(Biome biome)
     {

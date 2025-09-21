@@ -452,7 +452,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // --------------------------- Unity lifecycle -----------------------------
     void Awake()
     {
-        Debug.Log($"[PlanetGenerator] Awake called on {gameObject.name}. Current Instance = {(Instance == null ? "null" : Instance.gameObject.name)}");
+        
         
         // Check if we're in multi-planet mode
         bool isMultiPlanet = GameManager.Instance?.enableMultiPlanetSystem == true;
@@ -463,7 +463,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (Instance == null)
             {
                 Instance = this;
-                Debug.Log($"[PlanetGenerator] {gameObject.name} became the singleton Instance (single planet mode)");
+                
             }
             else if (Instance != this)
             {
@@ -478,11 +478,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (Instance == null)
             {
                 Instance = this;
-                Debug.Log($"[PlanetGenerator] {gameObject.name} became the default Instance (multi-planet mode)");
+                
             }
             else
             {
-                Debug.Log($"[PlanetGenerator] Multi-planet mode: {gameObject.name} created alongside existing Instance {Instance.gameObject.name}");
+                
             }
         }
         
@@ -512,7 +512,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             biomePrefabList.Clear();
             flatBiomePrefabs.Clear();
             hillBiomePrefabs.Clear();
-            Debug.Log("[PlanetGenerator] Forcing name-based prefab loading (ignoring manually assigned biome prefabs).");
+            
         }
 
         if (shouldAutoLoad)
@@ -645,7 +645,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // Initialize the grid for this planet (will be configured by GameManager)
         grid = new SphericalHexGrid();
-        Debug.Log($"[PlanetGenerator] Awake: Grid initialized, will be configured by GameManager");
+        
 
                 
         if (randomSeed) seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
@@ -687,7 +687,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private void HandleSeasonChange(Season newSeason)
     {
-        Debug.Log($"[PlanetGenerator] Season changed to {newSeason}. Rebuilding visual maps not required anymore.");
+        
     }
     
 
@@ -1082,16 +1082,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         yield return null;
 
         // --- Visual Generation ---
-        Debug.Log("[PlanetGenerator] Spawning all tile prefabs...");
+        
         yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
         
-        Debug.Log("[PlanetGenerator] Spawning all tile decorations...");
+        
         yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
 
         // Finalize
         HasGeneratedSurface = true;
         Tiles = data.Values.ToList();
-        Debug.Log($"[PlanetGenerator] Surface generation complete. Total tiles: {Tiles.Count}");
+        
 
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(Dictionary<int, bool> isLandTile, Dictionary<int, HexTileData> tileData)
@@ -1150,7 +1150,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 targetRiverCount *= 2;
             }
             targetRiverCount = Mathf.Clamp(targetRiverCount, 0, 50); // Cap total rivers
-            Debug.Log($"Attempting to generate up to {targetRiverCount} rivers.");
+            
 
             while (actualRiverCount < targetRiverCount && totalAttempts < MAX_TOTAL_ATTEMPTS)
             {
@@ -1543,21 +1543,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
-    /// <summary>
-    /// Configure this generator to act as a moon: set subdivisions and radius and generate the grid.
-    /// This provides compatibility for previous MoonGenerator.ConfigureMoon calls.
-    /// </summary>
-    public void ConfigureMoon(int subdivisions, float radius)
-    {
-        this.subdivisions = subdivisions;
-        this.radius = radius;
-        if (grid != null)
-        {
-            grid.GenerateFromSubdivision(subdivisions, radius);
-        }
-        Debug.Log($"[PlanetGenerator] Configured as moon with subdivisions={subdivisions}, radius={radius}");
-    }
-
 
 
     /// <summary>
@@ -1764,8 +1749,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Fallback orientation. Tiles should be modeled with Y-axis as up.
             Vector3 radial = (position - transform.position).normalized;
             go.transform.up = radial;
-            Debug.Log($"Tile {tileIndex} radial direction: {radial}");
-            Debug.Log("Fallback logic used");
+            
+            
         }
 
         // Different scale factors for hexagons and pentagons
@@ -1842,7 +1827,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         if (worldCorners != null)
         {
-            Debug.Log($"Aligned tile {tileIndex} mesh vertices to {worldCorners.Length} precise corner positions");
+            
         }
     }
 
@@ -2093,7 +2078,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         _cachedExpectedDistance = distanceCount > 0 ? totalDistance / distanceCount : 1.0f;
-        Debug.Log($"Calculated expected tile distance: {_cachedExpectedDistance:F4}");
+        
         return _cachedExpectedDistance;
     }
 
@@ -2398,7 +2383,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         if (!hasVisuals)
         {
-            Debug.Log("[PlanetGenerator] EnsureVisualsSpawned: No tile visuals found, spawning now...");
+            
             yield return StartCoroutine(SpawnAllTilePrefabs(tileSpawnBatchSize));
             yield return StartCoroutine(SpawnAllTileDecorations(decorationSpawnBatchSize));
             yield return null;

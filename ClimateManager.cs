@@ -215,7 +215,7 @@ public class ClimateManager : MonoBehaviour
                 int idx = unit.currentTileIndex;
                 if (idx < 0) continue;
 
-                var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(idx);
+                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
                 if (tileData == null) continue;
 
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
@@ -244,7 +244,7 @@ public class ClimateManager : MonoBehaviour
                 int idx = worker.currentTileIndex;
                 if (idx < 0) continue;
 
-                var (tileData, isMoon) = TileDataHelper.Instance.GetTileData(idx);
+                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
                 if (tileData == null) continue;
 
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
