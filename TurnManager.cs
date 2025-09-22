@@ -70,7 +70,17 @@ public class TurnManager : MonoBehaviour
         round = 1;
         currentIndex = -1;
         turnsStarted = true;
-        
+
+        var gameManager = GameManager.Instance;
+        if (gameManager != null)
+        {
+            gameManager.currentTurn = round;
+        }
+        else
+        {
+            Debug.LogWarning("TurnManager: GameManager instance not found when starting turns.");
+        }
+
         StartCoroutine(AdvanceTurnCoroutine());
     }
 
@@ -101,6 +111,19 @@ public class TurnManager : MonoBehaviour
         bool isPlayer = civ == playerCiv;
 
         Debug.Log($"TurnManager: Turn {round}, Civ: {civ.civData.civName}, IsPlayer: {isPlayer}");
+
+        var gameManager = GameManager.Instance;
+        if (gameManager != null)
+        {
+            gameManager.currentTurn = round;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Assert(gameManager.currentTurn == round, "TurnManager: GameManager turn counter out of sync after advancing turn.");
+#endif
+        }
+        else
+        {
+            Debug.LogWarning("TurnManager: GameManager instance not found when advancing turns.");
+        }
 
         if (isPlayer && round > 1 && AnimalManager.Instance != null)
             AnimalManager.Instance.ProcessTurn();
