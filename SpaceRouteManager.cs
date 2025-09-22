@@ -113,6 +113,8 @@ public class SpaceRouteManager : MonoBehaviour
             return false;
         }
 
+        bool isPlanetMoonRoute = IsPlanetMoonPair(fromPlanetIndex, toPlanetIndex);
+
         // Travel capability gating (stubs for future systems)
         switch (combatUnit.data.travelCapability)
         {
@@ -121,7 +123,7 @@ public class SpaceRouteManager : MonoBehaviour
                 return false;
             case TravelCapability.PlanetAndMoon:
                 // Allow planet <-> moon only in current system
-                if (!IsPlanetMoonPair(fromPlanetIndex, toPlanetIndex))
+                if (!isPlanetMoonRoute)
                 {
                     Debug.LogWarning("[SpaceRouteManager] This ship can only travel between a planet and its moon (stub).");
                     return false;
@@ -138,7 +140,7 @@ public class SpaceRouteManager : MonoBehaviour
                 return false;
         }
 
-        if (fromPlanetIndex == toPlanetIndex)
+        if (fromPlanetIndex == toPlanetIndex && !isPlanetMoonRoute)
         {
             Debug.LogWarning("[SpaceRouteManager] Cannot travel to the same planet");
             return false;
@@ -274,14 +276,46 @@ public class SpaceRouteManager : MonoBehaviour
         return distanceUnits;
     }
 
-    // Stub helper to recognize planet <-> moon travel within current system
+    // Helper to recognize planet <-> moon travel within current system
     private bool IsPlanetMoonPair(int fromPlanet, int toPlanet)
     {
-        // Current implementation: only Earth (index 0) has moon handled.
-        // Extend later using GameManager planetData.moonNames mapping.
-        // For now, consider a planet and its moon share the same index mapping via GameManager.moonGenerators.
-        // Since moons are not separate planet indices in travel yet, allow only within same index (no-op)
-        return fromPlanet == toPlanet; // Placeholder: prevent cross-planet until moon indexing is formalized
+        var gameManager = GameManager.Instance;
+        if (gameManager == null)
+            return false;
+
+        var planetData = gameManager.GetPlanetData();
+        if (planetData == null || planetData.Count == 0)
+            return false;
+
+        bool MatchesMapping(int planetIndex, int possibleMoonIndex)
+        {
+            if (!planetData.TryGetValue(planetIndex, out var planet) || planet.moonNames == null || planet.moonNames.Count == 0)
+                return false;
+
+            if (!planetData.TryGetValue(possibleMoonIndex, out var body))
+                return false;
+
+            for (int i = 0; i < planet.moonNames.Count; i++)
+            {
+                string moonName = planet.moonNames[i];
+                if (!string.IsNullOrEmpty(moonName) &&
+                    string.Equals(moonName, body.planetName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (MatchesMapping(fromPlanet, toPlanet) || MatchesMapping(toPlanet, fromPlanet))
+            return true;
+
+        // Support single-planet setups where the moon shares the same index as its planet
+        if (fromPlanet == toPlanet)
+            return gameManager.GetMoonGenerator(fromPlanet) != null;
+
+        return false;
     }
 
     private int CalculateTravelTime(float distanceAU, GameObject unit)
