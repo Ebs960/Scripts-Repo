@@ -317,6 +317,13 @@ public class TileSystem : MonoBehaviour
     public void SetLocalPlayerCiv(int civId) { localPlayerCivId = civId; if (!alliedCivs.Contains(civId)) alliedCivs.Add(civId); RebuildMergedFog(); MarkAllTilesDirty(); }
     #endregion
 
+		#region Hover context helpers
+		/// <summary>
+		/// True if the last hover raycast landed on a moon tile (current frame).
+		/// </summary>
+		public bool IsCurrentHoverOnMoon => lastHoverWasMoon;
+		#endregion
+
     
 
     #region Input Raycast Helpers
@@ -350,8 +357,25 @@ public class TileSystem : MonoBehaviour
     public void ClearDirtyOverlaySet() => _dirtyOverlayTiles.Clear();
     #endregion
 
-    #region Tile Data Access / Mutations (stubs)
+		#region Tile Data Access / Mutations (stubs)
     public HexTileData GetTileData(int tile) => (tiles != null && tile >=0 && tile < tiles.Length) ? tiles[tile] : null;
+
+		/// <summary>
+		/// Get tile data for the current planet or the current moon.
+		/// </summary>
+		public HexTileData GetTileDataForBody(int tile, bool isMoon)
+		{
+			if (isMoon)
+			{
+				// Prefer moon generator authoritative data
+				return moonRef != null ? moonRef.GetHexTileData(tile) : null;
+			}
+			// Planet path
+			var td = GetTileData(tile);
+			if (td != null) return td;
+			// Fallback to generator if tiles[] not populated yet
+			return planetRef != null ? planetRef.GetHexTileData(tile) : null;
+		}
     public void SetTileData(int tile, HexTileData data)
     {
         if (!isReady || tiles == null) return;
@@ -364,6 +388,28 @@ public class TileSystem : MonoBehaviour
     public int[] GetNeighbors(int tile) => (neighbors != null && tile >=0 && tile < neighbors.Length) ? neighbors[tile] : System.Array.Empty<int>();
     public bool IsReady() => isReady;
     #endregion
+
+		#region Surface Position Helpers (planet and moon)
+		/// <summary>
+		/// Get a world-space point on the tile surface for either the planet or the moon.
+		/// </summary>
+		public Vector3 GetTileSurfacePositionForBody(int tile, bool isMoon, float unitOffset = 0f)
+		{
+			if (isMoon)
+			{
+				if (moonRef == null || moonRef.Grid == null) return Vector3.zero;
+				if (tile < 0 || tile >= moonRef.Grid.tileCenters.Length) return Vector3.zero;
+				var centerDir = moonRef.Grid.tileCenters[tile].normalized;
+				float radius = moonRef.Grid.Radius;
+				float elevation = moonRef.GetTileElevation(tile);
+				float elevationScale = radius * 0.1f;
+				return moonRef.transform.TransformPoint(centerDir * (radius + elevation * elevationScale + unitOffset));
+			}
+
+			// Planet
+			return GetTileSurfacePosition(tile, unitOffset);
+		}
+		#endregion
 
     #region Multi-Planet Stubs
     // Temporary stubs until true multi-planet block architecture is added
@@ -437,7 +483,7 @@ public class TileSystem : MonoBehaviour
     }
     #endregion
 
-    #region Surface / Accessibility / Occupancy
+		#region Surface / Accessibility / Occupancy
     public Vector3 GetTileSurfacePosition(int tile, float unitOffset = 0f)
     {
         if (planetRef == null || planetRef.Grid == null) return GetTileCenter(tile);

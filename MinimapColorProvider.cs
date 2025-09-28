@@ -152,6 +152,17 @@ public class MinimapColorProvider : ScriptableObject
     }
     
     /// <summary>
+    /// Get biome color directly without tile data - useful for atlas generation
+    /// </summary>
+    public Color GetBiomeColor(Biome biome)
+    {
+        if (_colorLookup != null && _colorLookup.TryGetValue(biome, out var col))
+            return col;
+        
+        return GetDefaultBiomeColor(biome);
+    }
+
+    /// <summary>
     /// Fallback colors for biomes not configured in the ColorProvider
     /// </summary>
     private Color GetDefaultBiomeColor(Biome biome)
@@ -186,9 +197,35 @@ public class MinimapColorProvider : ScriptableObject
             Biome.VenusianPlains => new Color(0.7f, 0.5f, 0.3f, 1f),   // Rocky brown
             Biome.VenusHighlands => new Color(0.6f, 0.4f, 0.3f, 1f), // Dark brown
             
-            // Add more planet-specific biomes as needed...
+            // Moon biomes
+            Biome.MoonDunes => new Color(0.7f, 0.7f, 0.6f, 1f),        // Dusty gray
+            Biome.MoonCaves => new Color(0.4f, 0.4f, 0.4f, 1f),        // Dark gray
             
-            _ => new Color(0.5f, 0.5f, 0.5f, 1f)                 // Gray fallback
+            // Gas Giant biomes
+            Biome.JovianClouds => new Color(0.9f, 0.7f, 0.5f, 1f),     // Orange-brown
+            Biome.JovianStorms => new Color(0.8f, 0.6f, 0.4f, 1f),     // Storm brown
+            Biome.SaturnianRings => new Color(0.8f, 0.8f, 0.7f, 1f),   // Ring ice
+            Biome.SaturnianClouds => new Color(0.9f, 0.8f, 0.6f, 1f),  // Pale yellow
+            Biome.UranianIce => new Color(0.6f, 0.8f, 0.9f, 1f),       // Ice blue
+            Biome.UranianAtmosphere => new Color(0.5f, 0.7f, 0.8f, 1f), // Atmosphere blue
+            Biome.NeptunianStorms => new Color(0.3f, 0.5f, 0.8f, 1f),  // Deep blue
+            Biome.NeptunianClouds => new Color(0.4f, 0.6f, 0.9f, 1f),  // Cloud blue
+            
+            // Exotic biomes
+            Biome.Hellscape => new Color(0.9f, 0.1f, 0.1f, 1f),        // Bright red
+            Biome.Brimstone => new Color(0.8f, 0.4f, 0.1f, 1f),        // Sulfur orange
+            Biome.Glacier => new Color(0.8f, 0.9f, 1.0f, 1f),          // Ice blue
+            Biome.Arctic => new Color(0.7f, 0.8f, 0.9f, 1f),           // Arctic blue
+            Biome.Frozen => new Color(0.6f, 0.7f, 0.8f, 1f),           // Frozen blue
+            Biome.PineForest => new Color(0.2f, 0.5f, 0.3f, 1f),       // Pine green
+            Biome.Rainforest => new Color(0.1f, 0.6f, 0.2f, 1f),       // Rich green
+            Biome.River => new Color(0.3f, 0.5f, 0.8f, 1f),            // River blue
+            Biome.Seas => new Color(0.3f, 0.5f, 0.7f, 1f),             // Sea blue
+            
+            // Any fallback
+            Biome.Any => new Color(0.5f, 0.5f, 0.5f, 1f),              // Neutral gray
+            
+            _ => new Color(0.5f, 0.5f, 0.5f, 1f)                       // Gray fallback
         };
     }
 }

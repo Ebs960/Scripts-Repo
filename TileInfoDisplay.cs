@@ -113,15 +113,16 @@ public class TileInfoDisplay : MonoBehaviour
     {
         if (!isReady) return;
 
-    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
-        if (tileData == null) return;
-    Vector3 tileSurfacePosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0.1f) : worldPos;
+		bool isMoon = TileSystem.Instance != null && TileSystem.Instance.IsCurrentHoverOnMoon;
+		var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileDataForBody(tileIndex, isMoon) : null;
+		if (tileData == null) return;
+		Vector3 tileSurfacePosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePositionForBody(tileIndex, isMoon, 0.1f) : worldPos;
         highlightMarker.transform.position = tileSurfacePosition;
         highlightMarker.transform.up = tileSurfacePosition.normalized;
         highlightMarker.SetActive(true);
 
         sb.Clear();
-        string bodyName = "Planet";
+		string bodyName = isMoon ? "Moon" : "Planet";
         string biomeName = System.Enum.GetName(typeof(Biome), tileData.biome);
         sb.AppendLine($"  <b>{biomeName}</b> {(tileData.isHill ? "(Hill)" : "")}");
         sb.AppendLine($"  Elevation: {tileData.elevation:F2}");
