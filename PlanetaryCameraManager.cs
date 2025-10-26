@@ -71,6 +71,10 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void HandleInput()
     {
+        // MIGRATED: Check InputManager priority (Background priority for camera)
+        if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background))
+            return;
+
         float dt = Time.deltaTime;
         float deltaYaw = 0f, deltaPitch = 0f, pivot = 0f;
 
@@ -99,6 +103,13 @@ public class PlanetaryCameraManager : MonoBehaviour
 
         if (allowMouseDrag)
         {
+            // MIGRATED: Check UI blocking before mouse drag
+            if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
+            {
+                lastMousePos = null; // Cancel drag if over UI
+                return;
+            }
+
             if (Input.GetMouseButtonDown(0))
                 lastMousePos = Input.mousePosition;
             else if (Input.GetMouseButton(0) && lastMousePos.HasValue)
@@ -173,6 +184,13 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void HandleClickDetection()
     {
+        // Respect input priority and UI blocking
+        if (InputManager.Instance != null)
+        {
+            if (!InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background)) return;
+            if (InputManager.Instance.IsPointerOverUI()) return;
+        }
+
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());

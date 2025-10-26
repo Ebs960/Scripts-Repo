@@ -1,6 +1,10 @@
 // Assets/Scripts/Managers/ImprovementClickHandler.cs
 using UnityEngine;
 
+/// <summary>
+/// MIGRATED: Now uses TileSystem.OnTileClicked event instead of OnMouseDown
+/// This prevents conflicts with other input systems and ensures proper priority handling
+/// </summary>
 public class ImprovementClickHandler : MonoBehaviour
 {
     private int tileIndex = -1;
@@ -12,13 +16,36 @@ public class ImprovementClickHandler : MonoBehaviour
         this.improvementData = data;
     }
 
-    private void OnMouseDown()
+    private void OnEnable()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null &&
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+        // MIGRATED: Subscribe to TileSystem's click event instead of using OnMouseDown
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileClicked += HandleTileClicked;
+        }
+    }
+
+    private void OnDisable()
+    {
+        // MIGRATED: Unsubscribe from event to prevent memory leaks
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileClicked -= HandleTileClicked;
+        }
+    }
+
+    private void HandleTileClicked(int clickedTileIndex, Vector3 worldPos)
+    {
+        // Only handle clicks on our tile
+        if (clickedTileIndex != tileIndex) return;
+        
+        // MIGRATED: Use InputManager for UI blocking check
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
+            return;
+            
         if (improvementData == null || tileIndex < 0) return;
 
-        // Delegate to TileSystem central handler if present
+        // Show upgrade panel for this improvement
         if (TileSystem.Instance != null && TileSystem.Instance.isReady)
         {
             var data = TileSystem.Instance.GetTileData(tileIndex);

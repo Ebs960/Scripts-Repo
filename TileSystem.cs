@@ -79,7 +79,11 @@ public class TileSystem : MonoBehaviour
         if (mainCamera == null) mainCamera = Camera.main;
         if (mainCamera == null) return;
 
-        // Hover
+        // MIGRATED: Check InputManager priority before processing (Background priority for TileSystem)
+        if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background))
+            return;
+
+        // Hover (always processed unless UI is blocking)
         var hit = GetMouseHitInfo();
         if (hit.hit)
         {
@@ -99,9 +103,13 @@ public class TileSystem : MonoBehaviour
             }
         }
 
-        // Click
+        // Click (only if not over UI)
         if (Input.GetMouseButtonDown(0))
         {
+            // MIGRATED: Check UI blocking before processing clicks
+            if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
+                return;
+                
             var ch = hit; if (!ch.hit) ch = GetMouseHitInfo();
             if (ch.hit && ch.tileIndex >= 0)
             {

@@ -270,7 +270,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_gpuAtlasTextureCache.TryGetValue(cacheKey, out var existing))
         {
             if (existing.width == w) return existing;
-            UnityEngine.Object.DestroyImmediate(existing);
+            Destroy(existing);
             _gpuAtlasTextureCache.Remove(cacheKey);
         }
         var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
@@ -772,11 +772,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (tex is RenderTexture rt)
             {
                 rt.Release();
-                UnityEngine.Object.DestroyImmediate(rt);
+                Destroy(rt);
             }
             else
             {
-                UnityEngine.Object.DestroyImmediate(tex);
+                Destroy(tex);
             }
         }
         _minimapTextures.Clear();
@@ -786,11 +786,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (tex is RenderTexture rt)
             {
                 rt.Release();
-                UnityEngine.Object.DestroyImmediate(rt);
+                Destroy(rt);
             }
             else
             {
-                UnityEngine.Object.DestroyImmediate(tex);
+                Destroy(tex);
             }
         }
         _moonMinimapTextures.Clear();
@@ -801,6 +801,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         foreach (var kv in _lutComputeBufferCache)
         {
             kv.Value?.Release();
+            kv.Value?.Dispose(); // CRITICAL: Dispose ComputeBuffers to prevent GPU memory leaks
         }
         _lutComputeBufferCache.Clear();
         foreach (var kv in _gpuResultCache)
@@ -808,13 +809,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (kv.Value != null)
             {
                 kv.Value.Release();
-                UnityEngine.Object.DestroyImmediate(kv.Value);
+                Destroy(kv.Value);
             }
         }
         _gpuResultCache.Clear();
         foreach (var kv in _gpuAtlasTextureCache)
         {
-            if (kv.Value != null) UnityEngine.Object.DestroyImmediate(kv.Value);
+            if (kv.Value != null) Destroy(kv.Value);
         }
         _gpuAtlasTextureCache.Clear();
     }
@@ -825,6 +826,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             _gameManager.OnGameStarted -= HandleGameStarted;
         }
+    }
+
+    private void OnDestroy()
+    {
+        // CRITICAL: Release all GPU resources when MinimapUI is destroyed
+        // This prevents GPU memory leaks when switching scenes or reloading
+        ClearMinimapCache();
     }
 
     // New method to handle complete game setup

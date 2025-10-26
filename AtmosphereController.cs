@@ -8,9 +8,13 @@ public class AtmosphereController : MonoBehaviour
     public PlanetGenerator planetGenerator;
 
     [Header("Atmosphere Settings")]
-    [Range(0.01f, 0.2f)]
-    [Tooltip("Thickness of atmosphere relative to planet radius")]
-    public float atmosphereThickness = 0.05f;
+    [Range(0.01f, 0.3f)]
+    [Tooltip("Thickness of atmosphere relative to planet radius (multiplier)")]
+    public float atmosphereThickness = 0.08f;
+
+    [Range(4, 64)]
+    [Tooltip("Sphere mesh subdivision quality (higher = smoother but more expensive)")]
+    public int sphereSubdivisions = 16;
 
     [Tooltip("Material to use for the atmosphere")]
     public Material atmosphereMaterial;
@@ -21,8 +25,10 @@ public class AtmosphereController : MonoBehaviour
 
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
-    private bool meshGenerated = false;
+    private bool atmosphereGenerated = false;
     private bool atmosphereEnabled = true;
+    private MaterialPropertyBlock _mpb;
+    private Mesh _atmosphereMesh;
 
     void Awake()
     {
@@ -31,7 +37,10 @@ public class AtmosphereController : MonoBehaviour
 
         // Ensure we have a material
         if (atmosphereMaterial != null)
-            meshRenderer.material = atmosphereMaterial;
+            meshRenderer.sharedMaterial = atmosphereMaterial; // avoid instantiating a unique material
+
+        // Prepare per-instance property block
+        if (_mpb == null) _mpb = new MaterialPropertyBlock();
     }
 
     void Start()
@@ -71,35 +80,34 @@ public class AtmosphereController : MonoBehaviour
 
     void Update()
     {
-        var grid = planetGenerator != null ? planetGenerator.Grid : null;
-        if (grid == null || grid.TileCount == 0)
+        // Wait for planet generator to be ready
+        if (planetGenerator == null || planetGenerator.radius <= 0)
             return;
 
-        // OPTION A: Skip procedural generation if prefab atmosphere already exists (CHECK ONLY ONCE)
-        // Check if this AtmosphereController already has a MeshRenderer with a DIFFERENT material than our procedural one
-        // (indicating it's a prefab atmosphere with its own material, not a procedural one)
-        if (meshRenderer != null && meshRenderer.material != null && 
-            atmosphereMaterial != null && meshRenderer.material != atmosphereMaterial)
+        // Check if prefab atmosphere exists (different material) - skip procedural generation
+        if (meshRenderer != null && meshRenderer.sharedMaterial != null && 
+            atmosphereMaterial != null && meshRenderer.sharedMaterial != atmosphereMaterial)
         {
-            // This is a prefab atmosphere with different material - disable procedural generation
             atmosphereEnabled = false;
             Debug.Log($"[AtmosphereController] Detected prefab atmosphere on {gameObject.name} - skipping procedural generation");
-            enabled = false; // STOP UPDATE() FROM RUNNING
+            enabled = false;
             return;
         }
 
-        // Only generate procedural mesh once when planet is ready and atmosphere is enabled
-        if (!meshGenerated && atmosphereEnabled)
+        // Generate atmosphere sphere once when planet is ready
+        if (!atmosphereGenerated && atmosphereEnabled)
         {
-            GenerateAtmosphereMesh();
-            meshGenerated = true;
+            GenerateAtmosphereSphere();
+            atmosphereGenerated = true;
+        }
 
-            // Update shader properties if we have a material
-            if (atmosphereMaterial != null)
-            {
-                atmosphereMaterial.SetVector("_PlanetCenterWS", planetGenerator.transform.position);
-                atmosphereMaterial.SetFloat("_PlanetRadius", planetGenerator.radius);
-            }
+        // Update shader properties each frame for proper rendering
+        if (meshRenderer != null && atmosphereEnabled && _mpb != null)
+        {
+            meshRenderer.GetPropertyBlock(_mpb);
+            _mpb.SetVector("_PlanetCenterWS", planetGenerator.transform.position);
+            _mpb.SetFloat("_PlanetRadius", planetGenerator.radius);
+            meshRenderer.SetPropertyBlock(_mpb);
         }
     }
 
@@ -112,9 +120,10 @@ public class AtmosphereController : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
             var planetData = GameManager.Instance.GetPlanetData();
-            if (planetData != null && planetData.ContainsKey(GameManager.Instance.currentPlanetIndex))
+            int owningIndex = ResolveOwningPlanetIndex();
+            if (owningIndex >= 0 && planetData != null && planetData.ContainsKey(owningIndex))
             {
-                var currentPlanet = planetData[GameManager.Instance.currentPlanetIndex];
+                var currentPlanet = planetData[owningIndex];
                 atmosphereEnabled = ShouldPlanetHaveAtmosphere(currentPlanet.planetType);
                 
                 if (!atmosphereEnabled)
@@ -134,6 +143,19 @@ public class AtmosphereController : MonoBehaviour
             atmosphereEnabled = ShouldPlanetHaveAtmosphere(GameManager.PlanetType.Terran);
             Debug.Log("[AtmosphereController] Single planet mode - assuming Terran atmosphere");
         }
+    }
+
+    private int ResolveOwningPlanetIndex()
+    {
+        if (GameManager.Instance == null) return -1;
+        // Try to find the index by comparing generator instances
+        for (int i = 0; i < GameManager.Instance.maxPlanets; i++)
+        {
+            var gen = GameManager.Instance.GetPlanetGenerator(i);
+            if (gen != null && gen == planetGenerator)
+                return i;
+        }
+        return -1;
     }
 
     /// <summary>
@@ -194,49 +216,141 @@ public class AtmosphereController : MonoBehaviour
             meshRenderer.enabled = true;
             
         // Force regeneration
-        meshGenerated = false;
+        atmosphereGenerated = false;
     }
 
-    public void GenerateAtmosphereMesh()
+    /// <summary>
+    /// Generates a simple spherical mesh for the atmosphere.
+    /// Much simpler than the old approach - just a UV sphere scaled to atmosphere size.
+    /// </summary>
+    public void GenerateAtmosphereSphere()
     {
-        if (!atmosphereEnabled || planetGenerator == null || planetGenerator.Grid == null)
+        if (!atmosphereEnabled || planetGenerator == null)
         {
-            Debug.LogWarning("Cannot generate atmosphere mesh: Atmosphere disabled or planet generator/grid not available");
+            Debug.LogWarning("Cannot generate atmosphere sphere: Atmosphere disabled or planet generator not available");
             return;
         }
 
-        float atmosphereRadius = planetGenerator.radius * (1f + atmosphereThickness);
-        Mesh atmosphereMesh = AtmosphereShellBuilder.BuildAtmosphereShell(
-            planetGenerator.Grid, 
-            planetGenerator.radius, 
-            atmosphereRadius - planetGenerator.radius
-        );
+        float planetRadius = planetGenerator.radius;
+        
+        // Calculate atmosphere radius accounting for terrain elevation
+        float elevationScale = planetRadius * 0.1f;
+        float maxSurfaceOffset = elevationScale * Mathf.Max(0f, planetGenerator.maxTotalElevation + planetGenerator.hillElevationBoost);
+        float atmosphereRadiusOffset = Mathf.Max(planetRadius * atmosphereThickness, maxSurfaceOffset + planetRadius * 0.02f);
+        float atmosphereRadius = planetRadius + atmosphereRadiusOffset;
 
-        meshFilter.mesh = atmosphereMesh;
+        // Create simple UV sphere mesh
+        Mesh sphereMesh = CreateUVSphere(atmosphereRadius, sphereSubdivisions, sphereSubdivisions);
+        sphereMesh.name = "AtmosphereSphere";
+
+        // Clean up previous mesh to avoid memory leaks
+        if (_atmosphereMesh != null)
+        {
+            Destroy(_atmosphereMesh);
+        }
         
-        // Assign the atmosphere layer to this GameObject
-        gameObject.layer = LayerMask.NameToLayer("Atmosphere");
-        
-        Debug.Log($"Generated atmosphere mesh with {atmosphereMesh.vertexCount} vertices, thickness: {atmosphereThickness}, assigned to Atmosphere layer");
+        _atmosphereMesh = sphereMesh;
+        meshFilter.mesh = _atmosphereMesh;
+
+        // Assign atmosphere layer
+        int layerIdx = LayerMask.NameToLayer("Atmosphere");
+        if (layerIdx >= 0)
+        {
+            gameObject.layer = layerIdx;
+        }
+        else
+        {
+            Debug.LogWarning("[AtmosphereController] Layer 'Atmosphere' not found; using default layer.");
+        }
+
+        Debug.Log($"[AtmosphereController] Generated atmosphere sphere: radius={atmosphereRadius:F2}, subdivisions={sphereSubdivisions}, vertices={sphereMesh.vertexCount}");
     }
 
-    // Call this if planet properties change
+    /// <summary>
+    /// Creates a simple UV sphere mesh.
+    /// </summary>
+    private Mesh CreateUVSphere(float radius, int latitudeSegments, int longitudeSegments)
+    {
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // Support high poly counts
+
+        // Generate vertices
+        int vertexCount = (latitudeSegments + 1) * (longitudeSegments + 1);
+        Vector3[] vertices = new Vector3[vertexCount];
+        Vector3[] normals = new Vector3[vertexCount];
+        Vector2[] uv = new Vector2[vertexCount];
+
+        int index = 0;
+        for (int lat = 0; lat <= latitudeSegments; lat++)
+        {
+            float theta = lat * Mathf.PI / latitudeSegments;
+            float sinTheta = Mathf.Sin(theta);
+            float cosTheta = Mathf.Cos(theta);
+
+            for (int lon = 0; lon <= longitudeSegments; lon++)
+            {
+                float phi = lon * 2f * Mathf.PI / longitudeSegments;
+                float sinPhi = Mathf.Sin(phi);
+                float cosPhi = Mathf.Cos(phi);
+
+                Vector3 normal = new Vector3(cosPhi * sinTheta, cosTheta, sinPhi * sinTheta);
+                vertices[index] = normal * radius;
+                normals[index] = normal;
+                uv[index] = new Vector2((float)lon / longitudeSegments, (float)lat / latitudeSegments);
+                index++;
+            }
+        }
+
+        // Generate triangles
+        int[] triangles = new int[latitudeSegments * longitudeSegments * 6];
+        int triIndex = 0;
+        for (int lat = 0; lat < latitudeSegments; lat++)
+        {
+            for (int lon = 0; lon < longitudeSegments; lon++)
+            {
+                int current = lat * (longitudeSegments + 1) + lon;
+                int next = current + longitudeSegments + 1;
+
+                triangles[triIndex++] = current;
+                triangles[triIndex++] = next;
+                triangles[triIndex++] = current + 1;
+
+                triangles[triIndex++] = current + 1;
+                triangles[triIndex++] = next;
+                triangles[triIndex++] = next + 1;
+            }
+        }
+
+        mesh.vertices = vertices;
+        mesh.normals = normals;
+        mesh.uv = uv;
+        mesh.triangles = triangles;
+
+        return mesh;
+    }
+
+    /// <summary>
+    /// Call this if planet properties change and atmosphere needs to be regenerated.
+    /// </summary>
     public void UpdateAtmosphere()
     {
         if (!atmosphereEnabled) return;
         
         if (planetGenerator != null && meshFilter != null)
         {
-            GenerateAtmosphereMesh();
+            GenerateAtmosphereSphere();
             
             // Ensure the atmosphere layer is set
-            gameObject.layer = LayerMask.NameToLayer("Atmosphere");
+            int layerIdx = LayerMask.NameToLayer("Atmosphere");
+            if (layerIdx >= 0) gameObject.layer = layerIdx;
             
             // Update material properties
-            if (atmosphereMaterial != null)
+            if (meshRenderer != null && _mpb != null)
             {
-                atmosphereMaterial.SetVector("_PlanetCenterWS", planetGenerator.transform.position);
-                atmosphereMaterial.SetFloat("_PlanetRadius", planetGenerator.radius);
+                meshRenderer.GetPropertyBlock(_mpb);
+                _mpb.SetVector("_PlanetCenterWS", planetGenerator.transform.position);
+                _mpb.SetFloat("_PlanetRadius", planetGenerator.radius);
+                meshRenderer.SetPropertyBlock(_mpb);
             }
         }
     }
@@ -253,6 +367,25 @@ public class AtmosphereController : MonoBehaviour
         else if (!enabled && atmosphereEnabled)
         {
             DisableAtmosphere();
+        }
+    }
+
+    void OnDisable()
+    {
+        // Ensure we don't leak meshes when component is disabled
+        if (_atmosphereMesh != null && meshFilter != null && meshFilter.mesh == _atmosphereMesh)
+        {
+            meshFilter.mesh = null;
+        }
+    }
+
+    void OnApplicationQuit()
+    {
+        // Destroy runtime meshes on app quit to silence editor leaks
+        if (_atmosphereMesh != null)
+        {
+            Destroy(_atmosphereMesh);
+            _atmosphereMesh = null;
         }
     }
 }

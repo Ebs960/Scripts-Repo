@@ -121,8 +121,12 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleInput()
     {
-        // Ignore input if over UI
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        // MIGRATED: Use InputManager for UI blocking check
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
+            return;
+        
+        // MIGRATED: Check if we can process gameplay input
+        if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Gameplay))
             return;
         
         // Right click: Move selected unit
@@ -131,8 +135,8 @@ public class UnitSelectionManager : MonoBehaviour
             HandleRightClick();
         }
         
-        // Space key: Show space travel UI for selected unit
-        if (Input.GetKeyDown(KeyCode.Space) && HasSelectedUnit())
+        // R key: Show space travel UI for selected unit (changed from Space to avoid conflicts)
+        if (Input.GetKeyDown(KeyCode.R) && HasSelectedUnit())
         {
             HandleSpaceTravelKey();
         }

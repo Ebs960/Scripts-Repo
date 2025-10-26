@@ -268,6 +268,13 @@ public class PauseMenuManager : MonoBehaviour
         }
 
         Debug.Log("Game Paused");
+
+        // Inform InputManager: elevate to Modal and disable gameplay input
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.SetPriority(InputManager.InputPriority.Modal);
+            InputManager.Instance.SetInputEnabled(false);
+        }
     }
 
     public void ResumeGame()
@@ -300,6 +307,13 @@ public class PauseMenuManager : MonoBehaviour
         }
 
         Debug.Log("Game Resumed");
+
+        // Restore InputManager to background priority and re-enable input
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.SetPriority(InputManager.InputPriority.Background);
+            InputManager.Instance.SetInputEnabled(true);
+        }
     }
 
     /// <summary>

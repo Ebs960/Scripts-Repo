@@ -144,7 +144,10 @@ public class TurnManager : MonoBehaviour
         {
             if (CivilizationManager.Instance != null)
                 yield return CivilizationManager.Instance.PerformAITurnCoroutine(civ);
-            StartCoroutine(AdvanceTurnCoroutine());
+            // FIXED: Remove recursive StartCoroutine to prevent infinite call stack
+            // Instead, yield return null then call AdvanceTurn() normally
+            yield return null;
+            AdvanceTurn();
         }
         // else: wait for player to end turn
     }

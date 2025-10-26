@@ -72,11 +72,31 @@ public class DistrictPlacementController : MonoBehaviour
         if (!isPlacingDistrict) return;
 
         // Clicking is now handled via OnTileClicked subscription (HandleTileClicked)
-        // Right-click cancels placement as before
+        // Right-click cancels placement (check UI blocking first)
         if (Input.GetMouseButtonDown(1))
         {
+            // Check if pointer is over UI before processing input
+            if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
+                return;
+                
             CancelDistrictPlacement();
         }
+    }
+    
+    /// <summary>
+    /// Check if placement is currently active (used by InputManager)
+    /// </summary>
+    public bool IsPlacementActive()
+    {
+        return isPlacingDistrict;
+    }
+    
+    /// <summary>
+    /// Public method to cancel placement (used by InputManager)
+    /// </summary>
+    public void CancelPlacement()
+    {
+        CancelDistrictPlacement();
     }
     
     /// <summary>

@@ -906,8 +906,8 @@ public class CivilizationManager : MonoBehaviour
 
     void Update()
     {
-        // Example: player presses End Turn
-        if (Input.GetKeyDown(KeyCode.Space))
+        // Example: player presses End Turn (Enter key to avoid conflict with Space for space travel)
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             AdvanceTurn();
     }
 

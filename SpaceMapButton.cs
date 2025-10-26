@@ -78,6 +78,12 @@ public class SpaceMapButton : MonoBehaviour
         // Handle hotkey
         if (Input.GetKeyDown(hotkey))
         {
+            // Respect UI blocking and input priority (UI-level allowed)
+            if (InputManager.Instance != null)
+            {
+                if (InputManager.Instance.IsPointerOverUI()) return;
+                if (!InputManager.Instance.CanProcessInput(InputManager.InputPriority.UI)) return;
+            }
             OpenSpaceMap();
         }
     }
