@@ -60,6 +60,10 @@ public class WorkerUnitData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+    
+    [Header("Per-Turn Consumption")]
+    [Tooltip("Food this worker consumes each turn (subtracted from civilization stockpile)")]
+    public int foodConsumptionPerTurn = 1;
 
     [Header("Build Options")] public ImprovementData[] buildableImprovements;
     public RouteType[] buildableRoutes;

@@ -2218,6 +2218,12 @@ public class GameManager : MonoBehaviour
             TileSystem.Instance.ClearAllCaches();
         }
         
+        // AUDIO FIX: Clean up music manager resources
+        if (MusicManager.Instance != null)
+        {
+            MusicManager.Instance.CleanupAudioResources();
+        }
+        
         // Clear planet/moon generator references
         planetGenerators.Clear();
         moonGenerators.Clear();

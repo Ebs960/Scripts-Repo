@@ -716,6 +716,8 @@ public class CombatUnit : MonoBehaviour
         }
     }
 
+    // ===== COMBAT UNIT VS COMBAT UNIT =====
+    
     public bool CanAttack(CombatUnit target)
     {
         if (currentAttackPoints <= 0) return false;
@@ -735,6 +737,69 @@ public class CombatUnit : MonoBehaviour
         // Range check
         float dist = Vector3.Distance(transform.position, target.transform.position);
         return dist <= CurrentRange;
+    }
+    
+    // ===== COMBAT UNIT VS WORKER UNIT =====
+    
+    /// <summary>
+    /// Check if this combat unit can attack a worker unit - NEW!
+    /// Combat units can now attack workers (usually one-sided!)
+    /// </summary>
+    public bool CanAttack(WorkerUnit target)
+    {
+        if (currentAttackPoints <= 0) return false;
+        if (isRouted) return false;
+        if (target == null) return false;
+        
+        // Range check
+        float dist = Vector3.Distance(transform.position, target.transform.position);
+        return dist <= CurrentRange;
+    }
+    
+    /// <summary>
+    /// Generic check if combat unit can attack any target (for UI highlighting)
+    /// </summary>
+    public bool CanAttackAnyTarget(GameObject target)
+    {
+        if (target == null) return false;
+        
+        // Try as CombatUnit first (most common)
+        var combatUnit = target.GetComponent<CombatUnit>();
+        if (combatUnit != null)
+            return CanAttack(combatUnit);
+        
+        // Try as WorkerUnit
+        var workerUnit = target.GetComponent<WorkerUnit>();
+        if (workerUnit != null)
+            return CanAttack(workerUnit);
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Generic attack method that automatically detects target type
+    /// </summary>
+    public void AttackTarget(GameObject target)
+    {
+        if (target == null) return;
+        
+        // Try as CombatUnit first (most common)
+        var combatUnit = target.GetComponent<CombatUnit>();
+        if (combatUnit != null)
+        {
+            Attack(combatUnit);
+            return;
+        }
+        
+        // Try as WorkerUnit
+        var workerUnit = target.GetComponent<WorkerUnit>();
+        if (workerUnit != null)
+        {
+            Attack(workerUnit);
+            return;
+        }
+        
+        Debug.LogWarning($"[CombatUnit] Cannot attack {target.name} - no valid unit component found");
     }
 
     public void Attack(CombatUnit target)
@@ -820,6 +885,121 @@ public class CombatUnit : MonoBehaviour
     }
     
     /// <summary>
+    /// Attack a worker unit - NEW!
+    /// Combat units can attack workers (usually devastating!)
+    /// </summary>
+    public void Attack(WorkerUnit target)
+    {
+        if (target == null) return;
+        if (!CanAttack(target)) return;
+
+        // Choose active weapon
+        EquipmentData activeWeapon = null;
+        if (engagedInMelee && equippedWeapon != null)
+            activeWeapon = equippedWeapon;
+        else if (equippedProjectileWeapon != null)
+            activeWeapon = equippedProjectileWeapon;
+        else if (equippedWeapon != null)
+            activeWeapon = equippedWeapon;
+
+        // Choose animation
+        bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
+        string triggerName = isRangedAttack ? "RangedAttack" : "Attack";
+        animator.SetTrigger(triggerName);
+        OnAnimationTrigger?.Invoke(triggerName);
+
+        // Combat units fight at advantage against workers (+2 bonus vs non-combatants)
+        int combatBonus = 2;
+        
+        float attackerValue = GetBaseAttackFloat() + combatBonus;
+        float defenderValue = target.CurrentDefense;
+        
+        float rawDamage = Mathf.Max(0f, attackerValue - defenderValue);
+        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier());
+
+        // Flanking bonus
+        int flankCount = CountAdjacentAllies(target.currentTileIndex) - 1;
+        if (flankCount > 0)
+            finalDamage = Mathf.RoundToInt(finalDamage * (1 + 0.1f * flankCount));
+
+        // Handle ranged vs melee
+        if (isRangedAttack)
+        {
+            if (useAnimationEventForProjectiles)
+            {
+                // Queue projectile (but target is WorkerUnit, not CombatUnit)
+                // We'll fire immediately since projectile system expects CombatUnit
+                SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
+                currentAttackPoints--;
+                GainExperience(finalDamage);
+                return;
+            }
+            else
+            {
+                SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
+                currentAttackPoints--;
+                GainExperience(finalDamage);
+                return;
+            }
+        }
+
+        // Melee attack
+        bool targetDied = target.ApplyDamage(finalDamage, this, true);
+        
+        if (targetDied)
+        {
+            ChangeMorale(data.moraleGainOnKill);
+            GainExperience(finalDamage * 2); // Extra XP for kills
+        }
+        else
+        {
+            // Worker can try to fight back (usually futile!)
+            if (target.CanAttack(this))
+            {
+                target.Attack(this);
+            }
+        }
+
+        currentAttackPoints--;
+        GainExperience(finalDamage);
+    }
+    
+    /// <summary>
+    /// Helper to spawn projectile towards a worker target position
+    /// </summary>
+    private void SpawnProjectileTowardsWorker(EquipmentData equipment, Vector3 targetPosition, int damage)
+    {
+        if (equipment == null || equipment.projectileData == null || equipment.projectileData.projectilePrefab == null)
+            return;
+
+        Transform spawn = GetProjectileSpawnTransform(equipment);
+        Vector3 startPos = spawn != null ? spawn.position : transform.position;
+
+        GameObject projGO = null;
+        if (ProjectilePool.Instance != null)
+        {
+            projGO = ProjectilePool.Instance.Spawn(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
+        }
+        else
+        {
+            projGO = Instantiate(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
+            var marker = projGO.GetComponent<PooledPrefabMarker>();
+            if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>();
+            marker.originalPrefab = equipment.projectileData.projectilePrefab;
+        }
+
+        if (projGO == null) return;
+
+        Projectile proj = projGO.GetComponent<Projectile>();
+        if (proj == null)
+            proj = projGO.AddComponent<Projectile>();
+
+        // Initialize with null for both gameObject source and transform target
+        // The projectile will just fly to the position and deal area damage
+        proj.Initialize(equipment.projectileData, startPos, targetPosition, this.gameObject, null, damage);
+    }
+
+    /// <summary>
     /// Apply damage to this unit, which reduces its health
     /// </summary>
     /// <param name="damageAmount">Amount of damage to deal</param>
@@ -875,6 +1055,23 @@ public class CombatUnit : MonoBehaviour
         if (attackerIsMelee && data != null && data.defaultWeapon != null)
         {
             // Mark engaged in melee and start/restart the timer
+            engagedInMelee = true;
+            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
+            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));
+        }
+
+        return ApplyDamage(damageAmount);
+    }
+    
+    /// <summary>
+    /// Apply damage from a worker unit attacker - NEW!
+    /// Allows workers to damage combat units (though usually at a disadvantage)
+    /// </summary>
+    public bool ApplyDamage(int damageAmount, WorkerUnit attacker, bool attackerIsMelee)
+    {
+        if (attackerIsMelee && data != null && data.defaultWeapon != null)
+        {
+            // Mark engaged in melee (even against a worker)
             engagedInMelee = true;
             if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
             meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));

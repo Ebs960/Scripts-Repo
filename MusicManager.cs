@@ -105,16 +105,22 @@ public class MusicManager : MonoBehaviour
             return;
         }
 
-        currentPlaylist = new List<AudioClip>(musicList);
+        // MEMORY FIX: Only create a new copy if we need to shuffle, otherwise just reference
+        if (shufflePlaylists)
+        {
+            Debug.Log("[MusicManager] Shuffling playlist (creating copy)");
+            currentPlaylist = new List<AudioClip>(musicList);
+            ShufflePlaylist(currentPlaylist);
+        }
+        else
+        {
+            Debug.Log("[MusicManager] Using playlist reference (no copy)");
+            currentPlaylist = musicList; // Just reference, no copy
+        }
+        
         currentTrackIndex = 0;
 
         Debug.Log($"[MusicManager] Setting up new playlist with {currentPlaylist.Count} tracks");
-
-        if (shufflePlaylists)
-        {
-            Debug.Log("[MusicManager] Shuffling playlist");
-            ShufflePlaylist(currentPlaylist);
-        }
 
         if (!isChangingTrack)
         {
@@ -139,50 +145,46 @@ public class MusicManager : MonoBehaviour
             return;
         }
 
-        var allCivs = CivilizationManager.Instance.GetAllCivs();
-
-        // Build playlists for each civilization
-        foreach (var civ in allCivs)
+        // MEMORY FIX: Only load music for PLAYER civilization, not all civs!
+        var playerCiv = CivilizationManager.Instance.playerCiv;
+        if (playerCiv == null)
         {
-            
-            if (civ.civData?.musicData == null) 
+            Debug.LogWarning("[MusicManager] No player civilization found! Cannot initialize music.");
+            return;
+        }
+
+        // Only build playlists for the player's civilization
+        if (playerCiv.civData?.musicData == null) 
+        {
+            Debug.LogWarning($"[MusicManager] Player civilization {playerCiv?.civData?.civName ?? "NULL"} has no musicData!");
+            return;
+        }
+
+        Debug.Log($"[MusicManager] Loading music ONLY for player civilization: {playerCiv.civData.civName}");
+
+        foreach (var ageMusic in playerCiv.civData.musicData.ageMusicTracks)
+        {
+            if (ageMusic.peaceMusicTracks?.Count > 0)
             {
-                Debug.LogWarning($"[MusicManager] Civilization {civ?.civData?.civName ?? "NULL"} has no musicData! Skipping...");
-                continue;
+                var peaceKey = (playerCiv.civData.civName, ageMusic.age, DiplomaticState.Peace);
+                // Don't copy the list - just reference it to save memory
+                musicPlaylists[peaceKey] = ageMusic.peaceMusicTracks;
             }
 
-
-            foreach (var ageMusic in civ.civData.musicData.ageMusicTracks)
+            if (ageMusic.warMusicTracks?.Count > 0)
             {
-                if (ageMusic.peaceMusicTracks?.Count > 0)
-                {
-                    var peaceKey = (civ.civData.civName, ageMusic.age, DiplomaticState.Peace);
-                    musicPlaylists[peaceKey] = new List<AudioClip>(ageMusic.peaceMusicTracks);
-                }
-
-                if (ageMusic.warMusicTracks?.Count > 0)
-                {
-                    var warKey = (civ.civData.civName, ageMusic.age, DiplomaticState.War);
-                    musicPlaylists[warKey] = new List<AudioClip>(ageMusic.warMusicTracks);
-                }
+                var warKey = (playerCiv.civData.civName, ageMusic.age, DiplomaticState.War);
+                // Don't copy the list - just reference it to save memory
+                musicPlaylists[warKey] = ageMusic.warMusicTracks;
             }
         }
 
-        Debug.Log($"[MusicManager] Total playlists created: {musicPlaylists.Count}");
+        Debug.Log($"[MusicManager] Total playlists created: {musicPlaylists.Count} (player civ only)");
 
         // Set initial music for player civilization
-        var playerCiv = CivilizationManager.Instance.playerCiv;
-        if (playerCiv != null)
-        {
-            Debug.Log($"[MusicManager] Setting initial music for player civilization: {playerCiv.civData?.civName ?? "NULL"}");
-            var currentAge = playerCiv.GetCurrentAge();
-            Debug.Log($"[MusicManager] Player civ current age: {currentAge}");
-            UpdateMusic(playerCiv, currentAge, DiplomaticState.Peace);
-        }
-        else
-        {
-            Debug.LogWarning("[MusicManager] No player civilization found! Cannot set initial music.");
-        }
+        var currentAge = playerCiv.GetCurrentAge();
+        Debug.Log($"[MusicManager] Player civ current age: {currentAge}");
+        UpdateMusic(playerCiv, currentAge, DiplomaticState.Peace);
 
         Debug.Log("[MusicManager] InitializeMusicTracks() completed");
     }
@@ -354,5 +356,34 @@ public class MusicManager : MonoBehaviour
             musicSource.Stop();
             musicSource.clip = null;
         }
+    }
+
+    /// <summary>
+    /// Clean up audio resources to free memory
+    /// </summary>
+    public void CleanupAudioResources()
+    {
+        Debug.Log("[MusicManager] Cleaning up audio resources...");
+        
+        // Stop playback
+        StopMusicImmediate();
+        
+        // Clear playlist references
+        currentPlaylist?.Clear();
+        currentPlaylist = null;
+        
+        // Clear all playlists
+        musicPlaylists.Clear();
+        
+        // Force unload unused audio assets
+        Resources.UnloadUnusedAssets();
+        
+        Debug.Log("[MusicManager] Audio cleanup complete");
+    }
+
+    void OnDestroy()
+    {
+        // Clean up when MusicManager is destroyed
+        CleanupAudioResources();
     }
 } 

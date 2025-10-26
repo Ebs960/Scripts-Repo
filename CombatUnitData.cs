@@ -162,6 +162,10 @@ public class CombatUnitData : ScriptableObject
     public int policyPointsPerTurn;
     public int faithPerTurn;
     
+    [Header("Per-Turn Consumption")]
+    [Tooltip("Food this unit consumes each turn (subtracted from civilization stockpile)")]
+    public int foodConsumptionPerTurn = 2;
+    
     /// <summary>
     /// Checks if all requirements (techs, cultures) are met for this unit
     /// </summary>

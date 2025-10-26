@@ -110,11 +110,18 @@ public class MenuMusicManager : MonoBehaviour
         if (currentPlaylist == musicList && musicSource.isPlaying)
             return;
 
-        currentPlaylist = new List<AudioClip>(musicList);
-        currentTrackIndex = 0;
-
+        // MEMORY FIX: Only create a new copy if we need to shuffle
         if (shufflePlaylists)
+        {
+            currentPlaylist = new List<AudioClip>(musicList);
             ShufflePlaylist(currentPlaylist);
+        }
+        else
+        {
+            currentPlaylist = musicList; // Just reference, no copy
+        }
+        
+        currentTrackIndex = 0;
 
         if (!isChangingTrack)
             StartCoroutine(FadeAndPlayFromPlaylist());

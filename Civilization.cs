@@ -92,6 +92,14 @@ public class Civilization : MonoBehaviour
     public int culture;
     public int policyPoints;
     public int faith;
+    
+    [Header("Consumption Settings")]
+    [Tooltip("Minimum food stockpile (prevents going below zero with buffer)")]
+    public int minimumFoodStockpile = -10;
+    [Tooltip("Fallback food consumption for units without foodConsumptionPerTurn set")]
+    public int defaultFoodPerCombatUnit = 2;
+    [Tooltip("Fallback food consumption for workers without foodConsumptionPerTurn set")]
+    public int defaultFoodPerWorkerUnit = 1;
 
     [Header("Modifiers")]
     public float attackBonus;
@@ -423,6 +431,50 @@ public class Civilization : MonoBehaviour
             policyPoints += addPol; // no global modifier currently
         }
 
+        // 3.8) FOOD CONSUMPTION - Units and cities must eat!
+        int totalFoodConsumption = 0;
+        
+        // Combat units consume food based on their data
+        if (combatUnits != null)
+        {
+            foreach (var u in combatUnits)
+            {
+                if (u != null && u.data != null)
+                    totalFoodConsumption += u.data.foodConsumptionPerTurn;
+                else
+                    totalFoodConsumption += defaultFoodPerCombatUnit; // Fallback
+            }
+        }
+        
+        // Worker units consume food based on their data
+        if (workerUnits != null)
+        {
+            foreach (var w in workerUnits)
+            {
+                if (w != null && w.data != null)
+                    totalFoodConsumption += w.data.foodConsumptionPerTurn;
+                else
+                    totalFoodConsumption += defaultFoodPerWorkerUnit; // Fallback
+            }
+        }
+        
+        // Cities consume food based on population size
+        if (cities != null)
+        {
+            foreach (var city in cities)
+            {
+                if (city != null)
+                    totalFoodConsumption += city.GetFoodConsumptionPerTurn();
+            }
+        }
+        
+        // Consume food from stockpile
+        food -= totalFoodConsumption;
+        
+        // Clamp to minimum (allows small negative buffer before critical famine)
+        if (food < minimumFoodStockpile)
+            food = minimumFoodStockpile;
+
         // 4) Advance technology
         ProcessResearch();
 
@@ -443,15 +495,39 @@ public class Civilization : MonoBehaviour
         // Clamp 0–1
         warWeariness = Mathf.Clamp01(warWeariness);
 
-        // Check famine: true if food stockpile <= 0
+        // Check famine: true if food stockpile <= 0 (AFTER consumption)
         famineActive = (food <= 0);
         if (famineActive)
         {
             // Each turn of famine, all units lose 5% max health
+            int unitsAffected = 0;
             foreach (var u in combatUnits)
-                u.ApplyDamage(Mathf.CeilToInt(u.MaxHealth * 0.05f));
+            {
+                if (u != null)
+                {
+                    u.ApplyDamage(Mathf.CeilToInt(u.MaxHealth * 0.05f));
+                    unitsAffected++;
+                }
+            }
             foreach (var w in workerUnits)
-                w.ApplyDamage(Mathf.CeilToInt(w.data.baseHealth * 0.05f));
+            {
+                if (w != null && w.data != null)
+                {
+                    w.ApplyDamage(Mathf.CeilToInt(w.data.baseHealth * 0.05f));
+                    unitsAffected++;
+                }
+            }
+            
+            // Notify player if this is their civilization
+            if (isPlayerControlled && UIManager.Instance != null && unitsAffected > 0)
+            {
+                UIManager.Instance.ShowNotification($"FAMINE! {civData.civName} has no food. {unitsAffected} units are starving!");
+            }
+        }
+        else if (food < totalFoodConsumption * 2 && isPlayerControlled && UIManager.Instance != null)
+        {
+            // Warning: food running low (less than 2 turns worth)
+            UIManager.Instance.ShowNotification($"Warning: {civData.civName} food reserves are low ({food} remaining)");
         }
 
         // 6) Fire turn‐started event
@@ -1986,6 +2062,110 @@ public class Civilization : MonoBehaviour
                 maxAge = tech.techAge;
         }
         return maxAge;
+    }
+
+    /// <summary>
+    /// Calculate total food consumption per turn (for UI display)
+    /// Includes units AND city populations!
+    /// </summary>
+    public int GetFoodConsumptionPerTurn()
+    {
+        int totalConsumption = 0;
+        
+        // Combat units
+        if (combatUnits != null)
+        {
+            foreach (var u in combatUnits)
+            {
+                if (u != null && u.data != null)
+                    totalConsumption += u.data.foodConsumptionPerTurn;
+                else
+                    totalConsumption += defaultFoodPerCombatUnit;
+            }
+        }
+        
+        // Worker units
+        if (workerUnits != null)
+        {
+            foreach (var w in workerUnits)
+            {
+                if (w != null && w.data != null)
+                    totalConsumption += w.data.foodConsumptionPerTurn;
+                else
+                    totalConsumption += defaultFoodPerWorkerUnit;
+            }
+        }
+        
+        // City populations
+        if (cities != null)
+        {
+            foreach (var city in cities)
+            {
+                if (city != null)
+                    totalConsumption += city.GetFoodConsumptionPerTurn();
+            }
+        }
+        
+        return totalConsumption;
+    }
+    
+    /// <summary>
+    /// Get net food per turn (production - consumption)
+    /// </summary>
+    public int GetNetFoodPerTurn()
+    {
+        int production = 0;
+        if (cities != null)
+        {
+            foreach (var city in cities)
+            {
+                production += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
+            }
+        }
+        return production - GetFoodConsumptionPerTurn();
+    }
+    
+    /// <summary>
+    /// Get detailed food consumption breakdown (for UI tooltips)
+    /// </summary>
+    public (int units, int cities, int total) GetFoodConsumptionBreakdown()
+    {
+        int unitConsumption = 0;
+        int cityConsumption = 0;
+        
+        // Units
+        if (combatUnits != null)
+        {
+            foreach (var u in combatUnits)
+            {
+                if (u != null && u.data != null)
+                    unitConsumption += u.data.foodConsumptionPerTurn;
+                else
+                    unitConsumption += defaultFoodPerCombatUnit;
+            }
+        }
+        if (workerUnits != null)
+        {
+            foreach (var w in workerUnits)
+            {
+                if (w != null && w.data != null)
+                    unitConsumption += w.data.foodConsumptionPerTurn;
+                else
+                    unitConsumption += defaultFoodPerWorkerUnit;
+            }
+        }
+        
+        // Cities
+        if (cities != null)
+        {
+            foreach (var city in cities)
+            {
+                if (city != null)
+                    cityConsumption += city.GetFoodConsumptionPerTurn();
+            }
+        }
+        
+        return (unitConsumption, cityConsumption, unitConsumption + cityConsumption);
     }
 
     public void Initialize(CivData data, LeaderData leaderData, bool isPlayer, SphericalHexGrid grid = null, PlanetGenerator planet = null)

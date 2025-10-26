@@ -12,10 +12,6 @@ public class AtmosphereController : MonoBehaviour
     [Tooltip("Thickness of atmosphere relative to planet radius (multiplier)")]
     public float atmosphereThickness = 0.08f;
 
-    [Range(4, 64)]
-    [Tooltip("Sphere mesh subdivision quality (higher = smoother but more expensive)")]
-    public int sphereSubdivisions = 16;
-
     [Tooltip("Material to use for the atmosphere")]
     public Material atmosphereMaterial;
 
@@ -220,8 +216,8 @@ public class AtmosphereController : MonoBehaviour
     }
 
     /// <summary>
-    /// Generates a simple spherical mesh for the atmosphere.
-    /// Much simpler than the old approach - just a UV sphere scaled to atmosphere size.
+    /// Generates atmosphere using Unity's built-in sphere primitive.
+    /// Simplest possible approach - just scale Unity's default sphere!
     /// </summary>
     public void GenerateAtmosphereSphere()
     {
@@ -239,17 +235,24 @@ public class AtmosphereController : MonoBehaviour
         float atmosphereRadiusOffset = Mathf.Max(planetRadius * atmosphereThickness, maxSurfaceOffset + planetRadius * 0.02f);
         float atmosphereRadius = planetRadius + atmosphereRadiusOffset;
 
-        // Create simple UV sphere mesh
-        Mesh sphereMesh = CreateUVSphere(atmosphereRadius, sphereSubdivisions, sphereSubdivisions);
-        sphereMesh.name = "AtmosphereSphere";
-
-        // Clean up previous mesh to avoid memory leaks
-        if (_atmosphereMesh != null)
-        {
-            Destroy(_atmosphereMesh);
-        }
+        // Use Unity's built-in sphere mesh (most efficient!)
+        GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Mesh sphereMesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
+        Destroy(tempSphere); // Clean up the temporary GameObject
         
-        _atmosphereMesh = sphereMesh;
+        // Clone the mesh and scale it to our atmosphere size
+        _atmosphereMesh = Instantiate(sphereMesh);
+        _atmosphereMesh.name = "AtmosphereSphere";
+        
+        // Scale vertices to atmosphere radius
+        Vector3[] vertices = _atmosphereMesh.vertices;
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i] *= atmosphereRadius * 2f; // Unity sphere has radius 0.5, so multiply by 2
+        }
+        _atmosphereMesh.vertices = vertices;
+        _atmosphereMesh.RecalculateBounds();
+        
         meshFilter.mesh = _atmosphereMesh;
 
         // Assign atmosphere layer
@@ -263,70 +266,7 @@ public class AtmosphereController : MonoBehaviour
             Debug.LogWarning("[AtmosphereController] Layer 'Atmosphere' not found; using default layer.");
         }
 
-        Debug.Log($"[AtmosphereController] Generated atmosphere sphere: radius={atmosphereRadius:F2}, subdivisions={sphereSubdivisions}, vertices={sphereMesh.vertexCount}");
-    }
-
-    /// <summary>
-    /// Creates a simple UV sphere mesh.
-    /// </summary>
-    private Mesh CreateUVSphere(float radius, int latitudeSegments, int longitudeSegments)
-    {
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // Support high poly counts
-
-        // Generate vertices
-        int vertexCount = (latitudeSegments + 1) * (longitudeSegments + 1);
-        Vector3[] vertices = new Vector3[vertexCount];
-        Vector3[] normals = new Vector3[vertexCount];
-        Vector2[] uv = new Vector2[vertexCount];
-
-        int index = 0;
-        for (int lat = 0; lat <= latitudeSegments; lat++)
-        {
-            float theta = lat * Mathf.PI / latitudeSegments;
-            float sinTheta = Mathf.Sin(theta);
-            float cosTheta = Mathf.Cos(theta);
-
-            for (int lon = 0; lon <= longitudeSegments; lon++)
-            {
-                float phi = lon * 2f * Mathf.PI / longitudeSegments;
-                float sinPhi = Mathf.Sin(phi);
-                float cosPhi = Mathf.Cos(phi);
-
-                Vector3 normal = new Vector3(cosPhi * sinTheta, cosTheta, sinPhi * sinTheta);
-                vertices[index] = normal * radius;
-                normals[index] = normal;
-                uv[index] = new Vector2((float)lon / longitudeSegments, (float)lat / latitudeSegments);
-                index++;
-            }
-        }
-
-        // Generate triangles
-        int[] triangles = new int[latitudeSegments * longitudeSegments * 6];
-        int triIndex = 0;
-        for (int lat = 0; lat < latitudeSegments; lat++)
-        {
-            for (int lon = 0; lon < longitudeSegments; lon++)
-            {
-                int current = lat * (longitudeSegments + 1) + lon;
-                int next = current + longitudeSegments + 1;
-
-                triangles[triIndex++] = current;
-                triangles[triIndex++] = next;
-                triangles[triIndex++] = current + 1;
-
-                triangles[triIndex++] = current + 1;
-                triangles[triIndex++] = next;
-                triangles[triIndex++] = next + 1;
-            }
-        }
-
-        mesh.vertices = vertices;
-        mesh.normals = normals;
-        mesh.uv = uv;
-        mesh.triangles = triangles;
-
-        return mesh;
+        Debug.Log($"[AtmosphereController] Generated atmosphere using Unity primitive: radius={atmosphereRadius:F2}, vertices={_atmosphereMesh.vertexCount}");
     }
 
     /// <summary>

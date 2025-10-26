@@ -1368,12 +1368,77 @@ public class WorkerUnit : MonoBehaviour
         return true;
     }
 
+    // ===== WORKER VS WORKER COMBAT =====
+    
     public bool CanAttack(WorkerUnit targetUnit)
     {
         if (currentAttackPoints <= 0) return false;
         if (targetUnit == null) return false;
         float dist = Vector3.Distance(transform.position, targetUnit.transform.position);
         return dist <= BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+    }
+    
+    // ===== WORKER VS COMBAT UNIT COMBAT =====
+    
+    /// <summary>
+    /// Check if this worker can attack a combat unit (including animals)
+    /// </summary>
+    public bool CanAttack(CombatUnit targetUnit)
+    {
+        if (currentAttackPoints <= 0) return false;
+        if (targetUnit == null) return false;
+        
+        // Check range
+        float dist = Vector3.Distance(transform.position, targetUnit.transform.position);
+        float effectiveRange = BaseRange + EquipmentRangeBonus + GetAbilityRangeModifier();
+        
+        return dist <= effectiveRange;
+    }
+    
+    /// <summary>
+    /// Generic check if worker can attack any target (for UI highlighting)
+    /// </summary>
+    public bool CanAttackAnyTarget(GameObject target)
+    {
+        if (target == null) return false;
+        
+        // Try as CombatUnit first (includes animals)
+        var combatUnit = target.GetComponent<CombatUnit>();
+        if (combatUnit != null)
+            return CanAttack(combatUnit);
+        
+        // Try as WorkerUnit
+        var workerUnit = target.GetComponent<WorkerUnit>();
+        if (workerUnit != null)
+            return CanAttack(workerUnit);
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Generic attack method that automatically detects target type
+    /// </summary>
+    public void AttackTarget(GameObject target)
+    {
+        if (target == null) return;
+        
+        // Try as CombatUnit first (includes animals)
+        var combatUnit = target.GetComponent<CombatUnit>();
+        if (combatUnit != null)
+        {
+            Attack(combatUnit);
+            return;
+        }
+        
+        // Try as WorkerUnit
+        var workerUnit = target.GetComponent<WorkerUnit>();
+        if (workerUnit != null)
+        {
+            Attack(workerUnit);
+            return;
+        }
+        
+        Debug.LogWarning($"[WorkerUnit] Cannot attack {target.name} - no valid unit component found");
     }
 
     public void Attack(WorkerUnit target)
@@ -1387,18 +1452,18 @@ public class WorkerUnit : MonoBehaviour
         else if (_equippedWeapon != null) activeWeapon = _equippedWeapon;
 
         bool isRanged = activeWeapon != null && activeWeapon.projectileData != null;
-    if (isRanged)
+        if (isRanged)
         {
             if (useAnimationEventForProjectiles)
             {
-        QueueProjectileForAnimation(activeWeapon, target.transform.position, null, 1);
-        currentAttackPoints--;
+                QueueProjectileForAnimation(activeWeapon, target.transform.position, null, 1);
+                currentAttackPoints--;
                 return;
             }
             else
             {
-        SpawnProjectileFromEquipment(activeWeapon, target.transform.position, null, 1);
-        currentAttackPoints--;
+                SpawnProjectileFromEquipment(activeWeapon, target.transform.position, null, 1);
+                currentAttackPoints--;
                 return;
             }
         }
@@ -1415,8 +1480,109 @@ public class WorkerUnit : MonoBehaviour
                 target.CounterAttack(this);
         }
 
-    currentAttackPoints--;
+        currentAttackPoints--;
         GainExperience(1);
+    }
+    
+    /// <summary>
+    /// Attack a combat unit (including animals) - NEW!
+    /// Workers can now defend themselves and hunt!
+    /// </summary>
+    public void Attack(CombatUnit target)
+    {
+        if (target == null) return;
+        if (!CanAttack(target)) return;
+
+        // Choose active weapon (same logic as worker-vs-worker)
+        EquipmentData activeWeapon = null;
+        if (engagedInMelee && _equippedWeapon != null) 
+            activeWeapon = _equippedWeapon;
+        else if (_equippedProjectileWeapon != null) 
+            activeWeapon = _equippedProjectileWeapon;
+        else if (_equippedWeapon != null) 
+            activeWeapon = _equippedWeapon;
+
+        // Choose animation based on weapon type
+        bool isRanged = activeWeapon != null && activeWeapon.projectileData != null;
+        string triggerName = isRanged ? "RangedAttack" : "Attack";
+        
+        if (animator != null)
+        {
+            animator.SetTrigger(triggerName);
+        }
+
+        // Get tile defense bonus for target
+        int tileBonus = 0;
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(target.currentTileIndex) : null;
+        if (tileData != null)
+        {
+            tileBonus = BiomeHelper.GetDefenseBonus(tileData.biome);
+            if (tileData.isHill)
+                tileBonus += 2;
+        }
+
+        // Calculate damage (workers are weaker vs combat units, but can still fight)
+        float workerAttackValue = CurrentAttack;
+        float combatDefenseValue = target.CurrentDefense;
+        
+        // Workers fight at disadvantage (-2 penalty against trained soldiers)
+        int workerPenalty = (target.data.unitType != CombatCategory.Animal) ? 2 : 0;
+        
+        float rawDamage = Mathf.Max(0f, workerAttackValue - combatDefenseValue - tileBonus - workerPenalty);
+        int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier());
+
+        // Handle ranged vs melee
+        if (isRanged)
+        {
+            if (useAnimationEventForProjectiles)
+            {
+                // Queue projectile to fire from animation
+                QueueProjectileForAnimation(activeWeapon, target.transform.position, target, finalDamage);
+                currentAttackPoints--;
+                return;
+            }
+            else
+            {
+                // Fire immediately
+                SpawnProjectileFromEquipment(activeWeapon, target.transform.position, target, finalDamage);
+                currentAttackPoints--;
+                GainExperience(finalDamage);
+                return;
+            }
+        }
+
+        // Melee attack - apply damage immediately with worker as attacker
+        bool targetDied = target.ApplyDamage(finalDamage, this, true);
+        
+        if (targetDied)
+        {
+            // Worker killed a combat unit - reward extra XP and possibly food
+            GainExperience(finalDamage * 2);
+            
+            // If killed an animal, gain food (hunting!)
+            if (target.data.unitType == CombatCategory.Animal && owner != null)
+            {
+                int foodGain = target.data.foodOnKill;
+                owner.food += foodGain;
+                
+                if (owner.isPlayerControlled && UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowNotification($"{data.unitName} hunted {target.data.unitName} and gained {foodGain} food!");
+                }
+            }
+        }
+        else
+        {
+            // Target survived - it can counter-attack if able
+            if (target.CanAttack(this))
+            {
+                // Combat unit fights back against worker (workers are at disadvantage!)
+                target.Attack(this);
+            }
+        }
+
+        currentAttackPoints--;
+        GainExperience(finalDamage);
     }
 
     public void CounterAttack(WorkerUnit attacker)
@@ -1448,7 +1614,14 @@ public class WorkerUnit : MonoBehaviour
 
     public void GainExperience(int xp)
     {
-        // Placeholder: workers may not level by default; hook in if desired
+        // Workers can now gain experience from combat and other activities
+        // This allows workers to level up and become veteran workers
+        Debug.Log($"[WorkerUnit] {data?.unitName ?? "Worker"} gained {xp} experience");
+        
+        // Future: Add leveling system for workers if desired
+        // - Veteran workers could get +1 work point
+        // - Experienced workers could move faster
+        // - Elite workers could have better combat stats
     }
 
     private void RecalculateStats()

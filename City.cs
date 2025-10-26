@@ -42,6 +42,10 @@ public class City : MonoBehaviour
     public int level = 1;
     public int foodStorage = 0;
     public int foodGrowthRequirement = 20;
+    
+    [Header("Population Consumption")]
+    [Tooltip("Food consumed per population level per turn")]
+    public int foodConsumptionPerPopulation = 1;
 
     [Header("Defense & Morale")]
     public int defenseRating = 100;
@@ -1563,6 +1567,15 @@ public class City : MonoBehaviour
         cachedCulture = -1;
         cachedPolicyPoints = -1;
         cachedFaith = -1;
+    }
+    
+    /// <summary>
+    /// Calculate how much food this city's population consumes per turn
+    /// </summary>
+    public int GetFoodConsumptionPerTurn()
+    {
+        // Population consumes food based on city size (level)
+        return level * foodConsumptionPerPopulation;
     }
 
     // Add this method to allow clicking on a city to open the City UI
