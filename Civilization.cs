@@ -1412,8 +1412,9 @@ public class Civilization : MonoBehaviour
             pantheonCapFromBonuses = Mathf.Max(0, pantheonCapFromBonuses + tech.pantheonCapIncrease);
         }
 
-        // Add any unlocked equipment to inventory
-        AddUnlockedEquipment(tech);
+        // REMOVED: AddUnlockedEquipment(tech) - Equipment no longer auto-added to inventory
+        // Equipment availability is now controlled solely by EquipmentData.requiredTechs
+        // Players must produce equipment they want (via cities or other means)
 
         // Update city models if this tech changes the age
         UpdateCityModelsForNewAge();
@@ -1794,17 +1795,10 @@ public class Civilization : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Called when a tech is researched - add any equipment unlocked by the tech to inventory
-    /// </summary>
-    public void AddUnlockedEquipment(TechData tech, int count = 3)
-    {
-        // Add new equipment types unlocked by this tech to the civilization's inventory
-        foreach (var equipment in tech.unlockedEquipment)
-        {
-            AddEquipment(equipment, count);
-        }
-    }
+    // REMOVED: AddUnlockedEquipment() method
+    // Equipment is no longer automatically added to inventory when researching techs.
+    // Instead, civilizations must produce equipment through cities or other game mechanics.
+    // Equipment availability is gated solely by EquipmentData.requiredTechs field.
 
     /// <summary>
     /// Creates a new city for this civilization at the specified tile.

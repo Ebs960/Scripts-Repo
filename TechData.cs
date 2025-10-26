@@ -78,7 +78,7 @@ public class TechData : ScriptableObject
     public WorkerUnitData[] unlockedWorkerUnits;
     public ImprovementData[] unlocksImprovements;
     public BuildingData[] unlockedBuildings;
-    public EquipmentData[] unlockedEquipment;
+    // REMOVED: unlockedEquipment - Equipment availability now controlled ONLY by EquipmentData.requiredTechs
     public PolicyData[] unlockedPolicies;
     public GovernmentData[] unlockedGovernments;
     public ReligionData[] unlockedReligions;

@@ -93,12 +93,9 @@ public class TooltipSystem : MonoBehaviour
             foreach (var building in tech.unlockedBuildings)
                 if (building != null) unlocks.AppendLine($"  • {building.buildingName}");
         }
-        if (tech.unlockedEquipment != null && tech.unlockedEquipment.Length > 0)
-        {
-            unlocks.AppendLine("Equipment:");
-            foreach (var equipment in tech.unlockedEquipment)
-                if (equipment != null) unlocks.AppendLine($"  • {equipment.equipmentName}");
-        }
+        // REMOVED: Equipment unlocks display
+        // Equipment is no longer "unlocked" by techs (no free items)
+        // Instead, equipment becomes producible when EquipmentData.requiredTechs are met
 
         if (tooltipUnlocks != null)
             tooltipUnlocks.text = unlocks.Length > 0 ? unlocks.ToString().TrimEnd() : "Nothing";
