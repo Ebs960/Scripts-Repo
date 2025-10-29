@@ -93,6 +93,19 @@ public class WorkerUnit : MonoBehaviour
     [Header("Editor")]
     [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
     [SerializeField] private bool updateEquipmentInEditor = true;
+    
+    [Header("Active Projectile")]
+    [Tooltip("The projectile type this worker will use when firing ranged weapons (can be changed in equipment UI)")]
+    [SerializeField] private GameCombat.ProjectileData _activeProjectile;
+    
+    /// <summary>
+    /// The active projectile this worker uses for ranged attacks
+    /// </summary>
+    public GameCombat.ProjectileData ActiveProjectile
+    {
+        get => _activeProjectile;
+        set => _activeProjectile = value;
+    }
 
     // Track instantiated equipment objects by slot
     private readonly System.Collections.Generic.Dictionary<EquipmentType, GameObject> equippedItemObjects = new System.Collections.Generic.Dictionary<EquipmentType, GameObject>();
@@ -492,22 +505,44 @@ public class WorkerUnit : MonoBehaviour
 
     public void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit = null, int overrideDamage = -1)
     {
-        if (equipment == null || equipment.projectileData == null || equipment.projectileData.projectilePrefab == null) return;
+        // PROJECTILE SYSTEM: Use active projectile if available, otherwise fall back to equipment's default
+        GameCombat.ProjectileData projectileToUse = null;
+        
+        // Priority 1: Use worker's active projectile if it matches the weapon's category
+        if (_activeProjectile != null && equipment != null && equipment.usesProjectiles && 
+            _activeProjectile.category == equipment.projectileCategory)
+        {
+            projectileToUse = _activeProjectile;
+        }
+        // Priority 2: Fall back to equipment's default projectile
+        else if (equipment != null && equipment.projectileData != null)
+        {
+            projectileToUse = equipment.projectileData;
+        }
+        
+        // If no valid projectile found, abort
+        if (projectileToUse == null || projectileToUse.projectilePrefab == null) return;
+        
         Transform spawn = GetProjectileSpawnTransform(equipment);
         Vector3 startPos = spawn != null ? spawn.position : transform.position;
-        GameObject projGO = null;
-        if (ProjectilePool.Instance != null)
-        {
-            projGO = ProjectilePool.Instance.Spawn(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-        }
-        else
-        {
-            projGO = Instantiate(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-            var marker = projGO.GetComponent<PooledPrefabMarker>(); if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>(); marker.originalPrefab = equipment.projectileData.projectilePrefab;
-        }
+            GameObject projGO = null;
+            // Try to spawn from the simple object pool first, then fall back to ProjectilePool
+            if (SimpleObjectPool.Instance != null)
+            {
+                projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+            }
+            else if (ProjectilePool.Instance != null)
+            {
+                projGO = ProjectilePool.Instance.Spawn(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+            }
+            else
+            {
+                projGO = Instantiate(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+                var marker = projGO.GetComponent<PooledPrefabMarker>(); if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>(); marker.originalPrefab = projectileToUse.projectilePrefab;
+            }
         if (projGO == null) return;
         Projectile proj = projGO.GetComponent<Projectile>(); if (proj == null) proj = projGO.AddComponent<Projectile>();
-        proj.Initialize(equipment.projectileData, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
+        proj.Initialize(projectileToUse, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
     }
 
     public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit, int damage)

@@ -2,81 +2,86 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Simple object pool for frequently instantiated objects like decorations
-/// Reduces memory allocation and improves performance
+/// Simple object pool for frequently instantiated objects like projectiles
 /// </summary>
 public class SimpleObjectPool : MonoBehaviour
 {
     public static SimpleObjectPool Instance { get; private set; }
-    
-    private Dictionary<GameObject, Queue<GameObject>> pools = new Dictionary<GameObject, Queue<GameObject>>();
-    private Dictionary<GameObject, GameObject> activeObjects = new Dictionary<GameObject, GameObject>(); // Track which prefab each active object came from
-    
+
     [Header("Pool Settings")]
-    [SerializeField] private int defaultPoolSize = 50;
     [SerializeField] private int maxPoolSize = 200;
-    
+
+    private Dictionary<GameObject, Queue<GameObject>> pools = new Dictionary<GameObject, Queue<GameObject>>();
+    private Dictionary<GameObject, GameObject> activeObjects = new Dictionary<GameObject, GameObject>();
+
     void Awake()
     {
-        if (Instance != null && Instance != this) Destroy(gameObject);
-        else Instance = this;
-    }
-    
-    /// <summary>
-    /// Get an object from the pool or create a new one
-    /// </summary>
-    public GameObject Get(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent = null)
-    {
-        if (prefab == null) return null;
-        
-        // Initialize pool if it doesn't exist
-        if (!pools.ContainsKey(prefab))
+        if (Instance == null)
         {
-            pools[prefab] = new Queue<GameObject>();
-            PrewarmPool(prefab, defaultPoolSize);
-        }
-        
-        GameObject obj;
-        var pool = pools[prefab];
-        
-        if (pool.Count > 0)
-        {
-            // Reuse from pool
-            obj = pool.Dequeue();
-            obj.transform.position = position;
-            obj.transform.rotation = rotation;
-            obj.transform.SetParent(parent);
-            obj.SetActive(true);
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
-            // Create new if pool is empty
-            obj = Instantiate(prefab, position, rotation, parent);
+            Destroy(gameObject);
         }
-        
-        // Track which prefab this came from
-        activeObjects[obj] = prefab;
-        
+    }
+
+    /// <summary>
+    /// Get an object from the pool or create a new one
+    /// </summary>
+    public GameObject Get(GameObject prefab, Vector3 position, Quaternion rotation)
+    {
+        if (prefab == null) return null;
+
+        GameObject obj = null;
+
+        // Check if we have a pool for this prefab
+        if (pools.ContainsKey(prefab) && pools[prefab].Count > 0)
+        {
+            obj = pools[prefab].Dequeue();
+        }
+        else
+        {
+            // Create new object
+            obj = Instantiate(prefab);
+        }
+
+        if (obj != null)
+        {
+            obj.transform.position = position;
+            obj.transform.rotation = rotation;
+            obj.SetActive(true);
+            activeObjects[obj] = prefab;
+        }
+
         return obj;
     }
-    
+
     /// <summary>
     /// Return an object to the pool
     /// </summary>
     public void Return(GameObject obj)
     {
         if (obj == null) return;
-        
-        if (activeObjects.TryGetValue(obj, out GameObject prefab))
+
+        if (activeObjects.ContainsKey(obj))
         {
+            GameObject prefab = activeObjects[obj];
             activeObjects.Remove(obj);
-            
-            var pool = pools[prefab];
-            if (pool.Count < maxPoolSize)
+
+            // Deactivate the object
+            obj.SetActive(false);
+
+            // Add to pool if we have space
+            if (!pools.ContainsKey(prefab))
             {
-                obj.SetActive(false);
-                obj.transform.SetParent(transform); // Parent to pool for organization
-                pool.Enqueue(obj);
+                pools[prefab] = new Queue<GameObject>();
+            }
+
+            if (pools[prefab].Count < maxPoolSize)
+            {
+                pools[prefab].Enqueue(obj);
             }
             else
             {
@@ -84,29 +89,30 @@ public class SimpleObjectPool : MonoBehaviour
                 Destroy(obj);
             }
         }
-        else
-        {
-            // Object not tracked, just destroy it
-            Destroy(obj);
-        }
     }
-    
+
     /// <summary>
-    /// Pre-create objects to avoid frame drops during gameplay
+    /// Pre-populate the pool with objects
     /// </summary>
-    private void PrewarmPool(GameObject prefab, int count)
+    public void PrePopulate(GameObject prefab, int count)
     {
-        var pool = pools[prefab];
+        if (prefab == null) return;
+
+        if (!pools.ContainsKey(prefab))
+        {
+            pools[prefab] = new Queue<GameObject>();
+        }
+
         for (int i = 0; i < count; i++)
         {
-            GameObject obj = Instantiate(prefab, transform);
+            GameObject obj = Instantiate(prefab);
             obj.SetActive(false);
-            pool.Enqueue(obj);
+            pools[prefab].Enqueue(obj);
         }
     }
-    
+
     /// <summary>
-    /// Clear all pools (useful for scene transitions)
+    /// Clear all pools
     /// </summary>
     public void ClearAllPools()
     {
@@ -114,37 +120,27 @@ public class SimpleObjectPool : MonoBehaviour
         {
             while (pool.Count > 0)
             {
-                var obj = pool.Dequeue();
-                if (obj != null) Destroy(obj);
+                GameObject obj = pool.Dequeue();
+                if (obj != null)
+                {
+                    Destroy(obj);
+                }
             }
         }
         pools.Clear();
         activeObjects.Clear();
     }
-    
+
     /// <summary>
-    /// Return all active objects of a specific prefab type to pool
+    /// Get pool statistics for debugging
     /// </summary>
-    public void ReturnAllOfType(GameObject prefab)
+    public Dictionary<string, int> GetPoolStats()
     {
-        var objectsToReturn = new List<GameObject>();
-        
-        foreach (var kvp in activeObjects)
+        var stats = new Dictionary<string, int>();
+        foreach (var kvp in pools)
         {
-            if (kvp.Value == prefab)
-            {
-                objectsToReturn.Add(kvp.Key);
-            }
+            stats[kvp.Key.name] = kvp.Value.Count;
         }
-        
-        foreach (var obj in objectsToReturn)
-        {
-            Return(obj);
-        }
-    }
-    
-    void OnDestroy()
-    {
-        ClearAllPools();
+        return stats;
     }
 }

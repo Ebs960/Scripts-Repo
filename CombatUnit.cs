@@ -4,6 +4,19 @@ using UnityEngine.Events;
 using TMPro;
 using GameCombat;
 
+/// <summary>
+/// Unit states during battle
+/// </summary>
+public enum BattleUnitState
+{
+    Idle,           // Standing still
+    Moving,         // Moving to position
+    Attacking,      // Engaging enemy
+    Defending,      // Holding position
+    Routing,        // Fleeing from battle
+    Dead            // Unit eliminated
+}
+
 [RequireComponent(typeof(Animator))]
 public class CombatUnit : MonoBehaviour
 {
@@ -53,6 +66,19 @@ public class CombatUnit : MonoBehaviour
     [Header("Editor")]
     [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
     [SerializeField] private bool updateEquipmentInEditor = true;
+    
+    [Header("Active Projectile")]
+    [Tooltip("The projectile type this unit will use when firing ranged weapons (can be changed in equipment UI)")]
+    [SerializeField] private GameCombat.ProjectileData _activeProjectile;
+    
+    /// <summary>
+    /// The active projectile this unit uses for ranged attacks
+    /// </summary>
+    public GameCombat.ProjectileData ActiveProjectile
+    {
+        get => _activeProjectile;
+        set => _activeProjectile = value;
+    }
     
     public EquipmentData Weapon => equippedWeapon;
     public EquipmentData Shield => equippedShield;
@@ -198,6 +224,22 @@ public class CombatUnit : MonoBehaviour
     
     // Flag for tracking winter movement penalty
     public bool hasWinterPenalty { get; set; }
+    
+    // Performance optimization: track last displayed health to avoid unnecessary UI updates
+    private int _lastDisplayedHealth = -1;
+
+    // Battle system fields
+    [Header("Battle System")]
+    [Tooltip("Current state in battle")]
+    public BattleUnitState battleState = BattleUnitState.Idle;
+    [Tooltip("Whether this unit is part of the attacker's forces")]
+    public bool isAttacker = true;
+    [Tooltip("Current target for this unit")]
+    public CombatUnit currentTarget;
+    [Tooltip("Movement speed in battle")]
+    public float battleMoveSpeed = 5f;
+    [Tooltip("Attack range in battle")]
+    public float battleAttackRange = 3f;
     
     // Weather susceptibility
     [Header("Weather")]
@@ -486,6 +528,14 @@ public class CombatUnit : MonoBehaviour
         return total;
     }
 
+    public int GetAbilityMoveModifier()
+    {
+        int total = 0;
+        foreach (var ability in unlockedAbilities)
+            total += ability.movePointsModifier;
+        return total;
+    }
+
     public float GetAbilityDamageMultiplier()
     {
         float total = 1.0f; // Start with base value
@@ -656,6 +706,7 @@ public class CombatUnit : MonoBehaviour
         }
     }
     public int MaxAttackPoints   => Mathf.RoundToInt(BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier());
+    public int MaxMovePoints     => Mathf.RoundToInt(BaseMovePoints + EquipmentMoveBonus + GetAbilityMoveModifier());
     public int MaxMorale         => useOverrideStats && morale > 0 ? morale : data.baseMorale;
     
 
@@ -806,6 +857,16 @@ public class CombatUnit : MonoBehaviour
     {
         if (!CanAttack(target)) return;
 
+        // Check if this should trigger a real-time battle
+        if (ShouldStartBattle(target))
+        {
+            StartRealTimeBattle(target);
+            return;
+        }
+
+        try
+        {
+
     // Choose active weapon based on melee engagement
     EquipmentData activeWeapon = null;
     if (engagedInMelee && equippedWeapon != null)
@@ -882,6 +943,11 @@ public class CombatUnit : MonoBehaviour
 
         currentAttackPoints--;
         GainExperience(damage);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[CombatUnit] Error in Attack: {e.Message}");
+        }
     }
     
     /// <summary>
@@ -2173,6 +2239,9 @@ public class CombatUnit : MonoBehaviour
 
     void Update()
     {
+        // Only update every few frames for performance
+        if (Time.frameCount % 3 != 0) return;
+
         // Periodically check whether we should auto-disengage from melee
         if (engagedInMelee)
         {
@@ -2191,6 +2260,13 @@ public class CombatUnit : MonoBehaviour
         {
             // reset timer when not engaged
             meleeCheckTimer = 0f;
+        }
+
+        // Update unit label only when health changes
+        if (unitLabelInstance != null && currentHealth != _lastDisplayedHealth)
+        {
+            unitLabelInstance.UpdateLabel(data.unitName, owner.civData.civName, currentHealth, MaxHealth);
+            _lastDisplayedHealth = currentHealth;
         }
     }
 
@@ -2248,31 +2324,51 @@ public class CombatUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Spawns a projectile (as specified by equipment.projectileData) from the equipment's spawn transform toward a target position or target unit.
-    /// Non-destructive: does not modify existing methods or state.
+    /// Spawns a projectile from the equipment's spawn transform toward a target position or target unit.
+    /// Uses the unit's active projectile if available, otherwise falls back to equipment's default.
     /// </summary>
     public void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit = null, int overrideDamage = -1)
     {
-        if (equipment == null || equipment.projectileData == null || equipment.projectileData.projectilePrefab == null)
+        // PROJECTILE SYSTEM: Use active projectile if available, otherwise fall back to equipment's default
+        GameCombat.ProjectileData projectileToUse = null;
+        
+        // Priority 1: Use unit's active projectile if it matches the weapon's category
+        if (_activeProjectile != null && equipment != null && equipment.usesProjectiles && 
+            _activeProjectile.category == equipment.projectileCategory)
+        {
+            projectileToUse = _activeProjectile;
+        }
+        // Priority 2: Fall back to equipment's default projectile
+        else if (equipment != null && equipment.projectileData != null)
+        {
+            projectileToUse = equipment.projectileData;
+        }
+        
+        // If no valid projectile found, abort
+        if (projectileToUse == null || projectileToUse.projectilePrefab == null)
             return;
 
         Transform spawn = GetProjectileSpawnTransform(equipment);
         Vector3 startPos = spawn != null ? spawn.position : transform.position;
 
-        GameObject projGO = null;
-        // Try to spawn from the pool when available
-        if (ProjectilePool.Instance != null)
-        {
-            projGO = ProjectilePool.Instance.Spawn(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-        }
-        else
-        {
-            projGO = Instantiate(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
-            // Ensure marker exists so Despawn can find the original prefab if a pool is later added
-            var marker = projGO.GetComponent<PooledPrefabMarker>();
-            if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>();
-            marker.originalPrefab = equipment.projectileData.projectilePrefab;
-        }
+            GameObject projGO = null;
+            // Try to spawn from the simple object pool first, then fall back to ProjectilePool
+            if (SimpleObjectPool.Instance != null)
+            {
+                projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+            }
+            else if (ProjectilePool.Instance != null)
+            {
+                projGO = ProjectilePool.Instance.Spawn(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+            }
+            else
+            {
+                projGO = Instantiate(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
+                // Ensure marker exists so Despawn can find the original prefab if a pool is later added
+                var marker = projGO.GetComponent<PooledPrefabMarker>();
+                if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>();
+                marker.originalPrefab = projectileToUse.projectilePrefab;
+            }
 
         if (projGO == null) return;
 
@@ -2284,7 +2380,7 @@ public class CombatUnit : MonoBehaviour
         }
 
         // Initialize the projectile with relevant data and override damage if provided
-        proj.Initialize(equipment.projectileData, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
+        proj.Initialize(projectileToUse, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
     }
 
     /// <summary>
@@ -2323,6 +2419,18 @@ public class CombatUnit : MonoBehaviour
         queuedProjectileEquipment = null;
         queuedProjectileTargetUnit = null;
         queuedProjectileDamage = -1;
+    }
+    
+    /// <summary>
+    /// Public method to trigger animations from external classes
+    /// </summary>
+    public void TriggerAnimation(string animationName)
+    {
+        if (animator != null)
+        {
+            animator.SetTrigger(animationName);
+            OnAnimationTrigger?.Invoke(animationName);
+        }
     }
     
     /// <summary>
@@ -2475,5 +2583,313 @@ public class CombatUnit : MonoBehaviour
                 Debug.LogError($"[CombatUnit] UIManager.Instance is null. Cannot show notification for {data.unitName}.");
             }
         }
+    }
+
+    /// <summary>
+    /// Initialize unit for battle mode
+    /// </summary>
+    public void InitializeForBattle(bool isAttackerSide)
+    {
+        isAttacker = isAttackerSide;
+        battleState = BattleUnitState.Idle;
+        currentTarget = null;
+        
+        // Reset movement and attack points for battle
+        currentMovePoints = MaxMovePoints;
+        currentAttackPoints = MaxAttackPoints;
+        
+        // Set up battle-specific components
+        SetupBattleComponents();
+    }
+
+    /// <summary>
+    /// Set the battle state of this unit
+    /// </summary>
+    public void SetBattleState(BattleUnitState newState)
+    {
+        battleState = newState;
+        
+        switch (newState)
+        {
+            case BattleUnitState.Idle:
+                // Stop current actions
+                StopAllCoroutines();
+                break;
+            case BattleUnitState.Attacking:
+                // Look for nearby enemies
+                FindNearestEnemy();
+                break;
+            case BattleUnitState.Defending:
+                // Hold position
+                break;
+            case BattleUnitState.Routing:
+                // Start retreating
+                StartRetreat();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Move to a specific position in battle
+    /// </summary>
+    public void MoveToPosition(Vector3 targetPosition)
+    {
+        if (battleState == BattleUnitState.Dead) return;
+
+        battleState = BattleUnitState.Moving;
+        StartCoroutine(MoveToPositionCoroutine(targetPosition));
+    }
+
+    /// <summary>
+    /// Attack a specific target in battle
+    /// </summary>
+    public void AttackTarget(CombatUnit target)
+    {
+        if (target == null || battleState == BattleUnitState.Dead) return;
+
+        currentTarget = target;
+        battleState = BattleUnitState.Attacking;
+        
+        // Check if in range
+        float distance = Vector3.Distance(transform.position, target.transform.position);
+        if (distance <= battleAttackRange)
+        {
+            // In range, attack immediately
+            Attack(target);
+        }
+        else
+        {
+            // Move towards target
+            StartCoroutine(MoveToTargetCoroutine(target));
+        }
+    }
+
+    private void SetupBattleComponents()
+    {
+        // Add battle-specific components if needed
+        // This could include battle-specific AI, movement controllers, etc.
+    }
+
+    private void FindNearestEnemy()
+    {
+        CombatUnit nearestEnemy = null;
+        float nearestDistance = float.MaxValue;
+
+        // Find all enemy units
+        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+        foreach (var unit in allUnits)
+        {
+            if (unit != this && unit.isAttacker != this.isAttacker && unit.battleState != BattleUnitState.Dead)
+            {
+                float distance = Vector3.Distance(transform.position, unit.transform.position);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestEnemy = unit;
+                }
+            }
+        }
+
+        if (nearestEnemy != null)
+        {
+            AttackTarget(nearestEnemy);
+        }
+    }
+
+    private void StartRetreat()
+    {
+        // Find a retreat position (away from enemies)
+        Vector3 retreatDirection = GetRetreatDirection();
+        Vector3 retreatPosition = transform.position + retreatDirection * 10f;
+        MoveToPosition(retreatPosition);
+    }
+
+    private Vector3 GetRetreatDirection()
+    {
+        // Simple retreat logic - move away from nearest enemy
+        CombatUnit nearestEnemy = null;
+        float nearestDistance = float.MaxValue;
+
+        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+        foreach (var unit in allUnits)
+        {
+            if (unit != this && unit.isAttacker != this.isAttacker && unit.battleState != BattleUnitState.Dead)
+            {
+                float distance = Vector3.Distance(transform.position, unit.transform.position);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestEnemy = unit;
+                }
+            }
+        }
+
+        if (nearestEnemy != null)
+        {
+            return (transform.position - nearestEnemy.transform.position).normalized;
+        }
+
+        // Default retreat direction
+        return isAttacker ? Vector3.left : Vector3.right;
+    }
+
+    private System.Collections.IEnumerator MoveToPositionCoroutine(Vector3 targetPosition)
+    {
+        Vector3 startPosition = transform.position;
+        float distance = Vector3.Distance(startPosition, targetPosition);
+        float moveTime = distance / battleMoveSpeed;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < moveTime && battleState == BattleUnitState.Moving)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / moveTime;
+            transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            yield return null;
+        }
+
+        transform.position = targetPosition;
+        
+        if (battleState == BattleUnitState.Moving)
+        {
+            battleState = BattleUnitState.Idle;
+        }
+    }
+
+    private System.Collections.IEnumerator MoveToTargetCoroutine(CombatUnit target)
+    {
+        while (currentTarget != null && battleState == BattleUnitState.Attacking)
+        {
+            float distance = Vector3.Distance(transform.position, target.transform.position);
+            
+            if (distance <= battleAttackRange)
+            {
+                // In range, attack
+                Attack(target);
+                yield break;
+            }
+            else
+            {
+                // Move towards target
+                Vector3 direction = (target.transform.position - transform.position).normalized;
+                Vector3 newPosition = transform.position + direction * battleMoveSpeed * Time.deltaTime;
+                transform.position = newPosition;
+            }
+
+            yield return null;
+        }
+    }
+
+    /// <summary>
+    /// Check if this attack should trigger a real-time battle
+    /// </summary>
+    private bool ShouldStartBattle(CombatUnit target)
+    {
+        // Only start battles for different civilizations or when attacking animals
+        if (target == null || owner == null) return false;
+        
+        // Don't start battles for same civilization (unless it's an animal)
+        if (owner == target.owner && target.owner != null) return false;
+        
+        // Start battle for any engagement between different civilizations or when attacking animals
+        return true;
+    }
+
+    /// <summary>
+    /// Get the battle strength of this unit and nearby allies
+    /// </summary>
+    private int GetBattleStrength()
+    {
+        int strength = 1; // This unit counts as 1
+        
+        // Count nearby allied units
+        var nearbyUnits = GetNearbyAlliedUnits(10f); // 10 unit radius
+        strength += nearbyUnits.Count;
+        
+        return strength;
+    }
+
+    /// <summary>
+    /// Get nearby allied units within range
+    /// </summary>
+    private List<CombatUnit> GetNearbyAlliedUnits(float range)
+    {
+        List<CombatUnit> nearbyUnits = new List<CombatUnit>();
+        
+        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+        foreach (var unit in allUnits)
+        {
+            if (unit != this && unit.owner == this.owner)
+            {
+                float distance = Vector3.Distance(transform.position, unit.transform.position);
+                if (distance <= range)
+                {
+                    nearbyUnits.Add(unit);
+                }
+            }
+        }
+        
+        return nearbyUnits;
+    }
+
+    /// <summary>
+    /// Start a real-time battle
+    /// </summary>
+    private void StartRealTimeBattle(CombatUnit target)
+    {
+        if (BattleManager.Instance == null)
+        {
+            Debug.LogWarning("[CombatUnit] BattleManager not found, falling back to normal combat");
+            return;
+        }
+
+        // Get all nearby units for both sides (including single units)
+        List<CombatUnit> attackerUnits = GetNearbyAlliedUnits(15f);
+        List<CombatUnit> defenderUnits = target.GetNearbyAlliedUnits(15f);
+        
+        // Ensure we have at least the attacking and defending units
+        if (!attackerUnits.Contains(this))
+        {
+            attackerUnits.Add(this);
+        }
+        
+        if (!defenderUnits.Contains(target))
+        {
+            defenderUnits.Add(target);
+        }
+
+        // Handle animals - they don't have an owner, so create a dummy civilization
+        Civilization attackerCiv = owner;
+        Civilization defenderCiv = target.owner;
+        
+        if (defenderCiv == null) // This is an animal
+        {
+            // Create a temporary civilization for the animal
+            defenderCiv = CreateTemporaryAnimalCiv(target);
+        }
+
+        Debug.Log($"[CombatUnit] Starting real-time battle: {attackerUnits.Count} vs {defenderUnits.Count} units");
+        if (target.owner == null)
+        {
+            Debug.Log($"[CombatUnit] Battle includes animal: {target.data.unitName}");
+        }
+        
+        // Start the battle
+        BattleManager.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
+    }
+
+    /// <summary>
+    /// Create a temporary civilization for animals in battle
+    /// </summary>
+    private Civilization CreateTemporaryAnimalCiv(CombatUnit animal)
+    {
+        // Create a temporary civilization for the animal
+        GameObject tempCivGO = new GameObject("TemporaryAnimalCiv");
+        Civilization tempCiv = tempCivGO.AddComponent<Civilization>();
+        
+        // Initialize with basic data
+        tempCiv.Initialize(null, null, false); // No civData, no leader, not player controlled
+        
+        return tempCiv;
     }
 }

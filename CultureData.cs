@@ -26,13 +26,14 @@ public class CultureData : ScriptableObject
     public Biome[] requiredControlledBiomes;
 
     [Header("Unlocks & Bonuses")]
-    public PolicyData[] unlocksPolicies;
-    public CombatUnitData[] unlockedUnits;
-    public WorkerUnitData[] unlockedWorkerUnits;
-    public BuildingData[] unlockedBuildings;
-    public AbilityData[] unlockedAbilities;
+    // REMOVED: unlocksPolicies
+    // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public GovernmentData[] unlockedGovernments;
     public ReligionData[] unlockedReligions;
+    // REMOVED: All unlocked arrays - availability now controlled ONLY by requiredCultures in the respective data classes
+    // Unit availability: CombatUnitData.requiredCultures / WorkerUnitData.requiredCultures
+    // Building availability: BuildingData.requiredCultures
+    // Improvement availability: ImprovementData.requiredCultures
     public float attackBonus;
     public float defenseBonus;
     public float movementBonus;

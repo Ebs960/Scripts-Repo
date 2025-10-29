@@ -34,7 +34,16 @@ public class CityUI : MonoBehaviour
     [SerializeField] private Transform buildingsContainer; // Container for building options
     [SerializeField] private Transform unitsContainer; // Container for unit options
     [SerializeField] private Transform equipmentContainer; // Container for equipment options
+    [SerializeField] private Transform projectilesContainer; // NEW: Container for projectile options
     [SerializeField] private GameObject buildOptionPrefab; // button + icon + cost
+
+    // Performance caches
+    private List<BuildingData> _cachedAvailableBuildings = new List<BuildingData>();
+    private List<CombatUnitData> _cachedAvailableUnits = new List<CombatUnitData>();
+    private List<WorkerUnitData> _cachedAvailableWorkers = new List<WorkerUnitData>();
+    private List<EquipmentData> _cachedAvailableEquipment = new List<EquipmentData>();
+    private List<GameCombat.ProjectileData> _cachedAvailableProjectiles = new List<GameCombat.ProjectileData>();
+    private bool _buildOptionsCacheDirty = true;
 
     [Header("Governor Info")]
     [SerializeField] private TextMeshProUGUI governorNameText;
@@ -51,6 +60,7 @@ public class CityUI : MonoBehaviour
     private List<CombatUnitData> availableUnits = new List<CombatUnitData>();
     private List<WorkerUnitData> availableWorkerUnits = new List<WorkerUnitData>();
     private List<EquipmentData> availableEquipment = new List<EquipmentData>();
+    private List<GameCombat.ProjectileData> availableProjectiles = new List<GameCombat.ProjectileData>(); // NEW
 
     // Removed tab buttons and panel references
 
@@ -166,6 +176,19 @@ public class CityUI : MonoBehaviour
         // Populate the unified build options list
         PopulateBuildOptionsList();
     }
+
+    /// <summary>
+    /// Invalidate build options cache when techs/cultures change
+    /// </summary>
+    public void InvalidateBuildOptionsCache()
+    {
+        _buildOptionsCacheDirty = true;
+        _cachedAvailableBuildings.Clear();
+        _cachedAvailableUnits.Clear();
+        _cachedAvailableWorkers.Clear();
+        _cachedAvailableEquipment.Clear();
+        _cachedAvailableProjectiles.Clear();
+    }
     
     private void UpdateCurrentProductionDisplay()
     {
@@ -211,6 +234,11 @@ public class CityUI : MonoBehaviour
             itemName = dd.districtName; 
             totalCost = dd.productionCost; 
         }
+        else if (currentProd.data is GameCombat.ProjectileData pd) // NEW: Handle projectiles
+        { 
+            itemName = pd.projectileName; 
+            totalCost = pd.productionCost; 
+        }
         
         // Update UI with production info
         if (currentProductionItemNameText != null)
@@ -233,18 +261,38 @@ public class CityUI : MonoBehaviour
 
     private void LoadAvailableOptions()
     {
+        // Use cached data if available and not dirty
+        if (!_buildOptionsCacheDirty && _cachedAvailableBuildings.Count > 0)
+        {
+            availableBuildings.Clear();
+            availableBuildings.AddRange(_cachedAvailableBuildings);
+            availableUnits.Clear();
+            availableUnits.AddRange(_cachedAvailableUnits);
+            availableWorkerUnits.Clear();
+            availableWorkerUnits.AddRange(_cachedAvailableWorkers);
+            availableEquipment.Clear();
+            availableEquipment.AddRange(_cachedAvailableEquipment);
+            availableProjectiles.Clear();
+            availableProjectiles.AddRange(_cachedAvailableProjectiles);
+            return;
+        }
+
         availableBuildings.Clear();
         availableUnits.Clear();
         availableWorkerUnits.Clear();
-        // availableEquipment.Clear(); // Equipment not handled yet
+        availableEquipment.Clear();
+        availableProjectiles.Clear();
 
         if (currentCity.owner == null) return;
 
         var ownerCiv = currentCity.owner;
         
-        // Get buildings directly from already unlocked buildings
-        foreach (var building in ownerCiv.unlockedBuildings)
+        // Get all buildings that meet requirements (like equipment system)
+        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        foreach (var building in allBuildings)
         {
+            if (building == null || !building.AreRequirementsMet(ownerCiv)) continue;
+            
             // Skip if already built
             bool alreadyBuilt = false;
             foreach (var (builtData, _) in currentCity.builtBuildings)
@@ -269,18 +317,22 @@ public class CityUI : MonoBehaviour
             }
         }
         
-        // Get units directly from already unlocked units
-        foreach (var unit in ownerCiv.unlockedCombatUnits)
+        // Get all combat units that meet requirements (like equipment system)
+        var allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
+        foreach (var unit in allCombatUnits)
         {
+            if (unit == null || !unit.AreRequirementsMet(ownerCiv)) continue;
             if (!availableUnits.Contains(unit))
             {
                 availableUnits.Add(unit);
             }
         }
         
-        // Get worker units directly from already unlocked worker units
-        foreach (var worker in ownerCiv.unlockedWorkerUnits)
+        // Get all worker units that meet requirements (like equipment system)
+        var allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+        foreach (var worker in allWorkerUnits)
         {
+            if (worker == null || !worker.AreRequirementsMet(ownerCiv)) continue;
             if (!availableWorkerUnits.Contains(worker))
             {
                 availableWorkerUnits.Add(worker);
@@ -320,6 +372,34 @@ public class CityUI : MonoBehaviour
                 // no-op: uniqueness handled elsewhere
             }
         }
+        
+        // NEW: Projectiles - Load all projectiles that can be produced by this civilization
+        availableProjectiles.Clear();
+        if (ownerCiv != null)
+        {
+            // Get all projectile assets in the game
+            var allProjectiles = Resources.LoadAll<GameCombat.ProjectileData>("Projectiles");
+            foreach (var projectile in allProjectiles)
+            {
+                if (projectile != null && projectile.CanBeProducedBy(ownerCiv))
+                {
+                    availableProjectiles.Add(projectile);
+                }
+            }
+        }
+
+        // Cache the results for next time
+        _cachedAvailableBuildings.Clear();
+        _cachedAvailableBuildings.AddRange(availableBuildings);
+        _cachedAvailableUnits.Clear();
+        _cachedAvailableUnits.AddRange(availableUnits);
+        _cachedAvailableWorkers.Clear();
+        _cachedAvailableWorkers.AddRange(availableWorkerUnits);
+        _cachedAvailableEquipment.Clear();
+        _cachedAvailableEquipment.AddRange(availableEquipment);
+        _cachedAvailableProjectiles.Clear();
+        _cachedAvailableProjectiles.AddRange(availableProjectiles);
+        _buildOptionsCacheDirty = false;
     }
     
     private void PopulateBuildOptionsList()
@@ -328,6 +408,8 @@ public class CityUI : MonoBehaviour
         foreach (Transform t in buildingsContainer) Destroy(t.gameObject);
         foreach (Transform t in unitsContainer) Destroy(t.gameObject);
         foreach (Transform t in equipmentContainer) Destroy(t.gameObject);
+        if (projectilesContainer != null) 
+            foreach (Transform t in projectilesContainer) Destroy(t.gameObject);
 
         // Display Buildings in buildings container
         foreach (var building in availableBuildings.OrderBy(b => b.productionCost))
@@ -351,6 +433,15 @@ public class CityUI : MonoBehaviour
         foreach (var eq in availableEquipment.OrderBy(e => e.productionCost))
         {
             CreateBuildOptionButton(eq, eq.icon, eq.equipmentName, eq.productionCost, equipmentContainer);
+        }
+        
+        // NEW: Projectile options
+        if (projectilesContainer != null)
+        {
+            foreach (var projectile in availableProjectiles.OrderBy(p => p.productionCost))
+            {
+                CreateBuildOptionButton(projectile, projectile.icon, projectile.projectileName, projectile.productionCost, projectilesContainer);
+            }
         }
     }
 
@@ -376,6 +467,27 @@ public class CityUI : MonoBehaviour
                 ownedText.text = $"Owned: {currentCity.owner.GetEquipmentCount(ed)}";
             }
             // Wire BuyButton if present
+            var buyBtn = btnGO.transform.Find("BuyButton")?.GetComponent<Button>();
+            if (buyBtn != null)
+            {
+                buyBtn.onClick.RemoveAllListeners();
+                buyBtn.onClick.AddListener(() =>
+                {
+                    bool bought = currentCity.BuyProduction(itemData);
+                    if (bought) RefreshUI();
+                    else Debug.LogWarning($"Failed to buy {itemName} in {currentCity.cityName}");
+                });
+            }
+        }
+        // NEW: If this is a projectile, show owned count if available
+        else if (itemData is GameCombat.ProjectileData pd)
+        {
+            var ownedText = btnGO.transform.Find("OwnedCount")?.GetComponent<TextMeshProUGUI>();
+            if (ownedText != null && currentCity != null && currentCity.owner != null)
+            {
+                ownedText.text = $"Owned: {currentCity.owner.GetProjectileCount(pd)}";
+            }
+            // Wire BuyButton if present (for instant gold purchase)
             var buyBtn = btnGO.transform.Find("BuyButton")?.GetComponent<Button>();
             if (buyBtn != null)
             {

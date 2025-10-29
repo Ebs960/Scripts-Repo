@@ -383,8 +383,8 @@ public class CivilizationManager : MonoBehaviour
         score += 10f;
         
         // Bonus for leader focus areas
-        if (tech.unlockedUnits != null && tech.unlockedUnits.Length > 0)
-            score += leader.GetFocusPriority(FocusArea.Military) * 5f;
+        // REMOVED: TechData no longer directly unlocks units
+        // Military focus bonus now based on military-related modifiers instead
             
         if (tech.goldModifier > 0 || tech.productionModifier > 0)
             score += leader.GetFocusPriority(FocusArea.Economic) * 5f;
@@ -402,7 +402,9 @@ public class CivilizationManager : MonoBehaviour
         switch (leader.primaryAgenda)
         {
             case LeaderAgenda.Militaristic:
-                if (tech.unlockedUnits != null && tech.unlockedUnits.Length > 0)
+                // REMOVED: TechData no longer directly unlocks units
+                // Military agenda bonus now based on military-related modifiers instead
+                if (tech.attackBonus > 0 || tech.defenseBonus > 0)
                     score *= 1.5f;
                 break;
             case LeaderAgenda.Scientific:

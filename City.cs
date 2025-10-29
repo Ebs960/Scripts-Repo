@@ -7,9 +7,9 @@ public class City : MonoBehaviour
 {
     // Production Queue Entry Definition
     public class ProdEntry {
-        public enum Type { Unit, Worker, Building, District, Equipment }
+        public enum Type { Unit, Worker, Building, District, Equipment, Projectile }
         public Type       type;
-        public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, or DistrictData
+        public ScriptableObject data;      // CombatUnitData, WorkerUnitData, BuildingData, DistrictData, EquipmentData, or ProjectileData
         public int        remainingPts;    // turns left in production
         public int        goldCost;        // for instant buy
         public ResourceData[] requiredResources;
@@ -624,6 +624,15 @@ public class City : MonoBehaviour
             productionQueue.Add(new ProdEntry(eq, eq.productionCost, 0, null, null, false, false, ProdEntry.Type.Equipment));
             return true;
         }
+        if (d is GameCombat.ProjectileData projectile)
+        {
+            // Projectiles are produced like equipment: consumes production points over time
+            if (!projectile.CanBeProducedBy(owner)) return false;
+            productionQueue.Add(new ProdEntry(projectile, projectile.productionCost, projectile.goldCost, 
+                                            projectile.requiredResources, null, false, false, 
+                                            ProdEntry.Type.Projectile));
+            return true;
+        }
         if (d is DistrictData district) {
             // For districts, we need to select a tile instead of immediately queueing
             var districtPlacement = FindAnyObjectByType<DistrictPlacementController>();
@@ -1003,6 +1012,15 @@ public class City : MonoBehaviour
                     {
                         owner.AddEquipment(eq);
                     }
+                }
+                break;
+            
+            case GameCombat.ProjectileData projectile:
+                // Add produced projectiles to civilization's projectile inventory
+                if (projectile != null && owner != null)
+                {
+                    owner.AddProjectile(projectile, 1); // Produce 1 unit of projectiles per completion
+                    Debug.Log($"{cityName} produced {projectile.projectileName} for {owner.civData.civName}");
                 }
                 break;
                 

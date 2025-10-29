@@ -27,6 +27,13 @@ public class Civilization : MonoBehaviour
     private Dictionary<CombatUnitData, CombatUnitData> uniqueUnitReplacements = new Dictionary<CombatUnitData, CombatUnitData>();
     private Dictionary<BuildingData, BuildingData> uniqueBuildingReplacements = new Dictionary<BuildingData, BuildingData>();
     
+    // Performance caches
+    private Dictionary<CombatUnitData, bool> _unitAvailabilityCache = new Dictionary<CombatUnitData, bool>();
+    private Dictionary<WorkerUnitData, bool> _workerAvailabilityCache = new Dictionary<WorkerUnitData, bool>();
+    private Dictionary<BuildingData, bool> _buildingAvailabilityCache = new Dictionary<BuildingData, bool>();
+    private Dictionary<EquipmentData, bool> _equipmentAvailabilityCache = new Dictionary<EquipmentData, bool>();
+    private bool _availabilityCacheDirty = true;
+    
     // Runtime property for diplomatic state access
     public bool isPlayerControlled = false;
 
@@ -53,6 +60,12 @@ public class Civilization : MonoBehaviour
     [SerializeField] private List<EquipmentData> startingEquipment = new List<EquipmentData>();
     [Tooltip("The base prefab used to create a new city. The City script on this prefab will handle spawning the correct visual model based on tech age.")]
     [SerializeField] private GameObject cityPrefab;
+    
+    [Header("Projectile Inventory")]
+    // Track projectile availability - each civ has stockpiles of different projectile types
+    public Dictionary<GameCombat.ProjectileData, int> projectileInventory = new Dictionary<GameCombat.ProjectileData, int>();
+    // Event for projectile changes
+    public System.Action<GameCombat.ProjectileData, int> OnProjectileChanged;
 
     [Header("Science & Technology")]
     public List<TechData> researchedTechs    = new List<TechData>();
@@ -351,25 +364,60 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public void BeginTurn(int round)
     {
-        turnCount = round;
+        try
+        {
+            turnCount = round;
 
-        // 1) Reset units
-        foreach (var u in combatUnits) u.ResetForNewTurn();
-        foreach (var w in workerUnits)  w.ResetForNewTurn();
+            // 1) Reset units
+            foreach (var u in combatUnits) 
+            {
+                if (u != null) u.ResetForNewTurn();
+            }
+            foreach (var w in workerUnits)  
+            {
+                if (w != null) w.ResetForNewTurn();
+            }
 
-        // 2) Process each city (production, growth, morale, surrender, label)
-        foreach (var city in cities)
-            city.ProcessCityTurn();
+            // 2) Process each city (production, growth, morale, surrender, label)
+            foreach (var city in cities)
+            {
+                if (city != null)
+                {
+                    try
+                    {
+                        city.ProcessCityTurn();
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"[Civilization] Error processing city {city.cityName}: {e.Message}");
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Civilization] Error in BeginTurn for {civData?.civName ?? "Unknown"}: {e.Message}");
+        }
 
         // 3) Collect city yields into storage
         foreach (var city in cities)
         {
-            gold         += Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
-            food         += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
-            science      += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
-            culture      += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
-            policyPoints += city.GetPolicyPointPerTurn(); // Assuming no direct modifier for policy points yet
-            faith        += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+            if (city != null)
+            {
+                try
+                {
+                    gold         += Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
+                    food         += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
+                    science      += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
+                    culture      += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
+                    policyPoints += city.GetPolicyPointPerTurn(); // Assuming no direct modifier for policy points yet
+                    faith        += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[Civilization] Error collecting yields from city {city.cityName}: {e.Message}");
+                }
+            }
         }
 
         // 3.5) Process interplanetary trade routes
@@ -590,21 +638,8 @@ public class Civilization : MonoBehaviour
         faithModifier += tech.faithModifier;
 
         // Unlock items from tech
-        if (tech.unlockedUnits != null) {
-            foreach (var unitData in tech.unlockedUnits) {
-                if (!unlockedCombatUnits.Contains(unitData)) unlockedCombatUnits.Add(unitData);
-            }
-        }
-        if (tech.unlockedWorkerUnits != null) {
-            foreach (var workerData in tech.unlockedWorkerUnits) {
-                if (!unlockedWorkerUnits.Contains(workerData)) unlockedWorkerUnits.Add(workerData);
-            }
-        }
-        if (tech.unlockedBuildings != null) {
-            foreach (var buildingData in tech.unlockedBuildings) {
-                if (!unlockedBuildings.Contains(buildingData)) unlockedBuildings.Add(buildingData);
-            }
-        }
+        // REMOVED: TechData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredTechs in the respective data classes
         // Note: TechData doesn't currently have unlockedAbilities. If added, handle here.
 
         // Apply governor-related bonuses
@@ -674,32 +709,9 @@ public class Civilization : MonoBehaviour
         faithModifier += cult.faithModifier;
 
         // Unlock items from culture
-        if (cult.unlockedUnits != null) {
-            foreach (var unitData in cult.unlockedUnits) {
-                if (!unlockedCombatUnits.Contains(unitData)) unlockedCombatUnits.Add(unitData);
-            }
-        }
-        if (cult.unlockedWorkerUnits != null) {
-            foreach (var workerData in cult.unlockedWorkerUnits) {
-                if (!unlockedWorkerUnits.Contains(workerData)) unlockedWorkerUnits.Add(workerData);
-            }
-        }
-        if (cult.unlockedBuildings != null) {
-            foreach (var buildingData in cult.unlockedBuildings) {
-                if (!unlockedBuildings.Contains(buildingData)) unlockedBuildings.Add(buildingData);
-            }
-        }
-        if (cult.unlockedAbilities != null) {
-            foreach (var abilityData in cult.unlockedAbilities) {
-                if (!unlockedAbilities.Contains(abilityData)) unlockedAbilities.Add(abilityData);
-                // TODO: Decide how to grant these abilities to units (e.g., all existing, new ones, or as an unlock option)
-            }
-        }
-        if (cult.unlocksPolicies != null) {
-             foreach (var policyData in cult.unlocksPolicies) {
-                if (!unlockedPolicies.Contains(policyData)) unlockedPolicies.Add(policyData);
-            }
-        }
+        // REMOVED: CultureData no longer directly unlocks units/buildings/abilities
+        // REMOVED: CultureData no longer directly unlocks policies
+        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
         // cult.unlockedReligions are typically made available for founding, not directly "unlocked" into a list.
         // ReligionManager would handle their availability based on various factors including cultural unlocks if designed so.
 
@@ -858,42 +870,8 @@ public class Civilization : MonoBehaviour
         currentGovernment = g;
         ApplyGovernmentBonuses(g); // Apply bonuses from new government
 
-        // Unlock new units and buildings
-        if (g.unlockedUnits != null)
-        {
-            foreach (var unit in g.unlockedUnits)
-            {
-                if (!unlockedCombatUnits.Contains(unit))
-                {
-                    unlockedCombatUnits.Add(unit);
-                    Debug.Log($"{civData.civName} unlocked {unit.unitName} through {g.governmentName}");
-                }
-            }
-        }
-
-        if (g.unlockedWorkerUnits != null)
-        {
-            foreach (var worker in g.unlockedWorkerUnits)
-            {
-                if (!unlockedWorkerUnits.Contains(worker))
-                {
-                    unlockedWorkerUnits.Add(worker);
-                    Debug.Log($"{civData.civName} unlocked {worker.unitName} through {g.governmentName}");
-                }
-            }
-        }
-
-        if (g.unlockedBuildings != null)
-        {
-            foreach (var building in g.unlockedBuildings)
-            {
-                if (!unlockedBuildings.Contains(building))
-                {
-                    unlockedBuildings.Add(building);
-                    Debug.Log($"{civData.civName} unlocked {building.buildingName} through {g.governmentName}");
-                }
-            }
-        }
+        // REMOVED: GovernmentData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
 
         // Notify cities to update their available buildings
         foreach (var city in cities)
@@ -918,12 +896,8 @@ public class Civilization : MonoBehaviour
         cultureModifier += gov.cultureModifier;
         faithModifier += gov.faithModifier;
 
-        // Unlock policies from government
-        if (gov.unlocksPolicies != null) {
-            foreach (var policyData in gov.unlocksPolicies) {
-                if (!unlockedPolicies.Contains(policyData)) unlockedPolicies.Add(policyData);
-            }
-        }
+        // REMOVED: GovernmentData no longer directly unlocks policies
+        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     }
 
     // New method to remove bonuses from a government
@@ -1193,30 +1167,8 @@ public class Civilization : MonoBehaviour
         // Apply any additional faith yield modifiers
         UpdateFaithYieldModifier();
 
-        // Unlock new units and buildings
-        if (religion.unlockedUnits != null)
-        {
-            foreach (var unit in religion.unlockedUnits)
-            {
-                if (!unlockedCombatUnits.Contains(unit))
-                {
-                    unlockedCombatUnits.Add(unit);
-                    Debug.Log($"{civData.civName} unlocked {unit.unitName} through {religion.religionName}");
-                }
-            }
-        }
-
-        if (religion.unlockedBuildings != null)
-        {
-            foreach (var building in religion.unlockedBuildings)
-            {
-                if (!unlockedBuildings.Contains(building))
-                {
-                    unlockedBuildings.Add(building);
-                    Debug.Log($"{civData.civName} unlocked {building.buildingName} through {religion.religionName}");
-                }
-            }
-        }
+        // REMOVED: ReligionData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
 
         // Notify cities to update their available buildings
         foreach (var city in cities)
@@ -1419,6 +1371,9 @@ public class Civilization : MonoBehaviour
         // Update city models if this tech changes the age
         UpdateCityModelsForNewAge();
 
+        // Invalidate availability cache
+        InvalidateAvailabilityCache();
+
         // Invoke the event
         OnTechResearched?.Invoke(tech);
 
@@ -1509,6 +1464,9 @@ public class Civilization : MonoBehaviour
 
         // Apply bonuses from the adopted culture
         ApplyCultureBonuses(cult);
+
+        // Invalidate availability cache
+        InvalidateAvailabilityCache();
 
         // Apply culture unlocks for religion/pantheons
         if (cult.unlocksPantheons != null)
@@ -1682,6 +1640,121 @@ public class Civilization : MonoBehaviour
     public bool HasEquipment(EquipmentData equipment, int count = 1)
     {
         return GetEquipmentCount(equipment) >= count;
+    }
+    
+    // ===================== PROJECTILE INVENTORY MANAGEMENT =====================
+    
+    /// <summary>
+    /// Adds projectiles to the civilization's inventory
+    /// </summary>
+    public void AddProjectile(GameCombat.ProjectileData projectile, int count = 1)
+    {
+        if (projectile == null || count <= 0) return;
+        
+        if (!projectileInventory.ContainsKey(projectile))
+            projectileInventory[projectile] = 0;
+        
+        projectileInventory[projectile] += count;
+        OnProjectileChanged?.Invoke(projectile, projectileInventory[projectile]);
+        
+        if (isPlayerControlled)
+        {
+            Debug.Log($"{civData.civName} produced {count}x {projectile.projectileName}. Total: {projectileInventory[projectile]}");
+        }
+    }
+    
+    /// <summary>
+    /// Produces projectiles (checks resources and adds to inventory)
+    /// </summary>
+    public bool ProduceProjectile(GameCombat.ProjectileData projectile, int count = 1)
+    {
+        if (projectile == null || count <= 0) return false;
+        
+        // Check if can be produced
+        if (!projectile.CanBeProducedBy(this))
+        {
+            Debug.LogWarning($"{civData.civName} cannot produce {projectile.projectileName} - requirements not met!");
+            return false;
+        }
+        
+        // Consume required resources
+        if (projectile.requiredResources != null)
+        {
+            foreach (var resource in projectile.requiredResources)
+            {
+                if (resource != null)
+                {
+                    if (!ConsumeResource(resource, count))
+                    {
+                        Debug.LogWarning($"{civData.civName} lacks {resource.resourceName} to produce {projectile.projectileName}!");
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // Add to inventory
+        AddProjectile(projectile, count);
+        return true;
+    }
+    
+    /// <summary>
+    /// Consumes projectiles from inventory (not implemented yet - for future ammo consumption)
+    /// </summary>
+    public bool ConsumeProjectile(GameCombat.ProjectileData projectile, int count = 1)
+    {
+        if (projectile == null || count <= 0) return false;
+        
+        if (!projectileInventory.ContainsKey(projectile) || projectileInventory[projectile] < count)
+        {
+            Debug.LogWarning($"{civData.civName} doesn't have enough {projectile.projectileName}! Need {count}, have {GetProjectileCount(projectile)}");
+            return false;
+        }
+        
+        projectileInventory[projectile] -= count;
+        OnProjectileChanged?.Invoke(projectile, projectileInventory[projectile]);
+        
+        // Remove from dictionary if depleted
+        if (projectileInventory[projectile] <= 0)
+            projectileInventory.Remove(projectile);
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// Gets the count of a specific projectile type in inventory
+    /// </summary>
+    public int GetProjectileCount(GameCombat.ProjectileData projectile)
+    {
+        if (projectile == null) return 0;
+        return projectileInventory.ContainsKey(projectile) ? projectileInventory[projectile] : 0;
+    }
+    
+    /// <summary>
+    /// Checks if the civilization has at least the specified count of this projectile
+    /// </summary>
+    public bool HasProjectile(GameCombat.ProjectileData projectile, int count = 1)
+    {
+        if (projectile == null) return false;
+        return GetProjectileCount(projectile) >= count;
+    }
+    
+    /// <summary>
+    /// Gets all available projectiles for a specific category
+    /// </summary>
+    public List<GameCombat.ProjectileData> GetAvailableProjectiles(GameCombat.ProjectileCategory category)
+    {
+        var available = new List<GameCombat.ProjectileData>();
+        
+        foreach (var kvp in projectileInventory)
+        {
+            if (kvp.Key != null && kvp.Key.category == category && kvp.Value > 0)
+            {
+                available.Add(kvp.Key);
+            }
+        }
+        
+        return available;
     }
     
     /// <summary>
@@ -1926,15 +1999,9 @@ public class Civilization : MonoBehaviour
     public List<ImprovementData> GetUnlockedImprovements()
     {
         var result = new HashSet<ImprovementData>();
-        if (researchedTechs != null)
-        {
-            foreach (var t in researchedTechs)
-            {
-                if (t?.unlocksImprovements == null) continue;
-                foreach (var imp in t.unlocksImprovements)
-                    if (imp != null) result.Add(imp);
-            }
-        }
+        // REMOVED: TechData no longer directly unlocks improvements
+        // Improvement availability is now controlled solely by requiredTechs in ImprovementData
+        // This method now returns an empty list - improvements should be checked via their requiredTechs
         return result.ToList();
     }
 
@@ -2732,5 +2799,81 @@ public class Civilization : MonoBehaviour
 
     public SphericalHexGrid planetGrid; // Add this field to store the main planet's grid
     public PlanetGenerator planetGenerator; // Add this field to store the main planet's generator
+
+    /// <summary>
+    /// Invalidate availability cache when techs/cultures change
+    /// </summary>
+    private void InvalidateAvailabilityCache()
+    {
+        _availabilityCacheDirty = true;
+        _unitAvailabilityCache.Clear();
+        _workerAvailabilityCache.Clear();
+        _buildingAvailabilityCache.Clear();
+        _equipmentAvailabilityCache.Clear();
+    }
+
+    /// <summary>
+    /// Check if a combat unit is available (cached)
+    /// </summary>
+    public bool IsCombatUnitAvailable(CombatUnitData unitData)
+    {
+        if (unitData == null) return false;
+        
+        if (_availabilityCacheDirty || !_unitAvailabilityCache.ContainsKey(unitData))
+        {
+            bool available = unitData.AreRequirementsMet(this);
+            _unitAvailabilityCache[unitData] = available;
+        }
+        
+        return _unitAvailabilityCache[unitData];
+    }
+
+    /// <summary>
+    /// Check if a worker unit is available (cached)
+    /// </summary>
+    public bool IsWorkerUnitAvailable(WorkerUnitData unitData)
+    {
+        if (unitData == null) return false;
+        
+        if (_availabilityCacheDirty || !_workerAvailabilityCache.ContainsKey(unitData))
+        {
+            bool available = unitData.AreRequirementsMet(this);
+            _workerAvailabilityCache[unitData] = available;
+        }
+        
+        return _workerAvailabilityCache[unitData];
+    }
+
+    /// <summary>
+    /// Check if a building is available (cached)
+    /// </summary>
+    public bool IsBuildingAvailable(BuildingData buildingData)
+    {
+        if (buildingData == null) return false;
+        
+        if (_availabilityCacheDirty || !_buildingAvailabilityCache.ContainsKey(buildingData))
+        {
+            bool available = buildingData.AreRequirementsMet(this);
+            _buildingAvailabilityCache[buildingData] = available;
+        }
+        
+        return _buildingAvailabilityCache[buildingData];
+    }
+
+    /// <summary>
+    /// Check if equipment is available (cached)
+    /// </summary>
+    public bool IsEquipmentAvailable(EquipmentData equipmentData)
+    {
+        if (equipmentData == null) return false;
+        
+        if (_availabilityCacheDirty || !_equipmentAvailabilityCache.ContainsKey(equipmentData))
+        {
+            bool available = equipmentData.CanBeProducedBy(this);
+            _equipmentAvailabilityCache[equipmentData] = available;
+        }
+        
+        return _equipmentAvailabilityCache[equipmentData];
+    }
 }
 

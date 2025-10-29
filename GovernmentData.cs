@@ -16,7 +16,8 @@ public class GovernmentData : ScriptableObject
     public int requiredCityCount;
 
     [Header("Bonuses & Restrictions")]
-    public PolicyData[] unlocksPolicies;   // which policies become available
+    // REMOVED: unlocksPolicies
+    // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public float attackBonus;
     public float defenseBonus;
     public float movementBonus;
@@ -35,11 +36,7 @@ public class GovernmentData : ScriptableObject
     [Tooltip("Per-worker per-turn yield bonuses granted by this government while active.")]
     public WorkerUnitYieldBonus[] workerYieldBonuses;
 
-    [Header("Unlocked Content")]
-    [Tooltip("Units that become available when adopting this government")]
-    public CombatUnitData[] unlockedUnits;
-    [Tooltip("Worker units that become available when adopting this government")]
-    public WorkerUnitData[] unlockedWorkerUnits;
-    [Tooltip("Buildings that become available when adopting this government")]
-    public BuildingData[] unlockedBuildings;
+    // REMOVED: Unlocked Content arrays
+    // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
+    // Government-specific units should have GovernmentData in their requiredTechs or requiredCultures
 } 

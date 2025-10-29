@@ -388,11 +388,10 @@ public class CultureUI : MonoBehaviour
 
         string unlocks = "Unlocks: ";
         List<string> unlockItems = new List<string>();
-        if (culture.unlockedUnits != null) unlockItems.AddRange(culture.unlockedUnits.Select(u => u.unitName + " (Unit)"));
-        if (culture.unlockedWorkerUnits != null) unlockItems.AddRange(culture.unlockedWorkerUnits.Select(w => w.unitName + " (Worker)"));
-        if (culture.unlockedBuildings != null) unlockItems.AddRange(culture.unlockedBuildings.Select(b => b.buildingName + " (Building)"));
-        if (culture.unlockedAbilities != null) unlockItems.AddRange(culture.unlockedAbilities.Select(a => a.abilityName + " (Ability)"));
-        if (culture.unlocksPolicies != null) unlockItems.AddRange(culture.unlocksPolicies.Select(p => p.policyName + " (Policy)"));
+        // REMOVED: CultureData no longer directly unlocks units/buildings/abilities
+        // Availability is now controlled solely by requiredCultures in the respective data classes
+        // REMOVED: CultureData no longer directly unlocks policies
+        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
         if (unlockItems.Count > 0)
         {
             unlocks += string.Join(", ", unlockItems);

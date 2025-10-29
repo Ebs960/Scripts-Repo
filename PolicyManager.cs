@@ -24,7 +24,7 @@ public class PolicyManager : MonoBehaviour
         var avail = new List<PolicyData>();
         foreach (var p in allPolicies)
         {
-            if (civ.activePolicies.Contains(p) || civ.unlockedPolicies.Contains(p)) 
+            if (civ.activePolicies.Contains(p)) 
                 continue;
             if (civ.policyPoints < p.policyPointCost) 
                 continue;

@@ -13,6 +13,10 @@ namespace GameCombat
     private bool initialized = false;
     private Vector3 startVelocity;
     private ProjectileCollisionProxy collisionProxy;
+    
+    // Object pooling support
+    private float lifetime = 0f;
+    private const float maxLifetime = 10f; // Auto-return to pool after 10 seconds
 
     // overrideDamage: if >=0, this damage value will be applied on hit instead of ProjectileData.damage
     public void Initialize(ProjectileData projectileData, Vector3 start, Vector3 end, GameObject ownerObj, Transform targetTransform = null, int overrideDamage = -1)
@@ -163,6 +167,54 @@ namespace GameCombat
         Vector3 result = toTarget.normalized * speed;
         result.y = vy;
         return result;
+    }
+
+    void Update()
+    {
+        if (!initialized) return;
+
+        lifetime += Time.deltaTime;
+        
+        // Auto-return to pool if lifetime exceeded
+        if (lifetime >= maxLifetime)
+        {
+            ReturnToPool();
+        }
+    }
+
+    /// <summary>
+    /// Return this projectile to the object pool
+    /// </summary>
+    public void ReturnToPool()
+    {
+        if (SimpleObjectPool.Instance != null)
+        {
+            SimpleObjectPool.Instance.Return(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    /// <summary>
+    /// Reset the projectile for reuse
+    /// </summary>
+    public void Reset()
+    {
+        lifetime = 0f;
+        initialized = false;
+        data = null;
+        target = null;
+        targetPoint = Vector3.zero;
+        owner = null;
+        overrideDamage = -1;
+        
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
     }
     }
 }

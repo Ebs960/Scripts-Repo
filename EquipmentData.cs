@@ -41,8 +41,12 @@ public class EquipmentData : ScriptableObject
     public EquipmentType equipmentType = EquipmentType.Weapon;
     
     [Header("Projectile")]
-    [Tooltip("Optional projectile data used when this equipment fires a projectile (arrows, bolts, magic, etc.)")]
+    [Tooltip("Optional DEFAULT projectile data used when this equipment fires (can be overridden by unit's active projectile)")]
     public ProjectileData projectileData;
+    [Tooltip("Category of projectile this weapon accepts (e.g., Arrow, Bolt, Bullet). Leave empty if weapon doesn't use projectiles.")]
+    public GameCombat.ProjectileCategory projectileCategory = GameCombat.ProjectileCategory.Arrow;
+    [Tooltip("If true, this weapon can fire projectiles and will use the unit's active projectile of the matching category")]
+    public bool usesProjectiles = false;
     [Tooltip("Name of the child transform on the equipment prefab to use as the projectile spawn point. If empty, a sensible holder (projectileWeaponHolder or weaponHolder) will be used.")]
     public string projectileSpawnName = "ProjectileSpawn";
     [Tooltip("If true and a spawn transform is found on the equipment prefab, use it instead of the unit's projectile spawn point.")]

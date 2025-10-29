@@ -22,11 +22,7 @@ public class ReligionData : ScriptableObject
     [Tooltip("Additional beliefs that can be unlocked later in the game")]
     public BeliefData[] enhancerBeliefs;
 
-    [Header("Unlocked Content")]
-    [Tooltip("Units that become available when founding this religion")]
-    public CombatUnitData[] unlockedUnits;
-    [Tooltip("Buildings that become available when founding this religion")]
-    public BuildingData[] unlockedBuildings;
-    [Tooltip("Special religious units that become available (missionaries, etc)")]
-    public ReligionUnitData[] unlockedReligiousUnits;
+    // REMOVED: Unlocked Content arrays
+    // Availability is now controlled solely by requiredTechs/requiredCultures in the respective data classes
+    // Religious units should have ReligionData in their requiredTechs or requiredCultures
 } 

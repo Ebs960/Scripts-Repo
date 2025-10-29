@@ -12,6 +12,7 @@ public class EquipmentManagerPanel : MonoBehaviour
     [SerializeField] private TMP_Dropdown shieldDropdown;
     [SerializeField] private TMP_Dropdown armorDropdown;
     [SerializeField] private TMP_Dropdown miscDropdown;
+    [SerializeField] private TMP_Dropdown projectileDropdown; // NEW: Active projectile selection
     [SerializeField] private Button applyToAllButton;
     [SerializeField] private Button closeButton;
 
@@ -24,6 +25,9 @@ public class EquipmentManagerPanel : MonoBehaviour
     private List<EquipmentData> shieldOptions = new List<EquipmentData>();
     private List<EquipmentData> armorOptions  = new List<EquipmentData>();
     private List<EquipmentData> miscOptions   = new List<EquipmentData>();
+    
+    // Working cache for dropdown -> ProjectileData
+    private List<GameCombat.ProjectileData> projectileOptions = new List<GameCombat.ProjectileData>();
 
     private void Awake()
     {
@@ -67,6 +71,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         if (currentCiv == null) return;
         currentCiv.OnUnlocksChanged += RefreshAll;
         currentCiv.OnEquipmentChanged += OnCivEquipmentChanged;
+        currentCiv.OnProjectileChanged += OnCivProjectileChanged;
     }
 
     private void UnsubscribeCivEvents()
@@ -74,6 +79,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         if (currentCiv == null) return;
         currentCiv.OnUnlocksChanged -= RefreshAll;
         currentCiv.OnEquipmentChanged -= OnCivEquipmentChanged;
+        currentCiv.OnProjectileChanged -= OnCivProjectileChanged;
     }
 
     private void RefreshAll()
@@ -86,6 +92,12 @@ public class EquipmentManagerPanel : MonoBehaviour
         // Only need to refresh the equipment dropdowns for current selection
         PopulateEquipmentDropdownsForSelectedUnit();
     }
+    
+    private void OnCivProjectileChanged(GameCombat.ProjectileData data, int count)
+    {
+        // Refresh projectile dropdown when projectile inventory changes
+        PopulateProjectileDropdownForSelectedWeapon();
+    }
 
     private void SetInteractable(bool enabled)
     {
@@ -94,6 +106,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         if (shieldDropdown != null) shieldDropdown.interactable = enabled;
         if (armorDropdown != null) armorDropdown.interactable = enabled;
         if (miscDropdown != null) miscDropdown.interactable = enabled;
+        if (projectileDropdown != null) projectileDropdown.interactable = enabled;
         if (applyToAllButton != null) applyToAllButton.interactable = enabled;
     }
 
@@ -167,6 +180,16 @@ public class EquipmentManagerPanel : MonoBehaviour
         Populate(shieldDropdown, shieldOptions, includeNone: true);
         Populate(armorDropdown,  armorOptions,  includeNone: true);
         Populate(miscDropdown,   miscOptions,   includeNone: true);
+        
+        // Hook up weapon dropdown listener to refresh projectiles when weapon changes
+        if (weaponDropdown != null)
+        {
+            weaponDropdown.onValueChanged.RemoveAllListeners();
+            weaponDropdown.onValueChanged.AddListener(_ => PopulateProjectileDropdownForSelectedWeapon());
+        }
+        
+        // Initial projectile population
+        PopulateProjectileDropdownForSelectedWeapon();
     }
 
     private List<EquipmentData> Filter(List<EquipmentData> list, CombatUnitData unit, EquipmentType type)
@@ -204,6 +227,66 @@ public class EquipmentManagerPanel : MonoBehaviour
         Populate(shieldDropdown, new List<EquipmentData>(), includeNone: true);
         Populate(armorDropdown,  new List<EquipmentData>(), includeNone: true);
         Populate(miscDropdown,   new List<EquipmentData>(), includeNone: true);
+        PopulateProjectileDropdown(new List<GameCombat.ProjectileData>(), includeDefault: true);
+    }
+    
+    /// <summary>
+    /// Populates the projectile dropdown based on the currently selected weapon
+    /// </summary>
+    private void PopulateProjectileDropdownForSelectedWeapon()
+    {
+        if (currentCiv == null || projectileDropdown == null)
+        {
+            projectileOptions.Clear();
+            PopulateProjectileDropdown(projectileOptions, includeDefault: true);
+            return;
+        }
+        
+        // Get selected weapon
+        var selectedWeapon = GetSelectionFrom(weaponDropdown, weaponOptions);
+        
+        // If no weapon or weapon doesn't use projectiles, clear dropdown
+        if (selectedWeapon == null || !selectedWeapon.usesProjectiles)
+        {
+            projectileOptions.Clear();
+            PopulateProjectileDropdown(projectileOptions, includeDefault: true);
+            if (projectileDropdown != null) projectileDropdown.interactable = false;
+            return;
+        }
+        
+        // Get all projectiles matching the weapon's category
+        projectileOptions = currentCiv.GetAvailableProjectiles(selectedWeapon.projectileCategory);
+        
+        // Populate dropdown
+        PopulateProjectileDropdown(projectileOptions, includeDefault: true);
+        if (projectileDropdown != null) projectileDropdown.interactable = true;
+    }
+    
+    /// <summary>
+    /// Populates a projectile dropdown with options
+    /// </summary>
+    private void PopulateProjectileDropdown(List<GameCombat.ProjectileData> items, bool includeDefault)
+    {
+        if (projectileDropdown == null)
+            return;
+            
+        projectileDropdown.ClearOptions();
+        var opts = new List<TMP_Dropdown.OptionData>();
+        
+        if (includeDefault) opts.Add(new TMP_Dropdown.OptionData("(Use Weapon Default)"));
+        
+        foreach (var p in items)
+        {
+            if (p == null) continue;
+            string label = p.projectileName;
+            // Show inventory count
+            int count = currentCiv != null ? currentCiv.GetProjectileCount(p) : 0;
+            if (count > 0) label += $"  x{count}";
+            opts.Add(new TMP_Dropdown.OptionData(label));
+        }
+        
+        projectileDropdown.AddOptions(opts);
+        projectileDropdown.value = 0; // default to weapon default
     }
 
     private EquipmentData GetSelectionFrom(TMP_Dropdown dropdown, List<EquipmentData> source)
@@ -214,6 +297,19 @@ public class EquipmentManagerPanel : MonoBehaviour
         int listIndex = idx - 1;
         if (listIndex < 0 || listIndex >= source.Count) return null;
         return source[listIndex];
+    }
+    
+    /// <summary>
+    /// Gets the selected projectile from the projectile dropdown
+    /// </summary>
+    private GameCombat.ProjectileData GetProjectileSelection()
+    {
+        if (projectileDropdown == null || projectileOptions == null) return null;
+        int idx = projectileDropdown.value;
+        if (idx <= 0) return null; // 0 is "Use Weapon Default"
+        int listIndex = idx - 1;
+        if (listIndex < 0 || listIndex >= projectileOptions.Count) return null;
+        return projectileOptions[listIndex];
     }
 
     private void ApplySelectionToAllUnitsOfType()
@@ -226,6 +322,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         var shield = GetSelectionFrom(shieldDropdown, shieldOptions);
         var armor  = GetSelectionFrom(armorDropdown,  armorOptions);
         var misc   = GetSelectionFrom(miscDropdown,   miscOptions);
+        var projectile = GetProjectileSelection(); // NEW: Get selected projectile
 
         int changed = 0;
         foreach (var u in currentCiv.combatUnits)
@@ -237,6 +334,10 @@ public class EquipmentManagerPanel : MonoBehaviour
             if (shield != null) u.EquipItem(shield); else u.UnequipItem(EquipmentType.Shield);
             if (armor  != null) u.EquipItem(armor);  else u.UnequipItem(EquipmentType.Armor);
             if (misc   != null) u.EquipItem(misc);   else u.UnequipItem(EquipmentType.Miscellaneous);
+            
+            // NEW: Set active projectile (null = use weapon default)
+            u.ActiveProjectile = projectile;
+            
             changed++;
         }
 
@@ -244,9 +345,16 @@ public class EquipmentManagerPanel : MonoBehaviour
         if (UIManager.Instance != null)
         {
             if (changed > 0)
-                UIManager.Instance.ShowNotification($"Applied equipment to {changed} {unitData.unitName}(s)");
+            {
+                string msg = $"Applied equipment to {changed} {unitData.unitName}(s)";
+                if (projectile != null)
+                    msg += $" (using {projectile.projectileName})";
+                UIManager.Instance.ShowNotification(msg);
+            }
             else
+            {
                 UIManager.Instance.ShowNotification($"No {unitData.unitName} units to update.");
+            }
         }
     }
 }

@@ -81,19 +81,8 @@ public class TooltipSystem : MonoBehaviour
 
         // Build unlocks text
         StringBuilder unlocks = new StringBuilder();
-        if (tech.unlockedUnits != null && tech.unlockedUnits.Length > 0)
-        {
-            unlocks.AppendLine("Units:");
-            foreach (var unit in tech.unlockedUnits)
-                if (unit != null) unlocks.AppendLine($"  • {unit.unitName}");
-        }
-        if (tech.unlockedBuildings != null && tech.unlockedBuildings.Length > 0)
-        {
-            unlocks.AppendLine("Buildings:");
-            foreach (var building in tech.unlockedBuildings)
-                if (building != null) unlocks.AppendLine($"  • {building.buildingName}");
-        }
-        // REMOVED: Equipment unlocks display
+        // REMOVED: TechData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredTechs in the respective data classes
         // Equipment is no longer "unlocked" by techs (no free items)
         // Instead, equipment becomes producible when EquipmentData.requiredTechs are met
 
@@ -127,24 +116,11 @@ public class TooltipSystem : MonoBehaviour
 
         // Build unlocks text
         StringBuilder unlocks = new StringBuilder();
-        if (culture.unlockedUnits != null && culture.unlockedUnits.Length > 0)
-        {
-            unlocks.AppendLine("Units:");
-            foreach (var unit in culture.unlockedUnits)
-                if (unit != null) unlocks.AppendLine($"  • {unit.unitName}");
-        }
-        if (culture.unlockedBuildings != null && culture.unlockedBuildings.Length > 0)
-        {
-            unlocks.AppendLine("Buildings:");
-            foreach (var building in culture.unlockedBuildings)
-                if (building != null) unlocks.AppendLine($"  • {building.buildingName}");
-        }
-        if (culture.unlocksPolicies != null && culture.unlocksPolicies.Length > 0)
-        {
-            unlocks.AppendLine("Policies:");
-            foreach (var policy in culture.unlocksPolicies)
-                if (policy != null) unlocks.AppendLine($"  • {policy.policyName}");
-        }
+        // REMOVED: CultureData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredCultures in the respective data classes
+        // REMOVED: CultureData no longer directly unlocks policies
+        // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
+        // This ensures a clean compilation
 
         if (tooltipUnlocks != null)
             tooltipUnlocks.text = unlocks.Length > 0 ? unlocks.ToString().TrimEnd() : "Nothing";

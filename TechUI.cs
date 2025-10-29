@@ -457,10 +457,9 @@ public class TechUI : MonoBehaviour
 
         string unlocks = "Unlocks: ";
         List<string> unlockItems = new List<string>();
-        if (tech.unlockedUnits != null) unlockItems.AddRange(tech.unlockedUnits.Select(u => u.unitName + " (Unit)"));
-        if (tech.unlockedWorkerUnits != null) unlockItems.AddRange(tech.unlockedWorkerUnits.Select(w => w.unitName + " (Worker)"));
-        if (tech.unlockedBuildings != null) unlockItems.AddRange(tech.unlockedBuildings.Select(b => b.buildingName + " (Building)"));
-        // Add other unlock types here (abilities, policies, etc.)
+        // REMOVED: TechData no longer directly unlocks units/buildings
+        // Availability is now controlled solely by requiredTechs in the respective data classes
+        // Add other unlock types here (policies, governments, etc.)
         if (unlockItems.Count > 0)
         {
             unlocks += string.Join(", ", unlockItems);

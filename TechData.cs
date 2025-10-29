@@ -74,12 +74,13 @@ public class TechData : ScriptableObject
     public Biome[] requiredControlledBiomes;
 
     [Header("Unlocks & Bonuses")]
-    public CombatUnitData[] unlockedUnits;
-    public WorkerUnitData[] unlockedWorkerUnits;
-    public ImprovementData[] unlocksImprovements;
-    public BuildingData[] unlockedBuildings;
-    // REMOVED: unlockedEquipment - Equipment availability now controlled ONLY by EquipmentData.requiredTechs
-    public PolicyData[] unlockedPolicies;
+    // REMOVED: All unlocked arrays - availability now controlled ONLY by requiredTechs in the respective data classes
+    // Equipment availability: EquipmentData.requiredTechs
+    // Building availability: BuildingData.requiredTechs  
+    // Unit availability: CombatUnitData.requiredTechs / WorkerUnitData.requiredTechs
+    // Improvement availability: ImprovementData.requiredTechs
+    // REMOVED: unlockedPolicies
+    // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public GovernmentData[] unlockedGovernments;
     public ReligionData[] unlockedReligions;
     public LeaderData[] unlockedLeaders;

@@ -2408,6 +2408,87 @@ public class GameManager : MonoBehaviour
         WireButton(button);
     }
 
+    /// <summary>
+    /// Start a battle test for quick testing of battle features
+    /// </summary>
+    [ContextMenu("Start Battle Test")]
+    public void StartBattleTest()
+    {
+        Debug.Log("[GameManager] Starting battle test...");
+        
+        // Create test civilizations
+        Civilization attackerCiv = CreateTestCivilization("Test Attacker", true);
+        Civilization defenderCiv = CreateTestCivilization("Test Defender", false);
+
+        // Get some test units (use first available unit data)
+        var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+        CombatUnitData testUnitData = allUnitData.Length > 0 ? allUnitData[0] : null;
+
+        if (testUnitData == null)
+        {
+            Debug.LogError("[GameManager] No unit data found for battle test!");
+            return;
+        }
+
+        // Spawn test units
+        List<CombatUnit> attackerUnits = SpawnTestUnits(attackerCiv, testUnitData, 3, true);
+        List<CombatUnit> defenderUnits = SpawnTestUnits(defenderCiv, testUnitData, 3, false);
+
+        // Start battle
+        if (BattleManager.Instance != null)
+        {
+            BattleManager.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
+        }
+        else
+        {
+            Debug.LogError("[GameManager] BattleManager not found! Make sure BattleManager is in the scene.");
+        }
+    }
+
+    /// <summary>
+    /// Create a test civilization for battle testing
+    /// </summary>
+    private Civilization CreateTestCivilization(string name, bool isAttacker)
+    {
+        GameObject civGO = new GameObject(name);
+        Civilization civ = civGO.AddComponent<Civilization>();
+        
+        CivData civData = ScriptableObject.CreateInstance<CivData>();
+        civData.civName = name;
+        civ.Initialize(civData, null, false);
+        
+        return civ;
+    }
+
+    /// <summary>
+    /// Spawn test units for battle testing
+    /// </summary>
+    private List<CombatUnit> SpawnTestUnits(Civilization civ, CombatUnitData unitData, int count, bool isAttacker)
+    {
+        List<CombatUnit> units = new List<CombatUnit>();
+        Vector3 formationCenter = isAttacker ? new Vector3(-5, 0, 0) : new Vector3(5, 0, 0);
+
+        for (int i = 0; i < count; i++)
+        {
+            int row = i / 3;
+            int col = i % 3;
+            Vector3 offset = new Vector3((col - 1) * 2f, 0, row * 2f);
+            Vector3 unitPosition = formationCenter + offset;
+
+            GameObject unitGO = Instantiate(unitData.prefab, unitPosition, Quaternion.identity);
+            CombatUnit unit = unitGO.GetComponent<CombatUnit>();
+            
+            if (unit != null)
+            {
+                unit.Initialize(unitData, civ);
+                unit.InitializeForBattle(isAttacker);
+                units.Add(unit);
+            }
+        }
+
+        return units;
+    }
+
     void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;

@@ -1281,8 +1281,14 @@ public class MoonGenerator : MonoBehaviour, IHexasphereGenerator
             
             // PERFORMANCE FIX: Use object pooling for decorations instead of Instantiate
             GameObject decoration = SimpleObjectPool.Instance != null 
-                ? SimpleObjectPool.Instance.Get(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform)
+                ? SimpleObjectPool.Instance.Get(decorationPrefab, decorationPosition, decorationRotation)
                 : Instantiate(decorationPrefab, decorationPosition, decorationRotation, decorationParent.transform);
+            
+            // Set parent for pooled objects
+            if (SimpleObjectPool.Instance != null)
+            {
+                decoration.transform.SetParent(decorationParent.transform);
+            }
             
             // Apply decoration scale with variation
 
