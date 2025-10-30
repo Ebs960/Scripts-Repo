@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 
 /// <summary>
@@ -34,9 +35,13 @@ public class BattleTestSimple : MonoBehaviour
     private CombatUnitData selectedDefenderUnit;
     
     [Header("Civilization Selection")]
-    private List<Civilization> availableCivs = new List<Civilization>();
-    private Civilization selectedAttackerCiv;
-    private Civilization selectedDefenderCiv;
+    // Data-only list of civs; we instantiate only the selected ones on Start
+    private List<CivData> availableCivs = new List<CivData>();
+    private CivData selectedAttackerCivData;
+    private CivData selectedDefenderCivData;
+    // Runtime instances created only when starting the battle
+    private Civilization attackerCivInstance;
+    private Civilization defenderCivInstance;
     public TMP_Dropdown attackerCivDropdown;
     public TMP_Dropdown defenderCivDropdown;
     public TextMeshProUGUI attackerCivLabel;
@@ -52,9 +57,17 @@ public class BattleTestSimple : MonoBehaviour
     public int soldiersPerFormation = 9;
     public float formationSpacing = 2f;
     
-    [Header("Prefab Caching")]
-    private Dictionary<string, GameObject> prefabCache = new Dictionary<string, GameObject>();
-    private bool prefabCacheInitialized = false;
+    [Header("Battle Map")]
+    [Tooltip("Battle map generator for creating terrain")]
+    public BattleMapGenerator mapGenerator;
+    [Tooltip("Victory manager for handling battle outcomes")]
+    public BattleVictoryManager victoryManager;
+    [Tooltip("Generate a new map for each battle")]
+    public bool generateNewMap = true;
+    
+    [Header("Prefab Caching (On-Demand)")]
+    // Small on-demand cache keyed by normalized unit name; we DO NOT bulk load from Resources
+    private Dictionary<string, GameObject> onDemandPrefabCache = new Dictionary<string, GameObject>();
     
     // Selection system variables
     private bool isDragging = false;
@@ -162,10 +175,22 @@ public class BattleTestSimple : MonoBehaviour
                 // Move all selected formations to the clicked position
                 foreach (var formation in selectedFormations)
                 {
-                    formation.MoveToPosition(hit.point);
+                    // Project destination onto battlefield ground
+                    var grounded = GetGroundPosition(hit.point);
+                    formation.MoveToPosition(grounded);
                 }
             }
         }
+    }
+
+    // Helper: find ground position directly below a point (uses colliders in scene)
+    private Vector3 GetGroundPosition(Vector3 worldPos)
+    {
+        Vector3 origin = worldPos + Vector3.up * 100f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit groundHit, 1000f))
+            return groundHit.point;
+        // Fallback: clamp to y=0 if nothing hit
+        return new Vector3(worldPos.x, 0f, worldPos.z);
     }
     
     void HandleCameraMovement()
@@ -432,103 +457,49 @@ public class BattleTestSimple : MonoBehaviour
     void LoadAvailableCivilizations()
     {
         availableCivs.Clear();
-        
         try
         {
-            // Load civilizations from Resources/Civilizations folder
+            // Data-only load from Resources; no GameObjects are instantiated here
             var allCivData = Resources.LoadAll<CivData>("Civilizations");
-            
             if (allCivData != null && allCivData.Length > 0)
             {
-                DebugLog($"Found {allCivData.Length} civilization data files in Resources/Civilizations");
-                
-                // Create civilization GameObjects for each data file
                 foreach (var civData in allCivData)
                 {
-                    if (civData != null)
-                    {
-                        var civGO = new GameObject($"Civ_{civData.civName}");
-                        var civ = civGO.AddComponent<Civilization>();
-                        
-                        try
-                        {
-                            civ.Initialize(civData, null, false);
-                            availableCivs.Add(civ);
-                            DebugLog($"  - Created civilization: {civData.civName}");
-                        }
-                        catch (System.Exception e)
-                        {
-                            DebugLog($"Error initializing civilization {civData.civName}: {e.Message}");
-                            DestroyImmediate(civGO);
-                        }
-                    }
+                    if (civData != null) availableCivs.Add(civData);
                 }
+                DebugLog($"Loaded {availableCivs.Count} civilizations (data-only)");
             }
-            
+
             if (availableCivs.Count == 0)
             {
-                DebugLog("No civilizations found in Resources/Civilizations, creating default test civilizations");
-                CreateDefaultCivilizations();
-            }
-            else
-            {
-                DebugLog($"Successfully loaded {availableCivs.Count} civilizations from Resources");
+                DebugLog("No CivData found in Resources/Civilizations, creating default test CivData");
+                var attackerCivData = ScriptableObject.CreateInstance<CivData>();
+                attackerCivData.civName = "Test Attacker";
+                var defenderCivData = ScriptableObject.CreateInstance<CivData>();
+                defenderCivData.civName = "Test Defender";
+                availableCivs.Add(attackerCivData);
+                availableCivs.Add(defenderCivData);
             }
         }
         catch (System.Exception e)
         {
             DebugLog($"Error loading civilizations: {e.Message}");
-            CreateDefaultCivilizations();
+            var fallback = ScriptableObject.CreateInstance<CivData>();
+            fallback.civName = "Fallback Civ";
+            availableCivs.Add(fallback);
         }
     }
     
     void CreateDefaultCivilizations()
     {
-        try
-        {
-            // Create attacker civilization
-            var attackerCivGO = new GameObject("TestAttackerCiv");
-            var attackerCiv = attackerCivGO.AddComponent<Civilization>();
-            var attackerCivData = ScriptableObject.CreateInstance<CivData>();
-            attackerCivData.civName = "Test Attacker";
-            
-            // Initialize with proper error handling
-            try
-            {
-                attackerCiv.Initialize(attackerCivData, null, false);
-                availableCivs.Add(attackerCiv);
-                DebugLog("Created attacker civilization successfully");
-            }
-            catch (System.Exception e)
-            {
-                DebugLog($"Error creating attacker civilization: {e.Message}");
-                DestroyImmediate(attackerCivGO);
-            }
-            
-            // Create defender civilization
-            var defenderCivGO = new GameObject("TestDefenderCiv");
-            var defenderCiv = defenderCivGO.AddComponent<Civilization>();
-            var defenderCivData = ScriptableObject.CreateInstance<CivData>();
-            defenderCivData.civName = "Test Defender";
-            
-            try
-            {
-                defenderCiv.Initialize(defenderCivData, null, false);
-                availableCivs.Add(defenderCiv);
-                DebugLog("Created defender civilization successfully");
-            }
-            catch (System.Exception e)
-            {
-                DebugLog($"Error creating defender civilization: {e.Message}");
-                DestroyImmediate(defenderCivGO);
-            }
-            
-            DebugLog($"Created {availableCivs.Count} default test civilizations");
-        }
-        catch (System.Exception e)
-        {
-            DebugLog($"Error in CreateDefaultCivilizations: {e.Message}");
-        }
+        // Keep this method for backward compatibility, but now it only creates CivData objects
+        var attackerCivData = ScriptableObject.CreateInstance<CivData>();
+        attackerCivData.civName = "Test Attacker";
+        var defenderCivData = ScriptableObject.CreateInstance<CivData>();
+        defenderCivData.civName = "Test Defender";
+        availableCivs.Add(attackerCivData);
+        availableCivs.Add(defenderCivData);
+        DebugLog($"Created {availableCivs.Count} default CivData entries");
     }
     
     void LoadAllUnitsOptimized()
@@ -539,7 +510,7 @@ public class BattleTestSimple : MonoBehaviour
         try
         {
             // Load ALL CombatUnitData ScriptableObjects from Resources/Units folder
-            // This loads ONLY the ScriptableObject data, not prefabs
+            // This loads ONLY the ScriptableObject data; prefab references on the SO remain as metadata and are not instantiated
             var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
             
             if (allUnitData != null && allUnitData.Length > 0)
@@ -549,18 +520,17 @@ public class BattleTestSimple : MonoBehaviour
                 {
                     if (unitData != null)
                     {
-                        // Clear prefab reference to prevent memory issues
-                        unitData.prefab = null;
+                        // Keep prefab reference on the ScriptableObject; we will only instantiate on Start
                         availableUnits.Add(unitData);
                     }
                 }
                 
-                DebugLog($"Loaded {availableUnits.Count} unit types (data only - prefabs will load on-demand)");
+                DebugLog($"Loaded {availableUnits.Count} unit types (data-only; prefabs referenced via SO)");
                 
                 // Log some unit names for verification
                 for (int i = 0; i < Mathf.Min(5, availableUnits.Count); i++)
                 {
-                    DebugLog($"  - {availableUnits[i].unitName} (prefab: NO - will load on-demand)");
+                    DebugLog($"  - {availableUnits[i].unitName} (prefab ref present: {(availableUnits[i].prefab != null)})");
                 }
                 if (availableUnits.Count > 5)
                 {
@@ -643,7 +613,7 @@ public class BattleTestSimple : MonoBehaviour
         var options = new List<string>();
         foreach (var civ in availableCivs)
         {
-            string civName = civ.civData != null ? civ.civData.civName : "Unknown Civilization";
+            string civName = civ != null ? civ.civName : "Unknown Civilization";
             options.Add(civName);
             DebugLog($"  - Added civilization option: {civName}");
         }
@@ -660,9 +630,9 @@ public class BattleTestSimple : MonoBehaviour
         
         DebugLog($"Added {options.Count} options to civilization dropdowns");
         
-        // Set default selections
-        selectedAttackerCiv = availableCivs.Count > 0 ? availableCivs[0] : null;
-        selectedDefenderCiv = availableCivs.Count > 1 ? availableCivs[1] : availableCivs.Count > 0 ? availableCivs[0] : null;
+        // Set default selections (data-only)
+        selectedAttackerCivData = availableCivs.Count > 0 ? availableCivs[0] : null;
+        selectedDefenderCivData = availableCivs.Count > 1 ? availableCivs[1] : availableCivs.Count > 0 ? availableCivs[0] : null;
         
         // If no civilizations available, create fallback
         if (availableCivs.Count == 0)
@@ -698,8 +668,8 @@ public class BattleTestSimple : MonoBehaviour
     {
         if (index >= 0 && index < availableCivs.Count)
         {
-            selectedAttackerCiv = availableCivs[index];
-            string civName = selectedAttackerCiv.civData != null ? selectedAttackerCiv.civData.civName : "Unknown";
+            selectedAttackerCivData = availableCivs[index];
+            string civName = selectedAttackerCivData != null ? selectedAttackerCivData.civName : "Unknown";
             DebugLog($"Selected attacker civilization: {civName}");
         }
     }
@@ -708,8 +678,8 @@ public class BattleTestSimple : MonoBehaviour
     {
         if (index >= 0 && index < availableCivs.Count)
         {
-            selectedDefenderCiv = availableCivs[index];
-            string civName = selectedDefenderCiv.civData != null ? selectedDefenderCiv.civData.civName : "Unknown";
+            selectedDefenderCivData = availableCivs[index];
+            string civName = selectedDefenderCivData != null ? selectedDefenderCivData.civName : "Unknown";
             DebugLog($"Selected defender civilization: {civName}");
         }
     }
@@ -757,24 +727,61 @@ public class BattleTestSimple : MonoBehaviour
             uiPanel.SetActive(false);
         }
         
-        // Create ground
-        var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        ground.transform.localScale = new Vector3(20, 1, 20);
-        ground.name = "TestGround";
-        ground.transform.position = Vector3.zero;
-        
-        // Create attacker formations with better spacing
-        for (int i = 0; i < formationsPerSide; i++)
+        // Generate battle map if enabled
+        if (generateNewMap && mapGenerator != null)
         {
-            Vector3 position = new Vector3(-15, 0, (i - 1) * 12); // More spacing between formations
-            CreateFormation($"AttackerFormation{i + 1}", position, Color.red, true);
+            DebugLog("Generating new battle map...");
+            mapGenerator.GenerateBattleMap(50f, formationsPerSide * soldiersPerFormation, formationsPerSide * soldiersPerFormation);
         }
         
-        // Create defender formations with better spacing
-        for (int i = 0; i < formationsPerSide; i++)
+        // Create ground (fallback if no map generator)
+        if (mapGenerator == null)
         {
-            Vector3 position = new Vector3(15, 0, (i - 1) * 12); // More spacing between formations
-            CreateFormation($"DefenderFormation{i + 1}", position, Color.blue, false);
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.transform.localScale = new Vector3(20, 1, 20);
+            ground.name = "TestGround";
+            ground.transform.position = Vector3.zero;
+        }
+        
+        // Instantiate only the two selected civilizations now (data-only until here)
+        attackerCivInstance = InstantiateSelectedCiv(selectedAttackerCivData, "AttackerCiv_Instance");
+        defenderCivInstance = InstantiateSelectedCiv(selectedDefenderCivData, "DefenderCiv_Instance");
+
+        // Create attacker formations
+        List<Vector3> attackerSpawns = mapGenerator != null ? mapGenerator.GetAttackerSpawnPoints() : GetDefaultAttackerSpawns();
+        for (int i = 0; i < formationsPerSide && i < attackerSpawns.Count; i++)
+        {
+            CreateFormation($"AttackerFormation{i + 1}", attackerSpawns[i], Color.red, true);
+        }
+        
+        // Create defender formations
+        List<Vector3> defenderSpawns = mapGenerator != null ? mapGenerator.GetDefenderSpawnPoints() : GetDefaultDefenderSpawns();
+        for (int i = 0; i < formationsPerSide && i < defenderSpawns.Count; i++)
+        {
+            CreateFormation($"DefenderFormation{i + 1}", defenderSpawns[i], Color.blue, false);
+        }
+        
+        // Initialize victory manager if available
+        if (victoryManager != null)
+        {
+            var allUnits = new List<CombatUnit>();
+            foreach (var formation in allFormations)
+            {
+                foreach (var soldier in formation.soldiers)
+                {
+                    var combatUnit = soldier.GetComponent<CombatUnit>();
+                    if (combatUnit != null)
+                    {
+                        allUnits.Add(combatUnit);
+                    }
+                }
+            }
+            
+            var attackers = allUnits.Where(u => u.isAttacker).ToList();
+            var defenders = allUnits.Where(u => !u.isAttacker).ToList();
+            
+            victoryManager.InitializeBattle(attackers, defenders);
+            DebugLog("Victory manager initialized with morale-based routing");
         }
         
         UpdateStatus("Battle started! Left-click to select formations, drag to select multiple. Right-click to move!");
@@ -802,6 +809,18 @@ public class BattleTestSimple : MonoBehaviour
         if (ground != null)
         {
             DestroyImmediate(ground);
+        }
+        
+        // Destroy runtime civ instances if they exist
+        if (attackerCivInstance != null)
+        {
+            DestroyImmediate(attackerCivInstance.gameObject);
+            attackerCivInstance = null;
+        }
+        if (defenderCivInstance != null)
+        {
+            DestroyImmediate(defenderCivInstance.gameObject);
+            defenderCivInstance = null;
         }
         
         // Force aggressive memory cleanup
@@ -921,22 +940,7 @@ public class BattleTestSimple : MonoBehaviour
             
             if (unitData != null)
             {
-                // Check if prefab is already loaded, if not load it on-demand
-                if (unitData.prefab == null)
-                {
-                    // Find the actual prefab using cached lookup
-                    GameObject loadedPrefab = FindPrefabInCache(unitData.unitName);
-                    
-                    if (loadedPrefab != null)
-                    {
-                        unitData.prefab = loadedPrefab;
-                        DebugLog($"Found prefab for {unitData.unitName}: {loadedPrefab.name}");
-                    }
-                    else
-                    {
-                        DebugLog($"No prefab found for {unitData.unitName}");
-                    }
-                }
+                // Prefer the prefab reference on the ScriptableObject; no name-based lookup
                 
                 if (unitData.prefab != null)
                 {
@@ -982,8 +986,8 @@ public class BattleTestSimple : MonoBehaviour
             {
                 try
                 {
-                    // Use selected civilization instead of creating temporary one
-                    Civilization selectedCiv = isAttacker ? selectedAttackerCiv : selectedDefenderCiv;
+                    // Use runtime civ instances created at Start
+                    Civilization selectedCiv = isAttacker ? attackerCivInstance : defenderCivInstance;
                     
                     if (selectedCiv != null)
                     {
@@ -1013,12 +1017,12 @@ public class BattleTestSimple : MonoBehaviour
             }
             
             // Add collider for selection
-            var collider = soldier.GetComponent<CapsuleCollider>();
-            if (collider == null)
+            var selectionCollider = soldier.GetComponent<CapsuleCollider>();
+            if (selectionCollider == null)
             {
-                collider = soldier.AddComponent<CapsuleCollider>();
+                selectionCollider = soldier.AddComponent<CapsuleCollider>();
             }
-            collider.isTrigger = false;
+            selectionCollider.isTrigger = false;
             
             return soldier;
         }
@@ -1027,6 +1031,63 @@ public class BattleTestSimple : MonoBehaviour
             DebugLog($"ERROR creating soldier {soldierName}: {e.Message}");
             return null;
         }
+    }
+
+    // Instantiate a Civilization from CivData only when starting the test
+    private Civilization InstantiateSelectedCiv(CivData civData, string runtimeName)
+    {
+        try
+        {
+            GameObject civGO = new GameObject(string.IsNullOrEmpty(runtimeName) ? "RuntimeCiv" : runtimeName);
+            var civ = civGO.AddComponent<Civilization>();
+            civ.Initialize(civData, null, false);
+            return civ;
+        }
+        catch (System.Exception e)
+        {
+            DebugLog($"Error instantiating civ instance: {e.Message}");
+            return null;
+        }
+    }
+
+    // Load exactly one unit prefab on demand without scanning all resources
+    private GameObject LoadUnitPrefabOnDemand(string unitName)
+    {
+        if (string.IsNullOrEmpty(unitName)) return null;
+        string key = unitName.ToLowerInvariant();
+        if (onDemandPrefabCache.TryGetValue(key, out var cached) && cached != null)
+            return cached;
+
+        // Try a small set of precise paths without loading everything
+        GameObject loaded = null;
+        // Prefer exact unit name under Units/
+        loaded = Resources.Load<GameObject>("Units/" + unitName);
+        if (loaded == null)
+        {
+            // Common alt: folder per unit type; keep minimal guess to avoid wide loads
+            loaded = Resources.Load<GameObject>("Units/" + unitName + "/" + unitName);
+        }
+        if (loaded == null)
+        {
+            // Try simple name variants and a known subfolder used in the project
+            string noSpace = unitName.Replace(" ", "");
+            string underscore = unitName.Replace(" ", "_");
+            // Units root
+            loaded = Resources.Load<GameObject>("Units/" + noSpace)
+                  ?? Resources.Load<GameObject>("Units/" + underscore);
+            if (loaded == null)
+            {
+                // One-known subfolder guess without scanning entire Resources
+                loaded = Resources.Load<GameObject>("Units/Monuments Units/" + unitName)
+                      ?? Resources.Load<GameObject>("Units/Monuments Units/" + noSpace)
+                      ?? Resources.Load<GameObject>("Units/Monuments Units/" + underscore);
+            }
+        }
+        if (loaded != null)
+        {
+            onDemandPrefabCache[key] = loaded;
+        }
+        return loaded;
     }
     
     Civilization CreateTemporaryCivilization(bool isAttacker)
@@ -1047,74 +1108,20 @@ public class BattleTestSimple : MonoBehaviour
     
     void InitializePrefabCache()
     {
-        if (prefabCacheInitialized) return;
-        
-        DebugLog("Initializing prefab cache...");
-        
-        try
-        {
-            // Only search in Units folder to avoid loading everything
-            var allPrefabs = Resources.LoadAll<GameObject>("Units");
-            
-            foreach (var prefab in allPrefabs)
-            {
-                if (prefab == null) continue;
-                
-                // Store prefab with its name as key
-                string prefabName = prefab.name.ToLower();
-                prefabCache[prefabName] = prefab;
-                
-                // Also store common variations
-                if (prefabName.EndsWith("prefab"))
-                {
-                    string baseName = prefabName.Substring(0, prefabName.Length - 6);
-                    prefabCache[baseName] = prefab;
-                }
-                else if (prefabName.EndsWith("_prefab"))
-                {
-                    string baseName = prefabName.Substring(0, prefabName.Length - 7);
-                    prefabCache[baseName] = prefab;
-                }
-                else if (prefabName.EndsWith("model"))
-                {
-                    string baseName = prefabName.Substring(0, prefabName.Length - 5);
-                    prefabCache[baseName] = prefab;
-                }
-                else if (prefabName.EndsWith("_model"))
-                {
-                    string baseName = prefabName.Substring(0, prefabName.Length - 6);
-                    prefabCache[baseName] = prefab;
-                }
-            }
-            
-            prefabCacheInitialized = true;
-            DebugLog($"Prefab cache initialized with {prefabCache.Count} entries");
-        }
-        catch (System.Exception e)
-        {
-            DebugLog($"Error initializing prefab cache: {e.Message}");
-            prefabCacheInitialized = true; // Mark as initialized to avoid retrying
-        }
+        // No-op in on-demand mode. We intentionally do not pre-load any prefabs.
+        DebugLog("On-demand prefab mode: skipping eager cache initialization");
     }
     
     GameObject FindPrefabInCache(string unitName)
     {
-        // Initialize cache if needed
-        if (!prefabCacheInitialized)
+        // Legacy path retained for compatibility: check the on-demand cache only
+        if (string.IsNullOrEmpty(unitName)) return null;
+        string key = unitName.ToLowerInvariant();
+        if (onDemandPrefabCache.TryGetValue(key, out var prefab) && prefab != null)
         {
-            InitializePrefabCache();
-        }
-        
-        // Look up in cache
-        string searchName = unitName.ToLower();
-        
-        if (prefabCache.TryGetValue(searchName, out GameObject prefab))
-        {
-            DebugLog($"Found prefab in cache: {prefab.name} for unit {unitName}");
+            DebugLog($"Found prefab in on-demand cache for {unitName}");
             return prefab;
         }
-        
-        DebugLog($"No prefab found in cache for unit: {unitName}");
         return null;
     }
     
@@ -1146,24 +1153,15 @@ public class BattleTestSimple : MonoBehaviour
     
     void UnloadUnitPrefabs()
     {
-        // Clear prefab references to free memory
-        // Note: Can't use Resources.UnloadAsset on GameObjects, just clear references
-        foreach (var unitData in availableUnits)
-        {
-            if (unitData != null && unitData.prefab != null)
-            {
-                // Just clear the reference - Unity will garbage collect if not used
-                unitData.prefab = null;
-            }
-        }
-        DebugLog("Cleared unit prefab references to free memory");
+        // Keep prefab references on ScriptableObjects so we can instantiate real models when spawning.
+        // We are not clearing unitData.prefab anymore to avoid breaking spawning.
+        DebugLog("Keeping unit prefab references (no unload)");
     }
     
     void ClearPrefabCache()
     {
-        prefabCache.Clear();
-        prefabCacheInitialized = false;
-        DebugLog("Cleared prefab cache");
+        onDemandPrefabCache.Clear();
+        DebugLog("Cleared on-demand prefab cache");
     }
     
     GameObject CreateSoldier(string soldierName, Color color)
@@ -1371,12 +1369,42 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Get default attacker spawn points (fallback when no map generator)
+    /// </summary>
+    List<Vector3> GetDefaultAttackerSpawns()
+    {
+        var spawns = new List<Vector3>();
+        for (int i = 0; i < formationsPerSide; i++)
+        {
+            spawns.Add(new Vector3(-15, 0, (i - 1) * 12));
+        }
+        return spawns;
+    }
+    
+    /// <summary>
+    /// Get default defender spawn points (fallback when no map generator)
+    /// </summary>
+    List<Vector3> GetDefaultDefenderSpawns()
+    {
+        var spawns = new List<Vector3>();
+        for (int i = 0; i < formationsPerSide; i++)
+        {
+            spawns.Add(new Vector3(15, 0, (i - 1) * 12));
+        }
+        return spawns;
+    }
+    
     // Selection system methods
     FormationUnit GetFormationAtPosition(Vector3 position)
     {
+        // Safely skip destroyed formations
         foreach (var formation in allFormations)
         {
-            if (Vector3.Distance(formation.transform.position, position) < 5f)
+            if (formation == null) continue;
+            var tf = formation.transform;
+            if (tf == null) continue;
+            if (Vector3.Distance(tf.position, position) < 5f)
             {
                 return formation;
             }
@@ -1388,6 +1416,7 @@ public class BattleTestSimple : MonoBehaviour
     {
         foreach (var formation in selectedFormations)
         {
+            if (formation == null) continue;
             formation.SetSelected(false);
         }
         selectedFormations.Clear();
@@ -1459,10 +1488,12 @@ public class BattleTestSimple : MonoBehaviour
         if (selectionBox == null) return;
         
         Bounds selectionBounds = selectionBox.GetComponent<Renderer>().bounds;
-        
         foreach (var formation in allFormations)
         {
-            if (selectionBounds.Contains(formation.transform.position))
+            if (formation == null) continue;
+            var tf = formation.transform;
+            if (tf == null) continue;
+            if (selectionBounds.Contains(tf.position))
             {
                 SelectFormation(formation);
             }
@@ -1540,11 +1571,23 @@ public class FormationUnit : MonoBehaviour
         
         if (distance > 0.5f)
         {
+            // Rotate formation to face movement direction
+            if (direction.magnitude > 0.1f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
+            }
+            
             // Move formation center
             formationCenter += direction * moveSpeed * Time.deltaTime;
+            // Keep center on ground
+            formationCenter = Ground(formationCenter);
             
             // Update soldier positions
             UpdateSoldierPositions();
+            
+            // Play walking animations
+            PlayWalkingAnimations();
             
             // Check for enemies in range
             if (CheckForEnemies())
@@ -1567,7 +1610,8 @@ public class FormationUnit : MonoBehaviour
             if (soldiers[i] != null)
             {
                 Vector3 offset = GetFormationOffset(i);
-                soldiers[i].transform.position = formationCenter + offset;
+                Vector3 desired = formationCenter + offset;
+                soldiers[i].transform.position = Ground(desired);
             }
         }
     }
@@ -1699,7 +1743,7 @@ public class FormationUnit : MonoBehaviour
                 var combatUnit = soldiers[i].GetComponent<CombatUnit>();
                 if (combatUnit != null)
                 {
-                    combatUnit.TriggerAnimation("Death");
+                    combatUnit.TriggerAnimation("death");
                 }
                 
                 // Destroy the soldier after a delay
@@ -1745,11 +1789,20 @@ public class FormationUnit : MonoBehaviour
         {
             if (combatUnit != null)
             {
-                // Use CombatUnit's existing animation system
+                // Use CombatUnit's real walking trigger
+                combatUnit.TriggerAnimation("IsWalking");
                 combatUnit.isMoving = true;
-                // CombatUnit will handle the actual animation triggers
             }
         }
+    }
+
+    // Formation-level grounding helper
+    private Vector3 Ground(Vector3 pos)
+    {
+        Vector3 origin = pos + Vector3.up * 100f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1000f))
+            return hit.point;
+        return new Vector3(pos.x, 0f, pos.z);
     }
     
     void PlayIdleAnimations()
@@ -1758,9 +1811,9 @@ public class FormationUnit : MonoBehaviour
         {
             if (combatUnit != null)
             {
-                // Use CombatUnit's existing animation system
+                // Use CombatUnit's animation trigger system
+                combatUnit.TriggerAnimation("idleYoung");
                 combatUnit.isMoving = false;
-                // CombatUnit will handle the actual animation triggers
             }
         }
     }
