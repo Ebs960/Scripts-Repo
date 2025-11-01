@@ -509,11 +509,12 @@ public class BattleTestSimple : MonoBehaviour
     {
         availableUnits.Clear();
         
-        // MEMORY OPTIMIZATION: Load all unit data (lightweight) but prefabs on-demand
-        // This gives you access to all units without memory issues
+        // MEMORY OPTIMIZED: Load ONLY ScriptableObject data (metadata), NOT prefabs
+        // ScriptableObject data is lightweight - prefabs are only loaded on-demand
+        // This allows the dropdown to show units without memory spikes
         LoadAllUnitsOptimized();
         
-        DebugLog($"Loaded {availableUnits.Count} unit types (memory optimized)");
+        DebugLog($"Loaded {availableUnits.Count} unit types (data-only; prefabs loaded on-demand)");
     }
     
     void LoadAvailableCivilizations()
@@ -751,6 +752,12 @@ public class BattleTestSimple : MonoBehaviour
         Debug.Log("=== BUTTON CLICKED! ===");
         UpdateStatus("Starting test...");
         
+        // Unit data should already be loaded for dropdown, but ensure it's loaded
+        if (availableUnits.Count == 0)
+        {
+            LoadAllUnitsOptimized();
+        }
+        
         try
         {
             // Check for GameManager first
@@ -859,9 +866,11 @@ public class BattleTestSimple : MonoBehaviour
             }
         }
         
-        // Only count units with health > 0 to avoid counting uninitialized units
-        var attackers = allUnits.Where(u => u != null && u.isAttacker && u.currentHealth > 0).ToList();
-        var defenders = allUnits.Where(u => u != null && !u.isAttacker && u.currentHealth > 0).ToList();
+        // Count all units that are properly initialized (have data and owner set)
+        // Note: currentHealth might be 0 if unit is dead, but we should still count initialized units
+        // Check if unit has data instead, as that means it's been initialized
+        var attackers = allUnits.Where(u => u != null && u.isAttacker && u.data != null).ToList();
+        var defenders = allUnits.Where(u => u != null && !u.isAttacker && u.data != null).ToList();
         
         if (attackers.Count > 0 && defenders.Count > 0)
         {
@@ -1135,9 +1144,19 @@ public class BattleTestSimple : MonoBehaviour
     {
         try
         {
+            if (civData == null)
+            {
+                DebugLog($"Warning: civData is null when instantiating {runtimeName}");
+                return null;
+            }
+            
             GameObject civGO = new GameObject(string.IsNullOrEmpty(runtimeName) ? "RuntimeCiv" : runtimeName);
             var civ = civGO.AddComponent<Civilization>();
             civ.Initialize(civData, null, false);
+            
+            // Log to verify civ data is set
+            DebugLog($"Created {runtimeName} with civ data: {civData.civName}");
+            
             return civ;
         }
         catch (System.Exception e)
@@ -1483,7 +1502,8 @@ public class BattleTestSimple : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         battleHUD.AddComponent<UnityEngine.UI.CanvasScaler>();
         battleHUD.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-        var rt = battleHUD.AddComponent<RectTransform>();
+        // Canvas already has a RectTransform, use it instead of adding another
+        var rt = battleHUD.GetComponent<RectTransform>();
         rt.anchorMin = new Vector2(0f, 1f);
         rt.anchorMax = new Vector2(1f, 1f);
         rt.pivot = new Vector2(0.5f, 1f);

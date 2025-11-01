@@ -293,8 +293,11 @@ public class Civilization : MonoBehaviour
             ApplyLeaderBonuses();
         }
 
-        // Register with the turn order
-        CivilizationManager.Instance.RegisterCiv(this);
+        // Register with the turn order (only if CivilizationManager exists)
+        if (CivilizationManager.Instance != null)
+        {
+            CivilizationManager.Instance.RegisterCiv(this);
+        }
 
         // If loading from a save or starting with pre-researched cultures, ensure governorsEnabled reflects those cultures
         if (!governorsEnabled && researchedCultures != null)
