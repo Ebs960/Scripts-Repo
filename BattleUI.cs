@@ -4,35 +4,37 @@ using TMPro;
 using System.Collections.Generic;
 
 /// <summary>
-/// UI system for real-time battle management
+/// UI system for real-time battle management - simplified with formation buttons
 /// </summary>
 public class BattleUI : MonoBehaviour
 {
-    [Header("UI References")]
-    [SerializeField] private TextMeshProUGUI selectedUnitsText;
-    [SerializeField] private TextMeshProUGUI formationText;
-    [SerializeField] private ScrollRect unitListScrollRect;
-    [SerializeField] private GameObject unitListItemPrefab;
-    [SerializeField] private TextMeshProUGUI battleStatusText;
-    [SerializeField] private TextMeshProUGUI instructionsText;
-
-    [Header("Formation Controls")]
-    [SerializeField] private Dropdown formationDropdown;
-    [SerializeField] private Button changeFormationButton;
-
+    [Header("Battle HUD")]
+    [SerializeField] private GameObject battleHUDPanel;
+    [SerializeField] private HorizontalLayoutGroup formationButtonLayout;
+    [SerializeField] private GameObject formationButtonPrefab;
+    
     [Header("Battle Info")]
-    [SerializeField] private TextMeshProUGUI attackerNameText;
-    [SerializeField] private TextMeshProUGUI defenderNameText;
     [SerializeField] private Slider battleProgressSlider;
 
     private BattleManager battleManager;
+    private BattleTestSimple battleTestSimple; // For BattleTestSimple integration
     private List<CombatUnit> selectedUnits = new List<CombatUnit>();
-    private FormationType currentFormation = FormationType.Line;
     private bool isPaused = false;
+    
+    // Formation button tracking
+    private List<GameObject> formationButtons = new List<GameObject>();
+    private List<FormationUnit> trackedFormations = new List<FormationUnit>();
 
     void Start()
     {
+        // Ensure panel exists but keep it deactivated until battle starts
         SetupUI();
+        
+        // Deactivate panel initially - it will be activated when battle starts
+        if (battleHUDPanel != null)
+        {
+            battleHUDPanel.SetActive(false);
+        }
     }
 
     void Update()
@@ -47,157 +49,259 @@ public class BattleUI : MonoBehaviour
     public void Initialize(BattleManager manager)
     {
         battleManager = manager;
-        SetupFormationDropdown();
-        UpdateBattleInfo();
+        
+        // Ensure UI panel exists and activate it (battle is starting)
+        SetupUI();
+        
+        // Activate the panel when battle starts
+        if (battleHUDPanel != null)
+        {
+            battleHUDPanel.SetActive(true);
+        }
+        
+        CreateFormationButtons();
+    }
+
+    /// <summary>
+    /// Initialize with BattleTestSimple (for formation-based battles)
+    /// </summary>
+    public void InitializeWithBattleTest(BattleTestSimple battleTest)
+    {
+        battleTestSimple = battleTest;
+        
+        // Ensure UI panel exists and activate it (battle is starting)
+        SetupUI();
+        
+        // Activate the panel when battle starts
+        if (battleHUDPanel != null)
+        {
+            battleHUDPanel.SetActive(true);
+        }
+        
+        CreateFormationButtonsFromBattleTest();
     }
 
     private void SetupUI()
     {
-        // Setup formation button listener
-        if (changeFormationButton != null)
-            changeFormationButton.onClick.AddListener(OnChangeFormationClicked);
-        
-        // Setup instructions text
-        if (instructionsText != null)
+        // Create battle HUD panel if it doesn't exist
+        if (battleHUDPanel == null)
         {
-            instructionsText.text = "Left Click: Select Units\nRight Click: Move/Attack\nEscape: Pause/Resume";
+            CreateBattleHUDPanel();
         }
     }
 
-    private void SetupFormationDropdown()
+    private void CreateBattleHUDPanel()
     {
-        if (formationDropdown != null)
+        // Create panel at top of screen
+        battleHUDPanel = new GameObject("BattleHUDPanel");
+        battleHUDPanel.transform.SetParent(transform, false);
+        
+        var canvas = GetComponent<Canvas>();
+        if (canvas == null)
         {
-            formationDropdown.ClearOptions();
-            
-            List<string> formationNames = new List<string>();
-            foreach (FormationType formation in System.Enum.GetValues(typeof(FormationType)))
+            canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            gameObject.AddComponent<CanvasScaler>();
+            gameObject.AddComponent<GraphicRaycaster>();
+        }
+        
+        var panelRect = battleHUDPanel.AddComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0f, 1f);
+        panelRect.anchorMax = new Vector2(1f, 1f);
+        panelRect.pivot = new Vector2(0.5f, 1f);
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = new Vector2(0, 60);
+        
+        // Add horizontal layout group
+        var layout = battleHUDPanel.AddComponent<HorizontalLayoutGroup>();
+        layout.childAlignment = TextAnchor.MiddleLeft;
+        layout.childForceExpandWidth = false;
+        layout.childControlWidth = true;
+        layout.spacing = 8f;
+        layout.padding = new RectOffset(10, 10, 5, 5);
+        
+        formationButtonLayout = layout;
+    }
+
+    private void CreateFormationButtons()
+    {
+        // Clear existing buttons
+        ClearFormationButtons();
+        
+        // Try to get formations from BattleTestSimple if available
+        if (battleTestSimple != null)
+        {
+            CreateFormationButtonsFromBattleTest();
+            return;
+        }
+        
+        // Otherwise, create buttons from BattleManager units (grouped by formation if possible)
+        if (battleManager != null)
+        {
+            // For now, create unit-based buttons if no formations available
+            CreateUnitButtons();
+        }
+    }
+
+    private void CreateFormationButtonsFromBattleTest()
+    {
+        if (battleTestSimple == null) return;
+        
+        // Directly access public allFormations list
+        trackedFormations = battleTestSimple.allFormations;
+        foreach (var formation in trackedFormations)
+        {
+            if (formation != null)
             {
-                formationNames.Add(formation.ToString());
+                CreateFormationButton(formation);
             }
+        }
+    }
+
+    private void CreateUnitButtons()
+    {
+        // Fallback: create buttons for individual units if no formations
+        if (battleManager != null)
+        {
+            var attackerUnits = battleManager.GetUnits(battleManager.attacker);
+            var defenderUnits = battleManager.GetUnits(battleManager.defender);
             
-            formationDropdown.AddOptions(formationNames);
-            formationDropdown.value = 0;
+            // Group units into virtual formations or create per-unit buttons
+            // For simplicity, create one button per unit for now
+            foreach (var unit in attackerUnits)
+            {
+                if (unit != null)
+                {
+                    CreateUnitButton(unit);
+                }
+            }
+            foreach (var unit in defenderUnits)
+            {
+                if (unit != null)
+                {
+                    CreateUnitButton(unit);
+                }
+            }
+        }
+    }
+
+    private void CreateFormationButton(FormationUnit formation)
+    {
+        if (formationButtonLayout == null) return;
+        
+        GameObject buttonGO = new GameObject($"{formation.formationName}_Button");
+        buttonGO.transform.SetParent(formationButtonLayout.transform, false);
+        
+        var buttonRect = buttonGO.AddComponent<RectTransform>();
+        buttonRect.sizeDelta = new Vector2(240, 44);
+        
+        var button = buttonGO.AddComponent<Button>();
+        var image = buttonGO.AddComponent<Image>();
+        image.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        
+        var textGO = new GameObject("Text");
+        textGO.transform.SetParent(buttonGO.transform, false);
+        var text = textGO.AddComponent<TextMeshProUGUI>();
+        text.alignment = TextAlignmentOptions.Midline;
+        text.fontSize = 16f;
+        text.color = Color.white;
+        
+        var textRect = text.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        textRect.offsetMin = new Vector2(10, 5);
+        textRect.offsetMax = new Vector2(-10, -5);
+        
+        button.onClick.AddListener(() => OnFormationButtonClicked(formation));
+        
+        formationButtons.Add(buttonGO);
+        UpdateFormationButton(formation, text);
+    }
+
+    private void CreateUnitButton(CombatUnit unit)
+    {
+        if (formationButtonLayout == null) return;
+        
+        GameObject buttonGO = new GameObject($"{unit.data.unitName}_Button");
+        buttonGO.transform.SetParent(formationButtonLayout.transform, false);
+        
+        var buttonRect = buttonGO.AddComponent<RectTransform>();
+        buttonRect.sizeDelta = new Vector2(200, 44);
+        
+        var button = buttonGO.AddComponent<Button>();
+        var image = buttonGO.AddComponent<Image>();
+        image.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        
+        var textGO = new GameObject("Text");
+        textGO.transform.SetParent(buttonGO.transform, false);
+        var text = textGO.AddComponent<TextMeshProUGUI>();
+        text.alignment = TextAlignmentOptions.Midline;
+        text.fontSize = 16f;
+        text.color = Color.white;
+        
+        var textRect = text.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(10, 5);
+        textRect.offsetMax = new Vector2(-10, -5);
+        
+        button.onClick.AddListener(() => SelectUnit(unit));
+        
+        UpdateUnitButton(unit, text);
+    }
+
+    private void UpdateFormationButton(FormationUnit formation, TextMeshProUGUI text)
+    {
+        if (formation == null || text == null) return;
+        
+        int alive = 0;
+        foreach (var soldier in formation.soldiers)
+        {
+            if (soldier != null) alive++;
+        }
+        
+        text.text = $"{formation.formationName}  |  {alive} soldiers  |  Morale {formation.currentMorale}%";
+    }
+
+    private void UpdateUnitButton(CombatUnit unit, TextMeshProUGUI text)
+    {
+        if (unit == null || text == null) return;
+        text.text = $"{unit.data.unitName}  |  HP {unit.currentHealth}/{unit.MaxHealth}";
+    }
+
+    private void OnFormationButtonClicked(FormationUnit formation)
+    {
+        if (battleTestSimple != null)
+        {
+            battleTestSimple.SelectFormation(formation);
         }
     }
 
     private void UpdateUI()
     {
-        if (battleManager == null) return;
-
-        // Update selected units display
-        UpdateSelectedUnitsDisplay();
-
-        // Update formation display
-        UpdateFormationDisplay();
-
-        // Update unit list
-        UpdateUnitList();
-
-        // Update battle status
-        UpdateBattleStatus();
-    }
-
-    private void UpdateSelectedUnitsDisplay()
-    {
-        if (selectedUnitsText != null)
+        // Update formation button texts
+        if (trackedFormations != null && trackedFormations.Count > 0)
         {
-            selectedUnitsText.text = $"Selected Units: {selectedUnits.Count}";
-        }
-    }
-
-    private void UpdateFormationDisplay()
-    {
-        if (formationText != null)
-        {
-            formationText.text = $"Formation: {currentFormation}";
-        }
-    }
-
-    private void UpdateUnitList()
-    {
-        if (unitListScrollRect == null || unitListItemPrefab == null) return;
-
-        // Clear existing items
-        foreach (Transform child in unitListScrollRect.content)
-        {
-            Destroy(child.gameObject);
-        }
-
-        // Add units to list
-        var allUnits = battleManager.GetUnits(battleManager.attacker);
-        allUnits.AddRange(battleManager.GetUnits(battleManager.defender));
-
-        foreach (var unit in allUnits)
-        {
-            if (unit != null)
+            int buttonIndex = 0;
+            foreach (var formation in trackedFormations)
             {
-                CreateUnitListItem(unit);
+                if (formation == null) continue;
+                if (buttonIndex >= formationButtons.Count) break;
+                
+                var buttonGO = formationButtons[buttonIndex++];
+                var text = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
+                if (text != null)
+                {
+                    UpdateFormationButton(formation, text);
+                }
             }
         }
     }
 
-    private void CreateUnitListItem(CombatUnit unit)
-    {
-        GameObject item = Instantiate(unitListItemPrefab, unitListScrollRect.content);
-        
-        // Setup unit info
-        var nameText = item.transform.Find("UnitName")?.GetComponent<TextMeshProUGUI>();
-        var healthText = item.transform.Find("Health")?.GetComponent<TextMeshProUGUI>();
-        var healthBar = item.transform.Find("HealthBar")?.GetComponent<Slider>();
-        var selectButton = item.GetComponent<Button>();
-
-        if (nameText != null)
-            nameText.text = unit.data.unitName;
-        
-        if (healthText != null)
-            healthText.text = $"{unit.currentHealth}/{unit.MaxHealth}";
-        
-        if (healthBar != null)
-        {
-            healthBar.value = (float)unit.currentHealth / unit.MaxHealth;
-        }
-
-        if (selectButton != null)
-        {
-            selectButton.onClick.AddListener(() => SelectUnit(unit));
-        }
-    }
-
-    private void UpdateBattleStatus()
-    {
-        if (battleStatusText != null)
-        {
-            string status = isPaused ? "PAUSED" : "BATTLE IN PROGRESS";
-            battleStatusText.text = status;
-        }
-    }
-
-    private void UpdateBattleInfo()
-    {
-        if (battleManager == null) return;
-
-        if (attackerNameText != null && battleManager.attacker != null)
-            attackerNameText.text = battleManager.attacker.civData.civName;
-        
-        if (defenderNameText != null && battleManager.defender != null)
-            defenderNameText.text = battleManager.defender.civData.civName;
-    }
-
     private void HandleInput()
     {
-        if (battleManager == null) return;
-
-        // Handle mouse input
-        if (Input.GetMouseButtonDown(0)) // Left click
-        {
-            HandleLeftClick();
-        }
-        else if (Input.GetMouseButtonDown(1)) // Right click
-        {
-            HandleRightClick();
-        }
-
         // Handle keyboard shortcuts
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -205,94 +309,26 @@ public class BattleUI : MonoBehaviour
         }
     }
 
-    private void HandleLeftClick()
-    {
-        // Raycast to find units
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit))
-        {
-            CombatUnit unit = hit.collider.GetComponent<CombatUnit>();
-            if (unit != null)
-            {
-                if (Input.GetKey(KeyCode.LeftControl))
-                {
-                    // Add to selection
-                    AddToSelection(unit);
-                }
-                else
-                {
-                    // Replace selection
-                    SelectUnit(unit);
-                }
-            }
-        }
-    }
-
-    private void HandleRightClick()
-    {
-        if (selectedUnits.Count == 0) return;
-
-        // Raycast to find target
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit))
-        {
-            CombatUnit targetUnit = hit.collider.GetComponent<CombatUnit>();
-            if (targetUnit != null)
-            {
-                // Check if target is an enemy
-                bool isEnemy = false;
-                foreach (var selectedUnit in selectedUnits)
-                {
-                    if (selectedUnit != null && selectedUnit.isAttacker != targetUnit.isAttacker)
-                    {
-                        isEnemy = true;
-                        break;
-                    }
-                }
-
-                if (isEnemy)
-                {
-                    // Attack enemy target
-                    battleManager.AttackTarget(targetUnit);
-                }
-                else
-                {
-                    // Move to position (friendly unit or same side)
-                    battleManager.MoveSelectedUnits(hit.point);
-                }
-            }
-            else
-            {
-                // Move to position (ground/terrain)
-                battleManager.MoveSelectedUnits(hit.point);
-            }
-        }
-    }
-
     private void SelectUnit(CombatUnit unit)
     {
+        if (battleManager == null) return;
+        
         selectedUnits.Clear();
         selectedUnits.Add(unit);
         battleManager.SelectUnits(selectedUnits);
     }
 
-    private void AddToSelection(CombatUnit unit)
+    private void ClearFormationButtons()
     {
-        if (!selectedUnits.Contains(unit))
+        foreach (var button in formationButtons)
         {
-            selectedUnits.Add(unit);
-            battleManager.SelectUnits(selectedUnits);
+            if (button != null)
+            {
+                Destroy(button);
+            }
         }
-    }
-
-    private void ClearSelection()
-    {
-        selectedUnits.Clear();
-        battleManager.ClearSelection();
+        formationButtons.Clear();
+        trackedFormations.Clear();
     }
 
     // Button event handlers
@@ -303,24 +339,23 @@ public class BattleUI : MonoBehaviour
         Time.timeScale = isPaused ? 0f : 1f;
     }
 
-    private void OnChangeFormationClicked()
+    /// <summary>
+    /// Public method to update formations list (called from BattleTestSimple)
+    /// </summary>
+    public void UpdateFormationsList(List<FormationUnit> formations)
     {
-        if (formationDropdown != null && selectedUnits.Count > 0)
-        {
-            FormationType newFormation = (FormationType)formationDropdown.value;
-            ChangeFormation(newFormation);
-        }
-    }
-
-    private void ChangeFormation(FormationType newFormation)
-    {
-        currentFormation = newFormation;
+        trackedFormations = formations;
+        ClearFormationButtons();
         
-        if (selectedUnits.Count > 0)
+        foreach (var formation in formations)
         {
-            // Apply new formation to selected units
-            // This would call a formation manager to rearrange units
-            Debug.Log($"[BattleUI] Changed formation to {newFormation} for {selectedUnits.Count} units");
+            if (formation != null)
+            {
+                CreateFormationButton(formation);
+            }
         }
     }
 }
+
+
+

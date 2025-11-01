@@ -130,6 +130,9 @@ public class BattleMapGenerator : MonoBehaviour
         // Create a single large terrain mesh
         GameObject terrain = new GameObject("BattleTerrain");
         terrain.transform.SetParent(transform);
+        // Ensure terrain uses the Battlefield layer if it exists
+        int battlefieldLayer = LayerMask.NameToLayer("Battlefield");
+        if (battlefieldLayer != -1) terrain.layer = battlefieldLayer;
         
         // Add mesh components
         MeshFilter meshFilter = terrain.AddComponent<MeshFilter>();

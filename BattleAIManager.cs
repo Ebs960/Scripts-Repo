@@ -79,7 +79,12 @@ public class BattleAIManager : MonoBehaviour
         attackerAIs.Clear();
         defenderAIs.Clear();
         
-        var allAIs = FindObjectsByType<BattleAI>(FindObjectsSortMode.None);
+    BattleAI[] allAIs;
+#if UNITY_2023_1_OR_NEWER
+    allAIs = FindObjectsByType<BattleAI>(FindObjectsSortMode.None);
+#else
+    allAIs = FindObjectsOfType<BattleAI>();
+#endif
         foreach (var ai in allAIs)
         {
             if (ai == null) continue;

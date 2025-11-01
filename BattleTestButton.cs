@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Button component to quickly start a battle test from the main menu
@@ -13,6 +14,10 @@ public class BattleTestButton : MonoBehaviour
     public CombatUnitData defenderUnitData;
     [Tooltip("Number of units per side")]
     public int unitsPerSide = 3;
+
+    [Header("Scene Loading")]
+    [Tooltip("Name of the battle test scene in Build Settings")]
+    [SerializeField] private string battleTestSceneName = "BattleTestScene";
 
     private Button button;
 
@@ -33,7 +38,13 @@ public class BattleTestButton : MonoBehaviour
         Debug.Log("[BattleTestButton] Starting battle test...");
 
         // Load battle test scene
-        UnityEngine.SceneManagement.SceneManager.LoadScene("BattleTestScene");
+        if (string.IsNullOrEmpty(battleTestSceneName))
+        {
+            Debug.LogError("[BattleTestButton] Battle test scene name is empty. Please set 'battleTestSceneName' in the inspector.");
+            return;
+        }
+
+        SceneManager.LoadScene(battleTestSceneName);
     }
 
     /// <summary>
@@ -42,7 +53,12 @@ public class BattleTestButton : MonoBehaviour
     public void StartBattleTestInCurrentScene()
     {
         // Find or create BattleTestScene component
-        BattleTestScene testScene = FindFirstObjectByType<BattleTestScene>();
+    BattleTestScene testScene = null;
+#if UNITY_2023_1_OR_NEWER
+    testScene = FindFirstObjectByType<BattleTestScene>();
+#else
+    testScene = FindObjectOfType<BattleTestScene>();
+#endif
         if (testScene == null)
         {
             GameObject testGO = new GameObject("BattleTestScene");

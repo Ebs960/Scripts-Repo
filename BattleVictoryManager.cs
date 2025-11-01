@@ -47,6 +47,14 @@ public class BattleVictoryManager : MonoBehaviour
     /// </summary>
     public void InitializeBattle(List<CombatUnit> attackers, List<CombatUnit> defenders)
     {
+        // Only initialize if we have actual units on both sides
+        if (attackers == null || attackers.Count == 0 || defenders == null || defenders.Count == 0)
+        {
+            DebugLog($"Warning: Battle initialization skipped - invalid unit lists (attackers: {attackers?.Count ?? 0}, defenders: {defenders?.Count ?? 0})");
+            battleInProgress = false;
+            return;
+        }
+        
         attackerUnits = new List<CombatUnit>(attackers);
         defenderUnits = new List<CombatUnit>(defenders);
         routingStartTimes.Clear();
@@ -129,7 +137,8 @@ public class BattleVictoryManager : MonoBehaviour
     /// </summary>
     private bool AreAllUnitsDefeatedOrRouting(List<CombatUnit> units)
     {
-        if (units == null || units.Count == 0) return true;
+        // Don't count empty lists as defeated - battle might not have started yet
+        if (units == null || units.Count == 0) return false;
 
         foreach (var unit in units)
         {

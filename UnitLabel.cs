@@ -16,7 +16,7 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     [SerializeField] private TextMeshProUGUI tooltipText;
 
 
-    [SerializeField] private Vector3 offset = new Vector3(0, 2.5f, 0); // Offset above unit
+    [SerializeField] private Vector3 offset = new Vector3(0, 8f, 0); // Offset above unit - increased for better visibility
 
     private Transform target;
     private Camera mainCam;

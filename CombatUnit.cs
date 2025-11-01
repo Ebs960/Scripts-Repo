@@ -1365,7 +1365,14 @@ public class CombatUnit : MonoBehaviour
     private void LevelUp()
     {
         level++;
-        animator.SetTrigger("idleExperienced");
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+        }
+        if (animator != null)
+        {
+            animator.SetTrigger("idleExperienced");
+        }
         if (level - 1 < data.abilitiesByLevel.Length && data.abilitiesByLevel[level - 1] != null)
         {
             unlockedAbilities.Add(data.abilitiesByLevel[level - 1].CreateAbility());
@@ -2550,14 +2557,55 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     void OnMouseDown()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        // More precise UI check - only block if actually clicking on UI element (not just any GameObject)
+        if (UnityEngine.EventSystems.EventSystem.current != null)
         {
-            // Click was on UI, ignore
-            Debug.Log($"[CombatUnit] Click on {data.unitName} ignored, was on UI.");
+            // Check if we're clicking on a UI element that should block selection
+            var pointerData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+            pointerData.position = Input.mousePosition;
+            var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+            UnityEngine.EventSystems.EventSystem.current.RaycastAll(pointerData, results);
+            
+            // Only block if we hit an actual UI element with a Graphic component (like buttons, panels, etc.)
+            // Don't block if we hit the unit's own UI label (which should allow clicking through to the unit)
+            bool shouldBlock = false;
+            foreach (var result in results)
+            {
+                // Check if this is a UI element we should block clicks on
+                if (result.gameObject.GetComponent<UnityEngine.UI.Graphic>() != null)
+                {
+                    // Check if it's part of the unit's own UI (like UnitLabel) - if so, don't block
+                    var unitLabel = result.gameObject.GetComponentInParent<UnitLabel>();
+                    if (unitLabel == null)
+                    {
+                        // It's a UI element that's not part of the unit's UI - block the click
+                        shouldBlock = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (shouldBlock)
+            {
+                // Click was on UI, ignore silently (don't spam logs)
+                return;
+            }
+        }
+        
+        // Handle selection - clear previous formation selections if in battle test
+        var battleTest = FindFirstObjectByType<BattleTestSimple>();
+        if (battleTest != null)
+        {
+            // Unit selection is now handled directly in HandleSelection, but we can still clear formations here
+            // This provides a backup in case HandleSelection didn't catch it
+            battleTest.ClearSelection();
+            
+            // Call the SelectUnit method directly
+            battleTest.SelectUnitDirectly(this);
             return;
         }
         
+        // Fallback if not in battle test context
         // Use the UnitSelectionManager for selection
         if (UnitSelectionManager.Instance != null)
         {
@@ -2569,18 +2617,13 @@ public class CombatUnit : MonoBehaviour
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowUnitInfoPanelForUnit(this);
-                Debug.Log($"[CombatUnit] Requested UnitInfoPanel for {data.unitName}");
 
                 // Fallback notification if UnitInfoPanel is not available
                 if (UIManager.Instance.unitInfoPanel == null || !UIManager.Instance.unitInfoPanel.activeInHierarchy)
                 {
-                    string msg = $"{data.unitName} (Combat)\nHealth: {currentHealth}/{MaxHealth}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}\nMove: {currentMovePoints}/{BaseMovePoints}";
+                    string msg = $"{data.unitName} (Combat)\nHealth: {currentHealth}/{MaxHealth}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}\nMove: {currentMovePoints}/{MaxMovePoints}";
                     UIManager.Instance.ShowNotification(msg);
                 }
-            }
-            else
-            {
-                Debug.LogError($"[CombatUnit] UIManager.Instance is null. Cannot show notification for {data.unitName}.");
             }
         }
     }
