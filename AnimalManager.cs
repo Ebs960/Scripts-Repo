@@ -81,23 +81,30 @@ public class AnimalManager : MonoBehaviour
     {
         CombatUnit nearestTarget = null;
         float nearestDistance = float.MaxValue;
-        
-        var allCivUnits = GameObject.FindObjectsByType<CombatUnit>(FindObjectsSortMode.None)
-            .Where(unit => unit != predator && 
-                   unit.data.unitType != CombatCategory.Animal &&
-                   unit.owner != null) // Ensure it belongs to a civilization
-            .ToList();
-        
-        foreach (var civUnit in allCivUnits)
+        var tileSystem = TileSystem.Instance;
+
+        foreach (var civUnit in UnitRegistry.GetCombatUnits())
         {
-            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(predator.currentTileIndex, civUnit.currentTileIndex) : float.MaxValue;
+            if (civUnit == null || civUnit == predator)
+                continue;
+
+            if (civUnit.data == null || civUnit.data.unitType == CombatCategory.Animal)
+                continue;
+
+            if (civUnit.owner == null || civUnit.currentTileIndex < 0)
+                continue;
+
+            float distance = tileSystem != null
+                ? tileSystem.GetTileDistance(predator.currentTileIndex, civUnit.currentTileIndex)
+                : float.MaxValue;
+
             if (distance <= maxSearchRange && distance < nearestDistance)
             {
                 nearestDistance = distance;
                 nearestTarget = civUnit;
             }
         }
-        
+
         return nearestTarget;
     }
     
@@ -354,6 +361,11 @@ public class AnimalManager : MonoBehaviour
         }
 
         activeAnimals.Add(unit);
-        unit.OnDeath += () => activeAnimals.Remove(unit);
+        unit.OnDeath += () =>
+        {
+            activeAnimals.Remove(unit);
+            recentlyAttackedAnimals.Remove(unit);
+            UnitRegistry.Unregister(unit.gameObject);
+        };
     }
 }
