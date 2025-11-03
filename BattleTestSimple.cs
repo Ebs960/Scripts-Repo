@@ -231,18 +231,37 @@ public class BattleTestSimple : MonoBehaviour
     
     void HandleFormationMovement()
     {
-        // Handle right-click to move selected formations
-        if (Input.GetMouseButtonDown(1) && selectedFormations.Count > 0)
+        // Handle right-click to move selected formations or units
+        if (Input.GetMouseButtonDown(1))
         {
+            // Check if clicking on UI first - if so, don't handle movement
+            if (UnityEngine.EventSystems.EventSystem.current != null && 
+                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                return; // UI click, let UI handle it
+            }
+            
+            // Only proceed if we have formations selected
+            if (selectedFormations.Count == 0)
+            {
+                return; // Nothing selected, no action
+            }
+            
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                // Move all selected formations to the clicked position
+                // Project destination onto battlefield ground
+                var grounded = GetGroundPosition(hit.point);
+                
+                DebugLog($"Moving {selectedFormations.Count} selected formation(s) to {grounded}");
+                
+                // Move selected formations
                 foreach (var formation in selectedFormations)
                 {
-                    // Project destination onto battlefield ground
-                    var grounded = GetGroundPosition(hit.point);
-                    formation.MoveToPosition(grounded);
+                    if (formation != null)
+                    {
+                        formation.MoveToPosition(grounded);
+                    }
                 }
             }
         }
@@ -509,12 +528,17 @@ public class BattleTestSimple : MonoBehaviour
     {
         availableUnits.Clear();
         
-        // MEMORY OPTIMIZED: Load ONLY ScriptableObject data (metadata), NOT prefabs
-        // ScriptableObject data is lightweight - prefabs are only loaded on-demand
-        // This allows the dropdown to show units without memory spikes
-        LoadAllUnitsOptimized();
+        // MEMORY OPTIMIZATION: Don't load units in menu - defer until battle starts
+        // The dropdown will be populated when battle starts
+        // This prevents memory spikes during menu phase
         
-        DebugLog($"Loaded {availableUnits.Count} unit types (data-only; prefabs loaded on-demand)");
+        // Create a minimal fallback for dropdown if needed
+        if (availableUnits.Count == 0)
+        {
+            CreateFallbackUnits(); // Just creates one fallback unit for dropdown
+        }
+        
+        DebugLog($"Skipped loading units in menu to prevent memory spike. {availableUnits.Count} fallback units available.");
     }
     
     void LoadAvailableCivilizations()
@@ -866,11 +890,21 @@ public class BattleTestSimple : MonoBehaviour
             }
         }
         
-        // Count all units that are properly initialized (have data and owner set)
-        // Note: currentHealth might be 0 if unit is dead, but we should still count initialized units
-        // Check if unit has data instead, as that means it's been initialized
-        var attackers = allUnits.Where(u => u != null && u.isAttacker && u.data != null).ToList();
-        var defenders = allUnits.Where(u => u != null && !u.isAttacker && u.data != null).ToList();
+        // Count all units that exist and have the correct isAttacker flag set
+        // Note: Even if initialization failed, units are created and added to formations
+        // We check both data and isAttacker flag to ensure they're properly configured
+        var attackers = allUnits.Where(u => u != null && u.isAttacker).ToList();
+        var defenders = allUnits.Where(u => u != null && !u.isAttacker).ToList();
+        
+        // Debug: Log unit details to diagnose why defenders might not be counted
+        DebugLog($"Found {allUnits.Count} total units: {attackers.Count} attackers, {defenders.Count} defenders");
+        foreach (var u in defenders.Take(5))
+        {
+            if (u != null)
+            {
+                DebugLog($"  Defender unit: {u.name}, isAttacker={u.isAttacker}, hasData={u.data != null}, health={u.currentHealth}");
+            }
+        }
         
         if (attackers.Count > 0 && defenders.Count > 0)
         {

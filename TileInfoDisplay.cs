@@ -241,8 +241,13 @@ public class TileInfoDisplay : MonoBehaviour
 
             if (generator != null)
             {
-                Vector3 center = generator.transform.position;
-                normal = (tileSurfacePosition - center).normalized;
+                // Cast to MonoBehaviour to access transform (since PlanetGenerator/MoonGenerator are MonoBehaviours)
+                MonoBehaviour generatorMono = generator as MonoBehaviour;
+                if (generatorMono != null)
+                {
+                    Vector3 center = generatorMono.transform.position;
+                    normal = (tileSurfacePosition - center).normalized;
+                }
             }
         }
 

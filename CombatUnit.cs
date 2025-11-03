@@ -395,8 +395,18 @@ public class CombatUnit : MonoBehaviour
         // Weather susceptibility from data
         takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
 
-        currentHealth = MaxHealth;
-        currentMorale = useOverrideStats && morale > 0 ? morale : data.baseMorale;
+        // Set health and morale - ensure data is valid before accessing properties
+        if (data != null)
+        {
+            currentHealth = MaxHealth;
+            currentMorale = useOverrideStats && morale > 0 ? morale : data.baseMorale;
+        }
+        else
+        {
+            // Fallback if data is null (shouldn't happen but defensive programming)
+            currentHealth = 10; // Default health
+            currentMorale = 50; // Default morale
+        }
 
         RecalculateStats();
 
