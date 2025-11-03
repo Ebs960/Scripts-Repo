@@ -29,10 +29,30 @@ public class BattleTestSimple : MonoBehaviour
     public float minZoom = 2f;
     public float maxZoom = 20f;
     
+    // Metadata-only system: lightweight unit info for dropdown (menu phase)
+    private struct UnitMetadata
+    {
+        public string unitName;
+        public int baseHealth;
+        public int baseAttack;
+        public int baseDefense;
+        
+        public UnitMetadata(string name, int health, int attack, int defense)
+        {
+            unitName = name;
+            baseHealth = health;
+            baseAttack = attack;
+            baseDefense = defense;
+        }
+    }
+    
     [Header("Unit Selection")]
-    private List<CombatUnitData> availableUnits = new List<CombatUnitData>();
-    private CombatUnitData selectedAttackerUnit;
-    private CombatUnitData selectedDefenderUnit;
+    private List<UnitMetadata> unitMetadata = new List<UnitMetadata>(); // Lightweight metadata for dropdown
+    private List<CombatUnitData> availableUnits = new List<CombatUnitData>(); // Full unit data (loaded only when battle starts)
+    private int selectedAttackerUnitIndex = 0; // Index in metadata list
+    private int selectedDefenderUnitIndex = 0; // Index in metadata list
+    private CombatUnitData selectedAttackerUnit; // Resolved from metadata when battle starts
+    private CombatUnitData selectedDefenderUnit; // Resolved from metadata when battle starts
     
     [Header("Civilization Selection")]
     // Data-only list of civs; we instantiate only the selected ones on Start
@@ -526,19 +546,86 @@ public class BattleTestSimple : MonoBehaviour
     
     void LoadAvailableUnits()
     {
-        availableUnits.Clear();
+        // OPTION 3: Metadata-Only Loading System
+        // Load only lightweight metadata (names/stats) for dropdown, NOT full ScriptableObjects
+        // This prevents memory spikes in menu phase while allowing full unit selection
         
-        // MEMORY OPTIMIZATION: Don't load units in menu - defer until battle starts
-        // The dropdown will be populated when battle starts
-        // This prevents memory spikes during menu phase
+        unitMetadata.Clear();
         
-        // Create a minimal fallback for dropdown if needed
-        if (availableUnits.Count == 0)
+        try
         {
-            CreateFallbackUnits(); // Just creates one fallback unit for dropdown
+            // Load ALL CombatUnitData ScriptableObjects temporarily to extract metadata
+            var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+            
+            if (allUnitData != null && allUnitData.Length > 0)
+            {
+                // Extract only lightweight metadata (names and stats)
+                // DO NOT store references to ScriptableObjects - this prevents memory retention
+                foreach (var unitData in allUnitData)
+                {
+                    if (unitData != null)
+                    {
+                        var metadata = new UnitMetadata(
+                            unitData.unitName ?? "Unknown Unit",
+                            unitData.baseHealth,
+                            unitData.baseAttack,
+                            unitData.baseDefense
+                        );
+                        unitMetadata.Add(metadata);
+                    }
+                }
+                
+                // Clear the loaded array - metadata is now in our lightweight list
+                // Clear array references so Unity can unload ScriptableObjects
+                System.Array.Clear(allUnitData, 0, allUnitData.Length);
+                allUnitData = null; // Remove reference
+                
+                DebugLog($"Loaded {unitMetadata.Count} unit metadata entries (lightweight, no ScriptableObject references retained)");
+                
+                // Log some unit names for verification
+                for (int i = 0; i < Mathf.Min(5, unitMetadata.Count); i++)
+                {
+                    DebugLog($"  - {unitMetadata[i].unitName} (HP:{unitMetadata[i].baseHealth}, ATK:{unitMetadata[i].baseAttack})");
+                }
+                if (unitMetadata.Count > 5)
+                {
+                    DebugLog($"  ... and {unitMetadata.Count - 5} more units");
+                }
+                
+                // CRITICAL: Unload unused assets immediately to free GPU memory
+                // This unloads ScriptableObjects and their referenced prefabs/textures/materials
+                // that were loaded by Resources.LoadAll but are no longer referenced
+                Resources.UnloadUnusedAssets();
+                
+                // Force garbage collection to ensure memory is actually freed
+                System.GC.Collect();
+                
+                DebugLog("Unloaded unused assets to free GPU/CPU memory");
+            }
+            else
+            {
+                DebugLog("No CombatUnitData found in Resources/Units folder");
+                CreateFallbackMetadata();
+            }
+        }
+        catch (System.Exception e)
+        {
+            DebugLog($"Error loading unit metadata: {e.Message}");
+            CreateFallbackMetadata();
         }
         
-        DebugLog($"Skipped loading units in menu to prevent memory spike. {availableUnits.Count} fallback units available.");
+        // Ensure we have at least one metadata entry for dropdown
+        if (unitMetadata.Count == 0)
+        {
+            CreateFallbackMetadata();
+        }
+    }
+    
+    void CreateFallbackMetadata()
+    {
+        // Create minimal fallback metadata if none found
+        unitMetadata.Add(new UnitMetadata("Fallback Unit", 10, 5, 3));
+        DebugLog("Created fallback unit metadata");
     }
     
     void LoadAvailableCivilizations()
@@ -639,7 +726,7 @@ public class BattleTestSimple : MonoBehaviour
     
     void CreateFallbackUnits()
     {
-        // Create minimal fallback units if none found
+        // Create minimal fallback units if none found (used when loading full unit data)
         var fallbackData = ScriptableObject.CreateInstance<CombatUnitData>();
         fallbackData.unitName = "Fallback Unit";
         fallbackData.baseAttack = 5;
@@ -647,6 +734,84 @@ public class BattleTestSimple : MonoBehaviour
         fallbackData.baseDefense = 3;
         availableUnits.Add(fallbackData);
         DebugLog("Created fallback unit data");
+    }
+    
+    void ResolveSelectedUnitsFromMetadata()
+    {
+        // Map selected metadata indices to actual CombatUnitData objects by matching unit names
+        // This is called after LoadAllUnitsOptimized() to resolve the user's dropdown selections
+        
+        if (availableUnits.Count == 0)
+        {
+            DebugLog("Warning: No units loaded, cannot resolve selected units from metadata");
+            selectedAttackerUnit = null;
+            selectedDefenderUnit = null;
+            return;
+        }
+        
+        // Resolve attacker unit
+        if (selectedAttackerUnitIndex >= 0 && selectedAttackerUnitIndex < unitMetadata.Count)
+        {
+            var selectedMetadata = unitMetadata[selectedAttackerUnitIndex];
+            selectedAttackerUnit = availableUnits.Find(u => u != null && u.unitName == selectedMetadata.unitName);
+            
+            if (selectedAttackerUnit == null)
+            {
+                DebugLog($"Warning: Could not find attacker unit '{selectedMetadata.unitName}' in loaded units, using first available");
+                // Find first non-null unit
+                selectedAttackerUnit = availableUnits.Find(u => u != null);
+                if (selectedAttackerUnit == null)
+                {
+                    DebugLog("ERROR: No valid units found in availableUnits list!");
+                }
+            }
+            else
+            {
+                DebugLog($"Resolved attacker unit: {selectedAttackerUnit.unitName}");
+            }
+        }
+        else
+        {
+            DebugLog("Warning: Invalid attacker unit index, using first available");
+            // Find first non-null unit
+            selectedAttackerUnit = availableUnits.Find(u => u != null);
+            if (selectedAttackerUnit == null)
+            {
+                DebugLog("ERROR: No valid units found in availableUnits list!");
+            }
+        }
+        
+        // Resolve defender unit
+        if (selectedDefenderUnitIndex >= 0 && selectedDefenderUnitIndex < unitMetadata.Count)
+        {
+            var selectedMetadata = unitMetadata[selectedDefenderUnitIndex];
+            selectedDefenderUnit = availableUnits.Find(u => u != null && u.unitName == selectedMetadata.unitName);
+            
+            if (selectedDefenderUnit == null)
+            {
+                DebugLog($"Warning: Could not find defender unit '{selectedMetadata.unitName}' in loaded units, using first available");
+                // Find first non-null unit
+                selectedDefenderUnit = availableUnits.Find(u => u != null);
+                if (selectedDefenderUnit == null)
+                {
+                    DebugLog("ERROR: No valid units found in availableUnits list!");
+                }
+            }
+            else
+            {
+                DebugLog($"Resolved defender unit: {selectedDefenderUnit.unitName}");
+            }
+        }
+        else
+        {
+            DebugLog("Warning: Invalid defender unit index, using first available");
+            // Find first non-null unit
+            selectedDefenderUnit = availableUnits.Find(u => u != null);
+            if (selectedDefenderUnit == null)
+            {
+                DebugLog("ERROR: No valid units found in availableUnits list!");
+            }
+        }
     }
     
     void SetupUnitDropdowns()
@@ -657,11 +822,11 @@ public class BattleTestSimple : MonoBehaviour
         attackerUnitDropdown.ClearOptions();
         defenderUnitDropdown.ClearOptions();
         
-        // Add unit options
+        // Add unit options from metadata (lightweight, no ScriptableObject references)
         var options = new List<string>();
-        foreach (var unit in availableUnits)
+        foreach (var metadata in unitMetadata)
         {
-            options.Add($"{unit.unitName} (HP:{unit.baseHealth}, ATK:{unit.baseAttack})");
+            options.Add($"{metadata.unitName} (HP:{metadata.baseHealth}, ATK:{metadata.baseAttack})");
         }
         
         // If no units found, add fallback
@@ -673,9 +838,9 @@ public class BattleTestSimple : MonoBehaviour
         attackerUnitDropdown.AddOptions(options);
         defenderUnitDropdown.AddOptions(options);
         
-        // Set default selections
-        selectedAttackerUnit = availableUnits.Count > 0 ? availableUnits[0] : null;
-        selectedDefenderUnit = availableUnits.Count > 0 ? availableUnits[0] : null;
+        // Set default selections (store indices, not references)
+        selectedAttackerUnitIndex = 0;
+        selectedDefenderUnitIndex = 0;
         
         // Add listeners
         attackerUnitDropdown.onValueChanged.AddListener(OnAttackerUnitChanged);
@@ -735,19 +900,19 @@ public class BattleTestSimple : MonoBehaviour
     
     void OnAttackerUnitChanged(int index)
     {
-        if (index >= 0 && index < availableUnits.Count)
+        if (index >= 0 && index < unitMetadata.Count)
         {
-            selectedAttackerUnit = availableUnits[index];
-            DebugLog($"Selected attacker unit: {selectedAttackerUnit.unitName}");
+            selectedAttackerUnitIndex = index;
+            DebugLog($"Selected attacker unit: {unitMetadata[index].unitName} (index: {index})");
         }
     }
     
     void OnDefenderUnitChanged(int index)
     {
-        if (index >= 0 && index < availableUnits.Count)
+        if (index >= 0 && index < unitMetadata.Count)
         {
-            selectedDefenderUnit = availableUnits[index];
-            DebugLog($"Selected defender unit: {selectedDefenderUnit.unitName}");
+            selectedDefenderUnitIndex = index;
+            DebugLog($"Selected defender unit: {unitMetadata[index].unitName} (index: {index})");
         }
     }
     
@@ -776,11 +941,12 @@ public class BattleTestSimple : MonoBehaviour
         Debug.Log("=== BUTTON CLICKED! ===");
         UpdateStatus("Starting test...");
         
-        // Unit data should already be loaded for dropdown, but ensure it's loaded
-        if (availableUnits.Count == 0)
-        {
-            LoadAllUnitsOptimized();
-        }
+        // Load full unit data now (only when battle starts, not in menu)
+        // Then resolve the selected metadata indices to actual CombatUnitData objects
+        LoadAllUnitsOptimized();
+        
+        // Resolve selected unit indices from metadata to actual CombatUnitData
+        ResolveSelectedUnitsFromMetadata();
         
         try
         {

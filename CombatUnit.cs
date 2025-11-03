@@ -384,31 +384,41 @@ public class CombatUnit : MonoBehaviour
         level = 1;
         experience = 0;
 
-        // Equip all default equipment slots
-    // Equip projectile and melee defaults (defaultWeapon is authoritative melee)
-    if (data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
-    if (data.defaultWeapon != null) EquipItem(data.defaultWeapon);
-    if (data.defaultShield != null) EquipItem(data.defaultShield);
-    if (data.defaultArmor != null) EquipItem(data.defaultArmor);
-    if (data.defaultMiscellaneous != null) EquipItem(data.defaultMiscellaneous);
-
-        // Weather susceptibility from data
-        takesWeatherDamage = (data != null) ? data.takesWeatherDamage : takesWeatherDamage;
+        // Equip all default equipment slots - only if data is valid
+        if (data != null)
+        {
+            // Equip projectile and melee defaults (defaultWeapon is authoritative melee)
+            if (data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
+            if (data.defaultWeapon != null) EquipItem(data.defaultWeapon);
+            if (data.defaultShield != null) EquipItem(data.defaultShield);
+            if (data.defaultArmor != null) EquipItem(data.defaultArmor);
+            if (data.defaultMiscellaneous != null) EquipItem(data.defaultMiscellaneous);
+            
+            // Weather susceptibility from data
+            takesWeatherDamage = data.takesWeatherDamage;
+        }
+        else
+        {
+            // Fallback if data is null - keep default weather damage setting
+            Debug.LogWarning($"CombatUnit.Initialize called with null unitData for {gameObject.name}");
+        }
 
         // Set health and morale - ensure data is valid before accessing properties
         if (data != null)
         {
             currentHealth = MaxHealth;
             currentMorale = useOverrideStats && morale > 0 ? morale : data.baseMorale;
+            
+            // Only recalculate stats if data is valid (properties access data)
+            RecalculateStats();
         }
         else
         {
             // Fallback if data is null (shouldn't happen but defensive programming)
             currentHealth = 10; // Default health
             currentMorale = 50; // Default morale
+            // Don't call RecalculateStats() if data is null - properties will throw NullReferenceException
         }
-
-        RecalculateStats();
 
         animator = GetComponent<Animator>();
         // Ensure animator is not null before trying to set a trigger
