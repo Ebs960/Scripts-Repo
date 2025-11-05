@@ -2,14 +2,51 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Super simple battle test - just creates two units that move toward each other
-/// No conflicts with existing code
+/// Main battle system - handles both formation-based battles and full civilization battles
+/// Merged with BattleManager functionality
 /// </summary>
 public class BattleTestSimple : MonoBehaviour
 {
+    public static BattleTestSimple Instance { get; private set; }
+    
+    [Header("Battle Manager Settings")]
+    [Tooltip("Size of the battle map in world units")]
+    public float battleMapSize = 100f;
+    [Tooltip("Distance between attacker and defender formation groups")]
+    public float formationGroupSpacing = 20f;
+    [Tooltip("Key to pause/resume battle")]
+    public KeyCode pauseKey = KeyCode.Escape;
+    [Tooltip("Prefab for unit selection indicator")]
+    public GameObject selectionIndicatorPrefab;
+    
+    [Header("Battle State")]
+    [Tooltip("Is a battle currently in progress?")]
+    public bool battleInProgress = false;
+    [Tooltip("Is the battle currently paused?")]
+    public bool isPaused = false;
+    
+    [Header("Battle UI Integration")]
+    [Tooltip("BattleUI component - will use this exclusively for UI")]
+    public BattleUI battleUI;
+    
+    [Header("AI System")]
+    [Tooltip("AI manager for formation-based AI")]
+    public FormationAIManager formationAIManager;
+    
+    // Battle state from BattleManager
+    public Civilization attacker;
+    public Civilization defender;
+    private List<CombatUnit> attackerUnits = new List<CombatUnit>();
+    private List<CombatUnit> defenderUnits = new List<CombatUnit>();
+    
+    // Events
+    public System.Action<BattleResult> OnBattleEnded;
+    
     [Header("UI")]
     public Button testButton;
     public TextMeshProUGUI statusText;
@@ -18,6 +55,39 @@ public class BattleTestSimple : MonoBehaviour
     public TMP_Dropdown defenderUnitDropdown;
     public TextMeshProUGUI attackerLabel;
     public TextMeshProUGUI defenderLabel;
+    
+    [Header("Battle HUD")]
+    [Tooltip("Manually assigned battle HUD panel (with HorizontalLayoutGroup for formation buttons). If null, will auto-generate.")]
+    public GameObject battleHUDPanel;
+    [Tooltip("Layout group for formation buttons inside the battle HUD panel. If null, will try to find or create one.")]
+    public HorizontalLayoutGroup formationButtonLayout;
+    
+    [Header("Battle HUD Button Settings")]
+    [Tooltip("Button prefab to use for formation buttons. If null, will auto-generate buttons with the settings below.")]
+    public GameObject formationButtonPrefab;
+    [Tooltip("Button size (width, height) when auto-generating buttons")]
+    public Vector2 buttonSize = new Vector2(240, 44);
+    [Tooltip("Button background color when auto-generating buttons")]
+    public Color buttonColor = new Color(0, 0, 0, 0.5f);
+    [Tooltip("Button text color when auto-generating buttons")]
+    public Color buttonTextColor = Color.white;
+    [Tooltip("Button text font size when auto-generating buttons")]
+    public float buttonFontSize = 20f;
+    [Tooltip("Text format for formation buttons.\nPlaceholders: {0}=formationName, {1}=aliveCount, {2}=morale, {3}=totalHealth, {4}=currentHealth, {5}=totalAttack\nExample: \"{0} - {1}/{6} alive - {2}% morale - {3} HP\"")]
+    [TextArea(3, 5)]
+    public string buttonTextFormat = "{0}  |  {1}  |  Morale {2}%";
+    
+    [Header("Battle HUD Layout Settings")]
+    [Tooltip("Button spacing in the layout group (only used if creating layout group)")]
+    public float buttonSpacing = 8f;
+    [Tooltip("Layout padding left (only used if creating layout group)")]
+    public int layoutPaddingLeft = 10;
+    [Tooltip("Layout padding right (only used if creating layout group)")]
+    public int layoutPaddingRight = 10;
+    [Tooltip("Layout padding top (only used if creating layout group)")]
+    public int layoutPaddingTop = 5;
+    [Tooltip("Layout padding bottom (only used if creating layout group)")]
+    public int layoutPaddingBottom = 5;
     
     [Header("Debug")]
     public bool showDebugLogs = true;
@@ -99,7 +169,23 @@ public class BattleTestSimple : MonoBehaviour
     private Vector3 dragEnd;
     private GameObject selectionBox;
     private List<FormationUnit> selectedFormations = new List<FormationUnit>();
+    private List<CombatUnit> selectedUnits = new List<CombatUnit>(); // Track individually selected units
     public List<FormationUnit> allFormations = new List<FormationUnit>();
+    
+    void Awake()
+    {
+        // Singleton pattern
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
     
     void Start()
     {
@@ -136,6 +222,14 @@ public class BattleTestSimple : MonoBehaviour
     
     void Update()
     {
+        // Handle pause key
+        if (battleInProgress && Input.GetKeyDown(pauseKey))
+        {
+            TogglePause();
+        }
+        
+        if (isPaused) return; // Don't update game systems when paused
+        
         // Handle camera controls
         HandleCameraMovement();
         HandleCameraZoom();
@@ -148,34 +242,85 @@ public class BattleTestSimple : MonoBehaviour
         // Start drag selection
         if (Input.GetMouseButtonDown(0))
         {
-            // Check if clicking on UI first - if so, don't handle selection
-            if (UnityEngine.EventSystems.EventSystem.current != null && 
-                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            // More precise UI check - only block if clicking on interactive UI elements (buttons, dropdowns, etc.)
+            // Don't block if clicking on unit labels or non-interactive UI
+            bool shouldBlockUI = false;
+            if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                // Check if we're clicking on a UI element that should block selection
+                var pointerData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+                pointerData.position = Input.mousePosition;
+                var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+                UnityEngine.EventSystems.EventSystem.current.RaycastAll(pointerData, results);
+                
+                // Only block if we hit an interactive UI element (Button, Toggle, Dropdown, etc.)
+                // Don't block if we hit the unit's own UI label or non-interactive text
+                foreach (var result in results)
+                {
+                    // Check if it's part of the unit's own UI (like UnitLabel) - if so, don't block
+                    var unitLabel = result.gameObject.GetComponentInParent<UnitLabel>();
+                    if (unitLabel != null)
+                    {
+                        // Allow clicking through unit labels
+                        continue;
+                    }
+                    
+                    // Check for interactive UI components that should block
+                    if (result.gameObject.GetComponent<UnityEngine.UI.Button>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Toggle>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Dropdown>() != null ||
+                        result.gameObject.GetComponent<TMPro.TMP_Dropdown>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.ScrollRect>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Slider>() != null)
+                    {
+                        // This is an interactive UI element, block selection
+                        shouldBlockUI = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (shouldBlockUI)
             {
                 return; // UI click, let UI handle it
             }
             
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             
-            // Use layer mask to prioritize units - check units layer first
+            // Use layer mask to prioritize units - check units layer first, exclude UI layer
             int unitsLayer = LayerMask.NameToLayer("Units");
-            LayerMask unitLayerMask = unitsLayer != -1 ? (1 << unitsLayer) : ~0;
+            int uiLayer = LayerMask.NameToLayer("UI");
             
-            // Try raycast with units layer first
-            RaycastHit hit = new RaycastHit();
-            bool hitUnit = false;
-            if (unitsLayer != -1)
+            // Create layer mask that includes everything except UI layer
+            LayerMask unitLayerMask = ~0; // Everything
+            if (uiLayer != -1)
             {
-                if (Physics.Raycast(ray, out hit, Mathf.Infinity, unitLayerMask))
-                {
-                    hitUnit = true;
-                }
+                unitLayerMask = ~(1 << uiLayer); // Exclude UI layer
             }
             
-            // Fallback to any collider if no unit layer or no hit
+            // If units layer exists, prioritize it
+            if (unitsLayer != -1)
+            {
+                unitLayerMask = (1 << unitsLayer); // Only check units layer
+            }
+            
+            // Try raycast with units layer first (excludes UI)
+            RaycastHit hit = new RaycastHit();
+            bool hitUnit = false;
+            if (Physics.Raycast(ray, out hit, Mathf.Infinity, unitLayerMask))
+            {
+                hitUnit = true;
+            }
+            
+            // Fallback to any collider (except UI) if no unit layer or no hit
             if (!hitUnit)
             {
-                if (Physics.Raycast(ray, out hit))
+                LayerMask fallbackMask = ~0;
+                if (uiLayer != -1)
+                {
+                    fallbackMask = ~(1 << uiLayer); // Exclude UI layer
+                }
+                if (Physics.Raycast(ray, out hit, Mathf.Infinity, fallbackMask))
                 {
                     hitUnit = true;
                 }
@@ -183,26 +328,25 @@ public class BattleTestSimple : MonoBehaviour
             
             if (hitUnit)
             {
-                // Check if clicking on a unit first (before formation check)
+                // Check if clicking on a unit first - find its formation
                 var clickedUnit = hit.collider?.GetComponent<CombatUnit>();
+                FormationUnit clickedFormation = null;
+                
                 if (clickedUnit != null)
                 {
-                    // Handle unit selection directly instead of relying on OnMouseDown
-                    if (!Input.GetKey(KeyCode.LeftControl))
-                    {
-                        ClearSelection();
-                    }
-                    
-                    // Actually select the unit here instead of expecting OnMouseDown
-                    SelectUnit(clickedUnit);
-                    return;
+                    // Find the formation this unit belongs to
+                    clickedFormation = GetFormationFromUnit(clickedUnit);
                 }
                 
-                // Check if clicking on a formation
-                FormationUnit clickedFormation = GetFormationAtPosition(hit.point);
+                // If no formation found from unit, check if clicking on formation directly
+                if (clickedFormation == null)
+                {
+                    clickedFormation = GetFormationAtPosition(hit.point);
+                }
+                
                 if (clickedFormation != null)
                 {
-                    // Single formation selection
+                    // Select the formation (not the individual unit)
                     if (!Input.GetKey(KeyCode.LeftControl))
                     {
                         ClearSelection();
@@ -254,9 +398,45 @@ public class BattleTestSimple : MonoBehaviour
         // Handle right-click to move selected formations or units
         if (Input.GetMouseButtonDown(1))
         {
-            // Check if clicking on UI first - if so, don't handle movement
-            if (UnityEngine.EventSystems.EventSystem.current != null && 
-                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            // More precise UI check - only block if clicking on interactive UI elements (buttons, dropdowns, etc.)
+            // Don't block if clicking on unit labels or non-interactive UI
+            bool shouldBlockUI = false;
+            if (UnityEngine.EventSystems.EventSystem.current != null)
+            {
+                // Check if we're clicking on a UI element that should block movement
+                var pointerData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+                pointerData.position = Input.mousePosition;
+                var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+                UnityEngine.EventSystems.EventSystem.current.RaycastAll(pointerData, results);
+                
+                // Only block if we hit an interactive UI element (Button, Toggle, Dropdown, etc.)
+                // Don't block if we hit the unit's own UI label or non-interactive text
+                foreach (var result in results)
+                {
+                    // Check if it's part of the unit's own UI (like UnitLabel) - if so, don't block
+                    var unitLabel = result.gameObject.GetComponentInParent<UnitLabel>();
+                    if (unitLabel != null)
+                    {
+                        // Allow clicking through unit labels
+                        continue;
+                    }
+                    
+                    // Check for interactive UI components that should block
+                    if (result.gameObject.GetComponent<UnityEngine.UI.Button>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Toggle>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Dropdown>() != null ||
+                        result.gameObject.GetComponent<TMPro.TMP_Dropdown>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.ScrollRect>() != null ||
+                        result.gameObject.GetComponent<UnityEngine.UI.Slider>() != null)
+                    {
+                        // This is an interactive UI element, block movement
+                        shouldBlockUI = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (shouldBlockUI)
             {
                 return; // UI click, let UI handle it
             }
@@ -273,9 +453,8 @@ public class BattleTestSimple : MonoBehaviour
                 // Project destination onto battlefield ground
                 var grounded = GetGroundPosition(hit.point);
                 
+                // Move all selected formations - all soldiers in each formation will move
                 DebugLog($"Moving {selectedFormations.Count} selected formation(s) to {grounded}");
-                
-                // Move selected formations
                 foreach (var formation in selectedFormations)
                 {
                     if (formation != null)
@@ -549,6 +728,11 @@ public class BattleTestSimple : MonoBehaviour
         // OPTION 3: Metadata-Only Loading System
         // Load only lightweight metadata (names/stats) for dropdown, NOT full ScriptableObjects
         // This prevents memory spikes in menu phase while allowing full unit selection
+        
+        if (unitMetadata == null)
+        {
+            unitMetadata = new List<UnitMetadata>();
+        }
         
         unitMetadata.Clear();
         
@@ -973,6 +1157,10 @@ public class BattleTestSimple : MonoBehaviour
     {
         DebugLog("Creating battle with formations...");
         
+        // Set battle in progress
+        battleInProgress = true;
+        isPaused = false;
+        
         // Clean up any existing test objects first
         CleanupPreviousTest();
         
@@ -1020,27 +1208,89 @@ public class BattleTestSimple : MonoBehaviour
             CreateFormation($"DefenderFormation{i + 1}", defenderSpawns[i], Color.blue, false);
         }
         
-        // Initialize victory manager if available (only after formations are fully created)
+        // Initialize victory manager BEFORE spawning based on menu selections
+        // This way we know how many units will be in the battle before we start
         if (victoryManager != null)
         {
-            // Wait a frame for all units to be properly initialized
-            StartCoroutine(InitializeVictoryManagerDelayed());
+            InitializeVictoryManagerFromMenu();
         }
+        
+        // Also initialize after spawning as a fallback (in case units aren't properly initialized)
+        StartCoroutine(InitializeVictoryManagerDelayed());
         
         // Build simple battle HUD along the top with formation info buttons
         CreateBattleHUD();
+        
+        // Initialize AI system
+        InitializeFormationAI();
+    }
+    
+    /// <summary>
+    /// Initialize victory manager from menu selections BEFORE spawning units
+    /// This counts units based on formationsPerSide and soldiersPerFormation
+    /// The victory manager should track expected counts and update as units spawn
+    /// </summary>
+    void InitializeVictoryManagerFromMenu()
+    {
+        if (victoryManager == null) return;
+        
+        // Calculate expected unit counts from menu selections
+        int expectedAttackerUnits = formationsPerSide * soldiersPerFormation;
+        int expectedDefenderUnits = formationsPerSide * soldiersPerFormation;
+        
+        DebugLog($"Initializing victory manager from menu selections: {expectedAttackerUnits} expected attackers, {expectedDefenderUnits} expected defenders");
+        
+        // Initialize victory manager with expected counts
+        victoryManager.InitializeWithExpectedCounts(expectedAttackerUnits, expectedDefenderUnits);
     }
     
     /// <summary>
     /// Initialize victory manager after units are fully created
+    /// Wait until all formations have soldiers with CombatUnit components initialized
     /// </summary>
     System.Collections.IEnumerator InitializeVictoryManagerDelayed()
     {
-        // Wait one frame for all units to be properly initialized
-        yield return null;
-        
         if (victoryManager == null) yield break;
         
+        // Calculate expected total soldiers (formations per side * soldiers per formation * 2 sides)
+        int expectedTotalSoldiers = formationsPerSide * soldiersPerFormation * 2;
+        float maxWaitTime = 10f; // Maximum wait time in seconds
+        float elapsedTime = 0f;
+        
+        // Wait until all formations have been created and soldiers initialized
+        while (elapsedTime < maxWaitTime)
+        {
+            // Check if we have the expected number of formations
+            if (allFormations.Count >= formationsPerSide * 2)
+            {
+                // Count total soldiers with CombatUnit components
+                int totalSoldiersWithCombatUnit = 0;
+                foreach (var formation in allFormations)
+                {
+                    if (formation == null || formation.soldiers == null) continue;
+                    foreach (var soldier in formation.soldiers)
+                    {
+                        if (soldier != null && soldier.GetComponent<CombatUnit>() != null)
+                        {
+                            totalSoldiersWithCombatUnit++;
+                        }
+                    }
+                }
+                
+                // If we have all expected soldiers, proceed
+                if (totalSoldiersWithCombatUnit >= expectedTotalSoldiers)
+                {
+                    DebugLog($"All {totalSoldiersWithCombatUnit} soldiers initialized, initializing victory manager");
+                    break;
+                }
+            }
+            
+            // Wait a frame and check again
+            yield return null;
+            elapsedTime += Time.deltaTime;
+        }
+        
+        // Collect all units now that formations are ready
         var allUnits = new List<CombatUnit>();
         foreach (var formation in allFormations)
         {
@@ -1062,13 +1312,37 @@ public class BattleTestSimple : MonoBehaviour
         var attackers = allUnits.Where(u => u != null && u.isAttacker).ToList();
         var defenders = allUnits.Where(u => u != null && !u.isAttacker).ToList();
         
-        // Debug: Log unit details to diagnose why defenders might not be counted
+        // Debug: Log unit details to diagnose why units might not be counted
         DebugLog($"Found {allUnits.Count} total units: {attackers.Count} attackers, {defenders.Count} defenders");
-        foreach (var u in defenders.Take(5))
+        
+        // Log sample units from both sides
+        foreach (var u in allUnits.Take(10))
         {
             if (u != null)
             {
-                DebugLog($"  Defender unit: {u.name}, isAttacker={u.isAttacker}, hasData={u.data != null}, health={u.currentHealth}");
+                DebugLog($"  Unit: {u.name}, isAttacker={u.isAttacker}, hasData={u.data != null}, health={u.currentHealth}, parent={u.transform.parent?.name ?? "null"}");
+            }
+        }
+        
+        // If no units found, log all formations to debug
+        if (allUnits.Count == 0)
+        {
+            DebugLog($"WARNING: No units found! Checking formations...");
+            foreach (var f in allFormations)
+            {
+                if (f == null) continue;
+                DebugLog($"  Formation: {f.formationName}, soldiers count: {f.soldiers?.Count ?? 0}, isAttacker: {f.isAttacker}");
+                if (f.soldiers != null)
+                {
+                    foreach (var s in f.soldiers.Take(3))
+                    {
+                        if (s != null)
+                        {
+                            var cu = s.GetComponent<CombatUnit>();
+                            DebugLog($"    Soldier: {s.name}, hasCombatUnit={cu != null}, parent={s.transform.parent?.name ?? "null"}");
+                        }
+                    }
+                }
             }
         }
         
@@ -1154,14 +1428,14 @@ public class BattleTestSimple : MonoBehaviour
         formation.totalAttack = isAttacker ? 18 : 9;  // 2 per soldier * 9 soldiers
         formation.currentHealth = formation.totalHealth;
         
+        // Add to formations list FIRST - this allows GetFormationFromUnit to work during soldier creation
+        allFormations.Add(formation);
+        
         // Create soldiers in formation with proper spacing
         CreateSoldiersInFormation(formation, formationGO.transform.position, teamColor);
         
         // Create world-space badge UI above the formation
         formation.CreateOrUpdateBadgeUI();
-        
-        // Add to formations list
-        allFormations.Add(formation);
         
         DebugLog($"Created {formationName} with {soldiersPerFormation} soldiers");
     }
@@ -1195,7 +1469,22 @@ public class BattleTestSimple : MonoBehaviour
                 
                 if (soldier != null)
                 {
+                    // CRITICAL: Set parent FIRST - this ensures GetComponentInParent<FormationUnit>() works
                     soldier.transform.SetParent(formation.transform);
+                    
+                    // Add to formation's soldiers list BEFORE verifying
+                    formation.soldiers.Add(soldier);
+                    
+                    // Verify the unit can find its formation
+                    var combatUnit = soldier.GetComponent<CombatUnit>();
+                    if (combatUnit != null)
+                    {
+                        var foundFormation = GetFormationFromUnit(combatUnit);
+                        if (foundFormation == null)
+                        {
+                            DebugLog($"Warning: Soldier {i + 1} added to formation but GetFormationFromUnit returned null");
+                        }
+                    }
                     
                     // Trigger idle animation after initialization
                     var animator = soldier.GetComponent<Animator>();
@@ -1212,8 +1501,7 @@ public class BattleTestSimple : MonoBehaviour
                         }
                     }
                     
-                    formation.soldiers.Add(soldier);
-                    DebugLog($"Successfully created and added soldier {i + 1} to formation");
+                    DebugLog($"Successfully created and added soldier {i + 1} to formation {formation.formationName}");
                 }
                 else
                 {
@@ -1292,23 +1580,73 @@ public class BattleTestSimple : MonoBehaviour
                     // Use runtime civ instances created at Start
                     Civilization selectedCiv = isAttacker ? attackerCivInstance : defenderCivInstance;
                     
-                    if (selectedCiv != null)
+                    if (selectedCiv != null && unitData != null)
                     {
                         combatUnit.Initialize(unitData, selectedCiv);
                         DebugLog($"Initialized {soldierName} with unit data and selected civilization");
                     }
-                    else
+                    else if (unitData != null)
                     {
                         // Fallback to temporary civilization if none selected
                         var tempCiv = CreateTemporaryCivilization(isAttacker);
-                        combatUnit.Initialize(unitData, tempCiv);
-                        DebugLog($"Initialized {soldierName} with unit data and temporary civilization");
+                        if (tempCiv != null)
+                        {
+                            combatUnit.Initialize(unitData, tempCiv);
+                            DebugLog($"Initialized {soldierName} with unit data and temporary civilization");
+                        }
+                        else
+                        {
+                            DebugLog($"Warning: Could not create temp civ for {soldierName}, setting basic properties");
+                            // Set basic properties manually if civ creation failed
+                            combatUnit.isAttacker = isAttacker;
+                            combatUnit.battleState = BattleUnitState.Idle;
+                        }
+                    }
+                    else
+                    {
+                        DebugLog($"Warning: No unit data for {soldierName}, setting basic properties");
+                        // Set basic properties manually if no unit data
+                        combatUnit.isAttacker = isAttacker;
+                        combatUnit.battleState = BattleUnitState.Idle;
+                    }
+                    
+                    // CRITICAL: Set isAttacker flag and initialize battle state for victory manager
+                    // This ensures defenders are properly counted (isAttacker = false for defenders)
+                    // Always set the flag, even if Initialize failed
+                    combatUnit.isAttacker = isAttacker;
+                    
+                    // Only call InitializeForBattle if we have unit data and civ properly initialized
+                    if (unitData != null && combatUnit.data != null && combatUnit.owner != null)
+                    {
+                        try
+                        {
+                            combatUnit.InitializeForBattle(isAttacker);
+                            DebugLog($"Set {soldierName} as {(isAttacker ? "attacker" : "defender")} and initialized battle state");
+                        }
+                        catch (System.Exception e2)
+                        {
+                            DebugLog($"Warning: InitializeForBattle failed for {soldierName}: {e2.Message}");
+                            // Still set basic state
+                            combatUnit.battleState = BattleUnitState.Idle;
+                        }
+                    }
+                    else
+                    {
+                        // Still set the flag even if we can't fully initialize
+                        combatUnit.battleState = BattleUnitState.Idle;
+                        DebugLog($"Set {soldierName} as {(isAttacker ? "attacker" : "defender")} (basic initialization, data={combatUnit.data != null}, owner={combatUnit.owner != null})");
                     }
                 }
                 catch (System.Exception e)
                 {
                     DebugLog($"ERROR initializing {soldierName}: {e.Message}");
+                    DebugLog($"ERROR stack trace: {e.StackTrace}");
                     // Continue without initialization - soldier will still work
+                    // CRITICAL: Always set isAttacker flag even if initialization failed
+                    // This ensures the victory manager can find the unit
+                    combatUnit.isAttacker = isAttacker;
+                    combatUnit.battleState = BattleUnitState.Idle;
+                    DebugLog($"Set {soldierName} as {(isAttacker ? "attacker" : "defender")} (fallback after error)");
                 }
             }
             else
@@ -1476,8 +1814,11 @@ public class BattleTestSimple : MonoBehaviour
     
     void ClearPrefabCache()
     {
-        onDemandPrefabCache.Clear();
-        DebugLog("Cleared on-demand prefab cache");
+        if (onDemandPrefabCache != null)
+        {
+            onDemandPrefabCache.Clear();
+            DebugLog("Cleared on-demand prefab cache");
+        }
     }
     
     GameObject CreateSoldier(string soldierName, Color color)
@@ -1674,101 +2015,27 @@ public class BattleTestSimple : MonoBehaviour
         DebugLog($"Status: {message}");
     }
 
-    // --- Battle HUD: Horizontal bar with formation buttons ---
-    private GameObject battleHUD;
-    private List<UnityEngine.UI.Button> hudButtons = new List<UnityEngine.UI.Button>();
+    // --- Battle HUD: Consolidated to use BattleUI exclusively ---
     private void CreateBattleHUD()
     {
-        // Check if BattleUI exists in scene and use it instead
-        var battleUI = FindFirstObjectByType<BattleUI>();
-        if (battleUI != null)
+        // Find or get BattleUI component
+        if (battleUI == null)
         {
-            battleUI.InitializeWithBattleTest(this);
-            battleUI.UpdateFormationsList(allFormations);
-            DebugLog("Using BattleUI component for formation buttons");
-            // Don't create duplicate HUD if BattleUI exists
-            if (battleHUD != null)
-            {
-                Destroy(battleHUD);
-                battleHUD = null;
-            }
-            return;
+            battleUI = FindFirstObjectByType<BattleUI>();
         }
         
-        // Fallback: create own HUD if BattleUI not found
-        if (battleHUD != null) Destroy(battleHUD);
-        battleHUD = new GameObject("BattleHUD");
-        var canvas = battleHUD.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        battleHUD.AddComponent<UnityEngine.UI.CanvasScaler>();
-        battleHUD.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-        // Canvas already has a RectTransform, use it instead of adding another
-        var rt = battleHUD.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0f, 1f);
-        rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.sizeDelta = new Vector2(0, 60);
-        
-        var bar = new GameObject("Bar");
-        bar.transform.SetParent(battleHUD.transform, false);
-        var barRT = bar.AddComponent<RectTransform>();
-        barRT.anchorMin = new Vector2(0f, 1f);
-        barRT.anchorMax = new Vector2(1f, 1f);
-        barRT.pivot = new Vector2(0.5f, 1f);
-        barRT.anchoredPosition = new Vector2(0, 0);
-        barRT.sizeDelta = new Vector2(0, 60);
-        var layout = bar.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-        layout.childAlignment = TextAnchor.MiddleLeft;
-        layout.childForceExpandWidth = false;
-        layout.childControlWidth = true;
-        layout.spacing = 8f;
-        var fitter = bar.AddComponent<UnityEngine.UI.ContentSizeFitter>();
-        fitter.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        
-        hudButtons.Clear();
-        foreach (var f in allFormations)
+        // Create BattleUI if it doesn't exist
+        if (battleUI == null)
         {
-            if (f == null) continue;
-            var btnGO = new GameObject($"{f.formationName}_Btn");
-            btnGO.transform.SetParent(bar.transform, false);
-            var img = btnGO.AddComponent<UnityEngine.UI.Image>();
-            img.color = new Color(0,0,0,0.5f);
-            var btn = btnGO.AddComponent<UnityEngine.UI.Button>();
-            var btnRT = btnGO.GetComponent<RectTransform>();
-            btnRT.sizeDelta = new Vector2(240, 44);
-            var textGO = new GameObject("Text");
-            textGO.transform.SetParent(btnGO.transform, false);
-            var tmp = textGO.AddComponent<TMPro.TextMeshProUGUI>();
-            tmp.alignment = TMPro.TextAlignmentOptions.Midline;
-            tmp.fontSize = 20f;
-            var trt = tmp.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
-            btn.onClick.AddListener(() => { SelectFormation(f); });
-            hudButtons.Add(btn);
-        }
-        UpdateBattleHUD();
-    }
-    private void UpdateBattleHUD()
-    {
-        // Check if BattleUI exists and update it instead
-        var battleUI = FindFirstObjectByType<BattleUI>();
-        if (battleUI != null)
-        {
-            battleUI.UpdateFormationsList(allFormations);
-            return;
+            GameObject battleUIGO = new GameObject("BattleUI");
+            battleUI = battleUIGO.AddComponent<BattleUI>();
+            DebugLog("Created BattleUI component");
         }
         
-        // Fallback: update own HUD
-        if (battleHUD == null) return;
-        int i = 0;
-        foreach (var f in allFormations)
-        {
-            if (f == null) continue;
-            if (i >= hudButtons.Count) break;
-            var btn = hudButtons[i++];
-            var tmp = btn.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-            int alive = 0; foreach (var s in f.soldiers) if (s != null) alive++;
-            tmp.text = $"{f.formationName}  |  {alive}  |  Morale {f.currentMorale}%";
-        }
+        // Initialize BattleUI with this battle system
+        battleUI.InitializeWithBattleTest(this);
+        battleUI.UpdateFormationsList(allFormations);
+        DebugLog("Using BattleUI component exclusively for battle HUD");
     }
     
     void DebugLog(string message)
@@ -1822,6 +2089,62 @@ public class BattleTestSimple : MonoBehaviour
         return null;
     }
     
+    /// <summary>
+    /// Find the formation that contains this unit
+    /// </summary>
+    public FormationUnit GetFormationFromUnit(CombatUnit unit)
+    {
+        if (unit == null) return null;
+        
+        // First, check if unit's parent transform is a formation
+        var parent = unit.transform.parent;
+        if (parent != null)
+        {
+            var parentFormation = parent.GetComponent<FormationUnit>();
+            if (parentFormation != null)
+            {
+                // Check if it's in allFormations (if available), otherwise just return it if it has the component
+                if (allFormations == null || allFormations.Count == 0 || allFormations.Contains(parentFormation))
+                {
+                    return parentFormation;
+                }
+            }
+        }
+        
+        // Second, check if unit's parent hierarchy contains a formation
+        var formation = unit.GetComponentInParent<FormationUnit>();
+        if (formation != null)
+        {
+            // Check if it's in allFormations (if available), otherwise just return it if it has the component
+            if (allFormations == null || allFormations.Count == 0 || allFormations.Contains(formation))
+            {
+                return formation;
+            }
+        }
+        
+        // Third, search all formations for this unit in their soldiers list
+        foreach (var f in allFormations)
+        {
+            if (f == null) continue;
+            if (f.soldiers != null && f.soldiers.Contains(unit.gameObject))
+            {
+                return f;
+            }
+        }
+        
+        // Last resort: check if any formation's transform is the parent
+        foreach (var f in allFormations)
+        {
+            if (f == null) continue;
+            if (unit.transform.IsChildOf(f.transform))
+            {
+                return f;
+            }
+        }
+        
+        return null;
+    }
+    
     public void ClearSelection()
     {
         foreach (var formation in selectedFormations)
@@ -1830,6 +2153,12 @@ public class BattleTestSimple : MonoBehaviour
             formation.SetSelected(false);
         }
         selectedFormations.Clear();
+        
+        // Also clear UnitSelectionManager selection if it exists (for compatibility)
+        if (UnitSelectionManager.Instance != null && UnitSelectionManager.Instance.HasSelectedUnit())
+        {
+            UnitSelectionManager.Instance.DeselectUnit();
+        }
     }
     
     public void SelectFormation(FormationUnit formation)
@@ -1842,34 +2171,32 @@ public class BattleTestSimple : MonoBehaviour
     }
     
     /// <summary>
-    /// Select a unit directly (called from HandleSelection and OnMouseDown)
+    /// Select a unit directly - finds its formation and selects that instead
     /// </summary>
     void SelectUnit(CombatUnit unit)
     {
         if (unit == null) return;
         
-        // Use UnitSelectionManager if available
-        if (UnitSelectionManager.Instance != null)
+        // Find the formation this unit belongs to and select that instead
+        var formation = GetFormationFromUnit(unit);
+        if (formation != null)
         {
-            UnitSelectionManager.Instance.SelectUnit(unit);
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                ClearSelection();
+            }
+            SelectFormation(formation);
+            DebugLog($"Selected formation {formation.formationName} (clicked on unit: {unit.data?.unitName ?? "Unknown"})");
         }
         else
         {
-            // Fallback to UIManager
-            if (UIManager.Instance != null)
+            // Unit not in a formation - still show info via UnitSelectionManager
+            if (UnitSelectionManager.Instance != null)
             {
-                UIManager.Instance.ShowUnitInfoPanelForUnit(unit);
-                
-                // Fallback notification if UnitInfoPanel is not available
-                if (UIManager.Instance.unitInfoPanel == null || !UIManager.Instance.unitInfoPanel.activeInHierarchy)
-                {
-                    string msg = $"{unit.data.unitName} (Combat)\nHealth: {unit.currentHealth}/{unit.MaxHealth}\nAttack: {unit.CurrentAttack}  Defense: {unit.CurrentDefense}\nMove: {unit.currentMovePoints}/{unit.MaxMovePoints}";
-                    UIManager.Instance.ShowNotification(msg);
-                }
+                UnitSelectionManager.Instance.SelectUnit(unit);
             }
+            DebugLog($"Clicked on unit {unit.data?.unitName ?? "Unknown"} but it's not in a formation");
         }
-        
-        DebugLog($"Selected unit: {unit.data?.unitName ?? "Unknown"}");
     }
     
     /// <summary>
@@ -1948,6 +2275,331 @@ public class BattleTestSimple : MonoBehaviour
             }
         }
     }
+    
+    // ===== BATTLE MANAGER FUNCTIONALITY (Merged from BattleManager.cs) =====
+    
+    /// <summary>
+    /// Start a battle between two civilizations (from BattleManager)
+    /// </summary>
+    public void StartBattle(Civilization attackerCiv, Civilization defenderCiv, 
+                          List<CombatUnit> attackerUnitsList, List<CombatUnit> defenderUnitsList)
+    {
+        if (battleInProgress)
+        {
+            DebugLog("[BattleTestSimple] Battle already in progress!");
+            return;
+        }
+
+        attacker = attackerCiv;
+        defender = defenderCiv;
+        attackerUnits = new List<CombatUnit>(attackerUnitsList);
+        defenderUnits = new List<CombatUnit>(defenderUnitsList);
+
+        DebugLog($"[BattleTestSimple] Starting battle: {attacker.civData.civName} vs {defender.civData.civName}");
+        DebugLog($"[BattleTestSimple] Units: {attackerUnits.Count} vs {defenderUnits.Count}");
+
+        // Check if we should load a battle scene or use current scene
+        if (SceneManager.GetActiveScene().name != "BattleScene")
+        {
+            StartCoroutine(LoadBattleScene());
+        }
+        else
+        {
+            // Already in battle scene, initialize directly
+            InitializeBattle();
+        }
+    }
+    
+    private IEnumerator LoadBattleScene()
+    {
+        // Load the battle scene
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("BattleScene");
+        
+        // Wait until the scene is loaded
+        while (!asyncLoad.isDone)
+        {
+            yield return null;
+        }
+
+        // Initialize battle after scene loads
+        yield return new WaitForEndOfFrame();
+        InitializeBattle();
+    }
+    
+    private void InitializeBattle()
+    {
+        try
+        {
+            battleInProgress = true;
+            isPaused = false;
+
+            // Use existing map generator (assigned in Inspector or already exists)
+            // BattleMapGenerator is a separate component - don't create it here
+            if (mapGenerator == null)
+            {
+                mapGenerator = FindFirstObjectByType<BattleMapGenerator>();
+            }
+
+            // Generate battle map if map generator exists and is enabled
+            if (mapGenerator != null && generateNewMap)
+            {
+                mapGenerator.GenerateBattleMap(battleMapSize, attackerUnits.Count, defenderUnits.Count);
+            }
+            else if (mapGenerator == null)
+            {
+                // Fallback: create simple ground if no map generator
+                var ground = GameObject.Find("TestGround");
+                if (ground == null)
+                {
+                    ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                    ground.transform.localScale = new Vector3(20, 1, 20);
+                    ground.name = "TestGround";
+                    ground.transform.position = Vector3.zero;
+                }
+            }
+
+            // Mark all units as in battle (prevents world map movement from interfering)
+            foreach (var unit in attackerUnits)
+            {
+                if (unit != null) unit.IsInBattle = true;
+            }
+            foreach (var unit in defenderUnits)
+            {
+                if (unit != null) unit.IsInBattle = true;
+            }
+
+            // Create formations from units
+            CreateFormationsFromUnits(attackerUnits, defenderUnits);
+
+            // Initialize battle UI
+            CreateBattleHUD();
+            
+            // Initialize AI system
+            InitializeFormationAI();
+
+            // Set up camera
+            SetupBattleCamera();
+
+            DebugLog("[BattleTestSimple] Battle initialized successfully!");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[BattleTestSimple] Error initializing battle: {e.Message}");
+            EndBattle(null);
+        }
+    }
+    
+    /// <summary>
+    /// Initialize formation-based AI system
+    /// </summary>
+    private void InitializeFormationAI()
+    {
+        // Find or create formation AI manager
+        if (formationAIManager == null)
+        {
+            formationAIManager = FormationAIManager.Instance;
+            if (formationAIManager == null)
+            {
+                GameObject aiManagerGO = new GameObject("FormationAIManager");
+                formationAIManager = aiManagerGO.AddComponent<FormationAIManager>();
+            }
+        }
+        
+        // Formations will register themselves via FormationUnit.Start()
+        // No need to manually pass formations - they register when ready
+        DebugLog("[BattleTestSimple] Formation AI system initialized. Formations will register themselves.");
+    }
+    
+    /// <summary>
+    /// Create formations from lists of units (for BattleManager compatibility)
+    /// </summary>
+    private void CreateFormationsFromUnits(List<CombatUnit> attackerUnitsList, List<CombatUnit> defenderUnitsList)
+    {
+        // Group units into formations
+        List<Vector3> attackerSpawns = mapGenerator != null ? mapGenerator.GetAttackerSpawnPoints() : GetDefaultAttackerSpawns();
+        List<Vector3> defenderSpawns = mapGenerator != null ? mapGenerator.GetDefenderSpawnPoints() : GetDefaultDefenderSpawns();
+        
+        // Create formations for attackers
+        int formationIndex = 0;
+        for (int i = 0; i < attackerUnitsList.Count; i += soldiersPerFormation)
+        {
+            if (formationIndex >= attackerSpawns.Count) break;
+            Vector3 spawnPos = attackerSpawns[formationIndex];
+            CreateFormationFromUnits($"AttackerFormation{formationIndex + 1}", spawnPos, Color.red, true, 
+                attackerUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, attackerUnitsList.Count - i)));
+            formationIndex++;
+        }
+        
+        // Create formations for defenders
+        formationIndex = 0;
+        for (int i = 0; i < defenderUnitsList.Count; i += soldiersPerFormation)
+        {
+            if (formationIndex >= defenderSpawns.Count) break;
+            Vector3 spawnPos = defenderSpawns[formationIndex];
+            CreateFormationFromUnits($"DefenderFormation{formationIndex + 1}", spawnPos, Color.blue, false,
+                defenderUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, defenderUnitsList.Count - i)));
+            formationIndex++;
+        }
+    }
+    
+    /// <summary>
+    /// Create a formation from existing units (for BattleManager compatibility)
+    /// </summary>
+    private void CreateFormationFromUnits(string formationName, Vector3 position, Color teamColor, bool isAttacker, List<CombatUnit> units)
+    {
+        // Create formation GameObject
+        GameObject formationGO = new GameObject(formationName);
+        formationGO.transform.position = GetGroundPosition(position);
+        
+        // Add FormationUnit component
+        FormationUnit formation = formationGO.AddComponent<FormationUnit>();
+        formation.formationName = formationName;
+        formation.isAttacker = isAttacker;
+        formation.teamColor = teamColor;
+        formation.formationCenter = position;
+        
+        // Add units to formation
+        formation.soldiers = new List<GameObject>();
+        for (int i = 0; i < units.Count; i++)
+        {
+            if (units[i] != null)
+            {
+                units[i].transform.SetParent(formation.transform);
+                formation.soldiers.Add(units[i].gameObject);
+                
+                // Initialize unit for battle
+                units[i].InitializeForBattle(isAttacker);
+            }
+        }
+        
+        // Calculate formation stats
+        int totalHealth = 0;
+        int totalAttack = 0;
+        foreach (var unit in units)
+        {
+            if (unit != null)
+            {
+                totalHealth += unit.MaxHealth;
+                totalAttack += unit.CurrentAttack;
+            }
+        }
+        formation.totalHealth = totalHealth;
+        formation.totalAttack = totalAttack;
+        formation.currentHealth = totalHealth;
+        
+        // Add to formations list
+        allFormations.Add(formation);
+        
+        // Create world-space badge UI
+        formation.CreateOrUpdateBadgeUI();
+        
+        DebugLog($"Created {formationName} with {units.Count} units");
+    }
+    
+    /// <summary>
+    /// Set up battle camera
+    /// </summary>
+    private void SetupBattleCamera()
+    {
+        Camera battleCamera = Camera.main;
+        if (battleCamera == null)
+        {
+            GameObject cameraGO = new GameObject("BattleCamera");
+            battleCamera = cameraGO.AddComponent<Camera>();
+        }
+
+        // Position camera to overview the battlefield
+        battleCamera.transform.position = new Vector3(0, 30, -20);
+        battleCamera.transform.rotation = Quaternion.Euler(45, 0, 0);
+        battleCamera.orthographic = true;
+        battleCamera.orthographicSize = 25f;
+    }
+    
+    /// <summary>
+    /// Toggle battle pause state
+    /// </summary>
+    public void TogglePause()
+    {
+        isPaused = !isPaused;
+        Time.timeScale = isPaused ? 0f : 1f;
+        
+        DebugLog($"[BattleTestSimple] Battle {(isPaused ? "Paused" : "Resumed")}");
+    }
+    
+    /// <summary>
+    /// End the current battle
+    /// </summary>
+    public void EndBattle(BattleResult result)
+    {
+        if (!battleInProgress) return;
+
+        battleInProgress = false;
+        isPaused = false;
+        Time.timeScale = 1f;
+        ClearSelection();
+        
+        // Mark all units as no longer in battle (allow world map movement again)
+        foreach (var formation in allFormations)
+        {
+            if (formation != null && formation.soldiers != null)
+            {
+                foreach (var soldier in formation.soldiers)
+                {
+                    if (soldier != null)
+                    {
+                        var combatUnit = soldier.GetComponent<CombatUnit>();
+                        if (combatUnit != null)
+                        {
+                            combatUnit.IsInBattle = false;
+                            combatUnit.isMoving = false; // Stop movement when battle ends
+                        }
+                    }
+                }
+            }
+        }
+
+        // Notify battle ended
+        OnBattleEnded?.Invoke(result);
+
+        // Optionally return to main game scene
+        if (result != null)
+        {
+            StartCoroutine(ReturnToMainGame(result));
+        }
+    }
+    
+    private IEnumerator ReturnToMainGame(BattleResult result)
+    {
+        // Load the main game scene
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("MainGame");
+        
+        while (!asyncLoad.isDone)
+        {
+            yield return null;
+        }
+
+        DebugLog("[BattleTestSimple] Returned to main game");
+    }
+    
+    /// <summary>
+    /// Check if battle is currently in progress
+    /// </summary>
+    public bool IsBattleInProgress => battleInProgress;
+
+    /// <summary>
+    /// Check if battle is currently paused
+    /// </summary>
+    public bool IsPaused => isPaused;
+
+    /// <summary>
+    /// Get all units of a specific civilization
+    /// </summary>
+    public List<CombatUnit> GetUnits(Civilization civ)
+    {
+        if (civ == attacker) return attackerUnits;
+        if (civ == defender) return defenderUnits;
+        return new List<CombatUnit>();
+    }
 }
 
 // Formation Unit class - represents a group of soldiers that move together
@@ -1995,6 +2647,21 @@ public class FormationUnit : MonoBehaviour
         // Calculate formation center
         UpdateFormationCenter();
         CreateOrUpdateBadgeUI();
+        
+        // Register this formation with FormationAIManager (after fully initialized)
+        if (FormationAIManager.Instance != null)
+        {
+            FormationAIManager.Instance.RegisterFormation(this);
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // Unregister this formation when destroyed
+        if (FormationAIManager.Instance != null)
+        {
+            FormationAIManager.Instance.UnregisterFormation(this);
+        }
     }
     
     /// <summary>
@@ -2023,7 +2690,21 @@ public class FormationUnit : MonoBehaviour
     {
         if (isMoving)
         {
+            // Ensure walking animations are playing while moving
             MoveFormation();
+            
+            // Only play walking animations when starting to move OR periodically to ensure they stay active
+            // Don't call every frame - just ensure IsWalking is set to true
+            if (!walkingAnimationsInitialized || Time.frameCount % 60 == 0) // Every 60 frames (~1 second)
+            {
+                PlayWalkingAnimations();
+            }
+            else
+            {
+                // Just ensure IsWalking stays true without resetting triggers
+                EnsureWalkingAnimationActive();
+            }
+            
             wasMovingLastFrame = true;
         }
         else
@@ -2036,6 +2717,24 @@ public class FormationUnit : MonoBehaviour
             }
         }
         UpdateBadgeContents();
+    }
+    
+    /// <summary>
+    /// Ensure walking animation stays active without resetting triggers
+    /// </summary>
+    void EnsureWalkingAnimationActive()
+    {
+        if (soldierCombatUnits == null) return;
+        
+        foreach (var combatUnit in soldierCombatUnits)
+        {
+            if (combatUnit != null)
+            {
+                // Just ensure isMoving is true - the property setter will automatically update IsWalking animator parameter
+                // Setting it again is safe even if already true (property setter checks for changes)
+                combatUnit.isMoving = true;
+            }
+        }
     }
     
     public void MoveToPosition(Vector3 position)
@@ -2069,8 +2768,8 @@ public class FormationUnit : MonoBehaviour
             // Update soldier positions
             UpdateSoldierPositions();
             
-            // Play walking animations
-            PlayWalkingAnimations();
+            // Don't call PlayWalkingAnimations here - Update() handles it
+            // This prevents calling it multiple times per frame
             
             // Check for enemies in range
             if (CheckForEnemies())
@@ -2428,37 +3127,37 @@ public class FormationUnit : MonoBehaviour
     void StopMoving()
     {
         isMoving = false;
+        walkingAnimationsInitialized = false; // Reset flag for next time
         PlayIdleAnimations();
     }
     
+    // Track if we've initialized walking animations to avoid resetting triggers every frame
+    private bool walkingAnimationsInitialized = false;
+    
     void PlayWalkingAnimations()
     {
+        // Check if soldierCombatUnits array is initialized
+        if (soldierCombatUnits == null || soldierCombatUnits.Length == 0)
+        {
+            RefreshSoldierArrays();
+        }
+        
+        if (soldierCombatUnits == null) return;
+        
         foreach (var combatUnit in soldierCombatUnits)
         {
             if (combatUnit != null)
             {
-                // Use CombatUnit's walking animation - set bool parameter and trigger
-                var animator = combatUnit.GetComponent<Animator>();
-                if (animator != null)
-                {
-                    // Try both bool parameter and trigger for compatibility
-                    if (animator.parameters != null)
-                    {
-                        foreach (var param in animator.parameters)
-                        {
-                            if (param.name == "IsWalking" && param.type == AnimatorControllerParameterType.Bool)
-                            {
-                                animator.SetBool("IsWalking", true);
-                                break;
-                            }
-                        }
-                    }
-                    // Also try as trigger if bool doesn't work
-                    animator.SetTrigger("IsWalking");
-                }
+                // Mark unit as in battle (this prevents UnitMovementController from overriding)
+                combatUnit.IsInBattle = true;
+                
+                // Set walking state - CombatUnit.isMoving property will automatically update IsWalking animator parameter
                 combatUnit.isMoving = true;
             }
         }
+        
+        // Mark as initialized after first call
+        walkingAnimationsInitialized = true;
     }
 
     // Formation-level grounding helper - cache BattleTestSimple reference
@@ -2490,19 +3189,39 @@ public class FormationUnit : MonoBehaviour
             var go = new GameObject("FormationBadgeUI");
             // Don't parent WorldSpace canvas - it uses world coordinates
             // go.transform.SetParent(transform, false);
+            
+            // Put UI on UI layer so it doesn't block unit raycasts
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer != -1)
+            {
+                go.layer = uiLayer;
+            }
+            
             badgeCanvas = go.AddComponent<Canvas>();
             badgeCanvas.renderMode = RenderMode.WorldSpace;
             var scaler = go.AddComponent<UnityEngine.UI.CanvasScaler>();
             scaler.dynamicPixelsPerUnit = 10f;
-            go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            var raycaster = go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            
+            // Disable raycasting on UI elements so they don't block unit selection
+            // We'll handle UI interaction separately
+            raycaster.enabled = false;
             
             var textGO = new GameObject("Text");
             textGO.transform.SetParent(go.transform, false);
+            
+            // Put text on UI layer too
+            if (uiLayer != -1)
+            {
+                textGO.layer = uiLayer;
+            }
+            
             badgeText = textGO.AddComponent<TMPro.TextMeshProUGUI>();
             badgeText.alignment = TMPro.TextAlignmentOptions.Center;
             badgeText.fontSize = 0.5f;
+            badgeText.raycastTarget = false; // Don't block raycasts
             var rt = badgeText.rectTransform;
-            rt.sizeDelta = new Vector2(120, 30);
+            rt.sizeDelta = new Vector2(5, 5); // Small badge size
         }
         UpdateBadgeContents();
         UpdateBadgePosition();
@@ -2533,29 +3252,23 @@ public class FormationUnit : MonoBehaviour
     
     void PlayIdleAnimations()
     {
+        // Check if soldierCombatUnits array is initialized
+        if (soldierCombatUnits == null || soldierCombatUnits.Length == 0)
+        {
+            RefreshSoldierArrays();
+        }
+        
+        if (soldierCombatUnits == null) return;
+        
+        // Reset walking animation flag so we can reinitialize next time
+        walkingAnimationsInitialized = false;
+        
         foreach (var combatUnit in soldierCombatUnits)
         {
             if (combatUnit != null)
             {
-                // Reset walking animation before playing idle
-                var animator = combatUnit.GetComponent<Animator>();
-                if (animator != null)
-                {
-                    // Reset walking bool parameter if it exists
-                    if (animator.parameters != null)
-                    {
-                        foreach (var param in animator.parameters)
-                        {
-                            if (param.name == "IsWalking" && param.type == AnimatorControllerParameterType.Bool)
-                            {
-                                animator.SetBool("IsWalking", false);
-                                break;
-                            }
-                        }
-                    }
-                }
-                // Use CombatUnit's animation trigger system
-                combatUnit.TriggerAnimation("idleYoung");
+                // Set walking state to false - CombatUnit.isMoving property will automatically update IsWalking animator parameter
+                // This will also trigger UpdateIdleAnimation() which handles idle state properly
                 combatUnit.isMoving = false;
             }
         }
@@ -2936,5 +3649,45 @@ public class SimpleMover : MonoBehaviour
             Debug.Log($"[SimpleMover-{gameObject.name}] {message}");
         }
     }
+}
+
+/// <summary>
+/// Result of a completed battle (from BattleManager)
+/// </summary>
+[System.Serializable]
+public class BattleResult
+{
+    public Civilization winner;
+    public Civilization loser;
+    public List<CombatUnit> survivingUnits;
+    public int casualties;
+    public int experienceGained;
+    public Dictionary<ResourceData, int> loot;
+    public float battleDuration;
+}
+
+/// <summary>
+/// Formation types for unit positioning (from BattleManager)
+/// </summary>
+public enum FormationType
+{
+    Line,       // Standard line formation
+    Square,     // Defensive square formation
+    Wedge,      // Offensive wedge formation
+    Column,     // Fast movement column
+    Skirmish    // Loose skirmish formation
+}
+
+/// <summary>
+/// Data for different formation types (from BattleManager)
+/// </summary>
+[System.Serializable]
+public class FormationData
+{
+    public FormationType type;
+    public string name;
+    public float spacing;
+    public int maxUnitsPerRow;
+    public string description;
 }
 

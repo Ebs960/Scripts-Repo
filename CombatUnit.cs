@@ -180,8 +180,6 @@ public class CombatUnit : MonoBehaviour
     PlanetGenerator planet;
     Animator animator;
 
-    // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
-    private Transform _weaponGrip;
 
     [Header("Projectiles")]
     [Tooltip("If true, projectiles from weapons will be fired via an animation event calling FireQueuedProjectile(); if false they fire immediately during Attack.")]
@@ -424,7 +422,11 @@ public class CombatUnit : MonoBehaviour
         // Ensure animator is not null before trying to set a trigger
         if (animator != null) 
         {
-            animator.SetTrigger("idleYoung");
+            // Don't set idle trigger here - let UpdateIdleAnimation() handle it
+            // This prevents conflicts with walking animations
+            // Initialize as not moving (idle state)
+            _isMoving = false;
+            UpdateIdleAnimation();
         }
         else
         {
@@ -1391,7 +1393,12 @@ public class CombatUnit : MonoBehaviour
         }
         if (animator != null)
         {
-            animator.SetTrigger("idleExperienced");
+            // Update idle animation (which will use bool if available, or trigger as fallback)
+            // Don't trigger if unit is moving
+            if (!_isMoving)
+            {
+                UpdateIdleAnimation();
+            }
         }
         if (level - 1 < data.abilitiesByLevel.Length && data.abilitiesByLevel[level - 1] != null)
         {
@@ -1536,13 +1543,65 @@ public class CombatUnit : MonoBehaviour
 
     private void UpdateIdleAnimation()
     {
+        // Only update idle animation if unit is not moving
+        if (_isMoving) return;
+        
+        if (animator == null) return;
+        
+        // Check if IsIdle bool parameter exists (preferred)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
+        {
+            animator.SetBool(isIdleHash, true);
+            return;
+        }
+        
+        // Fallback to trigger-based idle (legacy)
         string trigger = level == 1 ? "idleYoung" : "idleExperienced";
-        animator.SetTrigger(trigger);
+        int triggerHash = level == 1 ? idleYoungHash : idleExperiencedHash;
+        if (HasParameter(animator, triggerHash))
+        {
+            animator.SetTrigger(trigger);
+        }
     }
     
     public int currentTileIndex;
     public float moveSpeed = 2f;
-    public bool isMoving { get; set; }
+    
+    // Animation parameter hashes for efficiency (like WorkerUnit)
+    private static readonly int isWalkingHash = Animator.StringToHash("IsWalking");
+    private static readonly int isIdleHash = Animator.StringToHash("IsIdle");
+    private static readonly int idleYoungHash = Animator.StringToHash("idleYoung");
+    private static readonly int idleExperiencedHash = Animator.StringToHash("idleExperienced");
+    
+    // Centralized animation state tracking
+    private bool _isMoving = false;
+    private bool _isInBattle = false;
+    
+    /// <summary>
+    /// Is this unit currently moving? Automatically syncs with animator IsWalking parameter
+    /// </summary>
+    public bool isMoving 
+    { 
+        get => _isMoving;
+        set 
+        {
+            if (_isMoving != value)
+            {
+                _isMoving = value;
+                UpdateWalkingAnimation();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Is this unit in a battle? Battle movement overrides world map movement
+    /// </summary>
+    public bool IsInBattle 
+    { 
+        get => _isInBattle;
+        set => _isInBattle = value;
+    }
 
     // Event fired when multi-tile move finishes
     public event System.Action OnMovementComplete;
@@ -1945,9 +2004,6 @@ public class CombatUnit : MonoBehaviour
             return;
         }
 
-        // Clear cached grips before replacing visuals
-        _weaponGrip = null;
-
     // Remove any existing equipment visual objects
     foreach (var item in equippedItemObjects.Values)
         {
@@ -2154,9 +2210,6 @@ public class CombatUnit : MonoBehaviour
             holder.localRotation = holderLocalBefore;
             holder.localPosition = holderLocalPosBefore;
         }
-
-        if (type == EquipmentType.Weapon)
-            _weaponGrip = null;
 
         equippedItemObjects[type] = equipObj;
     }
@@ -2449,15 +2502,84 @@ public class CombatUnit : MonoBehaviour
     }
     
     /// <summary>
+    /// Centralized method to update walking animation state
+    /// Syncs isMoving property with IsWalking animator parameter
+    /// </summary>
+    private void UpdateWalkingAnimation()
+    {
+        if (animator == null) return;
+        
+        // Check if animator controller is assigned
+        if (animator.runtimeAnimatorController == null) return;
+        
+        // Check if IsWalking parameter exists
+        bool hasIsWalking = HasParameter(animator, isWalkingHash);
+        if (!hasIsWalking) return; // Parameter doesn't exist, can't update
+        
+        // Set IsWalking bool parameter based on isMoving state
+        animator.SetBool(isWalkingHash, _isMoving);
+        
+        // If not moving, also set IsIdle if parameter exists
+        if (!_isMoving)
+        {
+            bool hasIsIdle = HasParameter(animator, isIdleHash);
+            if (hasIsIdle)
+            {
+                animator.SetBool(isIdleHash, true);
+            }
+        }
+        else
+        {
+            // If moving, clear IsIdle if parameter exists
+            bool hasIsIdle = HasParameter(animator, isIdleHash);
+            if (hasIsIdle)
+            {
+                animator.SetBool(isIdleHash, false);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Check if animator has a specific parameter by hash
+    /// </summary>
+    private bool HasParameter(Animator anim, int paramHash)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null) return false;
+        
+        foreach (var param in anim.parameters)
+        {
+            if (param.nameHash == paramHash) return true;
+        }
+        return false;
+    }
+    
+    /// <summary>
     /// Public method to trigger animations from external classes
+    /// Note: Triggers should not be used for idle/walking states - use isMoving property instead
     /// </summary>
     public void TriggerAnimation(string animationName)
     {
         if (animator != null)
         {
+            // Don't allow idle triggers to override walking state
+            if ((animationName == "idleYoung" || animationName == "idleExperienced") && _isMoving)
+            {
+                // Unit is moving, don't trigger idle animation
+                return;
+            }
+            
             animator.SetTrigger(animationName);
             OnAnimationTrigger?.Invoke(animationName);
         }
+    }
+    
+    /// <summary>
+    /// Set walking state explicitly (for battle movement)
+    /// This overrides world map movement
+    /// </summary>
+    public void SetWalkingState(bool walking)
+    {
+        isMoving = walking; // This will automatically update animator via property setter
     }
     
     /// <summary>
@@ -2656,6 +2778,9 @@ public class CombatUnit : MonoBehaviour
         isAttacker = isAttackerSide;
         battleState = BattleUnitState.Idle;
         currentTarget = null;
+        
+        // Mark unit as in battle (prevents world map movement from interfering)
+        IsInBattle = true;
         
         // Reset movement and attack points for battle
         currentMovePoints = MaxMovePoints;
@@ -2900,7 +3025,7 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     private void StartRealTimeBattle(CombatUnit target)
     {
-        if (BattleManager.Instance == null)
+        if (BattleTestSimple.Instance == null)
         {
             Debug.LogWarning("[CombatUnit] BattleManager not found, falling back to normal combat");
             return;
@@ -2938,7 +3063,7 @@ public class CombatUnit : MonoBehaviour
         }
         
         // Start the battle
-        BattleManager.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
+            BattleTestSimple.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
     }
 
     /// <summary>

@@ -29,19 +29,42 @@ public class EnhancedTargetSelection : MonoBehaviour
     [Tooltip("How much past experience influences current decisions")]
     public float memoryDecay = 0.95f;
     
-    private BattleAI ai;
+    // BattleAI removed - this script is now optional/legacy
+    // Will only work if BattleAI is present, otherwise does nothing
+    // Using object type to avoid compilation errors when BattleAI doesn't exist
+    private object ai; // Was BattleAI, now object for compatibility
     private CombatUnit unit;
     private Dictionary<string, float> learnedPreferences = new Dictionary<string, float>();
     private Dictionary<string, float> targetTypeScores = new Dictionary<string, float>();
     
     void Start()
     {
-        ai = GetComponent<BattleAI>();
+        // Try to get BattleAI (optional - may not exist with formation-based AI)
+        // Using reflection to avoid compilation errors when BattleAI type doesn't exist
+        System.Type battleAIType = System.Type.GetType("BattleAI");
+        if (battleAIType != null)
+        {
+            var component = GetComponent(battleAIType);
+            ai = component;
+        }
+        else
+        {
+            ai = null;
+        }
+        
         unit = GetComponent<CombatUnit>();
         
-        if (ai == null || unit == null)
+        if (unit == null)
         {
-            Debug.LogError("[EnhancedTargetSelection] Missing BattleAI or CombatUnit component!");
+            Debug.LogWarning("[EnhancedTargetSelection] Missing CombatUnit component! Disabling.");
+            enabled = false;
+            return;
+        }
+        
+        // BattleAI is optional now - script will do nothing without it
+        if (ai == null)
+        {
+            Debug.LogWarning("[EnhancedTargetSelection] BattleAI not found - this script requires individual unit AI. Disabling.");
             enabled = false;
             return;
         }
@@ -71,6 +94,9 @@ public class EnhancedTargetSelection : MonoBehaviour
     /// </summary>
     public CombatUnit SelectBestTarget(List<CombatUnit> availableTargets)
     {
+        // Return null if AI not available (script is disabled)
+        if (ai == null || unit == null) return null;
+        
         if (availableTargets == null || availableTargets.Count == 0)
             return null;
         
@@ -226,7 +252,11 @@ public class EnhancedTargetSelection : MonoBehaviour
     /// </summary>
     private float CalculateFormationScore(CombatUnit target)
     {
-        Vector3 formationCenter = ai.GetFormationCenter();
+        // Return neutral score if AI not available
+        if (ai == null) return 0.5f;
+        
+        // Use reflection to call method on ai (was BattleAI)
+        Vector3 formationCenter = CallMethod<Vector3>(ai, "GetFormationCenter");
         float distanceFromFormation = Vector3.Distance(target.transform.position, formationCenter);
         
         // Targets closer to formation center are better
@@ -325,7 +355,34 @@ public class EnhancedTargetSelection : MonoBehaviour
     /// </summary>
     public void ResetLearning()
     {
+        learnedPreferences.Clear();
+        targetTypeScores.Clear();
         InitializeLearning();
         Debug.Log($"[EnhancedTargetSelection] Reset learning system for {unit.data.unitName}");
+    }
+    
+    /// <summary>
+    /// Helper method to call methods on ai using reflection (since BattleAI type may not exist)
+    /// </summary>
+    private T CallMethod<T>(object obj, string methodName, params object[] parameters)
+    {
+        if (obj == null) return default(T);
+        
+        try
+        {
+            System.Type type = obj.GetType();
+            var method = type.GetMethod(methodName);
+            if (method != null)
+            {
+                var result = method.Invoke(obj, parameters);
+                return (T)result;
+            }
+        }
+        catch (System.Exception)
+        {
+            // Method not found or type mismatch - return default
+        }
+        
+        return default(T);
     }
 }

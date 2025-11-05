@@ -20,18 +20,41 @@ public class TacticalScripts : MonoBehaviour
     [Range(0f, 1f)]
     public float aggressiveScriptThreshold = 0.5f;
     
-    private BattleAI ai;
+    // BattleAI removed - this script is now optional/legacy
+    // Will only work if BattleAI is present, otherwise does nothing
+    // Using object type to avoid compilation errors when BattleAI doesn't exist
+    private object ai; // Was BattleAI, now object for compatibility
     private CombatUnit unit;
     private List<TacticalScript> activeScripts = new List<TacticalScript>();
     
     void Start()
     {
-        ai = GetComponent<BattleAI>();
+        // Try to get BattleAI (optional - may not exist with formation-based AI)
+        // Using reflection to avoid compilation errors when BattleAI type doesn't exist
+        System.Type battleAIType = System.Type.GetType("BattleAI");
+        if (battleAIType != null)
+        {
+            var component = GetComponent(battleAIType);
+            ai = component;
+        }
+        else
+        {
+            ai = null;
+        }
+        
         unit = GetComponent<CombatUnit>();
         
-        if (ai == null || unit == null)
+        if (unit == null)
         {
-            Debug.LogError("[TacticalScripts] Missing BattleAI or CombatUnit component!");
+            Debug.LogWarning("[TacticalScripts] Missing CombatUnit component! Disabling.");
+            enabled = false;
+            return;
+        }
+        
+        // BattleAI is optional now - script will do nothing without it
+        if (ai == null)
+        {
+            Debug.LogWarning("[TacticalScripts] BattleAI not found - this script requires individual unit AI. Disabling.");
             enabled = false;
             return;
         }
@@ -41,6 +64,8 @@ public class TacticalScripts : MonoBehaviour
     
     void Update()
     {
+        // Only evaluate if AI is available (script may be disabled if BattleAI not present)
+        if (ai == null || unit == null) return;
         EvaluateScripts();
     }
     
@@ -99,12 +124,12 @@ public class TacticalScripts : MonoBehaviour
 public abstract class TacticalScript
 {
     protected CombatUnit unit;
-    protected BattleAI ai;
+    protected object ai; // Was BattleAI, now object for compatibility
     protected bool isActive = false;
     protected float lastActivationTime = 0f;
     protected float cooldownTime = 5f; // Minimum time between activations
     
-    public TacticalScript(CombatUnit unit, BattleAI ai)
+    public TacticalScript(CombatUnit unit, object ai) // Was BattleAI, now object for compatibility
     {
         this.unit = unit;
         this.ai = ai;
@@ -123,6 +148,53 @@ public abstract class TacticalScript
     {
         return Time.time - lastActivationTime >= cooldownTime;
     }
+    
+    /// <summary>
+    /// Helper method to call methods on ai using reflection (since BattleAI type may not exist)
+    /// </summary>
+    protected T CallMethod<T>(object obj, string methodName, params object[] parameters)
+    {
+        if (obj == null) return default(T);
+        
+        try
+        {
+            System.Type type = obj.GetType();
+            var method = type.GetMethod(methodName);
+            if (method != null)
+            {
+                var result = method.Invoke(obj, parameters);
+                return (T)result;
+            }
+        }
+        catch (System.Exception)
+        {
+            // Method not found or type mismatch - return default
+        }
+        
+        return default(T);
+    }
+    
+    /// <summary>
+    /// Helper method to call void methods on ai using reflection
+    /// </summary>
+    protected void CallMethod(object obj, string methodName, params object[] parameters)
+    {
+        if (obj == null) return;
+        
+        try
+        {
+            System.Type type = obj.GetType();
+            var method = type.GetMethod(methodName);
+            if (method != null)
+            {
+                method.Invoke(obj, parameters);
+            }
+        }
+        catch (System.Exception)
+        {
+            // Method not found or type mismatch - ignore
+        }
+    }
 }
 
 /// <summary>
@@ -130,14 +202,15 @@ public abstract class TacticalScript
 /// </summary>
 public class DefensiveFormationScript : TacticalScript
 {
-    public DefensiveFormationScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public DefensiveFormationScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
         if (!CanActivate()) return false;
         
-        var enemies = ai.GetNearbyEnemies();
-        var allies = ai.GetNearbyAllies();
+        // Use reflection to call methods on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
+        var allies = CallMethod<List<CombatUnit>>(ai, "GetNearbyAllies");
         
         // Activate if outnumbered 2:1 or more
         return enemies.Count >= allies.Count * 2;
@@ -146,7 +219,7 @@ public class DefensiveFormationScript : TacticalScript
     public override void Execute()
     {
         // Move to formation center and hold position
-        Vector3 formationCenter = ai.GetFormationCenter();
+        Vector3 formationCenter = CallMethod<Vector3>(ai, "GetFormationCenter");
         unit.MoveToPosition(formationCenter);
         unit.SetBattleState(BattleUnitState.Defending);
         
@@ -167,13 +240,14 @@ public class DefensiveFormationScript : TacticalScript
 /// </summary>
 public class FlankingManeuverScript : TacticalScript
 {
-    public FlankingManeuverScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public FlankingManeuverScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
         if (!CanActivate()) return false;
         
-        var target = ai.GetCurrentTarget();
+        // Use reflection to call method on ai (was BattleAI)
+        var target = CallMethod<CombatUnit>(ai, "GetCurrentTarget");
         if (target == null) return false;
         
         // Check if we can get behind the enemy
@@ -186,7 +260,8 @@ public class FlankingManeuverScript : TacticalScript
     
     public override void Execute()
     {
-        var target = ai.GetCurrentTarget();
+        // Use reflection to call method on ai (was BattleAI)
+        var target = CallMethod<CombatUnit>(ai, "GetCurrentTarget");
         if (target == null) return;
         
         // Calculate flanking position
@@ -214,14 +289,15 @@ public class FlankingManeuverScript : TacticalScript
 /// </summary>
 public class RetreatToChokepointScript : TacticalScript
 {
-    public RetreatToChokepointScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public RetreatToChokepointScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
         if (!CanActivate()) return false;
         
-        var enemies = ai.GetNearbyEnemies();
-        var allies = ai.GetNearbyAllies();
+        // Use reflection to call methods on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
+        var allies = CallMethod<List<CombatUnit>>(ai, "GetNearbyAllies");
         
         // Activate if outnumbered 3:1 or more
         return enemies.Count >= allies.Count * 3;
@@ -231,7 +307,8 @@ public class RetreatToChokepointScript : TacticalScript
     {
         // Find nearest chokepoint (simplified - just move away from enemies)
         Vector3 retreatDirection = Vector3.zero;
-        var enemies = ai.GetNearbyEnemies();
+        // Use reflection to call method on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
         
         foreach (var enemy in enemies)
         {
@@ -260,13 +337,14 @@ public class RetreatToChokepointScript : TacticalScript
 /// </summary>
 public class ArcherPriorityScript : TacticalScript
 {
-    public ArcherPriorityScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public ArcherPriorityScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
         if (!CanActivate()) return false;
         
-        var enemies = ai.GetNearbyEnemies();
+        // Use reflection to call method on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
         
         // Check if any enemies are archers
         foreach (var enemy in enemies)
@@ -283,7 +361,8 @@ public class ArcherPriorityScript : TacticalScript
     
     public override void Execute()
     {
-        var enemies = ai.GetNearbyEnemies();
+        // Use reflection to call method on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
         CombatUnit archerTarget = null;
         
         // Find nearest archer
@@ -305,7 +384,7 @@ public class ArcherPriorityScript : TacticalScript
         if (archerTarget != null)
         {
             // Set archer as priority target
-            ai.SetCurrentTarget(archerTarget);
+            CallMethod(ai, "SetCurrentTarget", archerTarget);
             unit.MoveToPosition(archerTarget.transform.position);
             unit.SetBattleState(BattleUnitState.Attacking);
             
@@ -327,7 +406,7 @@ public class ArcherPriorityScript : TacticalScript
 /// </summary>
 public class CavalryChargeScript : TacticalScript
 {
-    public CavalryChargeScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public CavalryChargeScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
@@ -341,7 +420,8 @@ public class CavalryChargeScript : TacticalScript
     
     public override void Execute()
     {
-        var target = ai.GetCurrentTarget();
+        // Use reflection to call method on ai (was BattleAI)
+        var target = CallMethod<CombatUnit>(ai, "GetCurrentTarget");
         if (target == null) return;
         
         // Charge directly at target
@@ -365,7 +445,7 @@ public class CavalryChargeScript : TacticalScript
 /// </summary>
 public class ShieldWallScript : TacticalScript
 {
-    public ShieldWallScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public ShieldWallScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
@@ -378,7 +458,8 @@ public class ShieldWallScript : TacticalScript
     public override void Execute()
     {
         // Hold position and face nearest enemy
-        var enemies = ai.GetNearbyEnemies();
+        // Use reflection to call method on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
         if (enemies.Count > 0)
         {
             CombatUnit nearestEnemy = null;
@@ -421,7 +502,7 @@ public class ShieldWallScript : TacticalScript
 /// </summary>
 public class HitAndRunScript : TacticalScript
 {
-    public HitAndRunScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public HitAndRunScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
@@ -433,7 +514,8 @@ public class HitAndRunScript : TacticalScript
     
     public override void Execute()
     {
-        var target = ai.GetCurrentTarget();
+        // Use reflection to call method on ai (was BattleAI)
+        var target = CallMethod<CombatUnit>(ai, "GetCurrentTarget");
         if (target == null) return;
         
         float distanceToTarget = Vector3.Distance(unit.transform.position, target.transform.position);
@@ -471,14 +553,15 @@ public class HitAndRunScript : TacticalScript
 /// </summary>
 public class OverwhelmingForceScript : TacticalScript
 {
-    public OverwhelmingForceScript(CombatUnit unit, BattleAI ai) : base(unit, ai) { }
+    public OverwhelmingForceScript(CombatUnit unit, object ai) : base(unit, ai) { }
     
     public override bool ShouldActivate()
     {
         if (!CanActivate()) return false;
         
-        var enemies = ai.GetNearbyEnemies();
-        var allies = ai.GetNearbyAllies();
+        // Use reflection to call methods on ai (was BattleAI)
+        var enemies = CallMethod<List<CombatUnit>>(ai, "GetNearbyEnemies");
+        var allies = CallMethod<List<CombatUnit>>(ai, "GetNearbyAllies");
         
         // Activate if we outnumber enemies 2:1 or more
         return allies.Count >= enemies.Count * 2;
@@ -489,7 +572,8 @@ public class OverwhelmingForceScript : TacticalScript
         // Be more aggressive
         unit.SetBattleState(BattleUnitState.Attacking);
         
-        var target = ai.GetCurrentTarget();
+        // Use reflection to call method on ai (was BattleAI)
+        var target = CallMethod<CombatUnit>(ai, "GetCurrentTarget");
         if (target != null)
         {
             unit.MoveToPosition(target.transform.position);

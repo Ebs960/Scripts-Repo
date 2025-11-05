@@ -2435,9 +2435,9 @@ public class GameManager : MonoBehaviour
         List<CombatUnit> defenderUnits = SpawnTestUnits(defenderCiv, testUnitData, 3, false);
 
         // Start battle
-        if (BattleManager.Instance != null)
+        if (BattleTestSimple.Instance != null)
         {
-            BattleManager.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
+            BattleTestSimple.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
         }
         else
         {

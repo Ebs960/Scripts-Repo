@@ -110,8 +110,6 @@ public class WorkerUnit : MonoBehaviour
     // Track instantiated equipment objects by slot
     private readonly System.Collections.Generic.Dictionary<EquipmentType, GameObject> equippedItemObjects = new System.Collections.Generic.Dictionary<EquipmentType, GameObject>();
 
-    // Cached weapon grip from currently equipped weapon visual (found by name on instantiated equipment)
-    private Transform _weaponGrip;
     // Projectile / queued projectile support (parity with CombatUnit)
     [Header("Projectiles")]
     [Tooltip("If true, projectiles from weapons will be fired via an animation event calling FireQueuedProjectile(); if false they fire immediately during Attack.")]
@@ -136,9 +134,6 @@ public class WorkerUnit : MonoBehaviour
 
     private void UpdateEquipmentVisuals()
     {
-        // Clear cached grip before replacing visuals
-        _weaponGrip = null;
-
         // Remove any existing equipment visual objects
         foreach (var item in equippedItemObjects.Values)
         {
@@ -279,9 +274,6 @@ public class WorkerUnit : MonoBehaviour
             holder.localRotation = holderLocalBefore;
             holder.localPosition = holderLocalPosBefore;
         }
-
-        if (type == EquipmentType.Weapon)
-            _weaponGrip = null;
 
         equippedItemObjects[type] = equipObj;
     }

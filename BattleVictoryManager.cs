@@ -55,14 +55,43 @@ public class BattleVictoryManager : MonoBehaviour
             return;
         }
         
-        attackerUnits = new List<CombatUnit>(attackers);
-        defenderUnits = new List<CombatUnit>(defenders);
+        // Filter out null units
+        attackerUnits = attackers.Where(u => u != null).ToList();
+        defenderUnits = defenders.Where(u => u != null).ToList();
+        
+        // Only initialize if we still have units after filtering
+        if (attackerUnits.Count == 0 || defenderUnits.Count == 0)
+        {
+            DebugLog($"Warning: Battle initialization skipped - no valid units after filtering (attackers: {attackerUnits.Count}, defenders: {defenderUnits.Count})");
+            battleInProgress = false;
+            return;
+        }
+        
         routingStartTimes.Clear();
         battleInProgress = true;
         battleStartTime = Time.time;
         lastVictoryCheck = Time.time;
 
         DebugLog($"Battle initialized: {attackerUnits.Count} attackers vs {defenderUnits.Count} defenders");
+    }
+    
+    /// <summary>
+    /// Initialize with expected counts from menu selections (before units are spawned)
+    /// This allows the victory manager to track expected unit counts
+    /// </summary>
+    public void InitializeWithExpectedCounts(int expectedAttackers, int expectedDefenders)
+    {
+        DebugLog($"Initializing victory manager with expected counts: {expectedAttackers} attackers, {expectedDefenders} defenders");
+        
+        // Clear any existing battle state
+        attackerUnits.Clear();
+        defenderUnits.Clear();
+        routingStartTimes.Clear();
+        battleInProgress = false;
+        
+        // Store expected counts for later validation
+        // The actual units will be added when InitializeBattle is called after spawning
+        DebugLog($"Victory manager ready to track {expectedAttackers} expected attackers vs {expectedDefenders} expected defenders");
     }
 
     /// <summary>

@@ -218,10 +218,19 @@ public class UnitMovementController : MonoBehaviour
         int previousTileIndex = currentTileIndex;
         
         // Set unit to moving state
+        // Check if unit is in battle - if so, don't override battle movement
         if (combatUnit != null)
-            combatUnit.isMoving = true;
+        {
+            // Only set movement if not in battle (battle movement takes precedence)
+            if (!combatUnit.IsInBattle)
+            {
+                combatUnit.isMoving = true; // This will automatically update IsWalking animator parameter
+            }
+        }
         else
+        {
             workerUnit.UpdateWalkingState(true);
+        }
         
         // Move along each tile in path
         for (int i = 0; i < path.Count; i++)
@@ -334,10 +343,19 @@ public class UnitMovementController : MonoBehaviour
         }
         
         // Set unit back to idle state
+        // Check if unit is in battle - if so, don't override battle movement
         if (combatUnit != null)
-            combatUnit.isMoving = false;
+        {
+            // Only set movement if not in battle (battle movement takes precedence)
+            if (!combatUnit.IsInBattle)
+            {
+                combatUnit.isMoving = false; // This will automatically update IsWalking animator parameter
+            }
+        }
         else
+        {
             workerUnit.UpdateWalkingState(false);
+        }
         
         // Fire movement completed event
         GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[path.Count - 1], path.Count);

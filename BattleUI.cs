@@ -16,8 +16,7 @@ public class BattleUI : MonoBehaviour
     [Header("Battle Info")]
     [SerializeField] private Slider battleProgressSlider;
 
-    private BattleManager battleManager;
-    private BattleTestSimple battleTestSimple; // For BattleTestSimple integration
+    private BattleTestSimple battleTestSimple; // Main battle system (merged from BattleManager)
     private List<CombatUnit> selectedUnits = new List<CombatUnit>();
     private bool isPaused = false;
     
@@ -44,22 +43,11 @@ public class BattleUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Initialize the battle UI
+    /// Initialize the battle UI (for BattleManager compatibility - now uses BattleTestSimple)
     /// </summary>
-    public void Initialize(BattleManager manager)
+    public void Initialize(BattleTestSimple manager)
     {
-        battleManager = manager;
-        
-        // Ensure UI panel exists and activate it (battle is starting)
-        SetupUI();
-        
-        // Activate the panel when battle starts
-        if (battleHUDPanel != null)
-        {
-            battleHUDPanel.SetActive(true);
-        }
-        
-        CreateFormationButtons();
+        InitializeWithBattleTest(manager);
     }
 
     /// <summary>
@@ -83,10 +71,28 @@ public class BattleUI : MonoBehaviour
 
     private void SetupUI()
     {
-        // Create battle HUD panel if it doesn't exist
+        // Use manually assigned panel if available, otherwise auto-generate
         if (battleHUDPanel == null)
         {
             CreateBattleHUDPanel();
+        }
+        else
+        {
+            // Ensure assigned panel has necessary components
+            if (formationButtonLayout == null)
+            {
+                formationButtonLayout = battleHUDPanel.GetComponent<HorizontalLayoutGroup>();
+                if (formationButtonLayout == null)
+                {
+                    // Create layout group if none exists
+                    formationButtonLayout = battleHUDPanel.AddComponent<HorizontalLayoutGroup>();
+                    formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
+                    formationButtonLayout.childForceExpandWidth = false;
+                    formationButtonLayout.childControlWidth = true;
+                    formationButtonLayout.spacing = 8f;
+                    formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
+                }
+            }
         }
     }
 
@@ -96,13 +102,22 @@ public class BattleUI : MonoBehaviour
         battleHUDPanel = new GameObject("BattleHUDPanel");
         battleHUDPanel.transform.SetParent(transform, false);
         
+        // Put UI on UI layer so it doesn't block unit raycasts
+        int uiLayer = LayerMask.NameToLayer("UI");
+        if (uiLayer != -1)
+        {
+            battleHUDPanel.layer = uiLayer;
+            gameObject.layer = uiLayer;
+        }
+        
         var canvas = GetComponent<Canvas>();
         if (canvas == null)
         {
             canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             gameObject.AddComponent<CanvasScaler>();
-            gameObject.AddComponent<GraphicRaycaster>();
+            var raycaster = gameObject.AddComponent<GraphicRaycaster>();
+            // Raycaster will still work for UI interaction, but won't block physics raycasts
         }
         
         var panelRect = battleHUDPanel.AddComponent<RectTransform>();
@@ -135,8 +150,8 @@ public class BattleUI : MonoBehaviour
             return;
         }
         
-        // Otherwise, create buttons from BattleManager units (grouped by formation if possible)
-        if (battleManager != null)
+        // Otherwise, create unit-based buttons if no formations available
+        if (battleTestSimple != null)
         {
             // For now, create unit-based buttons if no formations available
             CreateUnitButtons();
@@ -161,10 +176,10 @@ public class BattleUI : MonoBehaviour
     private void CreateUnitButtons()
     {
         // Fallback: create buttons for individual units if no formations
-        if (battleManager != null)
+        if (battleTestSimple != null)
         {
-            var attackerUnits = battleManager.GetUnits(battleManager.attacker);
-            var defenderUnits = battleManager.GetUnits(battleManager.defender);
+            var attackerUnits = battleTestSimple.GetUnits(battleTestSimple.attacker);
+            var defenderUnits = battleTestSimple.GetUnits(battleTestSimple.defender);
             
             // Group units into virtual formations or create per-unit buttons
             // For simplicity, create one button per unit for now
@@ -192,6 +207,13 @@ public class BattleUI : MonoBehaviour
         GameObject buttonGO = new GameObject($"{formation.formationName}_Button");
         buttonGO.transform.SetParent(formationButtonLayout.transform, false);
         
+        // Put button on UI layer
+        int uiLayer = LayerMask.NameToLayer("UI");
+        if (uiLayer != -1)
+        {
+            buttonGO.layer = uiLayer;
+        }
+        
         var buttonRect = buttonGO.AddComponent<RectTransform>();
         buttonRect.sizeDelta = new Vector2(240, 44);
         
@@ -201,10 +223,18 @@ public class BattleUI : MonoBehaviour
         
         var textGO = new GameObject("Text");
         textGO.transform.SetParent(buttonGO.transform, false);
+        
+        // Put text on UI layer
+        if (uiLayer != -1)
+        {
+            textGO.layer = uiLayer;
+        }
+        
         var text = textGO.AddComponent<TextMeshProUGUI>();
         text.alignment = TextAlignmentOptions.Midline;
         text.fontSize = 16f;
         text.color = Color.white;
+        text.raycastTarget = true; // Allow button clicks but physics raycasts will ignore UI layer
         
         var textRect = text.GetComponent<RectTransform>();
         textRect.anchorMin = Vector2.zero;
@@ -311,11 +341,19 @@ public class BattleUI : MonoBehaviour
 
     private void SelectUnit(CombatUnit unit)
     {
-        if (battleManager == null) return;
+        if (battleTestSimple == null) return;
         
+        // Find the formation this unit belongs to and select that instead
+        // (BattleTestSimple uses formation-based selection, not individual units)
+        var formation = battleTestSimple.GetFormationFromUnit(unit);
+        if (formation != null)
+        {
+            battleTestSimple.SelectFormation(formation);
+        }
+        
+        // Track unit for UI purposes
         selectedUnits.Clear();
         selectedUnits.Add(unit);
-        battleManager.SelectUnits(selectedUnits);
     }
 
     private void ClearFormationButtons()
