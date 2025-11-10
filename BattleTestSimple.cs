@@ -56,38 +56,8 @@ public class BattleTestSimple : MonoBehaviour
     public TextMeshProUGUI attackerLabel;
     public TextMeshProUGUI defenderLabel;
     
-    [Header("Battle HUD")]
-    [Tooltip("Manually assigned battle HUD panel (with HorizontalLayoutGroup for formation buttons). If null, will auto-generate.")]
-    public GameObject battleHUDPanel;
-    [Tooltip("Layout group for formation buttons inside the battle HUD panel. If null, will try to find or create one.")]
-    public HorizontalLayoutGroup formationButtonLayout;
-    
-    [Header("Battle HUD Button Settings")]
-    [Tooltip("Button prefab to use for formation buttons. If null, will auto-generate buttons with the settings below.")]
-    public GameObject formationButtonPrefab;
-    [Tooltip("Button size (width, height) when auto-generating buttons")]
-    public Vector2 buttonSize = new Vector2(240, 44);
-    [Tooltip("Button background color when auto-generating buttons")]
-    public Color buttonColor = new Color(0, 0, 0, 0.5f);
-    [Tooltip("Button text color when auto-generating buttons")]
-    public Color buttonTextColor = Color.white;
-    [Tooltip("Button text font size when auto-generating buttons")]
-    public float buttonFontSize = 20f;
-    [Tooltip("Text format for formation buttons.\nPlaceholders: {0}=formationName, {1}=aliveCount, {2}=morale, {3}=totalHealth, {4}=currentHealth, {5}=totalAttack\nExample: \"{0} - {1}/{6} alive - {2}% morale - {3} HP\"")]
-    [TextArea(3, 5)]
-    public string buttonTextFormat = "{0}  |  {1}  |  Morale {2}%";
-    
-    [Header("Battle HUD Layout Settings")]
-    [Tooltip("Button spacing in the layout group (only used if creating layout group)")]
-    public float buttonSpacing = 8f;
-    [Tooltip("Layout padding left (only used if creating layout group)")]
-    public int layoutPaddingLeft = 10;
-    [Tooltip("Layout padding right (only used if creating layout group)")]
-    public int layoutPaddingRight = 10;
-    [Tooltip("Layout padding top (only used if creating layout group)")]
-    public int layoutPaddingTop = 5;
-    [Tooltip("Layout padding bottom (only used if creating layout group)")]
-    public int layoutPaddingBottom = 5;
+    // Note: Battle HUD is handled exclusively by BattleUI component
+    // All HUD creation and management is done in BattleUI.cs
     
     [Header("Debug")]
     public bool showDebugLogs = true;
@@ -136,6 +106,16 @@ public class BattleTestSimple : MonoBehaviour
     public TMP_Dropdown defenderCivDropdown;
     public TextMeshProUGUI attackerCivLabel;
     public TextMeshProUGUI defenderCivLabel;
+    
+    [Header("Player/AI Control Selection")]
+    public TMP_Dropdown attackerControlDropdown;
+    public TMP_Dropdown defenderControlDropdown;
+    public TextMeshProUGUI attackerControlLabel;
+    public TextMeshProUGUI defenderControlLabel;
+    
+    // Control types: 0 = Player, 1 = AI
+    private int attackerControlType = 0; // 0 = Player, 1 = AI
+    private int defenderControlType = 1; // 0 = Player, 1 = AI
     
     [Header("Selection System")]
     public Material selectionBoxMaterial;
@@ -216,8 +196,9 @@ public class BattleTestSimple : MonoBehaviour
         
         SetupUnitDropdowns();
         SetupCivilizationDropdowns();
+        SetupControlDropdowns();
         
-        UpdateStatus("Select units, civilizations, and click Start Battle!");
+        UpdateStatus("Select units, civilizations, control types, and click Start Battle!");
     }
     
     void Update()
@@ -1120,6 +1101,51 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
     
+    void SetupControlDropdowns()
+    {
+        // Setup attacker control dropdown
+        if (attackerControlDropdown != null)
+        {
+            attackerControlDropdown.ClearOptions();
+            attackerControlDropdown.AddOptions(new List<string> { "Player", "AI" });
+            attackerControlDropdown.value = attackerControlType;
+            attackerControlDropdown.onValueChanged.AddListener(OnAttackerControlChanged);
+            
+            if (attackerControlLabel != null)
+            {
+                attackerControlLabel.text = "Attacker Control:";
+            }
+        }
+        
+        // Setup defender control dropdown
+        if (defenderControlDropdown != null)
+        {
+            defenderControlDropdown.ClearOptions();
+            defenderControlDropdown.AddOptions(new List<string> { "Player", "AI" });
+            defenderControlDropdown.value = defenderControlType;
+            defenderControlDropdown.onValueChanged.AddListener(OnDefenderControlChanged);
+            
+            if (defenderControlLabel != null)
+            {
+                defenderControlLabel.text = "Defender Control:";
+            }
+        }
+    }
+    
+    void OnAttackerControlChanged(int index)
+    {
+        attackerControlType = index; // 0 = Player, 1 = AI
+        string controlType = index == 0 ? "Player" : "AI";
+        DebugLog($"Attacker control set to: {controlType}");
+    }
+    
+    void OnDefenderControlChanged(int index)
+    {
+        defenderControlType = index; // 0 = Player, 1 = AI
+        string controlType = index == 0 ? "Player" : "AI";
+        DebugLog($"Defender control set to: {controlType}");
+    }
+    
     public void StartTest()
     {
         Debug.Log("=== BUTTON CLICKED! ===");
@@ -1198,14 +1224,14 @@ public class BattleTestSimple : MonoBehaviour
         List<Vector3> attackerSpawns = mapGenerator != null ? mapGenerator.GetAttackerSpawnPoints() : GetDefaultAttackerSpawns();
         for (int i = 0; i < formationsPerSide && i < attackerSpawns.Count; i++)
         {
-            CreateFormation($"AttackerFormation{i + 1}", attackerSpawns[i], Color.red, true);
+            CreateFormation($"AttackerFormation{i + 1}", attackerSpawns[i], Color.red, true, attackerControlType == 0);
         }
         
         // Create defender formations
         List<Vector3> defenderSpawns = mapGenerator != null ? mapGenerator.GetDefenderSpawnPoints() : GetDefaultDefenderSpawns();
         for (int i = 0; i < formationsPerSide && i < defenderSpawns.Count; i++)
         {
-            CreateFormation($"DefenderFormation{i + 1}", defenderSpawns[i], Color.blue, false);
+            CreateFormation($"DefenderFormation{i + 1}", defenderSpawns[i], Color.blue, false, defenderControlType == 0);
         }
         
         // Initialize victory manager BEFORE spawning based on menu selections
@@ -1412,7 +1438,7 @@ public class BattleTestSimple : MonoBehaviour
         DebugLog("Cleaned up previous test objects and unloaded prefabs");
     }
     
-    void CreateFormation(string formationName, Vector3 position, Color teamColor, bool isAttacker)
+    void CreateFormation(string formationName, Vector3 position, Color teamColor, bool isAttacker, bool isPlayerControlled = true)
     {
         // Create formation GameObject (ground immediately)
         GameObject formationGO = new GameObject(formationName);
@@ -1422,8 +1448,10 @@ public class BattleTestSimple : MonoBehaviour
         FormationUnit formation = formationGO.AddComponent<FormationUnit>();
         formation.formationName = formationName;
         formation.isAttacker = isAttacker;
+        formation.isPlayerControlled = isPlayerControlled;
         formation.teamColor = teamColor;
         formation.formationCenter = position;
+        // Spacing will be determined from CombatUnitData when soldiers are created
         formation.totalHealth = isAttacker ? 90 : 72; // 10 per soldier * 9 soldiers
         formation.totalAttack = isAttacker ? 18 : 9;  // 2 per soldier * 9 soldiers
         formation.currentHealth = formation.totalHealth;
@@ -1444,9 +1472,15 @@ public class BattleTestSimple : MonoBehaviour
     {
         DebugLog($"Creating {soldiersPerFormation} soldiers for formation {formation.formationName}");
         
+        // Get spacing from CombatUnitData (use attacker or defender unit data)
+        CombatUnitData unitData = formation.isAttacker ? selectedAttackerUnit : selectedDefenderUnit;
+        float spacing = unitData != null ? unitData.formationSpacing : 1.5f; // Default to 1.5f if no unit data
+        
+        // Store spacing in formation for later use
+        formation.soldierSpacing = spacing;
+        
         // Calculate formation positions in a 3x3 grid
         int sideLength = Mathf.CeilToInt(Mathf.Sqrt(soldiersPerFormation));
-        float spacing = 3f; // Increased distance between soldiers
         
         for (int i = 0; i < soldiersPerFormation; i++)
         {
@@ -1486,20 +1520,8 @@ public class BattleTestSimple : MonoBehaviour
                         }
                     }
                     
-                    // Trigger idle animation after initialization
-                    var animator = soldier.GetComponent<Animator>();
-                    if (animator != null)
-                    {
-                        // Try to trigger idle animation like CombatUnit does
-                        try
-                        {
-                            animator.SetTrigger("idleYoung");
-                        }
-                        catch (System.Exception e)
-                        {
-                            DebugLog($"Could not trigger idle animation for Soldier{i + 1}: {e.Message}");
-                        }
-                    }
+                    // Don't trigger idle animation here - let CombatUnit.Initialize() handle it
+                    // The animator controller will naturally transition to Idle state when IsWalking=false
                     
                     DebugLog($"Successfully created and added soldier {i + 1} to formation {formation.formationName}");
                 }
@@ -1842,111 +1864,6 @@ public class BattleTestSimple : MonoBehaviour
         return soldier;
     }
     
-    void CreateTestUnit(string name, Vector3 position, Color color, bool isAttacker)
-    {
-        DebugLog($"Creating {name} at {position}");
-        
-        var unit = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        unit.name = name;
-        unit.transform.position = position;
-        
-        // Add collider for mouse detection
-        var collider = unit.GetComponent<Collider>();
-        if (collider == null)
-        {
-            collider = unit.AddComponent<CapsuleCollider>();
-        }
-        
-        // Color it
-        var renderer = unit.GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            renderer.material.color = color;
-        }
-        
-        // Add combat stats
-        var combat = unit.AddComponent<UnitCombat>();
-        combat.unitName = name;
-        combat.isAttacker = isAttacker;
-        combat.maxHealth = isAttacker ? 10 : 8;
-        combat.attack = isAttacker ? 2 : 1;
-        combat.currentHealth = combat.maxHealth;
-        
-        // Add simple movement script
-        var mover = unit.AddComponent<SimpleMover>();
-        mover.targetName = isAttacker ? "Defender" : "Attacker";
-        mover.speed = 2f;
-        mover.debugLogs = showDebugLogs;
-        mover.combat = combat; // Link combat to mover
-        
-        DebugLog($"{name} created with {combat.maxHealth} health and {combat.attack} attack");
-    }
-    
-    void CreateRealUnitFormation(string teamName, CombatUnitData unitData, Vector3 centerPosition, Color teamColor, bool isAttacker)
-    {
-        DebugLog($"Creating {teamName} formation with {unitData.unitName}");
-        
-        // Get formation settings from unit data
-        int formationSize = unitData.formationSize;
-        float formationSpacing = unitData.formationSpacing;
-        FormationShape formationShape = unitData.formationShape;
-        
-        // Create formation positions
-        var positions = CalculateFormationPositions(centerPosition, formationSize, formationSpacing, formationShape);
-        
-        // Create units in formation
-        for (int i = 0; i < formationSize && i < positions.Count; i++)
-        {
-            string unitName = $"{teamName}{i + 1}";
-            Vector3 unitPosition = positions[i];
-            
-            GameObject unitGO;
-            
-            // Try to instantiate the actual unit prefab
-            if (unitData.prefab != null)
-            {
-                unitGO = Instantiate(unitData.prefab, unitPosition, Quaternion.identity);
-                unitGO.name = unitName;
-                DebugLog($"Instantiated prefab for {unitName}");
-            }
-            else
-            {
-                // Fallback: create simple unit if no prefab
-                unitGO = new GameObject(unitName);
-                unitGO.transform.position = unitPosition;
-                
-                // Add collider
-                var collider = unitGO.AddComponent<CapsuleCollider>();
-                
-                // Color it
-                var renderer = unitGO.AddComponent<MeshRenderer>();
-                var meshFilter = unitGO.AddComponent<MeshFilter>();
-                meshFilter.mesh = CreateCapsuleMesh();
-                renderer.material = new Material(Shader.Find("Standard"));
-                renderer.material.color = teamColor;
-                
-                DebugLog($"Created fallback unit for {unitName} (no prefab found)");
-            }
-            
-            // Add combat stats based on unit data
-            var combat = unitGO.AddComponent<UnitCombat>();
-            combat.unitName = unitName;
-            combat.isAttacker = isAttacker;
-            combat.maxHealth = unitData.baseHealth;
-            combat.attack = unitData.baseAttack;
-            combat.currentHealth = combat.maxHealth;
-            
-            // Add movement script
-            var mover = unitGO.AddComponent<SimpleMover>();
-            mover.targetName = isAttacker ? "Defender" : "Attacker";
-            mover.speed = 2f;
-            mover.debugLogs = false; // Reduce debug spam
-            mover.combat = combat;
-            
-            DebugLog($"Created {unitName} at {unitPosition} (HP: {combat.maxHealth}, Attack: {combat.attack})");
-        }
-    }
-    
     List<Vector3> CalculateFormationPositions(Vector3 center, int formationSize, float spacing, FormationShape shape)
     {
         var positions = new List<Vector3>();
@@ -1998,15 +1915,6 @@ public class BattleTestSimple : MonoBehaviour
         }
         
         return positions;
-    }
-    
-    Mesh CreateCapsuleMesh()
-    {
-        // Create a simple capsule mesh for units
-        var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        var mesh = capsule.GetComponent<MeshFilter>().mesh;
-        DestroyImmediate(capsule);
-        return mesh;
     }
     
     void UpdateStatus(string message)
@@ -2608,6 +2516,7 @@ public class FormationUnit : MonoBehaviour
     [Header("Formation Settings")]
     public string formationName;
     public bool isAttacker;
+    public bool isPlayerControlled = true; // If false, AI controls this formation
     public Color teamColor;
     public List<GameObject> soldiers = new List<GameObject>();
     public Vector3 formationCenter;
@@ -2615,6 +2524,7 @@ public class FormationUnit : MonoBehaviour
     
     [Header("Movement")]
     public float moveSpeed = 3f;
+    public float soldierSpacing = 3f; // Spacing between soldiers in formation (consistent for creation and movement)
     public bool isMoving = false;
     public Vector3 targetPosition;
     public bool isSelected = false;
@@ -2629,11 +2539,25 @@ public class FormationUnit : MonoBehaviour
     public int routingMoraleThreshold = 15;
     public bool isRouted = false;
     
+    [Header("Experience")]
+    public int experience = 0;
+    public int experienceLevel = 1;
+    private int experienceToNextLevel = 100;
+    
+    [Header("Charge & Flanking")]
+    public float flankingBonusMultiplier = 1.3f; // 30% bonus damage from flank
+    public float rearAttackBonusMultiplier = 1.5f; // 50% bonus damage from rear
+    public bool isCharging = false; // Made public for access from coroutines
+    private float chargeDistanceThreshold = 5f; // Distance to enemy to be considered charging
+    private FormationUnit currentEnemyTarget = null;
+    public bool hasAppliedChargeBonus = false; // Made public for access from coroutines - Track if charge bonus was applied this engagement
+    
     private CombatUnit[] soldierCombatUnits;
     private Renderer[] selectionRenderers;
     
     // Track active combat coroutines to prevent duplicates
     private Coroutine activeCombatCoroutine;
+    private List<Coroutine> activeCoroutines = new List<Coroutine>(); // Track all active coroutines for cleanup
     
     // Badge UI
     private Canvas badgeCanvas;
@@ -2657,6 +2581,22 @@ public class FormationUnit : MonoBehaviour
     
     void OnDestroy()
     {
+        // Stop all active coroutines to prevent errors after destruction
+        if (activeCombatCoroutine != null)
+        {
+            StopCoroutine(activeCombatCoroutine);
+            activeCombatCoroutine = null;
+        }
+        
+        foreach (var coroutine in activeCoroutines)
+        {
+            if (coroutine != null)
+            {
+                StopCoroutine(coroutine);
+            }
+        }
+        activeCoroutines.Clear();
+        
         // Unregister this formation when destroyed
         if (FormationAIManager.Instance != null)
         {
@@ -2697,6 +2637,7 @@ public class FormationUnit : MonoBehaviour
             // Don't call every frame - just ensure IsWalking is set to true
             if (!walkingAnimationsInitialized || Time.frameCount % 60 == 0) // Every 60 frames (~1 second)
             {
+                Debug.Log($"[FormationUnit] {formationName}: Update() - Starting to move or periodic check, initializing walking animations");
                 PlayWalkingAnimations();
             }
             else
@@ -2712,6 +2653,7 @@ public class FormationUnit : MonoBehaviour
             // Only play idle animations when transitioning from moving to idle
             if (wasMovingLastFrame)
             {
+                Debug.Log($"[FormationUnit] {formationName}: Update() - Stopped moving, playing idle animations");
                 PlayIdleAnimations();
                 wasMovingLastFrame = false;
             }
@@ -2724,17 +2666,70 @@ public class FormationUnit : MonoBehaviour
     /// </summary>
     void EnsureWalkingAnimationActive()
     {
-        if (soldierCombatUnits == null) return;
+        if (soldierCombatUnits == null)
+        {
+            Debug.LogWarning($"[FormationUnit] {formationName}: EnsureWalkingAnimationActive called but soldierCombatUnits is null");
+            return;
+        }
         
+        int count = 0;
         foreach (var combatUnit in soldierCombatUnits)
         {
             if (combatUnit != null)
             {
                 // Just ensure isMoving is true - the property setter will automatically update IsWalking animator parameter
                 // Setting it again is safe even if already true (property setter checks for changes)
+                bool wasMoving = combatUnit.isMoving;
                 combatUnit.isMoving = true;
+                count++;
+                
+                // Check if animator is actually in walk state
+                var animator = combatUnit.GetComponent<Animator>();
+                if (animator != null && animator.runtimeAnimatorController != null)
+                {
+                    AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                    bool isInWalkState = stateInfo.IsName("Walk") || stateInfo.IsName("Walking");
+                    bool isWalkingParam = animator.GetBool("IsWalking");
+                    
+                    if (!isInWalkState && isWalkingParam)
+                    {
+                        Debug.LogWarning($"[FormationUnit] {formationName}: {combatUnit.gameObject.name} - IsWalking={isWalkingParam} but NOT in Walk state! Current state: {GetStateName(animator)}, normalizedTime: {stateInfo.normalizedTime:F2}, IsTransitioning: {animator.IsInTransition(0)}");
+                    }
+                }
             }
         }
+        
+        if (count > 0 && Time.frameCount % 60 == 0) // Only log periodically
+        {
+            Debug.Log($"[FormationUnit] {formationName}: EnsureWalkingAnimationActive checked {count} soldiers");
+        }
+    }
+    
+    /// <summary>
+    /// Helper to get animator state name for debugging
+    /// </summary>
+    private string GetStateName(Animator anim)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null) return "No Animator";
+        
+        AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+        if (anim.layerCount > 0)
+        {
+            AnimatorClipInfo[] clipInfo = anim.GetCurrentAnimatorClipInfo(0);
+            if (clipInfo != null && clipInfo.Length > 0)
+            {
+                return clipInfo[0].clip.name;
+            }
+        }
+        
+        // Check common states
+        if (stateInfo.IsName("Idle") || stateInfo.IsName("idle")) return "Idle";
+        if (stateInfo.IsName("Walk") || stateInfo.IsName("Walking")) return "Walk";
+        if (stateInfo.IsName("Attack")) return "Attack";
+        if (stateInfo.IsName("Hit")) return "Hit";
+        if (stateInfo.IsName("Death")) return "Death";
+        
+        return $"Unknown (normalizedTime: {stateInfo.normalizedTime:F2})";
     }
     
     public void MoveToPosition(Vector3 position)
@@ -2806,7 +2801,17 @@ public class FormationUnit : MonoBehaviour
         int x = soldierIndex % sideLength;
         int z = soldierIndex / sideLength;
         
-        float spacing = 1.5f;
+        // Get spacing from first soldier's CombatUnitData (all soldiers in formation should have same spacing)
+        float spacing = soldierSpacing; // Default to stored spacing
+        if (soldiers.Count > 0 && soldiers[0] != null)
+        {
+            var combatUnit = soldiers[0].GetComponent<CombatUnit>();
+            if (combatUnit != null && combatUnit.data != null)
+            {
+                spacing = combatUnit.data.formationSpacing; // Use spacing from CombatUnitData
+            }
+        }
+        
         return new Vector3(
             (x - sideLength / 2f) * spacing,
             0,
@@ -2893,12 +2898,115 @@ public class FormationUnit : MonoBehaviour
         
         if (enemyFormation == null) return;
         
+        currentEnemyTarget = enemyFormation;
+        
+        // Check if we're charging (moving toward enemy and close enough)
+        UpdateChargeState(enemyFormation);
+        
+        // Reset charge bonus flag for new engagement
+        hasAppliedChargeBonus = false;
+        
         // Both formations are now in combat
         PlayFightingAnimations();
         enemyFormation.PlayFightingAnimations();
         
         // Start combat damage over time
         activeCombatCoroutine = StartCoroutine(CombatDamageCoroutine(enemyFormation));
+    }
+    
+    /// <summary>
+    /// Update whether this formation is charging toward the enemy
+    /// </summary>
+    void UpdateChargeState(FormationUnit enemyFormation)
+    {
+        if (enemyFormation == null) return;
+        
+        float distanceToEnemy = Vector3.Distance(formationCenter, enemyFormation.formationCenter);
+        
+        // Check if we're moving toward enemy and within charge distance
+        if (isMoving && distanceToEnemy <= chargeDistanceThreshold)
+        {
+            Vector3 directionToEnemy = (enemyFormation.formationCenter - formationCenter).normalized;
+            Vector3 movementDirection = (targetPosition - formationCenter).normalized;
+            
+            // Check if we're moving toward the enemy (dot product > 0.5 means roughly same direction)
+            float dotProduct = Vector3.Dot(directionToEnemy, movementDirection);
+            isCharging = dotProduct > 0.5f;
+        }
+        else
+        {
+            isCharging = false;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate attack angle relative to enemy formation facing direction
+    /// Returns: 0 = front, 90 = flank, 180 = rear
+    /// </summary>
+    float CalculateAttackAngle(FormationUnit attacker, FormationUnit defender)
+    {
+        if (attacker == null || defender == null) return 0f;
+        
+        // Calculate direction from defender to attacker
+        Vector3 directionToAttacker = (attacker.formationCenter - defender.formationCenter).normalized;
+        
+        // Get defender's facing direction (direction toward attacker or last known direction)
+        Vector3 defenderFacing = directionToAttacker; // Simplified - could use actual formation facing
+        
+        // Calculate angle between defender's facing and attack direction
+        float angle = Vector3.Angle(defenderFacing, directionToAttacker);
+        
+        return angle;
+    }
+    
+    /// <summary>
+    /// Determine if attack is from flank or rear and return bonus multiplier
+    /// </summary>
+    float GetFlankingBonus(FormationUnit attacker, FormationUnit defender)
+    {
+        float attackAngle = CalculateAttackAngle(attacker, defender);
+        
+        // Rear attack: 135-180 degrees
+        if (attackAngle >= 135f)
+        {
+            Debug.Log($"[FormationUnit] {attacker.formationName} attacks {defender.formationName} from REAR (angle: {attackAngle:F1}°)");
+            return rearAttackBonusMultiplier;
+        }
+        // Flank attack: 45-135 degrees
+        else if (attackAngle >= 45f)
+        {
+            Debug.Log($"[FormationUnit] {attacker.formationName} attacks {defender.formationName} from FLANK (angle: {attackAngle:F1}°)");
+            return flankingBonusMultiplier;
+        }
+        // Front attack: 0-45 degrees
+        else
+        {
+            return 1.0f; // No bonus
+        }
+    }
+    
+    /// <summary>
+    /// Gain experience from combat actions
+    /// </summary>
+    void GainExperience(int amount, string reason = "")
+    {
+        experience += amount;
+        Debug.Log($"[FormationUnit] {formationName} gained {amount} XP ({reason}). Total: {experience}/{experienceToNextLevel}");
+        
+        // Check for level up
+        while (experience >= experienceToNextLevel)
+        {
+            experience -= experienceToNextLevel;
+            experienceLevel++;
+            experienceToNextLevel = Mathf.RoundToInt(experienceToNextLevel * 1.5f); // Exponential growth
+            
+            // Apply level up bonuses
+            totalAttack = Mathf.RoundToInt(totalAttack * 1.1f); // 10% attack increase
+            totalHealth = Mathf.RoundToInt(totalHealth * 1.1f); // 10% health increase
+            currentHealth = Mathf.Min(currentHealth, totalHealth); // Heal up to new max
+            
+            Debug.Log($"[FormationUnit] {formationName} LEVELED UP to level {experienceLevel}! Attack: {totalAttack}, Health: {totalHealth}");
+        }
     }
     
     System.Collections.IEnumerator CombatDamageCoroutine(FormationUnit enemyFormation)
@@ -2920,55 +3028,82 @@ public class FormationUnit : MonoBehaviour
             foreach (var s in enemyFormation.soldiers) if (s != null) enAlive.Add(s);
             if (myAlive.Count == 0 || enAlive.Count == 0) break;
 
-            // Determine front directions
-            Vector3 dirToEnemy = (enemyFormation.formationCenter - formationCenter).normalized;
-            Vector3 dirToMe = -dirToEnemy;
-
-            // Select front lines (closest along forward axis)
-            List<GameObject> myFront = SelectFrontLine(myAlive, formationCenter, dirToEnemy, 6);
-            List<GameObject> enFront = SelectFrontLine(enAlive, enemyFormation.formationCenter, dirToMe, 6);
-
-            // Pair by nearest
-            int pairs = Mathf.Min(myFront.Count, enFront.Count);
+            // Find all soldiers in contact with enemy (within melee range)
+            float meleeRange = 1f; // Distance for melee contact
+            float meleeRangeSquared = meleeRange * meleeRange; // Use squared distance for performance
+            List<GameObject> myInContact = new List<GameObject>();
+            List<GameObject> enInContact = new List<GameObject>();
+            HashSet<GameObject> enInContactSet = new HashSet<GameObject>(); // For O(1) lookup
+            
+            // Find my soldiers in contact with enemy (optimized with early exit)
+            foreach (var mySoldier in myAlive)
+            {
+                if (mySoldier == null) continue;
+                
+                GameObject nearestEnemy = null;
+                float nearestDistanceSquared = float.MaxValue;
+                
+                // Find nearest enemy soldier
+                foreach (var enSoldier in enAlive)
+                {
+                    if (enSoldier == null) continue;
+                    if (enInContactSet.Contains(enSoldier)) continue; // Already paired
+                    
+                    Vector3 diff = mySoldier.transform.position - enSoldier.transform.position;
+                    float distanceSquared = diff.sqrMagnitude; // Faster than Distance()
+                    
+                    if (distanceSquared <= meleeRangeSquared && distanceSquared < nearestDistanceSquared)
+                    {
+                        nearestDistanceSquared = distanceSquared;
+                        nearestEnemy = enSoldier;
+                    }
+                }
+                
+                // If found contact, add both to lists
+                if (nearestEnemy != null)
+                {
+                    myInContact.Add(mySoldier);
+                    enInContact.Add(nearestEnemy);
+                    enInContactSet.Add(nearestEnemy); // Mark as paired
+                }
+            }
+            
+            // Pair by nearest - soldiers are already paired in contact detection
+            int pairs = Mathf.Min(myInContact.Count, enInContact.Count);
+            
+            // Stagger attacks with random delays (not wave pattern)
             for (int i = 0; i < pairs; i++)
             {
-                var a = myFront[i];
-                var b = FindNearest(a.transform.position, enFront);
-                if (b == null) continue;
+                var a = myInContact[i];
+                var b = enInContact[i]; // Already paired in contact detection
+                if (a == null || b == null) continue;
 
                 var aCU = a.GetComponent<CombatUnit>();
                 var bCU = b.GetComponent<CombatUnit>();
                 if (aCU == null || bCU == null) continue;
 
-                // Trigger attack visuals
-                aCU.TriggerAnimation("Attack");
-                bCU.TriggerAnimation("Hit");
-
-                // Resolve simple damage using existing stat accessors
-                int dmgAB = Mathf.Max(0, aCU.CurrentAttack - bCU.CurrentDefense);
-                bool bDied = bCU.ApplyDamage(dmgAB, aCU, true);
-                if (bDied)
-                {
-                    HandleSoldierDeath(enemyFormation, b);
-                    enemyFormation.currentMorale = Mathf.Max(0, enemyFormation.currentMorale - 5);
-                }
-
-                // Counter if still alive
-                if (!bDied)
-                {
-                    int dmgBA = Mathf.Max(0, bCU.CurrentAttack - aCU.CurrentDefense);
-                    bool aDied = aCU.ApplyDamage(dmgBA, bCU, true);
-                    if (aDied)
-                    {
-                        HandleSoldierDeath(this, a);
-                        currentMorale = Mathf.Max(0, currentMorale - 5);
-                    }
-                }
+                // Random stagger delay (0.0 to 0.3 seconds) - not a wave pattern
+                float randomDelay = Random.Range(0f, 0.3f);
+                
+                // Start attack coroutine with random delay
+                StartCoroutine(StaggeredAttack(aCU, bCU, randomDelay, this, enemyFormation));
             }
 
+            // Apply physical interactions (pushback, knockback, formation pressure)
+            ApplyPhysicalInteractions(enemyFormation);
+            
+            // Update formation centers after physical interactions (they modify formationCenter directly)
+            UpdateFormationCenter();
+            enemyFormation.UpdateFormationCenter();
+            
             // Reflow positions and check routing
             RemoveNullSoldiers();
             enemyFormation.RemoveNullSoldiers();
+            
+            // Advance rear units to fill gaps when front units die
+            AdvanceRearUnitsToFillGaps();
+            enemyFormation.AdvanceRearUnitsToFillGaps();
+            
             UpdateSoldierPositions();
             enemyFormation.UpdateSoldierPositions();
 
@@ -3000,28 +3135,10 @@ public class FormationUnit : MonoBehaviour
         activeCombatCoroutine = null;
     }
 
-    private List<GameObject> SelectFrontLine(List<GameObject> alive, Vector3 center, Vector3 forward, int count)
-    {
-        // Score by projection along forward (smaller distance toward enemy gets priority)
-        return alive.OrderBy(s => Vector3.Dot((s.transform.position - center), forward)).Take(count).ToList();
-    }
-
-    private GameObject FindNearest(Vector3 pos, List<GameObject> candidates)
-    {
-        float best = float.MaxValue; GameObject bestGO = null;
-        foreach (var c in candidates)
-        {
-            if (c == null) continue;
-            float d = (c.transform.position - pos).sqrMagnitude;
-            if (d < best) { best = d; bestGO = c; }
-        }
-        return bestGO;
-    }
-
     private void HandleSoldierDeath(FormationUnit owner, GameObject soldier)
     {
         var cu = soldier != null ? soldier.GetComponent<CombatUnit>() : null;
-        if (cu != null) cu.TriggerAnimation("death");
+        if (cu != null) cu.TriggerAnimation("Death"); // Use capitalized to match parameter hash
         if (soldier != null)
         {
             owner.soldiers.Remove(soldier);
@@ -3050,17 +3167,42 @@ public class FormationUnit : MonoBehaviour
     
     void ApplyDamageToFormation(FormationUnit targetFormation)
     {
-        // Calculate damage based on attack vs defense
-        int damage = Mathf.Max(1, totalAttack - targetFormation.totalAttack / 2);
-        targetFormation.currentHealth = Mathf.Max(0, targetFormation.currentHealth - damage);
+        // Calculate base damage based on attack vs defense
+        int baseDamage = Mathf.Max(1, totalAttack - targetFormation.totalAttack / 2);
+        
+        // Note: Charge bonus is NOT applied here - it's only applied in individual melee combat
+        // This method is for formation-level damage, not individual unit combat
+        // Charge bonus is handled in CombatDamageCoroutine where individual units fight
+        
+        // Apply flanking/rear attack bonus
+        float flankingBonus = GetFlankingBonus(this, targetFormation);
+        float damageMultiplier = flankingBonus;
+        
+        // Calculate final damage
+        int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+        
+        // Apply damage
+        targetFormation.currentHealth = Mathf.Max(0, targetFormation.currentHealth - finalDamage);
+        
+        // Gain experience from dealing damage
+        GainExperience(finalDamage, $"damage dealt to {targetFormation.formationName}");
         
         // Play hit animation on target
         targetFormation.PlayHitAnimation();
         
         // Check if individual soldiers should die
+        int soldiersBefore = targetFormation.soldiers.Count;
         targetFormation.CheckForSoldierDeaths();
+        int soldiersAfter = targetFormation.soldiers.Count;
+        int soldiersKilled = soldiersBefore - soldiersAfter;
         
-        Debug.Log($"{formationName} deals {damage} damage to {targetFormation.formationName} (HP: {targetFormation.currentHealth}/{targetFormation.totalHealth})");
+        // Gain experience from kills
+        if (soldiersKilled > 0)
+        {
+            GainExperience(soldiersKilled * 10, $"killed {soldiersKilled} soldiers");
+        }
+        
+        Debug.Log($"{formationName} deals {finalDamage} damage (base: {baseDamage}, multiplier: {damageMultiplier:F2}x) to {targetFormation.formationName} (HP: {targetFormation.currentHealth}/{targetFormation.totalHealth})");
     }
     
     void CheckForSoldierDeaths()
@@ -3078,7 +3220,7 @@ public class FormationUnit : MonoBehaviour
                 var combatUnit = soldiers[i].GetComponent<CombatUnit>();
                 if (combatUnit != null)
                 {
-                    combatUnit.TriggerAnimation("death");
+                    combatUnit.TriggerAnimation("Death"); // Use capitalized to match parameter hash
                 }
                 
                 // Destroy the soldier after a delay
@@ -3094,6 +3236,422 @@ public class FormationUnit : MonoBehaviour
         {
             soldiers.Remove(soldier);
             Destroy(soldier);
+            
+            // After soldier dies, advance rear units to fill gaps
+            AdvanceRearUnitsToFillGaps();
+        }
+    }
+    
+    /// <summary>
+    /// Staggered attack coroutine - creates wave effect across formation
+    /// </summary>
+    System.Collections.IEnumerator StaggeredAttack(CombatUnit attacker, CombatUnit defender, float delay, FormationUnit attackerFormation, FormationUnit defenderFormation)
+    {
+        // Wait for stagger delay
+        if (delay > 0f)
+        {
+            yield return new WaitForSeconds(delay);
+        }
+        
+        // Safety checks
+        if (attacker == null || defender == null || attackerFormation == null || defenderFormation == null) yield break;
+        if (attacker.gameObject == null || defender.gameObject == null) yield break;
+        
+        // Make units face their targets (continuous facing during combat)
+        var coroutine1 = StartCoroutine(FaceTargetContinuously(attacker.gameObject, defender.gameObject));
+        var coroutine2 = StartCoroutine(FaceTargetContinuously(defender.gameObject, attacker.gameObject));
+        if (coroutine1 != null) activeCoroutines.Add(coroutine1);
+        if (coroutine2 != null) activeCoroutines.Add(coroutine2);
+        
+        // Trigger attack visuals
+        attacker.TriggerAnimation("Attack");
+        defender.TriggerAnimation("Hit");
+        
+        // Calculate base damage
+        int baseDmgAB = Mathf.Max(0, attacker.CurrentAttack - defender.CurrentDefense);
+        
+        // Apply charge bonus (only for melee attacks, only on first contact, and only if unit has charge bonus)
+        float damageMultiplierAB = 1.0f;
+        bool isMeleeAttack = true; // This is melee combat
+        if (isMeleeAttack && attackerFormation.isCharging && !attackerFormation.hasAppliedChargeBonus && attacker.data != null)
+        {
+            float unitChargeBonus = attacker.data.chargeBonusMultiplier;
+            if (unitChargeBonus > 1.0f) // Only apply if unit has a charge bonus
+            {
+                damageMultiplierAB *= unitChargeBonus;
+                attackerFormation.hasAppliedChargeBonus = true;
+                Debug.Log($"[FormationUnit] {attackerFormation.formationName} ({attacker.data.unitName}) applies CHARGE BONUS ({unitChargeBonus}x) in melee combat");
+            }
+        }
+        
+        // Apply flanking/rear attack bonus
+        float flankingBonusAB = GetFlankingBonus(attackerFormation, defenderFormation);
+        damageMultiplierAB *= flankingBonusAB;
+        
+        // Calculate final damage
+        int finalDmgAB = Mathf.RoundToInt(baseDmgAB * damageMultiplierAB);
+        
+        // Apply knockback on heavy hits
+        if (finalDmgAB > 5) // Heavy hit threshold
+        {
+            ApplyKnockback(defender.gameObject, attacker.gameObject.transform.position, 0.3f);
+        }
+        
+        // Gain experience from dealing damage
+        if (finalDmgAB > 0)
+        {
+            attackerFormation.GainExperience(finalDmgAB, $"melee damage dealt");
+        }
+        
+        bool bDied = defender.ApplyDamage(finalDmgAB, attacker, true); // true = melee attack
+        if (bDied)
+        {
+            HandleSoldierDeath(defenderFormation, defender.gameObject);
+            defenderFormation.currentMorale = Mathf.Max(0, defenderFormation.currentMorale - 5);
+            // Gain experience from kill
+            attackerFormation.GainExperience(10, $"killed enemy soldier");
+        }
+        
+        // Counter if still alive
+        if (!bDied)
+        {
+            // Small delay before counter-attack
+            yield return new WaitForSeconds(0.2f);
+            
+            // Safety check again
+            if (attacker == null || defender == null || attacker.gameObject == null || defender.gameObject == null) yield break;
+            
+            int baseDmgBA = Mathf.Max(0, defender.CurrentAttack - attacker.CurrentDefense);
+            
+            // Apply flanking bonus for counter-attack
+            float flankingBonusBA = GetFlankingBonus(defenderFormation, attackerFormation);
+            int finalDmgBA = Mathf.RoundToInt(baseDmgBA * flankingBonusBA);
+            
+            // Apply knockback on heavy counter-hits
+            if (finalDmgBA > 5) // Heavy hit threshold
+            {
+                ApplyKnockback(attacker.gameObject, defender.gameObject.transform.position, 0.3f);
+            }
+            
+            // Gain experience from dealing damage
+            if (finalDmgBA > 0)
+            {
+                defenderFormation.GainExperience(finalDmgBA, $"melee damage dealt");
+            }
+            
+            bool aDied = attacker.ApplyDamage(finalDmgBA, defender, true);
+            if (aDied)
+            {
+                HandleSoldierDeath(attackerFormation, attacker.gameObject);
+                attackerFormation.currentMorale = Mathf.Max(0, attackerFormation.currentMorale - 5);
+                // Gain experience from kill
+                defenderFormation.GainExperience(10, $"killed enemy soldier");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Apply physical interactions between formations (pushback, knockback, formation pressure)
+    /// </summary>
+    void ApplyPhysicalInteractions(FormationUnit enemyFormation)
+    {
+        if (enemyFormation == null) return;
+        
+        // Calculate formation pressure based on relative strength
+        float myStrength = (float)currentHealth / totalHealth;
+        float enemyStrength = (float)enemyFormation.currentHealth / enemyFormation.totalHealth;
+        float strengthDifference = myStrength - enemyStrength;
+        
+        // Pushback effect - stronger formation pushes weaker one back
+        float pushbackForce = strengthDifference * 0.5f; // Max 0.5 units per tick
+        if (Mathf.Abs(pushbackForce) > 0.01f)
+        {
+            Vector3 directionToEnemy = (enemyFormation.formationCenter - formationCenter).normalized;
+            
+            if (pushbackForce > 0)
+            {
+                // We're stronger - push enemy back
+                enemyFormation.formationCenter -= directionToEnemy * pushbackForce;
+            }
+            else
+            {
+                // Enemy is stronger - we get pushed back
+                formationCenter += directionToEnemy * Mathf.Abs(pushbackForce);
+            }
+        }
+        
+        // Formation compression - formations compress when under pressure
+        float compressionFactor = 1.0f - (Mathf.Min(myStrength, enemyStrength) * 0.2f); // Up to 20% compression
+        if (compressionFactor > 0.01f)
+        {
+            // Reduce spacing slightly when formations are compressed
+            float compressedSpacing = soldierSpacing * (1.0f - compressionFactor);
+            // This will be applied in UpdateSoldierPositions via GetFormationOffset
+            // For now, we'll apply it directly to soldier positions
+            foreach (var soldier in soldiers)
+            {
+                if (soldier != null)
+                {
+                    Vector3 toCenter = formationCenter - soldier.transform.position;
+                    float distance = toCenter.magnitude;
+                    if (distance > 0.1f)
+                    {
+                        // Compress toward center slightly
+                        soldier.transform.position = Vector3.Lerp(soldier.transform.position, formationCenter, compressionFactor * 0.1f);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Apply knockback to a unit when hit hard
+    /// </summary>
+    void ApplyKnockback(GameObject unit, Vector3 fromPosition, float knockbackDistance)
+    {
+        if (unit == null) return;
+        
+        Vector3 knockbackDirection = (unit.transform.position - fromPosition).normalized;
+        knockbackDirection.y = 0; // Keep on ground
+        
+        // Apply knockback
+        Vector3 knockbackPosition = unit.transform.position + knockbackDirection * knockbackDistance;
+        unit.transform.position = Ground(knockbackPosition);
+    }
+    
+    /// <summary>
+    /// Make a unit face its target continuously during combat
+    /// </summary>
+    System.Collections.IEnumerator FaceTargetContinuously(GameObject unit, GameObject target)
+    {
+        float duration = 1.5f; // Face target for 1.5 seconds (typical attack duration)
+        float elapsed = 0f;
+        
+        while (elapsed < duration && unit != null && target != null)
+        {
+            // Check if target is still alive (immediate exit on death)
+            if (unit == null || target == null) yield break;
+            
+            // Check if target's CombatUnit is dead
+            var targetCombatUnit = target.GetComponent<CombatUnit>();
+            if (targetCombatUnit != null && targetCombatUnit.battleState == BattleUnitState.Dead)
+            {
+                yield break; // Stop immediately if target dies
+            }
+            
+            Vector3 directionToTarget = (target.transform.position - unit.transform.position).normalized;
+            directionToTarget.y = 0; // Keep rotation on horizontal plane
+            
+            if (directionToTarget.magnitude > 0.1f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
+                unit.transform.rotation = Quaternion.Slerp(unit.transform.rotation, targetRotation, Time.deltaTime * 10f);
+            }
+            
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+    }
+    
+    /// <summary>
+    /// Advance rear units to fill gaps when front units die (handles irregular formations)
+    /// </summary>
+    void AdvanceRearUnitsToFillGaps()
+    {
+        if (soldiers == null || soldiers.Count == 0) return;
+        
+        // Find enemy formation to determine forward direction
+        FormationUnit enemyFormation = FindNearestEnemyFormation();
+        if (enemyFormation == null) return;
+        
+        Vector3 directionToEnemy = (enemyFormation.formationCenter - formationCenter).normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, directionToEnemy).normalized;
+        
+        // Build list of alive soldiers with their positions
+        List<GameObject> aliveSoldiers = new List<GameObject>();
+        foreach (var soldier in soldiers)
+        {
+            if (soldier != null)
+            {
+                aliveSoldiers.Add(soldier);
+            }
+        }
+        
+        if (aliveSoldiers.Count == 0) return;
+        
+        // Sort soldiers by distance from enemy (front to back)
+        aliveSoldiers.Sort((a, b) =>
+        {
+            float distA = Vector3.Dot((a.transform.position - formationCenter), directionToEnemy);
+            float distB = Vector3.Dot((b.transform.position - formationCenter), directionToEnemy);
+            return distA.CompareTo(distB);
+        });
+        
+        // Calculate expected formation dimensions based on alive count
+        int expectedRows = Mathf.CeilToInt(Mathf.Sqrt(aliveSoldiers.Count));
+        int expectedCols = Mathf.CeilToInt((float)aliveSoldiers.Count / expectedRows);
+        
+        // Find gaps in front rows and fill from rear
+        float rowSpacing = soldierSpacing;
+        float colSpacing = soldierSpacing;
+        
+        // Group soldiers by approximate row (based on forward distance)
+        Dictionary<int, List<GameObject>> rows = new Dictionary<int, List<GameObject>>();
+        for (int i = 0; i < aliveSoldiers.Count; i++)
+        {
+            Vector3 pos = aliveSoldiers[i].transform.position;
+            float forwardDist = Vector3.Dot((pos - formationCenter), directionToEnemy);
+            int rowIndex = Mathf.RoundToInt(forwardDist / rowSpacing);
+            
+            if (!rows.ContainsKey(rowIndex))
+            {
+                rows[rowIndex] = new List<GameObject>();
+            }
+            rows[rowIndex].Add(aliveSoldiers[i]);
+        }
+        
+        // Find gaps in front rows and fill from rear
+        var sortedRows = new List<int>(rows.Keys);
+        sortedRows.Sort(); // Front to back
+        
+        for (int r = 0; r < sortedRows.Count - 1; r++)
+        {
+            int currentRow = sortedRows[r];
+            int nextRow = sortedRows[r + 1];
+            
+            List<GameObject> currentRowSoldiers = rows[currentRow];
+            List<GameObject> nextRowSoldiers = rows[nextRow];
+            
+            // Calculate expected soldiers per row
+            int expectedInRow = Mathf.Min(expectedCols, aliveSoldiers.Count - r * expectedCols);
+            
+            // If current row has gaps (fewer soldiers than expected), fill from next row
+            if (currentRowSoldiers.Count < expectedInRow && nextRowSoldiers.Count > 0)
+            {
+                int gapsToFill = expectedInRow - currentRowSoldiers.Count;
+                int unitsToMove = Mathf.Min(gapsToFill, nextRowSoldiers.Count);
+                
+                // Move units from next row to fill gaps in current row
+                for (int i = 0; i < unitsToMove; i++)
+                {
+                    GameObject unitToMove = nextRowSoldiers[i];
+                    if (unitToMove == null) continue;
+                    
+                    // Calculate target position in current row
+                    int targetCol = currentRowSoldiers.Count;
+                    Vector3 targetOffset = directionToEnemy * (currentRow * rowSpacing) + right * ((targetCol - expectedCols / 2f) * colSpacing);
+                    Vector3 targetPosition = Ground(formationCenter + targetOffset);
+                    
+                    // Move unit smoothly to fill gap
+                    var moveCoroutine = StartCoroutine(MoveUnitToPosition(unitToMove, targetPosition));
+                    if (moveCoroutine != null) activeCoroutines.Add(moveCoroutine);
+                    
+                    // Update row assignment
+                    currentRowSoldiers.Add(unitToMove);
+                    nextRowSoldiers.RemoveAt(i);
+                    i--; // Adjust index after removal
+                }
+            }
+        }
+        
+        // Clean up null entries
+        RemoveNullSoldiers();
+    }
+    
+    /// <summary>
+    /// Find nearest enemy formation (uses cached formations for performance)
+    /// </summary>
+    FormationUnit FindNearestEnemyFormation()
+    {
+        FormationUnit nearest = null;
+        float nearestDistance = float.MaxValue;
+        
+        // Use cached enemy formations if available and recent
+        List<FormationUnit> formationsToCheck;
+        if (Time.time - lastEnemyFormationUpdate < ENEMY_FORMATION_UPDATE_INTERVAL && cachedEnemyFormations.Count > 0)
+        {
+            formationsToCheck = cachedEnemyFormations;
+        }
+        else
+        {
+            // Update cache
+            var allFormations = FindObjectsByType<FormationUnit>(FindObjectsSortMode.None);
+            cachedEnemyFormations.Clear();
+            foreach (var formation in allFormations)
+            {
+                if (formation != null && formation != this && formation.isAttacker != this.isAttacker)
+                {
+                    cachedEnemyFormations.Add(formation);
+                }
+            }
+            lastEnemyFormationUpdate = Time.time;
+            formationsToCheck = cachedEnemyFormations;
+        }
+        
+        foreach (var formation in formationsToCheck)
+        {
+            if (formation == null || formation == this) continue;
+            if (formation.isAttacker == this.isAttacker) continue; // Same side
+            
+            float distance = Vector3.Distance(formationCenter, formation.formationCenter);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = formation;
+            }
+        }
+        
+        return nearest;
+    }
+    
+    /// <summary>
+    /// Move unit smoothly to target position (for filling gaps)
+    /// </summary>
+    System.Collections.IEnumerator MoveUnitToPosition(GameObject unit, Vector3 targetPosition)
+    {
+        if (unit == null) yield break;
+        
+        Vector3 startPosition = unit.transform.position;
+        float distance = Vector3.Distance(startPosition, targetPosition);
+        float moveSpeed = 3f; // Same as formation move speed
+        float duration = distance / moveSpeed;
+        float elapsed = 0f;
+        
+        // Mark unit as moving for animation
+        var combatUnit = unit.GetComponent<CombatUnit>();
+        if (combatUnit != null)
+        {
+            combatUnit.isMoving = true;
+        }
+        
+        while (elapsed < duration && unit != null)
+        {
+            if (unit == null) yield break;
+            
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            
+            // Smooth movement with easing
+            float easedT = t * t * (3f - 2f * t); // Smoothstep easing
+            Vector3 currentPosition = Vector3.Lerp(startPosition, targetPosition, easedT);
+            unit.transform.position = Ground(currentPosition);
+            
+            yield return null;
+        }
+        
+        // Ensure unit reaches exact target position
+        if (unit != null)
+        {
+            unit.transform.position = Ground(targetPosition);
+            
+            // Stop moving animation
+            if (combatUnit != null)
+            {
+                combatUnit.isMoving = false;
+            }
+            
+            // Update formation center after unit has moved
+            UpdateFormationCenter();
         }
     }
     
@@ -3104,6 +3662,14 @@ public class FormationUnit : MonoBehaviour
         {
             StopCoroutine(activeCombatCoroutine);
             activeCombatCoroutine = null;
+        }
+        
+        // Destroy badge UI before destroying formation
+        if (badgeCanvas != null)
+        {
+            Destroy(badgeCanvas.gameObject);
+            badgeCanvas = null;
+            badgeText = null;
         }
         
         // Destroy all soldiers in formation
@@ -3142,8 +3708,13 @@ public class FormationUnit : MonoBehaviour
             RefreshSoldierArrays();
         }
         
-        if (soldierCombatUnits == null) return;
+        if (soldierCombatUnits == null)
+        {
+            Debug.LogWarning($"[FormationUnit] {formationName}: PlayWalkingAnimations called but soldierCombatUnits is null");
+            return;
+        }
         
+        int count = 0;
         foreach (var combatUnit in soldierCombatUnits)
         {
             if (combatUnit != null)
@@ -3152,8 +3723,20 @@ public class FormationUnit : MonoBehaviour
                 combatUnit.IsInBattle = true;
                 
                 // Set walking state - CombatUnit.isMoving property will automatically update IsWalking animator parameter
+                bool wasMoving = combatUnit.isMoving;
                 combatUnit.isMoving = true;
+                count++;
+                
+                if (!wasMoving)
+                {
+                    Debug.Log($"[FormationUnit] {formationName}: Started walking animation for {combatUnit.gameObject.name}");
+                }
             }
+        }
+        
+        if (count > 0 && !walkingAnimationsInitialized)
+        {
+            Debug.Log($"[FormationUnit] {formationName}: PlayWalkingAnimations initialized for {count} soldiers");
         }
         
         // Mark as initialized after first call
@@ -3231,7 +3814,7 @@ public class FormationUnit : MonoBehaviour
     {
         if (badgeText == null) return;
         int alive = 0; foreach (var s in soldiers) if (s != null) alive++;
-        badgeText.text = $"{formationName}\nMorale {currentMorale}%  |  {alive} units";
+        badgeText.text = $"{formationName}\nMorale {currentMorale}%  |  {alive} units  |  Lv.{experienceLevel} ({experience} XP)";
     }
 
     private void UpdateBadgePosition()
@@ -3258,19 +3841,36 @@ public class FormationUnit : MonoBehaviour
             RefreshSoldierArrays();
         }
         
-        if (soldierCombatUnits == null) return;
+        if (soldierCombatUnits == null)
+        {
+            Debug.LogWarning($"[FormationUnit] {formationName}: PlayIdleAnimations called but soldierCombatUnits is null");
+            return;
+        }
         
         // Reset walking animation flag so we can reinitialize next time
         walkingAnimationsInitialized = false;
         
+        int count = 0;
         foreach (var combatUnit in soldierCombatUnits)
         {
             if (combatUnit != null)
             {
                 // Set walking state to false - CombatUnit.isMoving property will automatically update IsWalking animator parameter
                 // This will also trigger UpdateIdleAnimation() which handles idle state properly
+                bool wasMoving = combatUnit.isMoving;
                 combatUnit.isMoving = false;
+                count++;
+                
+                if (wasMoving)
+                {
+                    Debug.Log($"[FormationUnit] {formationName}: Stopped walking animation for {combatUnit.gameObject.name}");
+                }
             }
+        }
+        
+        if (count > 0)
+        {
+            Debug.Log($"[FormationUnit] {formationName}: PlayIdleAnimations called for {count} soldiers");
         }
     }
     
@@ -3669,25 +4269,3 @@ public class BattleResult
 /// <summary>
 /// Formation types for unit positioning (from BattleManager)
 /// </summary>
-public enum FormationType
-{
-    Line,       // Standard line formation
-    Square,     // Defensive square formation
-    Wedge,      // Offensive wedge formation
-    Column,     // Fast movement column
-    Skirmish    // Loose skirmish formation
-}
-
-/// <summary>
-/// Data for different formation types (from BattleManager)
-/// </summary>
-[System.Serializable]
-public class FormationData
-{
-    public FormationType type;
-    public string name;
-    public float spacing;
-    public int maxUnitsPerRow;
-    public string description;
-}
-

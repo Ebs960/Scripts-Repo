@@ -518,14 +518,10 @@ public class WorkerUnit : MonoBehaviour
         Transform spawn = GetProjectileSpawnTransform(equipment);
         Vector3 startPos = spawn != null ? spawn.position : transform.position;
             GameObject projGO = null;
-            // Try to spawn from the simple object pool first, then fall back to ProjectilePool
+            // Spawn from the unified object pool
             if (SimpleObjectPool.Instance != null)
             {
                 projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-            }
-            else if (ProjectilePool.Instance != null)
-            {
-                projGO = ProjectilePool.Instance.Spawn(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
             }
             else
             {

@@ -108,8 +108,8 @@ namespace GameCombat
         }
 
         // Return to pool if available, otherwise destroy
-        if (ProjectilePool.Instance != null)
-            ProjectilePool.Instance.Despawn(this.gameObject);
+        if (SimpleObjectPool.Instance != null)
+            SimpleObjectPool.Instance.Return(this.gameObject);
         else
             Destroy(gameObject);
     }

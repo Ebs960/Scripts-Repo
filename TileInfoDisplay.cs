@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Shows per-tile yields when the mouse hovers the planet mesh.
-/// It now stays dormant until GameSceneInitializer calls SetReady().
+/// It now stays dormant until GameManager calls SetReady() after initialization.
 /// </summary>
 public class TileInfoDisplay : MonoBehaviour
 {
@@ -98,7 +98,7 @@ public class TileInfoDisplay : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Public API: called by GameSceneInitializer when loading ends
+    // Public API: called by GameManager when loading ends
     // ─────────────────────────────────────────────────────────────
     public void SetReady(bool value = true)
     {

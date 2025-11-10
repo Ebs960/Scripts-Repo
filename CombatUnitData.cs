@@ -92,6 +92,9 @@ public class CombatUnitData : ScriptableObject
     public int moraleLostPerHealth = 1;
     [Tooltip("Morale gained when killing an enemy unit")]
     public int moraleGainOnKill = 10;
+    [Tooltip("Charge bonus multiplier for melee attacks (only applies when charging). Higher values = more charge damage. Cavalry units typically have higher values (1.5-2.0), infantry lower (1.2-1.5).")]
+    [Range(1.0f, 3.0f)]
+    public float chargeBonusMultiplier = 1.5f;
 
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]

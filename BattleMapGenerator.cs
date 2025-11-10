@@ -395,24 +395,11 @@ public class BattleMapGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Get color for a biome
+    /// Get color for a biome (uses BiomeColorHelper for battle map context)
     /// </summary>
     private Color GetBiomeColor(Biome biome)
     {
-        return biome switch
-        {
-            Biome.Plains => new Color(0.6f, 0.8f, 0.4f), // Light green
-            Biome.Forest => new Color(0.2f, 0.6f, 0.2f), // Dark green
-            Biome.Mountain => new Color(0.4f, 0.4f, 0.4f), // Gray
-            Biome.Desert => new Color(0.9f, 0.8f, 0.6f), // Sandy
-            Biome.Swamp => new Color(0.3f, 0.5f, 0.3f), // Dark green
-            Biome.Snow => new Color(0.9f, 0.9f, 0.9f), // White
-            Biome.Grassland => new Color(0.5f, 0.7f, 0.3f), // Grass green
-            Biome.Jungle => new Color(0.1f, 0.4f, 0.1f), // Dark jungle green
-            Biome.Taiga => new Color(0.3f, 0.5f, 0.2f), // Taiga green
-            Biome.Marsh => new Color(0.4f, 0.6f, 0.4f), // Marsh green
-            _ => new Color(0.6f, 0.6f, 0.6f) // Default gray
-        };
+        return BiomeColorHelper.GetBattleMapColor(biome);
     }
 
     /// <summary>

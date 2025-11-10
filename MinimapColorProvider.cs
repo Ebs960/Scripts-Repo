@@ -152,43 +152,10 @@ public class MinimapColorProvider : ScriptableObject
     }
     
     /// <summary>
-    /// Fallback colors for biomes not configured in the ColorProvider
+    /// Fallback colors for biomes not configured in the ColorProvider (uses BiomeColorHelper)
     /// </summary>
     private Color GetDefaultBiomeColor(Biome biome)
     {
-        return biome switch
-        {
-            Biome.Ocean => new Color(0.2f, 0.4f, 0.8f, 1f),      // Blue
-            Biome.Forest => new Color(0.2f, 0.6f, 0.2f, 1f),     // Green
-            Biome.Desert => new Color(0.8f, 0.7f, 0.3f, 1f),     // Sandy
-            Biome.Mountain => new Color(0.6f, 0.5f, 0.4f, 1f),   // Brown
-            Biome.Plains => new Color(0.4f, 0.7f, 0.3f, 1f),     // Light green
-            Biome.Snow => new Color(0.9f, 0.9f, 0.9f, 1f),       // White
-            Biome.Tundra => new Color(0.6f, 0.7f, 0.8f, 1f),     // Light blue-gray
-            Biome.Jungle => new Color(0.1f, 0.5f, 0.1f, 1f),     // Dark green
-            Biome.Grassland => new Color(0.5f, 0.8f, 0.3f, 1f),  // Bright green
-            Biome.Marsh => new Color(0.3f, 0.5f, 0.4f, 1f),      // Muddy green
-            Biome.Swamp => new Color(0.2f, 0.4f, 0.3f, 1f),      // Dark muddy
-            Biome.Taiga => new Color(0.3f, 0.6f, 0.4f, 1f),      // Forest green
-            Biome.Savannah => new Color(0.7f, 0.6f, 0.3f, 1f),   // Dry grass
-            Biome.Coast => new Color(0.4f, 0.6f, 0.8f, 1f),      // Light blue
-            Biome.Volcanic => new Color(0.8f, 0.3f, 0.2f, 1f),   // Red-orange
-            Biome.Steam => new Color(0.7f, 0.7f, 0.8f, 1f),      // Light gray
-            
-            // Mars biomes
-            Biome.MartianRegolith => new Color(0.6f, 0.3f, 0.2f, 1f),  // Rusty red
-            Biome.MartianCanyon => new Color(0.5f, 0.2f, 0.1f, 1f),    // Dark red
-            Biome.MartianPolarIce => new Color(0.8f, 0.8f, 0.9f, 1f),  // Ice white
-            Biome.MartianDunes => new Color(0.7f, 0.4f, 0.2f, 1f),     // Sandy red
-            
-            // Venus biomes
-            Biome.VenusLava => new Color(1.0f, 0.4f, 0.1f, 1f),     // Bright orange
-            Biome.VenusianPlains => new Color(0.7f, 0.5f, 0.3f, 1f),   // Rocky brown
-            Biome.VenusHighlands => new Color(0.6f, 0.4f, 0.3f, 1f), // Dark brown
-            
-            // Add more planet-specific biomes as needed...
-            
-            _ => new Color(0.5f, 0.5f, 0.5f, 1f)                 // Gray fallback
-        };
+        return BiomeColorHelper.GetMinimapColor(biome);
     }
 }

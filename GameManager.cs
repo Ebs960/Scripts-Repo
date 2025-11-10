@@ -268,6 +268,8 @@ public class GameManager : MonoBehaviour
     public GameObject playerUIPrefab;
     public GameObject planetaryCameraPrefab; // Assign 'New Map Shit/Camera Controller.prefab'
     public GameObject spaceLoadingPanelPrefab; // Assign space loading panel prefab
+    [Tooltip("Loading panel prefab for game initialization (replaces GameSceneInitializer)")]
+    public GameObject loadingPanelPrefab;
     
     [Header("Minimap Configuration")]
     [Tooltip("MinimapColorProvider ScriptableObject asset for minimap rendering")]
@@ -282,6 +284,7 @@ public class GameManager : MonoBehaviour
 
     private GameObject instantiatedCameraGO; // Store reference to the instantiated camera
     private SpaceLoadingPanelController spaceLoadingPanel; // Reference to space loading panel
+    private LoadingPanelController cachedLoadingPanel; // Cached reference to loading panel (performance optimization)
 
     //Tile grid and lookup ---
     [System.Serializable]
@@ -396,7 +399,11 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        
+        // Auto-initialize game scene if not already in progress (replaces GameSceneInitializer)
+        if (!gameInProgress)
+        {
+            StartCoroutine(InitializeGameScene(loadingPanelPrefab));
+        }
     }
 
     /// <summary>
@@ -678,6 +685,9 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // Cache LoadingPanelController for performance (used frequently)
+        cachedLoadingPanel = foundManagers.loadingPanelController;
+
         // Mark managers as initialized to prevent duplicate creation
         _managersInitialized = true;
         
@@ -696,11 +706,12 @@ public class GameManager : MonoBehaviour
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
 
 
-            // Assign the loading panel controller if present
-            var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-            if (planetGenerator != null && loadingPanelController != null)
+            // Assign the loading panel controller if present (use cached reference)
+            if (cachedLoadingPanel == null)
+                cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+            if (planetGenerator != null && cachedLoadingPanel != null)
             {
-                planetGenerator.SetLoadingPanel(loadingPanelController);
+                planetGenerator.SetLoadingPanel(cachedLoadingPanel);
             }
 
             // --- Use map size preset ---
@@ -767,11 +778,12 @@ public class GameManager : MonoBehaviour
                 // This gives approximately 1/5th the tile count
                 int moonSubdivisions = Mathf.Max(2, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
 
-                // Assign loading panel controller if present
-                var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-                if (loadingPanelController != null)
+                // Assign loading panel controller if present (use cached reference)
+                if (cachedLoadingPanel == null)
+                    cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+                if (cachedLoadingPanel != null)
                 {
-                    moonGenerator.SetLoadingPanel(loadingPanelController);
+                    moonGenerator.SetLoadingPanel(cachedLoadingPanel);
                 }
 
                 // Configure moon with correct radius and reduced subdivisions
@@ -788,6 +800,42 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
             }
         }
+    }
+
+    /// <summary>
+    /// Initialize game scene (called automatically in Start() or can be called directly)
+    /// Handles loading panel setup and game initialization
+    /// </summary>
+    public IEnumerator InitializeGameScene(GameObject loadingPanelPrefabOverride = null)
+    {
+        // Wait a frame to let Awake() run everywhere else
+        yield return null;
+
+        // Use override prefab if provided, otherwise use the field
+        GameObject prefabToUse = loadingPanelPrefabOverride ?? loadingPanelPrefab;
+        
+        // Spawn loading panel if prefab provided and not already cached
+        if (prefabToUse != null && cachedLoadingPanel == null)
+        {
+            GameObject loadingPanelInstance = Instantiate(prefabToUse);
+            loadingPanelInstance.SetActive(true);
+            cachedLoadingPanel = loadingPanelInstance.GetComponent<LoadingPanelController>();
+            yield return null; // Wait a frame to ensure UI updates
+        }
+
+        // Start the game
+        if (!gameInProgress)
+            yield return StartCoroutine(StartNewGame());
+
+        // Optional delay so player sees 100% for a moment
+        yield return new WaitForSeconds(0.5f);
+
+        // Wait for game to be ready
+        yield return new WaitUntil(() => gameInProgress);
+
+        // Wake the tile-info UI (only after solar system is ready)
+        if (TileInfoDisplay.Instance != null)
+            TileInfoDisplay.Instance.SetReady();
     }
 
     /// <summary>
@@ -1368,9 +1416,10 @@ public class GameManager : MonoBehaviour
                             float moonRadius = generator.radius / 2.5f;
                             int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
 
-                            var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-                            if (loadingPanelController != null)
-                                moonGen.SetLoadingPanel(loadingPanelController);
+                            if (cachedLoadingPanel == null)
+                                cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+                            if (cachedLoadingPanel != null)
+                                moonGen.SetLoadingPanel(cachedLoadingPanel);
 
                             moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
                         }
@@ -1389,9 +1438,10 @@ public class GameManager : MonoBehaviour
                         float moonRadius = generator.radius / 2.5f;
                         int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
 
-                        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-                        if (loadingPanelController != null)
-                            moonGen.SetLoadingPanel(loadingPanelController);
+                        if (cachedLoadingPanel == null)
+                            cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+                        if (cachedLoadingPanel != null)
+                            moonGen.SetLoadingPanel(cachedLoadingPanel);
 
                         moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
                     }
@@ -2174,12 +2224,13 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void UpdateLoadingProgress(float progress, string status)
     {
-        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-        if (loadingPanelController != null)
+        // Use cached reference for performance
+        if (cachedLoadingPanel == null)
+            cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+        if (cachedLoadingPanel != null)
         {
-            loadingPanelController.SetProgress(progress);
-            loadingPanelController.SetStatus(status);
-            
+            cachedLoadingPanel.SetProgress(progress);
+            cachedLoadingPanel.SetStatus(status);
         }
     }
 
@@ -2188,10 +2239,12 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void HideLoadingPanel()
     {
-        var loadingPanelController = FindAnyObjectByType<LoadingPanelController>();
-        if (loadingPanelController != null)
+        // Use cached reference for performance
+        if (cachedLoadingPanel == null)
+            cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+        if (cachedLoadingPanel != null)
         {
-            loadingPanelController.HideLoading();
+            cachedLoadingPanel.HideLoading();
         }
         else
         {

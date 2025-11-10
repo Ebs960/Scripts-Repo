@@ -422,9 +422,8 @@ public class CombatUnit : MonoBehaviour
         // Ensure animator is not null before trying to set a trigger
         if (animator != null) 
         {
-            // Don't set idle trigger here - let UpdateIdleAnimation() handle it
-            // This prevents conflicts with walking animations
             // Initialize as not moving (idle state)
+            // Let UpdateIdleAnimation() handle setting IsIdle if needed
             _isMoving = false;
             UpdateIdleAnimation();
         }
@@ -434,11 +433,6 @@ public class CombatUnit : MonoBehaviour
         }
 
         UpdateEquipmentVisuals();
-
-        if (UnitFormationManager.Instance != null)
-        {
-            UnitFormationManager.Instance.RegisterFormation(this);
-        }
 
         // Subscribe to events
         GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
@@ -902,8 +896,19 @@ public class CombatUnit : MonoBehaviour
 
     // Choose animation trigger based on whether this is a ranged attack (weapon defines projectileData)
     bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
+    // Use hashes for consistent naming (capitalized to match WorkerUnit)
+    // Attack animation should play fully - clear IsIdle when attacking
+    int triggerHash = isRangedAttack ? rangedAttackHash : attackHash;
+    animator.SetTrigger(triggerHash);
+    
+    // Clear IsIdle when attacking (attack animation should interrupt idle)
+    bool hasIsIdle = HasParameter(animator, isIdleHash);
+    if (hasIsIdle)
+    {
+        animator.SetBool(isIdleHash, false);
+    }
+    
     string triggerName = isRangedAttack ? "RangedAttack" : "Attack";
-    animator.SetTrigger(triggerName);
     OnAnimationTrigger?.Invoke(triggerName);
 
         // Tile defense bonus for target (e.g., hills)
@@ -990,10 +995,20 @@ public class CombatUnit : MonoBehaviour
         else if (equippedWeapon != null)
             activeWeapon = equippedWeapon;
 
-        // Choose animation
+        // Choose animation - use hashes for consistent naming (capitalized to match WorkerUnit)
+        // Attack animation should play fully - clear IsIdle when attacking
         bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
+        int triggerHash = isRangedAttack ? rangedAttackHash : attackHash;
+        animator.SetTrigger(triggerHash);
+        
+        // Clear IsIdle when attacking (attack animation should interrupt idle)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
+        
         string triggerName = isRangedAttack ? "RangedAttack" : "Attack";
-        animator.SetTrigger(triggerName);
         OnAnimationTrigger?.Invoke(triggerName);
 
         // Combat units fight at advantage against workers (+2 bonus vs non-combatants)
@@ -1064,9 +1079,9 @@ public class CombatUnit : MonoBehaviour
         Vector3 startPos = spawn != null ? spawn.position : transform.position;
 
         GameObject projGO = null;
-        if (ProjectilePool.Instance != null)
+        if (SimpleObjectPool.Instance != null)
         {
-            projGO = ProjectilePool.Instance.Spawn(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
+            projGO = SimpleObjectPool.Instance.Get(equipment.projectileData.projectilePrefab, startPos, Quaternion.identity);
         }
         else
         {
@@ -1094,7 +1109,16 @@ public class CombatUnit : MonoBehaviour
     /// <returns>True if the unit is destroyed by this damage</returns>
     public bool ApplyDamage(int damageAmount)
     {
-        animator.SetTrigger("hit");
+        // Use hash for consistent naming (capitalized to match WorkerUnit)
+        // Hit animation should play fully - clear IsIdle when hit
+        animator.SetTrigger(hitHash);
+        
+        // Clear IsIdle when hit (hit animation should interrupt idle)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
         
         currentHealth -= damageAmount;
         
@@ -1196,7 +1220,21 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     private void Die()
     {
-        animator.SetTrigger("death");
+        // Use hash for consistent naming (capitalized to match WorkerUnit)
+        // Death animation should play fully - don't clear IsIdle here, let animator handle it
+        animator.SetTrigger(deathHash);
+        
+        // Clear IsIdle and IsWalking when dead (death animation should interrupt everything)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
+        bool hasIsWalking = HasParameter(animator, isWalkingHash);
+        if (hasIsWalking)
+        {
+            animator.SetBool(isWalkingHash, false);
+        }
         
         // Raise death event
         GameEventManager.Instance.RaiseUnitKilledEvent(null, this, currentHealth);
@@ -1231,7 +1269,17 @@ public class CombatUnit : MonoBehaviour
         if (currentAttackPoints <= 0) return;
         if (isRouted) return; // Routed units cannot counter-attack
 
-        animator.SetTrigger("attack");
+        // Use hash for consistent naming (capitalized to match WorkerUnit)
+        // Attack animation should play fully - clear IsIdle when attacking
+        animator.SetTrigger(attackHash);
+        
+        // Clear IsIdle when attacking (attack animation should interrupt idle)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
+        
         OnAnimationTrigger?.Invoke("attack");
 
         int tileBonus = 0;
@@ -1276,7 +1324,8 @@ public class CombatUnit : MonoBehaviour
         {
             // Unit routs: cannot attack, moves randomly away
             isRouted = true;
-            animator.SetTrigger("rout");
+            // Use hash for consistent naming (capitalized to match WorkerUnit)
+            animator.SetTrigger(routHash);
             OnAnimationTrigger?.Invoke("rout");
             // Flee one tile away
             AttemptFlee();
@@ -1393,7 +1442,7 @@ public class CombatUnit : MonoBehaviour
         }
         if (animator != null)
         {
-            // Update idle animation (which will use bool if available, or trigger as fallback)
+            // Update idle animation (which will use IsIdle bool if available)
             // Don't trigger if unit is moving
             if (!_isMoving)
             {
@@ -1543,25 +1592,126 @@ public class CombatUnit : MonoBehaviour
 
     private void UpdateIdleAnimation()
     {
-        // Only update idle animation if unit is not moving
-        if (_isMoving) return;
-        
-        if (animator == null) return;
-        
-        // Check if IsIdle bool parameter exists (preferred)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
+        if (animator == null)
         {
-            animator.SetBool(isIdleHash, true);
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation called but animator is null");
             return;
         }
         
-        // Fallback to trigger-based idle (legacy)
-        string trigger = level == 1 ? "idleYoung" : "idleExperienced";
-        int triggerHash = level == 1 ? idleYoungHash : idleExperiencedHash;
-        if (HasParameter(animator, triggerHash))
+        // Check if IsIdle parameter exists (do this once at method level)
+        bool hasIsIdleParam = HasParameter(animator, isIdleHash);
+        
+        // Only update idle animation if unit is not moving AND not playing other animations
+        if (_isMoving)
         {
-            animator.SetTrigger(trigger);
+            // If moving, clear IsIdle
+            if (hasIsIdleParam)
+            {
+                animator.SetBool(isIdleHash, false);
+            }
+            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - unit is moving");
+            return;
+        }
+        
+        // Don't set idle if we're in the middle of playing other animations (attack, hit, death, etc.)
+        // Check current state - if we're in a non-idle state, don't force idle
+        AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
+        string currentStateName = GetCurrentStateName(animator);
+        
+        if (currentState.IsName("Attack") ||
+            currentState.IsName("Hit") ||
+            currentState.IsName("Death") ||
+            currentState.IsName("Rout") ||
+            currentState.IsName("RangedAttack"))
+        {
+            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - currently playing {currentStateName}");
+            return;
+        }
+        
+        // Use IsIdle bool parameter (required for single idle state)
+        if (hasIsIdleParam)
+        {
+            animator.SetBool(isIdleHash, true);
+            Debug.Log($"[CombatUnit] {gameObject.name}: Set IsIdle=true (bool parameter)");
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation - IsIdle parameter not found! Add IsIdle bool parameter to animator controller.");
+        }
+    }
+    
+    /// <summary>
+    /// Helper to get current animator state name for debugging
+    /// </summary>
+    private string GetCurrentStateName(Animator anim)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null) return "No Animator";
+        
+        AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+        // Try to get state name from layer
+        if (anim.layerCount > 0)
+        {
+            AnimatorClipInfo[] clipInfo = anim.GetCurrentAnimatorClipInfo(0);
+            if (clipInfo != null && clipInfo.Length > 0)
+            {
+                return clipInfo[0].clip.name;
+            }
+        }
+        
+        // Fallback: check common state names
+        if (stateInfo.IsName("Attack")) return "Attack";
+        if (stateInfo.IsName("Hit")) return "Hit";
+        if (stateInfo.IsName("Death")) return "Death";
+        if (stateInfo.IsName("Rout")) return "Rout";
+        if (stateInfo.IsName("Idle") || stateInfo.IsName("idle")) return "Idle";
+        if (stateInfo.IsName("Walk") || stateInfo.IsName("Walking")) return "Walk";
+        
+        return $"Unknown (normalizedTime: {stateInfo.normalizedTime:F2})";
+    }
+    
+    /// <summary>
+    /// Log all animator parameters for debugging
+    /// </summary>
+    private void LogAnimatorParameters(Animator anim)
+    {
+        if (anim == null || anim.runtimeAnimatorController == null) return;
+        
+        System.Text.StringBuilder paramLog = new System.Text.StringBuilder();
+        paramLog.Append($"[CombatUnit] {gameObject.name}: Animator Parameters - ");
+        
+        foreach (var param in anim.parameters)
+        {
+            string value = "";
+            switch (param.type)
+            {
+                case AnimatorControllerParameterType.Bool:
+                    value = anim.GetBool(param.nameHash).ToString();
+                    break;
+                case AnimatorControllerParameterType.Int:
+                    value = anim.GetInteger(param.nameHash).ToString();
+                    break;
+                case AnimatorControllerParameterType.Float:
+                    value = anim.GetFloat(param.nameHash).ToString("F2");
+                    break;
+                case AnimatorControllerParameterType.Trigger:
+                    value = "Trigger";
+                    break;
+            }
+            paramLog.Append($"{param.name}={value}, ");
+        }
+        
+        Debug.Log(paramLog.ToString());
+        
+        // Also log transition info
+        if (anim.IsInTransition(0))
+        {
+            AnimatorTransitionInfo transInfo = anim.GetAnimatorTransitionInfo(0);
+            Debug.Log($"[CombatUnit] {gameObject.name}: Currently transitioning! normalizedTime: {transInfo.normalizedTime:F2}, duration: {transInfo.duration:F2}");
+        }
+        else
+        {
+            AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+            Debug.Log($"[CombatUnit] {gameObject.name}: NOT transitioning. State: {GetCurrentStateName(anim)}, normalizedTime: {stateInfo.normalizedTime:F2}, speed: {stateInfo.speed:F2}");
         }
     }
     
@@ -1571,8 +1721,13 @@ public class CombatUnit : MonoBehaviour
     // Animation parameter hashes for efficiency (like WorkerUnit)
     private static readonly int isWalkingHash = Animator.StringToHash("IsWalking");
     private static readonly int isIdleHash = Animator.StringToHash("IsIdle");
-    private static readonly int idleYoungHash = Animator.StringToHash("idleYoung");
-    private static readonly int idleExperiencedHash = Animator.StringToHash("idleExperienced");
+    
+    // Animation trigger hashes - standardized to capitalized (matching WorkerUnit)
+    private static readonly int attackHash = Animator.StringToHash("Attack");
+    private static readonly int hitHash = Animator.StringToHash("Hit");
+    private static readonly int deathHash = Animator.StringToHash("Death");
+    private static readonly int routHash = Animator.StringToHash("Rout");
+    private static readonly int rangedAttackHash = Animator.StringToHash("RangedAttack");
     
     // Centralized animation state tracking
     private bool _isMoving = false;
@@ -1588,7 +1743,9 @@ public class CombatUnit : MonoBehaviour
         {
             if (_isMoving != value)
             {
+                bool oldValue = _isMoving;
                 _isMoving = value;
+                Debug.Log($"[CombatUnit] {gameObject.name}: isMoving changed from {oldValue} to {value}");
                 UpdateWalkingAnimation();
             }
         }
@@ -2432,14 +2589,10 @@ public class CombatUnit : MonoBehaviour
         Vector3 startPos = spawn != null ? spawn.position : transform.position;
 
             GameObject projGO = null;
-            // Try to spawn from the simple object pool first, then fall back to ProjectilePool
+            // Spawn from the unified object pool
             if (SimpleObjectPool.Instance != null)
             {
                 projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-            }
-            else if (ProjectilePool.Instance != null)
-            {
-                projGO = ProjectilePool.Instance.Spawn(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
             }
             else
             {
@@ -2507,35 +2660,49 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     private void UpdateWalkingAnimation()
     {
-        if (animator == null) return;
+        if (animator == null)
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateWalkingAnimation called but animator is null");
+            return;
+        }
         
         // Check if animator controller is assigned
-        if (animator.runtimeAnimatorController == null) return;
+        if (animator.runtimeAnimatorController == null)
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateWalkingAnimation called but animator controller is null");
+            return;
+        }
         
         // Check if IsWalking parameter exists
         bool hasIsWalking = HasParameter(animator, isWalkingHash);
-        if (!hasIsWalking) return; // Parameter doesn't exist, can't update
+        if (!hasIsWalking)
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: IsWalking parameter does not exist in animator controller");
+            return; // Parameter doesn't exist, can't update
+        }
         
-        // Set IsWalking bool parameter based on isMoving state
+        // Set IsWalking bool parameter based on _isMoving state
         animator.SetBool(isWalkingHash, _isMoving);
         
-        // If not moving, also set IsIdle if parameter exists
-        if (!_isMoving)
+        // Verify the parameter was actually set by reading it back
+        bool actualIsWalking = animator.GetBool(isWalkingHash);
+        string currentState = GetCurrentStateName(animator);
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        
+        Debug.Log($"[CombatUnit] {gameObject.name}: Set IsWalking={_isMoving}, Read back IsWalking={actualIsWalking}, Current state: {currentState}, normalizedTime: {stateInfo.normalizedTime:F2}, IsTransitioning: {animator.IsInTransition(0)}");
+        
+        // Log all animator parameters for debugging
+        if (_isMoving) // Only log when trying to walk
         {
-            bool hasIsIdle = HasParameter(animator, isIdleHash);
-            if (hasIsIdle)
-            {
-                animator.SetBool(isIdleHash, true);
-            }
+            LogAnimatorParameters(animator);
         }
-        else
+        
+        // Always sync IsIdle with IsWalking (opposite states)
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle)
         {
-            // If moving, clear IsIdle if parameter exists
-            bool hasIsIdle = HasParameter(animator, isIdleHash);
-            if (hasIsIdle)
-            {
-                animator.SetBool(isIdleHash, false);
-            }
+            animator.SetBool(isIdleHash, !_isMoving);
+            Debug.Log($"[CombatUnit] {gameObject.name}: Set IsIdle={!_isMoving} (opposite of IsWalking)");
         }
     }
     
@@ -2561,15 +2728,55 @@ public class CombatUnit : MonoBehaviour
     {
         if (animator != null)
         {
-            // Don't allow idle triggers to override walking state
-            if ((animationName == "idleYoung" || animationName == "idleExperienced") && _isMoving)
+            // Map common animation names to hashes for consistency
+            int triggerHash = -1;
+            switch (animationName)
             {
-                // Unit is moving, don't trigger idle animation
-                return;
+                case "Attack":
+                case "attack":
+                    triggerHash = attackHash;
+                    break;
+                case "Hit":
+                case "hit":
+                    triggerHash = hitHash;
+                    break;
+                case "Death":
+                case "death":
+                    triggerHash = deathHash;
+                    break;
+                case "Rout":
+                case "rout":
+                    triggerHash = routHash;
+                    break;
+                case "RangedAttack":
+                    triggerHash = rangedAttackHash;
+                    break;
             }
             
-            animator.SetTrigger(animationName);
+            // Use hash if available, otherwise use string (for custom animations)
+            if (triggerHash != -1 && HasParameter(animator, triggerHash))
+            {
+                animator.SetTrigger(triggerHash);
+                Debug.Log($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - using hash, current state: {GetCurrentStateName(animator)}");
+            }
+            else if (triggerHash != -1)
+            {
+                Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - hash found but parameter doesn't exist in animator");
+                // Fallback to string-based trigger
+                animator.SetTrigger(animationName);
+            }
+            else
+            {
+                // Fallback to string-based trigger for custom animations
+                animator.SetTrigger(animationName);
+                Debug.Log($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - using string (custom animation), current state: {GetCurrentStateName(animator)}");
+            }
+            
             OnAnimationTrigger?.Invoke(animationName);
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) called but animator is null");
         }
     }
     

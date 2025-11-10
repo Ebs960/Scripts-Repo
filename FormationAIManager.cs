@@ -265,7 +265,7 @@ public class FormationAIManager : MonoBehaviour
         // In balanced fights, focus on formation and flanking
         foreach (var formation in allFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             // Find nearest enemy formation
             FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
@@ -295,7 +295,7 @@ public class FormationAIManager : MonoBehaviour
         // Attackers should be more aggressive
         foreach (var formation in attackerFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
             if (nearestEnemy != null)
@@ -307,7 +307,7 @@ public class FormationAIManager : MonoBehaviour
         // Defenders should be more defensive
         foreach (var formation in defenderFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             // Hold position or retreat if low health
             if (formation.currentHealth < formation.totalHealth * retreatHealthThreshold)
@@ -331,7 +331,7 @@ public class FormationAIManager : MonoBehaviour
         // Defenders should be more aggressive
         foreach (var formation in defenderFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
             if (nearestEnemy != null)
@@ -343,7 +343,7 @@ public class FormationAIManager : MonoBehaviour
         // Attackers should be more defensive
         foreach (var formation in attackerFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             // Hold position or retreat if low health
             if (formation.currentHealth < formation.totalHealth * retreatHealthThreshold)
@@ -367,7 +367,7 @@ public class FormationAIManager : MonoBehaviour
         // All attackers should be aggressive
         foreach (var formation in attackerFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
             if (nearestEnemy != null)
@@ -379,7 +379,7 @@ public class FormationAIManager : MonoBehaviour
         // Defenders should try to retreat or hold position
         foreach (var formation in defenderFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             if (formation.currentHealth < formation.totalHealth * retreatHealthThreshold ||
                 formation.currentMorale < retreatMoraleThreshold * 100f)
@@ -403,7 +403,7 @@ public class FormationAIManager : MonoBehaviour
         // All defenders should be aggressive
         foreach (var formation in defenderFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
             if (nearestEnemy != null)
@@ -415,7 +415,7 @@ public class FormationAIManager : MonoBehaviour
         // Attackers should try to retreat or hold position
         foreach (var formation in attackerFormations)
         {
-            if (formation == null || formation.isRouted) continue;
+            if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
             if (formation.currentHealth < formation.totalHealth * retreatHealthThreshold ||
                 formation.currentMorale < retreatMoraleThreshold * 100f)

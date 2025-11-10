@@ -12,12 +12,8 @@ public class BattleUI : MonoBehaviour
     [SerializeField] private GameObject battleHUDPanel;
     [SerializeField] private HorizontalLayoutGroup formationButtonLayout;
     [SerializeField] private GameObject formationButtonPrefab;
-    
-    [Header("Battle Info")]
-    [SerializeField] private Slider battleProgressSlider;
 
     private BattleTestSimple battleTestSimple; // Main battle system (merged from BattleManager)
-    private List<CombatUnit> selectedUnits = new List<CombatUnit>();
     private bool isPaused = false;
     
     // Formation button tracking
@@ -138,26 +134,6 @@ public class BattleUI : MonoBehaviour
         formationButtonLayout = layout;
     }
 
-    private void CreateFormationButtons()
-    {
-        // Clear existing buttons
-        ClearFormationButtons();
-        
-        // Try to get formations from BattleTestSimple if available
-        if (battleTestSimple != null)
-        {
-            CreateFormationButtonsFromBattleTest();
-            return;
-        }
-        
-        // Otherwise, create unit-based buttons if no formations available
-        if (battleTestSimple != null)
-        {
-            // For now, create unit-based buttons if no formations available
-            CreateUnitButtons();
-        }
-    }
-
     private void CreateFormationButtonsFromBattleTest()
     {
         if (battleTestSimple == null) return;
@@ -169,33 +145,6 @@ public class BattleUI : MonoBehaviour
             if (formation != null)
             {
                 CreateFormationButton(formation);
-            }
-        }
-    }
-
-    private void CreateUnitButtons()
-    {
-        // Fallback: create buttons for individual units if no formations
-        if (battleTestSimple != null)
-        {
-            var attackerUnits = battleTestSimple.GetUnits(battleTestSimple.attacker);
-            var defenderUnits = battleTestSimple.GetUnits(battleTestSimple.defender);
-            
-            // Group units into virtual formations or create per-unit buttons
-            // For simplicity, create one button per unit for now
-            foreach (var unit in attackerUnits)
-            {
-                if (unit != null)
-                {
-                    CreateUnitButton(unit);
-                }
-            }
-            foreach (var unit in defenderUnits)
-            {
-                if (unit != null)
-                {
-                    CreateUnitButton(unit);
-                }
             }
         }
     }
@@ -250,38 +199,6 @@ public class BattleUI : MonoBehaviour
         UpdateFormationButton(formation, text);
     }
 
-    private void CreateUnitButton(CombatUnit unit)
-    {
-        if (formationButtonLayout == null) return;
-        
-        GameObject buttonGO = new GameObject($"{unit.data.unitName}_Button");
-        buttonGO.transform.SetParent(formationButtonLayout.transform, false);
-        
-        var buttonRect = buttonGO.AddComponent<RectTransform>();
-        buttonRect.sizeDelta = new Vector2(200, 44);
-        
-        var button = buttonGO.AddComponent<Button>();
-        var image = buttonGO.AddComponent<Image>();
-        image.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-        
-        var textGO = new GameObject("Text");
-        textGO.transform.SetParent(buttonGO.transform, false);
-        var text = textGO.AddComponent<TextMeshProUGUI>();
-        text.alignment = TextAlignmentOptions.Midline;
-        text.fontSize = 16f;
-        text.color = Color.white;
-        
-        var textRect = text.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(10, 5);
-        textRect.offsetMax = new Vector2(-10, -5);
-        
-        button.onClick.AddListener(() => SelectUnit(unit));
-        
-        UpdateUnitButton(unit, text);
-    }
-
     private void UpdateFormationButton(FormationUnit formation, TextMeshProUGUI text)
     {
         if (formation == null || text == null) return;
@@ -293,12 +210,6 @@ public class BattleUI : MonoBehaviour
         }
         
         text.text = $"{formation.formationName}  |  {alive} soldiers  |  Morale {formation.currentMorale}%";
-    }
-
-    private void UpdateUnitButton(CombatUnit unit, TextMeshProUGUI text)
-    {
-        if (unit == null || text == null) return;
-        text.text = $"{unit.data.unitName}  |  HP {unit.currentHealth}/{unit.MaxHealth}";
     }
 
     private void OnFormationButtonClicked(FormationUnit formation)
@@ -350,10 +261,6 @@ public class BattleUI : MonoBehaviour
         {
             battleTestSimple.SelectFormation(formation);
         }
-        
-        // Track unit for UI purposes
-        selectedUnits.Clear();
-        selectedUnits.Add(unit);
     }
 
     private void ClearFormationButtons()

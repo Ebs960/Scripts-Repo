@@ -443,17 +443,676 @@ public class CivilizationManager : MonoBehaviour
     }
     
     // Helper methods for strategic decisions
-    private void PrioritizeMilitaryProduction(Civilization civ) { /* Implementation */ }
-    private void ConsiderWarDeclarations(Civilization civ) { /* Implementation */ }
-    private void PrioritizeExpansion(Civilization civ) { /* Implementation */ }
-    private void PrioritizeScientificAdvancement(Civilization civ) { /* Implementation */ }
-    private void PrioritizeDiplomaticSolutions(Civilization civ) { /* Implementation */ }
-    private void PrioritizeEconomicGrowth(Civilization civ) { /* Implementation */ }
-    private void PrioritizeReligiousSpread(Civilization civ) { /* Implementation */ }
+    /// <summary>
+    /// Prioritize military unit production in cities with high production
+    /// </summary>
+    private void PrioritizeMilitaryProduction(Civilization civ)
+    {
+        if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
+        
+        // Get all available combat units
+        var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+        if (allUnitData == null || allUnitData.Length == 0) return;
+        
+        // Filter to available military units (meet requirements)
+        var availableUnits = new List<CombatUnitData>();
+        foreach (var unitData in allUnitData)
+        {
+            if (unitData == null) continue;
+            if (unitData.AreRequirementsMet(civ))
+            {
+                // Use unique unit replacement if available
+                var unitToUse = civ.GetUnitData(unitData);
+                availableUnits.Add(unitToUse);
+            }
+        }
+        
+        if (availableUnits.Count == 0) return;
+        
+        // Sort cities by production (highest first)
+        var citiesByProduction = civ.cities
+            .Where(c => c != null && c.GetProductionPerTurn() > 0)
+            .OrderByDescending(c => c.GetProductionPerTurn())
+            .ToList();
+        
+        // Prioritize units based on leader agenda
+        var leader = civ.leader;
+        var preferredUnitTypes = new List<CombatCategory>();
+        
+        if (leader != null)
+        {
+            // Militaristic leaders prefer melee units
+            if (leader.primaryAgenda == LeaderAgenda.Militaristic)
+            {
+                preferredUnitTypes.AddRange(new[] { 
+                    CombatCategory.Swordsman, CombatCategory.Spearman, 
+                    CombatCategory.Axeman, CombatCategory.Cavalry 
+                });
+            }
+        }
+        
+        // Queue units in cities
+        int unitsQueued = 0;
+        int maxUnitsToQueue = Mathf.Min(citiesByProduction.Count, 3); // Queue in top 3 cities
+        
+        foreach (var city in citiesByProduction.Take(maxUnitsToQueue))
+        {
+            if (city == null) continue;
+            
+            // Skip if city already has something in production
+            if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+            
+            // Find best unit for this city
+            CombatUnitData bestUnit = null;
+            
+            // Prefer units matching leader agenda
+            if (preferredUnitTypes.Count > 0)
+            {
+                bestUnit = availableUnits.FirstOrDefault(u => preferredUnitTypes.Contains(u.unitType));
+            }
+            
+            // Fallback to any available unit
+            if (bestUnit == null)
+            {
+                bestUnit = availableUnits.FirstOrDefault();
+            }
+            
+            if (bestUnit != null && city.QueueProduction(bestUnit))
+            {
+                unitsQueued++;
+                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestUnit.unitName} in {city.cityName}");
+            }
+        }
+    }
     
-    private int CountNearbyThreats(Civilization civ) { return 0; /* Implementation */ }
-    private List<Civilization> FindWeakNeighbors(Civilization civ) { return new List<Civilization>(); }
-    private List<Civilization> FindPotentialAllies(Civilization civ) { return new List<Civilization>(); }
+    /// <summary>
+    /// Consider declaring war on weak neighbors
+    /// </summary>
+    private void ConsiderWarDeclarations(Civilization civ)
+    {
+        if (civ == null || civ.leader == null) return;
+        
+        var leader = civ.leader;
+        var myStrength = ComputeMilitaryStrength(civ);
+        var weakNeighbors = FindWeakNeighbors(civ);
+        
+        if (weakNeighbors == null || weakNeighbors.Count == 0) return;
+        
+        // Check leader traits
+        float warChance = 0.1f; // Base 10% chance
+        if (leader.isWarmonger) warChance *= 2f; // Warmongers more likely
+        if (leader.primaryAgenda == LeaderAgenda.Militaristic) warChance *= 1.5f;
+        
+        // Consider each weak neighbor
+        foreach (var target in weakNeighbors)
+        {
+            if (target == null) continue;
+            
+            // Check current relationship
+            var currentRelation = DiplomacyManager.Instance != null 
+                ? DiplomacyManager.Instance.GetRelationship(civ, target) 
+                : DiplomaticState.Peace;
+            
+            if (currentRelation != DiplomaticState.Peace) continue; // Already at war or allied
+            
+            // Check diplomatic memory
+            if (DiplomacyManager.Instance != null)
+            {
+                var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
+                var reputation = memory.GetReputation(target);
+                var trustLevel = memory.GetTrustLevel(target);
+                
+                // Less likely to declare war on trusted allies
+                if (trustLevel >= 7) warChance *= 0.3f;
+                if (reputation > 20f) warChance *= 0.5f;
+                
+                // More likely if they have negative reputation
+                if (reputation < -20f) warChance *= 1.5f;
+            }
+            
+            // Check military strength ratio
+            var targetStrength = ComputeMilitaryStrength(target);
+            float strengthRatio = myStrength / Mathf.Max(targetStrength, 1f);
+            
+            // More likely if we're significantly stronger
+            if (strengthRatio >= 1.5f) warChance *= 1.5f;
+            if (strengthRatio >= 2.0f) warChance *= 2f;
+            
+            // Check for shared borders (casus belli)
+            bool sharesBorder = CheckSharedBorders(civ, target);
+            if (sharesBorder) warChance *= 1.3f;
+            
+            // Roll the dice
+            if (UnityEngine.Random.value < warChance)
+            {
+                if (DiplomacyManager.Instance != null)
+                {
+                    DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.War);
+                    Debug.Log($"[CivilizationManager] {civ.civData.civName} declared war on {target.civData.civName}");
+                }
+                break; // Only declare one war per turn
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Prioritize expansion by queueing pioneer production
+    /// </summary>
+    private void PrioritizeExpansion(Civilization civ)
+    {
+        if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
+        
+        // Check expansion limits (tribes limited to 3 cities)
+        if (civ.civData != null && civ.civData.isTribe && civ.cities.Count >= 3)
+        {
+            return; // Tribes can't expand beyond 3 cities
+        }
+        
+        // Get pioneer unit data
+        if (pioneerData == null)
+        {
+            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: pioneerData not assigned");
+            return;
+        }
+        
+        // Check if pioneer can be produced
+        if (!pioneerData.AreRequirementsMet(civ)) return;
+        
+        // Find cities that can produce pioneers
+        var citiesByProduction = civ.cities
+            .Where(c => c != null && c.GetProductionPerTurn() > 0)
+            .OrderByDescending(c => c.GetProductionPerTurn())
+            .ToList();
+        
+        // Queue pioneer in the best production city that doesn't already have production
+        foreach (var city in citiesByProduction)
+        {
+            if (city == null) continue;
+            if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+            
+            if (city.QueueProduction(pioneerData))
+            {
+                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued pioneer in {city.cityName} for expansion");
+                break; // Only queue one pioneer per turn
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Prioritize scientific advancement by queueing science buildings
+    /// </summary>
+    private void PrioritizeScientificAdvancement(Civilization civ)
+    {
+        if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
+        
+        // Get all available buildings
+        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        if (allBuildings == null || allBuildings.Length == 0) return;
+        
+        // Filter to science buildings (buildings that provide science)
+        var scienceBuildings = allBuildings
+            .Where(b => b != null && b.AreRequirementsMet(civ) && b.sciencePerTurn > 0)
+            .OrderByDescending(b => b.sciencePerTurn)
+            .ToList();
+        
+        if (scienceBuildings.Count == 0) return;
+        
+        // Find cities without science buildings
+        var citiesNeedingScience = civ.cities
+            .Where(c => c != null && c.GetProductionPerTurn() > 0)
+            .Where(c => !HasBuildingType(c, scienceBuildings))
+            .OrderByDescending(c => c.GetProductionPerTurn())
+            .ToList();
+        
+        // Queue science buildings in cities
+        int buildingsQueued = 0;
+        int maxBuildingsToQueue = Mathf.Min(citiesNeedingScience.Count, 2); // Queue in top 2 cities
+        
+        foreach (var city in citiesNeedingScience.Take(maxBuildingsToQueue))
+        {
+            if (city == null) continue;
+            if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+            
+            // Find best science building for this city
+            var bestBuilding = scienceBuildings.FirstOrDefault();
+            
+            if (bestBuilding != null && city.QueueProduction(bestBuilding))
+            {
+                buildingsQueued++;
+                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Prioritize diplomatic solutions by seeking alliances
+    /// </summary>
+    private void PrioritizeDiplomaticSolutions(Civilization civ)
+    {
+        if (civ == null || civ.leader == null || DiplomacyManager.Instance == null) return;
+        
+        var leader = civ.leader;
+        var potentialAllies = FindPotentialAllies(civ);
+        
+        if (potentialAllies == null || potentialAllies.Count == 0) return;
+        
+        // Only diplomatic leaders actively seek alliances
+        if (leader.primaryAgenda != LeaderAgenda.Diplomatic) return;
+        
+        // Consider each potential ally
+        foreach (var target in potentialAllies)
+        {
+            if (target == null) continue;
+            
+            // Check current relationship
+            var currentRelation = DiplomacyManager.Instance.GetRelationship(civ, target);
+            if (currentRelation != DiplomaticState.Peace) continue; // Already allied or at war
+            
+            // Check diplomatic memory
+            var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
+            var reputation = memory.GetReputation(target);
+            var trustLevel = memory.GetTrustLevel(target);
+            
+            // Propose alliance if conditions are good
+            if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < 0.3f)
+            {
+                DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.Alliance);
+                Debug.Log($"[CivilizationManager] {civ.civData.civName} proposed alliance to {target.civData.civName}");
+                break; // Only propose one alliance per turn
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Prioritize economic growth by queueing gold-generating buildings
+    /// </summary>
+    private void PrioritizeEconomicGrowth(Civilization civ)
+    {
+        if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
+        
+        // Get all available buildings
+        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        if (allBuildings == null || allBuildings.Length == 0) return;
+        
+        // Filter to economic buildings (buildings that provide gold)
+        var economicBuildings = allBuildings
+            .Where(b => b != null && b.AreRequirementsMet(civ) && b.goldPerTurn > 0)
+            .OrderByDescending(b => b.goldPerTurn)
+            .ToList();
+        
+        if (economicBuildings.Count == 0) return;
+        
+        // Find cities without economic buildings
+        var citiesNeedingGold = civ.cities
+            .Where(c => c != null && c.GetProductionPerTurn() > 0)
+            .Where(c => !HasBuildingType(c, economicBuildings))
+            .OrderByDescending(c => c.GetProductionPerTurn())
+            .ToList();
+        
+        // Queue economic buildings in cities
+        int buildingsQueued = 0;
+        int maxBuildingsToQueue = Mathf.Min(citiesNeedingGold.Count, 2); // Queue in top 2 cities
+        
+        foreach (var city in citiesNeedingGold.Take(maxBuildingsToQueue))
+        {
+            if (city == null) continue;
+            if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+            
+            // Find best economic building for this city
+            var bestBuilding = economicBuildings.FirstOrDefault();
+            
+            if (bestBuilding != null && city.QueueProduction(bestBuilding))
+            {
+                buildingsQueued++;
+                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Prioritize religious spread by founding pantheons/religions and building religious buildings
+    /// </summary>
+    private void PrioritizeReligiousSpread(Civilization civ)
+    {
+        if (civ == null) return;
+        
+        // Try to found pantheon if not already founded
+        if (civ.foundedPantheons == null || civ.foundedPantheons.Count == 0)
+        {
+            if (ReligionManager.Instance != null)
+            {
+                var availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
+                if (availablePantheons != null && availablePantheons.Count > 0)
+                {
+                    // Check if we have enough faith
+                    var pantheon = availablePantheons[0]; // Pick first available
+                    if (pantheon != null && civ.faith >= pantheon.faithCost)
+                    {
+                        // Get available beliefs for this pantheon
+                        if (pantheon.possibleFounderBeliefs != null && pantheon.possibleFounderBeliefs.Length > 0)
+                        {
+                            var belief = pantheon.possibleFounderBeliefs[0]; // Pick first belief
+                            if (civ.FoundPantheon(pantheon, belief))
+                            {
+                                Debug.Log($"[CivilizationManager] {civ.civData.civName} founded pantheon: {pantheon.pantheonName}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Try to found religion if we have a pantheon but no religion
+        if (civ.foundedPantheons != null && civ.foundedPantheons.Count > 0 && !civ.hasFoundedReligion)
+        {
+            if (ReligionManager.Instance != null)
+            {
+                var availableReligions = ReligionManager.Instance.GetAvailableReligions();
+                if (availableReligions != null && availableReligions.Count > 0)
+                {
+                    // Find a city with a holy site
+                    var holySiteCity = civ.cities.FirstOrDefault(c => c != null && c.HasHolySite());
+                    if (holySiteCity != null)
+                    {
+                        var religion = availableReligions[0]; // Pick first available
+                        if (religion != null && civ.faith >= religion.faithCost)
+                        {
+                            if (civ.FoundReligion(religion, holySiteCity))
+                            {
+                                Debug.Log($"[CivilizationManager] {civ.civData.civName} founded religion: {religion.religionName}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Queue religious buildings in cities
+        if (civ.cities != null && civ.cities.Count > 0)
+        {
+            var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+            if (allBuildings != null && allBuildings.Length > 0)
+            {
+                // Filter to religious buildings (buildings that provide faith)
+                var religiousBuildings = allBuildings
+                    .Where(b => b != null && b.AreRequirementsMet(civ) && b.faithPerTurn > 0)
+                    .OrderByDescending(b => b.faithPerTurn)
+                    .ToList();
+                
+                if (religiousBuildings.Count > 0)
+                {
+                    var citiesNeedingFaith = civ.cities
+                        .Where(c => c != null && c.GetProductionPerTurn() > 0)
+                        .Where(c => !HasBuildingType(c, religiousBuildings))
+                        .OrderByDescending(c => c.GetProductionPerTurn())
+                        .ToList();
+                    
+                    foreach (var city in citiesNeedingFaith.Take(1)) // Queue in one city
+                    {
+                        if (city == null) continue;
+                        if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
+                        
+                        var bestBuilding = religiousBuildings.FirstOrDefault();
+                        if (bestBuilding != null && city.QueueProduction(bestBuilding))
+                        {
+                            Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Count nearby enemy military units within threat range
+    /// </summary>
+    private int CountNearbyThreats(Civilization civ)
+    {
+        if (civ == null || civ.ownedTileIndices == null || TileSystem.Instance == null) return 0;
+        
+        int threatCount = 0;
+        const int threatRange = 3; // Tiles to check around owned tiles
+        
+        // Get all owned tiles
+        var ownedTiles = new HashSet<int>(civ.ownedTileIndices);
+        
+        // Check each owned tile's neighbors
+        foreach (int tileIndex in ownedTiles)
+        {
+            if (tileIndex < 0) continue;
+            
+            // Get tiles in threat range
+            var tilesInRange = GetTilesInRange(tileIndex, threatRange);
+            
+            foreach (int neighborTile in tilesInRange)
+            {
+                if (neighborTile < 0) continue;
+                
+                // Check if tile is owned by an enemy
+                var tileData = TileSystem.Instance.GetTileData(neighborTile);
+                if (tileData == null || tileData.owner == null) continue;
+                if (tileData.owner == civ) continue; // Own tile
+                
+                // Check if we're at war with this civ
+                var currentRelation = DiplomacyManager.Instance != null
+                    ? DiplomacyManager.Instance.GetRelationship(civ, tileData.owner)
+                    : DiplomaticState.Peace;
+                
+                if (currentRelation == DiplomaticState.War)
+                {
+                    // Count enemy units on this tile
+                    var enemyUnits = tileData.owner.combatUnits
+                        .Where(u => u != null && u.currentTileIndex == neighborTile)
+                        .Count();
+                    
+                    threatCount += enemyUnits;
+                }
+            }
+        }
+        
+        return threatCount;
+    }
+    
+    /// <summary>
+    /// Find neighboring civilizations that are weaker than us
+    /// </summary>
+    private List<Civilization> FindWeakNeighbors(Civilization civ)
+    {
+        var weakNeighbors = new List<Civilization>();
+        if (civ == null || civ.ownedTileIndices == null || TileSystem.Instance == null) return weakNeighbors;
+        
+        var myStrength = ComputeMilitaryStrength(civ);
+        var neighboringCivs = new HashSet<Civilization>();
+        
+        // Find all neighboring civilizations
+        foreach (int tileIndex in civ.ownedTileIndices)
+        {
+            if (tileIndex < 0) continue;
+            
+            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
+            if (neighbors == null) continue;
+            
+            foreach (int neighborTile in neighbors)
+            {
+                if (neighborTile < 0) continue;
+                
+                var tileData = TileSystem.Instance.GetTileData(neighborTile);
+                if (tileData == null || tileData.owner == null) continue;
+                if (tileData.owner == civ) continue; // Own tile
+                
+                neighboringCivs.Add(tileData.owner);
+            }
+        }
+        
+        // Filter to weak neighbors (at least 1.3x stronger)
+        const float strengthThreshold = 1.3f;
+        foreach (var neighbor in neighboringCivs)
+        {
+            if (neighbor == null) continue;
+            
+            // Check diplomatic state (only consider peace/neutral)
+            var currentRelation = DiplomacyManager.Instance != null
+                ? DiplomacyManager.Instance.GetRelationship(civ, neighbor)
+                : DiplomaticState.Peace;
+            
+            if (currentRelation != DiplomaticState.Peace && currentRelation != DiplomaticState.Trade) continue;
+            
+            var neighborStrength = ComputeMilitaryStrength(neighbor);
+            float strengthRatio = myStrength / Mathf.Max(neighborStrength, 1f);
+            
+            if (strengthRatio >= strengthThreshold)
+            {
+                weakNeighbors.Add(neighbor);
+            }
+        }
+        
+        return weakNeighbors;
+    }
+    
+    /// <summary>
+    /// Find civilizations suitable for alliance
+    /// </summary>
+    private List<Civilization> FindPotentialAllies(Civilization civ)
+    {
+        var potentialAllies = new List<Civilization>();
+        if (civ == null || DiplomacyManager.Instance == null) return potentialAllies;
+        
+        var allCivs = GetAllCivs();
+        if (allCivs == null) return potentialAllies;
+        
+        var myStrength = ComputeMilitaryStrength(civ);
+        
+        foreach (var otherCiv in allCivs)
+        {
+            if (otherCiv == null || otherCiv == civ) continue;
+            
+            // Check current relationship (must be at peace)
+            var currentRelation = DiplomacyManager.Instance.GetRelationship(civ, otherCiv);
+            if (currentRelation != DiplomaticState.Peace) continue;
+            
+            // Check diplomatic memory
+            var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
+            var reputation = memory.GetReputation(otherCiv);
+            var trustLevel = memory.GetTrustLevel(otherCiv);
+            
+            // Must have good reputation and trust
+            if (reputation < 20f || trustLevel < 6) continue;
+            
+            // Evaluate trait compatibility
+            float traitModifier = EvaluateCivilizationTraits(civ, otherCiv);
+            if (traitModifier < -10f) continue; // Too incompatible
+            
+            // Check for shared enemies (bonus for potential allies)
+            bool hasSharedEnemy = false;
+            foreach (var thirdCiv in allCivs)
+            {
+                if (thirdCiv == null || thirdCiv == civ || thirdCiv == otherCiv) continue;
+                
+                var relationToThird = DiplomacyManager.Instance.GetRelationship(civ, thirdCiv);
+                var otherRelationToThird = DiplomacyManager.Instance.GetRelationship(otherCiv, thirdCiv);
+                
+                if (relationToThird == DiplomaticState.War && otherRelationToThird == DiplomaticState.War)
+                {
+                    hasSharedEnemy = true;
+                    break;
+                }
+            }
+            
+            // Consider military strength (prefer similar or stronger allies)
+            var otherStrength = ComputeMilitaryStrength(otherCiv);
+            bool acceptableStrength = otherStrength >= myStrength * 0.7f; // At least 70% of our strength
+            
+            if (acceptableStrength || hasSharedEnemy)
+            {
+                potentialAllies.Add(otherCiv);
+            }
+        }
+        
+        return potentialAllies;
+    }
+    
+    // Helper methods for the above
+    /// <summary>
+    /// Check if two civilizations share borders
+    /// </summary>
+    private bool CheckSharedBorders(Civilization civ1, Civilization civ2)
+    {
+        if (civ1 == null || civ2 == null || civ1.ownedTileIndices == null || civ2.ownedTileIndices == null) return false;
+        if (TileSystem.Instance == null) return false;
+        
+        var civ2Tiles = new HashSet<int>(civ2.ownedTileIndices);
+        
+        // Check if any of civ1's tiles are adjacent to civ2's tiles
+        foreach (int tileIndex in civ1.ownedTileIndices)
+        {
+            if (tileIndex < 0) continue;
+            
+            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
+            if (neighbors == null) continue;
+            
+            foreach (int neighborTile in neighbors)
+            {
+                if (civ2Tiles.Contains(neighborTile))
+                {
+                    return true; // Found shared border
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Get tiles in range of a center tile (BFS)
+    /// </summary>
+    private List<int> GetTilesInRange(int centerTile, int range)
+    {
+        var tilesInRange = new List<int>();
+        if (centerTile < 0 || TileSystem.Instance == null) return tilesInRange;
+        
+        var visited = new HashSet<int>();
+        var queue = new Queue<(int tile, int distance)>();
+        queue.Enqueue((centerTile, 0));
+        visited.Add(centerTile);
+        
+        while (queue.Count > 0)
+        {
+            var (currentTile, distance) = queue.Dequeue();
+            
+            if (distance > 0) // Don't include center tile
+            {
+                tilesInRange.Add(currentTile);
+            }
+            
+            if (distance >= range) continue; // Reached max range
+            
+            var neighbors = TileSystem.Instance.GetNeighbors(currentTile);
+            if (neighbors == null) continue;
+            
+            foreach (int neighbor in neighbors)
+            {
+                if (neighbor < 0 || visited.Contains(neighbor)) continue;
+                
+                visited.Add(neighbor);
+                queue.Enqueue((neighbor, distance + 1));
+            }
+        }
+        
+        return tilesInRange;
+    }
+    
+    /// <summary>
+    /// Check if a city has any building of the given types
+    /// </summary>
+    private bool HasBuildingType(City city, List<BuildingData> buildingTypes)
+    {
+        if (city == null || buildingTypes == null || buildingTypes.Count == 0) return false;
+        if (city.builtBuildings == null) return false;
+        
+        var builtBuildingData = city.builtBuildings.Select(t => t.Item1).ToHashSet();
+        
+        return buildingTypes.Any(b => builtBuildingData.Contains(b));
+    }
 
     /// <summary>
     /// Spawns the player civ, AI civs, tribes, and city-states after the map is generated.
