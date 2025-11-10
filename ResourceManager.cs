@@ -220,7 +220,7 @@ public class ResourceManager : MonoBehaviour
     // Load resources from Resources folder if not set in inspector
     private void LoadResources()
     {
-        resourceTypes = Resources.LoadAll<ResourceData>("Data/Resources");
+        resourceTypes = ResourceCache.GetAllResourceData();
         if (resourceTypes == null || resourceTypes.Length == 0)
         {
             Debug.LogWarning("No resource types found in Resources/Data/Resources folder. Please assign them in the inspector.");

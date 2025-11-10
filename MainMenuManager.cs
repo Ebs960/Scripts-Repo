@@ -641,7 +641,7 @@ public class MainMenuManager : MonoBehaviour
         selectedCivilization = null;
         
         // Load all CivData assets from Resources/Civilizations
-        CivData[] allCivs = Resources.LoadAll<CivData>("Civilizations");
+        CivData[] allCivs = ResourceCache.GetAllCivDatas();
         if (allCivs == null || allCivs.Length == 0)
         {
             Debug.LogError("No civilizations found in Resources/Civilizations!");

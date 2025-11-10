@@ -43,7 +43,7 @@ public class CivilizationManager : MonoBehaviour
         else { Destroy(gameObject); return; }
 
         // Load all CivData from Resources
-        allCivDatas = Resources.LoadAll<CivData>("Civilizations");
+        allCivDatas = ResourceCache.GetAllCivDatas();
         if (allCivDatas == null || allCivDatas.Length == 0) {
             Debug.LogError("CivilizationManager: No CivData assets found in Resources/Civilizations!");
         }
@@ -451,7 +451,7 @@ public class CivilizationManager : MonoBehaviour
         if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
         
         // Get all available combat units
-        var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+        var allUnitData = ResourceCache.GetAllCombatUnits();
         if (allUnitData == null || allUnitData.Length == 0) return;
         
         // Filter to available military units (meet requirements)
@@ -646,7 +646,7 @@ public class CivilizationManager : MonoBehaviour
         if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
         
         // Get all available buildings
-        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        var allBuildings = ResourceCache.GetAllBuildings();
         if (allBuildings == null || allBuildings.Length == 0) return;
         
         // Filter to science buildings (buildings that provide science)
@@ -731,7 +731,7 @@ public class CivilizationManager : MonoBehaviour
         if (civ == null || civ.cities == null || civ.cities.Count == 0) return;
         
         // Get all available buildings
-        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        var allBuildings = ResourceCache.GetAllBuildings();
         if (allBuildings == null || allBuildings.Length == 0) return;
         
         // Filter to economic buildings (buildings that provide gold)
@@ -830,7 +830,7 @@ public class CivilizationManager : MonoBehaviour
         // Queue religious buildings in cities
         if (civ.cities != null && civ.cities.Count > 0)
         {
-            var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+            var allBuildings = ResourceCache.GetAllBuildings();
             if (allBuildings != null && allBuildings.Length > 0)
             {
                 // Filter to religious buildings (buildings that provide faith)

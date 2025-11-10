@@ -87,6 +87,14 @@ public class City : MonoBehaviour
     private TMPro.TextMeshProUGUI nameText;
     private TMPro.TextMeshProUGUI levelText;
     private TMPro.TextMeshProUGUI loyaltyText;
+    
+    // Cached RectTransform references to avoid repeated GetComponent calls
+    private RectTransform cachedCanvasRect;
+    private RectTransform cachedBgRect;
+    private RectTransform cachedIconRect;
+    private RectTransform cachedNameRect;
+    private RectTransform cachedLevelRect;
+    private RectTransform cachedLoyaltyRect;
     // Offset above city center (in world units)
     private float labelVerticalOffset = 2.5f; // You can tweak this for your city model size
     // How large the label appears at a reference distance
@@ -159,29 +167,29 @@ public class City : MonoBehaviour
         scaler.dynamicPixelsPerUnit = 10;
         scaler.referencePixelsPerUnit = 100;
         canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-        RectTransform canvasRect = canvasGO.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(3.5f, 1.5f);
-        canvasRect.localScale = Vector3.one * (0.12f / 6f);
-        canvasRect.localPosition = Vector3.zero;
+        cachedCanvasRect = canvasGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedCanvasRect.sizeDelta = new Vector2(3.5f, 1.5f);
+        cachedCanvasRect.localScale = Vector3.one * (0.12f / 6f);
+        cachedCanvasRect.localPosition = Vector3.zero;
 
         // Add a background panel (optional, for readability)
         GameObject bgGO = new GameObject("LabelBG");
         bgGO.transform.SetParent(canvasGO.transform, false);
         var bgImg = bgGO.AddComponent<UnityEngine.UI.Image>();
         bgImg.color = new Color(0,0,0,0.4f);
-        RectTransform bgRect = bgGO.GetComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
-        bgRect.offsetMin = Vector2.zero;
-        bgRect.offsetMax = Vector2.zero;
+        cachedBgRect = bgGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedBgRect.anchorMin = Vector2.zero;
+        cachedBgRect.anchorMax = Vector2.one;
+        cachedBgRect.offsetMin = Vector2.zero;
+        cachedBgRect.offsetMax = Vector2.zero;
 
         // Add civ icon
         GameObject iconGO = new GameObject("CivIcon");
         iconGO.transform.SetParent(canvasGO.transform, false);
         civIconImg = iconGO.AddComponent<UnityEngine.UI.Image>();
-        RectTransform iconRect = iconGO.GetComponent<RectTransform>();
-        iconRect.sizeDelta = new Vector2(200, 200);
-        iconRect.anchoredPosition = new Vector2(-60, 0);
+        cachedIconRect = iconGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedIconRect.sizeDelta = new Vector2(200, 200);
+        cachedIconRect.anchoredPosition = new Vector2(-60, 0);
         civIconImg.preserveAspect = true;
 
         // Add city name
@@ -190,9 +198,9 @@ public class City : MonoBehaviour
         nameText = nameGO.AddComponent<TMPro.TextMeshProUGUI>();
         nameText.fontSize = 32;
         nameText.alignment = TMPro.TextAlignmentOptions.Left;
-        RectTransform nameRect = nameGO.GetComponent<RectTransform>();
-        nameRect.sizeDelta = new Vector2(200, 20);
-        nameRect.anchoredPosition = new Vector2(10, 30);
+        cachedNameRect = nameGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedNameRect.sizeDelta = new Vector2(200, 20);
+        cachedNameRect.anchoredPosition = new Vector2(10, 30);
 
         // Add level
         GameObject levelGO = new GameObject("CityLevel");
@@ -200,9 +208,9 @@ public class City : MonoBehaviour
         levelText = levelGO.AddComponent<TMPro.TextMeshProUGUI>();
         levelText.fontSize = 24;
         levelText.alignment = TMPro.TextAlignmentOptions.Left;
-        RectTransform levelRect = levelGO.GetComponent<RectTransform>();
-        levelRect.sizeDelta = new Vector2(200, 32);
-        levelRect.anchoredPosition = new Vector2(10, 0);
+        cachedLevelRect = levelGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedLevelRect.sizeDelta = new Vector2(200, 32);
+        cachedLevelRect.anchoredPosition = new Vector2(10, 0);
 
         // Add loyalty
         GameObject loyaltyGO = new GameObject("CityLoyalty");
@@ -210,9 +218,9 @@ public class City : MonoBehaviour
         loyaltyText = loyaltyGO.AddComponent<TMPro.TextMeshProUGUI>();
         loyaltyText.fontSize = 24;
         loyaltyText.alignment = TMPro.TextAlignmentOptions.Left;
-        RectTransform loyaltyRect = loyaltyGO.GetComponent<RectTransform>();
-        loyaltyRect.sizeDelta = new Vector2(200, 32);
-        loyaltyRect.anchoredPosition = new Vector2(10, -30);
+        cachedLoyaltyRect = loyaltyGO.GetComponent<RectTransform>(); // Cache RectTransform reference
+        cachedLoyaltyRect.sizeDelta = new Vector2(200, 32);
+        cachedLoyaltyRect.anchoredPosition = new Vector2(10, -30);
 
         // Add a button for click events
         var btn = canvasGO.AddComponent<UnityEngine.UI.Button>();

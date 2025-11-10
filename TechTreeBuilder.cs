@@ -371,7 +371,7 @@ public class TechTreeBuilder : MonoBehaviour
         }
 #else
         // Runtime: look in Resources (place TechData assets under a Resources folder)
-        var found = Resources.LoadAll<TechData>(string.Empty);
+        var found = ResourceCache.GetAllTechData();
         foreach (var tech in found)
         {
             if (tech != null && !availableTechs.Contains(tech))

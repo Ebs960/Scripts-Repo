@@ -65,6 +65,10 @@ public class SpaceRouteManager : MonoBehaviour
     }
 
     private int nextTaskId = 1;
+    
+    // Cached manager references to avoid repeated FindAnyObjectByType calls
+    private TurnManager _cachedTurnManager;
+    private SpaceTravelStatusUI _cachedStatusUI;
 
     void Awake()
     {
@@ -81,8 +85,12 @@ public class SpaceRouteManager : MonoBehaviour
 
     void Start()
     {
+        // Cache manager references to avoid repeated FindAnyObjectByType calls
+        _cachedTurnManager = FindAnyObjectByType<TurnManager>();
+        _cachedStatusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
+        
         // Subscribe to turn progression
-        var turnManager = FindAnyObjectByType<TurnManager>();
+        var turnManager = _cachedTurnManager;
         if (turnManager != null)
         {
             // Hook into turn end event (you'll need to expose this in TurnManager)
@@ -194,10 +202,12 @@ public class SpaceRouteManager : MonoBehaviour
         OnTravelStarted?.Invoke(task);
 
         // Also prompt UI status panel to update now (on launch)
-        var statusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
-        if (statusUI != null)
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedStatusUI == null)
+            _cachedStatusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
+        if (_cachedStatusUI != null)
         {
-            statusUI.Refresh();
+            _cachedStatusUI.Refresh();
         }
 
         return true;
@@ -238,10 +248,12 @@ public class SpaceRouteManager : MonoBehaviour
         }
 
         // Ensure status UI updates each turn to reflect new ETAs
-        var statusUIUpdate = FindAnyObjectByType<SpaceTravelStatusUI>();
-        if (statusUIUpdate != null)
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedStatusUI == null)
+            _cachedStatusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
+        if (_cachedStatusUI != null)
         {
-            statusUIUpdate.Refresh();
+            _cachedStatusUI.Refresh();
         }
     }
 

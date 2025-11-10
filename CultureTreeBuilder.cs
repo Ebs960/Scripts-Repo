@@ -371,7 +371,7 @@ public class CultureTreeBuilder : MonoBehaviour
         }
 #else
         // Runtime: look in Resources (place CultureData assets under a Resources folder)
-        var found = Resources.LoadAll<CultureData>(string.Empty);
+        var found = ResourceCache.GetAllCultureData();
         foreach (var culture in found)
         {
             if (culture != null && !availableCultures.Contains(culture))

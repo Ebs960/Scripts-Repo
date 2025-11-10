@@ -79,6 +79,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private bool _minimapsPreGenerated = false;
     private LoadingPanelController _loadingPanel;
     private bool _lastIsOnMoon = false; // track camera target to auto-switch minimap
+    private PlanetaryCameraManager _cachedCameraManager; // Cached reference to avoid repeated FindAnyObjectByType calls
     
     // UI mirroring cache
     [SerializeField] private Camera uiCamera; // leave null for Screen Space - Overlay
@@ -354,6 +355,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         _gameManager = GameManager.Instance;
         _loadingPanel = FindAnyObjectByType<LoadingPanelController>();
+        _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>(); // Cache camera manager reference
 
     // if (minimapImage == null) { /* optional: assign via inspector */ }
         if (planetDropdown != null)
@@ -547,8 +549,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         UpdatePositionIndicator();
 
         // Auto-switch between planet and moon minimap when camera target changes
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
         if (isOnMoon != _lastIsOnMoon)
         {
             _lastIsOnMoon = isOnMoon;
@@ -986,8 +990,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void ShowMinimapForPlanet(int planetIndex)
     {
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
 
         if (_minimapsPreGenerated)
         {
@@ -1226,8 +1232,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         ).normalized;
 
         // Decide target body (planet or moon) and respect its transform
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
         Vector3 worldDir;
         if (isOnMoon)
         {
@@ -1240,10 +1248,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
         }
 
-        if (camMgr != null)
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (_cachedCameraManager != null)
         {
             // Pass whether we are targeting the moon so the camera orbits the right body
-            camMgr.JumpToDirection(worldDir, isOnMoon);
+            _cachedCameraManager.JumpToDirection(worldDir, isOnMoon);
         }
     }
 
@@ -1327,8 +1338,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void OnMoonButtonClicked()
     {
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        if (_gameManager == null || camMgr == null)
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (_gameManager == null || _cachedCameraManager == null)
         {
             return;
         }
@@ -1340,7 +1353,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             return;
         }
 
-        camMgr.SwitchToMoon(true);
+        _cachedCameraManager.SwitchToMoon(true);
         ShowMinimapForPlanet(planetIndex);
     }
 
@@ -1349,8 +1362,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void OnMainPlanetButtonClicked()
     {
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        if (_gameManager == null || camMgr == null)
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (_gameManager == null || _cachedCameraManager == null)
         {
             return;
         }
@@ -1360,7 +1375,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             _gameManager.SetCurrentPlanet(targetIndex);
         }
-        camMgr.SwitchToMoon(false);
+        _cachedCameraManager.SwitchToMoon(false);
 
         // Reflect in UI
         if (planetDropdown != null)
@@ -1383,8 +1398,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (camera == null) return;
 
         // Determine whether to show indicator on planet or moon based on camera target
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = camMgr != null && camMgr.IsOnMoon;
+        // Use cached reference to avoid expensive FindAnyObjectByType call
+        if (_cachedCameraManager == null)
+            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
 
         Vector3 bodyPosition;
         if (isOnMoon)

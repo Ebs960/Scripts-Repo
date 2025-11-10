@@ -376,6 +376,9 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        // Initialize ResourceCache early (before any Resources.LoadAll calls)
+        ResourceCache.Initialize();
+
         // Initialize global UI audio system
         SetupGlobalUIAudio();
 
@@ -2474,7 +2477,7 @@ public class GameManager : MonoBehaviour
         Civilization defenderCiv = CreateTestCivilization("Test Defender", false);
 
         // Get some test units (use first available unit data)
-        var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+        var allUnitData = ResourceCache.GetAllCombatUnits();
         CombatUnitData testUnitData = allUnitData.Length > 0 ? allUnitData[0] : null;
 
         if (testUnitData == null)

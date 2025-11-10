@@ -64,8 +64,13 @@ public class ReligionUI : MonoBehaviour
     private List<ReligionData> availableReligions = new List<ReligionData>();
     private List<City> holySiteCities = new List<City>();
     
+    // Cached manager reference to avoid repeated FindAnyObjectByType calls
+    private ReligionManager _cachedReligionManager;
+    
     void Start()
     {
+        // Cache manager reference to avoid repeated FindAnyObjectByType calls
+        _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
         // Set up event listeners
         foundPantheonButton.onClick.AddListener(OnFoundPantheonClicked);
         foundReligionButton.onClick.AddListener(OnFoundReligionClicked);
@@ -263,10 +268,12 @@ public class ReligionUI : MonoBehaviour
                 // Get available religions from ReligionManager
                 availableReligions.Clear();
                 
-                var religionManager = FindAnyObjectByType<ReligionManager>();
-                if (religionManager != null)
+                // Use cached reference to avoid expensive FindAnyObjectByType call
+                if (_cachedReligionManager == null)
+                    _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
+                if (_cachedReligionManager != null)
                 {
-                    availableReligions = religionManager.GetAvailableReligions();
+                    availableReligions = _cachedReligionManager.GetAvailableReligions();
                 }
                 
                 // Update religion dropdown
@@ -530,10 +537,12 @@ public class ReligionUI : MonoBehaviour
         if (playerCiv.FoundReligion(selectedReligion, selectedCity))
         {
             // Register the new religion with the ReligionManager
-            var religionManager = FindAnyObjectByType<ReligionManager>();
-            if (religionManager != null)
+            // Use cached reference to avoid expensive FindAnyObjectByType call
+            if (_cachedReligionManager == null)
+                _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
+            if (_cachedReligionManager != null)
             {
-                religionManager.RegisterFoundedReligion(selectedReligion, playerCiv);
+                _cachedReligionManager.RegisterFoundedReligion(selectedReligion, playerCiv);
             }
             
             // Update UI if successful

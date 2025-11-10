@@ -720,7 +720,7 @@ public class BattleTestSimple : MonoBehaviour
         try
         {
             // Load ALL CombatUnitData ScriptableObjects temporarily to extract metadata
-            var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+            var allUnitData = ResourceCache.GetAllCombatUnits();
             
             if (allUnitData != null && allUnitData.Length > 0)
             {
@@ -799,7 +799,7 @@ public class BattleTestSimple : MonoBehaviour
         try
         {
             // Data-only load from Resources; no GameObjects are instantiated here
-            var allCivData = Resources.LoadAll<CivData>("Civilizations");
+            var allCivData = ResourceCache.GetAllCivDatas();
             if (allCivData != null && allCivData.Length > 0)
             {
                 foreach (var civData in allCivData)
@@ -850,7 +850,7 @@ public class BattleTestSimple : MonoBehaviour
         {
             // Load ALL CombatUnitData ScriptableObjects from Resources/Units folder
             // This loads ONLY the ScriptableObject data; prefab references on the SO remain as metadata and are not instantiated
-            var allUnitData = Resources.LoadAll<CombatUnitData>("Units");
+            var allUnitData = ResourceCache.GetAllCombatUnits();
             
             if (allUnitData != null && allUnitData.Length > 0)
             {
@@ -1942,7 +1942,7 @@ public class BattleTestSimple : MonoBehaviour
         
         // Initialize BattleUI with this battle system
         battleUI.InitializeWithBattleTest(this);
-        battleUI.UpdateFormationsList(allFormations);
+            battleUI.UpdateFormationsList(allFormations);
         DebugLog("Using BattleUI component exclusively for battle HUD");
     }
     
@@ -2638,7 +2638,7 @@ public class FormationUnit : MonoBehaviour
             if (!walkingAnimationsInitialized || Time.frameCount % 60 == 0) // Every 60 frames (~1 second)
             {
                 Debug.Log($"[FormationUnit] {formationName}: Update() - Starting to move or periodic check, initializing walking animations");
-                PlayWalkingAnimations();
+            PlayWalkingAnimations();
             }
             else
             {
@@ -3095,7 +3095,7 @@ public class FormationUnit : MonoBehaviour
             // Update formation centers after physical interactions (they modify formationCenter directly)
             UpdateFormationCenter();
             enemyFormation.UpdateFormationCenter();
-            
+
             // Reflow positions and check routing
             RemoveNullSoldiers();
             enemyFormation.RemoveNullSoldiers();

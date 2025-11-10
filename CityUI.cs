@@ -288,7 +288,7 @@ public class CityUI : MonoBehaviour
         var ownerCiv = currentCity.owner;
         
         // Get all buildings that meet requirements (like equipment system)
-        var allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+        var allBuildings = ResourceCache.GetAllBuildings();
         foreach (var building in allBuildings)
         {
             if (building == null || !building.AreRequirementsMet(ownerCiv)) continue;
@@ -318,7 +318,7 @@ public class CityUI : MonoBehaviour
         }
         
         // Get all combat units that meet requirements (like equipment system)
-        var allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
+        var allCombatUnits = ResourceCache.GetAllCombatUnits();
         foreach (var unit in allCombatUnits)
         {
             if (unit == null || !unit.AreRequirementsMet(ownerCiv)) continue;
@@ -329,7 +329,7 @@ public class CityUI : MonoBehaviour
         }
         
         // Get all worker units that meet requirements (like equipment system)
-        var allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+        var allWorkerUnits = ResourceCache.GetAllWorkerUnits();
         foreach (var worker in allWorkerUnits)
         {
             if (worker == null || !worker.AreRequirementsMet(ownerCiv)) continue;
@@ -378,7 +378,7 @@ public class CityUI : MonoBehaviour
         if (ownerCiv != null)
         {
             // Get all projectile assets in the game
-            var allProjectiles = Resources.LoadAll<GameCombat.ProjectileData>("Projectiles");
+            var allProjectiles = ResourceCache.GetAllProjectiles();
             foreach (var projectile in allProjectiles)
             {
                 if (projectile != null && projectile.CanBeProducedBy(ownerCiv))
