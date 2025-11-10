@@ -7,24 +7,12 @@ using UnityEngine;
 public static class BiomeColorHelper
 {
     /// <summary>
-    /// Get color for a biome in battle map context (tactical clarity, fewer biomes)
+    /// Get color for a biome in battle map context (uses same colors as minimap for consistency)
     /// </summary>
     public static Color GetBattleMapColor(Biome biome)
     {
-        return biome switch
-        {
-            Biome.Plains => new Color(0.6f, 0.8f, 0.4f),      // Light green
-            Biome.Forest => new Color(0.2f, 0.6f, 0.2f),      // Dark green
-            Biome.Mountain => new Color(0.4f, 0.4f, 0.4f),    // Gray
-            Biome.Desert => new Color(0.9f, 0.8f, 0.6f),      // Sandy
-            Biome.Swamp => new Color(0.3f, 0.5f, 0.3f),       // Dark green
-            Biome.Snow => new Color(0.9f, 0.9f, 0.9f),       // White
-            Biome.Grassland => new Color(0.5f, 0.7f, 0.3f),   // Grass green
-            Biome.Jungle => new Color(0.1f, 0.4f, 0.1f),     // Dark jungle green
-            Biome.Taiga => new Color(0.3f, 0.5f, 0.2f),      // Taiga green
-            Biome.Marsh => new Color(0.4f, 0.6f, 0.4f),       // Marsh green
-            _ => new Color(0.6f, 0.6f, 0.6f)                  // Default gray
-        };
+        // Use same comprehensive color mapping as minimap for consistency
+        return GetMinimapColor(biome);
     }
     
     /// <summary>
