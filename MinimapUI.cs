@@ -37,7 +37,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public RectTransform positionIndicator;
 
     [Header("Minimap Settings")]
-    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(512, 256); // Fixed resolution for better performance
+    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(1024, 512); // Higher resolution for better quality
+    [Tooltip("Number of rows to process per frame during LUT generation (higher = faster but more frame time)")]
+    [SerializeField] private int lutRowsPerFrame = 50; // Process 50 rows per frame for smooth generation
     [SerializeField] private MinimapColorProvider colorProvider;
     [SerializeField] private float maxZoom = 4f;
     [SerializeField] private float minZoom = 0.5f;
@@ -135,7 +137,76 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // Removed CPU helpers (UploadPixels, GetOrCreatePixelBuffer, CreateCpuTexture)
 
     // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
+    // PERFORMANCE: Now uses batched coroutine generation to avoid blocking
     private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
+    {
+        if (grid == null) return null;
+        string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
+        if (_bodyIndexLUT.TryGetValue(key, out var cached)) return cached;
+
+        // Start batched generation coroutine
+        StartCoroutine(GenerateLUTBatched(planetIndex, isMoon, grid, width, height, key));
+        
+        // Return null for now - caller should wait for coroutine to complete
+        // For immediate use, we'll need to wait for the coroutine
+        return null;
+    }
+    
+    // Batched LUT generation - processes rows per frame to avoid blocking
+    private IEnumerator GenerateLUTBatched(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height, string key)
+    {
+        var lut = new int[width * height];
+
+        // Precompute trig arrays (fast, no need to batch)
+        float[] sinLatArr = new float[height];
+        float[] cosLatArr = new float[height];
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float latRad = Mathf.PI * (0.5f - v);
+            sinLatArr[y] = Mathf.Sin(latRad);
+            cosLatArr[y] = Mathf.Cos(latRad);
+        }
+        float[] sinLonArr = new float[width];
+        float[] cosLonArr = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            float u = (x + 0.5f) / width;
+            float lonRad = 2f * Mathf.PI * (u - 0.5f);
+            sinLonArr[x] = Mathf.Sin(lonRad);
+            cosLonArr[x] = Mathf.Cos(lonRad);
+        }
+
+        // Process rows in batches to avoid blocking
+        int rowsProcessed = 0;
+        while (rowsProcessed < height)
+        {
+            int rowsThisFrame = Mathf.Min(lutRowsPerFrame, height - rowsProcessed);
+            
+            for (int y = rowsProcessed; y < rowsProcessed + rowsThisFrame; y++)
+            {
+                float sinLat = sinLatArr[y];
+                float cosLat = cosLatArr[y];
+                int yBase = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    float sinLon = sinLonArr[x];
+                    float cosLon = cosLonArr[x];
+                    Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
+                    int tileIndex = grid.GetTileAtPosition(dir);
+                    lut[yBase + x] = tileIndex;
+                }
+            }
+            
+            rowsProcessed += rowsThisFrame;
+            yield return null; // Yield after processing batch
+        }
+
+        _bodyIndexLUT[key] = lut;
+    }
+    
+    // Synchronous version for immediate use (fallback)
+    private int[] EnsureIndexLUTForBodySync(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
     {
         if (grid == null) return null;
         string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
@@ -163,6 +234,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             cosLonArr[x] = Mathf.Cos(lonRad);
         }
 
+        // Process all rows (for immediate use cases)
         for (int y = 0; y < height; y++)
         {
             float sinLat = sinLatArr[y];
@@ -178,8 +250,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-    _bodyIndexLUT[key] = lut;
-    return lut;
+        _bodyIndexLUT[key] = lut;
+        return lut;
     }
 
     // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
@@ -222,7 +294,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
     }
 
+    // Cached tile data arrays to avoid repeated lookups
+    private static readonly Dictionary<string, HexTileData[]> _cachedTileDataArrays = new();
+    
     // Build or fetch a compact per-tile color atlas for a body (planet or moon).
+    // PERFORMANCE: Pre-caches all tile data to avoid per-tile lookups
     // Atlas layout: square texture array flattened to Color32[] where index -> tileIndex mapping is stored in parallel by tile order.
     private Color32[] EnsureTileColorAtlas(int planetIndex, bool isMoon, SphericalHexGrid grid)
     {
@@ -232,28 +308,64 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         int tileCount = grid.TileCount;
         var atlas = new Color32[tileCount];
+        
+        // PERFORMANCE: Pre-cache all tile data once to avoid repeated lookups
+        string tileDataKey = $"TILEDATA_P{planetIndex}_M{(isMoon ? 1 : 0)}";
+        HexTileData[] tileDataArray;
+        
+        if (!_cachedTileDataArrays.TryGetValue(tileDataKey, out tileDataArray))
+        {
+            // Pre-fetch all tile data in one pass
+            tileDataArray = new HexTileData[tileCount];
+            PlanetGenerator planetGen = isMoon ? null : (_gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator);
+            MoonGenerator moonGen = isMoon ? _gameManager.GetMoonGenerator(planetIndex) : null;
+            
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (isMoon)
+                {
+                    tileDataArray[i] = moonGen?.GetHexTileData(i);
+                }
+                else
+                {
+                    tileDataArray[i] = planetGen?.GetHexTileData(i);
+                }
+                
+                // Fallback to TileSystem if needed
+                if (tileDataArray[i] == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
+                {
+                    tileDataArray[i] = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
+                }
+            }
+            
+            _cachedTileDataArrays[tileDataKey] = tileDataArray;
+        }
 
+        // Now build atlas using pre-cached tile data (much faster)
         for (int i = 0; i < tileCount; i++)
         {
-            var tileData = isMoon ? _gameManager.GetMoonGenerator(planetIndex)?.GetHexTileData(i) : _gameManager.GetPlanetGenerator(planetIndex)?.GetHexTileData(i);
-            if (tileData == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
-            {
-                tileData = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
-            }
-
+            var tileData = tileDataArray[i];
             Color c;
+            
             if (tileData == null)
             {
                 c = new Color(0.35f, 0.35f, 0.35f);
             }
             else
             {
+                // Add elevation shading for better visuals
+                float elevation = tileData.height;
+                float elevationShade = Mathf.Lerp(0.7f, 1.0f, elevation); // Darker for low elevation, brighter for high
+                
                 int hash = i * 9781 + 7;
                 float ox = ((hash >> 8) & 0xFF) / 255f;
                 float oy = (hash & 0xFF) / 255f;
                 float sampleU = Mathf.Repeat(0.5f + ox, 1f);
                 float sampleV = Mathf.Repeat(0.5f + oy, 1f);
-                c = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                Color baseColor = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                
+                // Apply elevation shading
+                c = baseColor * elevationShade;
             }
             atlas[i] = (Color32)c;
         }
@@ -277,7 +389,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
         {
             wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Point
+            filterMode = FilterMode.Bilinear // Use bilinear filtering for smoother appearance
         };
     // Safe upload: 1-row atlas; SetPixels32 cost negligible vs. crash risk.
     // (Previous BlockCopy on Color32[] triggered ArgumentException on some runtimes.)
@@ -328,7 +440,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
             {
                 enableRandomWrite = true,
-                filterMode = FilterMode.Point
+                filterMode = FilterMode.Bilinear // Use bilinear filtering for smoother appearance
             };
             rt.Create();
             _gpuResultCache[key] = rt;
@@ -642,7 +754,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
 
-        // Unified generation loop
+        // PERFORMANCE: Unified generation loop with reduced yields
         for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
         {
             string planetName = GetPlanetName(planetIndex);
@@ -657,14 +769,19 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, true, minimapResolution));
             }
 
-            if (_loadingPanel != null)
+            // Update progress (batched - only update every few planets to reduce UI overhead)
+            if (_loadingPanel != null && (planetIndex % 2 == 0 || planetIndex == totalPlanets - 1))
             {
                 float progress = 0.8f + (0.1f * (float)(planetIndex + 1) / totalPlanets);
                 _loadingPanel.SetProgress(progress);
                 _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen != null ? " (and moon)" : string.Empty)}");
             }
 
-            yield return null; // yield between bodies
+            // PERFORMANCE: Reduced yields - only yield every other planet for better throughput
+            if (planetIndex % 2 == 1)
+            {
+                yield return null;
+            }
         }
         
         _minimapsPreGenerated = true;
@@ -707,6 +824,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
 
     // Unified coroutine (GPU-only) for planet or moon
+    // PERFORMANCE: Batched generation with reduced yields
     private IEnumerator GenerateBodyMinimapCoroutine(int planetIndex, bool isMoon, Vector2Int resolution)
     {
         PlanetGenerator planetGenRef = null;
@@ -721,11 +839,37 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         int width = resolution.x;
         int height = resolution.y;
-        var lut = EnsureIndexLUTForBody(planetIndex, isMoon, grid, width, height);
-        if (lut == null) yield break;
+        
+        // PERFORMANCE: Generate LUT in batched coroutine and wait for it
+        string lutKey = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
+        int[] lut = null;
+        
+        // Check if already cached
+        if (!_bodyIndexLUT.TryGetValue(lutKey, out lut))
+        {
+            // Start batched generation
+            yield return StartCoroutine(GenerateLUTBatched(planetIndex, isMoon, grid, width, height, lutKey));
+            
+            // Retrieve the generated LUT
+            if (!_bodyIndexLUT.TryGetValue(lutKey, out lut) || lut == null)
+            {
+                Debug.LogWarning($"[MinimapUI] Failed to generate LUT for {(isMoon ? "Moon" : "Planet")} {planetIndex}");
+                yield break;
+            }
+        }
+
+        // PERFORMANCE: Pre-cache tile data and build atlas (batched)
+        Color32[] tileAtlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
+        if (tileAtlas == null)
+        {
+            Debug.LogWarning($"[MinimapUI] Failed to generate tile atlas for {(isMoon ? "Moon" : "Planet")} {planetIndex}");
+            yield break;
+        }
+        
+        // Yield once after atlas generation to allow frame update
+        yield return null;
 
         // Try GPU path
-        Color32[] tileAtlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
         if (minimapComputeShader != null && tileAtlas != null)
         {
             var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, tileAtlas);
@@ -741,6 +885,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
 
     // Immediate generation (no yielding) used only if something missing at display time
+    // PERFORMANCE: Uses synchronous LUT generation for immediate use
     private Texture GenerateBodyMinimapImmediate(int planetIndex, bool isMoon)
     {
         MoonGenerator moonGenRef = null; PlanetGenerator planetGenRef = null;
@@ -748,7 +893,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var grid = isMoon ? moonGenRef?.Grid : planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) return null;
         int width = minimapResolution.x; int height = minimapResolution.y;
-        var lut = EnsureIndexLUTForBody(planetIndex, isMoon, grid, width, height); if (lut == null) return null;
+        
+        // Use synchronous LUT generation for immediate use
+        var lut = EnsureIndexLUTForBodySync(planetIndex, isMoon, grid, width, height);
+        if (lut == null) return null;
+        
         var atlas = EnsureTileColorAtlas(planetIndex, isMoon, grid);
         if (minimapComputeShader != null && atlas != null)
         {
@@ -1062,6 +1211,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
 
     private Color GetDefaultBiomeColour(Biome biome)
+    {
+        // Use centralized BiomeColorHelper for consistency
+        return BiomeColorHelper.GetMinimapColor(biome);
+    }
+    
+    // Legacy method kept for backward compatibility (now delegates to BiomeColorHelper)
+    private Color GetDefaultBiomeColourLegacy(Biome biome)
     {
         return biome switch
         {

@@ -29,6 +29,7 @@ public class ReligionManager : MonoBehaviour
     // References (kept for now, but neighbors/data are via TileSystem)
     private PlanetGenerator planetGenerator;
     private SphericalHexGrid grid;
+    private CivilizationManager cachedCivManager; // Cached reference to avoid repeated FindAnyObjectByType calls
     
     void Awake()
     {
@@ -228,8 +229,10 @@ public class ReligionManager : MonoBehaviour
     {
         List<PantheonData> result = new List<PantheonData>();
         
-        // Get all civilizations in the game
-        var civManager = FindAnyObjectByType<CivilizationManager>();
+        // Get all civilizations in the game - use cached reference to avoid expensive FindAnyObjectByType call
+        if (cachedCivManager == null)
+            cachedCivManager = FindAnyObjectByType<CivilizationManager>();
+        var civManager = cachedCivManager;
         if (civManager == null)
             return result;
             

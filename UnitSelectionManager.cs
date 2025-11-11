@@ -22,6 +22,7 @@ public class UnitSelectionManager : MonoBehaviour
     
     // References
     private Camera mainCamera;
+    private Camera cachedMainCamera; // Cached reference to avoid repeated FindAnyObjectByType calls
     // Cached hover info provided by TileSystem events
     private int cachedHoveredTileIndex = -1;
     private Vector3 cachedHoveredWorldPos = Vector3.zero;
@@ -46,7 +47,12 @@ public class UnitSelectionManager : MonoBehaviour
         // Find references
         mainCamera = Camera.main;
         if (mainCamera == null)
-            mainCamera = FindAnyObjectByType<Camera>();
+        {
+            // Use cached reference to avoid expensive FindAnyObjectByType call
+            if (cachedMainCamera == null)
+                cachedMainCamera = FindAnyObjectByType<Camera>();
+            mainCamera = cachedMainCamera;
+        }
         
         // Cache selection material once
         if (s_selectionIndicatorMaterial == null)

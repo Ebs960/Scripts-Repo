@@ -152,6 +152,22 @@ public class BattleTestSimple : MonoBehaviour
     private List<CombatUnit> selectedUnits = new List<CombatUnit>(); // Track individually selected units
     public List<FormationUnit> allFormations = new List<FormationUnit>();
     
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private FormationUnit[] cachedAllFormations;
+    private float lastFormationCacheUpdate = 0f;
+    private const float FORMATION_CACHE_UPDATE_INTERVAL = 0.5f; // Update cache every 0.5 seconds
+    
+    private UnitCombat[] cachedAllCombatUnits;
+    private float lastCombatUnitCacheUpdate = 0f;
+    private const float COMBAT_UNIT_CACHE_UPDATE_INTERVAL = 0.3f;
+    
+    private SimpleMover[] cachedAllMovers;
+    private float lastMoverCacheUpdate = 0f;
+    private const float MOVER_CACHE_UPDATE_INTERVAL = 0.3f;
+    
+    // Reusable temporary lists to avoid allocations
+    private List<string> reusableStringList = new List<string>();
+    
     void Awake()
     {
         // Singleton pattern
@@ -1026,26 +1042,23 @@ public class BattleTestSimple : MonoBehaviour
         attackerCivDropdown.ClearOptions();
         defenderCivDropdown.ClearOptions();
         
-        // Add civilization options
-        var options = new List<string>();
+        // Add civilization options - reuse temporary list to avoid allocation
+        reusableStringList.Clear();
         foreach (var civ in availableCivs)
         {
             string civName = civ != null ? civ.civName : "Unknown Civilization";
-            options.Add(civName);
-            DebugLog($"  - Added civilization option: {civName}");
+            reusableStringList.Add(civName);
         }
         
         // If no civilizations found, add fallback
-        if (options.Count == 0)
+        if (reusableStringList.Count == 0)
         {
-            options.Add("Default Attacker");
-            options.Add("Default Defender");
+            reusableStringList.Add("Default Attacker");
+            reusableStringList.Add("Default Defender");
         }
         
-        attackerCivDropdown.AddOptions(options);
-        defenderCivDropdown.AddOptions(options);
-        
-        DebugLog($"Added {options.Count} options to civilization dropdowns");
+        attackerCivDropdown.AddOptions(reusableStringList);
+        defenderCivDropdown.AddOptions(reusableStringList);
         
         // Set default selections (data-only)
         selectedAttackerCivData = availableCivs.Count > 0 ? availableCivs[0] : null;
@@ -1103,11 +1116,14 @@ public class BattleTestSimple : MonoBehaviour
     
     void SetupControlDropdowns()
     {
-        // Setup attacker control dropdown
+        // Setup attacker control dropdown - reuse temporary list to avoid allocation
         if (attackerControlDropdown != null)
         {
             attackerControlDropdown.ClearOptions();
-            attackerControlDropdown.AddOptions(new List<string> { "Player", "AI" });
+            reusableStringList.Clear();
+            reusableStringList.Add("Player");
+            reusableStringList.Add("AI");
+            attackerControlDropdown.AddOptions(reusableStringList);
             attackerControlDropdown.value = attackerControlType;
             attackerControlDropdown.onValueChanged.AddListener(OnAttackerControlChanged);
             
@@ -1117,11 +1133,14 @@ public class BattleTestSimple : MonoBehaviour
             }
         }
         
-        // Setup defender control dropdown
+        // Setup defender control dropdown - reuse temporary list to avoid allocation
         if (defenderControlDropdown != null)
         {
             defenderControlDropdown.ClearOptions();
-            defenderControlDropdown.AddOptions(new List<string> { "Player", "AI" });
+            reusableStringList.Clear();
+            reusableStringList.Add("Player");
+            reusableStringList.Add("AI");
+            defenderControlDropdown.AddOptions(reusableStringList);
             defenderControlDropdown.value = defenderControlType;
             defenderControlDropdown.onValueChanged.AddListener(OnDefenderControlChanged);
             
@@ -1148,7 +1167,7 @@ public class BattleTestSimple : MonoBehaviour
     
     public void StartTest()
     {
-        Debug.Log("=== BUTTON CLICKED! ===");
+        // Debug.Log removed for performance
         UpdateStatus("Starting test...");
         
         // Load full unit data now (only when battle starts, not in menu)
@@ -1948,10 +1967,7 @@ public class BattleTestSimple : MonoBehaviour
     
     void DebugLog(string message)
     {
-        if (showDebugLogs)
-        {
-            Debug.Log($"[BattleTestSimple] {message}");
-        }
+        // Debug.Log removed for performance - use Debug.LogWarning or Debug.LogError for important messages
     }
     
     /// <summary>
@@ -2637,7 +2653,7 @@ public class FormationUnit : MonoBehaviour
             // Don't call every frame - just ensure IsWalking is set to true
             if (!walkingAnimationsInitialized || Time.frameCount % 60 == 0) // Every 60 frames (~1 second)
             {
-                Debug.Log($"[FormationUnit] {formationName}: Update() - Starting to move or periodic check, initializing walking animations");
+                // Debug.Log removed for performance
             PlayWalkingAnimations();
             }
             else
@@ -2653,7 +2669,7 @@ public class FormationUnit : MonoBehaviour
             // Only play idle animations when transitioning from moving to idle
             if (wasMovingLastFrame)
             {
-                Debug.Log($"[FormationUnit] {formationName}: Update() - Stopped moving, playing idle animations");
+                // Debug.Log removed for performance
                 PlayIdleAnimations();
                 wasMovingLastFrame = false;
             }
@@ -2701,7 +2717,7 @@ public class FormationUnit : MonoBehaviour
         
         if (count > 0 && Time.frameCount % 60 == 0) // Only log periodically
         {
-            Debug.Log($"[FormationUnit] {formationName}: EnsureWalkingAnimationActive checked {count} soldiers");
+            // Debug.Log removed for performance
         }
     }
     
@@ -2878,13 +2894,28 @@ public class FormationUnit : MonoBehaviour
     void UpdateCachedEnemyFormations()
     {
         cachedEnemyFormations.Clear();
-        var allFormations = FindObjectsByType<FormationUnit>(FindObjectsSortMode.None);
-        foreach (var formation in allFormations)
+        
+        // Use cached formations array to avoid expensive FindObjectsByType call
+        UpdateFormationCacheIfNeeded();
+        
+        if (cachedAllFormations != null)
         {
-            if (formation != null && formation.isAttacker != this.isAttacker)
+            foreach (var formation in cachedAllFormations)
             {
-                cachedEnemyFormations.Add(formation);
+                if (formation != null && formation.isAttacker != this.isAttacker)
+                {
+                    cachedEnemyFormations.Add(formation);
+                }
             }
+        }
+    }
+    
+    void UpdateFormationCacheIfNeeded()
+    {
+        if (Time.time - lastFormationCacheUpdate > FORMATION_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllFormations = FindObjectsByType<FormationUnit>(FindObjectsSortMode.None);
+            lastFormationCacheUpdate = Time.time;
         }
     }
     
@@ -2969,13 +3000,13 @@ public class FormationUnit : MonoBehaviour
         // Rear attack: 135-180 degrees
         if (attackAngle >= 135f)
         {
-            Debug.Log($"[FormationUnit] {attacker.formationName} attacks {defender.formationName} from REAR (angle: {attackAngle:F1}°)");
+            // Debug.Log removed for performance
             return rearAttackBonusMultiplier;
         }
         // Flank attack: 45-135 degrees
         else if (attackAngle >= 45f)
         {
-            Debug.Log($"[FormationUnit] {attacker.formationName} attacks {defender.formationName} from FLANK (angle: {attackAngle:F1}°)");
+            // Debug.Log removed for performance
             return flankingBonusMultiplier;
         }
         // Front attack: 0-45 degrees
@@ -2991,7 +3022,7 @@ public class FormationUnit : MonoBehaviour
     void GainExperience(int amount, string reason = "")
     {
         experience += amount;
-        Debug.Log($"[FormationUnit] {formationName} gained {amount} XP ({reason}). Total: {experience}/{experienceToNextLevel}");
+        // Debug.Log removed for performance
         
         // Check for level up
         while (experience >= experienceToNextLevel)
@@ -3005,7 +3036,7 @@ public class FormationUnit : MonoBehaviour
             totalHealth = Mathf.RoundToInt(totalHealth * 1.1f); // 10% health increase
             currentHealth = Mathf.Min(currentHealth, totalHealth); // Heal up to new max
             
-            Debug.Log($"[FormationUnit] {formationName} LEVELED UP to level {experienceLevel}! Attack: {totalAttack}, Health: {totalHealth}");
+            // Debug.Log removed for performance
         }
     }
     
@@ -3202,7 +3233,7 @@ public class FormationUnit : MonoBehaviour
             GainExperience(soldiersKilled * 10, $"killed {soldiersKilled} soldiers");
         }
         
-        Debug.Log($"{formationName} deals {finalDamage} damage (base: {baseDamage}, multiplier: {damageMultiplier:F2}x) to {targetFormation.formationName} (HP: {targetFormation.currentHealth}/{targetFormation.totalHealth})");
+        // Debug.Log removed for performance
     }
     
     void CheckForSoldierDeaths()
@@ -3280,7 +3311,7 @@ public class FormationUnit : MonoBehaviour
             {
                 damageMultiplierAB *= unitChargeBonus;
                 attackerFormation.hasAppliedChargeBonus = true;
-                Debug.Log($"[FormationUnit] {attackerFormation.formationName} ({attacker.data.unitName}) applies CHARGE BONUS ({unitChargeBonus}x) in melee combat");
+                // Debug.Log removed for performance
             }
         }
         
@@ -3574,14 +3605,18 @@ public class FormationUnit : MonoBehaviour
         }
         else
         {
-            // Update cache
-            var allFormations = FindObjectsByType<FormationUnit>(FindObjectsSortMode.None);
+            // Update cache using cached array to avoid expensive FindObjectsByType call
+            UpdateFormationCacheIfNeeded();
             cachedEnemyFormations.Clear();
-            foreach (var formation in allFormations)
+            
+            if (cachedAllFormations != null)
             {
-                if (formation != null && formation != this && formation.isAttacker != this.isAttacker)
+                foreach (var formation in cachedAllFormations)
                 {
-                    cachedEnemyFormations.Add(formation);
+                    if (formation != null && formation != this && formation.isAttacker != this.isAttacker)
+                    {
+                        cachedEnemyFormations.Add(formation);
+                    }
                 }
             }
             lastEnemyFormationUpdate = Time.time;
@@ -3729,14 +3764,14 @@ public class FormationUnit : MonoBehaviour
                 
                 if (!wasMoving)
                 {
-                    Debug.Log($"[FormationUnit] {formationName}: Started walking animation for {combatUnit.gameObject.name}");
+                    // Debug.Log removed for performance
                 }
             }
         }
         
         if (count > 0 && !walkingAnimationsInitialized)
         {
-            Debug.Log($"[FormationUnit] {formationName}: PlayWalkingAnimations initialized for {count} soldiers");
+            // Debug.Log removed for performance
         }
         
         // Mark as initialized after first call
@@ -3863,14 +3898,14 @@ public class FormationUnit : MonoBehaviour
                 
                 if (wasMoving)
                 {
-                    Debug.Log($"[FormationUnit] {formationName}: Stopped walking animation for {combatUnit.gameObject.name}");
+                    // Debug.Log removed for performance
                 }
             }
         }
         
         if (count > 0)
         {
-            Debug.Log($"[FormationUnit] {formationName}: PlayIdleAnimations called for {count} soldiers");
+            // Debug.Log removed for performance
         }
     }
     
@@ -3985,16 +4020,25 @@ public class UnitCombat : MonoBehaviour
     public List<UnitCombat> FindNearbyEnemies()
     {
         var enemies = new List<UnitCombat>();
-        var allUnits = FindObjectsByType<UnitCombat>(FindObjectsSortMode.None);
         
-        foreach (var unit in allUnits)
+        // Use cached combat units array to avoid expensive FindObjectsByType call
+        if (Time.time - lastCombatUnitCacheUpdate > COMBAT_UNIT_CACHE_UPDATE_INTERVAL)
         {
-            if (unit != this && unit.isAttacker != this.isAttacker)
+            cachedAllCombatUnits = FindObjectsByType<UnitCombat>(FindObjectsSortMode.None);
+            lastCombatUnitCacheUpdate = Time.time;
+        }
+        
+        if (cachedAllCombatUnits != null)
+        {
+            foreach (var unit in cachedAllCombatUnits)
             {
-                float distance = Vector3.Distance(transform.position, unit.transform.position);
-                if (distance < 1.5f) // Fighting range
+                if (unit != null && unit != this && unit.isAttacker != this.isAttacker)
                 {
-                    enemies.Add(unit);
+                    float distance = Vector3.Distance(transform.position, unit.transform.position);
+                    if (distance < 1.5f) // Fighting range
+                    {
+                        enemies.Add(unit);
+                    }
                 }
             }
         }
@@ -4007,7 +4051,7 @@ public class UnitCombat : MonoBehaviour
         if (enemy == null) return;
         
         enemy.TakeDamage(attack);
-        Debug.Log($"{unitName} attacks {enemy.unitName} for {attack} damage! {enemy.unitName} has {enemy.currentHealth} health left.");
+        // Debug.Log removed for performance
     }
     
     public void TakeDamage(int damage)
@@ -4023,7 +4067,7 @@ public class UnitCombat : MonoBehaviour
     
     void Die()
     {
-        Debug.Log($"{unitName} has been defeated!");
+        // Debug.Log removed for performance
         if (healthLabel != null)
         {
             Destroy(healthLabel);
@@ -4146,14 +4190,22 @@ public class SimpleMover : MonoBehaviour
             DebugLog("Selected!");
             UpdateSelectionIndicator();
             
-            // Deselect other units
-            var allMovers = FindObjectsByType<SimpleMover>(FindObjectsSortMode.None);
-            foreach (var mover in allMovers)
+            // Deselect other units - use cached movers array to avoid expensive FindObjectsByType call
+            if (Time.time - lastMoverCacheUpdate > MOVER_CACHE_UPDATE_INTERVAL)
             {
-                if (mover != this)
+                cachedAllMovers = FindObjectsByType<SimpleMover>(FindObjectsSortMode.None);
+                lastMoverCacheUpdate = Time.time;
+            }
+            
+            if (cachedAllMovers != null)
+            {
+                foreach (var mover in cachedAllMovers)
                 {
-                    mover.isSelected = false;
-                    mover.UpdateSelectionIndicator();
+                    if (mover != null && mover != this)
+                    {
+                        mover.isSelected = false;
+                        mover.UpdateSelectionIndicator();
+                    }
                 }
             }
         }
@@ -4163,14 +4215,22 @@ public class SimpleMover : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(1)) // Right click
         {
-            // Move selected unit to this position
-            var allMovers = FindObjectsByType<SimpleMover>(FindObjectsSortMode.None);
-            foreach (var mover in allMovers)
+            // Move selected unit to this position - use cached movers array to avoid expensive FindObjectsByType call
+            if (Time.time - lastMoverCacheUpdate > MOVER_CACHE_UPDATE_INTERVAL)
             {
-                if (mover.isSelected)
+                cachedAllMovers = FindObjectsByType<SimpleMover>(FindObjectsSortMode.None);
+                lastMoverCacheUpdate = Time.time;
+            }
+            
+            if (cachedAllMovers != null)
+            {
+                foreach (var mover in cachedAllMovers)
                 {
-                    mover.SetMoveTarget(transform.position);
-                    DebugLog($"Ordered {mover.gameObject.name} to move to {gameObject.name}");
+                    if (mover != null && mover.isSelected)
+                    {
+                        mover.SetMoveTarget(transform.position);
+                        DebugLog($"Ordered {mover.gameObject.name} to move to {gameObject.name}");
+                    }
                 }
             }
         }
@@ -4246,7 +4306,7 @@ public class SimpleMover : MonoBehaviour
     {
         if (debugLogs)
         {
-            Debug.Log($"[SimpleMover-{gameObject.name}] {message}");
+            // Debug.Log removed for performance
         }
     }
 }

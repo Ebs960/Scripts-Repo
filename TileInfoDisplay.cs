@@ -60,7 +60,10 @@ public class TileInfoDisplay : MonoBehaviour
     // State for current hover
     int lastHoveredTileIndex = -1;
     bool lastHoverWasMoon = false;
-
+    
+    // Cached references to avoid repeated FindAnyObjectByType calls
+    private Canvas cachedCanvas;
+    
     // ─────────────────────────────────────────────────────────────
     // Unity - Awake
     // ─────────────────────────────────────────────────────────────
