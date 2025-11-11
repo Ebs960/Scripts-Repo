@@ -152,18 +152,6 @@ public class BattleTestSimple : MonoBehaviour
     private List<CombatUnit> selectedUnits = new List<CombatUnit>(); // Track individually selected units
     public List<FormationUnit> allFormations = new List<FormationUnit>();
     
-    // Cached FindObjectsByType results to avoid expensive scene searches
-    private FormationUnit[] cachedAllFormations;
-    private float lastFormationCacheUpdate = 0f;
-    private const float FORMATION_CACHE_UPDATE_INTERVAL = 0.5f; // Update cache every 0.5 seconds
-    
-    private UnitCombat[] cachedAllCombatUnits;
-    private float lastCombatUnitCacheUpdate = 0f;
-    private const float COMBAT_UNIT_CACHE_UPDATE_INTERVAL = 0.3f;
-    
-    private SimpleMover[] cachedAllMovers;
-    private float lastMoverCacheUpdate = 0f;
-    private const float MOVER_CACHE_UPDATE_INTERVAL = 0.3f;
     
     // Reusable temporary lists to avoid allocations
     private List<string> reusableStringList = new List<string>();
@@ -2575,6 +2563,11 @@ public class FormationUnit : MonoBehaviour
     private Coroutine activeCombatCoroutine;
     private List<Coroutine> activeCoroutines = new List<Coroutine>(); // Track all active coroutines for cleanup
     
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private static FormationUnit[] cachedAllFormations;
+    private static float lastFormationCacheUpdate = 0f;
+    private const float FORMATION_CACHE_UPDATE_INTERVAL = 0.5f; // Update cache every 0.5 seconds
+    
     // Badge UI
     private Canvas badgeCanvas;
     private TMPro.TextMeshProUGUI badgeText;
@@ -3994,6 +3987,11 @@ public class UnitCombat : MonoBehaviour
     private float lastAttackTime = 0f;
     private float attackInterval = 1f; // Attack every second
     
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private static UnitCombat[] cachedAllCombatUnits;
+    private static float lastCombatUnitCacheUpdate = 0f;
+    private const float COMBAT_UNIT_CACHE_UPDATE_INTERVAL = 0.3f;
+    
     void Start()
     {
         CreateHealthLabel();
@@ -4120,6 +4118,11 @@ public class SimpleMover : MonoBehaviour
     private bool hasMoveTarget = false;
     public bool isSelected = false;
     private GameObject selectionIndicator;
+    
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private static SimpleMover[] cachedAllMovers;
+    private static float lastMoverCacheUpdate = 0f;
+    private const float MOVER_CACHE_UPDATE_INTERVAL = 0.3f;
     
     void Start()
     {

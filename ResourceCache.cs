@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using GameCombat;
 
 /// <summary>
 /// Static cache for all Resources.LoadAll calls to avoid repeated expensive I/O operations.
@@ -19,6 +20,9 @@ public static class ResourceCache
     private static EquipmentData[] _allEquipment;
     private static DistrictData[] _allDistricts;
     private static ImprovementData[] _allImprovements;
+    private static ResourceData[] _allResourceData;
+    private static TechData[] _allTechData;
+    private static CultureData[] _allCultureData;
     
     /// <summary>
     /// Initialize the resource cache by loading all resources once.
