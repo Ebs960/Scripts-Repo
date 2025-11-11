@@ -353,19 +353,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
             else
             {
-                // Add elevation shading for better visuals
-                float elevation = tileData.height;
-                float elevationShade = Mathf.Lerp(0.7f, 1.0f, elevation); // Darker for low elevation, brighter for high
-                
                 int hash = i * 9781 + 7;
                 float ox = ((hash >> 8) & 0xFF) / 255f;
                 float oy = (hash & 0xFF) / 255f;
                 float sampleU = Mathf.Repeat(0.5f + ox, 1f);
                 float sampleV = Mathf.Repeat(0.5f + oy, 1f);
-                Color baseColor = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
-                
-                // Apply elevation shading
-                c = baseColor * elevationShade;
+                c = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
             }
             atlas[i] = (Color32)c;
         }
