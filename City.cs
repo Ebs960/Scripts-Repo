@@ -53,6 +53,9 @@ public class City : MonoBehaviour
     public int moraleRating = 100;
     public int maxMorale = 100;
     public int moraleDropPerTurn = 1;
+    
+    // Track the last civilization that attacked this city (for surrender/capture)
+    private Civilization lastAttackingCiv = null;
 
     [Header("Loyalty")]
     [Tooltip("0 = total unrest, 100 = full loyalty")]
@@ -334,9 +337,11 @@ public class City : MonoBehaviour
         ProcessGrowth();
         // 5) Morale decay
         moraleRating = Mathf.Max(0, moraleRating - moraleDropPerTurn);
-        // 6) Check surrender
+        // 6) Check surrender (only if defense was reduced by attacks, not just decay)
+        // Surrender is handled in TakeDamage() when a unit attacks
+        // If defense reaches 0 from other means, check for units on tile
         if (defenseRating <= 0 || moraleRating <= 0 || loyalty <= 0)
-            HandleSurrender();
+            HandleSurrender(lastAttackingCiv); // Use last attacking civ, or find from units on tile
         // 7) Update label
         UpdateLabel();
     }
@@ -1349,6 +1354,36 @@ public class City : MonoBehaviour
         var owned = owner.ownedTileIndices; // Needs access to owner's tile list
         Vector3 cityCenterPos = planetGenerator.Grid.tileCenters[centerTileIndex];
         float maxDist = 1.0f * TerritoryRadius; // Default spacing value
+        
+        // Create test tile once to determine which yield type the selector accesses
+        HexTileData testTile = new HexTileData
+        {
+            food = 1000,
+            production = 2000,
+            gold = 3000,
+            science = 4000,
+            culture = 5000,
+            faithYield = 6000,
+            policyPointYield = 7000
+        };
+        int testResult = selector(testTile);
+        
+        // Determine which improvement yield property to use based on test result
+        System.Func<ImprovementData, int> improvementSelector = null;
+        if (testResult == 1000)
+            improvementSelector = (imp) => imp.foodPerTurn;
+        else if (testResult == 2000)
+            improvementSelector = (imp) => imp.productionPerTurn;
+        else if (testResult == 3000)
+            improvementSelector = (imp) => imp.goldPerTurn;
+        else if (testResult == 4000)
+            improvementSelector = (imp) => imp.sciencePerTurn;
+        else if (testResult == 5000)
+            improvementSelector = (imp) => imp.culturePerTurn;
+        else if (testResult == 6000)
+            improvementSelector = (imp) => imp.faithPerTurn;
+        else if (testResult == 7000)
+            improvementSelector = (imp) => imp.policyPointsPerTurn;
 
         foreach (int idx in owned)
         {
@@ -1359,7 +1394,15 @@ public class City : MonoBehaviour
                 if (maybe != null)
                 {
                     total += selector(maybe);
-                    // TODO: Add yields from improvements on this tile (ImprovementManager?)
+                    
+                    // Add yields from improvements on this tile
+                    // Only add yield if the improvement is owned by this city's owner
+                    if (maybe.HasImprovement && maybe.improvement != null && 
+                        (maybe.improvementOwner == owner || maybe.improvementOwner == null) &&
+                        improvementSelector != null)
+                    {
+                        total += improvementSelector(maybe.improvement);
+                    }
                 }
             }
         }
@@ -1382,11 +1425,172 @@ public class City : MonoBehaviour
         return total;
     }
 
-    void HandleSurrender()
+    /// <summary>
+    /// Called when a unit attacks this city - tracks the attacking civilization for capture
+    /// </summary>
+    public void OnAttackedBy(Civilization attackingCiv)
+    {
+        if (attackingCiv != null && attackingCiv != owner)
+        {
+            lastAttackingCiv = attackingCiv;
+        }
+    }
+    
+    /// <summary>
+    /// Reduce city defense (called when attacked by a unit)
+    /// </summary>
+    public void TakeDamage(int damage, Civilization attackingCiv = null)
+    {
+        if (attackingCiv != null && attackingCiv != owner)
+        {
+            lastAttackingCiv = attackingCiv;
+        }
+        
+        defenseRating = Mathf.Max(0, defenseRating - damage);
+        
+        // Check if city should surrender
+        if (defenseRating <= 0 || moraleRating <= 0 || loyalty <= 0)
+        {
+            HandleSurrender(lastAttackingCiv);
+        }
+    }
+    
+    /// <summary>
+    /// Handle city surrender - transfers ownership to the capturing civilization
+    /// </summary>
+    /// <param name="capturingCiv">The civilization that captured the city (from the unit that attacked). If null, will find from units on the city tile.</param>
+    void HandleSurrender(Civilization capturingCiv = null)
     {
         Debug.Log($"{cityName} has surrendered!");
-        // TODO: Implement surrender logic (transfer ownership, effects, UI notification)
-        Destroy(gameObject); // Basic placeholder
+        
+        // Find the capturing civilization - prioritize the one that actually attacked
+        Civilization attackerCiv = capturingCiv ?? lastAttackingCiv;
+        
+        // If still not found, find from units on the city tile (the unit that took it)
+        if (attackerCiv == null && owner != null)
+        {
+            // Check for enemy combat units on the city tile
+            var allCivs = CivilizationManager.Instance?.GetAllCivs();
+            if (allCivs != null)
+            {
+                foreach (var civ in allCivs)
+                {
+                    if (civ != null && civ != owner)
+                    {
+                        // Check if this civ has units on the city tile
+                        if (civ.combatUnits != null)
+                        {
+                            foreach (var unit in civ.combatUnits)
+                            {
+                                if (unit != null && unit.currentTileIndex == centerTileIndex)
+                                {
+                                    attackerCiv = civ;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (attackerCiv != null) break;
+                    }
+                }
+            }
+        }
+        
+        // If we found an attacker, transfer ownership
+        if (attackerCiv != null && owner != null)
+        {
+            var oldOwner = owner;
+            
+            // 1) Remove from old owner
+            if (oldOwner.cities.Contains(this))
+            {
+                oldOwner.cities.Remove(this);
+            }
+            
+            // 2) Transfer city to attacker
+            owner = attackerCiv;
+            if (!attackerCiv.cities.Contains(this))
+            {
+                attackerCiv.cities.Add(this);
+            }
+            
+            // 3) Reassign any garrisoned units (those on the city tile)
+            //    Combat units:
+            var combatToMove = oldOwner.combatUnits
+                .Where(u => u != null && u.currentTileIndex == centerTileIndex)
+                .ToList();
+            foreach (var u in combatToMove)
+            {
+                oldOwner.combatUnits.Remove(u);
+                if (!attackerCiv.combatUnits.Contains(u))
+                {
+                    attackerCiv.combatUnits.Add(u);
+                }
+                u.Initialize(u.data, attackerCiv);  // reset its owner internally
+            }
+            //    Worker units:
+            var workerToMove = oldOwner.workerUnits
+                .Where(w => w != null && w.currentTileIndex == centerTileIndex)
+                .ToList();
+            foreach (var w in workerToMove)
+            {
+                oldOwner.workerUnits.Remove(w);
+                if (!attackerCiv.workerUnits.Contains(w))
+                {
+                    attackerCiv.workerUnits.Add(w);
+                }
+                w.Initialize(w.data, attackerCiv);   // reset its owner
+            }
+            
+            // 4) Reassign map-ownership of the city's tiles
+            var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+            if (planet != null)
+            {
+                List<int> territoryTiles = GetTerritoryTiles(TerritoryRadius);
+                foreach (int idx in territoryTiles)
+                {
+                    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
+                    if (tileData != null)
+                    {
+                        tileData.owner = attackerCiv;
+                        tileData.controllingCity = this;
+                        TileSystem.Instance?.SetTileData(idx, tileData);
+                    }
+                }
+            }
+            
+            // 5) Reset loyalty and morale
+            loyalty = 50f; // Start with moderate loyalty to new owner
+            moraleRating = Mathf.Max(50, moraleRating); // Boost morale slightly after surrender
+            
+            // 6) Update diplomatic relations (city capture doesn't automatically end war)
+            // Wars continue unless a peace deal is made, just like in Civilization
+            
+            // 7) Show UI notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification($"{cityName} has been captured by {attackerCiv.civData.civName}!");
+            }
+            
+            Debug.Log($"✅ City '{cityName}' captured from {oldOwner.civData.civName} by {attackerCiv.civData.civName}");
+        }
+        else
+        {
+            // No attacker found - city is destroyed/abandoned
+            Debug.LogWarning($"⚠️ {cityName} surrendered but no attacker found. City will be destroyed.");
+            if (owner != null && owner.cities.Contains(this))
+            {
+                owner.cities.Remove(this);
+            }
+            
+            // Show notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification($"{cityName} has been abandoned!");
+            }
+            
+            Destroy(gameObject);
+        }
     }
     
     // Helper method to get all building data (for UI/inspection)

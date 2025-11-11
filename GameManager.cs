@@ -2297,21 +2297,135 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Save the current game state
+    /// Save the current game state to a file
     /// </summary>
     public void SaveGame(string saveName)
     {
-        
-        // Implement your save game logic here
+        try
+        {
+            // Create save data
+            PauseMenuManager.GameSaveData saveData = new PauseMenuManager.GameSaveData
+            {
+                saveName = saveName,
+                currentTurn = currentTurn,
+                mapSize = mapSize,
+                enableMultiPlanetSystem = enableMultiPlanetSystem,
+                currentPlanetIndex = currentPlanetIndex,
+                gameInProgress = gameInProgress
+            };
+            
+            // Get player civilization info
+            if (civilizationManager != null && civilizationManager.playerCiv != null)
+            {
+                saveData.playerCivName = civilizationManager.playerCiv.civData.civName;
+                var allCivs = civilizationManager.GetAllCivs();
+                saveData.playerCivIndex = allCivs.IndexOf(civilizationManager.playerCiv);
+            }
+            
+            // Get camera position/rotation
+            if (Camera.main != null)
+            {
+                saveData.cameraPosition = Camera.main.transform.position;
+                saveData.cameraRotation = Camera.main.transform.eulerAngles;
+            }
+            
+            // Export improvement manager job assignments
+            if (ImprovementManager.Instance != null)
+            {
+                saveData.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
+            }
+            
+            // Override save name if provided
+            if (!string.IsNullOrEmpty(saveName))
+            {
+                saveData.saveName = saveName;
+            }
+            
+            // Create save directory if it doesn't exist
+            string saveDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Saves");
+            if (!System.IO.Directory.Exists(saveDirectory))
+            {
+                System.IO.Directory.CreateDirectory(saveDirectory);
+            }
+            
+            // Save to file
+            string fileName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}.json" : $"{saveName}.json";
+            string filePath = System.IO.Path.Combine(saveDirectory, fileName);
+            string jsonData = JsonUtility.ToJson(saveData, true);
+            System.IO.File.WriteAllText(filePath, jsonData);
+            
+            Debug.Log($"[GameManager] Game saved successfully to: {filePath}");
+            
+            // Show notification if UIManager is available
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification($"Game saved: {saveData.saveName}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameManager] Failed to save game: {e.Message}");
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification("Failed to save game!");
+            }
+        }
     }
 
     /// <summary>
-    /// Load a saved game
+    /// Load a saved game from a file
     /// </summary>
     public void LoadGame(string saveName)
     {
-        
-        // Implement your load game logic here
+        try
+        {
+            string saveDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Saves");
+            string fileName = string.IsNullOrEmpty(saveName) ? "save.json" : $"{saveName}.json";
+            string filePath = System.IO.Path.Combine(saveDirectory, fileName);
+            
+            if (!System.IO.File.Exists(filePath))
+            {
+                Debug.LogWarning($"[GameManager] Save file not found: {filePath}");
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowNotification($"Save file not found: {saveName}");
+                }
+                return;
+            }
+            
+            // Read and parse save data
+            string jsonData = System.IO.File.ReadAllText(filePath);
+            PauseMenuManager.GameSaveData saveData = JsonUtility.FromJson<PauseMenuManager.GameSaveData>(jsonData);
+            
+            if (saveData == null)
+            {
+                Debug.LogError("[GameManager] Failed to parse save data");
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowNotification("Failed to load game: corrupted save data");
+                }
+                return;
+            }
+            
+            // Use existing LoadGameFromSaveData method
+            LoadGameFromSaveData(saveData);
+            
+            Debug.Log($"[GameManager] Game loaded successfully from: {filePath}");
+            
+            // Show notification if UIManager is available
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification($"Game loaded: {saveData.saveName}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameManager] Failed to load game: {e.Message}");
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNotification("Failed to load game!");
+            }
+        }
     }
 
     /// <summary>
