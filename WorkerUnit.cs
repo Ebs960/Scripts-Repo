@@ -600,10 +600,8 @@ public class WorkerUnit : MonoBehaviour
          + (_equippedArmor?.rangeBonus ?? 0f)
          + (_equippedMiscellaneous?.rangeBonus ?? 0f);
     public float EquipmentAttackPointsBonus
-        => (_equippedWeapon?.attackPointsBonus ?? 0f)
-         + (_equippedShield?.attackPointsBonus ?? 0f)
-         + (_equippedArmor?.attackPointsBonus ?? 0f)
-         + (_equippedMiscellaneous?.attackPointsBonus ?? 0f);
+        // Attack points bonus removed - equipment no longer provides attack points
+        => 0f;
 
     // Ability modifiers (workers may gain abilities)
     public int GetAbilityAttackModifier()
@@ -636,10 +634,8 @@ public class WorkerUnit : MonoBehaviour
     }
     public int GetAbilityAttackPointsModifier()
     {
-        int total = 0; if (unlockedAbilities == null) return total;
-        foreach (var ability in unlockedAbilities)
-            total += ability.attackPointsModifier;
-        return total;
+        // Attack points modifier removed - abilities no longer provide attack points
+        return 0;
     }
     public float GetAbilityDamageMultiplier()
     {
@@ -1492,6 +1488,12 @@ public class WorkerUnit : MonoBehaviour
         }
 
         int damage = Mathf.RoundToInt(Mathf.Max(0f, (CurrentAttack - target.CurrentDefense)) * GetAbilityDamageMultiplier());
+        // Elevation advantage
+        {
+            float elevationDiff = transform.position.y - target.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
+        }
         bool died = target.ApplyDamage(damage);
         if (died)
         {
@@ -1553,6 +1555,13 @@ public class WorkerUnit : MonoBehaviour
         
         float rawDamage = Mathf.Max(0f, workerAttackValue - combatDefenseValue - tileBonus - workerPenalty);
         int finalDamage = Mathf.RoundToInt(rawDamage * GetAbilityDamageMultiplier());
+        
+        // Elevation advantage
+        {
+            float elevationDiff = transform.position.y - target.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            finalDamage = Mathf.Max(0, Mathf.RoundToInt(finalDamage * elevationMultiplier));
+        }
 
         // Handle ranged vs melee
         if (isRanged)

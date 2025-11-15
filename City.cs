@@ -53,7 +53,7 @@ public class City : MonoBehaviour
     public int moraleRating = 100;
     public int maxMorale = 100;
     public int moraleDropPerTurn = 1;
-    
+
     // Track the last civilization that attacked this city (for surrender/capture)
     private Civilization lastAttackingCiv = null;
 
@@ -930,12 +930,36 @@ public class City : MonoBehaviour
         if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
         Vector3 pos = planetGenerator.Grid.tileCenters[centerTileIndex];
         
-        var unitGO = Instantiate(unitData.prefab, pos, Quaternion.identity);
+        var prefab = unitData.GetPrefab();
+        if (prefab == null)
+        {
+            Debug.LogError($"[City] Cannot spawn unit {unitData.unitName}: prefab not found at path '{unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+            return false;
+        }
+        
+        var unitGO = Instantiate(prefab, pos, Quaternion.identity);
         var unit = unitGO.GetComponent<CombatUnit>();
+        if (unit == null)
+        {
+            Debug.LogError($"[City] Spawned prefab for {unitData.unitName} is missing CombatUnit component.");
+            Destroy(unitGO);
+            return false;
+        }
         unit.Initialize(unitData, owner);
         
         // Add to owner's units
         owner.combatUnits.Add(unit);
+        
+        // Add unit to army system
+        if (unit.currentTileIndex >= 0)
+        {
+            ArmyIntegration.OnUnitCreated(unit, unit.currentTileIndex);
+        }
+        else
+        {
+            unit.currentTileIndex = centerTileIndex;
+            ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
+        }
         
         Debug.Log($"Purchased {unitData.unitName} in {cityName} for {unitData.faithCost} faith.");
         return true;
@@ -981,11 +1005,35 @@ public class City : MonoBehaviour
 
         switch (d) {
             case CombatUnitData u:
-                var unitGO = Instantiate(u.prefab, pos, Quaternion.identity);
+                var unitPrefab = u.GetPrefab();
+                if (unitPrefab == null)
+                {
+                    Debug.LogError($"[City] Cannot spawn unit {u.unitName}: prefab not found at path '{u.prefabPath}'. Check prefabPath in ScriptableObject.");
+                    break;
+                }
+                var unitGO = Instantiate(unitPrefab, pos, Quaternion.identity);
                 var unit = unitGO.GetComponent<CombatUnit>();
+                if (unit == null)
+                {
+                    Debug.LogError($"[City] Spawned prefab for {u.unitName} is missing CombatUnit component.");
+                    Destroy(unitGO);
+                    break;
+                }
                 unit.Initialize(u, owner);
                 owner.combatUnits.Add(unit);
                 producedUnits.Add(u);
+                
+                // Add unit to army system
+                if (unit.currentTileIndex >= 0)
+                {
+                    ArmyIntegration.OnUnitCreated(unit, unit.currentTileIndex);
+                }
+                else
+                {
+                    // Initialize tile index if not set
+                    unit.currentTileIndex = centerTileIndex;
+                    ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
+                }
                 
                 // Award governor experience for unit production
                 if (governor != null)

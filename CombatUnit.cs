@@ -17,16 +17,13 @@ public enum BattleUnitState
     Dead            // Unit eliminated
 }
 
-[RequireComponent(typeof(Animator))]
 public class CombatUnit : MonoBehaviour
 {
     [Header("Stats (Override Data Asset)")]
     [SerializeField] private int attack = 0;
     [SerializeField] private int defense = 0;
     [SerializeField] private int health = 0; 
-    [SerializeField] private int movePoints = 0;
     [SerializeField] private int range = 0;
-    [SerializeField] private int attackPoints = 0;
     [SerializeField] private int morale = 0;
     [SerializeField] private bool useOverrideStats = false;
     
@@ -41,9 +38,7 @@ public class CombatUnit : MonoBehaviour
     public Transform armorHolder;
     [Tooltip("Transform where miscellaneous items will be attached")]
     public Transform miscHolder;
-    [Tooltip("Transform where projectiles will spawn from")]
-    // Projectiles should specify their spawn point on the equipment prefab instead of on the unit.
-    // Unit-level spawn point removed — fallbacks will use equipment holders.
+
     
     
     // Dictionary to track instantiated equipment GameObjects
@@ -213,12 +208,15 @@ public class CombatUnit : MonoBehaviour
 
     // Runtime stats
     public int currentHealth { get; private set; }
-    public int currentMovePoints { get; private set; }
-    public int currentAttackPoints { get; private set; }
     public int experience { get; private set; }
     public int level { get; private set; }
     // New: morale runtime stat
     public int currentMorale    { get; private set; }
+    // Fatigue system (0-100, where 100 = completely exhausted)
+    public float currentFatigue { get; private set; }
+    // Ammunition system (for ranged units)
+    public int currentAmmo { get; private set; }
+    public bool isOutOfAmmo => data != null && data.isRangedUnit && currentAmmo <= 0;
     
     // Flag for tracking winter movement penalty
     public bool hasWinterPenalty { get; set; }
@@ -234,10 +232,44 @@ public class CombatUnit : MonoBehaviour
     public bool isAttacker = true;
     [Tooltip("Current target for this unit")]
     public CombatUnit currentTarget;
+    
+    [Header("Unit Personnel")]
+    [Tooltip("Current number of soldiers/people in this unit (represents unit strength)")]
+    public int soldierCount = 100; // Default: 100 people per unit
+    [Tooltip("Maximum number of soldiers this unit can have")]
+    public int maxSoldierCount = 100;
+    [Tooltip("Whether this unit is currently garrisoned in a city (for reinforcement bonuses)")]
+    public bool isGarrisonedInCity = false;
+    
+    [Tooltip("Reference to source unit (for soldiers spawned in formations)")]
+    public CombatUnit sourceUnit; // Links soldier GameObject to original unit for casualty tracking
+    
     [Tooltip("Movement speed in battle")]
     public float battleMoveSpeed = 5f;
     [Tooltip("Attack range in battle")]
     public float battleAttackRange = 3f;
+    
+    /// <summary>
+    /// Get effective movement speed accounting for equipment bonuses and fatigue penalties
+    /// Equipment bonuses (like gold boots) make units move faster
+    /// </summary>
+    public float EffectiveMoveSpeed
+    {
+        get
+        {
+            if (data == null) return battleMoveSpeed;
+            
+            // Start with base speed + equipment movement bonus
+            float baseSpeed = battleMoveSpeed + EquipmentMoveBonus;
+            
+            // Apply fatigue speed penalty (lerp between full speed and reduced speed based on fatigue level)
+            float fatigueLevel = currentFatigue / 100f; // 0.0 to 1.0
+            float speedMultiplier = Mathf.Lerp(1.0f, 1.0f - data.fatigueSpeedPenalty, fatigueLevel);
+            
+            // Ensure minimum speed of 0.1 (units should always be able to move, even if very slowly)
+            return Mathf.Max(0.1f, baseSpeed * speedMultiplier);
+        }
+    }
     
     // Weather susceptibility
     [Header("Weather")]
@@ -246,6 +278,14 @@ public class CombatUnit : MonoBehaviour
 
     // Routed flag when morale hits zero
     public bool isRouted { get; private set; }
+    
+    /// <summary>
+    /// Set routed state (public method for external systems like formations)
+    /// </summary>
+    public void SetRouted(bool routed)
+    {
+        isRouted = routed;
+    }
 
     // Transport system
     private List<CombatUnit> transportedUnits = new List<CombatUnit>();
@@ -280,7 +320,28 @@ public class CombatUnit : MonoBehaviour
 
     void Awake()
     {
+        // CRITICAL FIX: Use GetComponentInChildren to find Animator on child objects (like Armature)
+        // Prefabs often have Animator on child objects, not root
+        animator = GetComponentInChildren<Animator>();
+        if (animator == null)
+        {
+            // Fallback to root if no child Animator found
         animator = GetComponent<Animator>();
+        }
+        
+        // CRITICAL FIX: Ensure animator is properly configured
+        if (animator != null)
+        {
+            // Set update mode to Normal (updates every frame with Time.deltaTime)
+            animator.updateMode = AnimatorUpdateMode.Normal;
+            // Ensure culling mode allows animation even when off-screen during setup
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name} Awake: NO ANIMATOR FOUND!");
+        }
+        
         // Use GameManager API for multi-planet support
         planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null) grid = planet.Grid;
@@ -381,6 +442,14 @@ public class CombatUnit : MonoBehaviour
         owner = unitOwner;
         level = 1;
         experience = 0;
+        
+        // Initialize soldier count (default 100, can be overridden)
+        if (soldierCount == 100 && maxSoldierCount == 100)
+        {
+            // Only set defaults if not already customized
+            soldierCount = 100;
+            maxSoldierCount = 100;
+        }
 
         // Equip all default equipment slots - only if data is valid
         if (data != null)
@@ -407,6 +476,12 @@ public class CombatUnit : MonoBehaviour
             currentHealth = MaxHealth;
             currentMorale = useOverrideStats && morale > 0 ? morale : data.baseMorale;
             
+            // Initialize fatigue (0 = fresh, 100 = exhausted)
+            currentFatigue = 0f;
+            
+            // Initialize ammunition (full ammo for ranged units)
+            currentAmmo = data.isRangedUnit ? data.maxAmmo : 0;
+            
             // Only recalculate stats if data is valid (properties access data)
             RecalculateStats();
         }
@@ -415,13 +490,27 @@ public class CombatUnit : MonoBehaviour
             // Fallback if data is null (shouldn't happen but defensive programming)
             currentHealth = 10; // Default health
             currentMorale = 50; // Default morale
+            currentFatigue = 0f; // Fresh
+            currentAmmo = 0; // No ammo
             // Don't call RecalculateStats() if data is null - properties will throw NullReferenceException
         }
 
+        // CRITICAL FIX: Use GetComponentInChildren to find Animator on child objects (like Armature)
+        // Prefabs often have Animator on child objects, not root
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+            if (animator == null)
+            {
+                // Fallback to root if no child Animator found
         animator = GetComponent<Animator>();
+            }
+        }
         // Ensure animator is not null before trying to set a trigger
         if (animator != null) 
         {
+            // Animator controller check removed (no longer needed for debugging)
+
             // Initialize as not moving (idle state)
             // Let UpdateIdleAnimation() handle setting IsIdle if needed
             _isMoving = false;
@@ -465,9 +554,7 @@ public class CombatUnit : MonoBehaviour
     public int BaseAttack => useOverrideStats && attack > 0 ? attack : data.baseAttack;
     public int BaseDefense => useOverrideStats && defense > 0 ? defense : data.baseDefense;
     public int BaseHealth => useOverrideStats && health > 0 ? health : data.baseHealth;
-    public int BaseMovePoints => useOverrideStats && movePoints > 0 ? movePoints : data.baseMovePoints;
     public int BaseRange => useOverrideStats && range > 0 ? range : data.baseRange;
-    public int BaseAttackPoints => useOverrideStats && attackPoints > 0 ? attackPoints : data.baseAttackPoints;
 
     // Equipment bonuses (sum across all equipped slots)
     // Equipment bonuses aggregated as floats (can be fractional)
@@ -496,11 +583,6 @@ public class CombatUnit : MonoBehaviour
          + (equippedShield?.rangeBonus ?? 0f)
          + (equippedArmor?.rangeBonus ?? 0f)
          + (equippedMiscellaneous?.rangeBonus ?? 0f);
-    public float EquipmentAttackPointsBonus
-        => (equippedWeapon?.attackPointsBonus ?? 0f)
-         + (equippedShield?.attackPointsBonus ?? 0f)
-         + (equippedArmor?.attackPointsBonus ?? 0f)
-         + (equippedMiscellaneous?.attackPointsBonus ?? 0f);
 
     // Ability modifiers - ADDED
     public int GetAbilityAttackModifier()
@@ -536,22 +618,6 @@ public class CombatUnit : MonoBehaviour
         return total;
     }
 
-    public int GetAbilityAttackPointsModifier()
-    {
-        int total = 0;
-        foreach (var ability in unlockedAbilities)
-            total += ability.attackPointsModifier;
-        return total;
-    }
-
-    public int GetAbilityMoveModifier()
-    {
-        int total = 0;
-        foreach (var ability in unlockedAbilities)
-            total += ability.movePointsModifier;
-        return total;
-    }
-
     public float GetAbilityDamageMultiplier()
     {
         float total = 1.0f; // Start with base value
@@ -576,9 +642,9 @@ public class CombatUnit : MonoBehaviour
                     if (b != null && b.unit == u)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd; a.moraleAdd += b.moraleAdd;
+                        a.rangeAdd += b.rangeAdd; a.moraleAdd += b.moraleAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct; a.moralePct += b.moralePct;
+                        a.rangePct += b.rangePct; a.moralePct += b.moralePct;
                     }
             }
         if (civ.researchedCultures != null)
@@ -589,9 +655,9 @@ public class CombatUnit : MonoBehaviour
                     if (b != null && b.unit == u)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd; a.moraleAdd += b.moraleAdd;
+                        a.rangeAdd += b.rangeAdd; a.moraleAdd += b.moraleAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct; a.moralePct += b.moralePct;
+                        a.rangePct += b.rangePct; a.moralePct += b.moralePct;
                     }
             }
         return a;
@@ -608,9 +674,9 @@ public class CombatUnit : MonoBehaviour
                     if (b != null && b.equipment == eq)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd;
+                        a.rangeAdd += b.rangeAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct;
+                        a.rangePct += b.rangePct;
                     }
             }
         if (civ.researchedCultures != null)
@@ -621,9 +687,9 @@ public class CombatUnit : MonoBehaviour
                     if (b != null && b.equipment == eq)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.moveAdd += b.movePointsAdd; a.rangeAdd += b.rangeAdd; a.apAdd += b.attackPointsAdd;
+                        a.rangeAdd += b.rangeAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.movePct += b.movePointsPct; a.rangePct += b.rangePct; a.apPct += b.attackPointsPct;
+                        a.rangePct += b.rangePct;
                     }
             }
         return a;
@@ -663,6 +729,21 @@ public class CombatUnit : MonoBehaviour
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.attackAdd) * (1f + e.attackPct);
             }
+            
+            // Apply fatigue penalty (lerp between full attack and reduced attack based on fatigue level)
+            if (data != null && currentFatigue > 0f)
+            {
+                float fatigueLevel = currentFatigue / 100f; // 0.0 to 1.0
+                float penaltyMultiplier = Mathf.Lerp(1.0f, data.fatigueAttackPenalty, fatigueLevel);
+                valF *= penaltyMultiplier;
+            }
+            
+            // Apply out-of-ammo penalty for ranged units in melee
+            if (data != null && data.isRangedUnit && isOutOfAmmo && data.canSwitchToMelee)
+            {
+                valF *= data.outOfAmmoMeleePenalty;
+            }
+            
             // Apply per-target bonuses (if this unit is attacking a specific target, callers may need to apply extra modifiers).
             return Mathf.RoundToInt(valF);
         }
@@ -682,6 +763,15 @@ public class CombatUnit : MonoBehaviour
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.defenseAdd) * (1f + e.defensePct);
             }
+            
+            // Apply fatigue penalty (lerp between full defense and reduced defense based on fatigue level)
+            if (data != null && currentFatigue > 0f)
+            {
+                float fatigueLevel = currentFatigue / 100f; // 0.0 to 1.0
+                float penaltyMultiplier = Mathf.Lerp(1.0f, data.fatigueDefensePenalty, fatigueLevel);
+                valF *= penaltyMultiplier;
+            }
+            
             return Mathf.RoundToInt(valF);
         }
     }
@@ -721,8 +811,6 @@ public class CombatUnit : MonoBehaviour
             return Mathf.RoundToInt(valF);
         }
     }
-    public int MaxAttackPoints   => Mathf.RoundToInt(BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier());
-    public int MaxMovePoints     => Mathf.RoundToInt(BaseMovePoints + EquipmentMoveBonus + GetAbilityMoveModifier());
     public int MaxMorale         => useOverrideStats && morale > 0 ? morale : data.baseMorale;
     
 
@@ -748,7 +836,7 @@ public class CombatUnit : MonoBehaviour
             }
         }
 
-    if (currentMovePoints < BiomeHelper.GetMovementCost(tileData, this)) return false;
+    // Movement points removed - units can always move (movement speed is now fatigue-based)
 
         if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
             return false;
@@ -764,8 +852,7 @@ public class CombatUnit : MonoBehaviour
         {
             var currentTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
 
-            int cost = BiomeHelper.GetMovementCost(currentTileData, this);
-            currentMovePoints -= cost;
+            // Movement points removed - movement speed is now fatigue-based
 
             Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenter(idx) : currentGrid.tileCenters[idx];
             transform.position = pos;
@@ -787,7 +874,6 @@ public class CombatUnit : MonoBehaviour
     
     public bool CanAttack(CombatUnit target)
     {
-        if (currentAttackPoints <= 0) return false;
         if (isRouted) return false; // Routed units cannot attack
 
         // Target category checks
@@ -814,7 +900,6 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public bool CanAttack(WorkerUnit target)
     {
-        if (currentAttackPoints <= 0) return false;
         if (isRouted) return false;
         if (target == null) return false;
         
@@ -894,22 +979,37 @@ public class CombatUnit : MonoBehaviour
     else
         activeWeapon = equippedWeapon; // legacy fallback
 
-    // Choose animation trigger based on whether this is a ranged attack (weapon defines projectileData)
+    // Set battle state to Attacking - IsAttacking bool will handle continuous attack animations
+    battleState = BattleUnitState.Attacking;
+    
+    // For ranged attacks, still use the trigger (one-shot projectile launch animation)
     bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
-    // Use hashes for consistent naming (capitalized to match WorkerUnit)
-    // Attack animation should play fully - clear IsIdle when attacking
-    int triggerHash = isRangedAttack ? rangedAttackHash : attackHash;
-    animator.SetTrigger(triggerHash);
     
-    // Clear IsIdle when attacking (attack animation should interrupt idle)
-    bool hasIsIdle = HasParameter(animator, isIdleHash);
-    if (hasIsIdle)
+    // Check ammunition for ranged attacks
+    if (isRangedAttack)
     {
-        animator.SetBool(isIdleHash, false);
-    }
-    
-    string triggerName = isRangedAttack ? "RangedAttack" : "Attack";
+        if (data != null && data.isRangedUnit && !ConsumeAmmo())
+        {
+            // Out of ammo! Can't fire ranged attack
+            Debug.Log($"{gameObject.name} is out of ammo! {(data.canSwitchToMelee ? "Switching to melee." : "Cannot attack!")}");
+            
+            if (!data.canSwitchToMelee)
+            {
+                // Can't attack at all without ammo
+                return;
+            }
+            // Otherwise, fall through to melee attack (with penalty applied in CurrentAttack)
+            isRangedAttack = false;
+        }
+        else if (isRangedAttack)
+        {
+            // Has ammo, fire ranged attack
+            animator.SetTrigger(rangedAttackHash);
+            string triggerName = "RangedAttack";
     OnAnimationTrigger?.Invoke(triggerName);
+        }
+    }
+    // Melee attacks use IsAttacking bool (continuous), not a trigger
 
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;
@@ -935,13 +1035,19 @@ public class CombatUnit : MonoBehaviour
         if (flankCount > 0)
             damage = Mathf.RoundToInt(damage * (1 + 0.1f * flankCount));
 
+        // Elevation advantage: higher attacker gains up to +10%, lower attacker up to -10%
+        {
+            float elevationDiff = transform.position.y - target.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
+        }
+
     // If the active weapon defines projectile data, either queue or spawn the projectile depending on settings
     if (activeWeapon != null && activeWeapon.projectileData != null)
         {
             if (useAnimationEventForProjectiles)
             {
         QueueProjectileForAnimation(activeWeapon, target.transform.position, target, damage);
-                currentAttackPoints--;
                 // Projectile will be fired by animation event (FireQueuedProjectile)
                 return;
             }
@@ -949,7 +1055,6 @@ public class CombatUnit : MonoBehaviour
             {
                 // Spawn immediately (legacy behaviour)
         SpawnProjectileFromEquipment(activeWeapon, target.transform.position, target, damage);
-                currentAttackPoints--;
                 return;
             }
         }
@@ -968,7 +1073,6 @@ public class CombatUnit : MonoBehaviour
                 target.CounterAttack(this);
         }
 
-        currentAttackPoints--;
         GainExperience(damage);
         }
         catch (System.Exception e)
@@ -995,21 +1099,18 @@ public class CombatUnit : MonoBehaviour
         else if (equippedWeapon != null)
             activeWeapon = equippedWeapon;
 
-        // Choose animation - use hashes for consistent naming (capitalized to match WorkerUnit)
-        // Attack animation should play fully - clear IsIdle when attacking
+        // Set battle state to Attacking - IsAttacking bool will handle continuous melee attack animations
+        battleState = BattleUnitState.Attacking;
+        
+        // For ranged attacks, still use the trigger (one-shot projectile launch animation)
         bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
-        int triggerHash = isRangedAttack ? rangedAttackHash : attackHash;
-        animator.SetTrigger(triggerHash);
-        
-        // Clear IsIdle when attacking (attack animation should interrupt idle)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
+        if (isRangedAttack)
         {
-            animator.SetBool(isIdleHash, false);
-        }
-        
-        string triggerName = isRangedAttack ? "RangedAttack" : "Attack";
+            animator.SetTrigger(rangedAttackHash);
+            string triggerName = "RangedAttack";
         OnAnimationTrigger?.Invoke(triggerName);
+        }
+        // Melee attacks use IsAttacking bool (continuous), not a trigger
 
         // Combat units fight at advantage against workers (+2 bonus vs non-combatants)
         int combatBonus = 2;
@@ -1025,6 +1126,13 @@ public class CombatUnit : MonoBehaviour
         if (flankCount > 0)
             finalDamage = Mathf.RoundToInt(finalDamage * (1 + 0.1f * flankCount));
 
+        // Elevation advantage
+        {
+            float elevationDiff = transform.position.y - target.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            finalDamage = Mathf.Max(0, Mathf.RoundToInt(finalDamage * elevationMultiplier));
+        }
+
         // Handle ranged vs melee
         if (isRangedAttack)
         {
@@ -1033,14 +1141,12 @@ public class CombatUnit : MonoBehaviour
                 // Queue projectile (but target is WorkerUnit, not CombatUnit)
                 // We'll fire immediately since projectile system expects CombatUnit
                 SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                currentAttackPoints--;
                 GainExperience(finalDamage);
                 return;
             }
             else
             {
                 SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                currentAttackPoints--;
                 GainExperience(finalDamage);
                 return;
             }
@@ -1063,7 +1169,6 @@ public class CombatUnit : MonoBehaviour
             }
         }
 
-        currentAttackPoints--;
         GainExperience(finalDamage);
     }
     
@@ -1109,18 +1214,28 @@ public class CombatUnit : MonoBehaviour
     /// <returns>True if the unit is destroyed by this damage</returns>
     public bool ApplyDamage(int damageAmount)
     {
-        // Use hash for consistent naming (capitalized to match WorkerUnit)
-        // Hit animation should play fully - clear IsIdle when hit
-        animator.SetTrigger(hitHash);
+        Debug.Log($"[CombatUnit] {gameObject.name} ApplyDamage called: damage={damageAmount}, currentHealth={currentHealth}, MaxHealth={MaxHealth}");
         
-        // Clear IsIdle when hit (hit animation should interrupt idle)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
+        // Play hit animation using trigger (one-shot, not continuous)
+        if (animator != null && animator.runtimeAnimatorController != null)
         {
-            animator.SetBool(isIdleHash, false);
+            if (HasParameter(animator, hitHash))
+            {
+                animator.SetTrigger(hitHash);
+                Debug.Log($"[CombatUnit] {gameObject.name} triggered Hit animation");
+            }
+            else
+            {
+                Debug.LogWarning($"[CombatUnit] {gameObject.name} - Hit trigger parameter not found in animator!");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnit] {gameObject.name} - Animator or controller is null!");
         }
         
         currentHealth -= damageAmount;
+        Debug.Log($"[CombatUnit] {gameObject.name} after damage: currentHealth={currentHealth}");
         
         // Raise damage event
         GameEventManager.Instance.RaiseDamageAppliedEvent(null, this, damageAmount);
@@ -1140,7 +1255,8 @@ public class CombatUnit : MonoBehaviour
             return true;
         }
         
-        if (currentHealth <= MaxHealth * 0.2f && !isRouted)
+        // Only rout in battle scenes, not on campaign map
+        if (currentHealth <= MaxHealth * 0.2f && !isRouted && IsInBattleScene())
         {
             Rout();
         }
@@ -1206,12 +1322,30 @@ public class CombatUnit : MonoBehaviour
     }
     
     /// <summary>
+    /// Check if unit is currently in a battle scene (not campaign map)
+    /// </summary>
+    private bool IsInBattleScene()
+    {
+        // Check if BattleTestSimple exists (indicates we're in a battle scene)
+        return BattleTestSimple.Instance != null;
+    }
+    
+    /// <summary>
     /// Set this unit to routed state (reduced effectiveness)
+    /// Only works in battle scenes, not on campaign map
     /// </summary>
     private void Rout()
     {
+        // Double-check we're in battle before routing
+        if (!IsInBattleScene())
+        {
+            return; // Don't rout on campaign map
+        }
+        
         isRouted = true;
-        // Visual indicator for routing could be added here
+        // Set battle state to Routing and start retreat
+        battleState = BattleUnitState.Routing;
+        StartRetreat();
         Debug.Log($"{data.unitName} has been routed!");
     }
     
@@ -1220,6 +1354,14 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     private void Die()
     {
+        // Stop all coroutines including retreat coroutine
+        if (retreatCoroutine != null)
+        {
+            StopCoroutine(retreatCoroutine);
+            retreatCoroutine = null;
+        }
+        StopAllCoroutines();
+        
         // Use hash for consistent naming (capitalized to match WorkerUnit)
         // Death animation should play fully - don't clear IsIdle here, let animator handle it
         animator.SetTrigger(deathHash);
@@ -1266,19 +1408,12 @@ public class CombatUnit : MonoBehaviour
     public void CounterAttack(CombatUnit attacker)
     {
         if (!data.canCounterAttack) return;
-        if (currentAttackPoints <= 0) return;
+        // Attack points removed - units can always counter-attack if able
         if (isRouted) return; // Routed units cannot counter-attack
 
-        // Use hash for consistent naming (capitalized to match WorkerUnit)
-        // Attack animation should play fully - clear IsIdle when attacking
-        animator.SetTrigger(attackHash);
-        
-        // Clear IsIdle when attacking (attack animation should interrupt idle)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
-        {
-            animator.SetBool(isIdleHash, false);
-        }
+        // Set battle state to Attacking - IsAttacking bool will handle continuous attack animations
+        battleState = BattleUnitState.Attacking;
+        // No trigger needed for melee counter-attacks - IsAttacking bool handles it
         
         OnAnimationTrigger?.Invoke("attack");
 
@@ -1304,8 +1439,14 @@ public class CombatUnit : MonoBehaviour
         if (flankCount > 0)
             damage = Mathf.RoundToInt(damage * (1 + 0.1f * flankCount));
 
+        // Elevation advantage (defender counter-attacking): compare defender (this) vs attacker
+        {
+            float elevationDiff = transform.position.y - attacker.transform.position.y;
+            float elevationMultiplier = 1f + Mathf.Clamp(elevationDiff * 0.02f, -0.1f, 0.1f);
+            damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
+        }
+
     attacker.ApplyDamage(damage, this, true);
-        currentAttackPoints--;
         GainExperience(damage);
     }
 
@@ -1319,15 +1460,14 @@ public class CombatUnit : MonoBehaviour
         if (currentMorale != old)
             OnMoraleChanged?.Invoke(currentMorale, data.baseMorale);
 
-        // Check if unit is now routed
-        if (!isRouted && currentMorale == 0)
+        // Check if unit is now routed (only in battle scenes, not campaign map)
+        if (!isRouted && currentMorale == 0 && IsInBattleScene())
         {
             // Unit routs: cannot attack, moves randomly away
             isRouted = true;
-            // Use hash for consistent naming (capitalized to match WorkerUnit)
-            animator.SetTrigger(routHash);
-            OnAnimationTrigger?.Invoke("rout");
-            // Flee one tile away
+            // Set battle state to Routing - IsRouting bool will handle continuous routing animations
+            battleState = BattleUnitState.Routing;
+            // Flee one tile away (or start continuous retreat in battle)
             AttemptFlee();
         }
     }
@@ -1392,10 +1532,25 @@ public class CombatUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Simple placeholder flee logic: move to a random neighbouring tile.
+    /// Simple placeholder flee logic: move to a random neighbouring tile (campaign map only).
+    /// In battle, routing is handled by StartRetreat() instead.
     /// </summary>
     private void AttemptFlee()
     {
+        // Only flee/rout in battle scenes, not on campaign map
+        if (!IsInBattleScene())
+        {
+            return; // Don't rout on campaign map - armies handle defeat there
+        }
+        
+        // If in battle, use battle-specific retreat logic
+        if (battleState != BattleUnitState.Idle && battleState != BattleUnitState.Dead)
+        {
+            StartRetreat();
+            return;
+        }
+        
+        // Campaign map routing logic (shouldn't reach here if IsInBattle() check works)
         if (grid == null) return;
 
         int[] neighbours = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : grid.neighbors[currentTileIndex].ToArray();
@@ -1438,7 +1593,13 @@ public class CombatUnit : MonoBehaviour
         level++;
         if (animator == null)
         {
+            // CRITICAL FIX: Use GetComponentInChildren to find Animator on child objects (like Armature)
+            animator = GetComponentInChildren<Animator>();
+            if (animator == null)
+            {
+                // Fallback to root if no child Animator found
             animator = GetComponent<Animator>();
+            }
         }
         if (animator != null)
         {
@@ -1470,8 +1631,6 @@ public class CombatUnit : MonoBehaviour
     private void RecalculateStats()
     {
         // Base + equipment + abilities are already encapsulated in properties
-        float baseMoveF = BaseMovePoints + EquipmentMoveBonus;
-        float baseAPF = BaseAttackPoints + EquipmentAttackPointsBonus + GetAbilityAttackPointsModifier();
         float maxHPF = BaseHealth + EquipmentHealthBonus + GetAbilityHealthModifier();
 
         // Apply targeted bonuses from techs/cultures
@@ -1479,23 +1638,15 @@ public class CombatUnit : MonoBehaviour
         {
             var agg = AggregateUnitBonusesLocal(owner, data);
             // Apply additive first
-            baseMoveF += agg.moveAdd;
-            baseAPF += agg.apAdd;
             maxHPF += agg.healthAdd;
             // Apply multiplicative
-            baseMoveF = baseMoveF * (1f + agg.movePct);
-            baseAPF = baseAPF * (1f + agg.apPct);
             maxHPF = maxHPF * (1f + agg.healthPct);
-            // Attack/Defense/Range/Morale handled dynamically via getters or in combat; keep HP/move/AP here
+            // Attack/Defense/Range/Morale handled dynamically via getters or in combat
             // Apply equipment-targeted bonuses across all equipped items
             var eagg = AggregateAllEquippedBonusesLocal(owner);
-            baseMoveF = (baseMoveF + eagg.moveAdd) * (1f + eagg.movePct);
-            baseAPF = (baseAPF + eagg.apAdd) * (1f + eagg.apPct);
             maxHPF = (maxHPF + eagg.healthAdd) * (1f + eagg.healthPct);
         }
 
-        currentMovePoints = Mathf.RoundToInt(baseMoveF);
-        currentAttackPoints = Mathf.RoundToInt(baseAPF);
         currentHealth = Mathf.Min(currentHealth, Mathf.RoundToInt(maxHPF));
     }
 
@@ -1601,7 +1752,7 @@ public class CombatUnit : MonoBehaviour
         // Check if IsIdle parameter exists (do this once at method level)
         bool hasIsIdleParam = HasParameter(animator, isIdleHash);
         
-        // Only update idle animation if unit is not moving AND not playing other animations
+        // Only update idle animation if unit is not moving, not attacking, AND not playing other animations
         if (_isMoving)
         {
             // If moving, clear IsIdle
@@ -1610,6 +1761,17 @@ public class CombatUnit : MonoBehaviour
                 animator.SetBool(isIdleHash, false);
             }
             Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - unit is moving");
+            return;
+        }
+        
+        // If attacking, clear IsIdle
+        if (battleState == BattleUnitState.Attacking)
+        {
+            if (hasIsIdleParam)
+            {
+                animator.SetBool(isIdleHash, false);
+            }
+            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - unit is attacking");
             return;
         }
         
@@ -1632,11 +1794,24 @@ public class CombatUnit : MonoBehaviour
         if (hasIsIdleParam)
         {
             animator.SetBool(isIdleHash, true);
-            Debug.Log($"[CombatUnit] {gameObject.name}: Set IsIdle=true (bool parameter)");
         }
-        else
+        
+        // CRITICAL FIX: Force immediate transition to Idle if not already there
+        // This ensures the animation actually plays
+        bool isInIdleState = currentState.IsName("Idle") || currentState.IsName("idle");
+        bool isTransitioning = animator.IsInTransition(0);
+        
+        if (!isInIdleState && !isTransitioning)
         {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation - IsIdle parameter not found! Add IsIdle bool parameter to animator controller.");
+            // Force immediate transition to Idle state
+            try
+            {
+                animator.CrossFade("Idle", 0.1f, 0);
+            }
+            catch
+            {
+                // Idle state might not exist, which is fine if using parameters only
+            }
         }
     }
     
@@ -1721,6 +1896,8 @@ public class CombatUnit : MonoBehaviour
     // Animation parameter hashes for efficiency (like WorkerUnit)
     private static readonly int isWalkingHash = Animator.StringToHash("IsWalking");
     private static readonly int isIdleHash = Animator.StringToHash("IsIdle");
+    private static readonly int isAttackingHash = Animator.StringToHash("IsAttacking");
+    private static readonly int isRoutingHash = Animator.StringToHash("IsRouting");
     
     // Animation trigger hashes - standardized to capitalized (matching WorkerUnit)
     private static readonly int attackHash = Animator.StringToHash("Attack");
@@ -1743,9 +1920,7 @@ public class CombatUnit : MonoBehaviour
         {
             if (_isMoving != value)
             {
-                bool oldValue = _isMoving;
                 _isMoving = value;
-                Debug.Log($"[CombatUnit] {gameObject.name}: isMoving changed from {oldValue} to {value}");
                 UpdateWalkingAnimation();
             }
         }
@@ -1782,30 +1957,11 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public void ResetForNewTurn()
     {
-    // Calculate base move points including equipment bonuses (float intermediate)
-    float baseMoveF = BaseMovePoints + EquipmentMoveBonus;
-        
-        // If trapped, decrement duration and block movement for this turn
+        // If trapped, decrement duration
         if (IsTrapped)
         {
             trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
-            currentMovePoints = 0;
         }
-        else
-        {
-        // Apply winter penalty if applicable
-        if (hasWinterPenalty && ClimateManager.Instance != null && 
-            ClimateManager.Instance.currentSeason == Season.Winter)
-        {
-            currentMovePoints = Mathf.Max(1, Mathf.RoundToInt(baseMoveF) - 1);
-        }
-        else
-        {
-            currentMovePoints = Mathf.RoundToInt(baseMoveF);
-        }
-        }
-        
-        currentAttackPoints = MaxAttackPoints;
         
         // Morale replenishment
         int moraleRecovery = 10; // Default minimum recovery
@@ -1813,7 +1969,20 @@ public class CombatUnit : MonoBehaviour
         
         // Clear routed flag if morale is above 0
         if (isRouted && currentMorale > 0)
+        {
             isRouted = false;
+            // Stop routing animation and return to normal state
+            if (battleState == BattleUnitState.Routing)
+            {
+                battleState = BattleUnitState.Idle;
+            }
+            // Stop retreat coroutine if running
+            if (retreatCoroutine != null)
+            {
+                StopCoroutine(retreatCoroutine);
+                retreatCoroutine = null;
+            }
+        }
             
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
@@ -1847,21 +2016,7 @@ public class CombatUnit : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Check if unit has enough movement points for a given cost
-    /// </summary>
-    public bool CanMove(int movementCost)
-    {
-        return currentMovePoints >= movementCost;
-    }
-    
-    /// <summary>
-    /// Deduct movement points safely
-    /// </summary>
-    public void DeductMovementPoints(int amount)
-    {
-        currentMovePoints = Mathf.Max(0, currentMovePoints - amount);
-    }
+    // Movement points removed - movement speed is now fatigue-based
     
     /// <summary>
     /// Safely trigger the OnMovementComplete event from external systems
@@ -2498,12 +2653,188 @@ public class CombatUnit : MonoBehaviour
             // reset timer when not engaged
             meleeCheckTimer = 0f;
         }
+        
+        // Update fatigue system
+        UpdateFatigue();
+
+        // CRITICAL: Update IsAttacking bool based on battle state
+        UpdateAttackingAnimation();
+        
+        // CRITICAL: Update IsRouting bool based on battle state
+        UpdateRoutingAnimation();
 
         // Update unit label only when health changes
         if (unitLabelInstance != null && currentHealth != _lastDisplayedHealth)
         {
             unitLabelInstance.UpdateLabel(data.unitName, owner.civData.civName, currentHealth, MaxHealth);
             _lastDisplayedHealth = currentHealth;
+        }
+    }
+    
+    /// <summary>
+    /// Update fatigue accumulation and recovery based on unit state
+    /// </summary>
+    private void UpdateFatigue()
+    {
+        if (data == null) return;
+        
+        float deltaTime = Time.deltaTime * 3f; // Compensate for every-3rd-frame update
+        
+        // Accumulate fatigue based on activity
+        if (battleState == BattleUnitState.Attacking)
+        {
+            // Fighting is very tiring
+            currentFatigue = Mathf.Min(100f, currentFatigue + data.fatigueRateFighting * deltaTime);
+        }
+        else if (battleState == BattleUnitState.Routing || isRouted)
+        {
+            // Routing is very tiring (running away in panic)
+            currentFatigue = Mathf.Min(100f, currentFatigue + data.fatigueRateFighting * deltaTime);
+        }
+        else if (isMoving)
+        {
+            // Moving is moderately tiring
+            currentFatigue = Mathf.Min(100f, currentFatigue + data.fatigueRateMoving * deltaTime);
+        }
+        else if (battleState == BattleUnitState.Idle)
+        {
+            // Resting recovers fatigue
+            currentFatigue = Mathf.Max(0f, currentFatigue - data.fatigueRecoveryRate * deltaTime);
+        }
+    }
+    
+    /// <summary>
+    /// Apply instant fatigue (for charge attacks, forced marches, etc.)
+    /// </summary>
+    public void ApplyInstantFatigue(float amount)
+    {
+        currentFatigue = Mathf.Clamp(currentFatigue + amount, 0f, 100f);
+    }
+    
+    /// <summary>
+    /// Get fatigue level as a percentage (0.0 = fresh, 1.0 = exhausted)
+    /// </summary>
+    public float GetFatigueLevel()
+    {
+        return currentFatigue / 100f;
+    }
+    
+    /// <summary>
+    /// Check if unit is fatigued (>50% fatigue)
+    /// </summary>
+    public bool IsFatigued()
+    {
+        return currentFatigue > 50f;
+    }
+    
+    /// <summary>
+    /// Check if unit is exhausted (>80% fatigue)
+    /// </summary>
+    public bool IsExhausted()
+    {
+        return currentFatigue > 80f;
+    }
+    
+    /// <summary>
+    /// Consume ammunition for ranged attack
+    /// </summary>
+    public bool ConsumeAmmo()
+    {
+        if (data == null || !data.isRangedUnit) return true; // Non-ranged units always have "ammo"
+        
+        if (currentAmmo <= 0) return false; // Out of ammo
+        
+        currentAmmo--;
+        return true;
+    }
+    
+    /// <summary>
+    /// Reload/resupply ammunition (for future resupply mechanics)
+    /// </summary>
+    public void ResupplyAmmo()
+    {
+        if (data == null) return;
+        currentAmmo = data.maxAmmo;
+    }
+
+    /// <summary>
+    /// Update IsAttacking animation parameter based on battle state
+    /// This creates continuous attack animations while in combat
+    /// </summary>
+    private void UpdateAttackingAnimation()
+    {
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        
+        // Check if IsAttacking parameter exists
+        bool hasIsAttacking = HasParameter(animator, isAttackingHash);
+        if (!hasIsAttacking) return; // Parameter doesn't exist, can't update
+        
+        // Set IsAttacking bool based on battle state
+        // Don't attack if routing (routed units can't attack)
+        bool shouldBeAttacking = (battleState == BattleUnitState.Attacking && !isRouted);
+        animator.SetBool(isAttackingHash, shouldBeAttacking);
+        
+        // Also sync with IsIdle - can't be idle while attacking
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle && shouldBeAttacking)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
+        
+        // FALLBACK: If IsAttacking parameter doesn't exist, use CrossFade as backup
+        if (!hasIsAttacking && shouldBeAttacking)
+        {
+            try
+            {
+                animator.CrossFade("Attack", 0.1f, 0);
+            }
+            catch
+            {
+                // Can't play attack animation
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Update IsRouting animation parameter based on battle state
+    /// This creates continuous routing animations while fleeing
+    /// </summary>
+    private void UpdateRoutingAnimation()
+    {
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        
+        // Check if IsRouting parameter exists
+        bool hasIsRouting = HasParameter(animator, isRoutingHash);
+        if (!hasIsRouting) return; // Parameter doesn't exist, can't update
+        
+        // Set IsRouting bool based on battle state and routed flag
+        bool shouldBeRouting = (battleState == BattleUnitState.Routing || isRouted);
+        animator.SetBool(isRoutingHash, shouldBeRouting);
+        
+        // Also sync with IsIdle and IsAttacking - can't be idle or attacking while routing
+        bool hasIsIdle = HasParameter(animator, isIdleHash);
+        if (hasIsIdle && shouldBeRouting)
+        {
+            animator.SetBool(isIdleHash, false);
+        }
+        
+        bool hasIsAttacking = HasParameter(animator, isAttackingHash);
+        if (hasIsAttacking && shouldBeRouting)
+        {
+            animator.SetBool(isAttackingHash, false);
+        }
+        
+        // FALLBACK: If IsRouting parameter doesn't exist, use CrossFade as backup
+        if (!hasIsRouting && shouldBeRouting)
+        {
+            try
+            {
+                animator.CrossFade("Rout", 0.1f, 0);
+            }
+            catch
+            {
+                // Can't play routing animation
+            }
         }
     }
 
@@ -2681,28 +3012,50 @@ public class CombatUnit : MonoBehaviour
             return; // Parameter doesn't exist, can't update
         }
         
+        // Don't walk if attacking
+        // Don't use walking animation if routing (routing has its own animation)
+        bool shouldWalk = _isMoving && (battleState != BattleUnitState.Attacking) && (battleState != BattleUnitState.Routing && !isRouted);
+        
         // Set IsWalking bool parameter based on _isMoving state
-        animator.SetBool(isWalkingHash, _isMoving);
-        
-        // Verify the parameter was actually set by reading it back
-        bool actualIsWalking = animator.GetBool(isWalkingHash);
-        string currentState = GetCurrentStateName(animator);
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-        
-        Debug.Log($"[CombatUnit] {gameObject.name}: Set IsWalking={_isMoving}, Read back IsWalking={actualIsWalking}, Current state: {currentState}, normalizedTime: {stateInfo.normalizedTime:F2}, IsTransitioning: {animator.IsInTransition(0)}");
-        
-        // Log all animator parameters for debugging
-        if (_isMoving) // Only log when trying to walk
-        {
-            LogAnimatorParameters(animator);
-        }
+        animator.SetBool(isWalkingHash, shouldWalk);
         
         // Always sync IsIdle with IsWalking (opposite states)
         bool hasIsIdle = HasParameter(animator, isIdleHash);
         if (hasIsIdle)
         {
-            animator.SetBool(isIdleHash, !_isMoving);
-            Debug.Log($"[CombatUnit] {gameObject.name}: Set IsIdle={!_isMoving} (opposite of IsWalking)");
+            animator.SetBool(isIdleHash, !shouldWalk && battleState != BattleUnitState.Attacking && battleState != BattleUnitState.Routing && !isRouted);
+        }
+        
+        // CRITICAL FIX: Force immediate transition if animator isn't responding to parameters
+        // This handles cases where animator controller has exit time or other blocking conditions
+        if (shouldWalk)
+        {
+            // Check if we're already in or transitioning to a walk state
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            bool isInWalkState = stateInfo.IsName("Walk") || stateInfo.IsName("Walking") || stateInfo.IsName("walk");
+            bool isTransitioning = animator.IsInTransition(0);
+            
+            // If not walking and not transitioning to walk, force the transition
+            if (!isInWalkState && !isTransitioning)
+            {
+                // Try to play Walk state directly with CrossFade for smooth transition
+                try
+                {
+                    animator.CrossFade("Walk", 0.1f, 0); // 0.1 second blend time
+                }
+                catch
+                {
+                    // If "Walk" doesn't exist, try "Walking"
+                    try
+                    {
+                        animator.CrossFade("Walking", 0.1f, 0);
+                    }
+                    catch
+                    {
+                        // Could not find walk state - animator controller may not have it set up properly
+                    }
+                }
+            }
         }
     }
     
@@ -2734,8 +3087,10 @@ public class CombatUnit : MonoBehaviour
             {
                 case "Attack":
                 case "attack":
-                    triggerHash = attackHash;
-                    break;
+                    // REMOVED: Attack is now controlled by IsAttacking bool, not a trigger
+                    // Just set the battle state instead
+                    battleState = BattleUnitState.Attacking;
+                    return; // Don't set a trigger
                 case "Hit":
                 case "hit":
                     triggerHash = hitHash;
@@ -2763,7 +3118,7 @@ public class CombatUnit : MonoBehaviour
             {
                 Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - hash found but parameter doesn't exist in animator");
                 // Fallback to string-based trigger
-                animator.SetTrigger(animationName);
+            animator.SetTrigger(animationName);
             }
             else
             {
@@ -2941,7 +3296,23 @@ public class CombatUnit : MonoBehaviour
             }
         }
         
-        // Handle selection - clear previous formation selections if in battle test
+        // CAMPAIGN MAP: Units are in armies - redirect selection to army
+        if (!IsInBattleScene() && ArmyManager.Instance != null)
+        {
+            // Find which army contains this unit
+            var army = ArmyManager.Instance.GetArmyContainingUnit(this);
+            if (army != null)
+            {
+                // Select the army instead of the individual unit
+                ArmyManager.Instance.SelectArmy(army);
+                return;
+            }
+            // If unit is not in an army, it will be auto-added by EnforceArmyOnlySystem()
+            // For now, just return (unit shouldn't be visible on campaign map anyway)
+            return;
+        }
+        
+        // BATTLE MAP: Handle unit selection normally
         var battleTest = FindFirstObjectByType<BattleTestSimple>();
         if (battleTest != null)
         {
@@ -2970,7 +3341,7 @@ public class CombatUnit : MonoBehaviour
                 // Fallback notification if UnitInfoPanel is not available
                 if (UIManager.Instance.unitInfoPanel == null || !UIManager.Instance.unitInfoPanel.activeInHierarchy)
                 {
-                    string msg = $"{data.unitName} (Combat)\nHealth: {currentHealth}/{MaxHealth}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}\nMove: {currentMovePoints}/{MaxMovePoints}";
+                    string msg = $"{data.unitName} (Combat)\nHealth: {currentHealth}/{MaxHealth}\nAttack: {CurrentAttack}  Defense: {CurrentDefense}\nFatigue: {Mathf.RoundToInt(currentFatigue)}%";
                     UIManager.Instance.ShowNotification(msg);
                 }
             }
@@ -2988,10 +3359,6 @@ public class CombatUnit : MonoBehaviour
         
         // Mark unit as in battle (prevents world map movement from interfering)
         IsInBattle = true;
-        
-        // Reset movement and attack points for battle
-        currentMovePoints = MaxMovePoints;
-        currentAttackPoints = MaxAttackPoints;
         
         // Set up battle-specific components
         SetupBattleComponents();
@@ -3093,39 +3460,143 @@ public class CombatUnit : MonoBehaviour
 
     private void StartRetreat()
     {
-        // Find a retreat position (away from enemies)
-        Vector3 retreatDirection = GetRetreatDirection();
-        Vector3 retreatPosition = transform.position + retreatDirection * 10f;
-        MoveToPosition(retreatPosition);
+        // Set battle state to Routing
+        battleState = BattleUnitState.Routing;
+        
+        // Start continuous retreat coroutine (keeps moving away from enemies)
+        if (retreatCoroutine != null)
+        {
+            StopCoroutine(retreatCoroutine);
+        }
+        retreatCoroutine = StartCoroutine(ContinuousRetreatCoroutine());
+    }
+    
+    private Coroutine retreatCoroutine = null;
+    
+    /// <summary>
+    /// Continuously retreat from enemies (routing animation plays continuously)
+    /// </summary>
+    private System.Collections.IEnumerator ContinuousRetreatCoroutine()
+    {
+        while (battleState == BattleUnitState.Routing && isRouted)
+        {
+            // Find retreat direction away from nearest enemy
+            Vector3 retreatDirection = GetRetreatDirection();
+            
+            // Move away from enemies continuously
+            Vector3 newPosition = transform.position + retreatDirection * battleMoveSpeed * Time.deltaTime;
+            
+            // Clamp to battlefield bounds
+            newPosition = ClampToBattlefieldBounds(newPosition);
+            
+            // Smoothly move to new position
+            transform.position = newPosition;
+            
+            // Face away from enemies (routing direction)
+            if (retreatDirection.magnitude > 0.1f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(retreatDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
+            }
+            
+            yield return null;
+        }
+        
+        retreatCoroutine = null;
     }
 
+    // Cache enemies for retreat direction calculation (updated every 0.5 seconds)
+    private static List<CombatUnit> cachedEnemies = new List<CombatUnit>();
+    private static float lastEnemyCacheUpdate = 0f;
+    private const float ENEMY_CACHE_UPDATE_INTERVAL = 0.5f;
+    
     private Vector3 GetRetreatDirection()
     {
+        // Update enemy cache periodically to avoid expensive FindObjectsByType every frame
+        if (Time.time - lastEnemyCacheUpdate > ENEMY_CACHE_UPDATE_INTERVAL)
+        {
+            cachedEnemies.Clear();
+            var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+            foreach (var unit in allUnits)
+            {
+                if (unit != null && unit.battleState != BattleUnitState.Dead)
+                {
+                    cachedEnemies.Add(unit);
+                }
+            }
+            lastEnemyCacheUpdate = Time.time;
+        }
+        
         // Simple retreat logic - move away from nearest enemy
         CombatUnit nearestEnemy = null;
         float nearestDistance = float.MaxValue;
 
-        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
-        foreach (var unit in allUnits)
+        foreach (var unit in cachedEnemies)
         {
-            if (unit != this && unit.isAttacker != this.isAttacker && unit.battleState != BattleUnitState.Dead)
+            if (unit == null || unit == this || unit.isAttacker == this.isAttacker || unit.battleState == BattleUnitState.Dead)
+                continue;
+                
+            float distance = Vector3.Distance(transform.position, unit.transform.position);
+            if (distance < nearestDistance)
             {
-                float distance = Vector3.Distance(transform.position, unit.transform.position);
-                if (distance < nearestDistance)
-                {
-                    nearestDistance = distance;
-                    nearestEnemy = unit;
-                }
+                nearestDistance = distance;
+                nearestEnemy = unit;
             }
         }
 
+        Vector3 retreatDir;
         if (nearestEnemy != null)
         {
-            return (transform.position - nearestEnemy.transform.position).normalized;
+            retreatDir = (transform.position - nearestEnemy.transform.position).normalized;
         }
-
-        // Default retreat direction
-        return isAttacker ? Vector3.left : Vector3.right;
+        else
+        {
+            // Default retreat direction
+            retreatDir = isAttacker ? Vector3.left : Vector3.right;
+        }
+        
+        // Ensure retreat direction keeps unit within battlefield bounds
+        Vector3 testPosition = transform.position + retreatDir * 10f;
+        Vector3 clampedPosition = ClampToBattlefieldBounds(testPosition);
+        Vector3 newRetreatDir = (clampedPosition - transform.position).normalized;
+        
+        // Fix zero vector edge case - if clamped position equals current position, use fallback direction
+        if (newRetreatDir.magnitude < 0.1f)
+        {
+            // Use perpendicular direction or default direction
+            retreatDir = isAttacker ? Vector3.left : Vector3.right;
+        }
+        else
+        {
+            retreatDir = newRetreatDir;
+        }
+        
+        return retreatDir;
+    }
+    
+    /// <summary>
+    /// Clamp a position to stay within battlefield bounds (prevents units from routing off the map)
+    /// </summary>
+    private Vector3 ClampToBattlefieldBounds(Vector3 position)
+    {
+        // Get battlefield size from BattleTestSimple if available
+        float battlefieldSize = 100f; // Default size
+        if (BattleTestSimple.Instance != null)
+        {
+            battlefieldSize = BattleTestSimple.Instance.battleMapSize;
+        }
+        
+        // Clamp to a square battlefield centered at origin
+        // Battlefield extends from -battlefieldSize/2 to +battlefieldSize/2 on X and Z axes
+        float halfSize = battlefieldSize * 0.5f;
+        float margin = 5f; // Keep units 5 units away from edge
+        
+        position.x = Mathf.Clamp(position.x, -halfSize + margin, halfSize - margin);
+        position.z = Mathf.Clamp(position.z, -halfSize + margin, halfSize - margin);
+        
+        // Keep Y position (height) unchanged - let it stay on ground
+        
+        return position;
     }
 
     private System.Collections.IEnumerator MoveToPositionCoroutine(Vector3 targetPosition)
@@ -3135,37 +3606,87 @@ public class CombatUnit : MonoBehaviour
         float moveTime = distance / battleMoveSpeed;
         float elapsedTime = 0f;
 
-        while (elapsedTime < moveTime && battleState == BattleUnitState.Moving)
+        while (elapsedTime < moveTime && battleState == BattleUnitState.Moving && !isRouted)
         {
+            // Check if unit started routing - if so, stop this movement
+            if (battleState == BattleUnitState.Routing || isRouted)
+            {
+                yield break;
+            }
+            
             elapsedTime += Time.deltaTime;
             float t = elapsedTime / moveTime;
             transform.position = Vector3.Lerp(startPosition, targetPosition, t);
             yield return null;
         }
 
-        transform.position = targetPosition;
-        
-        if (battleState == BattleUnitState.Moving)
+        // Only set final position and idle state if we completed movement (not interrupted by routing)
+        if (battleState == BattleUnitState.Moving && !isRouted)
         {
+            transform.position = targetPosition;
             battleState = BattleUnitState.Idle;
         }
     }
 
     private System.Collections.IEnumerator MoveToTargetCoroutine(CombatUnit target)
     {
-        while (currentTarget != null && battleState == BattleUnitState.Attacking)
+        // Check if target is valid and not dead
+        if (target == null || target.battleState == BattleUnitState.Dead)
         {
+            currentTarget = null;
+            battleState = BattleUnitState.Idle;
+            yield break;
+        }
+        
+        bool isChasingRouted = (target.isRouted || target.battleState == BattleUnitState.Routing);
+        
+        // If chasing routed unit, use Moving state (walking animation)
+        // Otherwise use Attacking state
+        BattleUnitState chaseState = isChasingRouted ? BattleUnitState.Moving : BattleUnitState.Attacking;
+        battleState = chaseState;
+        
+        while (currentTarget != null && target != null && target.battleState != BattleUnitState.Dead && 
+               (battleState == BattleUnitState.Attacking || battleState == BattleUnitState.Moving))
+        {
+            // Check if we should stop (routing, dead, etc.)
+            if (battleState == BattleUnitState.Routing || battleState == BattleUnitState.Dead)
+            {
+                yield break;
+            }
+            
+            // Update chase state if target routing status changes
+            bool targetIsRouted = (target.isRouted || target.battleState == BattleUnitState.Routing);
+            if (targetIsRouted != isChasingRouted)
+            {
+                isChasingRouted = targetIsRouted;
+                chaseState = isChasingRouted ? BattleUnitState.Moving : BattleUnitState.Attacking;
+                battleState = chaseState;
+            }
+            
             float distance = Vector3.Distance(transform.position, target.transform.position);
             
             if (distance <= battleAttackRange)
             {
-                // In range, attack
-                Attack(target);
-                yield break;
+                // In range
+                if (targetIsRouted)
+                {
+                    // Keep chasing routed units (they can't fight back effectively)
+                    // Continue moving towards them with walking animation
+                    Vector3 direction = (target.transform.position - transform.position).normalized;
+                    Vector3 newPosition = transform.position + direction * battleMoveSpeed * Time.deltaTime;
+                    transform.position = newPosition;
+                }
+                else
+                {
+                    // Target is not routed, attack normally
+                    battleState = BattleUnitState.Attacking;
+                    Attack(target);
+                    yield break;
+                }
             }
             else
             {
-                // Move towards target
+                // Move towards target (walking animation when chasing routed units, attack animation otherwise)
                 Vector3 direction = (target.transform.position - transform.position).normalized;
                 Vector3 newPosition = transform.position + direction * battleMoveSpeed * Time.deltaTime;
                 transform.position = newPosition;

@@ -37,10 +37,26 @@ public class CombatUnitData : ScriptableObject
     public string unitName;
     public CombatCategory unitType;
     public Sprite icon;
+    
+    [Header("Prefab Paths (Memory Optimized)")]
+    [Tooltip("Path to prefab in Resources folder (e.g., 'Units/Swordsman'). Prefabs load on-demand to save memory.")]
+    public string prefabPath;
+    [Tooltip("Paths to model variants (comma-separated or array). Loaded on-demand.")]
+    public string[] modelVariantPaths;
+    
+    [Header("Legacy Prefab References (Auto-loaded, use prefabPath instead)")]
+    [Tooltip("DEPRECATED: Use prefabPath instead. This field auto-loads prefabs and wastes memory.")]
+    [System.Obsolete("Use prefabPath and GetPrefab() instead to prevent auto-loading")]
     public GameObject prefab;
+    [Tooltip("DEPRECATED: Use modelVariantPaths instead.")]
+    [System.Obsolete("Use modelVariantPaths instead to prevent auto-loading")]
     public GameObject[] modelVariants;
 
     [Header("Formation")]
+    [Tooltip("Path to formation member prefab in Resources folder. Loaded on-demand.")]
+    public string formationMemberPrefabPath;
+    [Tooltip("DEPRECATED: Use formationMemberPrefabPath instead.")]
+    [System.Obsolete("Use formationMemberPrefabPath instead to prevent auto-loading")]
     public GameObject formationMemberPrefab;
     [Range(1, 100)] public int formationSize = 9;
     public FormationShape formationShape = FormationShape.Square;
@@ -95,6 +111,41 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Charge bonus multiplier for melee attacks (only applies when charging). Higher values = more charge damage. Cavalry units typically have higher values (1.5-2.0), infantry lower (1.2-1.5).")]
     [Range(1.0f, 3.0f)]
     public float chargeBonusMultiplier = 1.5f;
+    
+    [Header("Fatigue System")]
+    [Tooltip("Rate at which fatigue increases per second while moving (0-100 scale)")]
+    [Range(0f, 10f)]
+    public float fatigueRateMoving = 0.25f; // Tired after 400 seconds of continuous movement
+    [Tooltip("Rate at which fatigue increases per second while fighting (0-100 scale)")]
+    [Range(0f, 20f)]
+    public float fatigueRateFighting = 0.5f; // Tired after 200 seconds of continuous fighting
+    [Tooltip("Rate at which fatigue recovers per second while resting (0-100 scale)")]
+    [Range(0f, 20f)]
+    public float fatigueRecoveryRate = 10f; // Full recovery in 10 seconds
+    [Tooltip("Attack penalty at 100% fatigue (0.5 = 50% attack damage)")]
+    [Range(0f, 1f)]
+    public float fatigueAttackPenalty = 0.5f;
+    [Tooltip("Defense penalty at 100% fatigue (0.5 = 50% defense)")]
+    [Range(0f, 1f)]
+    public float fatigueDefensePenalty = 0.5f;
+    [Tooltip("Speed penalty at 100% fatigue (0.5 = 50% move speed)")]
+    [Range(0f, 1f)]
+    public float fatigueSpeedPenalty = 0.5f;
+    [Tooltip("Fatigue gained instantly when executing a charge attack")]
+    [Range(0f, 50f)]
+    public float chargeInstantFatigue = 25f; // Cavalry get more tired from charges
+    
+    [Header("Ammunition System (Ranged Units)")]
+    [Tooltip("Is this a ranged unit that uses ammunition?")]
+    public bool isRangedUnit = false;
+    [Tooltip("Maximum ammunition this unit carries (0 = infinite)")]
+    [Range(0, 100)]
+    public int maxAmmo = 30; // Default: 30 arrows/bolts
+    [Tooltip("Can this unit switch to melee when out of ammo?")]
+    public bool canSwitchToMelee = true;
+    [Tooltip("Melee attack penalty when out of ammo (0.5 = 50% attack damage in melee)")]
+    [Range(0f, 1f)]
+    public float outOfAmmoMeleePenalty = 0.5f;
 
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
@@ -117,8 +168,6 @@ public class CombatUnitData : ScriptableObject
     public int baseDefense;
     public int baseHealth;
     public int baseRange;
-    public int baseMovePoints;
-    public int baseAttackPoints;
 
     [Header("Progression")]
     public int[] xpToNextLevel;
@@ -206,4 +255,188 @@ public class CombatUnitData : ScriptableObject
     }
 
     // No editor-time migration: legacy defaultMeleeWeapon removed.
+    
+    // Private cached prefabs (loaded on-demand, not auto-loaded)
+    private GameObject _cachedPrefab;
+    private GameObject[] _cachedModelVariants;
+    private GameObject _cachedFormationMemberPrefab;
+    
+    /// <summary>
+    /// Get the prefab, loading it on-demand from prefabPath if needed.
+    /// This prevents Unity from auto-loading prefabs when ScriptableObjects are loaded.
+    /// Returns null if prefab cannot be loaded - always check for null before using!
+    /// </summary>
+    public GameObject GetPrefab()
+    {
+        // If prefab is already cached, return it
+        if (_cachedPrefab != null) return _cachedPrefab;
+        
+        // If we have a path, load from it
+        if (!string.IsNullOrEmpty(prefabPath))
+        {
+            // Remove .prefab extension if present (Resources.Load doesn't need it)
+            string pathToLoad = prefabPath;
+            if (pathToLoad.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase))
+            {
+                pathToLoad = pathToLoad.Substring(0, pathToLoad.Length - 7);
+            }
+            
+            _cachedPrefab = Resources.Load<GameObject>(pathToLoad);
+            if (_cachedPrefab != null)
+            {
+                // CRITICAL DEBUG: Log ALL components on the loaded prefab to see what's actually there
+                Debug.Log($"[CombatUnitData] Prefab loaded from '{pathToLoad}' for unit '{unitName}':");
+                Debug.Log($"[CombatUnitData]   Prefab name: {_cachedPrefab.name}");
+                Debug.Log($"[CombatUnitData]   Prefab instance ID: {_cachedPrefab.GetInstanceID()}");
+                
+                // Check for Animator
+                var animator = _cachedPrefab.GetComponent<Animator>();
+                if (animator != null)
+                {
+                    Debug.Log($"[CombatUnitData]   Animator component: EXISTS");
+                    Debug.Log($"[CombatUnitData]   Animator controller: {(animator.runtimeAnimatorController != null ? animator.runtimeAnimatorController.name : "NULL - MISSING!")}");
+                    Debug.Log($"[CombatUnitData]   Animator avatar: {(animator.avatar != null ? animator.avatar.name : "NULL")}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[CombatUnitData]   Animator component: MISSING!");
+                }
+                
+                // Check for CombatUnit
+                var combatUnit = _cachedPrefab.GetComponent<CombatUnit>();
+                if (combatUnit != null)
+                {
+                    Debug.Log($"[CombatUnitData]   CombatUnit component: EXISTS");
+                }
+                else
+                {
+                    Debug.LogWarning($"[CombatUnitData]   CombatUnit component: MISSING!");
+                }
+                
+                // List ALL components on root GameObject
+                var allComponents = _cachedPrefab.GetComponents<Component>();
+                Debug.Log($"[CombatUnitData]   Total components on root: {allComponents.Length}");
+                foreach (var comp in allComponents)
+                {
+                    Debug.Log($"[CombatUnitData]     - {comp.GetType().Name}");
+                }
+                
+                // Check child objects for Animator/CombatUnit
+                var childAnimators = _cachedPrefab.GetComponentsInChildren<Animator>(true);
+                if (childAnimators.Length > 0)
+                {
+                    Debug.Log($"[CombatUnitData]   Found {childAnimators.Length} Animator(s) in children:");
+                    foreach (var childAnim in childAnimators)
+                    {
+                        Debug.Log($"[CombatUnitData]     - {childAnim.gameObject.name}: Controller={(childAnim.runtimeAnimatorController != null ? childAnim.runtimeAnimatorController.name : "NULL")}");
+                    }
+                }
+                
+                var childCombatUnits = _cachedPrefab.GetComponentsInChildren<CombatUnit>(true);
+                if (childCombatUnits.Length > 0)
+                {
+                    Debug.Log($"[CombatUnitData]   Found {childCombatUnits.Length} CombatUnit(s) in children:");
+                    foreach (var childCU in childCombatUnits)
+                    {
+                        Debug.Log($"[CombatUnitData]     - {childCU.gameObject.name}");
+                    }
+                }
+                
+                return _cachedPrefab;
+            }
+            else
+            {
+                Debug.LogWarning($"[CombatUnitData] Could not load prefab from path: '{pathToLoad}' (original: '{prefabPath}') for unit '{unitName}'. " +
+                    $"Check that the prefab exists at Resources/{pathToLoad}.prefab");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnitData] Unit '{unitName}' has no prefabPath set. " +
+                $"Please set prefabPath in the ScriptableObject to prevent auto-loading. " +
+                $"Falling back to legacy prefab field (which auto-loads).");
+        }
+        
+        // Fallback: try legacy prefab field (for backward compatibility with old assets)
+        // WARNING: This defeats the memory optimization - prefabs will auto-load!
+        #pragma warning disable CS0618 // Suppress obsolete warning for backward compatibility
+        if (prefab != null)
+        {
+            _cachedPrefab = prefab;
+            Debug.LogWarning($"[CombatUnitData] Unit '{unitName}' is using legacy prefab field. " +
+                $"Please migrate to prefabPath to prevent auto-loading.");
+            return _cachedPrefab;
+        }
+        #pragma warning restore CS0618
+        
+        // Check legacy prefab for error message (suppress warning)
+        #pragma warning disable CS0618
+        bool legacyPrefabExists = prefab != null;
+        #pragma warning restore CS0618
+        
+        Debug.LogError($"[CombatUnitData] Unit '{unitName}' has no prefab available. " +
+            $"prefabPath: '{prefabPath}', legacy prefab: {(legacyPrefabExists ? "exists" : "null")}");
+        return null;
+    }
+    
+    /// <summary>
+    /// Get model variants, loading them on-demand from paths if needed.
+    /// </summary>
+    public GameObject[] GetModelVariants()
+    {
+        // If already cached, return them
+        if (_cachedModelVariants != null && _cachedModelVariants.Length > 0) return _cachedModelVariants;
+        
+        // Load from paths if available
+        if (modelVariantPaths != null && modelVariantPaths.Length > 0)
+        {
+            _cachedModelVariants = new GameObject[modelVariantPaths.Length];
+            for (int i = 0; i < modelVariantPaths.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(modelVariantPaths[i]))
+                {
+                    _cachedModelVariants[i] = Resources.Load<GameObject>(modelVariantPaths[i]);
+                }
+            }
+            return _cachedModelVariants;
+        }
+        
+        // Fallback to legacy field (for backward compatibility)
+        #pragma warning disable CS0618
+        if (modelVariants != null && modelVariants.Length > 0)
+        {
+            _cachedModelVariants = modelVariants;
+            return _cachedModelVariants;
+        }
+        #pragma warning restore CS0618
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Get formation member prefab, loading it on-demand from path if needed.
+    /// </summary>
+    public GameObject GetFormationMemberPrefab()
+    {
+        // If already cached, return it
+        if (_cachedFormationMemberPrefab != null) return _cachedFormationMemberPrefab;
+        
+        // Load from path if available
+        if (!string.IsNullOrEmpty(formationMemberPrefabPath))
+        {
+            _cachedFormationMemberPrefab = Resources.Load<GameObject>(formationMemberPrefabPath);
+            return _cachedFormationMemberPrefab;
+        }
+        
+        // Fallback to legacy field (for backward compatibility)
+        #pragma warning disable CS0618
+        if (formationMemberPrefab != null)
+        {
+            _cachedFormationMemberPrefab = formationMemberPrefab;
+            return _cachedFormationMemberPrefab;
+        }
+        #pragma warning restore CS0618
+        
+        return null;
+    }
 }

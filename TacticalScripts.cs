@@ -509,7 +509,8 @@ public class HitAndRunScript : TacticalScript
         if (!CanActivate()) return false;
         
         // Activate for mobile units with ranged weapons
-        return unit.data.baseMovePoints >= 3 && unit.equippedProjectileWeapon != null;
+        // Movement points removed - check for ranged weapon only
+        return unit.equippedProjectileWeapon != null;
     }
     
     public override void Execute()

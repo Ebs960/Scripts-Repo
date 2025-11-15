@@ -16,7 +16,6 @@ public class AbilityData : ScriptableObject
     // New modifiers
     public int healthModifier;
     public int rangeModifier;
-    public int attackPointsModifier;
 
     public Ability CreateAbility()
     {
@@ -30,8 +29,7 @@ public class AbilityData : ScriptableObject
             defenseModifier  = defenseModifier,
             damageMultiplier = damageMultiplier,
             healthModifier   = healthModifier,
-            rangeModifier    = rangeModifier,
-            attackPointsModifier = attackPointsModifier
+            rangeModifier    = rangeModifier
         };
     }
 } 

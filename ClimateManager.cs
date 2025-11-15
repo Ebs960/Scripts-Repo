@@ -297,7 +297,7 @@ public class ClimateManager : MonoBehaviour
             if (IsUnitOnPlanet(unit, planetIndex) && !unit.hasWinterPenalty)
             {
                 unit.hasWinterPenalty = true;
-                unit.DeductMovementPoints(1);
+                // Movement points removed - winter penalty now affects movement speed via fatigue
             }
         }
 
@@ -306,7 +306,7 @@ public class ClimateManager : MonoBehaviour
             if (IsUnitOnPlanet(worker, planetIndex) && !worker.hasWinterPenalty)
             {
                 worker.hasWinterPenalty = true;
-                worker.DeductMovementPoints(1);
+                // Movement points removed - winter penalty now affects movement speed via fatigue
             }
         }
     }

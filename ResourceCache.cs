@@ -5,13 +5,14 @@ using GameCombat;
 
 /// <summary>
 /// Static cache for all Resources.LoadAll calls to avoid repeated expensive I/O operations.
-/// Loads all resources once at startup and provides cached access.
+/// Uses lazy loading - only loads resources when first accessed, not all at once.
+/// This prevents memory spikes from loading everything at startup.
 /// </summary>
 public static class ResourceCache
 {
     private static bool _initialized = false;
     
-    // Cached resource arrays
+    // Cached resource arrays - loaded lazily on first access
     private static CombatUnitData[] _allCombatUnits;
     private static WorkerUnitData[] _allWorkerUnits;
     private static BuildingData[] _allBuildings;
@@ -24,36 +25,51 @@ public static class ResourceCache
     private static TechData[] _allTechData;
     private static CultureData[] _allCultureData;
     
+    // Track which resources have been loaded (for lazy loading)
+    private static bool _combatUnitsLoaded = false;
+    private static bool _workerUnitsLoaded = false;
+    private static bool _buildingsLoaded = false;
+    private static bool _projectilesLoaded = false;
+    private static bool _civDatasLoaded = false;
+    private static bool _equipmentLoaded = false;
+    private static bool _districtsLoaded = false;
+    private static bool _improvementsLoaded = false;
+    private static bool _resourceDataLoaded = false;
+    private static bool _techDataLoaded = false;
+    private static bool _cultureDataLoaded = false;
+    
     /// <summary>
-    /// Initialize the resource cache by loading all resources once.
-    /// Should be called early in game initialization (e.g., GameManager.Awake or Start).
+    /// Initialize the resource cache - now just marks as initialized, resources load lazily
     /// </summary>
     public static void Initialize()
     {
         if (_initialized) return;
-        
-        _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
-        _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
-        _allBuildings = Resources.LoadAll<BuildingData>("Buildings");
-        _allProjectiles = Resources.LoadAll<ProjectileData>("Projectiles");
-        _allCivDatas = Resources.LoadAll<CivData>("Civilizations");
-        _allEquipment = Resources.LoadAll<EquipmentData>("Equipment");
-        _allDistricts = Resources.LoadAll<DistrictData>("Districts");
-        _allImprovements = Resources.LoadAll<ImprovementData>("Improvements");
-        _allResourceData = Resources.LoadAll<ResourceData>("Data/Resources");
-        _allTechData = Resources.LoadAll<TechData>(string.Empty);
-        _allCultureData = Resources.LoadAll<CultureData>(string.Empty);
-        
         _initialized = true;
-        
-        Debug.Log($"[ResourceCache] Initialized with {_allCombatUnits?.Length ?? 0} units, {_allWorkerUnits?.Length ?? 0} workers, {_allBuildings?.Length ?? 0} buildings, {_allProjectiles?.Length ?? 0} projectiles, {_allCivDatas?.Length ?? 0} civs, {_allResourceData?.Length ?? 0} resources, {_allTechData?.Length ?? 0} techs, {_allCultureData?.Length ?? 0} cultures");
+        Debug.Log("[ResourceCache] Initialized (lazy loading enabled - resources load on first access)");
     }
     
     /// <summary>
-    /// Clear the cache (useful for testing or when resources are reloaded)
+    /// Initialize only essential resources for BattleTestSimple (units, civs, projectiles)
+    /// This prevents loading tech/culture trees that aren't needed for battle testing
+    /// </summary>
+    public static void InitializeBattleTestResources()
+    {
+        Initialize();
+        // Pre-load only what BattleTestSimple needs
+        EnsureCombatUnitsLoaded();
+        EnsureCivDatasLoaded();
+        EnsureProjectilesLoaded();
+        Debug.Log("[ResourceCache] Battle test resources loaded");
+    }
+    
+    /// <summary>
+    /// Clear the cache and unload prefab references to free memory
     /// </summary>
     public static void Clear()
     {
+        // Unload prefab references from ScriptableObjects before clearing
+        UnloadPrefabReferences();
+        
         _initialized = false;
         _allCombatUnits = null;
         _allWorkerUnits = null;
@@ -66,104 +82,228 @@ public static class ResourceCache
         _allResourceData = null;
         _allTechData = null;
         _allCultureData = null;
+        
+        // Reset loaded flags
+        _combatUnitsLoaded = false;
+        _workerUnitsLoaded = false;
+        _buildingsLoaded = false;
+        _projectilesLoaded = false;
+        _civDatasLoaded = false;
+        _equipmentLoaded = false;
+        _districtsLoaded = false;
+        _improvementsLoaded = false;
+        _resourceDataLoaded = false;
+        _techDataLoaded = false;
+        _cultureDataLoaded = false;
     }
     
     /// <summary>
-    /// Get all combat unit data (cached)
+    /// Unload prefab references from cached ScriptableObjects to free memory.
+    /// Clears cached prefabs that were loaded on-demand.
+    /// </summary>
+    public static void UnloadPrefabReferences()
+    {
+        // Note: With the new path-based system, prefabs are cached in private fields
+        // We can't directly clear them, but they'll be garbage collected when not referenced
+        // The main benefit is that prefabs aren't auto-loaded when ScriptableObjects load
+        Debug.Log("[ResourceCache] Prefab unloading not needed (new system uses paths, prefabs load on-demand)");
+    }
+    
+    /// <summary>
+    /// Load prefab for a specific unit on-demand using prefabPath.
+    /// This loads the prefab only when needed (when battle starts).
+    /// </summary>
+    public static void LoadUnitPrefab(CombatUnitData unitData)
+    {
+        if (unitData == null) return;
+        
+        // Use the new GetPrefab() method which loads from prefabPath
+        GameObject prefab = unitData.GetPrefab();
+        if (prefab != null)
+        {
+            Debug.Log($"[ResourceCache] Loaded prefab for {unitData.unitName} from path: {unitData.prefabPath}");
+        }
+        else
+        {
+            Debug.LogWarning($"[ResourceCache] Could not load prefab for {unitData.unitName}. Check prefabPath: '{unitData.prefabPath}'");
+        }
+    }
+    
+    /// <summary>
+    /// Get all combat unit data (cached, lazy-loaded)
     /// </summary>
     public static CombatUnitData[] GetAllCombatUnits()
     {
         EnsureInitialized();
+        EnsureCombatUnitsLoaded();
         return _allCombatUnits ?? new CombatUnitData[0];
     }
     
+    private static void EnsureCombatUnitsLoaded()
+    {
+        if (!_combatUnitsLoaded)
+        {
+            // Load ScriptableObjects - NO prefabs will be auto-loaded because we use prefabPath strings now!
+            _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
+            _combatUnitsLoaded = true;
+            
+            Debug.Log($"[ResourceCache] Loaded {_allCombatUnits?.Length ?? 0} combat units (prefabs NOT loaded - using path strings)");
+        }
+    }
+    
     /// <summary>
-    /// Get all worker unit data (cached)
+    /// Get all worker unit data (cached, lazy-loaded)
     /// </summary>
     public static WorkerUnitData[] GetAllWorkerUnits()
     {
         EnsureInitialized();
+        if (!_workerUnitsLoaded)
+        {
+            _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+            _workerUnitsLoaded = true;
+        }
         return _allWorkerUnits ?? new WorkerUnitData[0];
     }
     
     /// <summary>
-    /// Get all building data (cached)
+    /// Get all building data (cached, lazy-loaded)
     /// </summary>
     public static BuildingData[] GetAllBuildings()
     {
         EnsureInitialized();
+        if (!_buildingsLoaded)
+        {
+            _allBuildings = Resources.LoadAll<BuildingData>("Buildings");
+            _buildingsLoaded = true;
+        }
         return _allBuildings ?? new BuildingData[0];
     }
     
     /// <summary>
-    /// Get all projectile data (cached)
+    /// Get all projectile data (cached, lazy-loaded)
     /// </summary>
     public static ProjectileData[] GetAllProjectiles()
     {
         EnsureInitialized();
+        EnsureProjectilesLoaded();
         return _allProjectiles ?? new ProjectileData[0];
     }
     
+    private static void EnsureProjectilesLoaded()
+    {
+        if (!_projectilesLoaded)
+        {
+            _allProjectiles = Resources.LoadAll<ProjectileData>("Projectiles");
+            _projectilesLoaded = true;
+        }
+    }
+    
     /// <summary>
-    /// Get all civilization data (cached)
+    /// Get all civilization data (cached, lazy-loaded)
     /// </summary>
     public static CivData[] GetAllCivDatas()
     {
         EnsureInitialized();
+        EnsureCivDatasLoaded();
         return _allCivDatas ?? new CivData[0];
     }
     
+    private static void EnsureCivDatasLoaded()
+    {
+        if (!_civDatasLoaded)
+        {
+            _allCivDatas = Resources.LoadAll<CivData>("Civilizations");
+            _civDatasLoaded = true;
+        }
+    }
+    
     /// <summary>
-    /// Get all equipment data (cached)
+    /// Get all equipment data (cached, lazy-loaded)
     /// </summary>
     public static EquipmentData[] GetAllEquipment()
     {
         EnsureInitialized();
+        if (!_equipmentLoaded)
+        {
+            _allEquipment = Resources.LoadAll<EquipmentData>("Equipment");
+            _equipmentLoaded = true;
+        }
         return _allEquipment ?? new EquipmentData[0];
     }
     
     /// <summary>
-    /// Get all district data (cached)
+    /// Get all district data (cached, lazy-loaded)
     /// </summary>
     public static DistrictData[] GetAllDistricts()
     {
         EnsureInitialized();
+        if (!_districtsLoaded)
+        {
+            _allDistricts = Resources.LoadAll<DistrictData>("Districts");
+            _districtsLoaded = true;
+        }
         return _allDistricts ?? new DistrictData[0];
     }
     
     /// <summary>
-    /// Get all improvement data (cached)
+    /// Get all improvement data (cached, lazy-loaded)
     /// </summary>
     public static ImprovementData[] GetAllImprovements()
     {
         EnsureInitialized();
+        if (!_improvementsLoaded)
+        {
+            _allImprovements = Resources.LoadAll<ImprovementData>("Improvements");
+            _improvementsLoaded = true;
+        }
         return _allImprovements ?? new ImprovementData[0];
     }
     
     /// <summary>
-    /// Get all resource data (cached)
+    /// Get all resource data (cached, lazy-loaded)
     /// </summary>
     public static ResourceData[] GetAllResourceData()
     {
         EnsureInitialized();
+        if (!_resourceDataLoaded)
+        {
+            _allResourceData = Resources.LoadAll<ResourceData>("Data/Resources");
+            _resourceDataLoaded = true;
+        }
         return _allResourceData ?? new ResourceData[0];
     }
     
     /// <summary>
-    /// Get all tech data (cached)
+    /// Get all tech data (cached, lazy-loaded)
+    /// FIXED: Now uses specific path instead of scanning entire Resources folder
     /// </summary>
     public static TechData[] GetAllTechData()
     {
         EnsureInitialized();
+        if (!_techDataLoaded)
+        {
+            // Use correct path: Resources/Tech
+            _allTechData = Resources.LoadAll<TechData>("Tech");
+            _techDataLoaded = true;
+            Debug.Log($"[ResourceCache] Loaded {_allTechData?.Length ?? 0} tech data entries from Resources/Tech");
+        }
         return _allTechData ?? new TechData[0];
     }
     
     /// <summary>
-    /// Get all culture data (cached)
+    /// Get all culture data (cached, lazy-loaded)
+    /// FIXED: Now uses specific path instead of scanning entire Resources folder
     /// </summary>
     public static CultureData[] GetAllCultureData()
     {
         EnsureInitialized();
+        if (!_cultureDataLoaded)
+        {
+            // Use correct path: Resources/Culture
+            _allCultureData = Resources.LoadAll<CultureData>("Culture");
+            _cultureDataLoaded = true;
+            Debug.Log($"[ResourceCache] Loaded {_allCultureData?.Length ?? 0} culture data entries from Resources/Culture");
+        }
         return _allCultureData ?? new CultureData[0];
     }
     

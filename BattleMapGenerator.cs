@@ -8,8 +8,6 @@ using System.Linq;
 public class BattleMapGenerator : MonoBehaviour
 {
     [Header("Map Generation")]
-    [Tooltip("Size of the battle map in world units")]
-    public float mapSize = 50f;
     [Tooltip("Resolution of terrain sampling (higher = more detailed)")]
     public float terrainResolution = 1f;
     [Tooltip("Height variation for terrain")]
@@ -60,6 +58,7 @@ public class BattleMapGenerator : MonoBehaviour
     public float routingTimeToDefeat = 10f;
 
     // Internal data
+    private float mapSize; // Set via GenerateBattleMap() method parameter
     private List<GameObject> terrainObjects = new List<GameObject>();
     private Dictionary<Vector2, TerrainData> terrainData = new Dictionary<Vector2, TerrainData>();
     private Vector3 mapCenter;
@@ -67,6 +66,9 @@ public class BattleMapGenerator : MonoBehaviour
     private List<Vector3> defenderSpawnPoints = new List<Vector3>();
     private List<GameObject> spawnedObjects = new List<GameObject>();
     private Dictionary<Biome, BiomeSettings> biomeSettingsLookup = new Dictionary<Biome, BiomeSettings>();
+    
+    // Cached materials to avoid creating new ones each time (memory optimization)
+    private Material cachedTerrainMaterial;
 
     // Terrain data structure
     [System.Serializable]
@@ -120,6 +122,13 @@ public class BattleMapGenerator : MonoBehaviour
         attackerSpawnPoints.Clear();
         defenderSpawnPoints.Clear();
         spawnedObjects.Clear();
+        
+        // Clear cached material to allow recreation with new biome settings
+        if (cachedTerrainMaterial != null)
+        {
+            DestroyImmediate(cachedTerrainMaterial);
+            cachedTerrainMaterial = null;
+        }
     }
 
     /// <summary>
@@ -224,52 +233,62 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Apply terrain material based on primary biome
+    /// Apply terrain material based on primary biome (reuses cached material to save memory)
     /// </summary>
     private void ApplyTerrainMaterial(MeshRenderer renderer)
     {
-        // Use URP Lit as requested
-        Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
-        Material material = new Material(urpLit != null ? urpLit : Shader.Find("Standard"));
-        
-        // Try to get biome settings for primary biome
-        if (biomeSettingsLookup.TryGetValue(primaryBiome, out BiomeSettings settings))
+        // Reuse cached material if it exists and matches the current biome
+        // Otherwise create a new one and cache it
+        if (cachedTerrainMaterial == null)
         {
-            if (settings.albedoTexture != null)
+            // Use URP Lit as requested
+            Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
+            cachedTerrainMaterial = new Material(urpLit != null ? urpLit : Shader.Find("Standard"));
+            
+            // Try to get biome settings for primary biome
+            if (biomeSettingsLookup.TryGetValue(primaryBiome, out BiomeSettings settings))
             {
-                // URP Lit uses _BaseMap for the albedo texture
-                material.SetTexture("_BaseMap", settings.albedoTexture);
+                if (settings.albedoTexture != null)
+                {
+                    // URP Lit uses _BaseMap for the albedo texture
+                    cachedTerrainMaterial.SetTexture("_BaseMap", settings.albedoTexture);
+                }
+                else
+                {
+                    // URP Lit uses _BaseColor
+                    cachedTerrainMaterial.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
+                }
+                
+                if (settings.normalTexture != null)
+                {
+                    cachedTerrainMaterial.SetTexture("_BumpMap", settings.normalTexture);
+                    cachedTerrainMaterial.EnableKeyword("_NORMALMAP");
+                }
             }
             else
             {
-                // URP Lit uses _BaseColor
-                material.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
+                cachedTerrainMaterial.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
             }
             
-            if (settings.normalTexture != null)
-            {
-                material.SetTexture("_BumpMap", settings.normalTexture);
-                material.EnableKeyword("_NORMALMAP");
-            }
-        }
-        else
-        {
-            material.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
+            // Set material properties
+            cachedTerrainMaterial.SetFloat("_Metallic", 0.0f);
+            cachedTerrainMaterial.SetFloat("_Smoothness", 0.5f);
         }
         
-        // Set material properties
-        material.SetFloat("_Metallic", 0.0f);
-        material.SetFloat("_Smoothness", 0.5f);
-        
-        renderer.material = material;
+        // Reuse the cached material (shared material instance)
+        renderer.sharedMaterial = cachedTerrainMaterial;
     }
 
     /// <summary>
-    /// Add biome-specific decorations and obstacles
+    /// Add biome-specific decorations and obstacles (limited to prevent memory issues)
     /// </summary>
     private void AddBiomeDecorations()
     {
+        // Calculate decoration count but limit to maximum to prevent memory issues
         int decorationCount = Mathf.RoundToInt(mapSize * mapSize * obstacleDensity / 100f);
+        // MEMORY OPTIMIZATION: Limit decorations to maximum of 20 to prevent memory spikes
+        const int maxDecorations = 20;
+        decorationCount = Mathf.Min(decorationCount, maxDecorations);
         
         for (int i = 0; i < decorationCount; i++)
         {

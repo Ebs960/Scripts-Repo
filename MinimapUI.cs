@@ -250,8 +250,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
 
-        _bodyIndexLUT[key] = lut;
-        return lut;
+    _bodyIndexLUT[key] = lut;
+    return lut;
     }
 
     // Flip a Color32 pixel buffer vertically in-place (row swap) to convert from
@@ -296,7 +296,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Cached tile data arrays to avoid repeated lookups
     private static readonly Dictionary<string, HexTileData[]> _cachedTileDataArrays = new();
-    
+
     // Build or fetch a compact per-tile color atlas for a body (planet or moon).
     // PERFORMANCE: Pre-caches all tile data to avoid per-tile lookups
     // Atlas layout: square texture array flattened to Color32[] where index -> tileIndex mapping is stored in parallel by tile order.
@@ -319,9 +319,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             tileDataArray = new HexTileData[tileCount];
             PlanetGenerator planetGen = isMoon ? null : (_gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator);
             MoonGenerator moonGen = isMoon ? _gameManager.GetMoonGenerator(planetIndex) : null;
-            
-            for (int i = 0; i < tileCount; i++)
-            {
+
+        for (int i = 0; i < tileCount; i++)
+        {
                 if (isMoon)
                 {
                     tileDataArray[i] = moonGen?.GetHexTileData(i);
@@ -333,9 +333,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 
                 // Fallback to TileSystem if needed
                 if (tileDataArray[i] == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
-                {
+            {
                     tileDataArray[i] = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
-                }
+            }
             }
             
             _cachedTileDataArrays[tileDataKey] = tileDataArray;

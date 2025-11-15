@@ -95,6 +95,8 @@ public class CultureData : ScriptableObject
     public BuildingYieldBonus[] buildingBonuses;
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
+    [Tooltip("Army stat bonuses granted by this culture (applies to all armies).")]
+    public ArmyStatBonus[] armyBonuses;
 
     [Header("Limits")]
     [Tooltip("How much this culture increases the maximum number of pantheons a civilization may found.")]

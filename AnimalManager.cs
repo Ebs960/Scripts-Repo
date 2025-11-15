@@ -349,8 +349,21 @@ public class AnimalManager : MonoBehaviour
         // FIXED: Use Earth-specific positioning for animal spawning
     Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(chosenIndex, 0.5f, 0) : planet.transform.TransformPoint(planet.Grid.tileCenters[chosenIndex]);
 
-        var go = Instantiate(rule.unitData.prefab, pos, Quaternion.identity);
+        var animalPrefab = rule.unitData.GetPrefab();
+        if (animalPrefab == null)
+        {
+            Debug.LogError($"[AnimalManager] Cannot spawn animal {rule.unitData.unitName}: prefab not found at path '{rule.unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+            return;
+        }
+        
+        var go = Instantiate(animalPrefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();
+        if (unit == null)
+        {
+            Debug.LogError($"[AnimalManager] Spawned prefab for {rule.unitData.unitName} is missing CombatUnit component.");
+            Destroy(go);
+            return;
+        }
         unit.Initialize(rule.unitData, null);
         unit.currentTileIndex = chosenIndex;
         

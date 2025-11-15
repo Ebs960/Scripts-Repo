@@ -139,6 +139,26 @@ public class TurnManager : MonoBehaviour
 
         if (ImprovementManager.Instance != null)
             ImprovementManager.Instance.ProcessTurn(civ);
+        
+        // Apply unit reinforcement
+        if (UnitReinforcementManager.Instance != null)
+        {
+            UnitReinforcementManager.Instance.UpdateGarrisonStatus();
+            UnitReinforcementManager.Instance.ApplyReinforcementToAllUnits();
+        }
+        
+        // Reset army movement points
+        if (ArmyManager.Instance != null)
+        {
+            var civArmies = ArmyManager.Instance.GetArmiesByOwner(civ);
+            foreach (var army in civArmies)
+            {
+                if (army != null)
+                {
+                    army.ResetForNewTurn();
+                }
+            }
+        }
 
         if (!isPlayer)
         {

@@ -535,16 +535,18 @@ public class GameManager : MonoBehaviour
             {
                 GameObject climateManagerGO = Instantiate(climateManagerPrefab);
                 climateManager = climateManagerGO.GetComponent<ClimateManager>();
-                
             }
             else
             {
                 Debug.LogError("GameManager: ClimateManager not found and no prefab assigned!");
             }
         }
-        else
+        
+        // Create UnitReinforcementManager if it doesn't exist
+        if (UnitReinforcementManager.Instance == null)
         {
-            
+            GameObject reinforcementManagerGO = new GameObject("UnitReinforcementManager");
+            reinforcementManagerGO.AddComponent<UnitReinforcementManager>();
         }
 
         diplomacyManager = foundManagers.diplomacyManager;
@@ -2645,15 +2647,25 @@ public class GameManager : MonoBehaviour
             Vector3 offset = new Vector3((col - 1) * 2f, 0, row * 2f);
             Vector3 unitPosition = formationCenter + offset;
 
-            GameObject unitGO = Instantiate(unitData.prefab, unitPosition, Quaternion.identity);
-            CombatUnit unit = unitGO.GetComponent<CombatUnit>();
-            
-            if (unit != null)
+            var unitPrefab = unitData.GetPrefab();
+            if (unitPrefab == null)
             {
+                Debug.LogError($"[GameManager] Cannot spawn unit {unitData.unitName}: prefab not found at path '{unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+                continue; // Skip this unit
+            }
+            
+            GameObject unitGO = Instantiate(unitPrefab, unitPosition, Quaternion.identity);
+            CombatUnit unit = unitGO.GetComponent<CombatUnit>();
+            if (unit == null)
+            {
+                Debug.LogError($"[GameManager] Spawned prefab for {unitData.unitName} is missing CombatUnit component.");
+                Destroy(unitGO);
+                continue; // Skip this unit
+            }
+            
                 unit.Initialize(unitData, civ);
                 unit.InitializeForBattle(isAttacker);
                 units.Add(unit);
-            }
         }
 
         return units;

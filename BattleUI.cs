@@ -22,12 +22,15 @@ public class BattleUI : MonoBehaviour
 
     void Start()
     {
-        // Ensure panel exists but keep it deactivated until battle starts
-        SetupUI();
-        
-        // Deactivate panel initially - it will be activated when battle starts
-        if (battleHUDPanel != null)
+        // Validate that panel is assigned in Inspector
+        if (battleHUDPanel == null)
         {
+            Debug.LogError("[BattleUI] battleHUDPanel is not assigned! Please assign it in the Inspector.");
+        }
+        else
+        {
+            Debug.Log($"[BattleUI] Panel assigned: {battleHUDPanel.name}");
+            // Deactivate panel initially - it will be activated when battle starts
             battleHUDPanel.SetActive(false);
         }
     }
@@ -51,109 +54,183 @@ public class BattleUI : MonoBehaviour
     /// </summary>
     public void InitializeWithBattleTest(BattleTestSimple battleTest)
     {
+        Debug.Log("[BattleUI] InitializeWithBattleTest called");
         battleTestSimple = battleTest;
         
         // Ensure UI panel exists and activate it (battle is starting)
         SetupUI();
+        Debug.Log($"[BattleUI] SetupUI complete. Panel exists: {battleHUDPanel != null}");
         
         // Activate the panel when battle starts
         if (battleHUDPanel != null)
         {
             battleHUDPanel.SetActive(true);
+            Debug.Log("[BattleUI] Battle HUD Panel activated");
+        }
+        else
+        {
+            Debug.LogError("[BattleUI] battleHUDPanel is null after SetupUI!");
         }
         
-        CreateFormationButtonsFromBattleTest();
+        // Don't create buttons here - formations aren't created yet!
+        // Buttons will be created by UpdateFormationsList() after formations are ready
+        Debug.Log("[BattleUI] Skipping CreateFormationButtonsFromBattleTest - formations not ready yet. Will be created by UpdateFormationsList().");
     }
 
     private void SetupUI()
     {
-        // Use manually assigned panel if available, otherwise auto-generate
+        // CRITICAL: Use manually assigned panel from Inspector - do NOT create one!
         if (battleHUDPanel == null)
         {
-            CreateBattleHUDPanel();
+            Debug.LogError("[BattleUI] battleHUDPanel is not assigned in Inspector! Please assign it manually in the scene.");
+            return;
         }
-        else
+        
+        Debug.Log($"[BattleUI] Using manually assigned panel: {battleHUDPanel.name}");
+        
+        // Check if panel has ScrollRect (common UI pattern: Panel -> Viewport -> Content)
+        var scrollRect = battleHUDPanel.GetComponent<UnityEngine.UI.ScrollRect>();
+        Transform targetParent = battleHUDPanel.transform;
+        
+        if (scrollRect != null)
         {
-            // Ensure assigned panel has necessary components
-            if (formationButtonLayout == null)
+            Debug.Log("[BattleUI] Panel has ScrollRect component, looking for Content child...");
+            // ScrollRect structure: Panel -> Viewport -> Content
+            // We need to find the Content GameObject (child of Viewport)
+            if (scrollRect.content != null)
             {
-                formationButtonLayout = battleHUDPanel.GetComponent<HorizontalLayoutGroup>();
-                if (formationButtonLayout == null)
+                targetParent = scrollRect.content.transform;
+                Debug.Log($"[BattleUI] Found ScrollRect content: {targetParent.name}");
+            }
+            else
+            {
+                // Fallback: look for a child named "Content"
+                Transform viewport = battleHUDPanel.transform.Find("Viewport");
+                if (viewport != null)
                 {
-                    // Create layout group if none exists
-                    formationButtonLayout = battleHUDPanel.AddComponent<HorizontalLayoutGroup>();
-                    formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
-                    formationButtonLayout.childForceExpandWidth = false;
-                    formationButtonLayout.childControlWidth = true;
-                    formationButtonLayout.spacing = 8f;
-                    formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
+                    Transform content = viewport.Find("Content");
+                    if (content != null)
+                    {
+                        targetParent = content;
+                        Debug.Log($"[BattleUI] Found Content child: {content.name}");
+                    }
                 }
             }
         }
+        
+        // Get or ensure layout group exists
+        // First check if it's assigned in Inspector
+        if (formationButtonLayout == null)
+        {
+            // Try to find it on the target parent or its children
+            formationButtonLayout = targetParent.GetComponentInChildren<HorizontalLayoutGroup>();
+            if (formationButtonLayout != null)
+            {
+                Debug.Log($"[BattleUI] Found existing HorizontalLayoutGroup: {formationButtonLayout.name}");
+            }
+        }
+        
+        // If still not found, create one as a child of the target parent
+        if (formationButtonLayout == null)
+        {
+            Debug.LogWarning("[BattleUI] No HorizontalLayoutGroup found, creating one...");
+            GameObject layoutGO = new GameObject("FormationButtonLayout");
+            layoutGO.transform.SetParent(targetParent, false);
+            
+            // Add RectTransform
+            var layoutRect = layoutGO.AddComponent<RectTransform>();
+            layoutRect.anchorMin = Vector2.zero;
+            layoutRect.anchorMax = Vector2.one;
+            layoutRect.offsetMin = Vector2.zero;
+            layoutRect.offsetMax = Vector2.zero;
+            
+            // Add HorizontalLayoutGroup
+            formationButtonLayout = layoutGO.AddComponent<HorizontalLayoutGroup>();
+            formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
+            formationButtonLayout.childForceExpandWidth = false;
+            formationButtonLayout.childControlWidth = true;
+            formationButtonLayout.childForceExpandHeight = false;
+            formationButtonLayout.childControlHeight = true;
+            formationButtonLayout.spacing = 8f;
+            formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
+            
+            Debug.Log($"[BattleUI] Created HorizontalLayoutGroup: {layoutGO.name} as child of {targetParent.name}");
+        }
+        else
+        {
+            // Ensure layout group is properly configured
+            formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
+            formationButtonLayout.childForceExpandWidth = false;
+            formationButtonLayout.childControlWidth = true;
+            formationButtonLayout.childForceExpandHeight = false;
+            formationButtonLayout.childControlHeight = true;
+            formationButtonLayout.spacing = 8f;
+            if (formationButtonLayout.padding == null || formationButtonLayout.padding.left == 0)
+            {
+                formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
+            }
+            Debug.Log($"[BattleUI] Using existing HorizontalLayoutGroup: {formationButtonLayout.name} (parent: {formationButtonLayout.transform.parent?.name ?? "null"})");
+        }
     }
 
-    private void CreateBattleHUDPanel()
-    {
-        // Create panel at top of screen
-        battleHUDPanel = new GameObject("BattleHUDPanel");
-        battleHUDPanel.transform.SetParent(transform, false);
-        
-        // Put UI on UI layer so it doesn't block unit raycasts
-        int uiLayer = LayerMask.NameToLayer("UI");
-        if (uiLayer != -1)
-        {
-            battleHUDPanel.layer = uiLayer;
-            gameObject.layer = uiLayer;
-        }
-        
-        var canvas = GetComponent<Canvas>();
-        if (canvas == null)
-        {
-            canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            gameObject.AddComponent<CanvasScaler>();
-            var raycaster = gameObject.AddComponent<GraphicRaycaster>();
-            // Raycaster will still work for UI interaction, but won't block physics raycasts
-        }
-        
-        var panelRect = battleHUDPanel.AddComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0f, 1f);
-        panelRect.anchorMax = new Vector2(1f, 1f);
-        panelRect.pivot = new Vector2(0.5f, 1f);
-        panelRect.anchoredPosition = Vector2.zero;
-        panelRect.sizeDelta = new Vector2(0, 60);
-        
-        // Add horizontal layout group
-        var layout = battleHUDPanel.AddComponent<HorizontalLayoutGroup>();
-        layout.childAlignment = TextAnchor.MiddleLeft;
-        layout.childForceExpandWidth = false;
-        layout.childControlWidth = true;
-        layout.spacing = 8f;
-        layout.padding = new RectOffset(10, 10, 5, 5);
-        
-        formationButtonLayout = layout;
-    }
+    // CreateBattleHUDPanel() removed - we use manually assigned panels from the Inspector only!
 
     private void CreateFormationButtonsFromBattleTest()
     {
-        if (battleTestSimple == null) return;
+        if (battleTestSimple == null)
+        {
+            Debug.LogWarning("[BattleUI] battleTestSimple is null! Cannot create formation buttons.");
+            return;
+        }
         
         // Directly access public allFormations list
         trackedFormations = battleTestSimple.allFormations;
+        Debug.Log($"[BattleUI] Creating buttons for {trackedFormations?.Count ?? 0} formations");
+        
+        if (trackedFormations == null || trackedFormations.Count == 0)
+        {
+            Debug.LogWarning("[BattleUI] No formations found! Buttons will not be created yet.");
+            return;
+        }
+        
         foreach (var formation in trackedFormations)
         {
             if (formation != null)
             {
                 CreateFormationButton(formation);
+                Debug.Log($"[BattleUI] Created button for formation: {formation.formationName}");
             }
         }
+        
+        Debug.Log($"[BattleUI] Formation buttons created: {formationButtons.Count}");
     }
 
     private void CreateFormationButton(FormationUnit formation)
     {
-        if (formationButtonLayout == null) return;
+        if (formationButtonLayout == null)
+        {
+            Debug.LogError("[BattleUI] formationButtonLayout is null! Cannot create formation button.");
+            // Try to get it again
+            SetupUI();
+            if (formationButtonLayout == null)
+            {
+                Debug.LogError("[BattleUI] formationButtonLayout is still null after SetupUI! Cannot create button.");
+                return;
+            }
+        }
+        
+        if (formation == null)
+        {
+            Debug.LogError("[BattleUI] Formation is null! Cannot create button.");
+            return;
+        }
+        
+        Debug.Log($"[BattleUI] Creating button for formation: {formation.formationName}");
         
         GameObject buttonGO = new GameObject($"{formation.formationName}_Button");
+        
+        // CRITICAL: Parent to the layout group's transform, not the panel
+        // The layout group should be a direct child of the panel
         buttonGO.transform.SetParent(formationButtonLayout.transform, false);
         
         // Put button on UI layer
@@ -197,6 +274,8 @@ public class BattleUI : MonoBehaviour
         
         formationButtons.Add(buttonGO);
         UpdateFormationButton(formation, text);
+        
+        Debug.Log($"[BattleUI] Successfully created button for {formation.formationName}. Parent: {buttonGO.transform.parent?.name ?? "null"}, Layout: {formationButtonLayout?.name ?? "null"}");
     }
 
     private void UpdateFormationButton(FormationUnit formation, TextMeshProUGUI text)
@@ -289,15 +368,54 @@ public class BattleUI : MonoBehaviour
     /// </summary>
     public void UpdateFormationsList(List<FormationUnit> formations)
     {
+        Debug.Log($"[BattleUI] UpdateFormationsList called with {formations?.Count ?? 0} formations");
+        
+        if (formations == null || formations.Count == 0)
+        {
+            Debug.LogWarning("[BattleUI] UpdateFormationsList received null or empty list!");
+            return;
+        }
+        
+        // Ensure UI is set up before creating buttons
+        if (formationButtonLayout == null)
+        {
+            Debug.LogWarning("[BattleUI] formationButtonLayout is null, calling SetupUI...");
+            SetupUI();
+        }
+        
+        if (formationButtonLayout == null)
+        {
+            Debug.LogError("[BattleUI] formationButtonLayout is still null after SetupUI! Cannot create buttons.");
+            return;
+        }
+        
+        // Ensure panel is active
+        if (battleHUDPanel != null && !battleHUDPanel.activeSelf)
+        {
+            Debug.Log("[BattleUI] Activating battle HUD panel...");
+            battleHUDPanel.SetActive(true);
+        }
+        
         trackedFormations = formations;
         ClearFormationButtons();
+        
+        Debug.Log($"[BattleUI] Creating buttons for {formations.Count} formations. Layout group: {formationButtonLayout?.name ?? "null"}, Parent: {formationButtonLayout?.transform?.parent?.name ?? "null"}");
         
         foreach (var formation in formations)
         {
             if (formation != null)
             {
                 CreateFormationButton(formation);
+                Debug.Log($"[BattleUI] Created button for: {formation.formationName}");
             }
+        }
+        
+        Debug.Log($"[BattleUI] Total buttons created: {formationButtons.Count}. Layout group child count: {formationButtonLayout.transform.childCount}");
+        
+        // Force layout rebuild
+        if (formationButtonLayout != null)
+        {
+            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(formationButtonLayout.GetComponent<RectTransform>());
         }
     }
 }

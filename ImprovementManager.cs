@@ -398,7 +398,7 @@ public class ImprovementManager : MonoBehaviour
     private void CompleteUnitJob(UnitJob job)
     {
         // Spawn the unit and register occupancy
-        var unitPrefab = job.data.prefab;
+        var unitPrefab = job.data.GetPrefab();
         if (unitPrefab == null)
         {
             Debug.LogError($"Unit {job.data?.unitName} has no prefab; cannot spawn.");
@@ -424,6 +424,9 @@ public class ImprovementManager : MonoBehaviour
         job.owner.combatUnits.Add(unit);
         LimitManager.Instance.AddCombatUnit(job.owner, job.data);
     if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(spawnIndex, unit.gameObject);
+
+        // Add unit to army system
+        ArmyIntegration.OnUnitCreated(unit, spawnIndex);
 
         unitJobs.Remove(job);
     }
@@ -587,8 +590,7 @@ public class ImprovementManager : MonoBehaviour
         if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
         {
             unit.ApplyTrap(trap.data.trapImmobilizeTurns);
-            // Prevent further movement this turn
-            unit.DeductMovementPoints(unit.currentMovePoints);
+            // Movement points removed - trap immobilization handled by IsTrapped flag
         }
 
         // Decrement uses and update or remove
@@ -629,8 +631,7 @@ public class ImprovementManager : MonoBehaviour
         if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
         {
             worker.ApplyTrap(trap.data.trapImmobilizeTurns);
-            // Prevent further movement this turn
-            worker.DeductMovementPoints(worker.currentMovePoints);
+            // Movement points removed - trap immobilization handled by IsTrapped flag
         }
 
         // Decrement uses and update or remove

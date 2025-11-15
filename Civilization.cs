@@ -1312,9 +1312,33 @@ public class Civilization : MonoBehaviour
         if (grid != null)
         {
             Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(city.centerTileIndex, 0.5f) : Vector3.zero;
-            var missionaryGO = Instantiate(missionaryData.prefab, pos, Quaternion.identity);
+            var missionaryPrefab = missionaryData.GetPrefab();
+            if (missionaryPrefab == null)
+            {
+                Debug.LogError($"[Civilization] Cannot spawn missionary {missionaryData.unitName}: prefab not found at path '{missionaryData.prefabPath}'. Check prefabPath in ScriptableObject.");
+                return false;
+            }
+            
+            var missionaryGO = Instantiate(missionaryPrefab, pos, Quaternion.identity);
             var missionaryUnit = missionaryGO.GetComponent<CombatUnit>();
+            if (missionaryUnit == null)
+            {
+                Debug.LogError($"[Civilization] Spawned prefab for {missionaryData.unitName} is missing CombatUnit component.");
+                Destroy(missionaryGO);
+                return false;
+            }
             missionaryUnit.Initialize(missionaryData, this);
+            
+            // Add unit to army system
+            if (missionaryUnit.currentTileIndex >= 0)
+            {
+                ArmyIntegration.OnUnitCreated(missionaryUnit, missionaryUnit.currentTileIndex);
+            }
+            else
+            {
+                missionaryUnit.currentTileIndex = city.centerTileIndex;
+                ArmyIntegration.OnUnitCreated(missionaryUnit, city.centerTileIndex);
+            }
             combatUnits.Add(missionaryUnit);
             
             // The missionary unit should have the civilization's religion associated with it
@@ -2274,14 +2298,20 @@ public class Civilization : MonoBehaviour
 
     public struct UnitBonusAgg
     {
-        public int attackAdd, defenseAdd, healthAdd, movePointsAdd, rangeAdd, attackPointsAdd, moraleAdd;
-        public float attackPct, defensePct, healthPct, movePointsPct, rangePct, attackPointsPct, moralePct;
+        public int attackAdd, defenseAdd, healthAdd, rangeAdd, moraleAdd;
+        public float attackPct, defensePct, healthPct, rangePct, moralePct;
     }
 
     public struct WorkerBonusAgg
     {
         public int workPointsAdd, movePointsAdd, healthAdd;
         public float workPointsPct, movePointsPct, healthPct;
+    }
+    
+    public struct ArmyBonusAgg
+    {
+        public int movePointsAdd, attackAdd, defenseAdd, healthAdd, moraleAdd;
+        public float movePointsPct, attackPct, defensePct, healthPct, moralePct;
     }
 
     public struct YieldBonusAgg
@@ -2292,8 +2322,8 @@ public class Civilization : MonoBehaviour
 
     public struct EquipBonusAgg
     {
-        public int attackAdd, defenseAdd, healthAdd, movePointsAdd, rangeAdd, attackPointsAdd;
-        public float attackPct, defensePct, healthPct, movePointsPct, rangePct, attackPointsPct;
+        public int attackAdd, defenseAdd, healthAdd, rangeAdd;
+        public float attackPct, defensePct, healthPct, rangePct;
     }
 
     private YieldBonusAgg AggregateUnitYieldBonuses(CombatUnitData unit)
@@ -2567,6 +2597,73 @@ public class Civilization : MonoBehaviour
                 }
             }
         }
+        return agg;
+    }
+    
+    /// <summary>
+    /// Aggregate all army bonuses from techs, cultures, policies, and government
+    /// Army bonuses apply to ALL armies (no target filtering)
+    /// </summary>
+    public ArmyBonusAgg AggregateArmyBonuses()
+    {
+        ArmyBonusAgg agg = new ArmyBonusAgg();
+        
+        // Techs
+        if (researchedTechs != null)
+        {
+            foreach (var tech in researchedTechs)
+            {
+                if (tech == null || tech.armyBonuses == null) continue;
+                foreach (var b in tech.armyBonuses)
+                {
+                    if (b != null)
+                    {
+                        agg.movePointsAdd += b.movePointsAdd;
+                        agg.attackAdd += b.attackAdd;
+                        agg.defenseAdd += b.defenseAdd;
+                        agg.healthAdd += b.healthAdd;
+                        agg.moraleAdd += b.moraleAdd;
+                        agg.movePointsPct += b.movePointsPct;
+                        agg.attackPct += b.attackPct;
+                        agg.defensePct += b.defensePct;
+                        agg.healthPct += b.healthPct;
+                        agg.moralePct += b.moralePct;
+                    }
+                }
+            }
+        }
+        
+        // Cultures
+        if (researchedCultures != null)
+        {
+            foreach (var culture in researchedCultures)
+            {
+                if (culture == null || culture.armyBonuses == null) continue;
+                foreach (var b in culture.armyBonuses)
+                {
+                    if (b != null)
+                    {
+                        agg.movePointsAdd += b.movePointsAdd;
+                        agg.attackAdd += b.attackAdd;
+                        agg.defenseAdd += b.defenseAdd;
+                        agg.healthAdd += b.healthAdd;
+                        agg.moraleAdd += b.moraleAdd;
+                        agg.movePointsPct += b.movePointsPct;
+                        agg.attackPct += b.attackPct;
+                        agg.defensePct += b.defensePct;
+                        agg.healthPct += b.healthPct;
+                        agg.moralePct += b.moralePct;
+                    }
+                }
+            }
+        }
+        
+        // Policies (if they have army bonuses in the future)
+        // Note: PolicyData doesn't have armyBonuses yet, but structure is ready
+        
+        // Government (if it has army bonuses in the future)
+        // Note: GovernmentData doesn't have armyBonuses yet, but structure is ready
+        
         return agg;
     }
 

@@ -90,8 +90,6 @@ public class EquipmentData : ScriptableObject
     public float movementBonus;
     [Tooltip("Flat range bonus provided by this equipment (can be fractional)")]
     public float rangeBonus;
-    [Tooltip("Flat attack points bonus provided by this equipment (can be fractional)")]
-    public float attackPointsBonus;
 
     [Header("Per-Turn Yields (optional)")]
     [Tooltip("If set, a unit equipped with this item grants these additional per-turn yields to its owner.")]
@@ -101,6 +99,10 @@ public class EquipmentData : ScriptableObject
     public int culturePerTurn;
     public int faithPerTurn;
     public int policyPointsPerTurn;
+    
+    [Header("Army Bonuses (optional)")]
+    [Tooltip("If a unit in an army equips this item, grants these bonuses to the entire army. Useful for general's equipment, banners, etc.")]
+    public ArmyStatBonus armyBonus;
 
     public bool IsValidForUnit(CombatUnit unit, Civilization civ = null)
     {

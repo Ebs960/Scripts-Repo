@@ -137,6 +137,8 @@ public class TechData : ScriptableObject
     public BuildingYieldBonus[] buildingBonuses;
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
+    [Tooltip("Army stat bonuses granted by this technology (applies to all armies).")]
+    public ArmyStatBonus[] armyBonuses;
 
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;

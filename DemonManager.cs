@@ -125,8 +125,21 @@ public class DemonManager : MonoBehaviour
         DemonUnitData demonType = demonUnits[Random.Range(0, demonUnits.Length)];
 
         // Spawn the demon
-        var demonGO = Instantiate(demonType.prefab, spawnPos, Quaternion.identity);
+        var demonPrefab = demonType.GetPrefab();
+        if (demonPrefab == null)
+        {
+            Debug.LogError($"[DemonManager] Cannot spawn demon {demonType.unitName}: prefab not found at path '{demonType.prefabPath}'. Check prefabPath in ScriptableObject.");
+            return;
+        }
+        
+        var demonGO = Instantiate(demonPrefab, spawnPos, Quaternion.identity);
         var demonUnit = demonGO.GetComponent<CombatUnit>();
+        if (demonUnit == null)
+        {
+            Debug.LogError($"[DemonManager] Spawned prefab for {demonType.unitName} is missing CombatUnit component.");
+            Destroy(demonGO);
+            return;
+        }
         // Demons have no owner civilization, so we pass null.
         // The Initialize method on CombatUnit should handle this gracefully.
         demonUnit.Initialize(demonType, null); 

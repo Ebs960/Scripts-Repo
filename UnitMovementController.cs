@@ -239,13 +239,9 @@ public class UnitMovementController : MonoBehaviour
             
             // Get movement cost for this step (tile-aware: improvements may alter cost)
             var tileData = TileSystem.Instance.GetTileData(targetTileIndex);
-            int movementCost = BiomeHelper.GetMovementCost(tileData, null);
-            
-            // Deduct movement points
-            if (combatUnit != null)
-                combatUnit.DeductMovementPoints(movementCost);
-            else
-                workerUnit.DeductMovementPoints(movementCost);
+            // Movement points removed - movement speed is now fatigue-based
+            // Calculate movement cost for event (not used for movement points, but needed for event signature)
+            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, null) : 1;
             
             // Calculate positions including extrusion
             Vector3 startPosition = unitTransform.position;
@@ -310,7 +306,7 @@ public class UnitMovementController : MonoBehaviour
                 ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
 
                 // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
-                if (combatUnit.currentHealth <= 0 || combatUnit.currentMovePoints <= 0 || combatUnit.IsTrapped)
+                if (combatUnit.currentHealth <= 0 || combatUnit.IsTrapped)
                 {
                     // Fire movement completed event up to this step and exit early
                     GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
@@ -326,7 +322,7 @@ public class UnitMovementController : MonoBehaviour
                 ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
 
                 // If worker was trapped (immobilized) or killed by a trap, stop further movement
-                if (workerUnit.currentHealth <= 0 || workerUnit.currentMovePoints <= 0 || workerUnit.IsTrapped)
+                if (workerUnit.currentHealth <= 0 || workerUnit.IsTrapped)
                 {
                     GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
                     workerUnit.UpdateWalkingState(false);

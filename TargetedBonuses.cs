@@ -12,9 +12,7 @@ public class UnitStatBonus
     public int attackAdd;
     public int defenseAdd;
     public int healthAdd;
-    public int movePointsAdd;
     public int rangeAdd;
-    public int attackPointsAdd;
     public int moraleAdd;
 
     [Header("Multiplicative (%)")]
@@ -22,9 +20,7 @@ public class UnitStatBonus
     public float attackPct;
     public float defensePct;
     public float healthPct;
-    public float movePointsPct;
     public float rangePct;
-    public float attackPointsPct;
     public float moralePct;
 }
 
@@ -103,18 +99,14 @@ public class EquipmentStatBonus
     public int attackAdd;
     public int defenseAdd;
     public int healthAdd;
-    public int movePointsAdd;
     public int rangeAdd;
-    public int attackPointsAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
     public float attackPct;
     public float defensePct;
     public float healthPct;
-    public float movePointsPct;
     public float rangePct;
-    public float attackPointsPct;
 }
 
 [System.Serializable]
@@ -213,4 +205,23 @@ public class GenericYieldBonus
     public float sciencePct;
     public float culturePct;
     public float faithPct;
+}
+
+[System.Serializable]
+public class ArmyStatBonus
+{
+    [Header("Additive (flat)")]
+    public int movePointsAdd;
+    public int attackAdd;
+    public int defenseAdd;
+    public int healthAdd;
+    public int moraleAdd;
+
+    [Header("Multiplicative (%)")]
+    [Tooltip("Percent increase as 0.10 = +10%.")]
+    public float movePointsPct;
+    public float attackPct;
+    public float defensePct;
+    public float healthPct;
+    public float moralePct;
 }

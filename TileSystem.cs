@@ -505,12 +505,11 @@ public class TileSystem : MonoBehaviour
         return planetRef.transform.TransformPoint(centerDir * (radius + elevation * elevationScale + unitOffset));
     }
 
-    public bool IsTileAccessible(int tile, bool mustBeLand, int movePoints, int unitId)
+    public bool IsTileAccessible(int tile, bool mustBeLand, int unitId)
     {
         var td = GetTileData(tile); if (td == null) return false;
         if (mustBeLand && !td.isLand) return false;
-        int cost = BiomeHelper.GetMovementCost(td.biome);
-        if (movePoints < cost) return false;
+        // Movement points removed - tiles are always accessible (movement speed is fatigue-based)
         return td.occupantId == 0 || td.occupantId == unitId;
     }
 

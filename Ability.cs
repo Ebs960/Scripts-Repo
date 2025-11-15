@@ -11,11 +11,9 @@ public class Ability
     public int defenseModifier;
     public float damageMultiplier;
     
-    // New modifiers for health, range, attack points, and movement
+    // New modifiers for health and range
     public int healthModifier;
     public int rangeModifier;
-    public int attackPointsModifier;
-    public int movePointsModifier;
 
     // TODO: add methods to apply effects, manage cooldowns, etc.
 } 
