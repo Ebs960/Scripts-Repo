@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
 /// Manages all armies on the campaign map (Total War style)
@@ -28,6 +27,17 @@ public class ArmyManager : MonoBehaviour
     
     // Selected armies (for player control)
     private List<Army> selectedArmies = new List<Army>();
+    
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private static CombatUnit[] cachedAllCombatUnits;
+    private static float lastCombatUnitCacheUpdate = 0f;
+    private const float COMBAT_UNIT_CACHE_UPDATE_INTERVAL = 0.5f; // Update cache every 0.5 seconds
+    
+    // Reusable collections for pathfinding (avoid allocations)
+    private Queue<int> reusablePathfindingQueue = new Queue<int>();
+    private HashSet<int> reusablePathfindingVisited = new HashSet<int>();
+    private Dictionary<int, int> reusablePathfindingParent = new Dictionary<int, int>();
+    private List<int> reusablePathfindingPath = new List<int>();
     
     void Awake()
     {
@@ -63,31 +73,39 @@ public class ArmyManager : MonoBehaviour
         // Only enforce on campaign map, not in battle
         if (BattleTestSimple.Instance != null) return; // In battle, units should be visible
         
-        // Find all combat units that aren't in any army
-        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+        // Use cached combat units array to avoid expensive FindObjectsByType call
+        if (Time.time - lastCombatUnitCacheUpdate > COMBAT_UNIT_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllCombatUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+            lastCombatUnitCacheUpdate = Time.time;
+        }
+        
         var unitsNotInArmies = new List<CombatUnit>();
         
-        foreach (var unit in allUnits)
+        if (cachedAllCombatUnits != null)
         {
-            if (unit == null || unit.gameObject == null) continue;
-            
-            // Skip if unit is inactive (already hidden in army)
-            if (!unit.gameObject.activeSelf) continue;
-            
-            // Check if unit is in any army
-            bool isInArmy = false;
-            foreach (var army in armiesList)
+            foreach (var unit in cachedAllCombatUnits)
             {
-                if (army != null && army.units.Contains(unit))
+                if (unit == null || unit.gameObject == null) continue;
+                
+                // Skip if unit is inactive (already hidden in army)
+                if (!unit.gameObject.activeSelf) continue;
+                
+                // Check if unit is in any army (manual loop to avoid LINQ)
+                bool isInArmy = false;
+                foreach (var army in armiesList)
                 {
-                    isInArmy = true;
-                    break;
+                    if (army != null && army.units.Contains(unit))
+                    {
+                        isInArmy = true;
+                        break;
+                    }
                 }
-            }
-            
-            if (!isInArmy)
-            {
-                unitsNotInArmies.Add(unit);
+                
+                if (!isInArmy)
+                {
+                    unitsNotInArmies.Add(unit);
+                }
             }
         }
         
@@ -96,9 +114,17 @@ public class ArmyManager : MonoBehaviour
         {
             if (unit == null || unit.owner == null) continue;
             
-            // Try to add to existing army at same tile
+            // Try to add to existing army at same tile (manual loop to avoid LINQ)
             var armiesAtTile = GetArmiesAtTile(unit.currentTileIndex);
-            var friendlyArmy = armiesAtTile.FirstOrDefault(a => a != null && a.owner == unit.owner && a.units.Count < a.maxUnits);
+            Army friendlyArmy = null;
+            foreach (var army in armiesAtTile)
+            {
+                if (army != null && army.owner == unit.owner && army.units.Count < army.maxUnits)
+                {
+                    friendlyArmy = army;
+                    break;
+                }
+            }
             
             if (friendlyArmy != null)
             {
@@ -214,39 +240,74 @@ public class ArmyManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get all armies owned by a civilization
+    /// Get all armies owned by a civilization (manual loop to avoid LINQ allocation)
     /// </summary>
     public List<Army> GetArmiesByOwner(Civilization owner)
     {
-        return armiesList.Where(a => a != null && a.owner == owner).ToList();
+        var result = new List<Army>();
+        foreach (var army in armiesList)
+        {
+            if (army != null && army.owner == owner)
+            {
+                result.Add(army);
+            }
+        }
+        return result;
     }
     
     /// <summary>
-    /// Get all armies at a specific tile
+    /// Get all armies at a specific tile (manual loop to avoid LINQ allocation)
     /// </summary>
     public List<Army> GetArmiesAtTile(int tileIndex)
     {
-        return armiesList.Where(a => a != null && a.currentTileIndex == tileIndex).ToList();
+        var result = new List<Army>();
+        foreach (var army in armiesList)
+        {
+            if (army != null && army.currentTileIndex == tileIndex)
+            {
+                result.Add(army);
+            }
+        }
+        return result;
     }
     
     /// <summary>
     /// Check if armies from different civilizations are at the same tile (initiate battle)
+    /// Manual grouping to avoid LINQ allocations
     /// </summary>
     private void CheckForArmyBattles()
     {
-        // Group armies by tile
-        var armiesByTile = armiesList
-            .Where(a => a != null && a.currentTileIndex >= 0)
-            .GroupBy(a => a.currentTileIndex)
-            .Where(g => g.Count() > 1);
+        // Group armies by tile (manual grouping to avoid LINQ)
+        Dictionary<int, List<Army>> armiesByTile = new Dictionary<int, List<Army>>();
         
-        foreach (var tileGroup in armiesByTile)
+        foreach (var army in armiesList)
         {
-            var armiesAtTile = tileGroup.ToList();
+            if (army == null || army.currentTileIndex < 0) continue;
             
-            // Check if there are armies from different civilizations
-            var civGroups = armiesAtTile.GroupBy(a => a.owner);
-            if (civGroups.Count() > 1)
+            if (!armiesByTile.ContainsKey(army.currentTileIndex))
+            {
+                armiesByTile[army.currentTileIndex] = new List<Army>();
+            }
+            armiesByTile[army.currentTileIndex].Add(army);
+        }
+        
+        // Check each tile with multiple armies
+        foreach (var kvp in armiesByTile)
+        {
+            var armiesAtTile = kvp.Value;
+            if (armiesAtTile.Count < 2) continue; // Need at least 2 armies
+            
+            // Check if there are armies from different civilizations (manual grouping)
+            HashSet<Civilization> civsAtTile = new HashSet<Civilization>();
+            foreach (var army in armiesAtTile)
+            {
+                if (army != null && army.owner != null)
+                {
+                    civsAtTile.Add(army.owner);
+                }
+            }
+            
+            if (civsAtTile.Count > 1)
             {
                 // Different civilizations at same tile - initiate battle!
                 InitiateBattle(armiesAtTile);
@@ -511,10 +572,14 @@ public class ArmyManager : MonoBehaviour
                     }
                 }
                 
-                // Trim path to only tiles we can reach
-                if (maxTilesToMove > 1)
+                // Trim path to only tiles we can reach (remove excess elements instead of creating new list)
+                if (maxTilesToMove > 1 && maxTilesToMove < path.Count)
                 {
-                    path = path.GetRange(0, maxTilesToMove);
+                    // Remove elements from end instead of creating new list
+                    for (int i = path.Count - 1; i >= maxTilesToMove; i--)
+                    {
+                        path.RemoveAt(i);
+                    }
                 }
                 else
                 {
@@ -550,51 +615,58 @@ public class ArmyManager : MonoBehaviour
     
     /// <summary>
     /// Simple pathfinding for armies (A* or simple neighbor-based)
+    /// Uses reusable collections to avoid allocations
     /// </summary>
     private List<int> FindPath(int startTile, int targetTile)
     {
         if (TileSystem.Instance == null) return null;
-        if (startTile == targetTile) return new List<int> { startTile };
-        
-        // Simple BFS pathfinding
-        var queue = new Queue<int>();
-        var visited = new HashSet<int>();
-        var parent = new Dictionary<int, int>();
-        
-        queue.Enqueue(startTile);
-        visited.Add(startTile);
-        parent[startTile] = -1;
-        
-        while (queue.Count > 0)
+        if (startTile == targetTile)
         {
-            int current = queue.Dequeue();
+            reusablePathfindingPath.Clear();
+            reusablePathfindingPath.Add(startTile);
+            return new List<int>(reusablePathfindingPath);
+        }
+        
+        // Clear and reuse collections (avoid allocations)
+        reusablePathfindingQueue.Clear();
+        reusablePathfindingVisited.Clear();
+        reusablePathfindingParent.Clear();
+        reusablePathfindingPath.Clear();
+        
+        reusablePathfindingQueue.Enqueue(startTile);
+        reusablePathfindingVisited.Add(startTile);
+        reusablePathfindingParent[startTile] = -1;
+        
+        while (reusablePathfindingQueue.Count > 0)
+        {
+            int current = reusablePathfindingQueue.Dequeue();
             
             if (current == targetTile)
             {
                 // Reconstruct path
-                var path = new List<int>();
+                reusablePathfindingPath.Clear();
                 int node = targetTile;
                 while (node != -1)
                 {
-                    path.Add(node);
-                    node = parent[node];
+                    reusablePathfindingPath.Add(node);
+                    node = reusablePathfindingParent[node];
                 }
-                path.Reverse();
-                return path;
+                reusablePathfindingPath.Reverse();
+                return new List<int>(reusablePathfindingPath);
             }
             
             // Check neighbors
             var neighbors = TileSystem.Instance.GetNeighbors(current);
             foreach (int neighbor in neighbors)
             {
-                if (visited.Contains(neighbor)) continue;
+                if (reusablePathfindingVisited.Contains(neighbor)) continue;
                 
                 var tileData = TileSystem.Instance.GetTileData(neighbor);
                 if (tileData == null || !tileData.isLand) continue; // Only move on land
                 
-                visited.Add(neighbor);
-                parent[neighbor] = current;
-                queue.Enqueue(neighbor);
+                reusablePathfindingVisited.Add(neighbor);
+                reusablePathfindingParent[neighbor] = current;
+                reusablePathfindingQueue.Enqueue(neighbor);
             }
         }
         
@@ -624,11 +696,19 @@ public class ArmyManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get all armies (for UI display)
+    /// Get all armies (for UI display) - manual loop to avoid LINQ
     /// </summary>
     public List<Army> GetAllArmies()
     {
-        return new List<Army>(armiesList.Where(a => a != null));
+        var result = new List<Army>();
+        foreach (var army in armiesList)
+        {
+            if (army != null)
+            {
+                result.Add(army);
+            }
+        }
+        return result;
     }
     
     /// <summary>

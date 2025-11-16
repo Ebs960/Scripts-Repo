@@ -396,21 +396,38 @@ public class BattleUI : MonoBehaviour
             battleHUDPanel.SetActive(true);
         }
         
-        trackedFormations = formations;
+        // CRITICAL FIX: Clear buttons BEFORE assigning formations list
+        // Otherwise ClearFormationButtons() will clear the formations list we just received!
         ClearFormationButtons();
+        
+        // Now assign the formations list (create a copy to avoid reference issues)
+        trackedFormations = new List<FormationUnit>(formations);
+        
+        // Debug: Check formations list after clearing buttons
+        Debug.Log($"[BattleUI] After ClearFormationButtons: formations.Count={formations?.Count ?? -1}, trackedFormations.Count={trackedFormations?.Count ?? -1}");
         
         Debug.Log($"[BattleUI] Creating buttons for {formations.Count} formations. Layout group: {formationButtonLayout?.name ?? "null"}, Parent: {formationButtonLayout?.transform?.parent?.name ?? "null"}");
         
+        int buttonsCreated = 0;
+        int nullFormations = 0;
         foreach (var formation in formations)
         {
             if (formation != null)
             {
+                Debug.Log($"[BattleUI] Processing formation: {formation.formationName} (valid)");
                 CreateFormationButton(formation);
-                Debug.Log($"[BattleUI] Created button for: {formation.formationName}");
+                buttonsCreated++;
+                Debug.Log($"[BattleUI] Created button for: {formation.formationName}. Total created so far: {buttonsCreated}");
+            }
+            else
+            {
+                nullFormations++;
+                Debug.LogWarning($"[BattleUI] Found null formation in list! Null count: {nullFormations}");
             }
         }
         
-        Debug.Log($"[BattleUI] Total buttons created: {formationButtons.Count}. Layout group child count: {formationButtonLayout.transform.childCount}");
+        Debug.Log($"[BattleUI] Loop complete. Buttons created in loop: {buttonsCreated}, null formations: {nullFormations}");
+        Debug.Log($"[BattleUI] Total buttons in list: {formationButtons.Count}. Layout group child count: {formationButtonLayout.transform.childCount}");
         
         // Force layout rebuild
         if (formationButtonLayout != null)

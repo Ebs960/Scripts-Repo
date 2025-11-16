@@ -3510,6 +3510,11 @@ public class CombatUnit : MonoBehaviour
     private static float lastEnemyCacheUpdate = 0f;
     private const float ENEMY_CACHE_UPDATE_INTERVAL = 0.5f;
     
+    // Cache all units for GetNearbyAlliedUnits (updated every 0.5 seconds)
+    private static CombatUnit[] cachedAllUnits;
+    private static float lastAllUnitsCacheUpdate = 0f;
+    private const float ALL_UNITS_CACHE_UPDATE_INTERVAL = 0.5f;
+    
     private Vector3 GetRetreatDirection()
     {
         // Update enemy cache periodically to avoid expensive FindObjectsByType every frame
@@ -3529,17 +3534,17 @@ public class CombatUnit : MonoBehaviour
         
         // Simple retreat logic - move away from nearest enemy
         CombatUnit nearestEnemy = null;
-        float nearestDistance = float.MaxValue;
+        float nearestDistanceSqr = float.MaxValue;
 
         foreach (var unit in cachedEnemies)
         {
             if (unit == null || unit == this || unit.isAttacker == this.isAttacker || unit.battleState == BattleUnitState.Dead)
                 continue;
                 
-            float distance = Vector3.Distance(transform.position, unit.transform.position);
-            if (distance < nearestDistance)
+            float distanceSqr = (transform.position - unit.transform.position).sqrMagnitude;
+            if (distanceSqr < nearestDistanceSqr)
             {
-                nearestDistance = distance;
+                nearestDistanceSqr = distanceSqr;
                 nearestEnemy = unit;
             }
         }
@@ -3727,13 +3732,22 @@ public class CombatUnit : MonoBehaviour
 
     /// <summary>
     /// Get nearby allied units within range
+    /// Uses cached units array to avoid expensive FindObjectsByType call
     /// </summary>
     private List<CombatUnit> GetNearbyAlliedUnits(float range)
     {
         List<CombatUnit> nearbyUnits = new List<CombatUnit>();
         
-        var allUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
-        foreach (var unit in allUnits)
+        // Update cache periodically to avoid expensive FindObjectsByType every call
+        if (Time.time - lastAllUnitsCacheUpdate > ALL_UNITS_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllUnits = FindObjectsByType<CombatUnit>(FindObjectsSortMode.None);
+            lastAllUnitsCacheUpdate = Time.time;
+        }
+        
+        if (cachedAllUnits == null) return nearbyUnits;
+        
+        foreach (var unit in cachedAllUnits)
         {
             if (unit != this && unit.owner == this.owner)
             {

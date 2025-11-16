@@ -313,34 +313,10 @@ public class CombatUnitData : ScriptableObject
                     Debug.LogWarning($"[CombatUnitData]   CombatUnit component: MISSING!");
                 }
                 
-                // List ALL components on root GameObject
-                var allComponents = _cachedPrefab.GetComponents<Component>();
-                Debug.Log($"[CombatUnitData]   Total components on root: {allComponents.Length}");
-                foreach (var comp in allComponents)
-                {
-                    Debug.Log($"[CombatUnitData]     - {comp.GetType().Name}");
-                }
-                
-                // Check child objects for Animator/CombatUnit
-                var childAnimators = _cachedPrefab.GetComponentsInChildren<Animator>(true);
-                if (childAnimators.Length > 0)
-                {
-                    Debug.Log($"[CombatUnitData]   Found {childAnimators.Length} Animator(s) in children:");
-                    foreach (var childAnim in childAnimators)
-                    {
-                        Debug.Log($"[CombatUnitData]     - {childAnim.gameObject.name}: Controller={(childAnim.runtimeAnimatorController != null ? childAnim.runtimeAnimatorController.name : "NULL")}");
-                    }
-                }
-                
-                var childCombatUnits = _cachedPrefab.GetComponentsInChildren<CombatUnit>(true);
-                if (childCombatUnits.Length > 0)
-                {
-                    Debug.Log($"[CombatUnitData]   Found {childCombatUnits.Length} CombatUnit(s) in children:");
-                    foreach (var childCU in childCombatUnits)
-                    {
-                        Debug.Log($"[CombatUnitData]     - {childCU.gameObject.name}");
-                    }
-                }
+                // Component listing debug removed - not needed for production
+                // var allComponents = _cachedPrefab.GetComponents<Component>();
+                // Debug.Log($"[CombatUnitData]   Total components on root: {allComponents.Length}");
+                // ... component listing code removed
                 
                 return _cachedPrefab;
             }

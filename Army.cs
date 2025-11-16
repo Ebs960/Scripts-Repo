@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
 /// Army system - groups combat units together for campaign map movement (Total War style)
@@ -543,19 +542,36 @@ public class Army : MonoBehaviour
     }
     
     /// <summary>
-    /// Get all units ready for battle (returns list of units)
+    /// Get all units ready for battle (returns list of units) - manual loop to avoid LINQ
     /// </summary>
     public List<CombatUnit> GetBattleUnits()
     {
-        return new List<CombatUnit>(units.Where(u => u != null && u.currentHealth > 0));
+        var result = new List<CombatUnit>();
+        foreach (var unit in units)
+        {
+            if (unit != null && unit.currentHealth > 0)
+            {
+                result.Add(unit);
+            }
+        }
+        return result;
     }
     
     /// <summary>
-    /// Check if army is destroyed (no units or all units dead)
+    /// Check if army is destroyed (no units or all units dead) - manual loop to avoid LINQ
     /// </summary>
     public bool IsDestroyed()
     {
-        return units.Count == 0 || units.All(u => u == null || u.currentHealth <= 0);
+        if (units.Count == 0) return true;
+        
+        foreach (var unit in units)
+        {
+            if (unit != null && unit.currentHealth > 0)
+            {
+                return false; // Found at least one alive unit
+            }
+        }
+        return true; // All units are dead or null
     }
     
     /// <summary>

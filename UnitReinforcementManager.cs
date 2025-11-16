@@ -19,6 +19,15 @@ public class UnitReinforcementManager : MonoBehaviour
     [Range(0f, 100f)]
     public float reinforcementRateInCity = 35f; // 35% per turn
     
+    // Cached FindObjectsByType results to avoid expensive scene searches
+    private static Civilization[] cachedAllCivs;
+    private static float lastCivCacheUpdate = 0f;
+    private const float CIV_CACHE_UPDATE_INTERVAL = 1f; // Update cache every 1 second
+    
+    private static City[] cachedAllCities;
+    private static float lastCityCacheUpdate = 0f;
+    private const float CITY_CACHE_UPDATE_INTERVAL = 1f; // Update cache every 1 second
+    
     void Awake()
     {
         if (Instance == null)
@@ -38,8 +47,14 @@ public class UnitReinforcementManager : MonoBehaviour
     /// </summary>
     public void ApplyReinforcementToAllUnits()
     {
-        // Get all civilizations
-        var allCivs = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+        // Use cached civilizations array to avoid expensive FindObjectsByType call
+        if (Time.time - lastCivCacheUpdate > CIV_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllCivs = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+            lastCivCacheUpdate = Time.time;
+        }
+        
+        var allCivs = cachedAllCivs;
         
         foreach (var civ in allCivs)
         {
@@ -88,8 +103,14 @@ public class UnitReinforcementManager : MonoBehaviour
     /// </summary>
     public void UpdateGarrisonStatus()
     {
-        // Get all civilizations
-        var allCivs = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+        // Use cached civilizations array to avoid expensive FindObjectsByType call
+        if (Time.time - lastCivCacheUpdate > CIV_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllCivs = FindObjectsByType<Civilization>(FindObjectsSortMode.None);
+            lastCivCacheUpdate = Time.time;
+        }
+        
+        var allCivs = cachedAllCivs;
         
         foreach (var civ in allCivs)
         {
@@ -136,8 +157,16 @@ public class UnitReinforcementManager : MonoBehaviour
     /// </summary>
     private City FindCityAtTile(int tileIndex)
     {
-        var allCities = FindObjectsByType<City>(FindObjectsSortMode.None);
-        foreach (var city in allCities)
+        // Use cached cities array to avoid expensive FindObjectsByType call
+        if (Time.time - lastCityCacheUpdate > CITY_CACHE_UPDATE_INTERVAL)
+        {
+            cachedAllCities = FindObjectsByType<City>(FindObjectsSortMode.None);
+            lastCityCacheUpdate = Time.time;
+        }
+        
+        if (cachedAllCities == null) return null;
+        
+        foreach (var city in cachedAllCities)
         {
             if (city == null) continue;
             if (city.centerTileIndex == tileIndex)

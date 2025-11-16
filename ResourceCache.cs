@@ -119,14 +119,11 @@ public static class ResourceCache
         
         // Use the new GetPrefab() method which loads from prefabPath
         GameObject prefab = unitData.GetPrefab();
-        if (prefab != null)
-        {
-            Debug.Log($"[ResourceCache] Loaded prefab for {unitData.unitName} from path: {unitData.prefabPath}");
-        }
-        else
+        if (prefab == null)
         {
             Debug.LogWarning($"[ResourceCache] Could not load prefab for {unitData.unitName}. Check prefabPath: '{unitData.prefabPath}'");
         }
+        // Debug removed - prefab loading is working correctly
     }
     
     /// <summary>

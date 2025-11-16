@@ -1436,7 +1436,8 @@ public class City : MonoBehaviour
         foreach (int idx in owned)
         {
             Vector3 tilePos = planetGenerator.Grid.tileCenters[idx];
-            if (Vector3.Distance(cityCenterPos, tilePos) <= maxDist)
+            float distanceSqr = (cityCenterPos - tilePos).sqrMagnitude;
+            if (distanceSqr <= maxDist * maxDist)
             {
                 var maybe = TileSystem.Instance.GetTileData(idx);
                 if (maybe != null)
