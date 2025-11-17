@@ -12,10 +12,10 @@ public class UnitSeparation : MonoBehaviour
     public float minSeparation = 1.2f;
     
     [Tooltip("Separation strength multiplier (higher = stronger push)")]
-    public float separationStrength = 2f;
+    public float separationStrength = 1f;
     
     [Tooltip("Separation speed (how fast units separate)")]
-    public float separationSpeed = 5f;
+    public float separationSpeed = 2f;
     
     [Tooltip("Maximum separation force per frame (prevents sudden jumps)")]
     public float maxSeparationForce = 0.5f;
