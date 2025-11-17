@@ -1784,6 +1784,15 @@ public class BattleTestSimple : MonoBehaviour
                 capsuleCollider.center = new Vector3(0, 1f, 0); // Center at body, not feet
             }
             
+            // Add UnitSeparation component to prevent overlap
+            var unitSeparation = soldier.GetComponent<UnitSeparation>();
+            if (unitSeparation == null)
+            {
+                unitSeparation = soldier.AddComponent<UnitSeparation>();
+                // Configure separation settings
+                unitSeparation.minSeparation = MIN_UNIT_SEPARATION;
+            }
+            
             // Ensure soldier has Rigidbody for trigger detection to work
             // Unity requires at least one Rigidbody for OnTriggerEnter to fire
             // IMPORTANT: Both objects need Rigidbodies for triggers to work reliably
@@ -3104,8 +3113,10 @@ public class FormationUnit : MonoBehaviour
     // Per-soldier combat offsets (allows individuals to step forward during melee)
     private Dictionary<GameObject, Vector3> soldierOffsetOverrides = new Dictionary<GameObject, Vector3>();
     private Dictionary<GameObject, Coroutine> soldierOffsetCoroutines = new Dictionary<GameObject, Coroutine>();
+    private Dictionary<GameObject, Coroutine> soldierFacingCoroutines = new Dictionary<GameObject, Coroutine>(); // Track facing coroutines for cleanup
     private const float SOLDIER_APPROACH_DURATION = 0.2f;
     private const float SOLDIER_COMBAT_SEPARATION = 0.8f;
+    private const float MIN_UNIT_SEPARATION = 1.2f; // Minimum distance between units to prevent overlap (buffer zone)
     
     // Badge refresh timer (avoid updating UI text every frame)
     private float badgeUpdateTimer = 0f;
@@ -3164,6 +3175,16 @@ public class FormationUnit : MonoBehaviour
             }
         }
         soldierOffsetCoroutines.Clear();
+        
+        // Stop all soldier facing coroutines
+        foreach (var coroutine in soldierFacingCoroutines.Values)
+        {
+            if (coroutine != null)
+            {
+                StopCoroutine(coroutine);
+            }
+        }
+        soldierFacingCoroutines.Clear();
         
         // Clear contact tracking
         soldierContacts.Clear();
@@ -3706,6 +3727,14 @@ public class FormationUnit : MonoBehaviour
                     
                     float moveSpeed = 10f * formationIntegrity; // Slower movement when loose
                     Vector3 newPos = Vector3.MoveTowards(currentPos, blendedTarget, moveSpeed * Time.deltaTime);
+                    
+                    // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                    var unitSeparation = soldiers[i].GetComponent<UnitSeparation>();
+                    if (unitSeparation != null)
+                    {
+                        newPos = unitSeparation.ApplySeparation(newPos);
+                    }
+                    
                     newPos = ClampFormationToBattlefieldBounds(newPos);
                     soldiers[i].transform.position = newPos;
                 }
@@ -3734,6 +3763,14 @@ public class FormationUnit : MonoBehaviour
                 targetPos = ClampFormationToBattlefieldBounds(targetPos);
                 float moveSpeed = 10f; // Speed of interpolation
                 Vector3 newPos = Vector3.MoveTowards(currentPos, targetPos, moveSpeed * Time.deltaTime);
+                
+                // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                var unitSeparation = soldiers[i].GetComponent<UnitSeparation>();
+                if (unitSeparation != null)
+                {
+                    newPos = unitSeparation.ApplySeparation(newPos);
+                }
+                
                 // Clamp new position to ensure soldiers don't leave the map during movement
                 newPos = ClampFormationToBattlefieldBounds(newPos);
                 soldiers[i].transform.position = newPos;
@@ -3816,24 +3853,43 @@ public class FormationUnit : MonoBehaviour
     bool CheckForEnemies()
     {
         // Combat is now initiated by trigger-based contact detection (FormationSoldierContactDetector)
-        // This method just checks if we're already in contact with enemies to stop movement
+        // This method checks if we should stop formation movement
         
-        // Check if any of our soldiers have enemy contacts (trigger-based detection)
-        if (soldierContacts != null)
+        // CRITICAL FIX: Don't stop formation movement just because one soldier made contact!
+        // Allow formation to continue moving so ALL soldiers can engage, not just the first one
+        // Only stop formation movement when most/all soldiers are in contact
+        
+        if (soldierContacts == null || soldiers == null) return false;
+        
+        // Count how many soldiers are in contact
+        int soldiersInContact = 0;
+        int totalAliveSoldiers = 0;
+        
+        foreach (var soldier in soldiers)
         {
-            foreach (var kvp in soldierContacts)
+            if (soldier == null || soldiersMarkedForDestruction.Contains(soldier)) continue;
+            totalAliveSoldiers++;
+            
+            if (soldierContacts.TryGetValue(soldier, out var contacts) && contacts != null && contacts.Count > 0)
             {
-                if (kvp.Key == null) continue;
-                if (kvp.Value != null && kvp.Value.Count > 0)
-                {
-                    // We have contacts - combat should already be started by FormationSoldierContactDetector
-                    // Just return true to stop movement
+                soldiersInContact++;
+            }
+        }
+        
+        // Only stop formation movement if most soldiers (75%+) are already in contact
+        // This allows the formation to continue moving so remaining soldiers can engage
+        if (totalAliveSoldiers > 0)
+        {
+            float contactRatio = (float)soldiersInContact / totalAliveSoldiers;
+            if (contactRatio >= 0.75f)
+            {
+                // Most soldiers are in contact - formation can stop moving
+                // Individual soldiers will still move toward their targets in CombatDamageCoroutine
                 return true;
             }
         }
-        }
         
-        // No contacts detected - formations can continue moving
+        // Not enough soldiers in contact yet - continue moving so more can engage
         return false;
     }
     
@@ -4223,62 +4279,87 @@ public class FormationUnit : MonoBehaviour
                 break;
             }
             
-            // Pair soldiers in contact (already paired in contact detection)
-            int pairs = Mathf.Min(reusableMyInContactList.Count, reusableEnInContactList.Count);
-            Debug.Log($"[CombatDamageCoroutine] {formationName}: Processing {pairs} attack pairs");
+            // Process ALL soldiers in contact independently - each can attack their own target
+            // This allows multiple soldiers to attack simultaneously, not just one pair
+            Debug.Log($"[CombatDamageCoroutine] {formationName}: Processing {reusableMyInContactList.Count} soldiers in contact");
             
-            // Process each pair with individual attack cooldowns
-            for (int i = 0; i < pairs; i++)
+            // Process each of our soldiers that has an enemy in contact
+            for (int i = 0; i < reusableMyInContactList.Count; i++)
             {
-                var a = reusableMyInContactList[i];
-                var b = reusableEnInContactList[i];
-                if (a == null || b == null) continue;
+                var mySoldier = reusableMyInContactList[i];
+                var enemySoldier = reusableEnInContactList[i];
+                if (mySoldier == null || enemySoldier == null) continue;
 
                 // Use cached CombatUnit references
-                if (!soldierCombatUnitCache.TryGetValue(a, out var aCU))
+                if (!soldierCombatUnitCache.TryGetValue(mySoldier, out var myCU))
                 {
-                    aCU = a.GetComponent<CombatUnit>();
-                    if (aCU != null) soldierCombatUnitCache[a] = aCU;
+                    myCU = mySoldier.GetComponent<CombatUnit>();
+                    if (myCU != null) soldierCombatUnitCache[mySoldier] = myCU;
                 }
-                var bCU = b.GetComponent<CombatUnit>();
-                if (aCU == null || bCU == null) continue;
+                if (!enemyFormation.soldierCombatUnitCache.TryGetValue(enemySoldier, out var enemyCU))
+                {
+                    enemyCU = enemySoldier.GetComponent<CombatUnit>();
+                    if (enemyCU != null) enemyFormation.soldierCombatUnitCache[enemySoldier] = enemyCU;
+                }
+                if (myCU == null || enemyCU == null) continue;
 
-                // Check individual attack cooldown - each unit has its own cooldown
-                float cooldown = soldierAttackCooldowns.TryGetValue(a, out var cd) ? cd : 0f;
-                if (cooldown > 0f)
+                // CRITICAL: Make soldiers face their target continuously during combat
+                // Start facing coroutine if not already running (will be cleaned up when combat ends)
+                if (!soldierFacingCoroutines.ContainsKey(mySoldier))
                 {
-                    // Still on cooldown, skip attack but allow pursuit
-                    // Cooldown will be reduced at end of loop
-                    Debug.Log($"[CombatDamageCoroutine] {a.name} on cooldown ({cooldown:F2}s remaining)");
+                    var faceCoroutine = StartCoroutine(FaceTargetContinuously(mySoldier, enemySoldier));
+                    soldierFacingCoroutines[mySoldier] = faceCoroutine;
+                    activeCoroutines.Add(faceCoroutine);
                 }
-                else
+
+                // CRITICAL: Soldiers should continuously move toward their target enemy
+                // This allows individual soldiers to engage, not just the formation center
+                Vector3 toEnemy = enemySoldier.transform.position - mySoldier.transform.position;
+                float distance = toEnemy.magnitude;
+                
+                // Move toward enemy if not in perfect melee range (unless routing)
+                if (!isRouted && distance > 0.5f && distance < 3.0f) // Move if between 0.5 and 3 units away
                 {
-                    // Ready to attack
-                    Debug.Log($"[CombatDamageCoroutine] {a.name} ready to attack {b.name}");
+                    Vector3 pursuitDirection = toEnemy.normalized;
+                    float pursuitSpeed = 3f; // Speed to close with enemy
+                    Vector3 newPos = Vector3.MoveTowards(mySoldier.transform.position, enemySoldier.transform.position, pursuitSpeed * Time.deltaTime);
+                    newPos = Ground(newPos);
                     
-                    // Allow units to pursue targets - move slightly toward enemy if not in perfect melee range
-                    Vector3 toEnemy = b.transform.position - a.transform.position;
-                    float distance = toEnemy.magnitude;
-                    if (distance > 0.8f && distance < 2.0f)
+                    // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                    var unitSeparation = mySoldier.GetComponent<UnitSeparation>();
+                    if (unitSeparation != null)
                     {
-                        Vector3 pursuitDirection = toEnemy.normalized;
-                        float pursuitSpeed = 2f;
-                        Vector3 newPos = Vector3.MoveTowards(a.transform.position, b.transform.position, pursuitSpeed * Time.deltaTime);
-                        newPos = Ground(newPos);
-                        newPos = ClampFormationToBattlefieldBounds(newPos);
-                        a.transform.position = newPos;
+                        newPos = unitSeparation.ApplySeparation(newPos);
                     }
                     
-                    // Attack is ready - start attack and set cooldown
-                    Debug.Log($"[CombatDamageCoroutine] Starting StaggeredAttack: {a.name} -> {b.name}");
-                    var attackCoroutine = StartCoroutine(StaggeredAttack(aCU, bCU, 0f, this, enemyFormation));
-                if (attackCoroutine != null)
+                    newPos = ClampFormationToBattlefieldBounds(newPos);
+                    mySoldier.transform.position = newPos;
+                }
+
+                // Check individual attack cooldown - each unit has its own cooldown
+                float cooldown = soldierAttackCooldowns.TryGetValue(mySoldier, out var cd) ? cd : 0f;
+                if (cooldown > 0f)
                 {
-                    activeCoroutines.Add(attackCoroutine);
+                    // Still on cooldown, skip attack but continue moving/facing
+                    // Cooldown will be reduced at end of loop
+                    continue;
+                }
+                
+                // Ready to attack - check if enemy is still in range
+                if (distance <= MELEE_RANGE * 1.5f) // Slightly extended range for attack
+                {
+                    Debug.Log($"[CombatDamageCoroutine] {mySoldier.name} ready to attack {enemySoldier.name}");
+                    
+                    // Attack is ready - start attack and set cooldown
+                    Debug.Log($"[CombatDamageCoroutine] Starting StaggeredAttack: {mySoldier.name} -> {enemySoldier.name}");
+                    var attackCoroutine = StartCoroutine(StaggeredAttack(myCU, enemyCU, 0f, this, enemyFormation));
+                    if (attackCoroutine != null)
+                    {
+                        activeCoroutines.Add(attackCoroutine);
                     }
                     
                     // Set individual attack cooldown for this unit
-                    soldierAttackCooldowns[a] = BASE_ATTACK_COOLDOWN;
+                    soldierAttackCooldowns[mySoldier] = BASE_ATTACK_COOLDOWN;
                 }
             }
             
@@ -4538,11 +4619,21 @@ public class FormationUnit : MonoBehaviour
         // Bring soldiers into close combat positions for more natural fights
         yield return BringSoldiersTogether(attacker, defender, attackerFormation, defenderFormation);
         
-        // Make units face their targets (continuous facing during combat)
-        var coroutine1 = StartCoroutine(FaceTargetContinuously(attacker.gameObject, defender.gameObject));
-        var coroutine2 = StartCoroutine(FaceTargetContinuously(defender.gameObject, attacker.gameObject));
-        if (coroutine1 != null) activeCoroutines.Add(coroutine1);
-        if (coroutine2 != null) activeCoroutines.Add(coroutine2);
+        // Make units face their targets immediately (continuous facing is handled in CombatDamageCoroutine)
+        // Just ensure they face each other at the start of attack
+        Vector3 attackerToDefender = defender.transform.position - attacker.transform.position;
+        attackerToDefender.y = 0;
+        if (attackerToDefender.sqrMagnitude > 0.01f)
+        {
+            attacker.transform.rotation = Quaternion.LookRotation(attackerToDefender.normalized);
+        }
+        
+        Vector3 defenderToAttacker = attacker.transform.position - defender.transform.position;
+        defenderToAttacker.y = 0;
+        if (defenderToAttacker.sqrMagnitude > 0.01f)
+        {
+            defender.transform.rotation = Quaternion.LookRotation(defenderToAttacker.normalized);
+        }
         
         // Clean up null coroutines periodically (manual loop to avoid LINQ allocation)
         for (int i = activeCoroutines.Count - 1; i >= 0; i--)
@@ -4642,20 +4733,51 @@ public class FormationUnit : MonoBehaviour
             attackerFormation.GainExperience(10, $"killed enemy soldier");
         }
         
-        // Counter if still alive
-        if (!bDied)
+        // CRITICAL: Counter-attack immediately if defender is still alive
+        // This ensures soldiers always attack back when hit (like Total War)
+        if (!bDied && defender != null && attacker != null)
         {
-            // Small delay before counter-attack
-            yield return new WaitForSeconds(0.2f);
+            // Very short delay before counter-attack (almost immediate)
+            yield return new WaitForSeconds(0.1f);
             
             // Safety check again
             if (attacker == null || defender == null || attacker.gameObject == null || defender.gameObject == null) yield break;
+            
+            // Make defender face attacker for counter-attack
+            Vector3 counterDefenderToAttacker = attacker.transform.position - defender.transform.position;
+            counterDefenderToAttacker.y = 0;
+            if (counterDefenderToAttacker.sqrMagnitude > 0.01f)
+            {
+                defender.transform.rotation = Quaternion.LookRotation(counterDefenderToAttacker.normalized);
+            }
+            
+            // Set defender to attacking state so animation plays
+            defender.battleState = BattleUnitState.Attacking;
             
             int baseDmgBA = Mathf.Max(0, defender.CurrentAttack - attacker.CurrentDefense);
             
             // Apply flanking bonus for counter-attack
             float flankingBonusBA = GetFlankingBonus(defenderFormation, attackerFormation);
+            
+            // Enhanced flanking: Apply defensive penalties for counter-attack too
+            float counterAttackAngle = CalculateAttackAngle(defenderFormation, attackerFormation);
+            float counterDefensePenalty = 1.0f;
+            
+            if (counterAttackAngle >= 135f) // Rear attack
+            {
+                counterDefensePenalty = 1.0f - REAR_ATTACK_DEFENSE_PENALTY;
+            }
+            else if (counterAttackAngle >= 45f) // Flank attack
+            {
+                counterDefensePenalty = 1.0f - FLANK_ATTACK_DEFENSE_PENALTY;
+            }
+            
+            int counterAdjustedDefense = Mathf.RoundToInt(attacker.CurrentDefense * counterDefensePenalty);
+            baseDmgBA = Mathf.Max(0, defender.CurrentAttack - counterAdjustedDefense);
+            
             int finalDmgBA = Mathf.RoundToInt(baseDmgBA * flankingBonusBA);
+            
+            Debug.Log($"[StaggeredAttack] Counter-attack: {defender.gameObject.name} -> {attacker.gameObject.name}, damage={finalDmgBA}");
             
             // Apply knockback on heavy counter-hits
             if (finalDmgBA > 5) // Heavy hit threshold
@@ -4792,13 +4914,12 @@ public class FormationUnit : MonoBehaviour
     
     /// <summary>
     /// Make a unit face its target continuously during combat
+    /// Runs until combat ends or unit dies
     /// </summary>
     System.Collections.IEnumerator FaceTargetContinuously(GameObject unit, GameObject target)
     {
-        float duration = 1.5f; // Face target for 1.5 seconds (typical attack duration)
-        float elapsed = 0f;
-        
-        while (elapsed < duration && unit != null && target != null)
+        // Run continuously while both units exist and are in combat
+        while (unit != null && target != null && isInCombat)
         {
             // Check if target is still alive (immediate exit on death)
             if (unit == null || target == null) yield break;
@@ -4819,7 +4940,6 @@ public class FormationUnit : MonoBehaviour
                 unit.transform.rotation = Quaternion.Slerp(unit.transform.rotation, targetRotation, Time.deltaTime * 10f);
             }
             
-            elapsed += Time.deltaTime;
             yield return null;
         }
     }
