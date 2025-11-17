@@ -1789,8 +1789,8 @@ public class BattleTestSimple : MonoBehaviour
             if (unitSeparation == null)
             {
                 unitSeparation = soldier.AddComponent<UnitSeparation>();
-                // Configure separation settings
-                unitSeparation.minSeparation = MIN_UNIT_SEPARATION;
+                // Configure separation settings (default is 1.2f, which is good)
+                // Component will use its default values from Inspector
             }
             
             // Ensure soldier has Rigidbody for trigger detection to work
