@@ -72,7 +72,7 @@ public class BattleVictoryManager : MonoBehaviour
         battleStartTime = Time.time;
         lastVictoryCheck = Time.time;
 
-        DebugLog($"Battle initialized: {attackerUnits.Count} attackers vs {defenderUnits.Count} defenders");
+        // Battle initialized
     }
     
     /// <summary>
@@ -81,8 +81,6 @@ public class BattleVictoryManager : MonoBehaviour
     /// </summary>
     public void InitializeWithExpectedCounts(int expectedAttackers, int expectedDefenders)
     {
-        DebugLog($"Initializing victory manager with expected counts: {expectedAttackers} attackers, {expectedDefenders} defenders");
-        
         // Clear any existing battle state
         attackerUnits.Clear();
         defenderUnits.Clear();
@@ -91,7 +89,6 @@ public class BattleVictoryManager : MonoBehaviour
         
         // Store expected counts for later validation
         // The actual units will be added when InitializeBattle is called after spawning
-        DebugLog($"Victory manager ready to track {expectedAttackers} expected attackers vs {expectedDefenders} expected defenders");
     }
 
     /// <summary>

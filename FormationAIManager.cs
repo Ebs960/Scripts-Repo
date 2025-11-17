@@ -267,16 +267,16 @@ public class FormationAIManager : MonoBehaviour
         {
             if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
-            // Find nearest enemy formation
-            FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
-            if (nearestEnemy != null)
+            // Find best target (smarter targeting)
+            FormationUnit targetEnemy = FindBestTargetFormation(formation);
+            if (targetEnemy != null)
             {
-                float distance = Vector3.Distance(formation.formationCenter, nearestEnemy.formationCenter);
+                float distance = Vector3.Distance(formation.formationCenter, targetEnemy.formationCenter);
                 
                 if (distance > preferredEngagementRange)
                 {
                     // Move towards enemy
-                    formation.MoveToPosition(nearestEnemy.formationCenter);
+                    formation.MoveToPosition(targetEnemy.formationCenter);
                 }
                 else
                 {
@@ -297,10 +297,10 @@ public class FormationAIManager : MonoBehaviour
         {
             if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
-            FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
-            if (nearestEnemy != null)
+            FormationUnit targetEnemy = FindBestTargetFormation(formation);
+            if (targetEnemy != null)
             {
-                formation.MoveToPosition(nearestEnemy.formationCenter);
+                formation.MoveToPosition(targetEnemy.formationCenter);
             }
         }
         
@@ -333,10 +333,10 @@ public class FormationAIManager : MonoBehaviour
         {
             if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
-            FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
-            if (nearestEnemy != null)
+            FormationUnit targetEnemy = FindBestTargetFormation(formation);
+            if (targetEnemy != null)
             {
-                formation.MoveToPosition(nearestEnemy.formationCenter);
+                formation.MoveToPosition(targetEnemy.formationCenter);
             }
         }
         
@@ -369,10 +369,10 @@ public class FormationAIManager : MonoBehaviour
         {
             if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
-            FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
-            if (nearestEnemy != null)
+            FormationUnit targetEnemy = FindBestTargetFormation(formation);
+            if (targetEnemy != null)
             {
-                formation.MoveToPosition(nearestEnemy.formationCenter);
+                formation.MoveToPosition(targetEnemy.formationCenter);
             }
         }
         
@@ -405,10 +405,10 @@ public class FormationAIManager : MonoBehaviour
         {
             if (formation == null || formation.isRouted || formation.isPlayerControlled) continue; // Skip player-controlled formations
             
-            FormationUnit nearestEnemy = FindNearestEnemyFormation(formation);
-            if (nearestEnemy != null)
+            FormationUnit targetEnemy = FindBestTargetFormation(formation);
+            if (targetEnemy != null)
             {
-                formation.MoveToPosition(nearestEnemy.formationCenter);
+                formation.MoveToPosition(targetEnemy.formationCenter);
             }
         }
         
@@ -432,7 +432,62 @@ public class FormationAIManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Find nearest enemy formation
+    /// Find best target for formation (smarter targeting - prioritizes weak targets, considers unit types)
+    /// </summary>
+    private FormationUnit FindBestTargetFormation(FormationUnit formation)
+    {
+        List<FormationUnit> enemies = formation.isAttacker ? defenderFormations : attackerFormations;
+        FormationUnit bestTarget = null;
+        float bestScore = float.MinValue;
+        
+        foreach (var enemy in enemies)
+        {
+            if (enemy == null || enemy.isRouted || enemy.currentHealth <= 0) continue;
+            
+            // Calculate target score based on multiple factors
+            float score = 0f;
+            
+            // Factor 1: Proximity (closer = better, but not the only factor)
+            float distance = Vector3.Distance(formation.formationCenter, enemy.formationCenter);
+            float proximityScore = 1.0f / (1.0f + distance * 0.1f); // Inverse distance weighting
+            score += proximityScore * 0.3f; // 30% weight
+            
+            // Factor 2: Weakness (low health/morale = better target)
+            float healthRatio = (float)enemy.currentHealth / enemy.totalHealth;
+            float moraleRatio = enemy.currentMorale / 100f;
+            float weaknessScore = (1.0f - healthRatio) * 0.6f + (1.0f - moraleRatio) * 0.4f; // Health more important
+            score += weaknessScore * 0.4f; // 40% weight
+            
+            // Factor 3: Unit type advantage (could be expanded with unit type data)
+            // For now, prioritize smaller formations (easier to overwhelm)
+            float sizeScore = 1.0f / (1.0f + enemy.soldiers.Count * 0.01f);
+            score += sizeScore * 0.2f; // 20% weight
+            
+            // Factor 4: Flanking opportunity (if enemy is already engaged, easier to flank)
+            // Check if enemy is in combat with another formation
+            if (enemy.isInCombat)
+            {
+                score += 0.1f; // 10% bonus for already engaged enemies
+            }
+            
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestTarget = enemy;
+            }
+        }
+        
+        // Fallback to nearest if no good target found
+        if (bestTarget == null)
+        {
+            return FindNearestEnemyFormation(formation);
+        }
+        
+        return bestTarget;
+    }
+    
+    /// <summary>
+    /// Find nearest enemy formation (fallback method)
     /// </summary>
     private FormationUnit FindNearestEnemyFormation(FormationUnit formation)
     {

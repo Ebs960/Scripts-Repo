@@ -17,7 +17,13 @@ public class FormationSoldierContactDetector : MonoBehaviour
     
     void OnTriggerEnter(Collider other)
     {
-        if (formation == null || soldier == null) return;
+        Debug.Log($"[ContactDetector] OnTriggerEnter called: {soldier?.name ?? "null"} detected {other?.gameObject?.name ?? "null"}");
+        
+        if (formation == null || soldier == null)
+        {
+            Debug.LogWarning($"[ContactDetector] Formation or soldier is null!");
+            return;
+        }
         
         // Get the GameObject that owns this collider (could be the collider itself or its parent)
         GameObject enemySoldier = other.gameObject;
@@ -31,22 +37,40 @@ public class FormationSoldierContactDetector : MonoBehaviour
             if (otherCombatUnit != null)
             {
                 enemySoldier = otherCombatUnit.gameObject;
+                Debug.Log($"[ContactDetector] Found CombatUnit in parent: {enemySoldier.name}");
             }
             else
             {
+                Debug.Log($"[ContactDetector] {soldier.name} detected {other.gameObject.name} but no CombatUnit found (ignoring)");
                 return; // Not a combat unit
             }
         }
         
         // Find which formation this enemy belongs to
         FormationUnit enemyFormation = formation.FindFormationForSoldier(enemySoldier);
-        if (enemyFormation == null) return;
+        if (enemyFormation == null)
+        {
+            Debug.Log($"[ContactDetector] {soldier.name} detected {enemySoldier.name} but couldn't find enemy formation");
+            return;
+        }
         
         // Check if it's actually an enemy (different attacker/defender status)
-        if (enemyFormation.isAttacker == formation.isAttacker) return; // Same team, ignore
+        if (enemyFormation.isAttacker == formation.isAttacker)
+        {
+            Debug.Log($"[ContactDetector] {soldier.name} detected {enemySoldier.name} but same team (ignoring)");
+            return; // Same team, ignore
+        }
         
         // Add to contact list
         formation.AddSoldierContact(soldier, enemySoldier);
+        Debug.Log($"[ContactDetector] {soldier.name} ({formation.formationName}) detected enemy contact: {enemySoldier.name} ({enemyFormation.formationName})");
+        
+        // Trigger combat if not already in combat
+        if (!formation.isInCombat)
+        {
+            Debug.Log($"[ContactDetector] Starting combat between {formation.formationName} and {enemyFormation.formationName}");
+            formation.StartCombatWithFormation(enemyFormation);
+        }
     }
     
     void OnTriggerExit(Collider other)

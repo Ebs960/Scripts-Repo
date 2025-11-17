@@ -165,6 +165,9 @@ public class BattleTestSimple : MonoBehaviour
     // Reusable temporary lists to avoid allocations
     private List<string> reusableStringList = new List<string>();
     
+    // Track all coroutines started by BattleTestSimple for proper cleanup
+    private List<Coroutine> trackedCoroutines = new List<Coroutine>();
+    
     void Awake()
     {
         // Singleton pattern (removed DontDestroyOnLoad - this is a scene-specific component)
@@ -207,7 +210,8 @@ public class BattleTestSimple : MonoBehaviour
         
         // MEMORY FIX: Defer heavy resource loading to prevent memory spike at startup
         // Load resources in a coroutine over multiple frames instead of all at once
-        StartCoroutine(LoadResourcesAsync());
+        var loadResourcesCoroutine = StartCoroutine(LoadResourcesAsync());
+        trackedCoroutines.Add(loadResourcesCoroutine);
         
         // Set up control dropdowns immediately (no heavy loading needed)
         SetupControlDropdowns();
@@ -1207,7 +1211,8 @@ public class BattleTestSimple : MonoBehaviour
         }
         
         // Also initialize after spawning as a fallback (in case units aren't properly initialized)
-        StartCoroutine(InitializeVictoryManagerDelayed());
+            var victoryCoroutine = StartCoroutine(InitializeVictoryManagerDelayed());
+            trackedCoroutines.Add(victoryCoroutine);
         
         // Build simple battle HUD along the top with formation info buttons
         CreateBattleHUD();
@@ -1219,7 +1224,8 @@ public class BattleTestSimple : MonoBehaviour
         InitializeFormationAI();
         
         // Update UI after formations are fully created (delayed to ensure all formations are ready)
-        StartCoroutine(UpdateBattleUIDelayed());
+        var uiUpdateCoroutine = StartCoroutine(UpdateBattleUIDelayed());
+        trackedCoroutines.Add(uiUpdateCoroutine);
     }
     
     /// <summary>
@@ -1390,8 +1396,74 @@ public class BattleTestSimple : MonoBehaviour
     
     void OnDestroy()
     {
+        // CRITICAL: Remove all event listeners to prevent memory leaks
+        RemoveAllEventListeners();
+        
+        // Stop all tracked coroutines to prevent errors after destruction
+        StopAllTrackedCoroutines();
+        
         // Clean up when component is destroyed
         CleanupPreviousTest();
+    }
+    
+    /// <summary>
+    /// Remove all event listeners to prevent memory leaks
+    /// </summary>
+    void RemoveAllEventListeners()
+    {
+        // Remove button listeners
+        if (testButton != null)
+        {
+            testButton.onClick.RemoveListener(StartTest);
+        }
+        
+        // Remove unit dropdown listeners
+        if (attackerUnitDropdown != null)
+        {
+            attackerUnitDropdown.onValueChanged.RemoveListener(OnAttackerUnitChanged);
+        }
+        if (defenderUnitDropdown != null)
+        {
+            defenderUnitDropdown.onValueChanged.RemoveListener(OnDefenderUnitChanged);
+        }
+        
+        // Remove civilization dropdown listeners
+        if (attackerCivDropdown != null)
+        {
+            attackerCivDropdown.onValueChanged.RemoveListener(OnAttackerCivChanged);
+        }
+        if (defenderCivDropdown != null)
+        {
+            defenderCivDropdown.onValueChanged.RemoveListener(OnDefenderCivChanged);
+        }
+        
+        // Remove control dropdown listeners
+        if (attackerControlDropdown != null)
+        {
+            attackerControlDropdown.onValueChanged.RemoveListener(OnAttackerControlChanged);
+        }
+        if (defenderControlDropdown != null)
+        {
+            defenderControlDropdown.onValueChanged.RemoveListener(OnDefenderControlChanged);
+        }
+        
+        // Clear action delegates
+        OnBattleEnded = null;
+    }
+    
+    /// <summary>
+    /// Stop all tracked coroutines to prevent errors after destruction
+    /// </summary>
+    void StopAllTrackedCoroutines()
+    {
+        foreach (var coroutine in trackedCoroutines)
+        {
+            if (coroutine != null)
+            {
+                StopCoroutine(coroutine);
+            }
+        }
+        trackedCoroutines.Clear();
     }
     
     void CleanupPreviousTest()
@@ -1433,12 +1505,6 @@ public class BattleTestSimple : MonoBehaviour
             defenderCivInstance = null;
         }
         
-        // Force aggressive memory cleanup
-        System.GC.Collect();
-        System.GC.WaitForPendingFinalizers();
-        System.GC.Collect();
-        Resources.UnloadUnusedAssets();
-        
         // Clear availableUnits list to free memory (no longer needed after battle)
         availableUnits.Clear();
         
@@ -1447,6 +1513,16 @@ public class BattleTestSimple : MonoBehaviour
         
         // Clear prefab cache to free memory
         ClearPrefabCache();
+        
+        // CRITICAL: Clear ResourceCache to release ScriptableObject references
+        // This prevents static arrays from holding references permanently
+        ResourceCache.Clear();
+        
+        // Force aggressive memory cleanup
+        System.GC.Collect();
+        System.GC.WaitForPendingFinalizers();
+        System.GC.Collect();
+        Resources.UnloadUnusedAssets();
         
         // Destroy shared formation badge Canvas
         if (sharedFormationBadgeCanvas != null)
@@ -1569,7 +1645,7 @@ public class BattleTestSimple : MonoBehaviour
                 DebugLog($"Creating soldier {i + 1} at position {soldierPosition}");
                 
                 // Create soldier using existing CombatUnit system
-                GameObject soldier = CreateCombatUnitSoldier($"Soldier{i + 1}", soldierPosition, teamColor, formation.isAttacker);
+                GameObject soldier = CreateCombatUnitSoldier($"Soldier{i + 1}", soldierPosition, teamColor, formation.isAttacker, formation);
                 
                 if (soldier != null)
                 {
@@ -1631,7 +1707,7 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
     
-    GameObject CreateCombatUnitSoldier(string soldierName, Vector3 position, Color teamColor, bool isAttacker)
+    GameObject CreateCombatUnitSoldier(string soldierName, Vector3 position, Color teamColor, bool isAttacker, FormationUnit formation)
     {
         try
         {
@@ -1708,35 +1784,105 @@ public class BattleTestSimple : MonoBehaviour
                 capsuleCollider.center = new Vector3(0, 1f, 0); // Center at body, not feet
             }
             
-            // Add trigger collider for contact detection (melee range detection)
-            // This replaces distance checks - units detect enemies via collision triggers
-            var triggerCollider = soldier.GetComponent<SphereCollider>();
+            // Ensure soldier has Rigidbody for trigger detection to work
+            // Unity requires at least one Rigidbody for OnTriggerEnter to fire
+            // IMPORTANT: Both objects need Rigidbodies for triggers to work reliably
+            var rigidbody = soldier.GetComponent<Rigidbody>();
+            if (rigidbody == null)
+            {
+                rigidbody = soldier.AddComponent<Rigidbody>();
+                rigidbody.isKinematic = true; // Kinematic so soldiers don't fall, but triggers still work
+                rigidbody.useGravity = false; // No gravity needed
+                rigidbody.detectCollisions = true; // Ensure collision detection is enabled
+                Debug.Log($"[CombatSetup] Added kinematic Rigidbody to {soldier.name} for trigger detection");
+            }
+            else
+            {
+                // Ensure existing Rigidbody is kinematic (so soldiers don't fall)
+                rigidbody.isKinematic = true;
+                rigidbody.useGravity = false;
+                rigidbody.detectCollisions = true; // Ensure collision detection is enabled
+            }
+            
+            // Use existing trigger collider for contact detection (units already have trigger colliders)
+            // Find any existing trigger collider on the soldier and ensure it has adequate detection range
+            const float MIN_DETECTION_RADIUS = 6.5f; // Minimum radius for reliable contact detection (1.5 units)
+            Collider triggerCollider = null;
+            var allColliders = soldier.GetComponents<Collider>();
+            foreach (var col in allColliders)
+            {
+                if (col.isTrigger)
+                {
+                    triggerCollider = col;
+                    
+                    // Adjust radius if it's too small for reliable detection
+                    if (col is SphereCollider sphere)
+                    {
+                        if (sphere.radius < MIN_DETECTION_RADIUS)
+                        {
+                            sphere.radius = MIN_DETECTION_RADIUS;
+                            Debug.Log($"[CombatSetup] Increased trigger radius on {soldier.name} from {sphere.radius} to {MIN_DETECTION_RADIUS}");
+                        }
+                    }
+                    else if (col is CapsuleCollider capsule)
+                    {
+                        // For capsule collider, increase radius if too small
+                        if (capsule.radius < MIN_DETECTION_RADIUS)
+                        {
+                            capsule.radius = MIN_DETECTION_RADIUS;
+                            Debug.Log($"[CombatSetup] Increased capsule trigger radius on {soldier.name} to {MIN_DETECTION_RADIUS}");
+                        }
+                    }
+                    
+                    Debug.Log($"[CombatSetup] Found existing trigger collider on {soldier.name}: {col.GetType().Name}, radius={(col is SphereCollider s ? s.radius : (col is CapsuleCollider c ? c.radius : 0f))}");
+                    break;
+                }
+            }
+            
             if (triggerCollider == null)
             {
-                triggerCollider = soldier.AddComponent<SphereCollider>();
-                triggerCollider.isTrigger = true;
-                triggerCollider.radius = MELEE_RANGE; // 1.5 units detection radius
-                triggerCollider.center = new Vector3(0, 1f, 0); // Center at body
+                Debug.LogWarning($"[CombatSetup] {soldier.name} has no trigger collider! Contact detection may not work. Found {allColliders.Length} collider(s) total.");
+                // List all colliders for debugging
+                foreach (var col in allColliders)
+                {
+                    Debug.LogWarning($"[CombatSetup]   - {col.GetType().Name}, isTrigger={col.isTrigger}, enabled={col.enabled}");
+                }
             }
-            else if (!triggerCollider.isTrigger)
+            else
             {
-                // If collider exists but isn't a trigger, add a separate trigger
-                var newTrigger = soldier.AddComponent<SphereCollider>();
-                newTrigger.isTrigger = true;
-                newTrigger.radius = MELEE_RANGE;
-                newTrigger.center = new Vector3(0, 1f, 0);
+                // Ensure trigger collider is enabled and properly configured
+                triggerCollider.enabled = true;
+                
+                // Verify Rigidbody is on the same GameObject or parent of the collider
+                // Unity triggers work when Rigidbody is on same GameObject or parent
+                var colliderRb = triggerCollider.GetComponent<Rigidbody>();
+                if (colliderRb == null)
+                {
+                    // Check if collider is on a child - Rigidbody should be on parent
+                    var parentRb = triggerCollider.GetComponentInParent<Rigidbody>();
+                    if (parentRb == null || parentRb.gameObject != soldier)
+                    {
+                        Debug.LogWarning($"[CombatSetup] {soldier.name}: Trigger collider may not detect properly - Rigidbody should be on same GameObject or parent");
+                    }
+                }
+                
+                // Ensure the collider's GameObject is active
+                if (!triggerCollider.gameObject.activeInHierarchy)
+                {
+                    Debug.LogWarning($"[CombatSetup] {soldier.name}: Trigger collider GameObject is not active!");
+                }
             }
             
-            // Initialize contact tracking for this soldier
-            if (!soldierContacts.ContainsKey(soldier))
+            // Initialize contact tracking for this soldier (on the formation)
+            if (!formation.soldierContacts.ContainsKey(soldier))
             {
-                soldierContacts[soldier] = new HashSet<GameObject>();
+                formation.soldierContacts[soldier] = new HashSet<GameObject>();
             }
             
-            // Initialize attack cooldown for this soldier
-            if (!soldierAttackCooldowns.ContainsKey(soldier))
+            // Initialize attack cooldown for this soldier (on the formation)
+            if (!formation.soldierAttackCooldowns.ContainsKey(soldier))
             {
-                soldierAttackCooldowns[soldier] = 0f; // Ready to attack immediately
+                formation.soldierAttackCooldowns[soldier] = 0f; // Ready to attack immediately
             }
             
             // Add contact detector component to track trigger events
@@ -1744,7 +1890,13 @@ public class BattleTestSimple : MonoBehaviour
             if (contactDetector == null)
             {
                 contactDetector = soldier.AddComponent<FormationSoldierContactDetector>();
-                contactDetector.Initialize(this, soldier);
+                contactDetector.Initialize(formation, soldier);
+                Debug.Log($"[CombatSetup] Added FormationSoldierContactDetector to {soldier.name}");
+            }
+            else
+            {
+                // Re-initialize in case formation reference changed
+                contactDetector.Initialize(formation, soldier);
             }
             
             // Initialize with unit data if available
@@ -2019,8 +2171,11 @@ public class BattleTestSimple : MonoBehaviour
     {
         if (onDemandPrefabCache != null)
         {
+            // Clear dictionary to release all prefab references
             onDemandPrefabCache.Clear();
-            DebugLog("Cleared on-demand prefab cache");
+            // Note: Dictionary.Clear() removes all entries and releases references
+            // The GameObjects will be garbage collected if no other references exist
+            DebugLog("Cleared on-demand prefab cache (released all prefab references)");
         }
     }
     
@@ -2388,7 +2543,8 @@ public class BattleTestSimple : MonoBehaviour
         // Check if we should load a battle scene or use current scene
         if (SceneManager.GetActiveScene().name != "BattleScene")
         {
-            StartCoroutine(LoadBattleScene());
+            var loadSceneCoroutine = StartCoroutine(LoadBattleScene());
+            trackedCoroutines.Add(loadSceneCoroutine);
         }
         else
         {
@@ -2654,7 +2810,7 @@ public class BattleTestSimple : MonoBehaviour
                 }
                 
                 // Create soldier GameObject
-                GameObject soldier = CreateCombatUnitSoldier($"Soldier_{unit.data.unitName}_{i + 1}", soldierPosition, teamColor, isAttacker);
+                GameObject soldier = CreateCombatUnitSoldier($"Soldier_{unit.data.unitName}_{i + 1}", soldierPosition, teamColor, isAttacker, formation);
                 
                 if (soldier != null)
                 {
@@ -2785,7 +2941,8 @@ public class BattleTestSimple : MonoBehaviour
         // Optionally return to main game scene
         if (result != null)
         {
-            StartCoroutine(ReturnToMainGame(result));
+            var returnCoroutine = StartCoroutine(ReturnToMainGame(result));
+            trackedCoroutines.Add(returnCoroutine);
         }
     }
     
@@ -2881,21 +3038,39 @@ public class FormationUnit : MonoBehaviour
     public bool hasAppliedChargeBonus = false; // Made public for access from coroutines - Track if charge bonus was applied this engagement
     
     // Combat state tracking
-    private bool isInCombat = false; // Track if formation is actively in melee combat
+    public bool isInCombat = false; // Track if formation is actively in melee combat (public for AI access)
     private const float MELEE_RANGE = 1.5f; // Distance for melee contact (used for trigger radius)
     private const float MELEE_RANGE_SQUARED = MELEE_RANGE * MELEE_RANGE;
     
     // Collision-based contact tracking (replaces distance checks)
     // Each soldier tracks enemies in contact via trigger colliders
-    private Dictionary<GameObject, HashSet<GameObject>> soldierContacts = new Dictionary<GameObject, HashSet<GameObject>>();
+    public Dictionary<GameObject, HashSet<GameObject>> soldierContacts = new Dictionary<GameObject, HashSet<GameObject>>();
     
     // Individual attack cooldowns per unit (replaces synchronized attacks)
-    private Dictionary<GameObject, float> soldierAttackCooldowns = new Dictionary<GameObject, float>();
+    public Dictionary<GameObject, float> soldierAttackCooldowns = new Dictionary<GameObject, float>();
     private const float BASE_ATTACK_COOLDOWN = 1.2f; // Base time between attacks per unit
     
     // Formation reformation after combat
     private bool needsReformation = false;
     private const float REFORMATION_SPEED = 5f; // Speed at which soldiers return to formation
+    
+    // Formation integrity system - decreases during prolonged combat, allowing looser formations
+    public float formationIntegrity = 1.0f; // 1.0 = tight formation, 0.0 = completely loose (public for cross-formation access)
+    private const float FORMATION_INTEGRITY_DECAY_RATE = 0.05f; // Per combat tick
+    private const float FORMATION_INTEGRITY_RECOVERY_RATE = 0.1f; // Per second when not in combat
+    private const float MIN_FORMATION_INTEGRITY = 0.3f; // Minimum integrity (never completely loose)
+    private const float MAX_FORMATION_SPACING_MULTIPLIER = 2.5f; // Max spacing when integrity is low
+    
+    // Enhanced flanking - defensive penalties and morale shocks
+    private const float REAR_ATTACK_DEFENSE_PENALTY = 0.5f; // 50% defense reduction when attacked from rear
+    private const float FLANK_ATTACK_DEFENSE_PENALTY = 0.25f; // 25% defense reduction when flanked
+    private const float REAR_ATTACK_MORALE_SHOCK = 5f; // Morale loss when attacked from rear
+    private const float FLANK_ATTACK_MORALE_SHOCK = 2f; // Morale loss when flanked
+    
+    // Disengagement tracking - for attacks of opportunity
+    private Dictionary<GameObject, float> soldierLastContactTime = new Dictionary<GameObject, float>();
+    private const float DISENGAGEMENT_WINDOW = 1.0f; // Time window for disengagement penalty
+    private const float DISENGAGEMENT_MORALE_PENALTY = 3f; // Morale loss for disengaging
     
     private CombatUnit[] soldierCombatUnits;
     private Renderer[] selectionRenderers;
@@ -3226,6 +3401,12 @@ public class FormationUnit : MonoBehaviour
             // Reformation is handled by coroutine, but we can also update positions here
             // The coroutine will set needsReformation = false when complete
         }
+        
+        // Recover formation integrity when not in combat
+        if (!isInCombat && formationIntegrity < 1.0f)
+        {
+            formationIntegrity = Mathf.Min(1.0f, formationIntegrity + FORMATION_INTEGRITY_RECOVERY_RATE * Time.deltaTime);
+        }
     }
     
     /// <summary>
@@ -3318,6 +3499,9 @@ public class FormationUnit : MonoBehaviour
         // Clear any remaining combat offsets
         ResetSoldierOffsets(0.5f);
         
+        // Restore formation integrity after reformation
+        formationIntegrity = 1.0f;
+        
         // Reformation complete
         needsReformation = false;
     }
@@ -3399,10 +3583,14 @@ public class FormationUnit : MonoBehaviour
     
     public void MoveToPosition(Vector3 position, bool running = false)
     {
-        targetPosition = position;
+        // Clamp target position to battlefield bounds to prevent off-map movement
+        targetPosition = ClampFormationToBattlefieldBounds(position);
         isMoving = true;
         isRunning = running;
         PlayWalkingAnimations();
+        
+        // Ensure formation center doesn't jump - soldiers will smoothly move toward new destination
+        // The formation center will move smoothly in MoveFormation() via interpolation
     }
     
     void MoveFormation()
@@ -3498,7 +3686,30 @@ public class FormationUnit : MonoBehaviour
         // Exception: During reformation, gradually move soldiers back to formation
         if (isInCombat && !needsReformation)
         {
-            // Only update badge position, let soldiers maintain their combat positions
+            // Apply formation integrity - lower integrity = looser formation
+            // Soldiers can drift further from formation positions based on integrity
+            for (int i = 0; i < soldiers.Count; i++)
+            {
+                if (soldiers[i] != null)
+                {
+                    Vector3 offset = GetFormationOffset(i);
+                    Vector3 desired = formationCenter + offset;
+                    if (soldierOffsetOverrides.TryGetValue(soldiers[i], out var extraOffset)) { desired += extraOffset; }
+                    Vector3 currentPos = soldiers[i].transform.position;
+                    Vector3 targetPos = Ground(desired);
+                    targetPos = ClampFormationToBattlefieldBounds(targetPos);
+                    
+                    // Blend between current position and formation position based on integrity
+                    // Low integrity = stay closer to current position (loose formation)
+                    // High integrity = move toward formation position (tight formation)
+                    Vector3 blendedTarget = Vector3.Lerp(currentPos, targetPos, formationIntegrity);
+                    
+                    float moveSpeed = 10f * formationIntegrity; // Slower movement when loose
+                    Vector3 newPos = Vector3.MoveTowards(currentPos, blendedTarget, moveSpeed * Time.deltaTime);
+                    newPos = ClampFormationToBattlefieldBounds(newPos);
+                    soldiers[i].transform.position = newPos;
+                }
+            }
             UpdateBadgePosition();
             return;
         }
@@ -3563,6 +3774,14 @@ public class FormationUnit : MonoBehaviour
             return;
         }
         
+        // Don't update formation center from soldier positions when moving toward a target
+        // This prevents teleportation - the center should move smoothly via MoveFormation()
+        // Only update center from soldiers when not actively moving (e.g., during combat or idle)
+        if (isMoving && !isInCombat)
+        {
+            return; // Let MoveFormation() handle center movement smoothly
+        }
+        
         Vector3 sum = Vector3.zero;
         int validCount = 0;
         foreach (var soldier in soldiers)
@@ -3577,9 +3796,15 @@ public class FormationUnit : MonoBehaviour
         // Prevent division by zero
         if (validCount > 0)
         {
-            formationCenter = sum / validCount;
-            // Clamp formation center to battlefield bounds to prevent off-map teleporting
-            formationCenter = ClampFormationToBattlefieldBounds(formationCenter);
+            // Smoothly interpolate center instead of directly setting it to prevent teleportation
+            Vector3 calculatedCenter = sum / validCount;
+            calculatedCenter = ClampFormationToBattlefieldBounds(calculatedCenter);
+            
+            // Only update if not moving (during combat or idle, smooth updates are fine)
+            if (!isMoving)
+            {
+                formationCenter = Vector3.Lerp(formationCenter, calculatedCenter, Time.deltaTime * 2f);
+            }
         }
     }
     
@@ -3590,28 +3815,25 @@ public class FormationUnit : MonoBehaviour
     
     bool CheckForEnemies()
     {
-        // Update cached enemy formations periodically (not every frame)
-        if (Time.time - lastEnemyFormationUpdate > ENEMY_FORMATION_UPDATE_INTERVAL)
-        {
-            UpdateCachedEnemyFormations();
-            lastEnemyFormationUpdate = Time.time;
-        }
+        // Combat is now initiated by trigger-based contact detection (FormationSoldierContactDetector)
+        // This method just checks if we're already in contact with enemies to stop movement
         
-        // Check cached formations
-        foreach (var formation in cachedEnemyFormations)
+        // Check if any of our soldiers have enemy contacts (trigger-based detection)
+        if (soldierContacts != null)
         {
-            if (formation == null) continue; // Skip destroyed formations
-            if (formation.isAttacker == this.isAttacker) continue; // Skip same team
-            
-            float distanceSqr = (formationCenter - formation.formationCenter).sqrMagnitude;
-            float rangeSqr = (formationRadius * 2f) * (formationRadius * 2f);
-            if (distanceSqr < rangeSqr)
+            foreach (var kvp in soldierContacts)
             {
-                // Start combat with enemy formation
-                StartCombatWithFormation(formation);
+                if (kvp.Key == null) continue;
+                if (kvp.Value != null && kvp.Value.Count > 0)
+                {
+                    // We have contacts - combat should already be started by FormationSoldierContactDetector
+                    // Just return true to stop movement
                 return true;
             }
         }
+        }
+        
+        // No contacts detected - formations can continue moving
         return false;
     }
     
@@ -3643,15 +3865,22 @@ public class FormationUnit : MonoBehaviour
         }
     }
     
-    void StartCombatWithFormation(FormationUnit enemyFormation)
+    public void StartCombatWithFormation(FormationUnit enemyFormation)
     {
         // Prevent starting multiple combat coroutines for the same formation
         if (activeCombatCoroutine != null)
         {
+            Debug.Log($"[Combat] {formationName} already in combat, skipping");
             return; // Already in combat
         }
         
-        if (enemyFormation == null) return;
+        if (enemyFormation == null)
+        {
+            Debug.LogWarning($"[Combat] {formationName} tried to start combat with null enemy formation");
+            return;
+        }
+        
+        Debug.Log($"[Combat] Starting combat: {formationName} vs {enemyFormation.formationName}");
         
         currentEnemyTarget = enemyFormation;
         
@@ -3671,6 +3900,7 @@ public class FormationUnit : MonoBehaviour
         
         // Start combat damage over time
         activeCombatCoroutine = StartCoroutine(CombatDamageCoroutine(enemyFormation));
+        Debug.Log($"[Combat] Started CombatDamageCoroutine for {formationName}");
     }
     
     /// <summary>
@@ -3780,6 +4010,8 @@ public class FormationUnit : MonoBehaviour
     {
         var tick = new WaitForSeconds(0.6f);
         
+        Debug.Log($"[CombatDamageCoroutine] Started for {formationName} vs {enemyFormation.formationName}");
+        
         // COMBAT CONTINUATION: Use per-unit contact instead of formation-center distance
         // Combat continues as long as ANY soldiers are in melee range
         while (enemyFormation != null)
@@ -3787,8 +4019,87 @@ public class FormationUnit : MonoBehaviour
             yield return tick;
             
             // Safety checks
-            if (this == null || enemyFormation == null) break;
-            if (soldiers == null || enemyFormation.soldiers == null) break;
+            if (this == null || enemyFormation == null)
+            {
+                Debug.Log($"[CombatDamageCoroutine] Formation destroyed, ending combat");
+                break;
+            }
+            if (soldiers == null || enemyFormation.soldiers == null)
+            {
+                Debug.Log($"[CombatDamageCoroutine] No soldiers, ending combat");
+                break;
+            }
+            
+            // Decrease formation integrity during prolonged combat (formation loosens up)
+            formationIntegrity = Mathf.Max(MIN_FORMATION_INTEGRITY, formationIntegrity - FORMATION_INTEGRITY_DECAY_RATE);
+            enemyFormation.formationIntegrity = Mathf.Max(MIN_FORMATION_INTEGRITY, enemyFormation.formationIntegrity - FORMATION_INTEGRITY_DECAY_RATE);
+            
+            // Track contact times for disengagement detection
+            foreach (var soldier in reusableMyAliveList)
+            {
+                if (soldier != null && soldierContacts.ContainsKey(soldier) && soldierContacts[soldier].Count > 0)
+                {
+                    soldierLastContactTime[soldier] = Time.time;
+                }
+            }
+            
+            // Check for disengagements (soldiers that were in contact but no longer are)
+            var disengagingSoldiers = new List<GameObject>();
+            foreach (var kvp in soldierLastContactTime)
+            {
+                if (kvp.Key == null) continue;
+                bool stillInContact = soldierContacts.ContainsKey(kvp.Key) && soldierContacts[kvp.Key].Count > 0;
+                if (!stillInContact && Time.time - kvp.Value < DISENGAGEMENT_WINDOW)
+                {
+                    // Recently disengaged - apply penalty
+                    disengagingSoldiers.Add(kvp.Key);
+                }
+            }
+            foreach (var soldier in disengagingSoldiers)
+            {
+                // Apply disengagement morale penalty
+                currentMorale = Mathf.Max(0, (int)(currentMorale - DISENGAGEMENT_MORALE_PENALTY));
+                
+                // Attack of opportunity: enemies get a free attack on disengaging unit
+                if (soldier != null && enemyFormation != null)
+                {
+                    // Find nearest enemy soldier to the disengaging unit
+                    GameObject nearestEnemy = null;
+                    float nearestDistance = float.MaxValue;
+                    
+                    foreach (var enemySoldier in reusableEnAliveList)
+                    {
+                        if (enemySoldier == null) continue;
+                        float dist = Vector3.Distance(soldier.transform.position, enemySoldier.transform.position);
+                        if (dist < nearestDistance && dist < MELEE_RANGE * 2f) // Within extended range for opportunity attack
+                        {
+                            nearestDistance = dist;
+                            nearestEnemy = enemySoldier;
+                        }
+                    }
+                    
+                    // If enemy is in range, perform attack of opportunity
+                    if (nearestEnemy != null)
+                    {
+                        var disengagingCU = soldier.GetComponent<CombatUnit>();
+                        var enemyCU = nearestEnemy.GetComponent<CombatUnit>();
+                        
+                        if (disengagingCU != null && enemyCU != null)
+                        {
+                            // Free attack with bonus damage (disengaging unit is vulnerable)
+                            int opportunityDamage = Mathf.Max(1, Mathf.RoundToInt(enemyCU.CurrentAttack * 1.5f)); // 50% bonus
+                            bool killed = disengagingCU.ApplyDamage(opportunityDamage, enemyCU, false);
+                            
+                            if (killed)
+                            {
+                                HandleSoldierDeath(this, soldier);
+                            }
+                        }
+                    }
+                }
+                
+                soldierLastContactTime.Remove(soldier);
+            }
             
             // Build alive lists (reuse lists to avoid allocations)
             reusableMyAliveList.Clear();
@@ -3804,6 +4115,7 @@ public class FormationUnit : MonoBehaviour
             reusableEnInContactSet.Clear(); // For O(1) lookup
             
             // Get contacts from collision system (populated by FormationSoldierContactDetector)
+            int totalContacts = 0;
             foreach (var mySoldier in reusableMyAliveList)
             {
                 if (mySoldier == null) continue;
@@ -3811,16 +4123,18 @@ public class FormationUnit : MonoBehaviour
                 // Get enemies in contact with this soldier (from trigger colliders)
                 if (soldierContacts.TryGetValue(mySoldier, out var contacts) && contacts.Count > 0)
                 {
-                    // Find nearest enemy from contacts (multiple enemies could be in range)
-                    GameObject nearestEnemy = null;
-                    float nearestDistanceSquared = float.MaxValue;
+                    totalContacts += contacts.Count;
                     
+                    // Find nearest enemy from contacts (multiple enemies could be in range)
+                GameObject nearestEnemy = null;
+                float nearestDistanceSquared = float.MaxValue;
+                
                     foreach (var enemy in contacts)
                     {
                         if (enemy == null) continue;
                         if (!reusableEnAliveList.Contains(enemy)) continue; // Enemy is dead
                         if (reusableEnInContactSet.Contains(enemy)) continue; // Already paired
-                        
+                    
                         // Find which formation this enemy belongs to
                         FormationUnit enemySoldierFormation = FindFormationForSoldier(enemy);
                         if (enemySoldierFormation == null || enemySoldierFormation != enemyFormation) continue;
@@ -3833,20 +4147,69 @@ public class FormationUnit : MonoBehaviour
                         float distanceSquared = diff.sqrMagnitude;
                         
                         if (distanceSquared < nearestDistanceSquared)
-                        {
-                            nearestDistanceSquared = distanceSquared;
-                            nearestEnemy = enemy;
-                        }
-                    }
-                    
-                    // If found contact, add both to lists
-                    if (nearestEnemy != null)
                     {
-                        reusableMyInContactList.Add(mySoldier);
-                        reusableEnInContactList.Add(nearestEnemy);
-                        reusableEnInContactSet.Add(nearestEnemy); // Mark as paired
+                        nearestDistanceSquared = distanceSquared;
+                            nearestEnemy = enemy;
                     }
                 }
+                
+                // If found contact, add both to lists
+                if (nearestEnemy != null)
+                {
+                    reusableMyInContactList.Add(mySoldier);
+                    reusableEnInContactList.Add(nearestEnemy);
+                    reusableEnInContactSet.Add(nearestEnemy); // Mark as paired
+                }
+            }
+            }
+            
+            Debug.Log($"[CombatDamageCoroutine] {formationName}: Found {totalContacts} total contacts, {reusableMyInContactList.Count} paired contacts");
+            
+            // Debug: Log soldier contact dictionary state and check distances
+            if (totalContacts == 0 && reusableMyAliveList.Count > 0 && reusableEnAliveList.Count > 0)
+            {
+                Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: No contacts found! Checking distances and trigger setup...");
+                Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: soldierContacts has {soldierContacts.Count} entries");
+                
+                // Check distances between nearest soldiers
+                if (reusableMyAliveList.Count > 0 && reusableEnAliveList.Count > 0)
+                {
+                    var mySoldier = reusableMyAliveList[0];
+                    var enSoldier = reusableEnAliveList[0];
+                    if (mySoldier != null && enSoldier != null)
+                    {
+                        float distance = Vector3.Distance(mySoldier.transform.position, enSoldier.transform.position);
+                        Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: Distance between {mySoldier.name} and {enSoldier.name}: {distance:F2} units");
+                        
+                        // Check trigger collider setup
+                        var myTrigger = mySoldier.GetComponent<Collider>();
+                        var enTrigger = enSoldier.GetComponent<Collider>();
+                        if (myTrigger != null && myTrigger.isTrigger)
+                        {
+                            float myRadius = myTrigger is SphereCollider sphere ? sphere.radius : (myTrigger is CapsuleCollider capsule ? capsule.radius : 0f);
+                            Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: {mySoldier.name} trigger: {myTrigger.GetType().Name}, radius={myRadius}, enabled={myTrigger.enabled}");
+                        }
+                        if (enTrigger != null && enTrigger.isTrigger)
+                        {
+                            float enRadius = enTrigger is SphereCollider sphere ? sphere.radius : (enTrigger is CapsuleCollider capsule ? capsule.radius : 0f);
+                            Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: {enSoldier.name} trigger: {enTrigger.GetType().Name}, radius={enRadius}, enabled={enTrigger.enabled}");
+                        }
+                        
+                        // Check if contact detector exists
+                        var myDetector = mySoldier.GetComponent<FormationSoldierContactDetector>();
+                        var enDetector = enSoldier.GetComponent<FormationSoldierContactDetector>();
+                        Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: {mySoldier.name} has detector: {myDetector != null}, {enSoldier.name} has detector: {enDetector != null}");
+                    }
+                }
+                
+                foreach (var kvp in soldierContacts)
+                {
+                    if (kvp.Key != null && kvp.Value != null)
+                    {
+                        Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: {kvp.Key.name} has {kvp.Value.Count} contacts");
+                    }
+                }
+                Debug.LogWarning($"[CombatDamageCoroutine] {formationName}: Alive soldiers: {reusableMyAliveList.Count}, Enemy alive: {reusableEnAliveList.Count}");
             }
             
             // COMBAT CONTINUATION CHECK: If no soldiers are in contact, combat ends
@@ -3862,6 +4225,7 @@ public class FormationUnit : MonoBehaviour
             
             // Pair soldiers in contact (already paired in contact detection)
             int pairs = Mathf.Min(reusableMyInContactList.Count, reusableEnInContactList.Count);
+            Debug.Log($"[CombatDamageCoroutine] {formationName}: Processing {pairs} attack pairs");
             
             // Process each pair with individual attack cooldowns
             for (int i = 0; i < pairs; i++)
@@ -3885,10 +4249,13 @@ public class FormationUnit : MonoBehaviour
                 {
                     // Still on cooldown, skip attack but allow pursuit
                     // Cooldown will be reduced at end of loop
+                    Debug.Log($"[CombatDamageCoroutine] {a.name} on cooldown ({cooldown:F2}s remaining)");
                 }
                 else
                 {
                     // Ready to attack
+                    Debug.Log($"[CombatDamageCoroutine] {a.name} ready to attack {b.name}");
+                    
                     // Allow units to pursue targets - move slightly toward enemy if not in perfect melee range
                     Vector3 toEnemy = b.transform.position - a.transform.position;
                     float distance = toEnemy.magnitude;
@@ -3903,10 +4270,11 @@ public class FormationUnit : MonoBehaviour
                     }
                     
                     // Attack is ready - start attack and set cooldown
+                    Debug.Log($"[CombatDamageCoroutine] Starting StaggeredAttack: {a.name} -> {b.name}");
                     var attackCoroutine = StartCoroutine(StaggeredAttack(aCU, bCU, 0f, this, enemyFormation));
-                    if (attackCoroutine != null)
-                    {
-                        activeCoroutines.Add(attackCoroutine);
+                if (attackCoroutine != null)
+                {
+                    activeCoroutines.Add(attackCoroutine);
                     }
                     
                     // Set individual attack cooldown for this unit
@@ -4214,6 +4582,34 @@ public class FormationUnit : MonoBehaviour
         // Apply flanking/rear attack bonus
         float flankingBonusAB = GetFlankingBonus(attackerFormation, defenderFormation);
         damageMultiplierAB *= flankingBonusAB;
+        
+        // Enhanced flanking: Apply defensive penalties and morale shocks
+        float attackAngle = CalculateAttackAngle(attackerFormation, defenderFormation);
+        float defensePenalty = 1.0f;
+        float moraleShock = 0f;
+        
+        if (attackAngle >= 135f) // Rear attack
+        {
+            defensePenalty = 1.0f - REAR_ATTACK_DEFENSE_PENALTY; // 50% defense reduction
+            moraleShock = REAR_ATTACK_MORALE_SHOCK;
+            // Visual indicator: could add particle effect or UI indicator here
+        }
+        else if (attackAngle >= 45f) // Flank attack
+        {
+            defensePenalty = 1.0f - FLANK_ATTACK_DEFENSE_PENALTY; // 25% defense reduction
+            moraleShock = FLANK_ATTACK_MORALE_SHOCK;
+        }
+        
+        // Apply defense penalty to damage calculation
+        int adjustedDefense = Mathf.RoundToInt(defender.CurrentDefense * defensePenalty);
+        baseDmgAB = Mathf.Max(0, attacker.CurrentAttack - adjustedDefense);
+        
+        // Apply morale shock to defender formation
+        if (moraleShock > 0f)
+        {
+            defenderFormation.currentMorale = Mathf.Max(0, (int)(defenderFormation.currentMorale - moraleShock));
+            defenderFormation.badgeUpdateDirty = true;
+        }
         
         // Calculate final damage
         int finalDmgAB = Mathf.RoundToInt(baseDmgAB * damageMultiplierAB);
@@ -4894,10 +5290,10 @@ public class FormationUnit : MonoBehaviour
             
             badgeText = textGO.AddComponent<TMPro.TextMeshProUGUI>();
             badgeText.alignment = TMPro.TextAlignmentOptions.Center;
-            badgeText.fontSize = 0.5f;
+            badgeText.fontSize = 0.3f;
             badgeText.raycastTarget = false; // Don't block raycasts
             var rt = badgeText.rectTransform;
-            rt.sizeDelta = new Vector2(5, 5); // Small badge size
+            rt.sizeDelta = new Vector2(3, 3); // Small badge size
         }
         
         UpdateBadgeContents();

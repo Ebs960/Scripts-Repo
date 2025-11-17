@@ -147,9 +147,8 @@ public class BattleUI : MonoBehaviour
             // Add HorizontalLayoutGroup
             formationButtonLayout = layoutGO.AddComponent<HorizontalLayoutGroup>();
             formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
-            formationButtonLayout.childForceExpandWidth = false;
+            // Don't modify childForceExpand - let user set it in Inspector
             formationButtonLayout.childControlWidth = true;
-            formationButtonLayout.childForceExpandHeight = false;
             formationButtonLayout.childControlHeight = true;
             formationButtonLayout.spacing = 8f;
             formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
@@ -158,11 +157,9 @@ public class BattleUI : MonoBehaviour
         }
         else
         {
-            // Ensure layout group is properly configured
+            // Ensure layout group is properly configured (but don't modify childForceExpand - let user set it)
             formationButtonLayout.childAlignment = TextAnchor.MiddleLeft;
-            formationButtonLayout.childForceExpandWidth = false;
             formationButtonLayout.childControlWidth = true;
-            formationButtonLayout.childForceExpandHeight = false;
             formationButtonLayout.childControlHeight = true;
             formationButtonLayout.spacing = 8f;
             if (formationButtonLayout.padding == null || formationButtonLayout.padding.left == 0)
