@@ -18,7 +18,7 @@ public class UnitSeparation : MonoBehaviour
     public float separationSpeed = 2f;
     
     [Tooltip("Maximum separation force per frame (prevents sudden jumps)")]
-    public float maxSeparationForce = 0.5f;
+    public float maxSeparationForce = 4.5f;
     
     [Header("Enemy Separation")]
     [Tooltip("Allow enemies to get closer (multiplier for enemy separation distance)")]
@@ -35,6 +35,13 @@ public class UnitSeparation : MonoBehaviour
     private FormationUnit formationUnit;
     private BattleTestSimple battleTestInstance;
     
+    // IMPROVED: Spatial partitioning for performance
+    private static SpatialGrid spatialGrid;
+    private static float lastSpatialGridUpdate = 0f;
+    private const float SPATIAL_GRID_UPDATE_INTERVAL = 0.1f; // Update grid every 0.1 seconds
+    private const float SPATIAL_GRID_CELL_SIZE = 5f; // 5 unit cells
+    private const float SPATIAL_GRID_QUERY_RADIUS = 10f; // Query radius for separation checks
+    
     void Awake()
     {
         combatUnit = GetComponent<CombatUnit>();
@@ -44,6 +51,12 @@ public class UnitSeparation : MonoBehaviour
         if (BattleTestSimple.Instance != null)
         {
             battleTestInstance = BattleTestSimple.Instance;
+        }
+        
+        // Initialize spatial grid if needed
+        if (spatialGrid == null)
+        {
+            spatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE, SPATIAL_GRID_QUERY_RADIUS);
         }
     }
     
@@ -80,51 +93,84 @@ public class UnitSeparation : MonoBehaviour
     
     /// <summary>
     /// Calculate separation force from nearby units
+    /// IMPROVED: Uses spatial partitioning for performance - only checks nearby units instead of all units
+    /// Uses the desired position (currentPosition parameter) instead of transform.position
+    /// This ensures separation is calculated from where the unit wants to go, not where it currently is
     /// </summary>
     Vector3 CalculateSeparationForce(Vector3 currentPosition)
     {
         Vector3 totalForce = Vector3.zero;
-        Vector3 unitPos = transform.position;
+        // FIXED: Use currentPosition parameter instead of transform.position
+        // This ensures separation is calculated from the desired position, preventing units from being pushed away from their destination
+        Vector3 unitPos = currentPosition;
         
-        // Check friendly units in same formation
-        if (formationUnit != null && formationUnit.soldiers != null)
+        // IMPROVED: Update spatial grid periodically
+        if (Time.time - lastSpatialGridUpdate > SPATIAL_GRID_UPDATE_INTERVAL)
         {
-            foreach (var friendlySoldier in formationUnit.soldiers)
+            UpdateSpatialGrid();
+            lastSpatialGridUpdate = Time.time;
+        }
+        
+        // IMPROVED: Use spatial grid to get only nearby units (much faster than checking all units)
+        List<GameObject> nearbyUnits = spatialGrid.GetNearbyUnits(unitPos, SPATIAL_GRID_QUERY_RADIUS);
+        
+        foreach (var nearbyUnit in nearbyUnits)
+        {
+            if (nearbyUnit == null || nearbyUnit == gameObject || !nearbyUnit.activeInHierarchy) continue;
+            
+            // Determine if this is a friendly or enemy unit
+            var nearbyFormation = nearbyUnit.GetComponentInParent<FormationUnit>();
+            bool isFriendly = (nearbyFormation != null && formationUnit != null && 
+                              nearbyFormation == formationUnit);
+            bool isEnemy = (nearbyFormation != null && formationUnit != null && 
+                           nearbyFormation.isAttacker != formationUnit.isAttacker &&
+                           formationUnit.isInCombat);
+            
+            if (isFriendly)
             {
-                if (friendlySoldier == null || friendlySoldier == gameObject) continue;
-                
-                // Check if soldier is still active (not destroyed)
-                if (!friendlySoldier.activeInHierarchy) continue;
-                
-                Vector3 force = CalculateSeparationFromUnit(friendlySoldier.transform.position, unitPos, minSeparation, separationStrength);
+                // Friendly unit - use normal separation
+                Vector3 nearbyPos = nearbyUnit.transform.position;
+                Vector3 force = CalculateSeparationFromUnit(nearbyPos, unitPos, minSeparation, separationStrength);
+                totalForce += force;
+            }
+            else if (isEnemy)
+            {
+                // Enemy unit - use weaker separation (allows melee combat)
+                float enemySeparationDist = minSeparation * enemySeparationMultiplier;
+                Vector3 enemyPos = nearbyUnit.transform.position;
+                Vector3 force = CalculateSeparationFromUnit(enemyPos, unitPos, enemySeparationDist, enemySeparationStrength);
                 totalForce += force;
             }
         }
         
-        // Check enemy units (only when in combat)
-        if (formationUnit != null && formationUnit.isInCombat && battleTestInstance != null)
+        return totalForce;
+    }
+    
+    /// <summary>
+    /// Update the spatial grid with all active units
+    /// </summary>
+    void UpdateSpatialGrid()
+    {
+        if (spatialGrid == null || battleTestInstance == null) return;
+        
+        spatialGrid.Clear();
+        
+        // Add all units from all formations to the spatial grid
+        if (battleTestInstance.allFormations != null)
         {
-            foreach (var enemyFormation in battleTestInstance.allFormations)
+            foreach (var formation in battleTestInstance.allFormations)
             {
-                if (enemyFormation == null || enemyFormation == formationUnit) continue;
-                if (enemyFormation.isAttacker == formationUnit.isAttacker) continue; // Same team
-                if (enemyFormation.soldiers == null) continue;
+                if (formation == null || formation.soldiers == null) continue;
                 
-                foreach (var enemySoldier in enemyFormation.soldiers)
+                foreach (var soldier in formation.soldiers)
                 {
-                    if (enemySoldier == null) continue;
-                    
-                    // Check if enemy soldier is still active (not destroyed)
-                    if (!enemySoldier.activeInHierarchy) continue;
-                    
-                    float enemySeparationDist = minSeparation * enemySeparationMultiplier;
-                    Vector3 force = CalculateSeparationFromUnit(enemySoldier.transform.position, unitPos, enemySeparationDist, enemySeparationStrength);
-                    totalForce += force;
+                    if (soldier != null && soldier.activeInHierarchy)
+                    {
+                        spatialGrid.Add(soldier, soldier.transform.position);
+                    }
                 }
             }
         }
-        
-        return totalForce;
     }
     
     /// <summary>
@@ -152,18 +198,21 @@ public class UnitSeparation : MonoBehaviour
     }
     
     /// <summary>
-    /// Ground a position using raycast (reuse BattleTestSimple's grounding logic)
+    /// Ground a position using raycast - unified with FormationUnit.Ground() method
+    /// Uses same raycast origin (100 units above) and distance (1000 units) for consistency
     /// </summary>
     Vector3 GroundPosition(Vector3 position)
     {
-        // Simple grounding - raycast down
-        RaycastHit hit;
-        if (Physics.Raycast(position + Vector3.up * 10f, Vector3.down, out hit, 20f))
+        // Use same grounding method as FormationUnit.Ground() for consistency
+        // This prevents Y-axis jumps when different methods are used
+        LayerMask layers = battleTestInstance != null ? battleTestInstance.battlefieldLayers : ~0;
+        Vector3 origin = position + Vector3.up * 100f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1000f, layers))
         {
             return hit.point;
         }
-        
-        return position;
+        // Fallback: clamp to y=0 if nothing hit (same as FormationUnit.Ground())
+        return new Vector3(position.x, 0f, position.z);
     }
     
     void OnDrawGizmos()

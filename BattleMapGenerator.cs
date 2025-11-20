@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI; // For NavMesh runtime baking
 using System.Collections.Generic;
 using System.Linq;
 
@@ -98,6 +99,9 @@ public class BattleMapGenerator : MonoBehaviour
         GenerateTerrainMesh();
         AddBiomeDecorations();
         CreateSpawnPoints(attackerUnits, defenderUnits);
+        
+        // IMPROVED: Bake NavMesh at runtime after map generation
+        GenerateNavigationMesh();
         
         Debug.Log($"[BattleMapGenerator] Generated {primaryBiome} battle map ({mapSize}x{mapSize}) with elevation and tactical features");
     }
@@ -525,13 +529,244 @@ public class BattleMapGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Generate navigation mesh for pathfinding
+    /// Generate NavMesh at runtime for procedurally generated maps
+    /// Uses Unity's NavMeshBuilder API to bake NavMesh after map generation
+    /// This works at runtime without needing editor-only APIs
     /// </summary>
     private void GenerateNavigationMesh()
     {
-        // This would integrate with Unity's NavMesh system
-        // For now, it's a placeholder
-        Debug.Log("[BattleMapGenerator] Navigation mesh generation placeholder");
+        Debug.Log("[BattleMapGenerator] Starting runtime NavMesh baking...");
+        
+        // Get NavMesh build settings (use default settings with ID 0)
+        // You can create custom settings in the Navigation window and reference them by ID
+        NavMeshBuildSettings buildSettings = NavMesh.GetSettingsByID(0);
+        
+        // Define the bounds for NavMesh building (the entire map)
+        Bounds buildBounds = new Bounds(
+            mapCenter,
+            new Vector3(mapSize, 20f, mapSize) // Height of 20 should cover terrain elevation
+        );
+        
+        // Collect all sources (terrain and obstacles) using NavMeshBuilder
+        // This automatically finds all colliders and meshes in the bounds
+        // FIXED: Use Battlefield layer to match terrain object layer
+        int battlefieldLayer = LayerMask.NameToLayer("Battlefield");
+        int layerMask = battlefieldLayer != -1 ? (1 << battlefieldLayer) : ~0; // Use Battlefield layer, or all layers if it doesn't exist
+        
+        Debug.Log($"[BattleMapGenerator] Collecting NavMesh sources on layer mask: {layerMask} (Battlefield layer index: {battlefieldLayer})");
+        
+        List<NavMeshBuildSource> sources = new List<NavMeshBuildSource>();
+        NavMeshBuilder.CollectSources(
+            buildBounds,
+            layerMask, // Use Battlefield layer to match terrain
+            NavMeshCollectGeometry.RenderMeshes | NavMeshCollectGeometry.PhysicsColliders,
+            0, // Default area (walkable)
+            new List<NavMeshBuildMarkup>(), // No special markups
+            sources
+        );
+        
+        // DEBUG: Log what sources were collected
+        Debug.Log($"[BattleMapGenerator] Collected {sources.Count} NavMesh sources from bounds {buildBounds}");
+        if (sources.Count > 0)
+        {
+            Vector3 firstSourcePos = sources[0].transform.GetColumn(3); // Position is in the 4th column of Matrix4x4
+            Debug.Log($"[BattleMapGenerator] First source: shape={sources[0].shape}, component={sources[0].component?.name ?? "null"}, position={firstSourcePos}");
+        }
+        
+        // DEBUG: Log terrain objects
+        Debug.Log($"[BattleMapGenerator] Checking {terrainObjects.Count} terrain objects:");
+        foreach (var terrainObj in terrainObjects)
+        {
+            if (terrainObj != null)
+            {
+                var collider = terrainObj.GetComponent<Collider>();
+                var meshFilter = terrainObj.GetComponent<MeshFilter>();
+                Debug.Log($"  - {terrainObj.name}: Collider={collider != null} (isTrigger={collider?.isTrigger ?? false}), MeshFilter={meshFilter != null}, Parent={terrainObj.transform.parent?.name ?? "none"}");
+            }
+        }
+        
+        // Filter sources to only include our terrain and obstacles
+        // This ensures we only bake the procedurally generated map, not other scene objects
+        // FIXED: Also check child objects and use a more robust matching method
+        List<NavMeshBuildSource> filteredSources = new List<NavMeshBuildSource>();
+        foreach (var source in sources)
+        {
+            // Check if this source belongs to our generated terrain or obstacles
+            bool isOurObject = false;
+            
+            // Check terrain objects (including child objects)
+            foreach (var terrainObj in terrainObjects)
+            {
+                if (terrainObj != null && IsSourceFromObject(source, terrainObj))
+                {
+                    isOurObject = true;
+                    Debug.Log($"[BattleMapGenerator] Matched source to terrain object: {terrainObj.name}");
+                    break;
+                }
+            }
+            
+            // Check spawned objects (obstacles, decorations)
+            if (!isOurObject)
+            {
+                foreach (var spawnedObj in spawnedObjects)
+                {
+                    if (spawnedObj != null && IsSourceFromObject(source, spawnedObj))
+                    {
+                        // Only include if it has a non-trigger collider (should block navigation)
+                        var collider = spawnedObj.GetComponent<Collider>();
+                        if (collider != null && !collider.isTrigger)
+                        {
+                            isOurObject = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (isOurObject)
+            {
+                filteredSources.Add(source);
+            }
+        }
+        
+        // DEBUG: If no sources matched, try a fallback: include ALL sources within bounds
+        // This handles cases where child objects or component matching fails
+        if (filteredSources.Count == 0 && sources.Count > 0)
+        {
+            Debug.LogWarning("[BattleMapGenerator] No sources matched terrain objects. Using fallback: including all sources within bounds.");
+            Debug.LogWarning("[BattleMapGenerator] This might include scene objects. Consider checking IsSourceFromObject matching logic.");
+            
+            // Fallback: include all sources that are within our map bounds
+            // This is safer than failing completely, but may include unwanted objects
+            foreach (var source in sources)
+            {
+                // Extract position from Matrix4x4 transform
+                Vector3 sourcePos = source.transform.GetColumn(3); // Position is in the 4th column
+                
+                // Only include if the source's position is within our bounds
+                if (buildBounds.Contains(sourcePos))
+                {
+                    filteredSources.Add(source);
+                    string sourceName = source.component != null ? source.component.name : "Unknown";
+                    Debug.Log($"[BattleMapGenerator] Fallback: Added source from {sourceName} at {sourcePos}");
+                }
+            }
+        }
+        
+        if (filteredSources.Count == 0)
+        {
+            Debug.LogError("[BattleMapGenerator] No NavMesh sources found! Make sure terrain has colliders.");
+            Debug.LogError($"[BattleMapGenerator] Total sources collected: {sources.Count}, Terrain objects: {terrainObjects.Count}");
+            return;
+        }
+        
+        // Build the NavMesh data
+        NavMeshData navMeshData = NavMeshBuilder.BuildNavMeshData(
+            buildSettings,
+            filteredSources,
+            buildBounds,
+            Vector3.zero,
+            Quaternion.identity
+        );
+        
+        // Remove any existing NavMesh and add the new one
+        NavMesh.RemoveAllNavMeshData();
+        NavMesh.AddNavMeshData(navMeshData);
+        
+        // DEBUG: Log NavMesh data details
+        if (navMeshData != null)
+        {
+            Debug.Log($"[BattleMapGenerator] NavMesh Data Details:");
+            Debug.Log($"  - Sources used: {filteredSources.Count}/{sources.Count}");
+            Debug.Log($"  - Bounds: {buildBounds}");
+            Debug.Log($"  - Source objects: {filteredSources.Count}");
+            
+            // Log what types of sources we're using
+            int meshSources = 0, colliderSources = 0;
+            foreach (var source in filteredSources)
+            {
+                if (source.shape == NavMeshBuildSourceShape.Mesh) meshSources++;
+                else if (source.shape == NavMeshBuildSourceShape.Box || 
+                         source.shape == NavMeshBuildSourceShape.Sphere ||
+                         source.shape == NavMeshBuildSourceShape.Capsule) colliderSources++;
+            }
+            Debug.Log($"  - Mesh sources: {meshSources}, Collider sources: {colliderSources}");
+        }
+        else
+        {
+            Debug.LogError("[BattleMapGenerator] NavMesh data is null! Baking failed.");
+        }
+        
+        // IMPROVED: Wait a frame to ensure NavMesh is fully processed by Unity
+        // This helps prevent formations from failing to find NavMesh immediately after baking
+        StartCoroutine(WaitForNavMeshReady());
+        
+        Debug.Log($"[BattleMapGenerator] NavMesh baked successfully! Sources: {filteredSources.Count}/{sources.Count}, Bounds: {buildBounds}");
+    }
+    
+    /// <summary>
+    /// Check if a NavMeshBuildSource comes from a specific GameObject
+    /// IMPROVED: Also checks child objects and uses more robust matching
+    /// </summary>
+    private bool IsSourceFromObject(NavMeshBuildSource source, GameObject obj)
+    {
+        if (obj == null) return false;
+        
+        // Check if source's component belongs to this object or any of its children
+        if (source.component != null)
+        {
+            GameObject sourceGameObject = source.component.gameObject;
+            
+            // Direct match
+            if (sourceGameObject == obj)
+            {
+                return true;
+            }
+            
+            // Check if it's a child of our object
+            Transform sourceTransform = sourceGameObject.transform;
+            while (sourceTransform != null)
+            {
+                if (sourceTransform.gameObject == obj)
+                {
+                    return true;
+                }
+                sourceTransform = sourceTransform.parent;
+            }
+        }
+        
+        // For mesh sources, check if it matches any mesh on the object or its children
+        if (source.shape == NavMeshBuildSourceShape.Mesh && source.sourceObject != null)
+        {
+            // Check object and all children
+            MeshFilter[] meshFilters = obj.GetComponentsInChildren<MeshFilter>(true);
+            foreach (var meshFilter in meshFilters)
+            {
+                if (meshFilter != null && meshFilter.sharedMesh == source.sourceObject)
+                {
+                    return true;
+                }
+            }
+        }
+        
+        // For collider sources, check if it matches any collider on the object or its children
+        if (source.shape == NavMeshBuildSourceShape.Box || 
+            source.shape == NavMeshBuildSourceShape.Sphere ||
+            source.shape == NavMeshBuildSourceShape.Capsule ||
+            source.shape == NavMeshBuildSourceShape.Mesh) // MeshCollider also counts
+        {
+            // Check object and all children
+            Collider[] colliders = obj.GetComponentsInChildren<Collider>(true);
+            foreach (var collider in colliders)
+            {
+                if (collider != null && collider == source.component)
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     // Helper methods
@@ -618,6 +853,75 @@ public class BattleMapGenerator : MonoBehaviour
 
     public List<Vector3> GetAttackerSpawnPoints() => attackerSpawnPoints;
     public List<Vector3> GetDefenderSpawnPoints() => defenderSpawnPoints;
+    
+    /// <summary>
+    /// Wait for NavMesh to be fully processed by Unity after baking
+    /// This ensures formations can find the NavMesh when they try to set up their agents
+    /// </summary>
+    private System.Collections.IEnumerator WaitForNavMeshReady()
+    {
+        // Wait a frame to let Unity process the NavMesh data
+        yield return null;
+        
+        // DEBUG: Check NavMesh data immediately
+        var navMeshTri = NavMesh.CalculateTriangulation();
+        bool hasData = navMeshTri.vertices != null && navMeshTri.vertices.Length > 0;
+        Debug.Log($"[BattleMapGenerator] NavMesh data check: Has data = {hasData}, Vertices = {navMeshTri.vertices?.Length ?? 0}");
+        
+        // Verify NavMesh is queryable by sampling a position at the map center
+        int attempts = 0;
+        const int maxAttempts = 10;
+        
+        while (attempts < maxAttempts)
+        {
+            // Try sampling at map center
+            if (NavMesh.SamplePosition(mapCenter, out NavMeshHit hit, 10f, NavMesh.AllAreas))
+            {
+                Debug.Log($"[BattleMapGenerator] NavMesh confirmed ready after {attempts + 1} frame(s) at center {mapCenter} (sampled to {hit.position})");
+                
+                // DEBUG: Test a few more positions to ensure NavMesh is fully ready
+                bool allTestsPassed = true;
+                for (int i = 0; i < 5; i++)
+                {
+                    Vector3 testPos = mapCenter + new Vector3(
+                        Random.Range(-mapSize * 0.3f, mapSize * 0.3f),
+                        0,
+                        Random.Range(-mapSize * 0.3f, mapSize * 0.3f)
+                    );
+                    if (!NavMesh.SamplePosition(testPos, out NavMeshHit testHit, 10f, NavMesh.AllAreas))
+                    {
+                        allTestsPassed = false;
+                        Debug.LogWarning($"[BattleMapGenerator] NavMesh test failed at {testPos}");
+                    }
+                }
+                
+                if (allTestsPassed)
+                {
+                    Debug.Log($"[BattleMapGenerator] All NavMesh tests passed! NavMesh is fully ready.");
+                }
+                
+                yield break;
+            }
+            
+            attempts++;
+            yield return null; // Wait another frame
+        }
+        
+        Debug.LogWarning($"[BattleMapGenerator] NavMesh may not be fully ready after {maxAttempts} frames. Formations will retry setup.");
+        Debug.LogWarning($"[BattleMapGenerator] Final check - NavMesh data: Has data = {hasData}, Vertices = {navMeshTri.vertices?.Length ?? 0}");
+        
+        // DEBUG: Check if terrain has colliders
+        bool hasTerrainColliders = false;
+        foreach (var terrainObj in terrainObjects)
+        {
+            if (terrainObj != null && terrainObj.GetComponent<Collider>() != null)
+            {
+                hasTerrainColliders = true;
+                break;
+            }
+        }
+        Debug.LogWarning($"[BattleMapGenerator] Terrain has colliders: {hasTerrainColliders}");
+    }
 }
 
 public enum TerrainType

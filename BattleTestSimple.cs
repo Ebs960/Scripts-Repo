@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AI; // For NavMesh support
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections;
@@ -2992,6 +2993,17 @@ public class BattleTestSimple : MonoBehaviour
     }
 }
 
+/// <summary>
+/// Movement state machine for formations - replaces boolean flags with explicit states
+/// </summary>
+public enum FormationMovementState
+{
+    Idle,       // Not moving, not in combat
+    Moving,     // Moving toward target position
+    Combat,     // In combat, soldiers pursuing enemies
+    Routing     // Routing (fleeing)
+}
+
 // Formation Unit class - represents a group of soldiers that move together
 public class FormationUnit : MonoBehaviour
 {
@@ -3007,13 +3019,39 @@ public class FormationUnit : MonoBehaviour
     [Header("Movement")]
     public float moveSpeed = 3f;
     public float soldierSpacing = 3f; // Spacing between soldiers in formation (consistent for creation and movement)
-    public bool isMoving = false;
+    
+    // IMPROVED: Movement state machine replaces boolean flags
+    [Tooltip("Current movement state of the formation")]
+    public FormationMovementState movementState = FormationMovementState.Idle;
+    
+    // Legacy boolean for backward compatibility (maps to movementState)
+    public bool isMoving 
+    { 
+        get { return movementState == FormationMovementState.Moving; }
+        set { movementState = value ? FormationMovementState.Moving : FormationMovementState.Idle; }
+    }
+    
     public Vector3 targetPosition;
     public bool isSelected = false;
     [Tooltip("Whether formation is currently running (double right-click) or walking (single right-click)")]
     public bool isRunning = false;
     [Tooltip("Speed multiplier when running (1.5 = 50% faster)")]
     public float runSpeedMultiplier = 1.5f;
+    
+    [Header("NavMesh Settings")]
+    [Tooltip("Use NavMesh for pathfinding (enables obstacle avoidance)")]
+    public bool useNavMesh = true;
+    [Tooltip("Give individual soldiers NavMeshAgents (expensive - only for small battles). Total War uses hierarchical pathfinding instead. Recommended: false for scalability.")]
+    public bool useIndividualNavMesh = false; // Default to false - use hierarchical pathfinding like Total War
+    [Tooltip("NavMeshAgent component on formation center (auto-created if useNavMesh is true)")]
+    private NavMeshAgent formationNavAgent;
+    [Tooltip("Dictionary of NavMeshAgents for individual soldiers (if useIndividualNavMesh is true)")]
+    private Dictionary<GameObject, NavMeshAgent> soldierNavAgents = new Dictionary<GameObject, NavMeshAgent>();
+    
+    // IMPROVED: Cache NavMesh query results to reduce performance cost
+    private Dictionary<GameObject, float> lastNavMeshQueryTime = new Dictionary<GameObject, float>();
+    private Dictionary<GameObject, bool> cachedNavMeshWalkable = new Dictionary<GameObject, bool>();
+    private const float NAVMESH_QUERY_THROTTLE = 0.1f; // Query NavMesh at most every 0.1 seconds per unit
     
     [Header("Combat")]
     public int totalHealth;
@@ -3140,11 +3178,315 @@ public class FormationUnit : MonoBehaviour
         UpdateFormationCenter();
         CreateOrUpdateBadgeUI();
         
+        // IMPROVED: Set up NavMeshAgent if NavMesh is enabled
+        if (useNavMesh)
+        {
+            SetupNavMeshAgent();
+            
+            // IMPROVED: Set up individual NavMeshAgents for soldiers if enabled
+            if (useIndividualNavMesh)
+            {
+                SetupIndividualNavMeshAgents();
+            }
+        }
+        
         // Register this formation with FormationAIManager (after fully initialized)
         if (FormationAIManager.Instance != null)
         {
             FormationAIManager.Instance.RegisterFormation(this);
         }
+    }
+    
+    /// <summary>
+    /// Set up NavMeshAgent for formation center to enable pathfinding
+    /// </summary>
+    void SetupNavMeshAgent()
+    {
+        if (formationNavAgent == null)
+        {
+            // DEBUG: Comprehensive NavMesh diagnostics
+            DebugNavMeshStatus(formationCenter);
+            
+            // Check if NavMesh is available (may not be ready if map is still generating)
+            if (!NavMesh.SamplePosition(formationCenter, out NavMeshHit hit, 1f, NavMesh.AllAreas))
+            {
+                Debug.LogWarning($"[FormationUnit] NavMesh not ready yet for {formationName} at position {formationCenter}. Will retry...");
+                // Retry setup after a short delay (NavMesh might still be baking)
+                StartCoroutine(RetryNavMeshSetup());
+                return;
+            }
+            
+            Debug.Log($"[FormationUnit] NavMesh found for {formationName} at {formationCenter} (sampled to {hit.position})");
+            
+            formationNavAgent = gameObject.GetComponent<NavMeshAgent>();
+            if (formationNavAgent == null)
+            {
+                formationNavAgent = gameObject.AddComponent<NavMeshAgent>();
+            }
+            
+            // IMPROVED: Calculate actual formation radius based on soldier positions
+            float actualRadius = CalculateActualFormationRadius();
+            formationRadius = actualRadius; // Update stored radius
+            
+            // Configure NavMeshAgent for formation movement
+            formationNavAgent.radius = actualRadius;
+            formationNavAgent.height = 2f;
+            formationNavAgent.speed = moveSpeed;
+            formationNavAgent.acceleration = 8f;
+            formationNavAgent.angularSpeed = 360f;
+            formationNavAgent.stoppingDistance = 0.5f;
+            formationNavAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+            formationNavAgent.avoidancePriority = 50; // Medium priority
+            
+            Debug.Log($"[FormationUnit] {formationName} calculated radius: {actualRadius:F2} (soldiers: {soldiers?.Count ?? 0}, spacing: {soldierSpacing:F2})");
+            
+            // Disable auto-braking for smoother movement
+            formationNavAgent.autoBraking = false;
+            
+            // Set initial position (warp to ensure it's on NavMesh)
+            if (NavMesh.SamplePosition(formationCenter, out NavMeshHit warpHit, 5f, NavMesh.AllAreas))
+            {
+                formationNavAgent.Warp(warpHit.position);
+            }
+            else
+            {
+                formationNavAgent.Warp(formationCenter);
+                Debug.LogWarning($"[FormationUnit] Could not find NavMesh at {formationCenter} for {formationName}");
+            }
+            
+            Debug.Log($"[FormationUnit] Set up NavMeshAgent for {formationName}");
+        }
+    }
+    
+    /// <summary>
+    /// Calculate the actual formation radius based on soldier positions
+    /// This measures the distance from center to the farthest soldier
+    /// IMPROVED: Uses formation spacing to calculate theoretical radius if soldiers aren't positioned yet
+    /// </summary>
+    float CalculateActualFormationRadius()
+    {
+        if (soldiers == null || soldiers.Count == 0)
+        {
+            return formationRadius; // Return default if no soldiers
+        }
+        
+        float maxDistance = 0f;
+        Vector3 center = formationCenter;
+        int positionedSoldiers = 0;
+        
+        // Measure actual distances from soldiers to center
+        foreach (var soldier in soldiers)
+        {
+            if (soldier != null && soldier.activeInHierarchy)
+            {
+                float distance = Vector3.Distance(center, soldier.transform.position);
+                if (distance > maxDistance)
+                {
+                    maxDistance = distance;
+                }
+                if (distance > 0.1f) // Soldier is actually positioned (not at center)
+                {
+                    positionedSoldiers++;
+                }
+            }
+        }
+        
+        // If no soldiers are positioned yet (all at center), calculate theoretical radius from formation spacing
+        if (positionedSoldiers == 0 && soldiers.Count > 0)
+        {
+            // Calculate theoretical radius based on formation grid
+            int sideLength = Mathf.CeilToInt(Mathf.Sqrt(soldiers.Count));
+            float maxOffset = (sideLength - 1) * 0.5f * soldierSpacing;
+            maxDistance = maxOffset * 1.414f; // Diagonal distance (sqrt(2) for corner soldier)
+        }
+        
+        // Add a small buffer (10%) to account for formation expansion during movement
+        float calculatedRadius = maxDistance * 1.1f;
+        
+        // Ensure minimum radius (at least 0.5 for NavMesh)
+        return Mathf.Max(calculatedRadius, 0.5f);
+    }
+    
+    /// <summary>
+    /// Debug NavMesh status - comprehensive diagnostics for troubleshooting
+    /// </summary>
+    void DebugNavMeshStatus(Vector3 testPosition)
+    {
+        // Check if any NavMesh data exists
+        var allNavMeshData = NavMesh.CalculateTriangulation();
+        bool hasNavMeshData = allNavMeshData.vertices != null && allNavMeshData.vertices.Length > 0;
+        
+        Debug.Log($"[FormationUnit] NavMesh Diagnostics for {formationName}:");
+        Debug.Log($"  - Has NavMesh Data: {hasNavMeshData}");
+        
+        if (hasNavMeshData)
+        {
+            Debug.Log($"  - NavMesh Vertices: {allNavMeshData.vertices.Length}");
+            Debug.Log($"  - NavMesh Indices: {allNavMeshData.indices.Length}");
+            Debug.Log($"  - NavMesh Areas: {allNavMeshData.areas.Length}");
+        }
+        else
+        {
+            Debug.LogWarning($"  - No NavMesh data found! NavMesh may not be baked yet.");
+        }
+        
+        // Check available NavMesh areas
+        int areaMask = NavMesh.AllAreas;
+        Debug.Log($"  - NavMesh Area Mask: {areaMask} (AllAreas)");
+        
+        // Try sampling at different search radii
+        for (float radius = 1f; radius <= 10f; radius *= 2f)
+        {
+            if (NavMesh.SamplePosition(testPosition, out NavMeshHit sampleHit, radius, NavMesh.AllAreas))
+            {
+                Debug.Log($"  - NavMesh found at radius {radius}: {sampleHit.position} (distance: {Vector3.Distance(testPosition, sampleHit.position):F2})");
+                break;
+            }
+            else
+            {
+                Debug.Log($"  - NavMesh NOT found at radius {radius}");
+            }
+        }
+        
+        // Check if position is on terrain (raycast down)
+        if (Physics.Raycast(testPosition + Vector3.up * 100f, Vector3.down, out RaycastHit terrainHit, 200f))
+        {
+            Debug.Log($"  - Terrain found below position: {terrainHit.point} (collider: {terrainHit.collider?.name ?? "none"})");
+            if (terrainHit.collider != null)
+            {
+                Debug.Log($"  - Terrain collider type: {terrainHit.collider.GetType().Name}, isTrigger: {terrainHit.collider.isTrigger}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"  - No terrain found below position {testPosition}!");
+        }
+    }
+    
+    /// <summary>
+    /// Check if we should query NavMesh for this unit (throttles queries to reduce performance cost)
+    /// </summary>
+    bool ShouldQueryNavMesh(GameObject unit)
+    {
+        if (unit == null) return false;
+        
+        float currentTime = Time.time;
+        if (lastNavMeshQueryTime.TryGetValue(unit, out float lastTime))
+        {
+            if (currentTime - lastTime < NAVMESH_QUERY_THROTTLE)
+            {
+                return false; // Too soon to query again
+            }
+        }
+        
+        // Update query time
+        lastNavMeshQueryTime[unit] = currentTime;
+        return true;
+    }
+    
+    /// <summary>
+    /// Set up NavMeshAgents for individual soldiers (if useIndividualNavMesh is enabled)
+    /// This allows each soldier to pathfind individually, but is more expensive
+    /// </summary>
+    void SetupIndividualNavMeshAgents()
+    {
+        if (soldiers == null) return;
+        
+        foreach (var soldier in soldiers)
+        {
+            if (soldier == null || !soldier.activeInHierarchy) continue;
+            
+            // Check if NavMesh is available at soldier position
+            if (!NavMesh.SamplePosition(soldier.transform.position, out NavMeshHit hit, 1f, NavMesh.AllAreas))
+            {
+                continue; // Skip if not on NavMesh
+            }
+            
+            // Get or create NavMeshAgent for this soldier
+            if (!soldierNavAgents.ContainsKey(soldier))
+            {
+                var navAgent = soldier.GetComponent<NavMeshAgent>();
+                if (navAgent == null)
+                {
+                    navAgent = soldier.AddComponent<NavMeshAgent>();
+                }
+                
+                // Configure for individual unit (smaller radius than formation)
+                navAgent.radius = 0.5f; // Individual unit radius
+                navAgent.height = 2f;
+                navAgent.speed = moveSpeed;
+                navAgent.acceleration = 8f;
+                navAgent.angularSpeed = 360f;
+                navAgent.stoppingDistance = 0.3f;
+                navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.MedQualityObstacleAvoidance;
+                navAgent.avoidancePriority = 50;
+                navAgent.autoBraking = false;
+                
+                // Warp to NavMesh
+                if (NavMesh.SamplePosition(soldier.transform.position, out NavMeshHit warpHit, 5f, NavMesh.AllAreas))
+                {
+                    navAgent.Warp(warpHit.position);
+                }
+                
+                soldierNavAgents[soldier] = navAgent;
+            }
+        }
+        
+        Debug.Log($"[FormationUnit] Set up {soldierNavAgents.Count} individual NavMeshAgents for {formationName}");
+    }
+    
+    /// <summary>
+    /// Retry NavMesh setup after a delay (in case NavMesh is still baking)
+    /// IMPROVED: Retries multiple times with increasing delays to handle NavMesh processing delays
+    /// </summary>
+    System.Collections.IEnumerator RetryNavMeshSetup()
+    {
+        const int maxRetries = 10;
+        const float initialDelay = 0.1f;
+        const float maxDelay = 2f;
+        
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            // Exponential backoff: start with 0.1s, increase up to 2s
+            float delay = Mathf.Min(initialDelay * Mathf.Pow(2f, attempt), maxDelay);
+            yield return new WaitForSeconds(delay);
+            
+            // DEBUG: Run diagnostics on every 3rd attempt to avoid spam
+            if (attempt % 3 == 0)
+            {
+                DebugNavMeshStatus(formationCenter);
+            }
+            
+            // Check if NavMesh is ready by trying to sample a position
+            if (NavMesh.SamplePosition(formationCenter, out NavMeshHit testHit, 10f, NavMesh.AllAreas))
+            {
+                Debug.Log($"[FormationUnit] NavMesh is now ready for {formationName} after {attempt + 1} attempt(s)!");
+                
+                // NavMesh is ready! Try setup again
+                if (formationNavAgent == null && useNavMesh)
+                {
+                    SetupNavMeshAgent();
+                    
+                    if (useIndividualNavMesh)
+                    {
+                        SetupIndividualNavMeshAgents();
+                    }
+                    
+                    // Success - exit coroutine
+                    yield break;
+                }
+            }
+            else if (attempt < maxRetries - 1)
+            {
+                // Still not ready, will retry
+                Debug.LogWarning($"[FormationUnit] NavMesh still not ready for {formationName} (attempt {attempt + 1}/{maxRetries}). Retrying in {delay:F1}s...");
+            }
+        }
+        
+        // If we get here, NavMesh setup failed after all retries
+        Debug.LogError($"[FormationUnit] Failed to set up NavMesh for {formationName} after {maxRetries} attempts. NavMesh may not be available at this location.");
+        Debug.LogError($"[FormationUnit] Final diagnostics:");
+        DebugNavMeshStatus(formationCenter);
     }
     
     void OnDestroy()
@@ -3606,9 +3948,33 @@ public class FormationUnit : MonoBehaviour
     {
         // Clamp target position to battlefield bounds to prevent off-map movement
         targetPosition = ClampFormationToBattlefieldBounds(position);
-        isMoving = true;
+        
+        // IMPROVED: Update movement state
+        movementState = FormationMovementState.Moving;
         isRunning = running;
         PlayWalkingAnimations();
+        
+        // IMPROVED: Use NavMesh if enabled, otherwise use direct movement
+        if (useNavMesh && formationNavAgent != null)
+        {
+            // Set NavMeshAgent destination for pathfinding
+            formationNavAgent.SetDestination(targetPosition);
+            
+            // Update NavMeshAgent speed based on running state
+            float effectiveSpeed = CalculateFormationMoveSpeed();
+            if (isRunning)
+            {
+                effectiveSpeed *= runSpeedMultiplier;
+            }
+            formationNavAgent.speed = effectiveSpeed;
+            
+            Debug.Log($"[FormationUnit] {formationName} moving to {targetPosition} via NavMesh (running: {isRunning})");
+        }
+        else
+        {
+            // Direct movement (fallback if NavMesh not available)
+            Debug.Log($"[FormationUnit] {formationName} moving to {targetPosition} via direct movement (NavMesh disabled)");
+        }
         
         // Ensure formation center doesn't jump - soldiers will smoothly move toward new destination
         // The formation center will move smoothly in MoveFormation() via interpolation
@@ -3616,57 +3982,97 @@ public class FormationUnit : MonoBehaviour
     
     void MoveFormation()
     {
-        Vector3 direction = (targetPosition - formationCenter).normalized;
-        float distance = Vector3.Distance(formationCenter, targetPosition);
-        
-        if (distance > 0.5f)
+        // IMPROVED: Use NavMesh if enabled, otherwise use direct movement
+        if (useNavMesh && formationNavAgent != null && formationNavAgent.isActiveAndEnabled)
         {
-            // If routed, invert direction to move away
-            if (isRouted) direction = -direction;
+            // NavMesh-based movement
+            if (formationNavAgent.pathPending)
+            {
+                // Still calculating path, wait
+                return;
+            }
+            
+            // Update formation center from NavMeshAgent position
+            if (formationNavAgent.hasPath)
+            {
+                formationCenter = formationNavAgent.nextPosition;
+            }
+            else
+            {
+                formationCenter = formationNavAgent.transform.position;
+            }
             
             // Rotate formation to face movement direction
-            if (direction.magnitude > 0.1f)
+            if (formationNavAgent.velocity.magnitude > 0.1f)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                Quaternion targetRotation = Quaternion.LookRotation(formationNavAgent.velocity.normalized);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
             }
             
-            // Calculate formation movement speed (slowest unit - all soldiers move together)
-            float formationSpeed = CalculateFormationMoveSpeed();
-            
-            // Apply running speed multiplier if running
-            if (isRunning)
-            {
-                formationSpeed *= runSpeedMultiplier;
-            }
-            
-            // Move formation center
-            Vector3 newPosition = formationCenter + direction * formationSpeed * Time.deltaTime;
-            
-            // Clamp to battlefield bounds (prevents routed formations from leaving the map)
-            newPosition = ClampFormationToBattlefieldBounds(newPosition);
-            
-            formationCenter = newPosition;
-            
-            // Keep center on ground
-            formationCenter = Ground(formationCenter);
-            
-            // Update soldier positions
-            UpdateSoldierPositions();
-            
-            // Don't call PlayWalkingAnimations here - Update() handles it
-            // This prevents calling it multiple times per frame
-            
-            // Check for enemies in range
-            if (CheckForEnemies())
+            // Check if we've reached the destination
+            float distance = Vector3.Distance(formationCenter, targetPosition);
+            if (distance <= 0.5f || !formationNavAgent.pathPending && formationNavAgent.remainingDistance < 0.5f)
             {
                 StopMoving();
-                PlayFightingAnimations();
+                return;
             }
         }
         else
         {
+            // Direct movement (fallback or when NavMesh disabled)
+            Vector3 direction = (targetPosition - formationCenter).normalized;
+            float distance = Vector3.Distance(formationCenter, targetPosition);
+            
+            if (distance > 0.5f)
+            {
+                // If routed, invert direction to move away
+                if (isRouted) direction = -direction;
+                
+                // Rotate formation to face movement direction
+                if (direction.magnitude > 0.1f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(direction);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
+                }
+                
+                // Calculate formation movement speed (slowest unit - all soldiers move together)
+                float formationSpeed = CalculateFormationMoveSpeed();
+                
+                // Apply running speed multiplier if running
+                if (isRunning)
+                {
+                    formationSpeed *= runSpeedMultiplier;
+                }
+                
+                // Move formation center
+                Vector3 newPosition = formationCenter + direction * formationSpeed * Time.deltaTime;
+                
+                // Clamp to battlefield bounds (prevents routed formations from leaving the map)
+                newPosition = ClampFormationToBattlefieldBounds(newPosition);
+                
+                formationCenter = newPosition;
+                
+                // Keep center on ground
+                formationCenter = Ground(formationCenter);
+            }
+            else
+            {
+                StopMoving();
+                return;
+            }
+        }
+        
+        // Update soldier positions (works for both NavMesh and direct movement)
+        UpdateSoldierPositions();
+        
+        // Don't call PlayWalkingAnimations here - Update() handles it
+        // This prevents calling it multiple times per frame
+        
+        // Check for enemies in range
+        if (CheckForEnemies())
+        {
             StopMoving();
+            PlayFightingAnimations();
         }
     }
     
@@ -3725,18 +4131,92 @@ public class FormationUnit : MonoBehaviour
                     // High integrity = move toward formation position (tight formation)
                     Vector3 blendedTarget = Vector3.Lerp(currentPos, targetPos, formationIntegrity);
                     
+                    // TOTAL WAR APPROACH: Use lightweight NavMesh queries for obstacle avoidance (scales to thousands of units)
+                    // Formation center uses NavMeshAgent (hierarchical), individual units use queries + steering
                     float moveSpeed = 10f * formationIntegrity; // Slower movement when loose
-                    Vector3 newPos = Vector3.MoveTowards(currentPos, blendedTarget, moveSpeed * Time.deltaTime);
+                    Vector3 direction = (blendedTarget - currentPos).normalized;
+                    Vector3 desiredPos = currentPos + direction * moveSpeed * Time.deltaTime;
                     
-                    // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                    // Use lightweight NavMesh queries for obstacle avoidance (no full NavMeshAgent needed)
+                    if (useNavMesh)
+                    {
+                        // Throttle NavMesh queries to reduce performance cost (query at most every 0.1 seconds)
+                        bool shouldQueryNavMesh = ShouldQueryNavMesh(soldiers[i]);
+                        
+                        if (shouldQueryNavMesh)
+                        {
+                            // Check if desired position is on walkable NavMesh
+                            if (NavMesh.SamplePosition(desiredPos, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                            {
+                                desiredPos = hit.position; // Snap to nearest walkable position
+                            }
+                            
+                            // Check for obstacles in path using NavMesh.Raycast (lightweight query)
+                            // NavMesh.Raycast returns true if the path goes off NavMesh or hits an obstacle
+                            if (NavMesh.Raycast(currentPos, blendedTarget, out NavMeshHit rayHit, NavMesh.AllAreas))
+                            {
+                                // Obstacle detected - calculate direction to go around it
+                                // Use a more consistent approach: move perpendicular to the blocked direction
+                                Vector3 blockedDirection = (blendedTarget - currentPos).normalized;
+                                Vector3 rightPerp = Vector3.Cross(blockedDirection, Vector3.up).normalized;
+                                
+                                // Try right first, then left if right doesn't work
+                                Vector3 aroundObstacle = rightPerp;
+                                Vector3 testPos = currentPos + aroundObstacle * moveSpeed * Time.deltaTime;
+                                
+                                // Re-sample to ensure it's on NavMesh
+                                if (NavMesh.SamplePosition(testPos, out NavMeshHit sampleHit, 2f, NavMesh.AllAreas))
+                                {
+                                    desiredPos = sampleHit.position;
+                                }
+                                else
+                                {
+                                    // Try left if right doesn't work
+                                    aroundObstacle = -rightPerp;
+                                    testPos = currentPos + aroundObstacle * moveSpeed * Time.deltaTime;
+                                    if (NavMesh.SamplePosition(testPos, out NavMeshHit leftHit, 2f, NavMesh.AllAreas))
+                                    {
+                                        desiredPos = leftHit.position;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Use cached result or simple movement without NavMesh check
+                            // Still try to stay on NavMesh if possible (cheap check)
+                            if (NavMesh.SamplePosition(desiredPos, out NavMeshHit quickHit, 2f, NavMesh.AllAreas))
+                            {
+                                desiredPos = quickHit.position;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Direct interpolation (no NavMesh)
+                        desiredPos = Vector3.MoveTowards(currentPos, blendedTarget, moveSpeed * Time.deltaTime);
+                        desiredPos = Ground(desiredPos);
+                    }
+                    
+                    // Apply separation to prevent overlap with nearby units (steering behavior)
                     var unitSeparation = soldiers[i].GetComponent<UnitSeparation>();
                     if (unitSeparation != null)
                     {
-                        newPos = unitSeparation.ApplySeparation(newPos);
+                        desiredPos = unitSeparation.ApplySeparation(desiredPos);
                     }
                     
-                    newPos = ClampFormationToBattlefieldBounds(newPos);
-                    soldiers[i].transform.position = newPos;
+                    desiredPos = ClampFormationToBattlefieldBounds(desiredPos);
+                    
+                    // IMPROVED: Use Rigidbody.MovePosition() if available for smoother physics integration
+                    Rigidbody rb = soldiers[i].GetComponent<Rigidbody>();
+                    if (rb != null && rb.isKinematic)
+                    {
+                        rb.MovePosition(desiredPos);
+                    }
+                    else
+                    {
+                        soldiers[i].transform.position = desiredPos; // Fallback if no Rigidbody
+                    }
                 }
             }
             UpdateBadgePosition();
@@ -3756,24 +4236,98 @@ public class FormationUnit : MonoBehaviour
                     desired += extraOffset;
                 }
                 
-                // Interpolate position instead of directly setting it (prevents teleporting)
+                // TOTAL WAR APPROACH: Use hierarchical pathfinding - lightweight NavMesh queries for individual units
+                // Formation center uses NavMeshAgent (high-level), individual units use queries + steering (scales to thousands)
                 Vector3 currentPos = soldiers[i].transform.position;
                 Vector3 targetPos = Ground(desired);
-                // Clamp target position to battlefield bounds
                 targetPos = ClampFormationToBattlefieldBounds(targetPos);
-                float moveSpeed = 10f; // Speed of interpolation
-                Vector3 newPos = Vector3.MoveTowards(currentPos, targetPos, moveSpeed * Time.deltaTime);
                 
-                // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                float moveSpeed = 10f; // Speed of interpolation
+                Vector3 direction = (targetPos - currentPos).normalized;
+                Vector3 desiredPos = currentPos + direction * moveSpeed * Time.deltaTime;
+                
+                // Use lightweight NavMesh queries for obstacle avoidance (no full NavMeshAgent needed)
+                // This scales to thousands of units - each unit uses cheap queries instead of expensive agents
+                if (useNavMesh)
+                {
+                    // Throttle NavMesh queries to reduce performance cost (query at most every 0.1 seconds)
+                    bool shouldQueryNavMesh = ShouldQueryNavMesh(soldiers[i]);
+                    
+                    if (shouldQueryNavMesh)
+                    {
+                        // Check if desired position is on walkable NavMesh
+                        if (NavMesh.SamplePosition(desiredPos, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                        {
+                            desiredPos = hit.position; // Snap to nearest walkable position
+                        }
+                        
+                        // Check for obstacles in path using NavMesh.Raycast (lightweight query)
+                        // NavMesh.Raycast returns true if the path goes off NavMesh or hits an obstacle
+                        if (NavMesh.Raycast(currentPos, targetPos, out NavMeshHit rayHit, NavMesh.AllAreas))
+                        {
+                            // Obstacle detected - calculate direction to go around it
+                            // Use a more consistent approach: move perpendicular to the blocked direction
+                            Vector3 blockedDirection = (targetPos - currentPos).normalized;
+                            Vector3 rightPerp = Vector3.Cross(blockedDirection, Vector3.up).normalized;
+                            
+                            // Try right first, then left if right doesn't work
+                            Vector3 aroundObstacle = rightPerp;
+                            Vector3 testPos = currentPos + aroundObstacle * moveSpeed * Time.deltaTime;
+                            
+                            // Re-sample to ensure it's on NavMesh
+                            if (NavMesh.SamplePosition(testPos, out NavMeshHit sampleHit, 2f, NavMesh.AllAreas))
+                            {
+                                desiredPos = sampleHit.position;
+                            }
+                            else
+                            {
+                                // Try left if right doesn't work
+                                aroundObstacle = -rightPerp;
+                                testPos = currentPos + aroundObstacle * moveSpeed * Time.deltaTime;
+                                if (NavMesh.SamplePosition(testPos, out NavMeshHit leftHit, 2f, NavMesh.AllAreas))
+                                {
+                                    desiredPos = leftHit.position;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Use cached result or simple movement without NavMesh check
+                        // Still try to stay on NavMesh if possible (cheap check)
+                        if (NavMesh.SamplePosition(desiredPos, out NavMeshHit quickHit, 2f, NavMesh.AllAreas))
+                        {
+                            desiredPos = quickHit.position;
+                        }
+                    }
+                }
+                else
+                {
+                    // Direct interpolation (no NavMesh)
+                    desiredPos = Vector3.MoveTowards(currentPos, targetPos, moveSpeed * Time.deltaTime);
+                    desiredPos = Ground(desiredPos);
+                }
+                
+                // Apply separation to prevent overlap with nearby units (steering behavior)
                 var unitSeparation = soldiers[i].GetComponent<UnitSeparation>();
                 if (unitSeparation != null)
                 {
-                    newPos = unitSeparation.ApplySeparation(newPos);
+                    desiredPos = unitSeparation.ApplySeparation(desiredPos);
                 }
                 
                 // Clamp new position to ensure soldiers don't leave the map during movement
-                newPos = ClampFormationToBattlefieldBounds(newPos);
-                soldiers[i].transform.position = newPos;
+                desiredPos = ClampFormationToBattlefieldBounds(desiredPos);
+                
+                // IMPROVED: Use Rigidbody.MovePosition() if available for smoother physics integration
+                Rigidbody rb = soldiers[i].GetComponent<Rigidbody>();
+                if (rb != null && rb.isKinematic)
+                {
+                    rb.MovePosition(desiredPos);
+                }
+                else
+                {
+                    soldiers[i].transform.position = desiredPos; // Fallback if no Rigidbody
+                }
             }
         }
         UpdateBadgePosition();
@@ -3811,14 +4365,18 @@ public class FormationUnit : MonoBehaviour
             return;
         }
         
-        // Don't update formation center from soldier positions when moving toward a target
+        // FIXED: Don't update formation center from soldier positions when actively moving toward a target
         // This prevents teleportation - the center should move smoothly via MoveFormation()
-        // Only update center from soldiers when not actively moving (e.g., during combat or idle)
-        if (isMoving && !isInCombat)
+        // CRITICAL: Even during combat, if we're moving (isMoving = true), don't recalculate center
+        // The center should only be recalculated when truly idle (not moving and not in active combat pursuit)
+        if (isMoving)
         {
-            return; // Let MoveFormation() handle center movement smoothly
+            return; // Let MoveFormation() handle center movement smoothly - don't interfere
         }
         
+        // Only recalculate center when not moving (idle or in static combat)
+        // During combat, soldiers may move individually, but we don't want to recalculate center
+        // unless we're truly idle (not moving and not actively pursuing)
         Vector3 sum = Vector3.zero;
         int validCount = 0;
         foreach (var soldier in soldiers)
@@ -3837,11 +4395,9 @@ public class FormationUnit : MonoBehaviour
             Vector3 calculatedCenter = sum / validCount;
             calculatedCenter = ClampFormationToBattlefieldBounds(calculatedCenter);
             
-            // Only update if not moving (during combat or idle, smooth updates are fine)
-            if (!isMoving)
-            {
-                formationCenter = Vector3.Lerp(formationCenter, calculatedCenter, Time.deltaTime * 2f);
-            }
+            // Only update when truly idle (not moving)
+            // Smooth interpolation prevents sudden jumps
+            formationCenter = Vector3.Lerp(formationCenter, calculatedCenter, Time.deltaTime * 2f);
         }
     }
     
@@ -3943,6 +4499,25 @@ public class FormationUnit : MonoBehaviour
         // Mark both formations as in combat (relaxes formation enforcement)
         isInCombat = true;
         enemyFormation.isInCombat = true;
+        
+        // IMPROVED: Update movement state
+        if (movementState == FormationMovementState.Moving)
+        {
+            movementState = FormationMovementState.Combat; // Combat takes priority over movement
+        }
+        else if (movementState == FormationMovementState.Idle)
+        {
+            movementState = FormationMovementState.Combat;
+        }
+        
+        if (enemyFormation.movementState == FormationMovementState.Moving)
+        {
+            enemyFormation.movementState = FormationMovementState.Combat;
+        }
+        else if (enemyFormation.movementState == FormationMovementState.Idle)
+        {
+            enemyFormation.movementState = FormationMovementState.Combat;
+        }
         
         // Check if we're charging (moving toward enemy and close enough)
         UpdateChargeState(enemyFormation);
@@ -4274,6 +4849,17 @@ public class FormationUnit : MonoBehaviour
                 // No more units in melee range - combat has ended
                 isInCombat = false;
                 enemyFormation.isInCombat = false;
+                
+                // IMPROVED: Update movement state
+                if (movementState == FormationMovementState.Combat)
+                {
+                    movementState = FormationMovementState.Idle;
+                }
+                if (enemyFormation.movementState == FormationMovementState.Combat)
+                {
+                    enemyFormation.movementState = FormationMovementState.Idle;
+                }
+                
                 needsReformation = true; // Mark for reformation after combat
                 enemyFormation.needsReformation = true;
                 break;
@@ -4314,27 +4900,118 @@ public class FormationUnit : MonoBehaviour
 
                 // CRITICAL: Soldiers should continuously move toward their target enemy
                 // This allows individual soldiers to engage, not just the formation center
+                // IMPROVED: Use hierarchical pathfinding like Total War - formation uses NavMesh, individual units use steering
                 Vector3 toEnemy = enemySoldier.transform.position - mySoldier.transform.position;
                 float distance = toEnemy.magnitude;
                 
-                // Move toward enemy if not in perfect melee range (unless routing)
-                if (!isRouted && distance > 0.5f && distance < 3.0f) // Move if between 0.5 and 3 units away
+                // MOVEMENT PRIORITY SYSTEM:
+                // 1. Player movement orders (isMoving = true) - highest priority
+                // 2. Combat pursuit (only if not moving) - medium priority
+                // 3. Formation grid positioning - lowest priority (handled by UpdateSoldierPositions)
+                
+                // Only pursue enemy if:
+                // - Not routing
+                // - Not currently following player movement orders (isMoving = false)
+                // - Enemy is in pursuit range (0.5 to 3 units away)
+                bool shouldPursueEnemy = !isRouted && !isMoving && distance > 0.5f && distance < 3.0f;
+                
+                if (shouldPursueEnemy)
                 {
+                    // TOTAL WAR APPROACH: Use NavMesh queries for obstacle avoidance (no full NavMeshAgent needed)
+                    // This scales to thousands of units - each unit uses lightweight NavMesh queries instead of full agents
                     Vector3 pursuitDirection = toEnemy.normalized;
                     float pursuitSpeed = 3f; // Speed to close with enemy
-                    Vector3 newPos = Vector3.MoveTowards(mySoldier.transform.position, enemySoldier.transform.position, pursuitSpeed * Time.deltaTime);
-                    newPos = Ground(newPos);
+                    Vector3 desiredPos = mySoldier.transform.position + pursuitDirection * pursuitSpeed * Time.deltaTime;
                     
-                    // Apply separation to prevent overlap with nearby units (using UnitSeparation component)
+                    // Use NavMesh queries for obstacle avoidance (throttled for performance)
+                    Vector3 currentPos = mySoldier.transform.position;
+                    bool shouldQueryNavMesh = ShouldQueryNavMesh(mySoldier);
+                    
+                    if (useNavMesh)
+                    {
+                        if (shouldQueryNavMesh)
+                        {
+                            // Use NavMesh.SamplePosition to ensure we stay on walkable terrain (lightweight query)
+                            if (NavMesh.SamplePosition(desiredPos, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                            {
+                                desiredPos = hit.position; // Snap to nearest walkable position
+                            }
+                            else
+                            {
+                                desiredPos = Ground(desiredPos); // Fallback to raycast grounding
+                            }
+                            
+                            // Use NavMesh.Raycast to check for obstacles in path (lightweight query)
+                            // NavMesh.Raycast returns true if the path goes off NavMesh or hits an obstacle
+                            if (NavMesh.Raycast(currentPos, desiredPos, out NavMeshHit rayHit, NavMesh.AllAreas))
+                            {
+                                // Obstacle detected - calculate direction to go around it
+                                // Use a more consistent approach: move perpendicular to the blocked direction
+                                Vector3 blockedDirection = (desiredPos - currentPos).normalized;
+                                Vector3 rightPerp = Vector3.Cross(blockedDirection, Vector3.up).normalized;
+                                
+                                // Try right first, then left if right doesn't work
+                                Vector3 aroundObstacle = rightPerp;
+                                Vector3 testPos = currentPos + aroundObstacle * pursuitSpeed * Time.deltaTime;
+                                
+                                // Re-sample to ensure it's on NavMesh
+                                if (NavMesh.SamplePosition(testPos, out NavMeshHit sampleHit, 2f, NavMesh.AllAreas))
+                                {
+                                    desiredPos = sampleHit.position;
+                                }
+                                else
+                                {
+                                    // Try left if right doesn't work
+                                    aroundObstacle = -rightPerp;
+                                    testPos = currentPos + aroundObstacle * pursuitSpeed * Time.deltaTime;
+                                    if (NavMesh.SamplePosition(testPos, out NavMeshHit leftHit, 2f, NavMesh.AllAreas))
+                                    {
+                                        desiredPos = leftHit.position;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Use cached result or simple movement without NavMesh check
+                            // Still try to stay on NavMesh if possible (cheap check)
+                            if (NavMesh.SamplePosition(desiredPos, out NavMeshHit quickHit, 2f, NavMesh.AllAreas))
+                            {
+                                desiredPos = quickHit.position;
+                            }
+                            else
+                            {
+                                desiredPos = Ground(desiredPos); // Fallback to raycast grounding
+                            }
+                        }
+                    }
+                    else
+                    {
+                        desiredPos = Ground(desiredPos); // Fallback to raycast grounding
+                    }
+                    
+                    // Apply separation to prevent overlap with nearby units (steering behavior)
                     var unitSeparation = mySoldier.GetComponent<UnitSeparation>();
                     if (unitSeparation != null)
                     {
-                        newPos = unitSeparation.ApplySeparation(newPos);
+                        desiredPos = unitSeparation.ApplySeparation(desiredPos);
                     }
                     
-                    newPos = ClampFormationToBattlefieldBounds(newPos);
-                    mySoldier.transform.position = newPos;
+                    desiredPos = ClampFormationToBattlefieldBounds(desiredPos);
+                    
+                    // IMPROVED: Use Rigidbody.MovePosition() if available for smoother physics integration
+                    Rigidbody rb = mySoldier.GetComponent<Rigidbody>();
+                    if (rb != null && rb.isKinematic)
+                    {
+                        rb.MovePosition(desiredPos);
+                    }
+                    else
+                    {
+                        mySoldier.transform.position = desiredPos; // Fallback if no Rigidbody
+                    }
                 }
+                // If isMoving = true, UpdateSoldierPositions() will handle movement toward targetPosition
+                // This ensures player movement orders take priority over combat pursuit
 
                 // Check individual attack cooldown - each unit has its own cooldown
                 float cooldown = soldierAttackCooldowns.TryGetValue(mySoldier, out var cd) ? cd : 0f;
@@ -5216,8 +5893,17 @@ public class FormationUnit : MonoBehaviour
     
     void StopMoving()
     {
-        isMoving = false;
+        // IMPROVED: Update movement state
+        movementState = FormationMovementState.Idle;
         walkingAnimationsInitialized = false; // Reset flag for next time
+        
+        // IMPROVED: Stop NavMeshAgent if using NavMesh
+        if (useNavMesh && formationNavAgent != null && formationNavAgent.isActiveAndEnabled)
+        {
+            formationNavAgent.isStopped = true;
+            formationNavAgent.ResetPath();
+        }
+        
         PlayIdleAnimations();
     }
     
