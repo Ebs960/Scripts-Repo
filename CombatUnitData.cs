@@ -167,7 +167,7 @@ public class CombatUnitData : ScriptableObject
     public int baseAttack;
     public int baseDefense;
     public int baseHealth;
-    public int baseRange;
+    public float baseRange;
 
     [Header("Progression")]
     public int[] xpToNextLevel;

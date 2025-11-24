@@ -4,6 +4,17 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
+/// Type of battle - affects terrain generation
+/// </summary>
+public enum BattleType
+{
+    Land,    // Standard land battle
+    Naval,   // Naval battle (water-based)
+    Coastal, // Coastal battle (land and water)
+    Siege    // Siege battle (fortified positions)
+}
+
+/// <summary>
 /// Generates biome-based battle maps with elevation and tactical terrain
 /// </summary>
 public class BattleMapGenerator : MonoBehaviour
@@ -19,15 +30,24 @@ public class BattleMapGenerator : MonoBehaviour
     public float elevationNoiseScale = 0.05f;
 
     [Header("Biome Settings")]
-    [Tooltip("Primary biome for this battle map")]
-    public Biome primaryBiome = Biome.Plains;
-    [Tooltip("Secondary biomes that can appear")]
-    public Biome[] secondaryBiomes = { Biome.Mountain, Biome.Forest };
-    [Tooltip("Chance for secondary biomes to appear")]
-    [Range(0f, 1f)]
-    public float secondaryBiomeChance = 0.3f;
+    [Tooltip("Primary biome for this battle map. Set manually for editor testing, or automatically from defender's tile when starting battle from campaign map.")]
+    public Biome primaryBattleBiome = Biome.Plains;
+    [Tooltip("Elevation for battle map (0-1). Set manually for editor testing, or automatically from defender's tile when starting battle from campaign map.")]
+    public float battleTileElevation = 0.5f;
+    [Tooltip("Moisture for battle map. Set manually for editor testing, or automatically from defender's tile when starting battle from campaign map.")]
+    public float battleTileMoisture = 0.5f;
+    [Tooltip("Temperature for battle map. Set manually for editor testing, or automatically from defender's tile when starting battle from campaign map.")]
+    public float battleTileTemperature = 0.5f;
+    
+    [Header("Battle Type")]
+    [Tooltip("Type of battle: Land, Naval, Coastal, or Siege")]
+    public BattleType battleType = BattleType.Land;
+    
     [Tooltip("Biome settings for textures and materials")]
     public BiomeSettings[] biomeSettings = new BiomeSettings[0];
+    
+    // Legacy property for backward compatibility (uses primaryBattleBiome)
+    public Biome primaryBiome => primaryBattleBiome;
 
     [Header("Elevation Features")]
     [Tooltip("Threshold for hill elevation")]
@@ -41,6 +61,9 @@ public class BattleMapGenerator : MonoBehaviour
     [Tooltip("Density of obstacles (trees, rocks, etc.)")]
     [Range(0f, 1f)]
     public float obstacleDensity = 0.15f;
+    [Tooltip("Maximum number of decorations to spawn on the battle map (0 = unlimited, but may cause memory issues)")]
+    [Range(0, 200)]
+    public int maxDecorations = 50;
     [Tooltip("Density of cover objects")]
     [Range(0f, 1f)]
     public float coverDensity = 0.1f;
@@ -89,6 +112,8 @@ public class BattleMapGenerator : MonoBehaviour
     /// </summary>
     public void GenerateBattleMap(float mapSize, int attackerUnits, int defenderUnits)
     {
+        Debug.Log($"[BattleMapGenerator] GenerateBattleMap called: mapSize={mapSize}, biome={primaryBattleBiome}, elevation={battleTileElevation}");
+        
         this.mapSize = mapSize;
         mapCenter = Vector3.zero;
         
@@ -103,7 +128,8 @@ public class BattleMapGenerator : MonoBehaviour
         // IMPROVED: Bake NavMesh at runtime after map generation
         GenerateNavigationMesh();
         
-        Debug.Log($"[BattleMapGenerator] Generated {primaryBiome} battle map ({mapSize}x{mapSize}) with elevation and tactical features");
+        Debug.Log($"[BattleMapGenerator] Generated {primaryBattleBiome} battle map ({mapSize}x{mapSize}) with elevation {battleTileElevation:F2}, battle type: {battleType}");
+        Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
     }
 
     /// <summary>
@@ -128,9 +154,13 @@ public class BattleMapGenerator : MonoBehaviour
         spawnedObjects.Clear();
         
         // Clear cached material to allow recreation with new biome settings
+        // This ensures material updates when biome changes
         if (cachedTerrainMaterial != null)
         {
-            DestroyImmediate(cachedTerrainMaterial);
+            if (Application.isPlaying)
+                Destroy(cachedTerrainMaterial);
+            else
+                DestroyImmediate(cachedTerrainMaterial);
             cachedTerrainMaterial = null;
         }
     }
@@ -228,12 +258,24 @@ public class BattleMapGenerator : MonoBehaviour
     
     /// <summary>
     /// Calculate height at a specific world position
+    /// Uses world tile elevation as base, with micro-variations for terrain roughness
+    /// Higher elevation tiles have rougher terrain (more variation)
     /// </summary>
     private float CalculateHeightAtPosition(float worldX, float worldZ)
     {
-        // Use noise to determine height
+        // Base height from world tile elevation (0-1 range, scale to world units)
+        float baseHeight = battleTileElevation * heightVariation;
+        
+        // Micro-variations for terrain roughness (noise detail)
+        // Higher elevation = rougher terrain (more variation)
+        float roughnessMultiplier = 0.25f + (battleTileElevation * 0.5f); // 0.25 to 0.75 based on elevation
         float heightNoise = Mathf.PerlinNoise(worldX * elevationNoiseScale, worldZ * elevationNoiseScale);
-        return heightNoise * heightVariation;
+        float noiseDetail = (heightNoise - 0.5f) * 2f; // -1 to 1
+        
+        // Apply roughness based on elevation
+        float height = baseHeight + (noiseDetail * roughnessMultiplier * heightVariation);
+        
+        return height;
     }
     
     /// <summary>
@@ -241,45 +283,53 @@ public class BattleMapGenerator : MonoBehaviour
     /// </summary>
     private void ApplyTerrainMaterial(MeshRenderer renderer)
     {
-        // Reuse cached material if it exists and matches the current biome
-        // Otherwise create a new one and cache it
-        if (cachedTerrainMaterial == null)
+        // Always recreate material to ensure it uses the current biome
+        // This ensures biome changes are reflected immediately
+        if (cachedTerrainMaterial != null)
         {
-            // Use URP Lit as requested
-            Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
-            cachedTerrainMaterial = new Material(urpLit != null ? urpLit : Shader.Find("Standard"));
-            
-            // Try to get biome settings for primary biome
-            if (biomeSettingsLookup.TryGetValue(primaryBiome, out BiomeSettings settings))
+            if (Application.isPlaying)
+                Destroy(cachedTerrainMaterial);
+            else
+                DestroyImmediate(cachedTerrainMaterial);
+            cachedTerrainMaterial = null;
+        }
+        
+        // Create new material for current biome
+        Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
+        cachedTerrainMaterial = new Material(urpLit != null ? urpLit : Shader.Find("Standard"));
+        
+        // Try to get biome settings for primary biome
+        if (biomeSettingsLookup.TryGetValue(primaryBiome, out BiomeSettings settings))
+        {
+            if (settings.albedoTexture != null)
             {
-                if (settings.albedoTexture != null)
-                {
-                    // URP Lit uses _BaseMap for the albedo texture
-                    cachedTerrainMaterial.SetTexture("_BaseMap", settings.albedoTexture);
-                }
-                else
-                {
-                    // URP Lit uses _BaseColor
-                    cachedTerrainMaterial.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
-                }
-                
-                if (settings.normalTexture != null)
-                {
-                    cachedTerrainMaterial.SetTexture("_BumpMap", settings.normalTexture);
-                    cachedTerrainMaterial.EnableKeyword("_NORMALMAP");
-                }
+                // URP Lit uses _BaseMap for the albedo texture
+                cachedTerrainMaterial.SetTexture("_BaseMap", settings.albedoTexture);
             }
             else
             {
+                // URP Lit uses _BaseColor
                 cachedTerrainMaterial.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
             }
             
-            // Set material properties
-            cachedTerrainMaterial.SetFloat("_Metallic", 0.0f);
-            cachedTerrainMaterial.SetFloat("_Smoothness", 0.5f);
+            if (settings.normalTexture != null)
+            {
+                cachedTerrainMaterial.SetTexture("_BumpMap", settings.normalTexture);
+                cachedTerrainMaterial.EnableKeyword("_NORMALMAP");
+            }
+        }
+        else
+        {
+            // No biome settings found - use fallback color
+            cachedTerrainMaterial.SetColor("_BaseColor", GetBiomeColor(primaryBiome));
+            Debug.LogWarning($"[BattleMapGenerator] No biome settings found for {primaryBiome}! Using fallback color. Add biome settings or use BattleMapBiomeSetup to copy from PlanetGenerator.");
         }
         
-        // Reuse the cached material (shared material instance)
+        // Set material properties
+        cachedTerrainMaterial.SetFloat("_Metallic", 0.0f);
+        cachedTerrainMaterial.SetFloat("_Smoothness", 0.5f);
+        
+        // Apply material to renderer
         renderer.sharedMaterial = cachedTerrainMaterial;
     }
 
@@ -290,9 +340,11 @@ public class BattleMapGenerator : MonoBehaviour
     {
         // Calculate decoration count but limit to maximum to prevent memory issues
         int decorationCount = Mathf.RoundToInt(mapSize * mapSize * obstacleDensity / 100f);
-        // MEMORY OPTIMIZATION: Limit decorations to maximum of 20 to prevent memory spikes
-        const int maxDecorations = 20;
-        decorationCount = Mathf.Min(decorationCount, maxDecorations);
+        // Limit decorations to configured maximum (0 = unlimited, but not recommended)
+        if (maxDecorations > 0)
+        {
+            decorationCount = Mathf.Min(decorationCount, maxDecorations);
+        }
         
         for (int i = 0; i < decorationCount; i++)
         {
@@ -306,8 +358,8 @@ public class BattleMapGenerator : MonoBehaviour
             // Calculate height at this position
             position.y = CalculateHeightAtPosition(position.x, position.z);
             
-            // Determine biome for this position
-            Biome biome = DetermineBiomeAtPosition(position.x, position.z);
+            // Use the primary biome from defender's tile (no variation)
+            Biome biome = primaryBattleBiome;
             
             // Spawn decoration if appropriate
             if (ShouldSpawnObstacle(biome))
@@ -319,19 +371,13 @@ public class BattleMapGenerator : MonoBehaviour
     
     /// <summary>
     /// Determine biome at a specific world position
+    /// Battle maps now use ONLY the defender's tile biome (no secondary biomes)
     /// </summary>
     private Biome DetermineBiomeAtPosition(float worldX, float worldZ)
     {
-        // Use noise to determine if this should be a secondary biome
-        float biomeNoise = Mathf.PerlinNoise(worldX * noiseScale, worldZ * noiseScale);
-        
-        if (biomeNoise < secondaryBiomeChance && secondaryBiomes.Length > 0)
-        {
-            // Select a random secondary biome
-            return secondaryBiomes[Random.Range(0, secondaryBiomes.Length)];
-        }
-        
-        return primaryBiome;
+        // Battle map uses ONLY the primary biome from the defender's tile
+        // No secondary biomes or randomness - 100% faithful to the campaign map tile
+        return primaryBattleBiome;
     }
 
 

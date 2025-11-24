@@ -541,7 +541,7 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: ClimateManager not found and no prefab assigned!");
             }
         }
-        
+            
         // Create UnitReinforcementManager if it doesn't exist
         if (UnitReinforcementManager.Instance == null)
         {

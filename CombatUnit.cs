@@ -23,7 +23,7 @@ public class CombatUnit : MonoBehaviour
     [SerializeField] private int attack = 0;
     [SerializeField] private int defense = 0;
     [SerializeField] private int health = 0; 
-    [SerializeField] private int range = 0;
+    [SerializeField] private float range = 0;
     [SerializeField] private int morale = 0;
     [SerializeField] private bool useOverrideStats = false;
     
@@ -45,9 +45,8 @@ public class CombatUnit : MonoBehaviour
     protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
     // Extra map for secondary equipment visuals (e.g., projectile weapon stored separately)
     protected Dictionary<string, GameObject> extraEquippedItemObjects = new Dictionary<string, GameObject>();
-    // Auto-disengage check
-    private float meleeCheckInterval = 0.5f;
-    private float meleeCheckTimer = 0f;
+    // Melee engagement is now handled by range checks in UpdateMeleeEngagementState()
+    // Old timer-based system removed
     
     // Equipment in use (beyond just the single 'equipped' reference)
     [Header("Equipped Items (Editable)")]
@@ -188,8 +187,13 @@ public class CombatUnit : MonoBehaviour
     private bool hasQueuedProjectile = false;
 
     // Melee engagement state: when true the unit uses its melee weapon instead of projectile weapon
+    // Now based on actual enemy proximity, not a fixed timer
     private bool engagedInMelee = false;
-    private Coroutine meleeEngageCoroutine = null;
+    
+    // Throttle melee range checks for performance (check every 0.3 seconds)
+    private float lastMeleeRangeCheck = 0f;
+    private const float MELEE_RANGE_CHECK_INTERVAL = 0.3f;
+    private const float MELEE_ENGAGEMENT_RANGE = 2.5f; // Distance to consider "in melee range"
 
     [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
     public Civilization owner { get; private set; }
@@ -554,7 +558,7 @@ public class CombatUnit : MonoBehaviour
     public int BaseAttack => useOverrideStats && attack > 0 ? attack : data.baseAttack;
     public int BaseDefense => useOverrideStats && defense > 0 ? defense : data.baseDefense;
     public int BaseHealth => useOverrideStats && health > 0 ? health : data.baseHealth;
-    public int BaseRange => useOverrideStats && range > 0 ? range : data.baseRange;
+    public float BaseRange => useOverrideStats && range > 0 ? range : data.baseRange;
 
     // Equipment bonuses (sum across all equipped slots)
     // Equipment bonuses aggregated as floats (can be fractional)
@@ -610,9 +614,9 @@ public class CombatUnit : MonoBehaviour
         return total;
     }
 
-    public int GetAbilityRangeModifier()
+    public float GetAbilityRangeModifier()
     {
-        int total = 0;
+        float total = 0;
         foreach (var ability in unlockedAbilities)
             total += ability.rangeModifier;
         return total;
@@ -793,7 +797,7 @@ public class CombatUnit : MonoBehaviour
             return Mathf.RoundToInt(valF);
         }
     }
-    public int CurrentRange
+    public float CurrentRange
     {
         get
         {
@@ -808,7 +812,7 @@ public class CombatUnit : MonoBehaviour
                 var e = AggregateAllEquippedBonusesLocal(owner);
                 valF = (valF + e.rangeAdd) * (1f + e.rangePct);
             }
-            return Mathf.RoundToInt(valF);
+            return valF; // Return as float, no rounding
         }
     }
     public int MaxMorale         => useOverrideStats && morale > 0 ? morale : data.baseMorale;
@@ -1276,16 +1280,14 @@ public class CombatUnit : MonoBehaviour
 
     /// <summary>
     /// Apply damage with context about the attacker. If the attacker is adjacent (melee) then mark this unit as engaged in melee
-    /// so it will use its melee weapon for a short duration.
+    /// so it will use its melee weapon. Engagement state is now managed by range checks, not a timer.
     /// </summary>
     public bool ApplyDamage(int damageAmount, CombatUnit attacker, bool attackerIsMelee)
     {
         if (attackerIsMelee && data != null && data.defaultWeapon != null)
         {
-            // Mark engaged in melee and start/restart the timer
+            // Mark engaged in melee - range check will maintain this state
             engagedInMelee = true;
-            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
-            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));
         }
 
         return ApplyDamage(damageAmount);
@@ -1299,26 +1301,11 @@ public class CombatUnit : MonoBehaviour
     {
         if (attackerIsMelee && data != null && data.defaultWeapon != null)
         {
-            // Mark engaged in melee (even against a worker)
+            // Mark engaged in melee (even against a worker) - range check will maintain this state
             engagedInMelee = true;
-            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
-            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));
         }
 
         return ApplyDamage(damageAmount);
-    }
-
-    private System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
-    {
-        float t = 0f;
-        while (t < delay)
-        {
-            t += Time.deltaTime;
-            yield return null;
-        }
-
-        engagedInMelee = false;
-        meleeEngageCoroutine = null;
     }
     
     /// <summary>
@@ -1982,6 +1969,8 @@ public class CombatUnit : MonoBehaviour
                 StopCoroutine(retreatCoroutine);
                 retreatCoroutine = null;
             }
+            // Immediately update routing animation to clear IsRouting parameter
+            UpdateRoutingAnimation();
         }
             
         // Check for damage from hazardous biomes
@@ -2634,25 +2623,8 @@ public class CombatUnit : MonoBehaviour
         // Only update every few frames for performance
         if (Time.frameCount % 3 != 0) return;
 
-        // Periodically check whether we should auto-disengage from melee
-        if (engagedInMelee)
-        {
-            meleeCheckTimer += Time.deltaTime;
-            if (meleeCheckTimer >= meleeCheckInterval)
-            {
-                meleeCheckTimer = 0f;
-                if (!HasEnemyAdjacent())
-                {
-                    engagedInMelee = false;
-                    if (meleeEngageCoroutine != null) { StopCoroutine(meleeEngageCoroutine); meleeEngageCoroutine = null; }
-                }
-            }
-        }
-        else
-        {
-            // reset timer when not engaged
-            meleeCheckTimer = 0f;
-        }
+        // Melee engagement state is now handled by UpdateMeleeEngagementState() based on range checks
+        // Old timer-based system removed - engagement is now reactive to actual enemy proximity
         
         // Update fatigue system
         UpdateFatigue();
@@ -2793,6 +2765,81 @@ public class CombatUnit : MonoBehaviour
                 // Can't play attack animation
             }
         }
+    }
+    
+    /// <summary>
+    /// Update melee engagement state based on whether unit is actively in melee combat
+    /// Unit is in melee if: attacking AND has a target within melee weapon range
+    /// </summary>
+    private void UpdateMeleeEngagementState()
+    {
+        // Only check if unit has a ranged weapon (no need to check for pure melee units)
+        if (data == null || equippedProjectileWeapon == null || !data.isRangedUnit)
+        {
+            // Pure melee unit or no ranged weapon - always use melee
+            engagedInMelee = true;
+            return;
+        }
+        
+        // Throttle checks for performance
+        if (Time.time - lastMeleeRangeCheck < MELEE_RANGE_CHECK_INTERVAL)
+        {
+            return;
+        }
+        lastMeleeRangeCheck = Time.time;
+        
+        // Check if unit is actively in melee combat
+        bool isInMeleeCombat = IsInMeleeCombat();
+        
+        // Update engagement state
+        engagedInMelee = isInMeleeCombat;
+    }
+    
+    /// <summary>
+    /// Check if unit is actively engaged in melee combat
+    /// Returns true if: unit is attacking AND has a target within melee weapon range
+    /// </summary>
+    private bool IsInMeleeCombat()
+    {
+        // Must be in attacking state
+        if (battleState != BattleUnitState.Attacking)
+        {
+            return false;
+        }
+        
+        // Must have a current target
+        if (currentTarget == null || currentTarget.currentHealth <= 0)
+        {
+            return false;
+        }
+        
+        // Check if target is within melee weapon range
+        // Melee range is typically the base range (without projectile weapon bonuses)
+        // For ranged units, melee range is usually 1.5-2.5 units
+        float meleeWeaponRange = GetMeleeWeaponRange();
+        float distanceToTarget = Vector3.Distance(transform.position, currentTarget.transform.position);
+        
+        // If target is within melee range, we're in melee combat
+        return distanceToTarget <= meleeWeaponRange;
+    }
+    
+    /// <summary>
+    /// Get the effective range of the melee weapon
+    /// For ranged units, this is typically the base range or equipped melee weapon range
+    /// </summary>
+    private float GetMeleeWeaponRange()
+    {
+        // If unit has an equipped melee weapon, use its range
+        if (equippedWeapon != null && equippedWeapon.projectileData == null)
+        {
+            // Melee weapon - use its range bonus or default melee range
+            float weaponRange = equippedWeapon.rangeBonus > 0 ? equippedWeapon.rangeBonus : 2.0f;
+            return weaponRange;
+        }
+        
+        // Default melee range (for units without explicit melee weapon)
+        // This is typically shorter than ranged weapon range
+        return 2.0f; // Standard melee engagement distance
     }
     
     /// <summary>
@@ -3369,6 +3416,9 @@ public class CombatUnit : MonoBehaviour
     /// </summary>
     public void SetBattleState(BattleUnitState newState)
     {
+        // Check if we're transitioning from Routing to a non-routing state
+        bool wasRouting = (battleState == BattleUnitState.Routing || isRouted);
+        
         battleState = newState;
         
         switch (newState)
@@ -3376,17 +3426,34 @@ public class CombatUnit : MonoBehaviour
             case BattleUnitState.Idle:
                 // Stop current actions
                 StopAllCoroutines();
+                // If we were routing, immediately update animation to clear IsRouting parameter
+                if (wasRouting)
+                {
+                    UpdateRoutingAnimation();
+                }
                 break;
             case BattleUnitState.Attacking:
                 // Look for nearby enemies
                 FindNearestEnemy();
+                // If we were routing, immediately update animation to clear IsRouting parameter
+                if (wasRouting)
+                {
+                    UpdateRoutingAnimation();
+                }
                 break;
             case BattleUnitState.Defending:
                 // Hold position
+                // If we were routing, immediately update animation to clear IsRouting parameter
+                if (wasRouting)
+                {
+                    UpdateRoutingAnimation();
+                }
                 break;
             case BattleUnitState.Routing:
                 // Start retreating
                 StartRetreat();
+                // Immediately update routing animation
+                UpdateRoutingAnimation();
                 break;
         }
     }

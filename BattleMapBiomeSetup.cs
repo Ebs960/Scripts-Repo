@@ -81,6 +81,53 @@ public class BattleMapBiomeSetup : MonoBehaviour
         targetBattleMapGenerator.biomeSettings = battleBiomeSettings.ToArray();
         
         Debug.Log($"[BattleMapBiomeSetup] Copied {battleBiomeSettings.Count} biome settings to BattleMapGenerator");
+        
+        // Also sync textures from planet generator
+        SyncBattleBiomeTextures();
+    }
+    
+    /// <summary>
+    /// Sync battle biome textures from planet generator's decoration manager
+    /// This ensures battle maps use the same textures as the campaign map
+    /// </summary>
+    public void SyncBattleBiomeTextures()
+    {
+        if (sourcePlanetGenerator == null || targetBattleMapGenerator == null)
+        {
+            Debug.LogWarning("[BattleMapBiomeSetup] Cannot sync textures - missing source or target references");
+            return;
+        }
+        
+        var planetDecorationManager = sourcePlanetGenerator.decorationManager;
+        if (planetDecorationManager == null || planetDecorationManager.biomeDecorations == null)
+        {
+            Debug.LogWarning("[BattleMapBiomeSetup] No planet decoration manager found for texture sync");
+            return;
+        }
+        
+        // Update each biome setting in the battle map generator with textures from planet generator
+        for (int i = 0; i < targetBattleMapGenerator.biomeSettings.Length; i++)
+        {
+            var battleSetting = targetBattleMapGenerator.biomeSettings[i];
+            if (battleSetting == null) continue;
+            
+            // Find matching biome in planet generator
+            // BiomeDecorationEntry is a struct, so we check for default (biome == 0) instead of null
+            var planetMatch = System.Linq.Enumerable.FirstOrDefault(
+                planetDecorationManager.biomeDecorations,
+                x => x.biome == battleSetting.biome && x.biome != Biome.Any
+            );
+            
+            // Check if match was found (struct default would have biome == 0/Any)
+            if (planetMatch.biome != Biome.Any && planetMatch.decorationPrefabs != null)
+            {
+                // Copy decoration prefabs from planet to battle map
+                battleSetting.decorations = planetMatch.decorationPrefabs;
+                Debug.Log($"[BattleMapBiomeSetup] Synced decorations for {battleSetting.biome}: {planetMatch.decorationPrefabs.Length} prefabs");
+            }
+        }
+        
+        Debug.Log("[BattleMapBiomeSetup] Texture and decoration sync completed");
     }
     
     [ContextMenu("Set Default Biome Settings")]

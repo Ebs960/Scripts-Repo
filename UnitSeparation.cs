@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Handles separation between units to prevent overlap
+/// Uses collider-based overlap detection (Physics.OverlapSphere) instead of distance calculations
 /// Uses smooth interpolation to avoid teleportation
 /// </summary>
 public class UnitSeparation : MonoBehaviour
@@ -18,14 +19,14 @@ public class UnitSeparation : MonoBehaviour
     public float separationSpeed = 2f;
     
     [Tooltip("Maximum separation force per frame (prevents sudden jumps)")]
-    public float maxSeparationForce = 4.5f;
+    public float maxSeparationForce = 2.5f;
     
     [Header("Enemy Separation")]
     [Tooltip("Allow enemies to get closer (multiplier for enemy separation distance)")]
-    public float enemySeparationMultiplier = 0.8f;
+    public float enemySeparationMultiplier = 0.5f;
     
     [Tooltip("Weaker separation force for enemies (allows melee combat)")]
-    public float enemySeparationStrength = 1.5f;
+    public float enemySeparationStrength = 0.5f;
     
     [Header("Debug")]
     [Tooltip("Show separation forces in scene view")]
@@ -34,18 +35,16 @@ public class UnitSeparation : MonoBehaviour
     private CombatUnit combatUnit;
     private FormationUnit formationUnit;
     private BattleTestSimple battleTestInstance;
+    private Collider unitCollider; // Cache our own collider for exclusion
     
-    // IMPROVED: Spatial partitioning for performance
-    private static SpatialGrid spatialGrid;
-    private static float lastSpatialGridUpdate = 0f;
-    private const float SPATIAL_GRID_UPDATE_INTERVAL = 0.1f; // Update grid every 0.1 seconds
-    private const float SPATIAL_GRID_CELL_SIZE = 5f; // 5 unit cells
-    private const float SPATIAL_GRID_QUERY_RADIUS = 10f; // Query radius for separation checks
+    // Layer mask for unit colliders (optimization - only check Units layer if it exists)
+    private int unitsLayerMask = -1; // Default to all layers if Units layer doesn't exist
     
     void Awake()
     {
         combatUnit = GetComponent<CombatUnit>();
         formationUnit = GetComponentInParent<FormationUnit>();
+        unitCollider = GetComponent<Collider>();
         
         // Cache BattleTestSimple instance
         if (BattleTestSimple.Instance != null)
@@ -53,20 +52,33 @@ public class UnitSeparation : MonoBehaviour
             battleTestInstance = BattleTestSimple.Instance;
         }
         
-        // Initialize spatial grid if needed
-        if (spatialGrid == null)
+        // Try to get Units layer mask for optimization (only check Units layer if it exists)
+        int unitsLayer = LayerMask.NameToLayer("Units");
+        if (unitsLayer != -1)
         {
-            spatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE, SPATIAL_GRID_QUERY_RADIUS);
+            unitsLayerMask = 1 << unitsLayer; // Only check Units layer
+        }
+        else
+        {
+            unitsLayerMask = -1; // Check all layers if Units layer doesn't exist
         }
     }
     
     /// <summary>
     /// Apply separation to a desired position to prevent overlap with nearby units
     /// Returns adjusted position with smooth interpolation
+    /// DISABLED during combat to allow units to engage in melee
     /// </summary>
     public Vector3 ApplySeparation(Vector3 desiredPosition)
     {
         if (combatUnit == null || formationUnit == null) return desiredPosition;
+        
+        // DISABLE separation during combat - units need to engage in melee
+        // Separation is only for preventing visual overlap when not in combat
+        if (formationUnit.isInCombat)
+        {
+            return desiredPosition;
+        }
         
         Vector3 separationForce = CalculateSeparationForce(desiredPosition);
         
@@ -92,31 +104,30 @@ public class UnitSeparation : MonoBehaviour
     }
     
     /// <summary>
-    /// Calculate separation force from nearby units
-    /// IMPROVED: Uses spatial partitioning for performance - only checks nearby units instead of all units
-    /// Uses the desired position (currentPosition parameter) instead of transform.position
-    /// This ensures separation is calculated from where the unit wants to go, not where it currently is
+    /// Calculate separation force from nearby units using collider overlap detection
+    /// Uses Physics.OverlapSphere() to detect overlapping colliders at the desired position
+    /// This is more Unity-native than manual distance calculations
     /// </summary>
     Vector3 CalculateSeparationForce(Vector3 currentPosition)
     {
         Vector3 totalForce = Vector3.zero;
-        // FIXED: Use currentPosition parameter instead of transform.position
-        // This ensures separation is calculated from the desired position, preventing units from being pushed away from their destination
         Vector3 unitPos = currentPosition;
         
-        // IMPROVED: Update spatial grid periodically
-        if (Time.time - lastSpatialGridUpdate > SPATIAL_GRID_UPDATE_INTERVAL)
-        {
-            UpdateSpatialGrid();
-            lastSpatialGridUpdate = Time.time;
-        }
+        // Use Physics.OverlapSphere to detect colliders within minimum separation distance
+        // This finds all colliders that would overlap if we moved to the desired position
+        Collider[] overlappingColliders = Physics.OverlapSphere(unitPos, minSeparation, unitsLayerMask);
         
-        // IMPROVED: Use spatial grid to get only nearby units (much faster than checking all units)
-        List<GameObject> nearbyUnits = spatialGrid.GetNearbyUnits(unitPos, SPATIAL_GRID_QUERY_RADIUS);
-        
-        foreach (var nearbyUnit in nearbyUnits)
+        foreach (var col in overlappingColliders)
         {
-            if (nearbyUnit == null || nearbyUnit == gameObject || !nearbyUnit.activeInHierarchy) continue;
+            // Skip our own collider
+            if (col == null || col == unitCollider || col.gameObject == gameObject) continue;
+            
+            // Only process colliders that belong to units (have CombatUnit component)
+            var nearbyCombatUnit = col.GetComponent<CombatUnit>();
+            if (nearbyCombatUnit == null) continue; // Skip non-unit colliders (terrain, etc.)
+            
+            GameObject nearbyUnit = col.gameObject;
+            if (!nearbyUnit.activeInHierarchy) continue;
             
             // Determine if this is a friendly or enemy unit
             var nearbyFormation = nearbyUnit.GetComponentInParent<FormationUnit>();
@@ -126,51 +137,39 @@ public class UnitSeparation : MonoBehaviour
                            nearbyFormation.isAttacker != formationUnit.isAttacker &&
                            formationUnit.isInCombat);
             
+            // Get the closest point on the other unit's collider to our position
+            Vector3 closestPointOnOther = col.ClosestPoint(unitPos);
+            Vector3 nearbyPos = closestPointOnOther;
+            
+            // If closest point is inside our desired position, use the collider's center as fallback
+            if (Vector3.Distance(nearbyPos, unitPos) < 0.01f)
+            {
+                nearbyPos = col.bounds.center;
+            }
+            
             if (isFriendly)
             {
                 // Friendly unit - use normal separation
-                Vector3 nearbyPos = nearbyUnit.transform.position;
                 Vector3 force = CalculateSeparationFromUnit(nearbyPos, unitPos, minSeparation, separationStrength);
                 totalForce += force;
             }
             else if (isEnemy)
             {
                 // Enemy unit - use weaker separation (allows melee combat)
+                // Check overlap with smaller radius for enemies
                 float enemySeparationDist = minSeparation * enemySeparationMultiplier;
-                Vector3 enemyPos = nearbyUnit.transform.position;
-                Vector3 force = CalculateSeparationFromUnit(enemyPos, unitPos, enemySeparationDist, enemySeparationStrength);
-                totalForce += force;
+                float distanceToEnemy = Vector3.Distance(unitPos, nearbyPos);
+                
+                // Only apply enemy separation if within enemy separation distance
+                if (distanceToEnemy < enemySeparationDist)
+                {
+                    Vector3 force = CalculateSeparationFromUnit(nearbyPos, unitPos, enemySeparationDist, enemySeparationStrength);
+                    totalForce += force;
+                }
             }
         }
         
         return totalForce;
-    }
-    
-    /// <summary>
-    /// Update the spatial grid with all active units
-    /// </summary>
-    void UpdateSpatialGrid()
-    {
-        if (spatialGrid == null || battleTestInstance == null) return;
-        
-        spatialGrid.Clear();
-        
-        // Add all units from all formations to the spatial grid
-        if (battleTestInstance.allFormations != null)
-        {
-            foreach (var formation in battleTestInstance.allFormations)
-            {
-                if (formation == null || formation.soldiers == null) continue;
-                
-                foreach (var soldier in formation.soldiers)
-                {
-                    if (soldier != null && soldier.activeInHierarchy)
-                    {
-                        spatialGrid.Add(soldier, soldier.transform.position);
-                    }
-                }
-            }
-        }
     }
     
     /// <summary>
