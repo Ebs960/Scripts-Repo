@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.AI; // For NavMesh runtime baking
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection; // For MapMagic 2 integration via reflection
 
 /// <summary>
 /// Type of battle - affects terrain generation
@@ -43,11 +44,23 @@ public class BattleMapGenerator : MonoBehaviour
     [Tooltip("Type of battle: Land, Naval, Coastal, or Siege")]
     public BattleType battleType = BattleType.Land;
     
+    [Header("MapMagic 2 Integration")]
+    [Tooltip("Use MapMagic 2 for procedural terrain generation (if available)")]
+    public bool useMapMagic2 = true;
+    [Tooltip("Reference to MapMagic 2 GameObject/Component (auto-detected if null)")]
+    public GameObject mapMagic2Object;
+    [Tooltip("MapMagic 2 graph preset to use for terrain generation (optional)")]
+    public ScriptableObject mapMagic2Graph;
+    
     [Tooltip("Biome settings for textures and materials")]
     public BiomeSettings[] biomeSettings = new BiomeSettings[0];
     
     // Legacy property for backward compatibility (uses primaryBattleBiome)
     public Biome primaryBiome => primaryBattleBiome;
+    
+    // MapMagic 2 integration (via reflection to avoid hard dependency)
+    private object mapMagic2Instance;
+    private bool mapMagic2Available = false;
 
     [Header("Elevation Features")]
     [Tooltip("Threshold for hill elevation")]
@@ -109,6 +122,7 @@ public class BattleMapGenerator : MonoBehaviour
 
     /// <summary>
     /// Generate a biome-based battle map with elevation and tactical features
+    /// Uses MapMagic 2 if available, otherwise falls back to simple mesh generation
     /// </summary>
     public void GenerateBattleMap(float mapSize, int attackerUnits, int defenderUnits)
     {
@@ -121,7 +135,19 @@ public class BattleMapGenerator : MonoBehaviour
         InitializeBiomeSettings();
         
         ClearExistingMap();
-        GenerateTerrainMesh();
+        
+        // Try to use MapMagic 2 if enabled and available
+        if (useMapMagic2 && TryInitializeMapMagic2())
+        {
+            Debug.Log("[BattleMapGenerator] Using MapMagic 2 for terrain generation");
+            GenerateTerrainWithMapMagic2();
+        }
+        else
+        {
+            Debug.Log("[BattleMapGenerator] Using fallback terrain mesh generation");
+            GenerateTerrainMesh();
+        }
+        
         AddBiomeDecorations();
         CreateSpawnPoints(attackerUnits, defenderUnits);
         
@@ -130,6 +156,283 @@ public class BattleMapGenerator : MonoBehaviour
         
         Debug.Log($"[BattleMapGenerator] Generated {primaryBattleBiome} battle map ({mapSize}x{mapSize}) with elevation {battleTileElevation:F2}, battle type: {battleType}");
         Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
+    }
+    
+    /// <summary>
+    /// Try to initialize MapMagic 2 integration (uses reflection to avoid hard dependency)
+    /// </summary>
+    private bool TryInitializeMapMagic2()
+    {
+        if (mapMagic2Available && mapMagic2Instance != null)
+            return true;
+        
+        // Try to find MapMagic 2 component
+        if (mapMagic2Object == null)
+        {
+            // Search for MapMagic component in scene
+            var mapMagicType = System.Type.GetType("MapMagic.MapMagic, Assembly-CSharp");
+            if (mapMagicType == null)
+            {
+                // Try alternative namespace
+                mapMagicType = System.Type.GetType("MapMagic.MapMagic");
+            }
+            
+            if (mapMagicType != null)
+            {
+                var mapMagicComponent = FindFirstObjectByType(mapMagicType);
+                if (mapMagicComponent != null)
+                {
+                    mapMagic2Object = ((Component)mapMagicComponent).gameObject;
+                    mapMagic2Instance = mapMagicComponent;
+                }
+            }
+        }
+        else
+        {
+            // Use assigned reference
+            var mapMagicComponent = mapMagic2Object.GetComponent("MapMagic");
+            if (mapMagicComponent != null)
+            {
+                mapMagic2Instance = mapMagicComponent;
+            }
+        }
+        
+        mapMagic2Available = (mapMagic2Instance != null);
+        
+        if (mapMagic2Available)
+        {
+            Debug.Log("[BattleMapGenerator] MapMagic 2 detected and initialized");
+        }
+        else
+        {
+            Debug.LogWarning("[BattleMapGenerator] MapMagic 2 not found - using fallback terrain generation. Install MapMagic 2 from Asset Store to use procedural terrain.");
+        }
+        
+        return mapMagic2Available;
+    }
+    
+    /// <summary>
+    /// Generate terrain using MapMagic 2
+    /// Passes biome/elevation/moisture/temperature data to MapMagic 2
+    /// </summary>
+    private void GenerateTerrainWithMapMagic2()
+    {
+        if (mapMagic2Instance == null)
+        {
+            Debug.LogError("[BattleMapGenerator] MapMagic 2 instance is null!");
+            GenerateTerrainMesh(); // Fallback
+            return;
+        }
+        
+        try
+        {
+            // Get MapMagic type for reflection
+            var mapMagicType = mapMagic2Instance.GetType();
+            
+            // Set biome/elevation parameters if MapMagic 2 supports it
+            SetMapMagic2BiomeParameters(mapMagicType, mapMagic2Instance);
+            
+            // Generate terrain using MapMagic 2
+            // MapMagic 2 typically has a Generate() or GenerateMap() method
+            var generateMethod = mapMagicType.GetMethod("Generate", BindingFlags.Public | BindingFlags.Instance);
+            if (generateMethod == null)
+            {
+                generateMethod = mapMagicType.GetMethod("GenerateMap", BindingFlags.Public | BindingFlags.Instance);
+            }
+            
+            if (generateMethod != null)
+            {
+                // Call Generate() or GenerateMap()
+                generateMethod.Invoke(mapMagic2Instance, null);
+                Debug.Log("[BattleMapGenerator] MapMagic 2 terrain generation completed");
+            }
+            else
+            {
+                Debug.LogWarning("[BattleMapGenerator] MapMagic 2 Generate method not found - terrain may need manual generation");
+            }
+            
+            // MapMagic 2 creates its own terrain objects, so we don't need to create mesh manually
+            // But we should track the terrain for cleanup
+            var terrain = mapMagic2Object.transform.Find("Terrain");
+            if (terrain != null)
+            {
+                terrainObjects.Add(terrain.gameObject);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[BattleMapGenerator] Error generating terrain with MapMagic 2: {e.Message}");
+            Debug.LogError($"[BattleMapGenerator] Falling back to simple mesh generation");
+            GenerateTerrainMesh(); // Fallback
+        }
+    }
+    
+    /// <summary>
+    /// Set biome/elevation/moisture/temperature parameters in MapMagic 2
+    /// Uses reflection to set parameters if MapMagic 2 exposes them
+    /// </summary>
+    private void SetMapMagic2BiomeParameters(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Try to set biome parameter (MapMagic 2 may have a biome field or property)
+            var biomeField = mapMagicType.GetField("biome", BindingFlags.Public | BindingFlags.Instance);
+            if (biomeField != null && biomeField.FieldType == typeof(Biome))
+            {
+                biomeField.SetValue(mapMagicInstance, primaryBattleBiome);
+            }
+            
+            var biomeProperty = mapMagicType.GetProperty("biome", BindingFlags.Public | BindingFlags.Instance);
+            if (biomeProperty != null && biomeProperty.PropertyType == typeof(Biome))
+            {
+                biomeProperty.SetValue(mapMagicInstance, primaryBattleBiome);
+            }
+            
+            // Try to set elevation parameter
+            var elevationField = mapMagicType.GetField("elevation", BindingFlags.Public | BindingFlags.Instance);
+            if (elevationField != null && elevationField.FieldType == typeof(float))
+            {
+                elevationField.SetValue(mapMagicInstance, battleTileElevation);
+            }
+            
+            var elevationProperty = mapMagicType.GetProperty("elevation", BindingFlags.Public | BindingFlags.Instance);
+            if (elevationProperty != null && elevationProperty.PropertyType == typeof(float))
+            {
+                elevationProperty.SetValue(mapMagicInstance, battleTileElevation);
+            }
+            
+            // Try to set moisture parameter
+            var moistureField = mapMagicType.GetField("moisture", BindingFlags.Public | BindingFlags.Instance);
+            if (moistureField != null && moistureField.FieldType == typeof(float))
+            {
+                moistureField.SetValue(mapMagicInstance, battleTileMoisture);
+            }
+            
+            var moistureProperty = mapMagicType.GetProperty("moisture", BindingFlags.Public | BindingFlags.Instance);
+            if (moistureProperty != null && moistureProperty.PropertyType == typeof(float))
+            {
+                moistureProperty.SetValue(mapMagicInstance, battleTileMoisture);
+            }
+            
+            // Try to set temperature parameter
+            var temperatureField = mapMagicType.GetField("temperature", BindingFlags.Public | BindingFlags.Instance);
+            if (temperatureField != null && temperatureField.FieldType == typeof(float))
+            {
+                temperatureField.SetValue(mapMagicInstance, battleTileTemperature);
+            }
+            
+            var temperatureProperty = mapMagicType.GetProperty("temperature", BindingFlags.Public | BindingFlags.Instance);
+            if (temperatureProperty != null && temperatureProperty.PropertyType == typeof(float))
+            {
+                temperatureProperty.SetValue(mapMagicInstance, battleTileTemperature);
+            }
+            
+            // Try to access graph and set parameters there (MapMagic 2 uses graphs)
+            var graphProperty = mapMagicType.GetProperty("graph", BindingFlags.Public | BindingFlags.Instance);
+            if (graphProperty != null)
+            {
+                var graph = graphProperty.GetValue(mapMagicInstance);
+                if (graph != null)
+                {
+                    SetMapMagic2GraphParameters(graph);
+                }
+            }
+            
+            Debug.Log($"[BattleMapGenerator] Set MapMagic 2 parameters: biome={primaryBattleBiome}, elevation={battleTileElevation}, moisture={battleTileMoisture}, temperature={battleTileTemperature}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set all MapMagic 2 parameters: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Set parameters in MapMagic 2's graph system (biomes, nodes, etc.)
+    /// </summary>
+    private void SetMapMagic2GraphParameters(object graph)
+    {
+        try
+        {
+            var graphType = graph.GetType();
+            
+            // Try to find biome nodes or biome settings in the graph
+            // MapMagic 2 graphs typically have collections of generators/nodes
+            var generatorsProperty = graphType.GetProperty("generators", BindingFlags.Public | BindingFlags.Instance);
+            if (generatorsProperty == null)
+            {
+                generatorsProperty = graphType.GetProperty("nodes", BindingFlags.Public | BindingFlags.Instance);
+            }
+            
+            if (generatorsProperty != null)
+            {
+                var generators = generatorsProperty.GetValue(graph);
+                if (generators is System.Collections.IEnumerable genEnumerable)
+                {
+                    foreach (var generator in genEnumerable)
+                    {
+                        if (generator == null) continue;
+                        
+                        var genType = generator.GetType();
+                        var typeName = genType.Name.ToLower();
+                        
+                        // Look for biome-related generators
+                        if (typeName.Contains("biome") || typeName.Contains("noise") || typeName.Contains("height"))
+                        {
+                            // Try to set elevation/intensity parameters
+                            var intensityProperty = genType.GetProperty("intensity", BindingFlags.Public | BindingFlags.Instance);
+                            if (intensityProperty != null && intensityProperty.PropertyType == typeof(float))
+                            {
+                                intensityProperty.SetValue(generator, battleTileElevation);
+                            }
+                            
+                            var heightProperty = genType.GetProperty("height", BindingFlags.Public | BindingFlags.Instance);
+                            if (heightProperty != null && heightProperty.PropertyType == typeof(float))
+                            {
+                                heightProperty.SetValue(generator, battleTileElevation * heightVariation);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 graph parameters: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Helper method to find object by type using reflection
+    /// </summary>
+    private Component FindFirstObjectByType(System.Type type)
+    {
+        // Use Unity's FindFirstObjectByType<T> via reflection
+        var findMethod = typeof(Object).GetMethod("FindFirstObjectByType", BindingFlags.Public | BindingFlags.Static);
+        if (findMethod != null)
+        {
+            // FindFirstObjectByType is generic, so we need to make a generic method
+            var genericMethod = findMethod.MakeGenericMethod(type);
+            var result = genericMethod.Invoke(null, null);
+            return result as Component;
+        }
+        
+        // Fallback to FindObjectOfType
+        var findObjectMethod = typeof(Object).GetMethod("FindObjectOfType", BindingFlags.Public | BindingFlags.Static);
+        if (findObjectMethod != null)
+        {
+            var genericMethod = findObjectMethod.MakeGenericMethod(type);
+            var result = genericMethod.Invoke(null, null);
+            return result as Component;
+        }
+        
+        // Last resort: search all objects
+        var allObjects = FindObjectsByType(type, FindObjectsSortMode.None);
+        if (allObjects != null && allObjects.Length > 0)
+        {
+            return allObjects[0] as Component;
+        }
+        
+        return null;
     }
 
     /// <summary>
