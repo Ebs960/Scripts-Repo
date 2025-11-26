@@ -3062,9 +3062,9 @@ public class BattleTestSimple : MonoBehaviour
                     
                     // Start reformation coroutine if not already running
                     var reformationCoroutine = formation.StartCoroutine(formation.ReformFormationAfterCombat());
-                    if (formation.trackedCoroutines != null && !formation.trackedCoroutines.Contains(reformationCoroutine))
+                    if (formation.activeCoroutines != null && !formation.activeCoroutines.Contains(reformationCoroutine))
                     {
-                        formation.trackedCoroutines.Add(reformationCoroutine);
+                        formation.activeCoroutines.Add(reformationCoroutine);
                     }
                 }
             }
@@ -3231,7 +3231,7 @@ public class FormationUnit : MonoBehaviour
     private const float BASE_ATTACK_COOLDOWN = 1.2f; // Base time between attacks per unit
     
     // Formation reformation after combat
-    private bool needsReformation = false;
+    public bool needsReformation = false; // Made public for access from BattleTestSimple.EndBattle()
     private const float REFORMATION_SPEED = 5f; // Speed at which soldiers return to formation
     
     // Formation integrity system - decreases during prolonged combat, allowing looser formations
@@ -3267,7 +3267,7 @@ public class FormationUnit : MonoBehaviour
     
     // Track active combat coroutines to prevent duplicates
     private Coroutine activeCombatCoroutine;
-    private List<Coroutine> activeCoroutines = new List<Coroutine>(); // Track all active coroutines for cleanup
+    public List<Coroutine> activeCoroutines = new List<Coroutine>(); // Track all active coroutines for cleanup (made public for access from BattleTestSimple)
     private HashSet<GameObject> soldiersMarkedForDestruction = new HashSet<GameObject>(); // Track soldiers being destroyed to prevent double removal
     
     // Reusable lists for CombatDamageCoroutine (avoid allocations)
@@ -4148,22 +4148,44 @@ public class FormationUnit : MonoBehaviour
     
     /// <summary>
     /// Reform formation after combat ends - gradually return soldiers to formation grid
+    /// Uses normal movement speed (no special speed)
     /// </summary>
-    System.Collections.IEnumerator ReformFormationAfterCombat()
+    public System.Collections.IEnumerator ReformFormationAfterCombat() // Made public for access from BattleTestSimple.EndBattle()
     {
         // Wait a moment before starting reformation (let combat fully end)
         yield return new WaitForSeconds(0.5f);
         
-        // Gradually reform over 2 seconds
-        float reformationDuration = 2f;
-        float elapsed = 0f;
-        
-        while (elapsed < reformationDuration && !isInCombat && !isMoving)
+        // Reform until all soldiers are in position (no time limit - uses normal movement speed)
+        // UpdateSoldierPositions will handle movement at normal speed
+        while (needsReformation && !isInCombat && !isMoving)
         {
-            elapsed += Time.deltaTime;
+            // Check if all soldiers are close enough to their formation positions
+            bool allInPosition = true;
+            for (int i = 0; i < soldiers.Count; i++)
+            {
+                if (soldiers[i] == null) continue;
+                
+                Vector3 offset = GetFormationOffset(i);
+                Vector3 desired = formationCenter + offset;
+                Vector3 currentPos = soldiers[i].transform.position;
+                float distance = Vector3.Distance(currentPos, desired);
+                
+                if (distance > 0.5f) // Still need to move
+                {
+                    allInPosition = false;
+                    break;
+                }
+            }
             
-            // Gradually move soldiers back to formation positions
-            // UpdateSoldierPositions will handle the interpolation smoothly
+            if (allInPosition)
+            {
+                // All soldiers are in position - reformation complete
+                needsReformation = false;
+                break;
+            }
+            
+            // Gradually move soldiers back to formation positions at normal speed
+            // UpdateSoldierPositions will handle the interpolation at normal movement speed
             UpdateSoldierPositions();
             
             yield return null;

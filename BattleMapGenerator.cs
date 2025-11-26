@@ -49,8 +49,19 @@ public class BattleMapGenerator : MonoBehaviour
     public bool useMapMagic2 = true;
     [Tooltip("Reference to MapMagic 2 GameObject/Component (auto-detected if null)")]
     public GameObject mapMagic2Object;
-    [Tooltip("MapMagic 2 graph preset to use for terrain generation (optional)")]
-    public ScriptableObject mapMagic2Graph;
+    
+    [System.Serializable]
+    public class BiomeGraphEntry
+    {
+        public Biome biome;
+        public ScriptableObject graph; // MapMagic 2 graph asset
+    }
+    
+    [Header("MapMagic 2 Biome Graphs")]
+    [Tooltip("Graph assets for each biome. Assign one graph per biome type. The system will automatically select the correct graph based on primaryBattleBiome.")]
+    public BiomeGraphEntry[] biomeGraphs = new BiomeGraphEntry[0];
+    
+    private Dictionary<Biome, ScriptableObject> biomeGraphLookup = new Dictionary<Biome, ScriptableObject>();
     
     [Tooltip("Biome settings for textures and materials")]
     public BiomeSettings[] biomeSettings = new BiomeSettings[0];
@@ -86,6 +97,10 @@ public class BattleMapGenerator : MonoBehaviour
     public float spawnDistance = 30f;
     [Tooltip("Prefab for spawn point markers")]
     public GameObject spawnPointPrefab;
+    
+    [Header("Grounding & Decoration Placement")]
+    [Tooltip("Layers considered battlefield ground for raycast grounding and decoration placement")] 
+    public LayerMask battlefieldLayers = ~0; // default: everything
 
     [Header("Victory Conditions")]
     [Tooltip("Morale threshold for routing (0-100)")]
@@ -159,12 +174,36 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
+    /// Initialize biome graph lookup dictionary from biomeGraphs array
+    /// </summary>
+    private void InitializeBiomeGraphLookup()
+    {
+        biomeGraphLookup.Clear();
+        
+        if (biomeGraphs != null)
+        {
+            foreach (var entry in biomeGraphs)
+            {
+                if (entry != null && entry.graph != null && entry.biome != Biome.Any)
+                {
+                    biomeGraphLookup[entry.biome] = entry.graph;
+                }
+            }
+        }
+        
+        Debug.Log($"[BattleMapGenerator] Initialized biome graph lookup with {biomeGraphLookup.Count} graphs");
+    }
+    
+    /// <summary>
     /// Try to initialize MapMagic 2 integration (uses reflection to avoid hard dependency)
     /// </summary>
     private bool TryInitializeMapMagic2()
     {
         if (mapMagic2Available && mapMagic2Instance != null)
             return true;
+        
+        // Initialize biome graph lookup
+        InitializeBiomeGraphLookup();
         
         // Try to find MapMagic 2 component
         if (mapMagic2Object == null)
@@ -213,6 +252,7 @@ public class BattleMapGenerator : MonoBehaviour
     
     /// <summary>
     /// Generate terrain using MapMagic 2
+    /// Automatically switches to the correct graph based on primaryBattleBiome
     /// Passes biome/elevation/moisture/temperature data to MapMagic 2
     /// </summary>
     private void GenerateTerrainWithMapMagic2()
@@ -229,8 +269,53 @@ public class BattleMapGenerator : MonoBehaviour
             // Get MapMagic type for reflection
             var mapMagicType = mapMagic2Instance.GetType();
             
+            // AUTOMATIC GRAPH SWITCHING: Select the correct graph based on biome
+            if (biomeGraphLookup.TryGetValue(primaryBattleBiome, out ScriptableObject biomeGraph))
+            {
+                // Set the graph property on MapMagic component
+                var graphProperty = mapMagicType.GetProperty("graph", BindingFlags.Public | BindingFlags.Instance);
+                if (graphProperty != null)
+                {
+                    graphProperty.SetValue(mapMagic2Instance, biomeGraph);
+                    Debug.Log($"[BattleMapGenerator] Switched MapMagic 2 graph to {primaryBattleBiome} graph");
+                }
+                else
+                {
+                    // Try field instead of property
+                    var graphField = mapMagicType.GetField("graph", BindingFlags.Public | BindingFlags.Instance);
+                    if (graphField != null)
+                    {
+                        graphField.SetValue(mapMagic2Instance, biomeGraph);
+                        Debug.Log($"[BattleMapGenerator] Switched MapMagic 2 graph to {primaryBattleBiome} graph (via field)");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[BattleMapGenerator] Could not find graph property/field on MapMagic 2. Graph may need to be set manually in Inspector.");
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[BattleMapGenerator] No graph found for biome {primaryBattleBiome}! Add it to Biome Graphs array in Inspector. Using default MapMagic graph.");
+            }
+            
             // Set biome/elevation parameters if MapMagic 2 supports it
             SetMapMagic2BiomeParameters(mapMagicType, mapMagic2Instance);
+            
+            // Set terrain settings (vegetation, wind, detail density) based on biome
+            SetMapMagic2TerrainSettings(mapMagicType, mapMagic2Instance);
+            
+            // Set height output settings based on elevation
+            SetMapMagic2HeightOutput(mapMagicType, mapMagic2Instance);
+            
+            // Set tile settings (size, resolution) for battle map
+            SetMapMagic2TileSettings(mapMagicType, mapMagic2Instance);
+            
+            // Set vegetation settings (trees, grass density) based on biome
+            SetMapMagic2VegetationSettings(mapMagicType, mapMagic2Instance);
+            
+            // Set terrain material/texture based on biome
+            SetMapMagic2TerrainMaterial(mapMagicType, mapMagic2Instance);
             
             // Generate terrain using MapMagic 2
             // MapMagic 2 typically has a Generate() or GenerateMap() method
@@ -252,18 +337,71 @@ public class BattleMapGenerator : MonoBehaviour
             }
             
             // MapMagic 2 creates its own terrain objects, so we don't need to create mesh manually
-            // But we should track the terrain for cleanup
-            var terrain = mapMagic2Object.transform.Find("Terrain");
-            if (terrain != null)
+            // But we should track the terrain for cleanup and decoration placement
+            // MapMagic 2 creates Terrain objects, so find all Terrain components
+            Terrain[] mapMagicTerrains = mapMagic2Object.GetComponentsInChildren<Terrain>(true);
+            foreach (Terrain terrain in mapMagicTerrains)
             {
-                terrainObjects.Add(terrain.gameObject);
+                if (terrain != null && terrain.gameObject != null)
+                {
+                    terrainObjects.Add(terrain.gameObject);
+                    Debug.Log($"[BattleMapGenerator] Found MapMagic terrain: {terrain.gameObject.name}");
+                }
             }
+            
+            // Also try to find by name (MapMagic might use different naming)
+            var terrainObj = mapMagic2Object.transform.Find("Terrain");
+            if (terrainObj != null && !terrainObjects.Contains(terrainObj.gameObject))
+            {
+                terrainObjects.Add(terrainObj.gameObject);
+            }
+            
+            // Find all terrain tiles (MapMagic uses a tile system)
+            var tileParent = mapMagic2Object.transform.Find("Tile 0,0");
+            if (tileParent != null)
+            {
+                var mainTerrain = tileParent.Find("Main Terrain");
+                if (mainTerrain != null && !terrainObjects.Contains(mainTerrain.gameObject))
+                {
+                    terrainObjects.Add(mainTerrain.gameObject);
+                }
+            }
+            
+            // Apply biome material directly to terrain objects (backup in case ApplyTerrainSettings didn't work)
+            // Use coroutine to apply after terrain generation completes
+            StartCoroutine(ApplyBiomeMaterialToTerrainsDelayed());
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[BattleMapGenerator] Error generating terrain with MapMagic 2: {e.Message}");
+            Debug.LogError($"[BattleMapGenerator] Stack trace: {e.StackTrace}");
             Debug.LogError($"[BattleMapGenerator] Falling back to simple mesh generation");
             GenerateTerrainMesh(); // Fallback
+        }
+    }
+    
+    /// <summary>
+    /// Coroutine to apply biome material to terrains after generation completes
+    /// </summary>
+    private System.Collections.IEnumerator ApplyBiomeMaterialToTerrainsDelayed()
+    {
+        // Wait a frame for terrain generation to complete
+        yield return null;
+        
+        // Try multiple times in case terrain generation takes longer
+        for (int i = 0; i < 5; i++)
+        {
+            ApplyBiomeMaterialToTerrains();
+            
+            // Check if we found any terrains
+            Terrain[] allTerrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+            if (allTerrains != null && allTerrains.Length > 0)
+            {
+                break; // Terrains found, we're done
+            }
+            
+            // Wait another frame before retrying
+            yield return null;
         }
     }
     
@@ -348,12 +486,24 @@ public class BattleMapGenerator : MonoBehaviour
     
     /// <summary>
     /// Set parameters in MapMagic 2's graph system (biomes, nodes, etc.)
+    /// ENHANCED: Now sets terrain roughness, noise parameters, and exposed variables
     /// </summary>
     private void SetMapMagic2GraphParameters(object graph)
     {
         try
         {
             var graphType = graph.GetType();
+            
+            // Try to access exposed variables system
+            var exposedProperty = graphType.GetProperty("exposed", BindingFlags.Public | BindingFlags.Instance);
+            if (exposedProperty != null)
+            {
+                var exposed = exposedProperty.GetValue(graph);
+                if (exposed != null)
+                {
+                    SetMapMagic2ExposedVariables(exposed, graph);
+                }
+            }
             
             // Try to find biome nodes or biome settings in the graph
             // MapMagic 2 graphs typically have collections of generators/nodes
@@ -375,21 +525,31 @@ public class BattleMapGenerator : MonoBehaviour
                         var genType = generator.GetType();
                         var typeName = genType.Name.ToLower();
                         
-                        // Look for biome-related generators
-                        if (typeName.Contains("biome") || typeName.Contains("noise") || typeName.Contains("height"))
+                        // Calculate terrain roughness based on elevation (higher = rougher)
+                        float terrainRoughness = CalculateTerrainRoughness();
+                        
+                        // Look for noise/height generators to set terrain roughness
+                        if (typeName.Contains("noise") || typeName.Contains("height") || typeName.Contains("perlin") || typeName.Contains("fractal"))
                         {
-                            // Try to set elevation/intensity parameters
-                            var intensityProperty = genType.GetProperty("intensity", BindingFlags.Public | BindingFlags.Instance);
-                            if (intensityProperty != null && intensityProperty.PropertyType == typeof(float))
-                            {
-                                intensityProperty.SetValue(generator, battleTileElevation);
-                            }
+                            // Set elevation/intensity parameters
+                            SetGeneratorProperty(generator, genType, "intensity", battleTileElevation);
+                            SetGeneratorProperty(generator, genType, "height", battleTileElevation * heightVariation);
                             
-                            var heightProperty = genType.GetProperty("height", BindingFlags.Public | BindingFlags.Instance);
-                            if (heightProperty != null && heightProperty.PropertyType == typeof(float))
-                            {
-                                heightProperty.SetValue(generator, battleTileElevation * heightVariation);
-                            }
+                            // Set terrain roughness via frequency/scale parameters
+                            SetGeneratorProperty(generator, genType, "frequency", 0.1f / (1f + terrainRoughness)); // Lower frequency = rougher
+                            SetGeneratorProperty(generator, genType, "scale", 0.1f * (1f + terrainRoughness)); // Higher scale = rougher
+                            
+                            // Set noise parameters for terrain variation
+                            SetGeneratorProperty(generator, genType, "octaves", Mathf.RoundToInt(3 + terrainRoughness * 2)); // More octaves = rougher
+                            SetGeneratorProperty(generator, genType, "lacunarity", 2f + terrainRoughness); // Higher lacunarity = rougher
+                            SetGeneratorProperty(generator, genType, "persistence", 0.5f + terrainRoughness * 0.3f); // Higher persistence = rougher
+                        }
+                        
+                        // Look for biome-related generators
+                        if (typeName.Contains("biome"))
+                        {
+                            SetGeneratorProperty(generator, genType, "intensity", battleTileElevation);
+                            SetGeneratorProperty(generator, genType, "height", battleTileElevation * heightVariation);
                         }
                     }
                 }
@@ -402,9 +562,885 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
+    /// Set exposed variables in MapMagic 2 graph (biome, elevation, moisture, temperature)
+    /// </summary>
+    private void SetMapMagic2ExposedVariables(object exposed, object graph)
+    {
+        try
+        {
+            var exposedType = exposed.GetType();
+            
+            // Try to find SetValue method or indexer
+            var setValueMethod = exposedType.GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance);
+            if (setValueMethod == null)
+            {
+                // Try indexer setter
+                var indexerProperty = exposedType.GetProperty("Item", BindingFlags.Public | BindingFlags.Instance);
+                if (indexerProperty != null && indexerProperty.CanWrite)
+                {
+                    // Exposed variables use id-based lookup, we'd need generator IDs
+                    // For now, we'll try to set via graph generators
+                    return;
+                }
+            }
+            
+            // If we have a graph, try to find generators and set their exposed values
+            var graphType = graph.GetType();
+            var generatorsProperty = graphType.GetProperty("generators", BindingFlags.Public | BindingFlags.Instance);
+            if (generatorsProperty != null)
+            {
+                var generators = generatorsProperty.GetValue(graph);
+                if (generators is System.Collections.IEnumerable genEnumerable)
+                {
+                    foreach (var generator in genEnumerable)
+                    {
+                        if (generator == null) continue;
+                        
+                        var genType = generator.GetType();
+                        var idProperty = genType.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance);
+                        if (idProperty == null)
+                        {
+                            idProperty = genType.GetProperty("id", BindingFlags.Public | BindingFlags.Instance);
+                        }
+                        
+                        if (idProperty != null)
+                        {
+                            var genId = idProperty.GetValue(generator);
+                            
+                            // Try to set exposed variables for this generator
+                            // Common exposed variable names: "biome", "elevation", "moisture", "temperature"
+                            TrySetExposedVariable(exposed, exposedType, genId, "biome", primaryBattleBiome);
+                            TrySetExposedVariable(exposed, exposedType, genId, "elevation", battleTileElevation);
+                            TrySetExposedVariable(exposed, exposedType, genId, "moisture", battleTileMoisture);
+                            TrySetExposedVariable(exposed, exposedType, genId, "temperature", battleTileTemperature);
+                        }
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 exposed variables: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Helper to try setting an exposed variable
+    /// </summary>
+    private void TrySetExposedVariable(object exposed, System.Type exposedType, object genId, string varName, object value)
+    {
+        try
+        {
+            // Try GetExpression/SetExpression pattern
+            var getExpressionMethod = exposedType.GetMethod("GetExpression", BindingFlags.Public | BindingFlags.Instance);
+            var setExpressionMethod = exposedType.GetMethod("SetExpression", BindingFlags.Public | BindingFlags.Instance);
+            
+            if (getExpressionMethod != null && setExpressionMethod != null)
+            {
+                // Check if variable exists
+                var expression = getExpressionMethod.Invoke(exposed, new object[] { genId, varName });
+                if (expression != null || true) // Try to set even if not found (might create it)
+                {
+                    // Convert value to string expression
+                    string expressionValue = value.ToString();
+                    if (value is float f) expressionValue = f.ToString("F3");
+                    else if (value is Biome b) expressionValue = ((int)b).ToString();
+                    
+                    setExpressionMethod.Invoke(exposed, new object[] { genId, varName, expressionValue });
+                }
+            }
+        }
+        catch
+        {
+            // Silently fail - exposed variable might not exist or use different API
+        }
+    }
+    
+    /// <summary>
+    /// Helper to set a property on a generator via reflection
+    /// </summary>
+    private void SetGeneratorProperty(object generator, System.Type genType, string propertyName, float value)
+    {
+        try
+        {
+            var property = genType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (property != null && property.CanWrite && property.PropertyType == typeof(float))
+            {
+                property.SetValue(generator, value);
+            }
+            else
+            {
+                // Try field instead
+                var field = genType.GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                if (field != null && field.FieldType == typeof(float))
+                {
+                    field.SetValue(generator, value);
+                }
+            }
+        }
+        catch
+        {
+            // Property might not exist on this generator type - that's okay
+        }
+    }
+    
+    /// <summary>
+    /// Calculate terrain roughness based on elevation (higher elevation = rougher terrain)
+    /// </summary>
+    private float CalculateTerrainRoughness()
+    {
+        // Base roughness from elevation (0-1 range)
+        float baseRoughness = battleTileElevation;
+        
+        // Biome-specific roughness modifiers
+        float biomeModifier = primaryBattleBiome switch
+        {
+            Biome.Mountain => 1.5f,      // Mountains are very rough
+            Biome.Volcanic => 1.3f,       // Volcanic terrain is rough
+            Biome.Hellscape => 1.2f,      // Hellscape is rough
+            Biome.Brimstone => 1.1f,      // Brimstone is rough
+            Biome.Forest => 0.3f,         // Forests are moderately rough
+            Biome.Jungle => 0.4f,         // Jungles are moderately rough
+            Biome.Swamp => 0.2f,          // Swamps are less rough (flat)
+            Biome.Plains => 0.1f,         // Plains are smooth
+            Biome.Desert => 0.15f,        // Deserts are mostly smooth
+            Biome.Ocean => 0.05f,         // Ocean is very smooth
+            _ => 0.2f                     // Default moderate roughness
+        };
+        
+        return Mathf.Clamp01(baseRoughness * biomeModifier);
+    }
+    
+    /// <summary>
+    /// Set MapMagic 2 terrain settings (vegetation, wind, detail density) based on biome
+    /// </summary>
+    private void SetMapMagic2TerrainSettings(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Get terrainSettings property
+            var terrainSettingsProperty = mapMagicType.GetProperty("terrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (terrainSettingsProperty == null)
+            {
+                terrainSettingsProperty = mapMagicType.GetProperty("TerrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            }
+            
+            if (terrainSettingsProperty == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] TerrainSettings property not found on MapMagic 2");
+                return;
+            }
+            
+            var terrainSettings = terrainSettingsProperty.GetValue(mapMagicInstance);
+            if (terrainSettings == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] TerrainSettings is null");
+                return;
+            }
+            
+            var settingsType = terrainSettings.GetType();
+            
+            // Calculate biome-specific values
+            float detailDensity = CalculateDetailDensity();
+            float detailDistance = CalculateDetailDistance();
+            float windSpeed = CalculateWindSpeed();
+            float windBending = CalculateWindBending();
+            float windSize = CalculateWindSize();
+            Color grassTint = CalculateGrassTint();
+            
+            // Set detail/grass settings
+            SetPropertyOrField(terrainSettings, settingsType, "detailDensity", detailDensity);
+            SetPropertyOrField(terrainSettings, settingsType, "detailDistance", detailDistance);
+            SetPropertyOrField(terrainSettings, settingsType, "detailDraw", detailDensity > 0.1f); // Only draw if density is significant
+            
+            // Set wind settings
+            SetPropertyOrField(terrainSettings, settingsType, "windSpeed", windSpeed);
+            SetPropertyOrField(terrainSettings, settingsType, "windBending", windBending);
+            SetPropertyOrField(terrainSettings, settingsType, "windSize", windSize);
+            SetPropertyOrField(terrainSettings, settingsType, "grassTint", grassTint);
+            
+            // Apply settings to existing terrains
+            var applyMethod = mapMagicType.GetMethod("ApplyTerrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (applyMethod != null)
+            {
+                applyMethod.Invoke(mapMagicInstance, null);
+            }
+            
+            Debug.Log($"[BattleMapGenerator] Set terrain settings: detailDensity={detailDensity:F2}, detailDistance={detailDistance:F1}, windSpeed={windSpeed:F2}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 terrain settings: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Set MapMagic 2 height output settings based on elevation
+    /// </summary>
+    private void SetMapMagic2HeightOutput(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Get globals property (contains height output settings)
+            var globalsProperty = mapMagicType.GetProperty("globals", BindingFlags.Public | BindingFlags.Instance);
+            if (globalsProperty == null)
+            {
+                globalsProperty = mapMagicType.GetProperty("Globals", BindingFlags.Public | BindingFlags.Instance);
+            }
+            
+            if (globalsProperty == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] Globals property not found on MapMagic 2");
+                return;
+            }
+            
+            var globals = globalsProperty.GetValue(mapMagicInstance);
+            if (globals == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] Globals is null");
+                return;
+            }
+            
+            var globalsType = globals.GetType();
+            
+            // Set height output based on elevation
+            float heightValue = battleTileElevation * heightVariation;
+            SetPropertyOrField(globals, globalsType, "height", heightValue);
+            
+            // Set interpolation (None = no interpolation, Linear = smooth interpolation)
+            // Use None for battle maps to preserve terrain features
+            var interpolationType = System.Type.GetType("MapMagic.Nodes.MatrixGenerators.HeightOutput200+Interpolation, Assembly-CSharp");
+            if (interpolationType != null)
+            {
+                var noneValue = System.Enum.Parse(interpolationType, "None");
+                SetPropertyOrField(globals, globalsType, "heightInterpolation", noneValue);
+            }
+            
+            Debug.Log($"[BattleMapGenerator] Set height output: height={heightValue:F2}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 height output: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Set MapMagic 2 tile settings (size, resolution) for battle map
+    /// </summary>
+    private void SetMapMagic2TileSettings(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Set tile size to match battle map size
+            // MapMagic uses Vector2D for tileSize, but we'll try Vector2 or Vector2D
+            var tileSizeProperty = mapMagicType.GetProperty("tileSize", BindingFlags.Public | BindingFlags.Instance);
+            if (tileSizeProperty != null)
+            {
+                var tileSizeValue = tileSizeProperty.GetValue(mapMagicInstance);
+                if (tileSizeValue != null)
+                {
+                    var tileSizeType = tileSizeValue.GetType();
+                    
+                    // Try to set x and z components
+                    var xProperty = tileSizeType.GetProperty("x", BindingFlags.Public | BindingFlags.Instance);
+                    var zProperty = tileSizeType.GetProperty("z", BindingFlags.Public | BindingFlags.Instance);
+                    
+                    if (xProperty != null && zProperty != null)
+                    {
+                        xProperty.SetValue(tileSizeValue, mapSize);
+                        zProperty.SetValue(tileSizeValue, mapSize);
+                    }
+                    else
+                    {
+                        // Try Vector2D structure (might need different approach)
+                        var xField = tileSizeType.GetField("x", BindingFlags.Public | BindingFlags.Instance);
+                        var zField = tileSizeType.GetField("z", BindingFlags.Public | BindingFlags.Instance);
+                        if (xField != null && zField != null)
+                        {
+                            xField.SetValue(tileSizeValue, mapSize);
+                            zField.SetValue(tileSizeValue, mapSize);
+                        }
+                    }
+                }
+            }
+            
+            // Set resolution based on map size (larger maps need higher resolution)
+            // Resolution enum: _33, _65, _129, _257, _513, _1025, _2049
+            int targetResolution = CalculateOptimalResolution();
+            var resolutionType = System.Type.GetType("MapMagic.Core.MapMagicObject+Resolution, Assembly-CSharp");
+            if (resolutionType != null)
+            {
+                // Find closest resolution enum value
+                var resolutionValues = System.Enum.GetValues(resolutionType);
+                int closestResolution = 513; // Default
+                int minDiff = int.MaxValue;
+                
+                foreach (var resValue in resolutionValues)
+                {
+                    int resInt = (int)resValue;
+                    int diff = Mathf.Abs(resInt - targetResolution);
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        closestResolution = resInt;
+                    }
+                }
+                
+                var resolutionEnum = System.Enum.Parse(resolutionType, $"_{closestResolution}");
+                SetPropertyOrField(mapMagicInstance, mapMagicType, "tileResolution", resolutionEnum);
+                
+                Debug.Log($"[BattleMapGenerator] Set tile resolution to {closestResolution} (target was {targetResolution})");
+            }
+            
+            // Apply tile settings
+            var applyMethod = mapMagicType.GetMethod("ApplyTileSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (applyMethod != null)
+            {
+                applyMethod.Invoke(mapMagicInstance, null);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 tile settings: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Set MapMagic 2 vegetation settings (trees, grass density) based on biome
+    /// </summary>
+    private void SetMapMagic2VegetationSettings(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Get terrainSettings property
+            var terrainSettingsProperty = mapMagicType.GetProperty("terrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (terrainSettingsProperty == null) return;
+            
+            var terrainSettings = terrainSettingsProperty.GetValue(mapMagicInstance);
+            if (terrainSettings == null) return;
+            
+            var settingsType = terrainSettings.GetType();
+            
+            // Calculate biome-specific vegetation values
+            float treeDistance = CalculateTreeDistance();
+            float treeBillboardStart = CalculateTreeBillboardStart();
+            int treeFullLod = CalculateTreeFullLod();
+            
+            // Set tree settings
+            SetPropertyOrField(terrainSettings, settingsType, "treeDistance", treeDistance);
+            SetPropertyOrField(terrainSettings, settingsType, "treeBillboardStart", treeBillboardStart);
+            SetPropertyOrField(terrainSettings, settingsType, "treeFullLod", treeFullLod);
+            SetPropertyOrField(terrainSettings, settingsType, "treeFadeLength", 5f); // Standard fade length
+            
+            // Apply settings
+            var applyMethod = mapMagicType.GetMethod("ApplyTerrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (applyMethod != null)
+            {
+                applyMethod.Invoke(mapMagicInstance, null);
+            }
+            
+            Debug.Log($"[BattleMapGenerator] Set vegetation settings: treeDistance={treeDistance:F1}, treeFullLod={treeFullLod}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 vegetation settings: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Set MapMagic 2 terrain material/texture based on biome
+    /// Creates a material with biome-specific textures and applies it to MapMagic terrain
+    /// </summary>
+    private void SetMapMagic2TerrainMaterial(System.Type mapMagicType, object mapMagicInstance)
+    {
+        try
+        {
+            // Get terrainSettings property
+            var terrainSettingsProperty = mapMagicType.GetProperty("terrainSettings", BindingFlags.Public | BindingFlags.Instance);
+            if (terrainSettingsProperty == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] TerrainSettings property not found for material setup");
+                return;
+            }
+            
+            var terrainSettings = terrainSettingsProperty.GetValue(mapMagicInstance);
+            if (terrainSettings == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] TerrainSettings is null for material setup");
+                return;
+            }
+            
+            var settingsType = terrainSettings.GetType();
+            
+            // Create or get biome-specific material
+            Material biomeMaterial = CreateBiomeTerrainMaterial();
+            
+            if (biomeMaterial != null)
+            {
+                // Set material on terrainSettings
+                SetPropertyOrField(terrainSettings, settingsType, "material", biomeMaterial);
+                
+                // Apply terrain settings (this will apply the material to all terrains)
+                var applyMethod = mapMagicType.GetMethod("ApplyTerrainSettings", BindingFlags.Public | BindingFlags.Instance);
+                if (applyMethod != null)
+                {
+                    applyMethod.Invoke(mapMagicInstance, null);
+                }
+                
+                bool hasBaseMap = biomeMaterial.GetTexture("_BaseMap") != null;
+                bool hasMainTex = biomeMaterial.GetTexture("_MainTex") != null;
+                Debug.Log($"[BattleMapGenerator] Set terrain material for biome {primaryBattleBiome} (has texture: {hasBaseMap || hasMainTex})");
+            }
+            else
+            {
+                Debug.LogWarning($"[BattleMapGenerator] Could not create terrain material for biome {primaryBattleBiome}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not set MapMagic 2 terrain material: {e.Message}");
+            Debug.LogWarning($"[BattleMapGenerator] Stack trace: {e.StackTrace}");
+        }
+    }
+    
+    /// <summary>
+    /// Create a terrain material with biome-specific textures
+    /// Uses textures from biomeSettings if available, otherwise uses biome color
+    /// </summary>
+    private Material CreateBiomeTerrainMaterial()
+    {
+        // Find appropriate shader (URP or Standard)
+        Shader terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+        if (terrainShader == null)
+        {
+            terrainShader = Shader.Find("Nature/Terrain/Standard");
+        }
+        if (terrainShader == null)
+        {
+            terrainShader = Shader.Find("Standard");
+        }
+        
+        if (terrainShader == null)
+        {
+            Debug.LogError("[BattleMapGenerator] Could not find terrain shader!");
+            return null;
+        }
+        
+        Material material = new Material(terrainShader);
+        
+        // Try to get biome settings for textures
+        if (biomeSettingsLookup.TryGetValue(primaryBattleBiome, out BiomeSettings settings))
+        {
+            // Apply albedo texture if available
+            if (settings.albedoTexture != null)
+            {
+                // Try URP property first
+                if (material.HasProperty("_BaseMap"))
+                {
+                    material.SetTexture("_BaseMap", settings.albedoTexture);
+                }
+                // Fallback to Standard property
+                else if (material.HasProperty("_MainTex"))
+                {
+                    material.SetTexture("_MainTex", settings.albedoTexture);
+                }
+                // Last resort: mainTexture
+                else
+                {
+                    material.mainTexture = settings.albedoTexture;
+                }
+                
+                Debug.Log($"[BattleMapGenerator] Applied albedo texture to terrain material: {settings.albedoTexture.name}");
+            }
+            else
+            {
+                // No texture - use biome color
+                Color biomeColor = GetBiomeColor(primaryBattleBiome);
+                
+                if (material.HasProperty("_BaseColor"))
+                {
+                    material.SetColor("_BaseColor", biomeColor);
+                }
+                else if (material.HasProperty("_Color"))
+                {
+                    material.SetColor("_Color", biomeColor);
+                }
+                else
+                {
+                    material.color = biomeColor;
+                }
+                
+                Debug.Log($"[BattleMapGenerator] Applied biome color to terrain material (no texture available): {biomeColor}");
+            }
+            
+            // Apply normal texture if available
+            if (settings.normalTexture != null)
+            {
+                if (material.HasProperty("_BumpMap"))
+                {
+                    material.SetTexture("_BumpMap", settings.normalTexture);
+                    material.EnableKeyword("_NORMALMAP");
+                }
+                else if (material.HasProperty("_NormalMap"))
+                {
+                    material.SetTexture("_NormalMap", settings.normalTexture);
+                    material.EnableKeyword("_NORMALMAP");
+                }
+                
+                Debug.Log($"[BattleMapGenerator] Applied normal texture to terrain material: {settings.normalTexture.name}");
+            }
+        }
+        else
+        {
+            // No biome settings - use fallback color
+            Color biomeColor = GetBiomeColor(primaryBattleBiome);
+            
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", biomeColor);
+            }
+            else if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", biomeColor);
+            }
+            else
+            {
+                material.color = biomeColor;
+            }
+            
+            Debug.LogWarning($"[BattleMapGenerator] No biome settings found for {primaryBattleBiome}! Using fallback color. Add biome settings or use BattleMapBiomeSetup to copy from PlanetGenerator.");
+        }
+        
+        // Set material properties
+        if (material.HasProperty("_Metallic"))
+        {
+            material.SetFloat("_Metallic", 0.0f);
+        }
+        if (material.HasProperty("_Smoothness"))
+        {
+            material.SetFloat("_Smoothness", 0.5f);
+        }
+        
+        return material;
+    }
+    
+    /// <summary>
+    /// Apply biome material directly to all terrain objects (backup method)
+    /// This ensures materials are applied even if MapMagic's ApplyTerrainSettings didn't work
+    /// </summary>
+    private void ApplyBiomeMaterialToTerrains()
+    {
+        try
+        {
+            Material biomeMaterial = CreateBiomeTerrainMaterial();
+            if (biomeMaterial == null)
+            {
+                Debug.LogWarning("[BattleMapGenerator] Could not create biome material for direct application");
+                return;
+            }
+            
+            // Find all Terrain objects in the scene (MapMagic creates these)
+            Terrain[] allTerrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+            int appliedCount = 0;
+            
+            foreach (Terrain terrain in allTerrains)
+            {
+                if (terrain == null || terrain.materialTemplate != null) continue; // Skip if already has material
+                
+                // Check if this terrain is part of our battle map (within bounds)
+                Vector3 terrainPos = terrain.transform.position;
+                Vector3 terrainSize = terrain.terrainData != null ? terrain.terrainData.size : Vector3.zero;
+                
+                // Check if terrain is within our map bounds
+                bool isInBounds = terrainPos.x >= -mapSize / 2f && terrainPos.x <= mapSize / 2f &&
+                                 terrainPos.z >= -mapSize / 2f && terrainPos.z <= mapSize / 2f;
+                
+                if (isInBounds || terrainObjects.Contains(terrain.gameObject))
+                {
+                    terrain.materialTemplate = biomeMaterial;
+                    appliedCount++;
+                    Debug.Log($"[BattleMapGenerator] Applied biome material to terrain: {terrain.gameObject.name}");
+                }
+            }
+            
+            if (appliedCount > 0)
+            {
+                Debug.Log($"[BattleMapGenerator] Applied biome material to {appliedCount} terrain object(s)");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BattleMapGenerator] Could not apply biome material to terrains: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Helper to set property or field via reflection
+    /// </summary>
+    private void SetPropertyOrField(object target, System.Type targetType, string name, object value)
+    {
+        try
+        {
+            // Try property first
+            var property = targetType.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+            if (property != null && property.CanWrite)
+            {
+                // Check type compatibility
+                if (value != null && property.PropertyType.IsAssignableFrom(value.GetType()))
+                {
+                    property.SetValue(target, value);
+                    return;
+                }
+                else if (value != null && property.PropertyType == typeof(float) && value is float f)
+                {
+                    property.SetValue(target, f);
+                    return;
+                }
+                else if (value != null && property.PropertyType == typeof(int) && value is int i)
+                {
+                    property.SetValue(target, i);
+                    return;
+                }
+                else if (value != null && property.PropertyType == typeof(bool) && value is bool b)
+                {
+                    property.SetValue(target, b);
+                    return;
+                }
+                else if (value != null && property.PropertyType == typeof(Color) && value is Color c)
+                {
+                    property.SetValue(target, c);
+                    return;
+                }
+            }
+            
+            // Try field
+            var field = targetType.GetField(name, BindingFlags.Public | BindingFlags.Instance);
+            if (field != null)
+            {
+                if (value != null && field.FieldType.IsAssignableFrom(value.GetType()))
+                {
+                    field.SetValue(target, value);
+                    return;
+                }
+                else if (value != null && field.FieldType == typeof(float) && value is float f)
+                {
+                    field.SetValue(target, f);
+                    return;
+                }
+                else if (value != null && field.FieldType == typeof(int) && value is int i)
+                {
+                    field.SetValue(target, i);
+                    return;
+                }
+                else if (value != null && field.FieldType == typeof(bool) && value is bool b)
+                {
+                    field.SetValue(target, b);
+                    return;
+                }
+                else if (value != null && field.FieldType == typeof(Color) && value is Color c)
+                {
+                    field.SetValue(target, c);
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            // Silently fail - property/field might not exist or be wrong type
+        }
+    }
+    
+    // ========== BIOME-SPECIFIC CALCULATION METHODS ==========
+    
+    /// <summary>
+    /// Calculate detail density based on biome (forests = high, deserts = low)
+    /// </summary>
+    private float CalculateDetailDensity()
+    {
+        float baseDensity = primaryBattleBiome switch
+        {
+            Biome.Forest => 1.5f,
+            Biome.Jungle => 1.8f,
+            Biome.Rainforest => 2.0f,
+            Biome.Grassland => 1.2f,
+            Biome.Plains => 0.8f,
+            Biome.Savannah => 0.6f,
+            Biome.Taiga => 1.0f,
+            Biome.Swamp => 1.3f,
+            Biome.Marsh => 1.4f,
+            Biome.Desert => 0.2f,
+            Biome.Mountain => 0.3f,
+            Biome.Volcanic => 0.1f,
+            Biome.Scorched => 0.05f,
+            Biome.Hellscape => 0.1f,
+            Biome.Brimstone => 0.05f,
+            Biome.Ocean => 0.0f,
+            Biome.Snow => 0.4f,
+            Biome.Tundra => 0.5f,
+            Biome.Frozen => 0.3f,
+            _ => 0.7f
+        };
+        
+        // Modify by moisture (wetter = more vegetation)
+        return Mathf.Clamp(baseDensity * (0.5f + battleTileMoisture), 0f, 2.5f);
+    }
+    
+    /// <summary>
+    /// Calculate detail distance based on biome
+    /// </summary>
+    private float CalculateDetailDistance()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 100f,
+            Biome.Jungle => 120f,
+            Biome.Rainforest => 150f,
+            Biome.Grassland => 90f,
+            Biome.Plains => 80f,
+            Biome.Desert => 60f,
+            Biome.Mountain => 50f,
+            _ => 80f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate wind speed based on biome
+    /// </summary>
+    private float CalculateWindSpeed()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Desert => 0.8f,      // Windy deserts
+            Biome.Savannah => 0.7f,    // Windy savannah
+            Biome.Plains => 0.6f,      // Windy plains
+            Biome.Mountain => 0.9f,    // Windy mountains
+            Biome.Forest => 0.4f,      // Calmer forests
+            Biome.Jungle => 0.3f,      // Calm jungles
+            Biome.Swamp => 0.2f,       // Very calm swamps
+            _ => 0.5f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate wind bending based on biome
+    /// </summary>
+    private float CalculateWindBending()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 0.6f,      // Trees bend more
+            Biome.Jungle => 0.7f,      // Dense vegetation bends
+            Biome.Grassland => 0.5f,   // Grass bends
+            Biome.Plains => 0.4f,      // Less bending on plains
+            Biome.Desert => 0.3f,      // Minimal bending (sparse vegetation)
+            _ => 0.5f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate wind size based on biome
+    /// </summary>
+    private float CalculateWindSize()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 0.6f,
+            Biome.Jungle => 0.7f,
+            Biome.Grassland => 0.5f,
+            _ => 0.5f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate grass tint color based on biome
+    /// </summary>
+    private Color CalculateGrassTint()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => new Color(0.7f, 0.8f, 0.6f),        // Green forest
+            Biome.Jungle => new Color(0.6f, 0.9f, 0.5f),       // Vibrant green jungle
+            Biome.Rainforest => new Color(0.5f, 0.8f, 0.4f),    // Deep green rainforest
+            Biome.Grassland => new Color(0.8f, 0.9f, 0.7f),     // Bright green grassland
+            Biome.Plains => new Color(0.85f, 0.85f, 0.7f),      // Yellow-green plains
+            Biome.Savannah => new Color(0.9f, 0.8f, 0.6f),      // Yellow savannah
+            Biome.Desert => new Color(0.95f, 0.9f, 0.7f),       // Beige desert
+            Biome.Swamp => new Color(0.6f, 0.7f, 0.5f),         // Dark green swamp
+            Biome.Marsh => new Color(0.65f, 0.75f, 0.55f),      // Dark green marsh
+            Biome.Taiga => new Color(0.7f, 0.75f, 0.65f),       // Blue-green taiga
+            Biome.Snow => new Color(0.9f, 0.9f, 0.95f),        // White-blue snow
+            Biome.Tundra => new Color(0.8f, 0.85f, 0.75f),      // Pale tundra
+            _ => Color.gray
+        };
+    }
+    
+    /// <summary>
+    /// Calculate tree distance based on biome
+    /// </summary>
+    private float CalculateTreeDistance()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 1500f,
+            Biome.Jungle => 1800f,
+            Biome.Rainforest => 2000f,
+            Biome.Taiga => 1200f,
+            Biome.Plains => 800f,
+            Biome.Desert => 500f,
+            Biome.Mountain => 1000f,
+            _ => 1000f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate tree billboard start distance based on biome
+    /// </summary>
+    private float CalculateTreeBillboardStart()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 250f,
+            Biome.Jungle => 300f,
+            Biome.Rainforest => 350f,
+            Biome.Taiga => 200f,
+            _ => 200f
+        };
+    }
+    
+    /// <summary>
+    /// Calculate maximum full LOD trees based on biome
+    /// </summary>
+    private int CalculateTreeFullLod()
+    {
+        return primaryBattleBiome switch
+        {
+            Biome.Forest => 200,
+            Biome.Jungle => 250,
+            Biome.Rainforest => 300,
+            Biome.Taiga => 150,
+            Biome.Plains => 100,
+            Biome.Desert => 50,
+            _ => 150
+        };
+    }
+    
+    /// <summary>
+    /// Calculate optimal terrain resolution based on map size
+    /// </summary>
+    private int CalculateOptimalResolution()
+    {
+        // Larger maps need higher resolution for detail
+        // Resolution options: 33, 65, 129, 257, 513, 1025, 2049
+        if (mapSize <= 50f) return 257;      // Small maps: 257
+        if (mapSize <= 100f) return 513;     // Medium maps: 513
+        if (mapSize <= 200f) return 1025;    // Large maps: 1025
+        return 2049;                          // Very large maps: 2049
+    }
+    
+    /// <summary>
     /// Helper method to find object by type using reflection
     /// </summary>
-    private Component FindFirstObjectByType(System.Type type)
+    private new Component FindFirstObjectByType(System.Type type)
     {
         // Use Unity's FindFirstObjectByType<T> via reflection
         var findMethod = typeof(Object).GetMethod("FindFirstObjectByType", BindingFlags.Public | BindingFlags.Static);
@@ -638,6 +1674,8 @@ public class BattleMapGenerator : MonoBehaviour
 
     /// <summary>
     /// Add biome-specific decorations and obstacles (limited to prevent memory issues)
+    /// ENHANCED: Works with both MapMagic 2 terrain and fallback mesh generation
+    /// Uses raycasting to place decorations on terrain surface
     /// </summary>
     private void AddBiomeDecorations()
     {
@@ -649,8 +1687,16 @@ public class BattleMapGenerator : MonoBehaviour
             decorationCount = Mathf.Min(decorationCount, maxDecorations);
         }
         
-        for (int i = 0; i < decorationCount; i++)
+        Debug.Log($"[BattleMapGenerator] Placing {decorationCount} decorations for biome {primaryBattleBiome}");
+        
+        int successfulPlacements = 0;
+        int maxAttempts = decorationCount * 3; // Try up to 3x to find valid positions
+        int attempts = 0;
+        
+        while (successfulPlacements < decorationCount && attempts < maxAttempts)
         {
+            attempts++;
+            
             // Random position on the map
             Vector3 position = new Vector3(
                 Random.Range(-mapSize / 2f, mapSize / 2f),
@@ -658,8 +1704,16 @@ public class BattleMapGenerator : MonoBehaviour
                 Random.Range(-mapSize / 2f, mapSize / 2f)
             );
             
-            // Calculate height at this position
-            position.y = CalculateHeightAtPosition(position.x, position.z);
+            // Get terrain height using raycasting (works with MapMagic terrain and fallback mesh)
+            float terrainHeight = GetTerrainHeightAtPosition(position);
+            
+            // Skip if we couldn't find terrain (shouldn't happen, but safety check)
+            if (terrainHeight == float.MinValue)
+            {
+                continue;
+            }
+            
+            position.y = terrainHeight;
             
             // Use the primary biome from defender's tile (no variation)
             Biome biome = primaryBattleBiome;
@@ -667,9 +1721,67 @@ public class BattleMapGenerator : MonoBehaviour
             // Spawn decoration if appropriate
             if (ShouldSpawnObstacle(biome))
             {
-                SpawnBiomeDecoration(position, biome);
+                if (SpawnBiomeDecoration(position, biome))
+                {
+                    successfulPlacements++;
+                }
             }
         }
+        
+        Debug.Log($"[BattleMapGenerator] Successfully placed {successfulPlacements} decorations (attempted {attempts} times)");
+    }
+    
+    /// <summary>
+    /// Get terrain height at a position using raycasting (works with MapMagic terrain and fallback mesh)
+    /// Returns float.MinValue if terrain not found
+    /// </summary>
+    private float GetTerrainHeightAtPosition(Vector3 position)
+    {
+        // First, try to find Unity Terrain objects (MapMagic 2 uses these)
+        Terrain[] terrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+        
+        if (terrains != null && terrains.Length > 0)
+        {
+            // Try each terrain to see if position is within bounds
+            foreach (Terrain terrain in terrains)
+            {
+                if (terrain == null || terrain.terrainData == null) continue;
+                
+                Vector3 terrainPos = terrain.transform.position;
+                Vector3 terrainSize = terrain.terrainData.size;
+                
+                // Check if position is within terrain bounds
+                if (position.x >= terrainPos.x && position.x <= terrainPos.x + terrainSize.x &&
+                    position.z >= terrainPos.z && position.z <= terrainPos.z + terrainSize.z)
+                {
+                    // Use Terrain.SampleHeight for accurate height
+                    float height = terrain.SampleHeight(new Vector3(position.x, terrainPos.y + terrainSize.y, position.z));
+                    return terrainPos.y + height;
+                }
+            }
+        }
+        
+        // Fallback: Use raycasting to find any collider (works with fallback mesh)
+        RaycastHit hit;
+        Vector3 rayStart = new Vector3(position.x, position.y + 100f, position.z); // Start high above
+        Vector3 rayDirection = Vector3.down;
+        
+        // Use battlefield layers if configured, otherwise check all layers
+        int layerMask = battlefieldLayers != 0 ? battlefieldLayers : ~0;
+        
+        if (Physics.Raycast(rayStart, rayDirection, out hit, 200f, layerMask))
+        {
+            return hit.point.y;
+        }
+        
+        // Last resort: Use CalculateHeightAtPosition for fallback mesh (if we're not using MapMagic)
+        if (!useMapMagic2 || !mapMagic2Available)
+        {
+            return CalculateHeightAtPosition(position.x, position.z);
+        }
+        
+        // Couldn't find terrain
+        return float.MinValue;
     }
     
     /// <summary>
@@ -776,8 +1888,9 @@ public class BattleMapGenerator : MonoBehaviour
 
     /// <summary>
     /// Spawn biome-specific decorations using biome settings
+    /// ENHANCED: Returns bool to indicate success, ensures decorations are placed on terrain surface
     /// </summary>
-    private void SpawnBiomeDecoration(Vector3 position, Biome biome)
+    private bool SpawnBiomeDecoration(Vector3 position, Biome biome)
     {
         // Try to get biome settings for decorations
         if (biomeSettingsLookup.TryGetValue(biome, out BiomeSettings settings) && 
@@ -787,29 +1900,88 @@ public class BattleMapGenerator : MonoBehaviour
             GameObject decorationPrefab = settings.decorations[Random.Range(0, settings.decorations.Length)];
             if (decorationPrefab != null)
             {
-                GameObject decoration = Instantiate(decorationPrefab, position, Quaternion.identity);
+                // Ensure position is on terrain surface (raycast to be sure)
+                float terrainHeight = GetTerrainHeightAtPosition(position);
+                if (terrainHeight == float.MinValue)
+                {
+                    return false; // Couldn't find terrain
+                }
+                
+                position.y = terrainHeight;
+                
+                // Random rotation for variety
+                Quaternion rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+                
+                GameObject decoration = Instantiate(decorationPrefab, position, rotation);
                 decoration.transform.SetParent(transform);
-                decoration.name = $"Decoration_{biome}_{decorationPrefab.name}";
+                decoration.name = $"Decoration_{biome}_{decorationPrefab.name}_{spawnedObjects.Count}";
+                
+                // Ensure decoration is on terrain surface (adjust if needed)
+                AlignDecorationToTerrain(decoration);
+                
                 spawnedObjects.Add(decoration);
-                return;
+                return true;
             }
         }
         
-        // Fallback: create simple colored cubes as placeholders
-        GameObject fallbackDecoration = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        fallbackDecoration.transform.position = position + Vector3.up * 0.5f;
-        fallbackDecoration.transform.localScale = Vector3.one * 0.5f;
-        fallbackDecoration.transform.SetParent(transform);
-        fallbackDecoration.name = $"Decoration_{biome}";
-        
-        // Color based on biome
-        Renderer fallbackRenderer = fallbackDecoration.GetComponent<Renderer>();
-        if (fallbackRenderer != null)
+        // Fallback: create simple colored cubes as placeholders (only if no biome settings)
+        if (biomeSettingsLookup.Count == 0)
         {
-            fallbackRenderer.material.color = GetBiomeColor(biome) * 0.7f;
+            float terrainHeight = GetTerrainHeightAtPosition(position);
+            if (terrainHeight == float.MinValue)
+            {
+                return false;
+            }
+            
+            position.y = terrainHeight;
+            
+            GameObject fallbackDecoration = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            fallbackDecoration.transform.position = position + Vector3.up * 0.5f;
+            fallbackDecoration.transform.localScale = Vector3.one * 0.5f;
+            fallbackDecoration.transform.SetParent(transform);
+            fallbackDecoration.name = $"Decoration_{biome}_{spawnedObjects.Count}";
+            
+            // Color based on biome
+            Renderer fallbackRenderer = fallbackDecoration.GetComponent<Renderer>();
+            if (fallbackRenderer != null)
+            {
+                fallbackRenderer.material.color = GetBiomeColor(biome) * 0.7f;
+            }
+            
+            spawnedObjects.Add(fallbackDecoration);
+            return true;
         }
         
-        spawnedObjects.Add(fallbackDecoration);
+        return false; // No decorations available for this biome
+    }
+    
+    /// <summary>
+    /// Align decoration to terrain surface (ensures it's sitting properly on terrain)
+    /// </summary>
+    private void AlignDecorationToTerrain(GameObject decoration)
+    {
+        if (decoration == null) return;
+        
+        // Get bounds of decoration to find bottom point
+        Renderer renderer = decoration.GetComponent<Renderer>();
+        if (renderer != null && renderer.bounds.size.y > 0.1f)
+        {
+            Vector3 bottomPoint = decoration.transform.position;
+            bottomPoint.y = renderer.bounds.min.y;
+            
+            // Raycast down from decoration to find terrain
+            RaycastHit hit;
+            if (Physics.Raycast(bottomPoint + Vector3.up * 0.5f, Vector3.down, out hit, 2f, battlefieldLayers != 0 ? battlefieldLayers : ~0))
+            {
+                // Adjust position so bottom of decoration is on terrain
+                float heightOffset = decoration.transform.position.y - bottomPoint.y;
+                decoration.transform.position = new Vector3(
+                    decoration.transform.position.x,
+                    hit.point.y + heightOffset,
+                    decoration.transform.position.z
+                );
+            }
+        }
     }
 
     /// <summary>
@@ -1283,3 +2455,4 @@ public enum TerrainType
     Swamp,          // Movement penalty, health damage
     Impassable      // Cannot be traversed
 }
+
