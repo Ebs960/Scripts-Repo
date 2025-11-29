@@ -97,7 +97,7 @@ public class BattleMapGenerator : MonoBehaviour
     public float spawnDistance = 30f;
     [Tooltip("Prefab for spawn point markers")]
     public GameObject spawnPointPrefab;
-    
+
     [Header("Grounding & Decoration Placement")]
     [Tooltip("Layers considered battlefield ground for raycast grounding and decoration placement")] 
     public LayerMask battlefieldLayers = ~0; // default: everything
@@ -228,11 +228,42 @@ public class BattleMapGenerator : MonoBehaviour
         }
         else
         {
-            // Use assigned reference
-            var mapMagicComponent = mapMagic2Object.GetComponent("MapMagic");
+            // Use assigned reference - try to get the actual type first
+            var mapMagicType = System.Type.GetType("MapMagic.Core.MapMagicObject, Assembly-CSharp");
+            if (mapMagicType == null)
+            {
+                mapMagicType = System.Type.GetType("MapMagic.Core.MapMagicObject");
+            }
+            if (mapMagicType == null)
+            {
+                mapMagicType = System.Type.GetType("MapMagic.MapMagicObject, Assembly-CSharp");
+            }
+            if (mapMagicType == null)
+            {
+                mapMagicType = System.Type.GetType("MapMagic.MapMagicObject");
+            }
+            
+            if (mapMagicType != null)
+            {
+                // Use type-based GetComponent (more reliable than string-based)
+                var mapMagicComponent = mapMagic2Object.GetComponent(mapMagicType);
             if (mapMagicComponent != null)
             {
                 mapMagic2Instance = mapMagicComponent;
+                }
+            }
+            else
+            {
+                // Fallback: try string-based lookup with correct name
+                var mapMagicComponent = mapMagic2Object.GetComponent("MapMagicObject");
+                if (mapMagicComponent == null)
+                {
+                    mapMagicComponent = mapMagic2Object.GetComponent("MapMagic");
+                }
+                if (mapMagicComponent != null)
+                {
+                    mapMagic2Instance = mapMagicComponent;
+                }
             }
         }
         
@@ -343,8 +374,8 @@ public class BattleMapGenerator : MonoBehaviour
             foreach (Terrain terrain in mapMagicTerrains)
             {
                 if (terrain != null && terrain.gameObject != null)
-                {
-                    terrainObjects.Add(terrain.gameObject);
+            {
+                terrainObjects.Add(terrain.gameObject);
                     Debug.Log($"[BattleMapGenerator] Found MapMagic terrain: {terrain.gameObject.name}");
                 }
             }
@@ -385,24 +416,57 @@ public class BattleMapGenerator : MonoBehaviour
     /// </summary>
     private System.Collections.IEnumerator ApplyBiomeMaterialToTerrainsDelayed()
     {
-        // Wait a frame for terrain generation to complete
+        // Wait a few frames for terrain generation to complete
+        yield return null;
+        yield return null;
         yield return null;
         
         // Try multiple times in case terrain generation takes longer
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 10; i++)
         {
+            int appliedBefore = 0;
+            Terrain[] allTerrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+            if (allTerrains != null)
+            {
+                foreach (var t in allTerrains)
+                {
+                    if (t != null && terrainObjects.Contains(t.gameObject) && t.materialTemplate != null)
+                    {
+                        appliedBefore++;
+                    }
+                }
+            }
+            
             ApplyBiomeMaterialToTerrains();
             
-            // Check if we found any terrains
-            Terrain[] allTerrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
-            if (allTerrains != null && allTerrains.Length > 0)
+            // Check if we successfully applied materials
+            int appliedAfter = 0;
+            allTerrains = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+            if (allTerrains != null)
             {
-                break; // Terrains found, we're done
+                foreach (var t in allTerrains)
+                {
+                    if (t != null && terrainObjects.Contains(t.gameObject) && t.materialTemplate != null)
+                    {
+                        appliedAfter++;
+                    }
+                }
+            }
+            
+            Debug.Log($"[BattleMapGenerator] Material application attempt {i + 1}: Found {allTerrains?.Length ?? 0} terrains, Applied to {appliedAfter} (was {appliedBefore})");
+            
+            // If we applied to all our terrains, we're done
+            if (appliedAfter >= terrainObjects.Count && terrainObjects.Count > 0)
+            {
+                Debug.Log($"[BattleMapGenerator] Successfully applied materials to all {appliedAfter} terrain objects");
+                yield break;
             }
             
             // Wait another frame before retrying
             yield return null;
         }
+        
+        Debug.LogWarning($"[BattleMapGenerator] Material application completed after 10 attempts. May not have applied to all terrains.");
     }
     
     /// <summary>
@@ -1145,21 +1209,27 @@ public class BattleMapGenerator : MonoBehaviour
             
             foreach (Terrain terrain in allTerrains)
             {
-                if (terrain == null || terrain.materialTemplate != null) continue; // Skip if already has material
+                if (terrain == null) continue;
                 
-                // Check if this terrain is part of our battle map (within bounds)
-                Vector3 terrainPos = terrain.transform.position;
-                Vector3 terrainSize = terrain.terrainData != null ? terrain.terrainData.size : Vector3.zero;
+                // Check if this terrain is part of our battle map (check if it's in our terrainObjects list)
+                // This is more reliable than bounds checking since MapMagic terrains might be larger than mapSize
+                bool isOurTerrain = terrainObjects.Contains(terrain.gameObject);
                 
-                // Check if terrain is within our map bounds
-                bool isInBounds = terrainPos.x >= -mapSize / 2f && terrainPos.x <= mapSize / 2f &&
-                                 terrainPos.z >= -mapSize / 2f && terrainPos.z <= mapSize / 2f;
-                
-                if (isInBounds || terrainObjects.Contains(terrain.gameObject))
+                // Also check if terrain is near the map center (fallback check)
+                if (!isOurTerrain)
                 {
+                    Vector3 terrainPos = terrain.transform.position;
+                    float distanceFromCenter = Vector3.Distance(new Vector3(terrainPos.x, 0, terrainPos.z), mapCenter);
+                    // Consider terrain ours if it's within 2x mapSize of center (covers large MapMagic terrains)
+                    isOurTerrain = distanceFromCenter < mapSize * 2f;
+                }
+                
+                if (isOurTerrain)
+                {
+                    // Force apply material even if one exists (we want to override MapMagic's default)
                     terrain.materialTemplate = biomeMaterial;
                     appliedCount++;
-                    Debug.Log($"[BattleMapGenerator] Applied biome material to terrain: {terrain.gameObject.name}");
+                    Debug.Log($"[BattleMapGenerator] Applied biome material to terrain: {terrain.gameObject.name} (had material: {terrain.materialTemplate != null})");
                 }
             }
             
@@ -1935,20 +2005,20 @@ public class BattleMapGenerator : MonoBehaviour
             
             position.y = terrainHeight;
             
-            GameObject fallbackDecoration = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            fallbackDecoration.transform.position = position + Vector3.up * 0.5f;
-            fallbackDecoration.transform.localScale = Vector3.one * 0.5f;
-            fallbackDecoration.transform.SetParent(transform);
+        GameObject fallbackDecoration = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        fallbackDecoration.transform.position = position + Vector3.up * 0.5f;
+        fallbackDecoration.transform.localScale = Vector3.one * 0.5f;
+        fallbackDecoration.transform.SetParent(transform);
             fallbackDecoration.name = $"Decoration_{biome}_{spawnedObjects.Count}";
-            
-            // Color based on biome
-            Renderer fallbackRenderer = fallbackDecoration.GetComponent<Renderer>();
-            if (fallbackRenderer != null)
-            {
-                fallbackRenderer.material.color = GetBiomeColor(biome) * 0.7f;
-            }
-            
-            spawnedObjects.Add(fallbackDecoration);
+        
+        // Color based on biome
+        Renderer fallbackRenderer = fallbackDecoration.GetComponent<Renderer>();
+        if (fallbackRenderer != null)
+        {
+            fallbackRenderer.material.color = GetBiomeColor(biome) * 0.7f;
+        }
+        
+        spawnedObjects.Add(fallbackDecoration);
             return true;
         }
         
@@ -2062,11 +2132,15 @@ public class BattleMapGenerator : MonoBehaviour
         // You can create custom settings in the Navigation window and reference them by ID
         NavMeshBuildSettings buildSettings = NavMesh.GetSettingsByID(0);
         
-        // Define the bounds for NavMesh building (the entire map)
-        Bounds buildBounds = new Bounds(
-            mapCenter,
-            new Vector3(mapSize, 20f, mapSize) // Height of 20 should cover terrain elevation
-        );
+        // Calculate actual terrain bounds from terrain objects (MapMagic terrains might be larger than mapSize)
+        Bounds terrainBounds = CalculateTerrainBounds();
+        
+        // Use terrain bounds if available, otherwise use mapSize-based bounds
+        Bounds buildBounds = terrainBounds.size.magnitude > 0.1f 
+            ? terrainBounds 
+            : new Bounds(mapCenter, new Vector3(mapSize, 20f, mapSize));
+        
+        Debug.Log($"[BattleMapGenerator] Using buildBounds: {buildBounds} (calculated from {terrainObjects.Count} terrain objects)");
         
         // Collect all sources (terrain and obstacles) using NavMeshBuilder
         // This automatically finds all colliders and meshes in the bounds
@@ -2094,17 +2168,52 @@ public class BattleMapGenerator : MonoBehaviour
             Debug.Log($"[BattleMapGenerator] First source: shape={sources[0].shape}, component={sources[0].component?.name ?? "null"}, position={firstSourcePos}");
         }
         
-        // DEBUG: Log terrain objects
+        // DEBUG: Log terrain objects with detailed info
         Debug.Log($"[BattleMapGenerator] Checking {terrainObjects.Count} terrain objects:");
         foreach (var terrainObj in terrainObjects)
         {
             if (terrainObj != null)
             {
                 var collider = terrainObj.GetComponent<Collider>();
+                var terrainCollider = terrainObj.GetComponent<TerrainCollider>();
+                var terrainComponent = terrainObj.GetComponent<Terrain>();
                 var meshFilter = terrainObj.GetComponent<MeshFilter>();
-                Debug.Log($"  - {terrainObj.name}: Collider={collider != null} (isTrigger={collider?.isTrigger ?? false}), MeshFilter={meshFilter != null}, Parent={terrainObj.transform.parent?.name ?? "none"}");
+                int layer = terrainObj.layer;
+                string layerName = LayerMask.LayerToName(layer);
+                Vector3 position = terrainObj.transform.position;
+                Bounds? objBounds = null;
+                
+                if (terrainComponent != null && terrainComponent.terrainData != null)
+                {
+                    objBounds = new Bounds(
+                        terrainObj.transform.position + terrainComponent.terrainData.size * 0.5f,
+                        terrainComponent.terrainData.size
+                    );
+                }
+                else if (collider != null)
+                {
+                    objBounds = collider.bounds;
+                }
+                
+                Debug.Log($"  - {terrainObj.name}:");
+                Debug.Log($"    Layer: {layer} ({layerName})");
+                Debug.Log($"    Position: {position}");
+                Debug.Log($"    Bounds: {objBounds?.ToString() ?? "unknown"}");
+                Debug.Log($"    Terrain Component: {terrainComponent != null}");
+                Debug.Log($"    TerrainCollider: {terrainCollider != null}");
+                Debug.Log($"    Generic Collider: {collider != null} (type: {collider?.GetType().Name ?? "none"}, isTrigger: {collider?.isTrigger ?? false})");
+                Debug.Log($"    MeshFilter: {meshFilter != null}");
+                Debug.Log($"    Parent: {terrainObj.transform.parent?.name ?? "none"}");
+                Debug.Log($"    In buildBounds: {objBounds.HasValue && buildBounds.Intersects(objBounds.Value)}");
             }
         }
+        
+        // Also check what layer mask we're using
+        Debug.Log($"[BattleMapGenerator] NavMesh collection settings:");
+        Debug.Log($"  - Layer mask: {layerMask} (binary: {System.Convert.ToString(layerMask, 2)})");
+        Debug.Log($"  - Battlefield layer index: {battlefieldLayer}");
+        Debug.Log($"  - Collect geometry: RenderMeshes={NavMeshCollectGeometry.RenderMeshes}, PhysicsColliders={NavMeshCollectGeometry.PhysicsColliders}");
+        Debug.Log($"  - Build bounds: {buildBounds}");
         
         // Filter sources to only include our terrain and obstacles
         // This ensures we only bake the procedurally generated map, not other scene objects
@@ -2223,6 +2332,73 @@ public class BattleMapGenerator : MonoBehaviour
         StartCoroutine(WaitForNavMeshReady());
         
         Debug.Log($"[BattleMapGenerator] NavMesh baked successfully! Sources: {filteredSources.Count}/{sources.Count}, Bounds: {buildBounds}");
+    }
+    
+    /// <summary>
+    /// Calculate the actual bounds of all terrain objects
+    /// This ensures NavMesh bounds include the full terrain, not just the mapSize
+    /// </summary>
+    private Bounds CalculateTerrainBounds()
+    {
+        Bounds combinedBounds = new Bounds();
+        bool hasBounds = false;
+        
+        foreach (var terrainObj in terrainObjects)
+        {
+            if (terrainObj == null) continue;
+            
+            Bounds objBounds = new Bounds();
+            bool objHasBounds = false;
+            
+            // Check for Terrain component (MapMagic uses Unity Terrain)
+            Terrain terrain = terrainObj.GetComponent<Terrain>();
+            if (terrain != null && terrain.terrainData != null)
+            {
+                Vector3 terrainPos = terrain.transform.position;
+                Vector3 terrainSize = terrain.terrainData.size;
+                objBounds = new Bounds(
+                    terrainPos + terrainSize * 0.5f,
+                    terrainSize
+                );
+                objHasBounds = true;
+            }
+            // Fallback: use collider bounds
+            else
+            {
+                Collider collider = terrainObj.GetComponent<Collider>();
+                if (collider != null)
+                {
+                    objBounds = collider.bounds;
+                    objHasBounds = true;
+                }
+            }
+            
+            if (objHasBounds)
+            {
+                if (!hasBounds)
+                {
+                    combinedBounds = objBounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(objBounds);
+                }
+            }
+        }
+        
+        // If no terrain bounds found, return empty bounds (will use mapSize fallback)
+        if (!hasBounds)
+        {
+            Debug.LogWarning("[BattleMapGenerator] Could not calculate terrain bounds, will use mapSize-based bounds");
+            return new Bounds();
+        }
+        
+        // Expand bounds slightly to ensure we capture everything
+        combinedBounds.Expand(10f);
+        
+        Debug.Log($"[BattleMapGenerator] Calculated terrain bounds: {combinedBounds} from {terrainObjects.Count} terrain objects");
+        return combinedBounds;
     }
     
     /// <summary>
