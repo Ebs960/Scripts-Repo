@@ -6,6 +6,7 @@ using System.Linq;
 using System.Collections;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.Profiling;
 
 /// <summary>
 /// Main battle system - handles both formation-based battles and full civilization battles
@@ -205,6 +206,7 @@ public class BattleTestSimple : MonoBehaviour
     
     void Start()
     {
+        LogMemoryUsage("START - BattleTestSimple.Start() BEGIN");
         DebugLog("BattleTestSimple started");
         
         // Set up battle camera early to prevent null reference storms
@@ -227,6 +229,8 @@ public class BattleTestSimple : MonoBehaviour
             DebugLog("Button connected successfully");
         }
         
+        LogMemoryUsage("After camera/UI setup, before resource loading");
+        
         // MEMORY FIX: Defer heavy resource loading to prevent memory spike at startup
         // Load resources in a coroutine over multiple frames instead of all at once
         var loadResourcesCoroutine = StartCoroutine(LoadResourcesAsync());
@@ -236,6 +240,25 @@ public class BattleTestSimple : MonoBehaviour
         SetupControlDropdowns();
         
         UpdateStatus("Loading resources...");
+    }
+    
+    /// <summary>
+    /// Log current memory usage for debugging memory spikes
+    /// </summary>
+    private void LogMemoryUsage(string context)
+    {
+        long totalMemory = Profiler.GetTotalAllocatedMemoryLong();
+        long reservedMemory = Profiler.GetTotalReservedMemoryLong();
+        long unusedMemory = Profiler.GetTotalUnusedReservedMemoryLong();
+        long monoHeap = Profiler.GetMonoHeapSizeLong();
+        long monoUsed = Profiler.GetMonoUsedSizeLong();
+        
+        Debug.Log($"[MEMORY] {context}\n" +
+                  $"  Total Allocated: {totalMemory / (1024f * 1024f):F1} MB\n" +
+                  $"  Total Reserved:  {reservedMemory / (1024f * 1024f):F1} MB\n" +
+                  $"  Unused Reserved: {unusedMemory / (1024f * 1024f):F1} MB\n" +
+                  $"  Mono Heap:       {monoHeap / (1024f * 1024f):F1} MB\n" +
+                  $"  Mono Used:       {monoUsed / (1024f * 1024f):F1} MB");
     }
     
     /// <summary>
@@ -250,20 +273,24 @@ public class BattleTestSimple : MonoBehaviour
         // This prevents loading tech/culture trees that cause massive memory spikes
         ResourceCache.InitializeBattleTestResources();
         yield return null; // Yield after initialization to spread memory allocation
+        LogMemoryUsage("After ResourceCache.InitializeBattleTestResources()");
         
         // Load available units (this can be heavy if there are many units)
         // Process in batches to avoid memory spike
         UpdateStatus("Loading units...");
         yield return StartCoroutine(LoadAvailableUnitsAsync());
+        LogMemoryUsage("After LoadAvailableUnitsAsync()");
         
         // Load available civilizations
         UpdateStatus("Loading civilizations...");
         LoadAvailableCivilizations();
         yield return null; // Yield after loading civilizations
+        LogMemoryUsage("After LoadAvailableCivilizations()");
         
         // Now set up dropdowns after resources are loaded
         SetupUnitDropdowns();
         SetupCivilizationDropdowns();
+        LogMemoryUsage("After SetupDropdowns - LOADING COMPLETE");
         
         UpdateStatus("Select units, civilizations, control types, and click Start Battle!");
     }
@@ -288,6 +315,8 @@ public class BattleTestSimple : MonoBehaviour
         CombatUnitData[] allUnitData = null;
         bool loadSuccess = false;
         
+        LogMemoryUsage("Before ResourceCache.GetAllCombatUnits()");
+        
         try
         {
             // Load ALL CombatUnitData ScriptableObjects temporarily to extract metadata
@@ -301,6 +330,7 @@ public class BattleTestSimple : MonoBehaviour
             loadSuccess = false;
         }
         
+        LogMemoryUsage($"After ResourceCache.GetAllCombatUnits() - loaded {allUnitData?.Length ?? 0} units");
         yield return null; // Yield after loading to spread memory allocation
         
         // Process units in batches (outside try-catch to allow yields)
@@ -1654,17 +1684,16 @@ public class BattleTestSimple : MonoBehaviour
     }
     
     /// <summary>
-    /// Convert position from map-relative coordinates to world space
-    /// Map-relative: (0,0,0) = map center
+    /// Convert position from spawn point to world space.
+    /// BattleMapGenerator already returns world-space positions (terrain centered at 0,0,0),
+    /// so no conversion is needed - just return the position as-is.
     /// </summary>
-    private Vector3 ConvertMapMagicRelativeToWorld(Vector3 relativePosition)
+    private Vector3 ConvertMapMagicRelativeToWorld(Vector3 worldPosition)
     {
-        if (mapGenerator != null)
-        {
-            // Use map center (terrain is centered at origin)
-            return mapGenerator.transform.position + relativePosition;
-        }
-        return relativePosition; // Fallback if map generator not available
+        // Spawn points from BattleMapGenerator are already in world space
+        // Terrain is positioned so its center is at (0,0,0)
+        // No transformation needed
+        return worldPosition;
     }
     
     void CreateSoldiersInFormation(FormationUnit formation, Vector3 centerPosition, Color teamColor)
@@ -2144,11 +2173,11 @@ public class BattleTestSimple : MonoBehaviour
         if (AddressableUnitLoader.Instance != null)
         {
             GameObject loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(unitName);
-            if (loaded != null)
-            {
-                onDemandPrefabCache[key] = loaded;
-            }
-            return loaded;
+        if (loaded != null)
+        {
+            onDemandPrefabCache[key] = loaded;
+        }
+        return loaded;
         }
 
         return null;

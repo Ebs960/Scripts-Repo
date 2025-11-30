@@ -1,7 +1,12 @@
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using System.Collections.Generic;
 using System.Linq;
 using GameCombat;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Static cache for all Resources.LoadAll calls to avoid repeated expensive I/O operations.
@@ -48,13 +53,17 @@ public static class ResourceCache
         _initialized = true;
         
         // Initialize AddressableUnitLoader if available
-        if (AddressableUnitLoader.Instance != null)
+        // Force instance creation to ensure it exists
+        AddressableUnitLoader loader = AddressableUnitLoader.Instance;
+        if (loader != null)
         {
             Debug.Log("[ResourceCache] Initialized with Addressables support (units load on-demand from bundles)");
+            Debug.Log($"[ResourceCache] AddressableUnitLoader instance created at: {loader.gameObject.name}");
         }
         else
         {
-            Debug.Log("[ResourceCache] Initialized (lazy loading enabled - resources load on first access, Addressables not available)");
+            Debug.LogWarning("[ResourceCache] AddressableUnitLoader.Instance is null! Units may fail to load. " +
+                "Make sure Addressables package is installed.");
         }
     }
     
@@ -147,11 +156,101 @@ public static class ResourceCache
     {
         if (!_combatUnitsLoaded)
         {
-            // Load ScriptableObjects - NO prefabs will be auto-loaded because we use Addressables!
+            // Memory logging for debugging
+            long memBefore = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
+            Debug.Log($"[ResourceCache] Memory BEFORE loading units: {memBefore / (1024f * 1024f):F1} MB");
+            
+            // Load ScriptableObjects from Assets/Units/ (not Resources folder)
+            Debug.Log("[ResourceCache] Attempting to load CombatUnitData ScriptableObjects from Assets/Units/...");
+            
+#if UNITY_EDITOR
+            // In editor: Use AssetDatabase to load from Assets/Units/
+            string[] guids = AssetDatabase.FindAssets("t:CombatUnitData", new[] { "Assets/Units" });
+            List<CombatUnitData> units = new List<CombatUnitData>();
+            
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                CombatUnitData unit = AssetDatabase.LoadAssetAtPath<CombatUnitData>(path);
+                if (unit != null)
+                {
+                    units.Add(unit);
+                }
+            }
+            
+            _allCombatUnits = units.ToArray();
+#else
+            // In build: Try to load from Addressables first, fallback to Resources
+            // If ScriptableObjects are marked as Addressable, load them via Addressables
+            // Otherwise, fallback to Resources (for backward compatibility)
+            try
+            {
+                // Try Addressables first (if ScriptableObjects are marked as addressable)
+                var handle = Addressables.LoadAssetsAsync<CombatUnitData>("CombatUnitData", null);
+                handle.WaitForCompletion();
+                
+                if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+                {
+                    _allCombatUnits = handle.Result.ToArray();
+                    Addressables.Release(handle);
+                }
+                else
+                {
+                    // Fallback to Resources
+                    Debug.LogWarning("[ResourceCache] Addressables failed, falling back to Resources/Units/");
+                    _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
+                }
+            }
+            catch
+            {
+                // Fallback to Resources
+                Debug.LogWarning("[ResourceCache] Addressables not available, falling back to Resources/Units/");
             _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
+            }
+#endif
             _combatUnitsLoaded = true;
             
-            Debug.Log($"[ResourceCache] Loaded {_allCombatUnits?.Length ?? 0} combat units (prefabs NOT loaded - using Addressables)");
+            // Memory logging after loading
+            long memAfter = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
+            Debug.Log($"[ResourceCache] Memory AFTER loading units: {memAfter / (1024f * 1024f):F1} MB (delta: {(memAfter - memBefore) / (1024f * 1024f):F1} MB)");
+            
+            int count = _allCombatUnits?.Length ?? 0;
+            Debug.Log($"[ResourceCache] Loaded {count} combat unit ScriptableObjects from Assets/Units/ (prefabs NOT loaded - using Addressables)");
+            
+            if (count == 0)
+            {
+                Debug.LogError("[ResourceCache] WARNING: No CombatUnitData found in Assets/Units/ folder! " +
+                    "Make sure your ScriptableObjects are in Assets/Units/");
+            }
+            else
+            {
+                // Log first few unit names and icon sizes for debugging
+                long totalIconMemory = 0;
+                int iconsWithSprite = 0;
+                
+                for (int i = 0; i < count; i++)
+                {
+                    if (_allCombatUnits[i] != null && _allCombatUnits[i].icon != null)
+                    {
+                        var tex = _allCombatUnits[i].icon.texture;
+                        if (tex != null)
+                        {
+                            // Estimate texture memory (width * height * 4 bytes for RGBA)
+                            long texMem = tex.width * tex.height * 4;
+                            totalIconMemory += texMem;
+                            iconsWithSprite++;
+                            
+                            // Log first 5 icons
+                            if (i < 5)
+                            {
+                                Debug.Log($"[ResourceCache] Unit '{_allCombatUnits[i].unitName}' icon: {tex.width}x{tex.height} (~{texMem / 1024f:F1} KB)");
+                            }
+                        }
+                    }
+                }
+                
+                Debug.Log($"[ResourceCache] Total: {iconsWithSprite} units with icons, estimated icon memory: {totalIconMemory / (1024f * 1024f):F1} MB");
+            }
         }
     }
     

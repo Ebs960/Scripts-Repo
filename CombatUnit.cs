@@ -330,7 +330,7 @@ public class CombatUnit : MonoBehaviour
         if (animator == null)
         {
             // Fallback to root if no child Animator found
-        animator = GetComponent<Animator>();
+            animator = GetComponent<Animator>();
         }
         
         // CRITICAL FIX: Ensure animator is properly configured
@@ -340,6 +340,10 @@ public class CombatUnit : MonoBehaviour
             animator.updateMode = AnimatorUpdateMode.Normal;
             // Ensure culling mode allows animation even when off-screen during setup
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            
+            // STAGGER IDLE ANIMATIONS: Add random offset so units don't animate in sync
+            // This makes formations look more natural and alive
+            StaggerAnimationStart();
         }
         else
         {
@@ -3409,6 +3413,34 @@ public class CombatUnit : MonoBehaviour
         
         // Set up battle-specific components
         SetupBattleComponents();
+        
+        // Re-stagger animation when entering battle to ensure variety
+        StaggerAnimationStart();
+    }
+    
+    /// <summary>
+    /// Stagger the animation start time so units don't all animate in sync
+    /// This creates a more natural, organic look for formations
+    /// </summary>
+    private void StaggerAnimationStart()
+    {
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        
+        // Get a random offset between 0 and 1 (full animation cycle)
+        float randomOffset = UnityEngine.Random.Range(0f, 1f);
+        
+        // Apply offset to the current animation state
+        // This works by playing the current state at a random normalized time
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        if (stateInfo.length > 0)
+        {
+            // Play the current state at a random point in the animation
+            animator.Play(stateInfo.fullPathHash, 0, randomOffset);
+            
+            // Also add slight speed variation (95-105%) for even more natural look
+            float speedVariation = UnityEngine.Random.Range(0.95f, 1.05f);
+            animator.speed = speedVariation;
+        }
     }
 
     /// <summary>

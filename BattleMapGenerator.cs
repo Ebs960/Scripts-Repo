@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.AI; // For NavMesh runtime baking
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection; // For reflection in FindFirstObjectByType
 
 /// <summary>
 /// Type of battle - affects terrain generation
@@ -54,6 +53,10 @@ public class BattleMapGenerator : MonoBehaviour
     [Tooltip("Maximum number of decorations to spawn on the battle map (0 = unlimited, but may cause memory issues)")]
     [Range(0, 200)]
     public int maxDecorations = 50;
+    
+    [Header("Grass")]
+    [Tooltip("Optional grass spawner for battlefield grass. Assign in inspector if you want grass.")]
+    public BattlefieldGrassSpawner grassSpawner;
 
     [Header("Spawn Points")]
     [Tooltip("Distance between attacker and defender spawn points")]
@@ -133,12 +136,66 @@ public class BattleMapGenerator : MonoBehaviour
         // IMPROVED: Bake NavMesh at runtime after map generation
         GenerateNavigationMesh();
         
+        // Set up AAA-quality visuals for the battle scene
+        SetupBattleVisuals();
+        
         Debug.Log($"[BattleMapGenerator] Generated {primaryBattleBiome} battle map ({mapSize}x{mapSize}) with elevation {battleTileElevation:F2}, battle type: {battleType}");
         Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
     }
+    
     /// <summary>
-    /// Clear any existing map objects
+    /// Set up AAA-quality visuals for the battle scene
+    /// Creates or configures BattleSceneVisuals component with biome-appropriate settings
+    /// Also spawns battlefield grass using prefabs if available
     /// </summary>
+    private void SetupBattleVisuals()
+    {
+        // Find or create BattleSceneVisuals
+        BattleSceneVisuals visuals = FindFirstObjectByType<BattleSceneVisuals>();
+        if (visuals == null)
+        {
+            GameObject visualsGO = new GameObject("BattleSceneVisuals");
+            visuals = visualsGO.AddComponent<BattleSceneVisuals>();
+            Debug.Log("[BattleMapGenerator] Created BattleSceneVisuals for AAA-quality rendering");
+        }
+        
+        // Apply biome-specific visual settings
+        visuals.ApplyBiomeVisuals(primaryBattleBiome);
+        
+        // Spawn battlefield grass if we have a grass spawner or prefab
+        SpawnBattlefieldGrass();
+    }
+    
+    /// <summary>
+    /// Spawn grass across the battlefield using BattlefieldGrassSpawner (if assigned)
+    /// </summary>
+    private void SpawnBattlefieldGrass()
+    {
+        // Only spawn grass if a grass spawner is assigned in the inspector
+        if (grassSpawner == null)
+        {
+            // No grass spawner assigned - that's fine, grass is optional
+            return;
+        }
+        
+        // Check if grass prefab is assigned
+        if (grassSpawner.grassPrefab == null)
+        {
+            Debug.Log("[BattleMapGenerator] Grass spawner assigned but no grass prefab set. Skipping grass spawn.");
+            return;
+        }
+        
+        // Get the terrain
+        Terrain terrain = null;
+        if (terrainObjects.Count > 0)
+        {
+            terrain = terrainObjects[0].GetComponent<Terrain>();
+        }
+        
+        // Spawn grass with biome-appropriate settings
+        grassSpawner.SpawnGrass(terrain, mapSize, primaryBattleBiome);
+    }
+    
     /// <summary>
     /// Clear any existing map objects
     /// </summary>
@@ -202,6 +259,9 @@ public class BattleMapGenerator : MonoBehaviour
             Debug.LogWarning($"[BattleMapGenerator] No generator found for {primaryBattleBiome}, using basic terrain");
         }
         
+        // Apply terrain modification layers (water, rivers, etc.)
+        ApplyTerrainLayers(terrainData, resolution, mapSize, terrainGO.transform.position);
+        
         // Create Terrain component and assign data
         Terrain terrain = terrainGO.GetComponent<Terrain>();
         if (terrain == null)
@@ -218,12 +278,250 @@ public class BattleMapGenerator : MonoBehaviour
         }
         terrainCollider.terrainData = terrainData;
         
+        // Set up grass/details on terrain (BEFORE applying material - grass needs terrain data ready)
+        SetupTerrainGrass(terrain, resolution);
+        
         // Apply biome material/texture to terrain (guaranteed to work with Unity Terrain)
         ApplyBiomeMaterialToTerrain(terrain);
         
+        // Configure terrain rendering settings for AAA quality
+        ConfigureTerrainQuality(terrain);
+        
+        // Add water planes for Naval/Coastal battles
+        if (battleType == BattleType.Naval || battleType == BattleType.Coastal)
+        {
+            CreateWaterPlane(terrainGO, mapSize);
+        }
+        
+        // Add lava planes for volcanic biomes with lava flows
+        if (battleTileTemperature > 0.7f && 
+            (primaryBattleBiome == Biome.Volcanic || primaryBattleBiome == Biome.Desert))
+        {
+            CreateLavaPlane(terrainGO, mapSize);
+        }
+        
         terrainObjects.Add(terrainGO);
         
-        Debug.Log($"[BattleMapGenerator] Custom terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}");
+        Debug.Log($"[BattleMapGenerator] Custom terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}, Battle Type: {battleType}");
+    }
+    
+    /// <summary>
+    /// Apply terrain modification layers (water, rivers, etc.) to the heightmap
+    /// Uses a layered system for expandability
+    /// </summary>
+    private void ApplyTerrainLayers(UnityEngine.TerrainData terrainData, int resolution, float mapSize, Vector3 terrainPosition)
+    {
+        // Get current heightmap
+        float[,] heights = terrainData.GetHeights(0, 0, resolution, resolution);
+        
+        // Create and apply layers
+        List<ITerrainLayer> layers = new List<ITerrainLayer>();
+        
+        // Siege layer (for Siege battles - elevated positions)
+        SiegeTerrainLayer siegeLayer = new SiegeTerrainLayer(battleType == BattleType.Siege, mapSize);
+        if (siegeLayer.IsEnabled)
+        {
+            layers.Add(siegeLayer);
+        }
+        
+        // Water layer (for Naval/Coastal battles)
+        WaterTerrainLayer waterLayer = new WaterTerrainLayer(battleType, mapSize);
+        if (waterLayer.IsEnabled)
+        {
+            layers.Add(waterLayer);
+        }
+        
+        // Lake layer (for moist biomes, but not in Naval battles where water is already everywhere)
+        bool shouldHaveLake = battleType != BattleType.Naval && 
+                             battleTileMoisture > 0.4f && 
+                             (primaryBattleBiome == Biome.Forest || 
+                              primaryBattleBiome == Biome.Jungle || 
+                              primaryBattleBiome == Biome.Plains ||
+                              primaryBattleBiome == Biome.Grassland ||
+                              primaryBattleBiome == Biome.Swamp);
+        LakeTerrainLayer lakeLayer = new LakeTerrainLayer(shouldHaveLake, mapSize, battleTileMoisture);
+        if (lakeLayer.IsEnabled)
+        {
+            layers.Add(lakeLayer);
+        }
+        
+        // River layer (for moist biomes or if battle type allows)
+        bool shouldHaveRiver = battleType != BattleType.Naval && // No rivers in pure naval battles
+                              battleTileMoisture > 0.3f && 
+                              (primaryBattleBiome == Biome.Forest || 
+                               primaryBattleBiome == Biome.Jungle || 
+                               primaryBattleBiome == Biome.Plains ||
+                               primaryBattleBiome == Biome.Grassland);
+        RiverTerrainLayer riverLayer = new RiverTerrainLayer(shouldHaveRiver, mapSize, battleTileMoisture);
+        if (riverLayer.IsEnabled)
+        {
+            layers.Add(riverLayer);
+        }
+        
+        // Lava flow layer (for high-temperature volcanic biomes)
+        bool shouldHaveLavaFlow = battleTileTemperature > 0.7f && 
+                                 (primaryBattleBiome == Biome.Volcanic || 
+                                  primaryBattleBiome == Biome.Desert);
+        LavaFlowTerrainLayer lavaLayer = new LavaFlowTerrainLayer(shouldHaveLavaFlow, mapSize, battleTileTemperature, primaryBattleBiome);
+        if (lavaLayer.IsEnabled)
+        {
+            layers.Add(lavaLayer);
+        }
+        
+        // Sort layers by priority (lower priority = applied first)
+        layers.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        
+        // Apply each layer
+        foreach (var layer in layers)
+        {
+            if (layer.IsEnabled)
+            {
+                layer.ApplyLayer(heights, resolution, mapSize, terrainPosition);
+            }
+        }
+        
+        // Set modified heights back to terrain
+        terrainData.SetHeights(0, 0, heights);
+        
+        Debug.Log($"[BattleMapGenerator] Applied {layers.Count} terrain modification layers");
+    }
+    
+    /// <summary>
+    /// Create a water plane for Naval/Coastal battles
+    /// </summary>
+    private void CreateWaterPlane(GameObject terrainParent, float mapSize)
+    {
+        GameObject waterGO = new GameObject("WaterPlane");
+        waterGO.transform.SetParent(terrainParent.transform);
+        waterGO.transform.localPosition = Vector3.zero;
+        
+        // Create a large plane for water
+        MeshFilter meshFilter = waterGO.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = waterGO.AddComponent<MeshRenderer>();
+        
+        // Create water mesh (simple plane)
+        Mesh waterMesh = new Mesh();
+        float waterSize = mapSize * 1.2f; // Slightly larger than terrain
+        float waterHeight = heightVariation * 0.15f; // Water level
+        
+        Vector3[] vertices = new Vector3[]
+        {
+            new Vector3(-waterSize/2, waterHeight, -waterSize/2),
+            new Vector3(waterSize/2, waterHeight, -waterSize/2),
+            new Vector3(waterSize/2, waterHeight, waterSize/2),
+            new Vector3(-waterSize/2, waterHeight, waterSize/2)
+        };
+        
+        int[] triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+        Vector2[] uvs = new Vector2[]
+        {
+            new Vector2(0, 0),
+            new Vector2(1, 0),
+            new Vector2(1, 1),
+            new Vector2(0, 1)
+        };
+        
+        waterMesh.vertices = vertices;
+        waterMesh.triangles = triangles;
+        waterMesh.uv = uvs;
+        waterMesh.RecalculateNormals();
+        
+        meshFilter.mesh = waterMesh;
+        
+        // Create water material using URP-compatible shader
+        Material waterMaterial = CreateWaterMaterial();
+        if (waterMaterial != null)
+        {
+            meshRenderer.material = waterMaterial;
+        }
+        else
+        {
+            // Fallback: create a simple blue material
+            meshRenderer.material = new Material(Shader.Find("Unlit/Color"));
+            meshRenderer.material.color = new Color(0.1f, 0.3f, 0.6f, 0.75f);
+        }
+        
+        // Add collider for water (non-walkable for land units)
+        MeshCollider waterCollider = waterGO.AddComponent<MeshCollider>();
+        waterCollider.sharedMesh = waterMesh;
+        
+        // Set water layer (can be used for NavMesh exclusion)
+        int waterLayer = LayerMask.NameToLayer("Water");
+        if (waterLayer != -1)
+        {
+            waterGO.layer = waterLayer;
+        }
+        
+        Debug.Log($"[BattleMapGenerator] Created water plane for {battleType} battle");
+    }
+    
+    /// <summary>
+    /// Create a lava plane for volcanic biomes with lava flows
+    /// </summary>
+    private void CreateLavaPlane(GameObject terrainParent, float mapSize)
+    {
+        GameObject lavaGO = new GameObject("LavaPlane");
+        lavaGO.transform.SetParent(terrainParent.transform);
+        lavaGO.transform.localPosition = Vector3.zero;
+        
+        // Create a plane for lava (similar to water but smaller, follows lava flow paths)
+        MeshFilter meshFilter = lavaGO.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = lavaGO.AddComponent<MeshRenderer>();
+        
+        // Create lava mesh (simple plane, can be enhanced to follow lava flow paths)
+        Mesh lavaMesh = new Mesh();
+        float lavaSize = mapSize * 0.3f; // Smaller than water (lava flows are narrower)
+        float lavaHeight = heightVariation * 0.2f; // Lava level (slightly above water)
+        
+        Vector3[] vertices = new Vector3[]
+        {
+            new Vector3(-lavaSize/2, lavaHeight, -lavaSize/2),
+            new Vector3(lavaSize/2, lavaHeight, -lavaSize/2),
+            new Vector3(lavaSize/2, lavaHeight, lavaSize/2),
+            new Vector3(-lavaSize/2, lavaHeight, lavaSize/2)
+        };
+        
+        int[] triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+        Vector2[] uvs = new Vector2[]
+        {
+            new Vector2(0, 0),
+            new Vector2(1, 0),
+            new Vector2(1, 1),
+            new Vector2(0, 1)
+        };
+        
+        lavaMesh.vertices = vertices;
+        lavaMesh.triangles = triangles;
+        lavaMesh.uv = uvs;
+        lavaMesh.RecalculateNormals();
+        
+        meshFilter.mesh = lavaMesh;
+        
+        // Create lava material using URP-compatible shader with emission
+        Material lavaMaterial = CreateLavaMaterial();
+        if (lavaMaterial != null)
+        {
+            meshRenderer.material = lavaMaterial;
+        }
+        else
+        {
+            // Fallback: create a simple red/orange material
+            meshRenderer.material = new Material(Shader.Find("Unlit/Color"));
+            meshRenderer.material.color = new Color(0.9f, 0.3f, 0.1f, 0.85f);
+        }
+        
+        // Add collider for lava (non-walkable, causes damage)
+        MeshCollider lavaCollider = lavaGO.AddComponent<MeshCollider>();
+        lavaCollider.sharedMesh = lavaMesh;
+        
+        // Set lava layer
+        int lavaLayer = LayerMask.NameToLayer("Water"); // Reuse Water layer for now, or create "Lava" layer
+        if (lavaLayer != -1)
+        {
+            lavaGO.layer = lavaLayer;
+        }
+        
+        Debug.Log($"[BattleMapGenerator] Created lava plane for volcanic biome");
     }
     
     /// <summary>
@@ -276,17 +574,39 @@ public class BattleMapGenerator : MonoBehaviour
             Debug.LogWarning($"[BattleMapGenerator] No biome settings found for {primaryBattleBiome}! Terrain will use default material.");
         }
         
-        // Create terrain layer if we have a texture
+        // IMPORTANT: In URP, we need BOTH:
+        // 1. materialTemplate = URP Terrain shader (provides the rendering)
+        // 2. terrainLayers = textures (provides the appearance)
+        // Setting materialTemplate to null causes purple terrain!
+        
+        // First, create and assign a proper URP terrain material
+        Material urpTerrainMaterial = CreateURPTerrainMaterial();
+        if (urpTerrainMaterial != null)
+        {
+            terrain.materialTemplate = urpTerrainMaterial;
+            Debug.Log($"[BattleMapGenerator] Assigned URP terrain material: {urpTerrainMaterial.shader.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[BattleMapGenerator] Could not create URP terrain material - terrain may appear pink!");
+        }
+        
+        // Now create terrain layer for textures
         if (albedoTexture != null)
         {
             TerrainLayer terrainLayer = new TerrainLayer();
             terrainLayer.diffuseTexture = albedoTexture;
             terrainLayer.tileSize = new Vector2(15f, 15f); // Texture tiling size
+            terrainLayer.tileOffset = Vector2.zero;
             
             if (normalTexture != null)
             {
                 terrainLayer.normalMapTexture = normalTexture;
             }
+            
+            // Set metallic and smoothness for URP
+            terrainLayer.metallic = 0.0f;
+            terrainLayer.smoothness = 0.3f;
             
             // Set the terrain layer on terrainData
             terrain.terrainData.terrainLayers = new TerrainLayer[] { terrainLayer };
@@ -311,18 +631,266 @@ public class BattleMapGenerator : MonoBehaviour
         }
         else
         {
-            // Fallback: Use material template with biome color
-            Material biomeMaterial = CreateBiomeTerrainMaterial();
-            if (biomeMaterial != null)
+            // Fallback: Create a TerrainLayer with biome color texture
+            Debug.LogWarning($"[BattleMapGenerator] No texture available for {primaryBattleBiome}, creating default TerrainLayer with biome color");
+            
+            // Create a simple TerrainLayer with a solid color texture
+            TerrainLayer defaultLayer = new TerrainLayer();
+            Color biomeColor = GetBiomeColor(primaryBattleBiome);
+            
+            // Create a small texture with the biome color (not 1x1, that can cause issues)
+            Texture2D colorTexture = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 4; y++)
             {
-                terrain.materialTemplate = biomeMaterial;
-                Debug.Log($"[BattleMapGenerator] Applied biome material template (no texture available) for: {primaryBattleBiome}");
+                for (int x = 0; x < 4; x++)
+                {
+                    colorTexture.SetPixel(x, y, biomeColor);
+                }
             }
-            else
+            colorTexture.Apply();
+            
+            defaultLayer.diffuseTexture = colorTexture;
+            defaultLayer.tileSize = new Vector2(10f, 10f);
+            defaultLayer.metallic = 0.0f;
+            defaultLayer.smoothness = 0.3f;
+            
+            terrain.terrainData.terrainLayers = new TerrainLayer[] { defaultLayer };
+            
+            // Paint entire terrain with this layer
+            int alphamapWidth = terrain.terrainData.alphamapWidth;
+            int alphamapHeight = terrain.terrainData.alphamapHeight;
+            float[,,] alphamaps = new float[alphamapHeight, alphamapWidth, 1];
+            for (int y = 0; y < alphamapHeight; y++)
             {
-                Debug.LogWarning($"[BattleMapGenerator] Could not create biome material for {primaryBattleBiome}");
+                for (int x = 0; x < alphamapWidth; x++)
+                {
+                    alphamaps[y, x, 0] = 1.0f;
+                }
+            }
+            terrain.terrainData.SetAlphamaps(0, 0, alphamaps);
+            
+            Debug.Log($"[BattleMapGenerator] Created default TerrainLayer with biome color for: {primaryBattleBiome}");
+        }
+    }
+    
+    /// <summary>
+    /// Set up grass/details on the terrain using Unity's Detail system
+    /// </summary>
+    private void SetupTerrainGrass(Terrain terrain, int resolution)
+    {
+        if (terrain == null || terrain.terrainData == null) return;
+        
+        UnityEngine.TerrainData terrainData = terrain.terrainData;
+        
+        // Set detail resolution (how many detail patches across the terrain)
+        // Higher resolution = more detailed grass placement
+        int detailResolution = Mathf.Min(resolution, 1024); // Cap at 1024 for performance
+        terrainData.SetDetailResolution(detailResolution, 8); // 8 = number of detail layers supported
+        
+        // Create grass detail prototype
+        DetailPrototype grassPrototype = new DetailPrototype();
+        
+        // Use Unity's built-in grass texture (or create a simple grass mesh)
+        // For now, we'll use a simple approach: create a grass texture programmatically
+        // In production, you'd want to use actual grass textures/meshes
+        
+        // Create a simple grass texture (green, vertical stripes)
+        Texture2D grassTexture = CreateGrassTexture();
+        grassPrototype.prototypeTexture = grassTexture;
+        grassPrototype.minWidth = 0.5f;
+        grassPrototype.maxWidth = 1.0f;
+        grassPrototype.minHeight = 0.3f;
+        grassPrototype.maxHeight = 0.6f;
+        grassPrototype.noiseSpread = 0.2f;
+        grassPrototype.healthyColor = CalculateGrassTint();
+        grassPrototype.dryColor = new Color(0.7f, 0.6f, 0.4f); // Brownish for dry grass
+        grassPrototype.renderMode = DetailRenderMode.GrassBillboard; // Billboard mode (2D grass)
+        
+        // Set detail prototypes on terrain
+        terrainData.detailPrototypes = new DetailPrototype[] { grassPrototype };
+        
+        // Calculate grass density based on biome
+        float grassDensity = CalculateDetailDensity();
+        
+        // Skip grass for certain biomes (water, lava, etc.)
+        bool shouldHaveGrass = grassDensity > 0.1f && 
+                              primaryBattleBiome != Biome.Ocean &&
+                              primaryBattleBiome != Biome.Volcanic &&
+                              battleType != BattleType.Naval; // No grass in pure naval battles
+        
+        if (!shouldHaveGrass)
+        {
+            Debug.Log($"[BattleMapGenerator] Skipping grass setup for {primaryBattleBiome} biome (density: {grassDensity:F2})");
+            return;
+        }
+        
+        // Create detail map (paint grass across terrain)
+        int[,] detailMap = new int[detailResolution, detailResolution];
+        
+        // Paint grass based on biome and terrain conditions
+        for (int y = 0; y < detailResolution; y++)
+        {
+            for (int x = 0; x < detailResolution; x++)
+            {
+                // Get world position
+                float worldX = (x / (float)detailResolution) * mapSize - mapSize / 2f;
+                float worldZ = (y / (float)detailResolution) * mapSize - mapSize / 2f;
+                
+                // Get terrain height at this position
+                float normalizedX = (x / (float)detailResolution);
+                float normalizedZ = (y / (float)detailResolution);
+                float height = terrainData.GetHeight((int)(normalizedX * terrainData.heightmapResolution), 
+                                                      (int)(normalizedZ * terrainData.heightmapResolution)) / terrainData.size.y;
+                
+                // Don't place grass in water areas (low terrain)
+                if (height < 0.2f) // Below water level
+                {
+                    detailMap[y, x] = 0;
+                    continue;
+                }
+                
+                // Calculate grass density at this position
+                float localDensity = grassDensity;
+                
+                // Reduce grass on steep slopes
+                float slope = CalculateSlopeAtPosition(terrainData, normalizedX, normalizedZ);
+                if (slope > 0.5f) // Steep slope
+                {
+                    localDensity *= 0.3f; // Much less grass on steep slopes
+                }
+                else if (slope > 0.3f) // Moderate slope
+                {
+                    localDensity *= 0.6f; // Less grass on moderate slopes
+                }
+                
+                // Add some noise for natural variation
+                float noise = Mathf.PerlinNoise(worldX * 0.1f, worldZ * 0.1f);
+                localDensity *= (0.7f + noise * 0.6f); // 70-130% variation
+                
+                // Convert density to detail map value (0-16, where 16 = max density)
+                int detailValue = Mathf.RoundToInt(localDensity * 16f);
+                detailMap[y, x] = Mathf.Clamp(detailValue, 0, 16);
             }
         }
+        
+        // Set detail map on terrain (layer 0 = grass)
+        terrainData.SetDetailLayer(0, 0, 0, detailMap);
+        
+        // Configure terrain detail rendering settings
+        terrain.detailObjectDistance = CalculateDetailDistance();
+        terrain.detailObjectDensity = 1.0f; // Full density
+        // Note: billboardDistance is not available in all Unity versions, using detailObjectDistance instead
+        
+        // Configure wind settings for grass animation (URP supports these)
+        terrain.terrainData.wavingGrassStrength = CalculateWindBending();
+        terrain.terrainData.wavingGrassSpeed = CalculateWindSpeed();
+        terrain.terrainData.wavingGrassAmount = CalculateWindSize();
+        terrain.terrainData.wavingGrassTint = CalculateGrassTint();
+        
+        // Force terrain to refresh detail rendering
+        terrain.Flush();
+        
+        Debug.Log($"[BattleMapGenerator] Set up grass for {primaryBattleBiome} biome - Density: {grassDensity:F2}, Distance: {terrain.detailObjectDistance:F0}");
+        Debug.Log($"[BattleMapGenerator] Detail map size: {detailResolution}x{detailResolution}, Detail prototypes: {terrainData.detailPrototypes.Length}");
+        
+        // Count non-zero detail values for debugging
+        int grassCount = 0;
+        for (int y = 0; y < detailResolution; y++)
+        {
+            for (int x = 0; x < detailResolution; x++)
+            {
+                if (detailMap[y, x] > 0) grassCount++;
+            }
+        }
+        Debug.Log($"[BattleMapGenerator] Grass patches placed: {grassCount} out of {detailResolution * detailResolution} total patches");
+    }
+    
+    /// <summary>
+    /// Create a simple grass texture programmatically
+    /// Creates a billboard-style grass texture with multiple blades
+    /// In production, you'd use actual grass textures from assets
+    /// </summary>
+    private Texture2D CreateGrassTexture()
+    {
+        int width = 64;
+        int height = 128;
+        Texture2D grassTex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        
+        Color grassColor = CalculateGrassTint();
+        
+        // Create multiple grass blades for more natural look
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                float normalizedX = x / (float)width;
+                float normalizedY = y / (float)height;
+                
+                float alpha = 0f;
+                
+                // Create 3-5 grass blades across the width
+                for (int blade = 0; blade < 4; blade++)
+                {
+                    float bladeCenterX = 0.2f + blade * 0.2f; // Distribute blades
+                    float distanceFromBlade = Mathf.Abs(normalizedX - bladeCenterX);
+                    
+                    // Grass blade shape (narrow at top, wider at bottom)
+                    float bladeWidth = 0.05f + normalizedY * 0.15f; // Wider at bottom
+                    
+                    if (distanceFromBlade < bladeWidth)
+                    {
+                        // Inside grass blade
+                        float bladeAlpha = 1f - (distanceFromBlade / bladeWidth); // Fade at edges
+                        bladeAlpha *= (0.7f + normalizedY * 0.3f); // More opaque at bottom
+                        bladeAlpha *= (1f - normalizedY * 0.3f); // Slightly fade at top
+                        
+                        // Add some variation per blade
+                        float bladeVariation = 0.8f + (blade % 2) * 0.2f;
+                        bladeAlpha *= bladeVariation;
+                        
+                        alpha = Mathf.Max(alpha, bladeAlpha);
+                    }
+                }
+                
+                // Add some noise for natural variation
+                float noise = Mathf.PerlinNoise(normalizedX * 10f, normalizedY * 10f) * 0.3f;
+                alpha = Mathf.Clamp01(alpha + noise);
+                
+                // Apply color with alpha
+                Color pixelColor = grassColor;
+                pixelColor.a = alpha;
+                grassTex.SetPixel(x, y, pixelColor);
+            }
+        }
+        
+        grassTex.Apply();
+        grassTex.wrapMode = TextureWrapMode.Clamp;
+        grassTex.filterMode = FilterMode.Bilinear;
+        
+        return grassTex;
+    }
+    
+    /// <summary>
+    /// Calculate slope at a normalized position on the terrain
+    /// </summary>
+    private float CalculateSlopeAtPosition(UnityEngine.TerrainData terrainData, float normalizedX, float normalizedZ)
+    {
+        int heightmapRes = terrainData.heightmapResolution;
+        // Clamp to leave room for 2x2 sample (avoid array out of bounds)
+        int x = Mathf.Clamp(Mathf.RoundToInt(normalizedX * heightmapRes), 0, heightmapRes - 2);
+        int z = Mathf.Clamp(Mathf.RoundToInt(normalizedZ * heightmapRes), 0, heightmapRes - 2);
+        
+        // Get heights around this point
+        float[,] heights = terrainData.GetHeights(x, z, 2, 2);
+        
+        // Calculate gradient (slope)
+        float dx = (heights[1, 1] - heights[0, 1]) * terrainData.size.y / terrainData.heightmapResolution;
+        float dz = (heights[1, 1] - heights[1, 0]) * terrainData.size.y / terrainData.heightmapResolution;
+        
+        // Slope is the magnitude of the gradient
+        float slope = Mathf.Sqrt(dx * dx + dz * dz) / terrainData.size.y;
+        
+        return Mathf.Clamp01(slope);
     }
     
     /// <summary>
@@ -336,6 +904,47 @@ public class BattleMapGenerator : MonoBehaviour
         if (mapSize <= 100f) return 513;     // Medium maps: 513
         if (mapSize <= 200f) return 1025;    // Large maps: 1025
         return 2049;                          // Very large maps: 2049
+    }
+    
+    /// <summary>
+    /// Configure terrain rendering settings for AAA quality visuals
+    /// </summary>
+    private void ConfigureTerrainQuality(Terrain terrain)
+    {
+        if (terrain == null) return;
+        
+        // === HEIGHTMAP SETTINGS ===
+        // Pixel error controls LOD quality (lower = higher quality, more expensive)
+        terrain.heightmapPixelError = 3f; // Default is 5, lower for better quality
+        
+        // Base map distance - distance at which terrain switches to base map
+        terrain.basemapDistance = 1000f; // Keep high-res textures visible at distance
+        
+        // === DETAIL/GRASS SETTINGS ===
+        terrain.detailObjectDistance = CalculateDetailDistance();
+        terrain.detailObjectDensity = 1.0f; // Maximum density
+        
+        // === TREE SETTINGS ===
+        terrain.treeDistance = CalculateTreeDistance();
+        terrain.treeBillboardDistance = CalculateTreeBillboardStart();
+        terrain.treeCrossFadeLength = 50f; // Smooth transition between 3D and billboard
+        terrain.treeMaximumFullLODCount = CalculateTreeFullLod();
+        
+        // === RENDERING SETTINGS ===
+        // Draw instanced for better performance with many grass/details
+        terrain.drawInstanced = true;
+        
+        // Enable terrain holes support (for caves, etc.)
+        // Note: This is set in URP asset, not on terrain directly
+        
+        // === SHADOW SETTINGS ===
+        terrain.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        
+        // === REFLECTION PROBE USAGE ===
+        terrain.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.BlendProbes;
+        
+        Debug.Log($"[BattleMapGenerator] Terrain quality configured - Pixel error: {terrain.heightmapPixelError}, " +
+                  $"Detail distance: {terrain.detailObjectDistance}, Tree distance: {terrain.treeDistance}");
     }
     
     // ========== BIOME-SPECIFIC CALCULATION METHODS ==========
@@ -513,40 +1122,6 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Helper method to find object by type using reflection
-    /// </summary>
-    private new Component FindFirstObjectByType(System.Type type)
-    {
-        // Use Unity's FindFirstObjectByType<T> via reflection
-        var findMethod = typeof(UnityEngine.Object).GetMethod("FindFirstObjectByType", BindingFlags.Public | BindingFlags.Static);
-        if (findMethod != null)
-        {
-            // FindFirstObjectByType is generic, so we need to make a generic method
-            var genericMethod = findMethod.MakeGenericMethod(type);
-            var result = genericMethod.Invoke(null, null);
-            return result as Component;
-        }
-        
-        // Fallback to FindObjectOfType
-        var findObjectMethod = typeof(UnityEngine.Object).GetMethod("FindObjectOfType", BindingFlags.Public | BindingFlags.Static);
-        if (findObjectMethod != null)
-        {
-            var genericMethod = findObjectMethod.MakeGenericMethod(type);
-            var result = genericMethod.Invoke(null, null);
-            return result as Component;
-        }
-        
-        // Last resort: search all objects
-        var allObjects = FindObjectsByType(type, FindObjectsSortMode.None);
-        if (allObjects != null && allObjects.Length > 0)
-        {
-            return allObjects[0] as Component;
-        }
-        
-        return null;
-    }
-    
-    /// <summary>
     /// Calculate the actual bounds of all terrain objects
     /// This ensures NavMesh bounds include the full terrain, not just the mapSize
     /// </summary>
@@ -679,27 +1254,211 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
+    /// Create a URP terrain material for materialTemplate
+    /// This provides the shader; TerrainLayers provide the textures
+    /// </summary>
+    private Material CreateURPTerrainMaterial()
+    {
+        // Try URP Terrain shader first (this is what Unity expects for URP terrains)
+        Shader terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+        
+        if (terrainShader == null)
+        {
+            Debug.LogWarning("[BattleMapGenerator] 'Universal Render Pipeline/Terrain/Lit' not found, trying alternatives...");
+            
+            // Try other URP terrain shader paths
+            string[] shaderPaths = new string[]
+            {
+                "Universal Render Pipeline/Terrain/Standard",
+                "Shader Graphs/Terrain Lit",
+                "Nature/Terrain/Standard",  // Built-in fallback
+                "Universal Render Pipeline/Lit",  // Basic URP lit
+                "Standard"  // Absolute fallback
+            };
+            
+            foreach (string path in shaderPaths)
+            {
+                terrainShader = Shader.Find(path);
+                if (terrainShader != null)
+                {
+                    Debug.Log($"[BattleMapGenerator] Found fallback terrain shader: {path}");
+                    break;
+                }
+            }
+        }
+        
+        if (terrainShader == null)
+        {
+            Debug.LogError("[BattleMapGenerator] No terrain shader found! Install URP package or check shader includes.");
+            return null;
+        }
+        
+        Material material = new Material(terrainShader);
+        Debug.Log($"[BattleMapGenerator] Created URP terrain material with shader: {terrainShader.name}");
+        
+        return material;
+    }
+    
+    /// <summary>
+    /// Create a water material using URP-compatible shaders
+    /// Provides semi-transparent, reflective water appearance
+    /// </summary>
+    private Material CreateWaterMaterial()
+    {
+        // Try to find URP-compatible transparent shader
+        Shader waterShader = Shader.Find("Universal Render Pipeline/Lit");
+        
+        if (waterShader == null)
+        {
+            waterShader = Shader.Find("Standard");
+        }
+        
+        if (waterShader == null)
+        {
+            Debug.LogError("[BattleMapGenerator] No shader found for water material!");
+            return null;
+        }
+        
+        Material waterMaterial = new Material(waterShader);
+        
+        // Configure for URP transparency
+        if (waterShader.name.Contains("Universal"))
+        {
+            // URP Lit shader settings
+            waterMaterial.SetFloat("_Surface", 1); // 0 = Opaque, 1 = Transparent
+            waterMaterial.SetFloat("_Blend", 0); // 0 = Alpha, 1 = Premultiply, 2 = Additive, 3 = Multiply
+            waterMaterial.SetFloat("_AlphaClip", 0);
+            waterMaterial.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            waterMaterial.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            waterMaterial.SetFloat("_ZWrite", 0);
+            waterMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            waterMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            
+            // Set water color and properties
+            waterMaterial.SetColor("_BaseColor", new Color(0.1f, 0.3f, 0.6f, 0.75f));
+            waterMaterial.SetFloat("_Smoothness", 0.95f); // Very smooth/reflective
+            waterMaterial.SetFloat("_Metallic", 0.0f);
+        }
+        else
+        {
+            // Standard shader fallback
+            waterMaterial.SetFloat("_Mode", 3); // Transparent mode
+            waterMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            waterMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            waterMaterial.SetInt("_ZWrite", 0);
+            waterMaterial.DisableKeyword("_ALPHATEST_ON");
+            waterMaterial.EnableKeyword("_ALPHABLEND_ON");
+            waterMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            waterMaterial.renderQueue = 3000;
+            waterMaterial.color = new Color(0.1f, 0.3f, 0.6f, 0.75f);
+            waterMaterial.SetFloat("_Glossiness", 0.95f);
+        }
+        
+        Debug.Log($"[BattleMapGenerator] Created water material with shader: {waterShader.name}");
+        return waterMaterial;
+    }
+    
+    /// <summary>
+    /// Create a lava material using URP-compatible shaders with emission
+    /// </summary>
+    private Material CreateLavaMaterial()
+    {
+        Shader lavaShader = Shader.Find("Universal Render Pipeline/Lit");
+        
+        if (lavaShader == null)
+        {
+            lavaShader = Shader.Find("Standard");
+        }
+        
+        if (lavaShader == null)
+        {
+            Debug.LogError("[BattleMapGenerator] No shader found for lava material!");
+            return null;
+        }
+        
+        Material lavaMaterial = new Material(lavaShader);
+        
+        // Configure for URP with emission
+        if (lavaShader.name.Contains("Universal"))
+        {
+            lavaMaterial.SetFloat("_Surface", 1); // Transparent
+            lavaMaterial.SetFloat("_Blend", 0);
+            lavaMaterial.SetFloat("_AlphaClip", 0);
+            lavaMaterial.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            lavaMaterial.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            lavaMaterial.SetFloat("_ZWrite", 0);
+            lavaMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            lavaMaterial.EnableKeyword("_EMISSION");
+            lavaMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            
+            // Lava color and emission
+            lavaMaterial.SetColor("_BaseColor", new Color(0.9f, 0.3f, 0.1f, 0.85f));
+            lavaMaterial.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 2f); // Bright orange glow
+            lavaMaterial.SetFloat("_Smoothness", 0.8f);
+            lavaMaterial.SetFloat("_Metallic", 0.0f);
+        }
+        else
+        {
+            lavaMaterial.SetFloat("_Mode", 3);
+            lavaMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            lavaMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            lavaMaterial.SetInt("_ZWrite", 0);
+            lavaMaterial.DisableKeyword("_ALPHATEST_ON");
+            lavaMaterial.EnableKeyword("_ALPHABLEND_ON");
+            lavaMaterial.EnableKeyword("_EMISSION");
+            lavaMaterial.renderQueue = 3000;
+            lavaMaterial.color = new Color(0.9f, 0.3f, 0.1f, 0.85f);
+            lavaMaterial.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 2f);
+        }
+        
+        Debug.Log($"[BattleMapGenerator] Created lava material with shader: {lavaShader.name}");
+        return lavaMaterial;
+    }
+    
+    /// <summary>
     /// Create a terrain material with biome-specific textures
     /// Uses textures from biomeSettings if available, otherwise uses biome color
     /// </summary>
     private Material CreateBiomeTerrainMaterial()
     {
         // Find appropriate shader (URP or Standard)
+        // URP Terrain shader path
         Shader terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+        
         if (terrainShader == null)
         {
+            Debug.LogWarning("[BattleMapGenerator] URP Terrain shader not found at 'Universal Render Pipeline/Terrain/Lit', trying alternatives...");
+            // Try alternative URP paths
+            terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Standard");
+        }
+        
+        if (terrainShader == null)
+        {
+            // Try built-in terrain shader (for non-URP projects)
             terrainShader = Shader.Find("Nature/Terrain/Standard");
         }
+        
         if (terrainShader == null)
         {
+            // Last resort: Use URP Lit shader (not ideal for terrain but will work)
+            Debug.LogWarning("[BattleMapGenerator] No terrain-specific shader found, using URP Lit shader");
+            terrainShader = Shader.Find("Universal Render Pipeline/Lit");
+        }
+        
+        if (terrainShader == null)
+        {
+            // Absolute fallback
             terrainShader = Shader.Find("Standard");
         }
         
         if (terrainShader == null)
         {
-            Debug.LogError("[BattleMapGenerator] Could not find terrain shader!");
+            Debug.LogError("[BattleMapGenerator] Could not find ANY shader! Terrain will appear pink.");
+            Debug.LogError("[BattleMapGenerator] Make sure URP is properly installed and configured.");
             return null;
         }
+        
+        Debug.Log($"[BattleMapGenerator] Using shader: {terrainShader.name} for terrain material");
         
         Material material = new Material(terrainShader);
         
@@ -1129,6 +1888,7 @@ public class BattleMapGenerator : MonoBehaviour
     /// <summary>
     /// Create spawn points for both sides
     /// Armies spawn at the center of the terrain, facing each other with spawnDistance spacing
+    /// Formations are arranged in ROWS (spread along Z axis) facing each other (along X axis)
     /// </summary>
     private void CreateSpawnPoints(int attackerUnits, int defenderUnits)
     {
@@ -1146,41 +1906,50 @@ public class BattleMapGenerator : MonoBehaviour
         Vector3 attackerSpawn = FindGoodSpawnPosition(attackerBaseSpawn);
         Vector3 defenderSpawn = FindGoodSpawnPosition(defenderBaseSpawn);
         
-        // Create spawn points for attackers (spread around base position)
-        float formationSpread = 8f; // Spread units in a formation
+        // Create spawn points for attackers in ROWS facing defenders
+        // Rows spread along Z (width), columns along X (depth toward enemy)
+        float formationSpreadZ = 12f; // Wider spread along Z (row width)
+        float formationSpreadX = 6f;  // Narrower spread along X (depth)
+        
+        // Calculate grid dimensions: more units per row (Z) than columns (X)
+        // This creates wide, shallow formations facing each other
+        int unitsPerRow = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(attackerUnits * 2f))); // Wider rows
+        int numRows = Mathf.CeilToInt((float)attackerUnits / unitsPerRow);
+        
         for (int i = 0; i < attackerUnits; i++)
         {
-            // Spread in a grid pattern around the base spawn
-            int unitsPerRow = Mathf.CeilToInt(Mathf.Sqrt(attackerUnits));
-            int row = i / unitsPerRow;
-            int col = i % unitsPerRow;
-            float offsetX = (col - unitsPerRow / 2f) * formationSpread;
-            float offsetZ = (row - unitsPerRow / 2f) * formationSpread;
+            int row = i / unitsPerRow;    // Which row (depth, along X toward enemy)
+            int col = i % unitsPerRow;    // Which column (width, along Z)
+            
+            // Spread along Z for width (row), X for depth (column)
+            // Center the formation on the base spawn
+            float offsetZ = (col - (unitsPerRow - 1) / 2f) * formationSpreadZ;
+            float offsetX = (row - (numRows - 1) / 2f) * formationSpreadX;
             
             Vector3 spawnPos = attackerSpawn + new Vector3(offsetX, 0f, offsetZ);
-            // Ensure spawn is at terrain height
             spawnPos.y = GetTerrainHeightAtPosition(spawnPos);
             attackerSpawnPoints.Add(spawnPos);
         }
         
-        // Create spawn points for defenders (spread around base position)
+        // Create spawn points for defenders in ROWS facing attackers
+        unitsPerRow = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(defenderUnits * 2f)));
+        numRows = Mathf.CeilToInt((float)defenderUnits / unitsPerRow);
+        
         for (int i = 0; i < defenderUnits; i++)
         {
-            // Spread in a grid pattern around the base spawn
-            int unitsPerRow = Mathf.CeilToInt(Mathf.Sqrt(defenderUnits));
             int row = i / unitsPerRow;
             int col = i % unitsPerRow;
-            float offsetX = (col - unitsPerRow / 2f) * formationSpread;
-            float offsetZ = (row - unitsPerRow / 2f) * formationSpread;
+            
+            float offsetZ = (col - (unitsPerRow - 1) / 2f) * formationSpreadZ;
+            float offsetX = (row - (numRows - 1) / 2f) * formationSpreadX;
             
             Vector3 spawnPos = defenderSpawn + new Vector3(offsetX, 0f, offsetZ);
-            // Ensure spawn is at terrain height
             spawnPos.y = GetTerrainHeightAtPosition(spawnPos);
             defenderSpawnPoints.Add(spawnPos);
         }
         
         Debug.Log($"[BattleMapGenerator] Created {attackerSpawnPoints.Count} attacker spawn points at {attackerSpawn} and {defenderSpawnPoints.Count} defender spawn points at {defenderSpawn}");
-        Debug.Log($"[BattleMapGenerator] Spawn distance: {spawnDistance}, Map center: {mapCenter}");
+        Debug.Log($"[BattleMapGenerator] Formation layout: {unitsPerRow} units per row, {numRows} rows deep");
     }
     
     /// <summary>

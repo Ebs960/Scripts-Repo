@@ -38,8 +38,19 @@ public class CombatUnitData : ScriptableObject
     public CombatCategory unitType;
     public Sprite icon;
     
-    [Header("Unit Prefab")]
-    // Unit prefab must be marked as Addressable with address matching unitName. Loaded on-demand via Addressables.
+    [Header("Unit Prefab (Addressables)")]
+    [Tooltip("The Addressable address for the unit prefab. If empty, uses unitName. " +
+             "Check Addressables Groups window to see/set the address (e.g., 'Assets/Units/Monument Units/Bow Warrior').")]
+    public string addressableAddress;
+    
+    /// <summary>
+    /// Gets the address to use for loading the prefab via Addressables.
+    /// Uses addressableAddress if set, otherwise falls back to unitName.
+    /// </summary>
+    public string GetAddressableKey()
+    {
+        return string.IsNullOrEmpty(addressableAddress) ? unitName : addressableAddress;
+    }
 
     [Header("Formation")]
     // Formation member prefab must be marked as Addressable. Loaded on-demand via Addressables.
@@ -253,24 +264,49 @@ public class CombatUnitData : ScriptableObject
     public GameObject GetPrefab()
     {
         // If prefab is already cached, return it
-        if (_cachedPrefab != null) return _cachedPrefab;
+        if (_cachedPrefab != null)
+        {
+            Debug.Log($"[CombatUnitData] Returning cached prefab for unit '{unitName}'");
+            return _cachedPrefab;
+        }
+        
+        // Validate unitName
+        if (string.IsNullOrEmpty(unitName))
+        {
+            Debug.LogError($"[CombatUnitData] Unit name is null or empty! Cannot load prefab.");
+            return null;
+        }
+        
+        string addressKey = GetAddressableKey();
+        Debug.Log($"[CombatUnitData] Loading prefab for unit '{unitName}' via Addressables with address: '{addressKey}'");
         
         // Load from Addressables
         if (AddressableUnitLoader.Instance != null)
         {
-            _cachedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(unitName);
+            _cachedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(addressKey);
             if (_cachedPrefab != null)
             {
+                Debug.Log($"[CombatUnitData] Successfully loaded prefab for unit '{unitName}' using address '{addressKey}'");
                 return _cachedPrefab;
+            }
+            else
+            {
+                Debug.LogError($"[CombatUnitData] AddressableUnitLoader returned null for unit '{unitName}' (address: '{addressKey}')");
             }
         }
         else
         {
-            Debug.LogError($"[CombatUnitData] AddressableUnitLoader not found! Cannot load unit '{unitName}'. Make sure Addressables package is installed.");
+            Debug.LogError($"[CombatUnitData] AddressableUnitLoader.Instance is NULL! Cannot load unit '{unitName}'. " +
+                "Make sure Addressables package is installed and AddressableUnitLoader is initialized.");
         }
         
         Debug.LogError($"[CombatUnitData] Failed to load prefab for unit '{unitName}'. " +
-            $"Make sure the prefab is marked as Addressable with address matching unitName: '{unitName}'");
+            $"Make sure:\n" +
+            $"1. The prefab is marked as Addressable in the Inspector (checkbox at top)\n" +
+            $"2. Set the 'Addressable Address' field in this CombatUnitData to match the prefab's address in Addressables Groups\n" +
+            $"   Current address being used: '{addressKey}'\n" +
+            $"3. OR change the prefab's address in Addressables Groups window to just: '{unitName}'\n" +
+            $"4. The prefab is in an Addressable group that's included in the build");
         return null;
     }
     
@@ -296,7 +332,8 @@ public class CombatUnitData : ScriptableObject
 
         if (AddressableUnitLoader.Instance != null)
         {
-            AddressableUnitLoader.Instance.LoadUnitPrefab(unitName, (prefab) =>
+            string addressKey = GetAddressableKey();
+            AddressableUnitLoader.Instance.LoadUnitPrefab(addressKey, (prefab) =>
             {
                 _cachedPrefab = prefab;
                 _isLoadingPrefab = false;
