@@ -933,7 +933,7 @@ public class City : MonoBehaviour
         var prefab = unitData.GetPrefab();
         if (prefab == null)
         {
-            Debug.LogError($"[City] Cannot spawn unit {unitData.unitName}: prefab not found at path '{unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+            Debug.LogError($"[City] Cannot spawn unit {unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
             return false;
         }
         
@@ -1008,7 +1008,7 @@ public class City : MonoBehaviour
                 var unitPrefab = u.GetPrefab();
                 if (unitPrefab == null)
                 {
-                    Debug.LogError($"[City] Cannot spawn unit {u.unitName}: prefab not found at path '{u.prefabPath}'. Check prefabPath in ScriptableObject.");
+                    Debug.LogError($"[City] Cannot spawn unit {u.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
                     break;
                 }
                 var unitGO = Instantiate(unitPrefab, pos, Quaternion.identity);

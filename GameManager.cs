@@ -2650,7 +2650,7 @@ public class GameManager : MonoBehaviour
             var unitPrefab = unitData.GetPrefab();
             if (unitPrefab == null)
             {
-                Debug.LogError($"[GameManager] Cannot spawn unit {unitData.unitName}: prefab not found at path '{unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+                Debug.LogError($"[GameManager] Cannot spawn unit {unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
                 continue; // Skip this unit
             }
             

@@ -352,7 +352,7 @@ public class AnimalManager : MonoBehaviour
         var animalPrefab = rule.unitData.GetPrefab();
         if (animalPrefab == null)
         {
-            Debug.LogError($"[AnimalManager] Cannot spawn animal {rule.unitData.unitName}: prefab not found at path '{rule.unitData.prefabPath}'. Check prefabPath in ScriptableObject.");
+            Debug.LogError($"[AnimalManager] Cannot spawn animal {rule.unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
             return;
         }
         

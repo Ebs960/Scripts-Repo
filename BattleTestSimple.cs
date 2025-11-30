@@ -127,8 +127,12 @@ public class BattleTestSimple : MonoBehaviour
     public Color selectedUnitColor = new Color(0, 1, 0, 0.5f);
     
     [Header("Formation Settings")]
+    [Tooltip("Number of formations per side (attacker/defender)")]
     public int formationsPerSide = 3;
+    [Tooltip("Default number of soldiers per formation (only used if CombatUnitData.formationSize is not set)")]
     public int soldiersPerFormation = 9;
+    [Tooltip("DEPRECATED: Formation spacing is now controlled by CombatUnitData.formationSpacing. This field is kept for backward compatibility but is not used.")]
+    [System.Obsolete("Formation spacing is now controlled by CombatUnitData.formationSpacing. This field is no longer used.")]
     public float formationSpacing = 2f;
     
     [Header("Battle Map")]
@@ -138,6 +142,17 @@ public class BattleTestSimple : MonoBehaviour
     public BattleVictoryManager victoryManager;
     [Tooltip("Generate a new map for each battle")]
     public bool generateNewMap = true;
+    
+    [Header("Battle Map Settings (Editor Testing)")]
+    [Tooltip("Biome for battle test (only used in editor test mode)")]
+    public Biome testBiome = Biome.Plains;
+    [Tooltip("Battle type for battle test (only used in editor test mode)")]
+    public BattleType testBattleType = BattleType.Land;
+    [Tooltip("Override terrain hilliness for battle test (0 = flat, 1 = very hilly). If enabled, overrides biome default.")]
+    public bool useCustomHilliness = false;
+    [Tooltip("Custom hilliness value (0 = flat, 1 = very hilly). Only used if Use Custom Hilliness is enabled.")]
+    [Range(0f, 1f)]
+    public float customHilliness = 0.5f;
     
     [Header("Grounding")]
     [Tooltip("Layers considered battlefield ground for raycast grounding")] 
@@ -1156,6 +1171,38 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Apply custom hilliness to terrain generator
+    /// Modifies the biome generator's hilliness parameter before terrain generation
+    /// </summary>
+    private void ApplyCustomHilliness(float hillinessValue)
+    {
+        if (mapGenerator == null) return;
+        
+        // Clear generator cache to force recreation with new settings
+        // This ensures our modifications take effect
+        BiomeTerrainGeneratorFactory.ClearCache();
+        
+        // Get the generator for current biome
+        IBiomeTerrainGenerator generator = BiomeTerrainGeneratorFactory.GetGenerator(mapGenerator.primaryBattleBiome);
+        if (generator != null)
+        {
+            BiomeNoiseProfile profile = generator.GetNoiseProfile();
+            if (profile != null)
+            {
+                // Modify the profile (it's a class, so this modifies the actual profile)
+                float originalHilliness = profile.hilliness;
+                profile.hilliness = hillinessValue;
+                
+                // Also adjust maxHeightVariation based on hilliness for more dramatic effect
+                float originalMaxHeight = profile.maxHeightVariation;
+                profile.maxHeightVariation = Mathf.Lerp(2f, 15f, hillinessValue);
+                
+                DebugLog($"[BattleTestSimple] Applied custom hilliness: {originalHilliness:F2} -> {hillinessValue:F2}, Max height: {originalMaxHeight:F1} -> {profile.maxHeightVariation:F1}");
+            }
+        }
+    }
+    
     void CreateSimpleTest()
     {
         DebugLog("Creating battle with formations...");
@@ -1181,13 +1228,29 @@ public class BattleTestSimple : MonoBehaviour
         if (generateNewMap && mapGenerator != null)
         {
             DebugLog("Generating new battle map...");
-            // For test battles from editor, use whatever biome is already set in BattleMapGenerator
-            // Don't overwrite it - let the user set it in the inspector for testing
+            // For test battles from editor, use settings from BattleTestSimple Inspector
+            // For battles from campaign, use stored defender tile data
             if (storedDefenderTile == null)
             {
-                DebugLog($"[BattleTestSimple] Editor test mode - using assigned biome: {mapGenerator.primaryBattleBiome}");
+                // Editor test mode - use Inspector settings
+                mapGenerator.primaryBattleBiome = testBiome;
+                mapGenerator.battleType = testBattleType;
+                DebugLog($"[BattleTestSimple] Editor test mode - Biome: {testBiome}, Battle Type: {testBattleType}");
+                
+                // Apply custom hilliness if enabled
+                if (useCustomHilliness)
+                {
+                    ApplyCustomHilliness(customHilliness);
+                    DebugLog($"[BattleTestSimple] Using custom hilliness: {customHilliness:F2}");
+                }
             }
-            mapGenerator.GenerateBattleMap(50f, formationsPerSide * soldiersPerFormation, formationsPerSide * soldiersPerFormation);
+            else
+            {
+                // Campaign battle mode - use stored defender tile data (already set by caller)
+                DebugLog($"[BattleTestSimple] Campaign battle mode - using defender tile biome: {mapGenerator.primaryBattleBiome}");
+            }
+            
+            mapGenerator.GenerateBattleMap(battleMapSize, formationsPerSide * soldiersPerFormation, formationsPerSide * soldiersPerFormation);
         }
         
         // Create ground (fallback if no map generator)
@@ -1555,9 +1618,12 @@ public class BattleTestSimple : MonoBehaviour
     
     void CreateFormation(string formationName, Vector3 position, Color teamColor, bool isAttacker, bool isPlayerControlled = true)
     {
+        // Convert position from map-relative to world space
+        Vector3 worldPosition = ConvertMapMagicRelativeToWorld(position);
+        
         // Create formation GameObject (ground immediately)
         GameObject formationGO = new GameObject(formationName);
-        formationGO.transform.position = GetGroundPosition(position);
+        formationGO.transform.position = GetGroundPosition(worldPosition);
         
         // Add FormationUnit component
         FormationUnit formation = formationGO.AddComponent<FormationUnit>();
@@ -1565,7 +1631,7 @@ public class BattleTestSimple : MonoBehaviour
         formation.isAttacker = isAttacker;
         formation.isPlayerControlled = isPlayerControlled;
         formation.teamColor = teamColor;
-        formation.formationCenter = position;
+        formation.formationCenter = worldPosition; // Store in world space for formation logic
         // Health/attack will be calculated after soldiers are created based on actual formation size from unit data
         // Temporary values - will be updated in CreateSoldiersInFormation
         formation.totalHealth = 0;
@@ -1587,6 +1653,20 @@ public class BattleTestSimple : MonoBehaviour
         DebugLog($"Created {formationName} with {actualFormationSize} soldiers (from unit data: {unitDataForLog?.unitName ?? "none"})");
     }
     
+    /// <summary>
+    /// Convert position from map-relative coordinates to world space
+    /// Map-relative: (0,0,0) = map center
+    /// </summary>
+    private Vector3 ConvertMapMagicRelativeToWorld(Vector3 relativePosition)
+    {
+        if (mapGenerator != null)
+        {
+            // Use map center (terrain is centered at origin)
+            return mapGenerator.transform.position + relativePosition;
+        }
+        return relativePosition; // Fallback if map generator not available
+    }
+    
     void CreateSoldiersInFormation(FormationUnit formation, Vector3 centerPosition, Color teamColor)
     {
         // Get formation settings from CombatUnitData (use attacker or defender unit data)
@@ -1601,8 +1681,7 @@ public class BattleTestSimple : MonoBehaviour
         
         DebugLog($"Creating {formationSize} soldiers for formation {formation.formationName} (from unit data: {unitData?.unitName ?? "none"})");
         
-        // Store spacing in formation for later use
-        formation.soldierSpacing = spacing;
+        // Spacing is now retrieved from CombatUnitData when needed (no need to store it)
         
         // Calculate formation positions based on shape and size from unit data
         int sideLength = Mathf.CeilToInt(Mathf.Sqrt(formationSize));
@@ -1732,7 +1811,7 @@ public class BattleTestSimple : MonoBehaviour
             
             if (unitData != null)
             {
-                // Use GetPrefab() which loads from prefabPath on-demand
+                // Use GetPrefab() which loads from Addressables on-demand
                 GameObject prefab = unitData.GetPrefab();
                 
                 if (prefab != null)
@@ -1743,14 +1822,14 @@ public class BattleTestSimple : MonoBehaviour
                     
                     // Put soldier on Units layer if present
                     int uLayer = LayerMask.NameToLayer("Units"); if (uLayer != -1) soldier.layer = uLayer;
-                    DebugLog($"Created {soldierName} using prefab: {unitData.unitName} (path: {unitData.prefabPath})");
+                    DebugLog($"Created {soldierName} using prefab: {unitData.unitName} (loaded from Addressables)");
                 }
                 else
                 {
                     // Fallback to simple unit if prefab not available
                     soldier = CreateFallbackSoldier(soldierName, position, teamColor);
                     int uLayer = LayerMask.NameToLayer("Units"); if (uLayer != -1) soldier.layer = uLayer;
-                    DebugLog($"Created {soldierName} using fallback (prefab not found at path: '{unitData.prefabPath}')");
+                    DebugLog($"Created {soldierName} using fallback (prefab not found in Addressables for unit '{unitData.unitName}')");
                 }
             }
             else
@@ -1781,7 +1860,7 @@ public class BattleTestSimple : MonoBehaviour
                 {
                     // Real prefab but missing CombatUnit - this means the prefab is a model-only prefab
                     // We MUST add CombatUnit for the battle system to work
-                    Debug.LogWarning($"[BATTLE DEBUG] Prefab '{soldierName}' (from '{unitData.prefabPath}') is missing CombatUnit component. " +
+                    Debug.LogWarning($"[BATTLE DEBUG] Prefab '{soldierName}' (unit: '{unitData.unitName}') is missing CombatUnit component. " +
                         $"This prefab appears to be a model-only prefab. Adding CombatUnit component now.");
                     combatUnit = soldier.AddComponent<CombatUnit>();
                     DebugLog($"[BATTLE DEBUG] Added CombatUnit to prefab instance '{soldierName}' (prefab was model-only)");
@@ -1818,7 +1897,6 @@ public class BattleTestSimple : MonoBehaviour
                 rigidbody.isKinematic = true; // Kinematic so soldiers don't fall, but triggers still work
                 rigidbody.useGravity = false; // No gravity needed
                 rigidbody.detectCollisions = true; // Ensure collision detection is enabled
-                Debug.Log($"[CombatSetup] Added kinematic Rigidbody to {soldier.name} for trigger detection");
             }
             else
             {
@@ -1845,7 +1923,6 @@ public class BattleTestSimple : MonoBehaviour
                         if (sphere.radius < MIN_DETECTION_RADIUS)
                         {
                             sphere.radius = MIN_DETECTION_RADIUS;
-                            Debug.Log($"[CombatSetup] Increased trigger radius on {soldier.name} from {sphere.radius} to {MIN_DETECTION_RADIUS}");
                         }
                     }
                     else if (col is CapsuleCollider capsule)
@@ -1854,23 +1931,16 @@ public class BattleTestSimple : MonoBehaviour
                         if (capsule.radius < MIN_DETECTION_RADIUS)
                         {
                             capsule.radius = MIN_DETECTION_RADIUS;
-                            Debug.Log($"[CombatSetup] Increased capsule trigger radius on {soldier.name} to {MIN_DETECTION_RADIUS}");
                         }
                     }
                     
-                    Debug.Log($"[CombatSetup] Found existing trigger collider on {soldier.name}: {col.GetType().Name}, radius={(col is SphereCollider s ? s.radius : (col is CapsuleCollider c ? c.radius : 0f))}");
                     break;
                 }
             }
             
             if (triggerCollider == null)
             {
-                Debug.LogWarning($"[CombatSetup] {soldier.name} has no trigger collider! Contact detection may not work. Found {allColliders.Length} collider(s) total.");
-                // List all colliders for debugging
-                foreach (var col in allColliders)
-                {
-                    Debug.LogWarning($"[CombatSetup]   - {col.GetType().Name}, isTrigger={col.isTrigger}, enabled={col.enabled}");
-                }
+                // No trigger collider found - this is handled by FormationSoldierContactDetector fallback
             }
             else
             {
@@ -1884,16 +1954,7 @@ public class BattleTestSimple : MonoBehaviour
                 {
                     // Check if collider is on a child - Rigidbody should be on parent
                     var parentRb = triggerCollider.GetComponentInParent<Rigidbody>();
-                    if (parentRb == null || parentRb.gameObject != soldier)
-                    {
-                        Debug.LogWarning($"[CombatSetup] {soldier.name}: Trigger collider may not detect properly - Rigidbody should be on same GameObject or parent");
-                    }
-                }
-                
-                // Ensure the collider's GameObject is active
-                if (!triggerCollider.gameObject.activeInHierarchy)
-                {
-                    Debug.LogWarning($"[CombatSetup] {soldier.name}: Trigger collider GameObject is not active!");
+                    // Rigidbody check - handled silently
                 }
             }
             
@@ -1915,7 +1976,6 @@ public class BattleTestSimple : MonoBehaviour
             {
                 contactDetector = soldier.AddComponent<FormationSoldierContactDetector>();
                 contactDetector.Initialize(formation, soldier);
-                Debug.Log($"[CombatSetup] Added FormationSoldierContactDetector to {soldier.name}");
             }
             else
             {
@@ -2072,7 +2132,7 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
 
-    // Load exactly one unit prefab on demand without scanning all resources
+    // Load unit prefab on demand using Addressables
     private GameObject LoadUnitPrefabOnDemand(string unitName)
     {
         if (string.IsNullOrEmpty(unitName)) return null;
@@ -2080,36 +2140,18 @@ public class BattleTestSimple : MonoBehaviour
         if (onDemandPrefabCache.TryGetValue(key, out var cached) && cached != null)
             return cached;
 
-        // Try a small set of precise paths without loading everything
-        GameObject loaded = null;
-        // Prefer exact unit name under Units/
-        loaded = Resources.Load<GameObject>("Units/" + unitName);
-        if (loaded == null)
+        // Load from Addressables
+        if (AddressableUnitLoader.Instance != null)
         {
-            // Common alt: folder per unit type; keep minimal guess to avoid wide loads
-            loaded = Resources.Load<GameObject>("Units/" + unitName + "/" + unitName);
-        }
-        if (loaded == null)
-        {
-            // Try simple name variants and a known subfolder used in the project
-            string noSpace = unitName.Replace(" ", "");
-            string underscore = unitName.Replace(" ", "_");
-            // Units root
-            loaded = Resources.Load<GameObject>("Units/" + noSpace)
-                  ?? Resources.Load<GameObject>("Units/" + underscore);
-            if (loaded == null)
+            GameObject loaded = AddressableUnitLoader.Instance.LoadUnitPrefabSync(unitName);
+            if (loaded != null)
             {
-                // One-known subfolder guess without scanning entire Resources
-                loaded = Resources.Load<GameObject>("Units/Monuments Units/" + unitName)
-                      ?? Resources.Load<GameObject>("Units/Monuments Units/" + noSpace)
-                      ?? Resources.Load<GameObject>("Units/Monuments Units/" + underscore);
+                onDemandPrefabCache[key] = loaded;
             }
+            return loaded;
         }
-        if (loaded != null)
-        {
-            onDemandPrefabCache[key] = loaded;
-        }
-        return loaded;
+
+        return null;
     }
     
     Civilization CreateTemporaryCivilization(bool isAttacker)
@@ -2874,7 +2916,7 @@ public class BattleTestSimple : MonoBehaviour
             // Get formation settings from unit data
             float spacing = unit.data != null ? unit.data.formationSpacing : 1.5f;
             FormationShape shape = unit.data != null ? unit.data.formationShape : FormationShape.Square;
-            formation.soldierSpacing = spacing;
+            // Spacing is now retrieved from CombatUnitData when needed (no need to store it)
             
             // Spawn soldiers based on unit's soldierCount
             int soldiersToSpawn = Mathf.Max(1, unit.soldierCount); // At least 1 soldier
@@ -3148,8 +3190,9 @@ public class FormationUnit : MonoBehaviour
     public float formationRadius = 3f;
     
     [Header("Movement")]
+    [Tooltip("DEPRECATED: Movement speed is now controlled by CombatUnit.EffectiveMoveSpeed. This field is kept for backward compatibility but is not used.")]
+    [System.Obsolete("Movement speed is now controlled by CombatUnit.EffectiveMoveSpeed. This field is no longer used.")]
     public float moveSpeed = 3f;
-    public float soldierSpacing = 3f; // Spacing between soldiers in formation (consistent for creation and movement)
     
     // IMPROVED: Movement state machine replaces boolean flags
     [Tooltip("Current movement state of the formation")]
@@ -3376,14 +3419,16 @@ public class FormationUnit : MonoBehaviour
             // Configure NavMeshAgent for formation movement
             formationNavAgent.radius = actualRadius;
             formationNavAgent.height = 2f;
-            formationNavAgent.speed = moveSpeed;
+            // Use calculated formation move speed (from CombatUnit.EffectiveMoveSpeed)
+            formationNavAgent.speed = CalculateFormationMoveSpeed();
             formationNavAgent.acceleration = 8f;
             formationNavAgent.angularSpeed = 360f;
             formationNavAgent.stoppingDistance = 0.5f;
             formationNavAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
             formationNavAgent.avoidancePriority = 50; // Medium priority
             
-            Debug.Log($"[FormationUnit] {formationName} calculated radius: {actualRadius:F2} (soldiers: {soldiers?.Count ?? 0}, spacing: {soldierSpacing:F2})");
+            float currentSpacing = GetSpacingFromCombatUnitData();
+            Debug.Log($"[FormationUnit] {formationName} calculated radius: {actualRadius:F2} (soldiers: {soldiers?.Count ?? 0}, spacing: {currentSpacing:F2})");
             
             // Enable auto-braking for smooth stopping (prevents sliding)
             formationNavAgent.autoBraking = true;
@@ -3441,7 +3486,8 @@ public class FormationUnit : MonoBehaviour
         {
             // Calculate theoretical radius based on formation grid
             int sideLength = Mathf.CeilToInt(Mathf.Sqrt(soldiers.Count));
-            float maxOffset = (sideLength - 1) * 0.5f * soldierSpacing;
+            float spacing = GetSpacingFromCombatUnitData();
+            float maxOffset = (sideLength - 1) * 0.5f * spacing;
             maxDistance = maxOffset * 1.414f; // Diagonal distance (sqrt(2) for corner soldier)
         }
         
@@ -3559,7 +3605,10 @@ public class FormationUnit : MonoBehaviour
                 // Configure for individual unit (smaller radius than formation)
                 navAgent.radius = 0.5f; // Individual unit radius
                 navAgent.height = 2f;
-                navAgent.speed = moveSpeed;
+                // Use individual soldier's effective move speed
+                var combatUnit = soldier.GetComponent<CombatUnit>();
+                float soldierSpeed = combatUnit != null ? combatUnit.EffectiveMoveSpeed : 5f; // Default 5f if no CombatUnit
+                navAgent.speed = soldierSpeed;
                 navAgent.acceleration = 8f;
                 navAgent.angularSpeed = 360f;
                 navAgent.stoppingDistance = 0.3f;
@@ -4420,10 +4469,15 @@ public class FormationUnit : MonoBehaviour
     /// <summary>
     /// Calculate formation movement speed - all soldiers move at the same speed (slowest unit's speed)
     /// This ensures the formation stays together
+    /// Uses CombatUnit.EffectiveMoveSpeed from all soldiers
     /// </summary>
     private float CalculateFormationMoveSpeed()
     {
-        if (soldiers == null || soldiers.Count == 0) return moveSpeed; // Fallback to base speed
+        if (soldiers == null || soldiers.Count == 0) 
+        {
+            // Fallback to default speed if no soldiers
+            return GetMoveSpeedFromCombatUnit();
+        }
         
         float slowestSpeed = float.MaxValue;
         bool foundAny = false;
@@ -4443,8 +4497,46 @@ public class FormationUnit : MonoBehaviour
             }
         }
         
-        // Return slowest speed so all soldiers move together, or base speed if none found
-        return foundAny ? slowestSpeed : moveSpeed;
+        // Return slowest speed so all soldiers move together, or default speed if none found
+        return foundAny ? slowestSpeed : GetMoveSpeedFromCombatUnit();
+    }
+    
+    /// <summary>
+    /// Get spacing from CombatUnitData (prioritizes unit data)
+    /// </summary>
+    private float GetSpacingFromCombatUnitData()
+    {
+        // Try to get spacing from first soldier's CombatUnitData
+        if (soldiers != null && soldiers.Count > 0 && soldiers[0] != null)
+        {
+            var combatUnit = soldiers[0].GetComponent<CombatUnit>();
+            if (combatUnit != null && combatUnit.data != null)
+            {
+                return combatUnit.data.formationSpacing; // Use spacing from CombatUnitData
+            }
+        }
+        
+        // Fallback to default spacing (matches CombatUnitData default)
+        return 1.5f;
+    }
+    
+    /// <summary>
+    /// Get movement speed from CombatUnit.EffectiveMoveSpeed (prioritizes unit effective speed)
+    /// </summary>
+    private float GetMoveSpeedFromCombatUnit()
+    {
+        // Try to get speed from first soldier's CombatUnit
+        if (soldiers != null && soldiers.Count > 0 && soldiers[0] != null)
+        {
+            var combatUnit = soldiers[0].GetComponent<CombatUnit>();
+            if (combatUnit != null)
+            {
+                return combatUnit.EffectiveMoveSpeed; // Use effective speed from CombatUnit
+            }
+        }
+        
+        // Fallback to default speed (matches CombatUnit.battleMoveSpeed default)
+        return 5f;
     }
     
     void UpdateSoldierPositions()
@@ -4474,7 +4566,10 @@ public class FormationUnit : MonoBehaviour
                     
                     // TOTAL WAR APPROACH: Use lightweight NavMesh queries for obstacle avoidance (scales to thousands of units)
                     // Formation center uses NavMeshAgent (hierarchical), individual units use queries + steering
-                    float moveSpeed = 10f * formationIntegrity; // Slower movement when loose
+                    // Get movement speed from CombatUnit, adjusted by formation integrity
+                    var combatUnit = soldiers[i].GetComponent<CombatUnit>();
+                    float baseSpeed = combatUnit != null ? combatUnit.EffectiveMoveSpeed : 5f;
+                    float moveSpeed = baseSpeed * formationIntegrity; // Slower movement when loose
                     Vector3 direction = (blendedTarget - currentPos).normalized;
                     Vector3 desiredPos = currentPos + direction * moveSpeed * Time.deltaTime;
                     
@@ -4583,7 +4678,9 @@ public class FormationUnit : MonoBehaviour
                 Vector3 targetPos = Ground(desired);
                 targetPos = ClampFormationToBattlefieldBounds(targetPos);
                 
-                float moveSpeed = 10f; // Speed of interpolation
+                // Get movement speed from CombatUnit for this soldier
+                var combatUnit = soldiers[i].GetComponent<CombatUnit>();
+                float moveSpeed = combatUnit != null ? combatUnit.EffectiveMoveSpeed : 5f; // Default 5f if no CombatUnit
                 Vector3 direction = (targetPos - currentPos).normalized;
                 Vector3 desiredPos = currentPos + direction * moveSpeed * Time.deltaTime;
                 
@@ -4681,16 +4778,8 @@ public class FormationUnit : MonoBehaviour
         int x = soldierIndex % sideLength;
         int z = soldierIndex / sideLength;
         
-        // Get spacing from first soldier's CombatUnitData (all soldiers in formation should have same spacing)
-        float spacing = soldierSpacing; // Default to stored spacing
-        if (soldiers.Count > 0 && soldiers[0] != null)
-        {
-            var combatUnit = soldiers[0].GetComponent<CombatUnit>();
-            if (combatUnit != null && combatUnit.data != null)
-            {
-                spacing = combatUnit.data.formationSpacing; // Use spacing from CombatUnitData
-            }
-        }
+        // Get spacing from CombatUnitData (all soldiers in formation should have same spacing)
+        float spacing = GetSpacingFromCombatUnitData();
         
         return new Vector3(
             (x - sideLength / 2f) * spacing,
@@ -6046,8 +6135,10 @@ public class FormationUnit : MonoBehaviour
         int expectedCols = Mathf.CeilToInt((float)reusableAliveSoldiersList.Count / expectedRows);
         
         // Find gaps in front rows and fill from rear
-        float rowSpacing = soldierSpacing;
-        float colSpacing = soldierSpacing;
+        // Get spacing from CombatUnitData (all soldiers should have same spacing)
+        float spacing = GetSpacingFromCombatUnitData();
+        float rowSpacing = spacing;
+        float colSpacing = spacing;
         
         // Group soldiers by approximate row (based on forward distance) - reuse dictionary
         reusableRowsDictionary.Clear();
@@ -6182,15 +6273,17 @@ public class FormationUnit : MonoBehaviour
         // Clamp target position to battlefield bounds
         targetPosition = ClampFormationToBattlefieldBounds(targetPosition);
         float distance = Vector3.Distance(startPosition, targetPosition);
-        float moveSpeed = 3f; // Same as formation move speed
+        
+        // Get movement speed from unit's CombatUnit
+        var unitCombatUnit = unit.GetComponent<CombatUnit>();
+        float moveSpeed = unitCombatUnit != null ? unitCombatUnit.EffectiveMoveSpeed : 5f; // Default 5f if no CombatUnit
         float duration = distance / moveSpeed;
         float elapsed = 0f;
         
         // Mark unit as moving for animation
-        var combatUnit = unit.GetComponent<CombatUnit>();
-        if (combatUnit != null)
+        if (unitCombatUnit != null)
         {
-            combatUnit.isMoving = true;
+            unitCombatUnit.isMoving = true;
         }
         
         while (elapsed < duration && unit != null)
@@ -6218,9 +6311,9 @@ public class FormationUnit : MonoBehaviour
             unit.transform.position = finalPos;
             
             // Stop moving animation
-            if (combatUnit != null)
+            if (unitCombatUnit != null)
             {
-                combatUnit.isMoving = false;
+                unitCombatUnit.isMoving = false;
             }
             
             // Update formation center after unit has moved
@@ -7008,15 +7101,7 @@ public class FormationUnit : MonoBehaviour
         
         // Fallback: calculate from formation grid (if no valid soldiers found)
         int sideLength = Mathf.CeilToInt(Mathf.Sqrt(soldiers.Count));
-        float spacing = soldierSpacing;
-        if (soldiers.Count > 0 && soldiers[0] != null)
-        {
-            var combatUnit = soldiers[0].GetComponent<CombatUnit>();
-            if (combatUnit != null && combatUnit.data != null)
-            {
-                spacing = combatUnit.data.formationSpacing;
-            }
-        }
+        float spacing = GetSpacingFromCombatUnitData();
         
         // Front row offset in local space (highest Z value)
         int frontRowIndex = sideLength - 1;

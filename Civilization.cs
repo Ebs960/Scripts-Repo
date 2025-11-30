@@ -1315,7 +1315,7 @@ public class Civilization : MonoBehaviour
             var missionaryPrefab = missionaryData.GetPrefab();
             if (missionaryPrefab == null)
             {
-                Debug.LogError($"[Civilization] Cannot spawn missionary {missionaryData.unitName}: prefab not found at path '{missionaryData.prefabPath}'. Check prefabPath in ScriptableObject.");
+                Debug.LogError($"[Civilization] Cannot spawn missionary {missionaryData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
                 return false;
             }
             

@@ -128,7 +128,7 @@ public class DemonManager : MonoBehaviour
         var demonPrefab = demonType.GetPrefab();
         if (demonPrefab == null)
         {
-            Debug.LogError($"[DemonManager] Cannot spawn demon {demonType.unitName}: prefab not found at path '{demonType.prefabPath}'. Check prefabPath in ScriptableObject.");
+            Debug.LogError($"[DemonManager] Cannot spawn demon {demonType.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
             return;
         }
         

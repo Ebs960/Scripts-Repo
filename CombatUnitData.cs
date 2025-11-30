@@ -38,26 +38,11 @@ public class CombatUnitData : ScriptableObject
     public CombatCategory unitType;
     public Sprite icon;
     
-    [Header("Prefab Paths (Memory Optimized)")]
-    [Tooltip("Path to prefab in Resources folder (e.g., 'Units/Swordsman'). Prefabs load on-demand to save memory.")]
-    public string prefabPath;
-    [Tooltip("Paths to model variants (comma-separated or array). Loaded on-demand.")]
-    public string[] modelVariantPaths;
-    
-    [Header("Legacy Prefab References (Auto-loaded, use prefabPath instead)")]
-    [Tooltip("DEPRECATED: Use prefabPath instead. This field auto-loads prefabs and wastes memory.")]
-    [System.Obsolete("Use prefabPath and GetPrefab() instead to prevent auto-loading")]
-    public GameObject prefab;
-    [Tooltip("DEPRECATED: Use modelVariantPaths instead.")]
-    [System.Obsolete("Use modelVariantPaths instead to prevent auto-loading")]
-    public GameObject[] modelVariants;
+    [Header("Unit Prefab")]
+    // Unit prefab must be marked as Addressable with address matching unitName. Loaded on-demand via Addressables.
 
     [Header("Formation")]
-    [Tooltip("Path to formation member prefab in Resources folder. Loaded on-demand.")]
-    public string formationMemberPrefabPath;
-    [Tooltip("DEPRECATED: Use formationMemberPrefabPath instead.")]
-    [System.Obsolete("Use formationMemberPrefabPath instead to prevent auto-loading")]
-    public GameObject formationMemberPrefab;
+    // Formation member prefab must be marked as Addressable. Loaded on-demand via Addressables.
     [Range(1, 100)] public int formationSize = 9;
     public FormationShape formationShape = FormationShape.Square;
     [Range(0.5f, 5f)] public float formationSpacing = 1.5f;
@@ -256,14 +241,13 @@ public class CombatUnitData : ScriptableObject
 
     // No editor-time migration: legacy defaultMeleeWeapon removed.
     
-    // Private cached prefabs (loaded on-demand, not auto-loaded)
+    // Private cached prefabs (loaded on-demand via Addressables)
     private GameObject _cachedPrefab;
-    private GameObject[] _cachedModelVariants;
-    private GameObject _cachedFormationMemberPrefab;
+    private bool _isLoadingPrefab = false;
     
     /// <summary>
-    /// Get the prefab, loading it on-demand from prefabPath if needed.
-    /// This prevents Unity from auto-loading prefabs when ScriptableObjects are loaded.
+    /// Get the prefab, loading it on-demand from Addressables.
+    /// Unit prefab must be marked as Addressable with address matching unitName.
     /// Returns null if prefab cannot be loaded - always check for null before using!
     /// </summary>
     public GameObject GetPrefab()
@@ -271,148 +255,81 @@ public class CombatUnitData : ScriptableObject
         // If prefab is already cached, return it
         if (_cachedPrefab != null) return _cachedPrefab;
         
-        // If we have a path, load from it
-        if (!string.IsNullOrEmpty(prefabPath))
+        // Load from Addressables
+        if (AddressableUnitLoader.Instance != null)
         {
-            // Remove .prefab extension if present (Resources.Load doesn't need it)
-            string pathToLoad = prefabPath;
-            if (pathToLoad.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase))
-            {
-                pathToLoad = pathToLoad.Substring(0, pathToLoad.Length - 7);
-            }
-            
-            _cachedPrefab = Resources.Load<GameObject>(pathToLoad);
+            _cachedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(unitName);
             if (_cachedPrefab != null)
             {
-                // CRITICAL DEBUG: Log ALL components on the loaded prefab to see what's actually there
-                Debug.Log($"[CombatUnitData] Prefab loaded from '{pathToLoad}' for unit '{unitName}':");
-                Debug.Log($"[CombatUnitData]   Prefab name: {_cachedPrefab.name}");
-                Debug.Log($"[CombatUnitData]   Prefab instance ID: {_cachedPrefab.GetInstanceID()}");
-                
-                // Check for Animator
-                var animator = _cachedPrefab.GetComponent<Animator>();
-                if (animator != null)
-                {
-                    Debug.Log($"[CombatUnitData]   Animator component: EXISTS");
-                    Debug.Log($"[CombatUnitData]   Animator controller: {(animator.runtimeAnimatorController != null ? animator.runtimeAnimatorController.name : "NULL - MISSING!")}");
-                    Debug.Log($"[CombatUnitData]   Animator avatar: {(animator.avatar != null ? animator.avatar.name : "NULL")}");
-                }
-                else
-                {
-                    Debug.LogWarning($"[CombatUnitData]   Animator component: MISSING!");
-                }
-                
-                // Check for CombatUnit
-                var combatUnit = _cachedPrefab.GetComponent<CombatUnit>();
-                if (combatUnit != null)
-                {
-                    Debug.Log($"[CombatUnitData]   CombatUnit component: EXISTS");
-                }
-                else
-                {
-                    Debug.LogWarning($"[CombatUnitData]   CombatUnit component: MISSING!");
-                }
-                
-                // Component listing debug removed - not needed for production
-                // var allComponents = _cachedPrefab.GetComponents<Component>();
-                // Debug.Log($"[CombatUnitData]   Total components on root: {allComponents.Length}");
-                // ... component listing code removed
-                
                 return _cachedPrefab;
-            }
-            else
-            {
-                Debug.LogWarning($"[CombatUnitData] Could not load prefab from path: '{pathToLoad}' (original: '{prefabPath}') for unit '{unitName}'. " +
-                    $"Check that the prefab exists at Resources/{pathToLoad}.prefab");
             }
         }
         else
         {
-            Debug.LogWarning($"[CombatUnitData] Unit '{unitName}' has no prefabPath set. " +
-                $"Please set prefabPath in the ScriptableObject to prevent auto-loading. " +
-                $"Falling back to legacy prefab field (which auto-loads).");
+            Debug.LogError($"[CombatUnitData] AddressableUnitLoader not found! Cannot load unit '{unitName}'. Make sure Addressables package is installed.");
         }
         
-        // Fallback: try legacy prefab field (for backward compatibility with old assets)
-        // WARNING: This defeats the memory optimization - prefabs will auto-load!
-        #pragma warning disable CS0618 // Suppress obsolete warning for backward compatibility
-        if (prefab != null)
-        {
-            _cachedPrefab = prefab;
-            Debug.LogWarning($"[CombatUnitData] Unit '{unitName}' is using legacy prefab field. " +
-                $"Please migrate to prefabPath to prevent auto-loading.");
-            return _cachedPrefab;
-        }
-        #pragma warning restore CS0618
-        
-        // Check legacy prefab for error message (suppress warning)
-        #pragma warning disable CS0618
-        bool legacyPrefabExists = prefab != null;
-        #pragma warning restore CS0618
-        
-        Debug.LogError($"[CombatUnitData] Unit '{unitName}' has no prefab available. " +
-            $"prefabPath: '{prefabPath}', legacy prefab: {(legacyPrefabExists ? "exists" : "null")}");
+        Debug.LogError($"[CombatUnitData] Failed to load prefab for unit '{unitName}'. " +
+            $"Make sure the prefab is marked as Addressable with address matching unitName: '{unitName}'");
         return null;
     }
     
     /// <summary>
-    /// Get model variants, loading them on-demand from paths if needed.
+    /// Async version - use this when possible for better performance (doesn't block main thread)
+    /// </summary>
+    public void GetPrefabAsync(System.Action<GameObject> onComplete)
+    {
+        if (_cachedPrefab != null)
+        {
+            onComplete?.Invoke(_cachedPrefab);
+            return;
+        }
+
+        if (_isLoadingPrefab)
+        {
+            Debug.LogWarning($"[CombatUnitData] Unit '{unitName}' is already loading, async call may be delayed");
+            onComplete?.Invoke(null);
+            return;
+        }
+
+        _isLoadingPrefab = true;
+
+        if (AddressableUnitLoader.Instance != null)
+        {
+            AddressableUnitLoader.Instance.LoadUnitPrefab(unitName, (prefab) =>
+            {
+                _cachedPrefab = prefab;
+                _isLoadingPrefab = false;
+                onComplete?.Invoke(prefab);
+            });
+        }
+        else
+        {
+            Debug.LogError($"[CombatUnitData] AddressableUnitLoader not found! Cannot load unit '{unitName}'.");
+            _isLoadingPrefab = false;
+            onComplete?.Invoke(null);
+        }
+    }
+    
+    /// <summary>
+    /// Get model variants, loading them on-demand from Addressables if needed.
+    /// Model variants must be marked as Addressable.
     /// </summary>
     public GameObject[] GetModelVariants()
     {
-        // If already cached, return them
-        if (_cachedModelVariants != null && _cachedModelVariants.Length > 0) return _cachedModelVariants;
-        
-        // Load from paths if available
-        if (modelVariantPaths != null && modelVariantPaths.Length > 0)
-        {
-            _cachedModelVariants = new GameObject[modelVariantPaths.Length];
-            for (int i = 0; i < modelVariantPaths.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(modelVariantPaths[i]))
-                {
-                    _cachedModelVariants[i] = Resources.Load<GameObject>(modelVariantPaths[i]);
-                }
-            }
-            return _cachedModelVariants;
-        }
-        
-        // Fallback to legacy field (for backward compatibility)
-        #pragma warning disable CS0618
-        if (modelVariants != null && modelVariants.Length > 0)
-        {
-            _cachedModelVariants = modelVariants;
-            return _cachedModelVariants;
-        }
-        #pragma warning restore CS0618
-        
+        // Model variants not currently implemented with Addressables
+        // Can be added later if needed
         return null;
     }
     
     /// <summary>
-    /// Get formation member prefab, loading it on-demand from path if needed.
+    /// Get formation member prefab, loading it on-demand from Addressables if needed.
+    /// Formation member prefab must be marked as Addressable.
     /// </summary>
     public GameObject GetFormationMemberPrefab()
     {
-        // If already cached, return it
-        if (_cachedFormationMemberPrefab != null) return _cachedFormationMemberPrefab;
-        
-        // Load from path if available
-        if (!string.IsNullOrEmpty(formationMemberPrefabPath))
-        {
-            _cachedFormationMemberPrefab = Resources.Load<GameObject>(formationMemberPrefabPath);
-            return _cachedFormationMemberPrefab;
-        }
-        
-        // Fallback to legacy field (for backward compatibility)
-        #pragma warning disable CS0618
-        if (formationMemberPrefab != null)
-        {
-            _cachedFormationMemberPrefab = formationMemberPrefab;
-            return _cachedFormationMemberPrefab;
-        }
-        #pragma warning restore CS0618
-        
-        return null;
+        // Formation member prefab not currently implemented with Addressables
+        // Can use main unit prefab or implement separately if needed
+        return GetPrefab();
     }
 }

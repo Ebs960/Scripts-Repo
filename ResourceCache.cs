@@ -40,12 +40,22 @@ public static class ResourceCache
     
     /// <summary>
     /// Initialize the resource cache - now just marks as initialized, resources load lazily
+    /// Also initializes AddressableUnitLoader for on-demand unit loading
     /// </summary>
     public static void Initialize()
     {
         if (_initialized) return;
         _initialized = true;
-        Debug.Log("[ResourceCache] Initialized (lazy loading enabled - resources load on first access)");
+        
+        // Initialize AddressableUnitLoader if available
+        if (AddressableUnitLoader.Instance != null)
+        {
+            Debug.Log("[ResourceCache] Initialized with Addressables support (units load on-demand from bundles)");
+        }
+        else
+        {
+            Debug.Log("[ResourceCache] Initialized (lazy loading enabled - resources load on first access, Addressables not available)");
+        }
     }
     
     /// <summary>
@@ -59,7 +69,6 @@ public static class ResourceCache
         EnsureCombatUnitsLoaded();
         EnsureCivDatasLoaded();
         EnsureProjectilesLoaded();
-        Debug.Log("[ResourceCache] Battle test resources loaded");
     }
     
     /// <summary>
@@ -106,24 +115,22 @@ public static class ResourceCache
         // Note: With the new path-based system, prefabs are cached in private fields
         // We can't directly clear them, but they'll be garbage collected when not referenced
         // The main benefit is that prefabs aren't auto-loaded when ScriptableObjects load
-        Debug.Log("[ResourceCache] Prefab unloading not needed (new system uses paths, prefabs load on-demand)");
     }
     
     /// <summary>
-    /// Load prefab for a specific unit on-demand using prefabPath.
+    /// Load prefab for a specific unit on-demand using Addressables.
     /// This loads the prefab only when needed (when battle starts).
     /// </summary>
     public static void LoadUnitPrefab(CombatUnitData unitData)
     {
         if (unitData == null) return;
         
-        // Use the new GetPrefab() method which loads from prefabPath
+        // Use GetPrefab() which loads from Addressables
         GameObject prefab = unitData.GetPrefab();
         if (prefab == null)
         {
-            Debug.LogWarning($"[ResourceCache] Could not load prefab for {unitData.unitName}. Check prefabPath: '{unitData.prefabPath}'");
+            Debug.LogWarning($"[ResourceCache] Could not load prefab for {unitData.unitName}. Make sure prefab is marked as Addressable with address matching unitName.");
         }
-        // Debug removed - prefab loading is working correctly
     }
     
     /// <summary>
@@ -140,11 +147,11 @@ public static class ResourceCache
     {
         if (!_combatUnitsLoaded)
         {
-            // Load ScriptableObjects - NO prefabs will be auto-loaded because we use prefabPath strings now!
+            // Load ScriptableObjects - NO prefabs will be auto-loaded because we use Addressables!
             _allCombatUnits = Resources.LoadAll<CombatUnitData>("Units");
             _combatUnitsLoaded = true;
             
-            Debug.Log($"[ResourceCache] Loaded {_allCombatUnits?.Length ?? 0} combat units (prefabs NOT loaded - using path strings)");
+            Debug.Log($"[ResourceCache] Loaded {_allCombatUnits?.Length ?? 0} combat units (prefabs NOT loaded - using Addressables)");
         }
     }
     
