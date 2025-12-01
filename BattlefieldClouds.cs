@@ -238,14 +238,15 @@ public class BattlefieldClouds : MonoBehaviour
     
     /// <summary>
     /// Create a Venus-specific cloud texture with sulfuric swirls
-    /// Reduced from 256x256 to 128x128 for memory optimization (4x savings)
+    /// Enhanced with better noise patterns and color gradients
     /// </summary>
     private Texture2D CreateVenusCloudTexture(float density, int layerIndex)
     {
-        int size = 128; // Reduced from 256 for memory optimization
+        int size = 256; // Higher resolution for better quality
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
         texture.wrapMode = TextureWrapMode.Repeat;
-        texture.filterMode = FilterMode.Bilinear;
+        texture.filterMode = FilterMode.Trilinear; // Better filtering
+        texture.anisoLevel = 4;
         
         // Multiple octaves with different offsets per layer
         float[] frequencies = { 1.5f, 3f, 6f, 12f };
@@ -290,10 +291,22 @@ public class BattlefieldClouds : MonoBehaviour
                 // Smooth edges
                 value = Mathf.SmoothStep(0, 1, value);
                 
-                // Add some variation in yellow-orange tint
-                float tintVar = Mathf.PerlinNoise(nx * 4f + offsetX, ny * 4f + offsetY) * 0.1f;
+                // Add realistic yellow-orange sulfuric acid tint with variation
+                float tintVar = Mathf.PerlinNoise(nx * 4f + offsetX, ny * 4f + offsetY) * 0.15f;
+                float thicknessVar = Mathf.PerlinNoise(nx * 2f + offsetX + 50f, ny * 2f + offsetY + 50f);
                 
-                colors[y * size + x] = new Color(1f, 0.95f - tintVar, 0.8f - tintVar * 2f, value);
+                // Thicker areas are more orange, thinner areas are more yellow
+                float orangeAmount = Mathf.Lerp(0.1f, 0.3f, thicknessVar);
+                float red = Mathf.Lerp(0.95f, 0.9f, thicknessVar) - tintVar * 0.1f;
+                float green = Mathf.Lerp(0.85f, 0.7f, thicknessVar) - tintVar * 0.15f - orangeAmount;
+                float blue = Mathf.Lerp(0.7f, 0.5f, thicknessVar) - tintVar * 0.2f - orangeAmount * 0.5f;
+                
+                colors[y * size + x] = new Color(
+                    Mathf.Clamp01(red),
+                    Mathf.Clamp01(green),
+                    Mathf.Clamp01(blue),
+                    value
+                );
             }
         }
         
@@ -362,16 +375,25 @@ public class BattlefieldClouds : MonoBehaviour
     }
     
     /// <summary>
-    /// Create cloud material with transparency
+    /// Create cloud material with enhanced transparency and lighting
+    /// Uses URP Lit shader for better visual quality with lighting interaction
     /// </summary>
     private Material CreateCloudMaterial(Texture2D texture, Color color)
     {
-        // Try to find URP unlit transparent shader
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        // Try URP Lit shader first for better lighting interaction
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
+        if (shader == null)
+        {
             shader = Shader.Find("Unlit/Transparent");
+        }
         if (shader == null)
+        {
             shader = Shader.Find("Sprites/Default");
+        }
         
         Material mat = new Material(shader);
         mat.mainTexture = texture;
@@ -380,19 +402,53 @@ public class BattlefieldClouds : MonoBehaviour
         mat.SetColor(BaseColorID, color);
         mat.SetColor(ColorID, color);
         
-        // Enable transparency
-        mat.SetFloat("_Surface", 1); // Transparent
-        mat.SetFloat("_Blend", 0); // Alpha blend
-        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        mat.SetInt("_ZWrite", 0);
-        mat.DisableKeyword("_ALPHATEST_ON");
-        mat.EnableKeyword("_ALPHABLEND_ON");
-        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        // Enhanced transparency settings
+        if (shader.name.Contains("Universal Render Pipeline"))
+        {
+            // URP shader settings
+            mat.SetFloat("_Surface", 1); // Transparent
+            mat.SetFloat("_Blend", 0); // Alpha blend
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            
+            // Enhanced lighting properties for clouds
+            mat.SetFloat("_Smoothness", 0.1f); // Slight specularity for realistic cloud shine
+            mat.SetFloat("_Metallic", 0f);
+            
+            // Enable emission for self-illumination (clouds glow slightly)
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                Color emission = color * 0.1f; // Subtle glow
+                emission.a = 1f;
+                mat.SetColor("_EmissionColor", emission);
+                mat.EnableKeyword("_EMISSION");
+            }
+        }
+        else
+        {
+            // Standard shader fallback
+            mat.SetFloat("_Mode", 3); // Transparent mode
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        }
+        
         mat.renderQueue = 3000; // Transparent queue
         
-        // Set texture tiling
+        // Set texture tiling with better filtering
         mat.mainTextureScale = new Vector2(2f, 2f);
+        mat.mainTextureOffset = Vector2.zero;
+        
+        // Enable double-sided rendering for clouds
+        mat.SetFloat("_Cull", 0); // Off (double-sided)
         
         return mat;
     }
@@ -424,22 +480,25 @@ public class BattlefieldClouds : MonoBehaviour
     }
     
     /// <summary>
-    /// Create a procedural cloud texture using Perlin noise
-    /// Reduced from 256x256 to 128x128 for memory optimization (4x savings)
+    /// Create a procedural cloud texture using advanced noise techniques
+    /// Uses Worley/Voronoi noise for cloud cell structure + Perlin for detail
+    /// Enhanced quality with better filtering and color gradients
     /// </summary>
     private Texture2D CreateCloudTexture()
     {
-        int size = 128; // Reduced from 256 for memory optimization
+        int size = 256; // Increased for better quality (can be reduced if memory is tight)
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
         texture.wrapMode = TextureWrapMode.Repeat;
-        texture.filterMode = FilterMode.Bilinear;
+        texture.filterMode = FilterMode.Trilinear; // Better filtering for smoother clouds
+        texture.anisoLevel = 4; // Anisotropic filtering for better quality at angles
         
-        // Generate cloud pattern using layered Perlin noise
-        float[] pixels = new float[size * size];
+        // Generate cloud pattern using hybrid noise approach
+        // Base: Worley/Voronoi noise for cloud cell structure
+        // Detail: Perlin noise for fine detail and variation
         
         // Multiple octaves for realistic clouds
-        float[] frequencies = { 2f, 4f, 8f, 16f };
-        float[] amplitudes = { 1f, 0.5f, 0.25f, 0.125f };
+        float[] frequencies = { 1.5f, 3f, 6f, 12f, 24f };
+        float[] amplitudes = { 1f, 0.6f, 0.35f, 0.2f, 0.1f };
         float totalAmplitude = 0f;
         foreach (float a in amplitudes) totalAmplitude += a;
         
@@ -447,41 +506,96 @@ public class BattlefieldClouds : MonoBehaviour
         float offsetX = Random.Range(0f, 1000f);
         float offsetY = Random.Range(0f, 1000f);
         
+        // Voronoi cell centers for cloud structure (Worley noise approximation)
+        int cellCount = 8;
+        Vector2[] cellCenters = new Vector2[cellCount];
+        for (int i = 0; i < cellCount; i++)
+        {
+            cellCenters[i] = new Vector2(
+                Random.Range(0f, 1f) + offsetX * 0.001f,
+                Random.Range(0f, 1f) + offsetY * 0.001f
+            );
+        }
+        
+        Color[] colors = new Color[size * size];
+        
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
-                float value = 0f;
+                float nx = x / (float)size;
+                float ny = y / (float)size;
                 
+                // === STEP 1: Voronoi/Worley noise for cloud cell structure ===
+                float minDist = float.MaxValue;
+                float secondMinDist = float.MaxValue;
+                
+                for (int i = 0; i < cellCount; i++)
+                {
+                    float dx = nx - cellCenters[i].x;
+                    float dy = ny - cellCenters[i].y;
+                    // Wrap around for seamless tiling
+                    dx = dx - Mathf.Round(dx);
+                    dy = dy - Mathf.Round(dy);
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < minDist)
+                    {
+                        secondMinDist = minDist;
+                        minDist = dist;
+                    }
+                    else if (dist < secondMinDist)
+                    {
+                        secondMinDist = dist;
+                    }
+                }
+                
+                // Worley noise value (distance to second closest point)
+                float worleyValue = Mathf.Clamp01(secondMinDist * 3f);
+                
+                // === STEP 2: Perlin noise for detail and variation ===
+                float perlinValue = 0f;
                 for (int i = 0; i < frequencies.Length; i++)
                 {
-                    float nx = (x / (float)size) * frequencies[i] + offsetX;
-                    float ny = (y / (float)size) * frequencies[i] + offsetY;
-                    value += Mathf.PerlinNoise(nx, ny) * amplitudes[i];
+                    float fx = nx * frequencies[i] + offsetX;
+                    float fy = ny * frequencies[i] + offsetY;
+                    perlinValue += Mathf.PerlinNoise(fx, fy) * amplitudes[i];
                 }
+                perlinValue /= totalAmplitude;
                 
-                value /= totalAmplitude;
+                // === STEP 3: Combine Worley (structure) + Perlin (detail) ===
+                float combinedValue = worleyValue * 0.6f + perlinValue * 0.4f;
                 
-                // Apply density threshold (creates gaps in clouds)
+                // === STEP 4: Apply density threshold with smooth falloff ===
                 float threshold = 1f - cloudDensity;
-                value = Mathf.Clamp01((value - threshold) / (1f - threshold));
+                float densityValue = Mathf.Clamp01((combinedValue - threshold * 0.7f) / (1f - threshold * 0.7f));
                 
-                // Apply softness (smoothstep for softer edges)
+                // === STEP 5: Apply softness with multiple smoothstep passes ===
                 if (cloudSoftness > 0)
                 {
-                    value = Mathf.SmoothStep(0, 1, value);
+                    densityValue = Mathf.SmoothStep(0, 1, densityValue);
+                    // Second pass for extra softness
+                    if (cloudSoftness > 0.5f)
+                    {
+                        densityValue = Mathf.SmoothStep(0, 1, densityValue);
+                    }
                 }
                 
-                pixels[y * size + x] = value;
+                // === STEP 6: Add subtle color variation based on thickness ===
+                // Thicker clouds are slightly darker/blue-tinted (more realistic)
+                float thickness = densityValue;
+                float blueTint = Mathf.Lerp(0f, 0.05f, thickness);
+                float brightness = Mathf.Lerp(1f, 0.95f, thickness * 0.3f);
+                
+                // === STEP 7: Create final color with alpha ===
+                float alpha = densityValue;
+                colors[y * size + x] = new Color(
+                    brightness,
+                    brightness - blueTint * 0.5f,
+                    brightness - blueTint,
+                    alpha
+                );
             }
-        }
-        
-        // Apply to texture
-        Color[] colors = new Color[size * size];
-        for (int i = 0; i < pixels.Length; i++)
-        {
-            float alpha = pixels[i];
-            colors[i] = new Color(1f, 1f, 1f, alpha);
         }
         
         texture.SetPixels(colors);

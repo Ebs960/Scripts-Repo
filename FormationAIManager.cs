@@ -254,7 +254,7 @@ public class FormationAIManager : MonoBehaviour
             currentSituation = TacticalSituation.Balanced;
         }
         
-        Debug.Log($"[FormationAIManager] Tactical situation: {currentSituation} (A:{attackerCount}/{attackerStrength:F1} vs D:{defenderCount}/{defenderStrength:F1})");
+        // Tactical situation calculated: {currentSituation}
     }
     
     /// <summary>
