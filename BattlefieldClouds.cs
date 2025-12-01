@@ -49,6 +49,18 @@ public class BattlefieldClouds : MonoBehaviour
     [Range(0f, 1f)]
     public float secondLayerAlpha = 0.4f;
     
+    [Header("Venus Thick Atmosphere")]
+    [Tooltip("Enable Venus-style super thick atmosphere (overrides other settings)")]
+    public bool venusAtmosphere = false;
+    
+    [Tooltip("Number of cloud layers for thick atmosphere")]
+    [Range(3, 8)]
+    public int thickAtmosphereLayers = 5;
+    
+    [Tooltip("Venus atmosphere visibility range (how far you can see)")]
+    [Range(20f, 200f)]
+    public float venusVisibility = 80f;
+    
     [Header("Cloud Shadows")]
     [Tooltip("Enable cloud shadows on ground")]
     public bool enableCloudShadows = true;
@@ -74,6 +86,12 @@ public class BattlefieldClouds : MonoBehaviour
     private Vector2 scrollOffset1 = Vector2.zero;
     private Vector2 scrollOffset2 = Vector2.zero;
     
+    // Venus thick atmosphere layers
+    private GameObject[] venusCloudLayers;
+    private Material[] venusCloudMaterials;
+    private Vector2[] venusScrollOffsets;
+    private GameObject venusGroundFog;
+    
     // Shader property IDs
     private static readonly int MainTexID = Shader.PropertyToID("_MainTex");
     private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
@@ -92,6 +110,13 @@ public class BattlefieldClouds : MonoBehaviour
         if (adaptToBiome)
         {
             AdaptToBiome(biome);
+        }
+        
+        // Check for Venus thick atmosphere mode
+        if (venusAtmosphere)
+        {
+            CreateVenusAtmosphere(mapSize, biome);
+            return;
         }
         
         // Skip if density is too low
@@ -125,6 +150,173 @@ public class BattlefieldClouds : MonoBehaviour
         }
         
         Debug.Log($"[BattlefieldClouds] Created clouds for {biome} - Density: {cloudDensity:F2}, Height: {cloudHeight}, Shadows: {enableCloudShadows}");
+    }
+    
+    /// <summary>
+    /// Create Venus-style super thick atmosphere with multiple cloud layers
+    /// Venus has 20km thick sulfuric acid clouds that completely obscure the surface
+    /// </summary>
+    private void CreateVenusAtmosphere(float mapSize, Biome biome)
+    {
+        cloudPlaneSize = Mathf.Max(cloudPlaneSize, mapSize * 2.5f);
+        
+        // Initialize Venus cloud arrays
+        venusCloudLayers = new GameObject[thickAtmosphereLayers];
+        venusCloudMaterials = new Material[thickAtmosphereLayers];
+        venusScrollOffsets = new Vector2[thickAtmosphereLayers];
+        
+        // Venus cloud colors - sulfuric acid creates yellow/orange haze
+        Color[] venusColors = new Color[]
+        {
+            new Color(0.95f, 0.85f, 0.55f, 0.95f),  // Top layer - bright yellow
+            new Color(0.9f, 0.75f, 0.45f, 0.85f),   // Upper mid
+            new Color(0.85f, 0.65f, 0.35f, 0.8f),   // Mid
+            new Color(0.75f, 0.55f, 0.3f, 0.75f),   // Lower mid
+            new Color(0.65f, 0.45f, 0.25f, 0.7f),   // Low
+            new Color(0.55f, 0.4f, 0.2f, 0.65f),    // Very low
+            new Color(0.5f, 0.35f, 0.18f, 0.6f),    // Near ground
+            new Color(0.45f, 0.32f, 0.15f, 0.55f),  // Ground fog
+        };
+        
+        // Create multiple cloud layers at different heights
+        float baseHeight = 30f;  // Start low for oppressive atmosphere
+        float heightSpacing = 25f;
+        
+        for (int i = 0; i < thickAtmosphereLayers; i++)
+        {
+            float layerHeight = baseHeight + (i * heightSpacing);
+            
+            // Create texture with varying density for each layer
+            float layerDensity = 0.7f + (i * 0.05f); // Denser at top
+            Texture2D layerTexture = CreateVenusCloudTexture(layerDensity, i);
+            
+            // Get color for this layer
+            Color layerColor = venusColors[Mathf.Min(i, venusColors.Length - 1)];
+            
+            // Create cloud plane
+            string layerName = $"VenusCloudLayer_{i}";
+            venusCloudLayers[i] = CreateCloudPlane(layerName, layerHeight, layerTexture, layerColor);
+            venusCloudMaterials[i] = venusCloudLayers[i].GetComponent<MeshRenderer>().material;
+            venusScrollOffsets[i] = Vector2.zero;
+            
+            // Vary the wind direction slightly per layer (creates realistic swirling)
+            float windAngle = (i * 15f) * Mathf.Deg2Rad;
+            Vector2 layerWind = new Vector2(
+                Mathf.Cos(windAngle) + windDirection.x,
+                Mathf.Sin(windAngle) + windDirection.y
+            ).normalized;
+            
+            // Store wind direction in material's secondary offset (we'll use it in Update)
+            venusCloudMaterials[i].SetVector("_WindDir", new Vector4(layerWind.x, layerWind.y, 0, 0));
+        }
+        
+        // Create thick ground-level fog for Venus
+        CreateVenusGroundFog(mapSize);
+        
+        // Create very dark shadows (Venus surface is very dark)
+        if (enableCloudShadows)
+        {
+            Texture2D shadowTexture = CreateVenusCloudTexture(0.9f, 0);
+            CreateCloudShadowProjector(shadowTexture);
+            if (shadowMaterial != null)
+            {
+                shadowMaterial.SetColor(BaseColorID, new Color(0, 0, 0, 0.6f));
+                shadowMaterial.SetColor(ColorID, new Color(0, 0, 0, 0.6f));
+            }
+        }
+        
+        Debug.Log($"[BattlefieldClouds] Created Venus thick atmosphere with {thickAtmosphereLayers} cloud layers");
+    }
+    
+    /// <summary>
+    /// Create a Venus-specific cloud texture with sulfuric swirls
+    /// </summary>
+    private Texture2D CreateVenusCloudTexture(float density, int layerIndex)
+    {
+        int size = 256;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
+        texture.wrapMode = TextureWrapMode.Repeat;
+        texture.filterMode = FilterMode.Bilinear;
+        
+        // Multiple octaves with different offsets per layer
+        float[] frequencies = { 1.5f, 3f, 6f, 12f };
+        float[] amplitudes = { 1f, 0.6f, 0.35f, 0.15f };
+        float totalAmplitude = 0f;
+        foreach (float a in amplitudes) totalAmplitude += a;
+        
+        // Per-layer random offset for variety
+        float offsetX = Random.Range(0f, 1000f) + layerIndex * 100f;
+        float offsetY = Random.Range(0f, 1000f) + layerIndex * 100f;
+        
+        // Domain warping for swirly Venus clouds
+        float warpStrength = 0.3f + layerIndex * 0.05f;
+        
+        Color[] colors = new Color[size * size];
+        
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float nx = x / (float)size;
+                float ny = y / (float)size;
+                
+                // Domain warping for swirly effect
+                float warpX = Mathf.PerlinNoise((nx + offsetX) * 2f, (ny + offsetY) * 2f) * warpStrength;
+                float warpY = Mathf.PerlinNoise((nx + offsetX + 100f) * 2f, (ny + offsetY + 100f) * 2f) * warpStrength;
+                
+                float value = 0f;
+                for (int i = 0; i < frequencies.Length; i++)
+                {
+                    float fx = (nx + warpX) * frequencies[i] + offsetX;
+                    float fy = (ny + warpY) * frequencies[i] + offsetY;
+                    value += Mathf.PerlinNoise(fx, fy) * amplitudes[i];
+                }
+                
+                value /= totalAmplitude;
+                
+                // Venus clouds are very dense - high base opacity
+                float threshold = 1f - density;
+                value = Mathf.Clamp01((value - threshold * 0.3f) / (1f - threshold * 0.3f));
+                
+                // Smooth edges
+                value = Mathf.SmoothStep(0, 1, value);
+                
+                // Add some variation in yellow-orange tint
+                float tintVar = Mathf.PerlinNoise(nx * 4f + offsetX, ny * 4f + offsetY) * 0.1f;
+                
+                colors[y * size + x] = new Color(1f, 0.95f - tintVar, 0.8f - tintVar * 2f, value);
+            }
+        }
+        
+        texture.SetPixels(colors);
+        texture.Apply(true);
+        
+        return texture;
+    }
+    
+    /// <summary>
+    /// Create thick ground-level fog for Venus atmosphere
+    /// </summary>
+    private void CreateVenusGroundFog(float mapSize)
+    {
+        venusGroundFog = new GameObject("VenusGroundFog");
+        venusGroundFog.transform.SetParent(transform);
+        venusGroundFog.transform.position = new Vector3(0, 5f, 0); // Just above ground
+        venusGroundFog.transform.rotation = Quaternion.Euler(90, 0, 0);
+        
+        MeshFilter meshFilter = venusGroundFog.AddComponent<MeshFilter>();
+        meshFilter.mesh = CreateQuadMesh(cloudPlaneSize);
+        
+        MeshRenderer renderer = venusGroundFog.AddComponent<MeshRenderer>();
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+        
+        // Dense orange-brown ground fog
+        Texture2D fogTexture = CreateVenusCloudTexture(0.85f, 99);
+        Material fogMat = CreateCloudMaterial(fogTexture, new Color(0.6f, 0.4f, 0.2f, 0.5f));
+        fogMat.mainTextureScale = new Vector2(4f, 4f); // Smaller scale for ground fog
+        
+        renderer.material = fogMat;
     }
     
     /// <summary>
@@ -440,14 +632,21 @@ public class BattlefieldClouds : MonoBehaviour
                 enableCloudShadows = false;
                 break;
                 
-            // Venus - thick, yellow clouds
+            // Venus - SUPER THICK sulfuric acid clouds that cover entire map
             case Biome.VenusLava:
             case Biome.VenusianPlains:
             case Biome.VenusHighlands:
-                cloudDensity = 0.9f;
-                cloudColor = new Color(0.9f, 0.8f, 0.5f, 0.8f); // Yellow-ish
-                scrollSpeed = 0.2f;
-                cloudHeight = 60f;
+                venusAtmosphere = true; // Enable Venus thick atmosphere mode
+                thickAtmosphereLayers = 6;
+                venusVisibility = 60f;
+                cloudDensity = 0.95f;
+                cloudColor = new Color(0.9f, 0.75f, 0.45f, 0.9f); // Yellow-orange sulfuric
+                scrollSpeed = 0.15f; // Slow, oppressive movement
+                cloudHeight = 40f;
+                useSecondLayer = true;
+                secondLayerSpeedMultiplier = 0.8f;
+                enableCloudShadows = true;
+                shadowIntensity = 0.7f; // Dark surface
                 break;
                 
             // Gas giants - thick swirling clouds
@@ -511,7 +710,36 @@ public class BattlefieldClouds : MonoBehaviour
     
     void Update()
     {
-        // Animate cloud scrolling
+        // Animate Venus thick atmosphere layers
+        if (venusCloudMaterials != null && venusCloudMaterials.Length > 0)
+        {
+            for (int i = 0; i < venusCloudMaterials.Length; i++)
+            {
+                if (venusCloudMaterials[i] != null)
+                {
+                    // Each layer moves at slightly different speed and direction
+                    float layerSpeed = scrollSpeed * (0.5f + i * 0.15f);
+                    float angle = i * 12f * Mathf.Deg2Rad;
+                    Vector2 layerWind = new Vector2(
+                        windDirection.x + Mathf.Sin(angle) * 0.3f,
+                        windDirection.y + Mathf.Cos(angle) * 0.3f
+                    ).normalized;
+                    
+                    venusScrollOffsets[i] += layerWind * layerSpeed * Time.deltaTime * 0.01f;
+                    venusCloudMaterials[i].mainTextureOffset = venusScrollOffsets[i];
+                }
+            }
+            
+            // Shadow follows lowest layer
+            if (shadowMaterial != null && venusScrollOffsets.Length > 0)
+            {
+                shadowMaterial.mainTextureOffset = venusScrollOffsets[0];
+            }
+            
+            return; // Skip normal cloud animation if using Venus mode
+        }
+        
+        // Animate normal cloud scrolling
         if (cloudMaterial1 != null)
         {
             scrollOffset1 += windDirection.normalized * scrollSpeed * Time.deltaTime * 0.01f;
@@ -571,11 +799,41 @@ public class BattlefieldClouds : MonoBehaviour
             shadowProjector = null;
         }
         
+        // Clear Venus thick atmosphere layers
+        if (venusCloudLayers != null)
+        {
+            for (int i = 0; i < venusCloudLayers.Length; i++)
+            {
+                if (venusCloudLayers[i] != null)
+                {
+                    if (Application.isPlaying)
+                        Destroy(venusCloudLayers[i]);
+                    else
+                        DestroyImmediate(venusCloudLayers[i]);
+                }
+            }
+            venusCloudLayers = null;
+        }
+        
+        if (venusGroundFog != null)
+        {
+            if (Application.isPlaying)
+                Destroy(venusGroundFog);
+            else
+                DestroyImmediate(venusGroundFog);
+            venusGroundFog = null;
+        }
+        
         cloudMaterial1 = null;
         cloudMaterial2 = null;
         shadowMaterial = null;
+        venusCloudMaterials = null;
+        venusScrollOffsets = null;
         scrollOffset1 = Vector2.zero;
         scrollOffset2 = Vector2.zero;
+        
+        // Reset Venus mode flag
+        venusAtmosphere = false;
     }
     
     void OnDestroy()

@@ -530,5 +530,28 @@ public class BiomeTerrainSettings
             domainWarpStrength = 25f
         };
     }
+    
+    /// <summary>
+    /// Create Venus volcanic terrain settings
+    /// </summary>
+    public static BiomeTerrainSettings CreateVenus()
+    {
+        return new BiomeTerrainSettings
+        {
+            baseElevation = 0.3f,
+            heightScale = 0.75f,
+            baseFrequency = 0.02f,
+            detailFrequency = 0.06f,
+            ridgeFrequency = 0.035f,
+            valleyFrequency = 0.025f,
+            baseWeight = 0.45f,
+            detailWeight = 0.2f,
+            ridgeWeight = 0.2f,   // Tessera ridges
+            valleyWeight = 0.15f, // Lava channels
+            ridgeSharpness = 1.8f,
+            useDomainWarping = true,
+            domainWarpStrength = 35f // More warping for chaotic Venus terrain
+        };
+    }
 }
 

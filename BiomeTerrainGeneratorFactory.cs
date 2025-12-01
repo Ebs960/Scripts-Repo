@@ -91,22 +91,22 @@ public static class BiomeTerrainGeneratorFactory
             Biome.River => new OceanTerrainGenerator(),
             
             // === PLANET-SPECIFIC BIOMES ===
-            // Mars (desert-like with canyons)
-            Biome.MartianRegolith => new DesertTerrainGenerator(),
-            Biome.MartianDunes => new DesertTerrainGenerator(),
-            Biome.MartianCanyon => new MountainTerrainGenerator(),
-            Biome.MartianPolarIce => new IceTerrainGenerator(),
+            // === MARS - Each biome has its own specialized generator ===
+            Biome.MartianRegolith => new MarsRegolithGenerator(),   // Dusty red plains
+            Biome.MartianDunes => new MarsDunesGenerator(),         // Sand dune fields
+            Biome.MartianCanyon => new MarsCanyonGenerator(),       // Valles Marineris-style canyons
+            Biome.MartianPolarIce => new MarsPolarIceGenerator(),   // Polar ice caps
             
-            // Venus (volcanic/desert)
-            Biome.VenusLava => new MountainTerrainGenerator(),
-            Biome.VenusianPlains => new DesertTerrainGenerator(),
-            Biome.VenusHighlands => new MountainTerrainGenerator(),
+            // === VENUS - Volcanic terrain with unique features ===
+            Biome.VenusLava => new VenusTerrainGenerator(),
+            Biome.VenusianPlains => new VenusTerrainGenerator(),
+            Biome.VenusHighlands => new VenusTerrainGenerator(),
             
-            // === MERCURY - Cratered Moon-like terrain ===
-            Biome.MercuryCraters => CreateMoonGenerator(MoonBodyType.Mercury),
-            Biome.MercuryBasalt => CreateMoonGenerator(MoonBodyType.Mercury),
-            Biome.MercuryScarp => CreateMoonGenerator(MoonBodyType.Mercury),
-            Biome.MercurianIce => CreateMoonGenerator(MoonBodyType.Mercury),
+            // === MERCURY - Each biome has its own specialized generator ===
+            Biome.MercuryCraters => new MercuryCraterGenerator(),   // Heavily cratered highlands
+            Biome.MercuryBasalt => new MercuryBasaltGenerator(),    // Smooth volcanic plains
+            Biome.MercuryScarp => new MercuryScarpGenerator(),      // Lobate scarps (cliffs)
+            Biome.MercurianIce => new MercuryIceGenerator(),        // Polar ice deposits
             
             // Gas Giants (flat cloud layers)
             Biome.JovianClouds => new OceanTerrainGenerator(),
