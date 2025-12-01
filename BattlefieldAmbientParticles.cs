@@ -53,9 +53,9 @@ public class BattlefieldAmbientParticles : MonoBehaviour
     [Tooltip("Automatically adjust particles based on biome")]
     public bool adaptToBiome = true;
     
-    // Particle system reference
-    private ParticleSystem particleSystem;
-    private ParticleSystemRenderer particleRenderer;
+    // Particle system reference (renamed to avoid hiding Component.particleSystem)
+    private ParticleSystem ambientParticleSystem;
+    private ParticleSystemRenderer ambientParticleRenderer;
     
     // Secondary particle system for special effects (embers, fireflies)
     private ParticleSystem secondaryParticleSystem;
@@ -80,7 +80,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         // Skip if particle count is 0 (some biomes have no particles)
         if (particleCount <= 0)
         {
-            Debug.Log($"[BattlefieldAmbientParticles] No particles for {biome}");
+            // No particles for this biome type
             return;
         }
         
@@ -90,7 +90,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         // Create secondary effects if needed (embers, fireflies, etc.)
         CreateSecondaryParticles(biome);
         
-        Debug.Log($"[BattlefieldAmbientParticles] Created {particleCount} particles for {biome}");
+        // Ambient particles created for biome
     }
     
     /// <summary>
@@ -104,13 +104,13 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         particleGO.transform.localPosition = Vector3.zero;
         
         // Add ParticleSystem
-        particleSystem = particleGO.AddComponent<ParticleSystem>();
+        ambientParticleSystem = particleGO.AddComponent<ParticleSystem>();
         
         // Stop to configure
-        particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ambientParticleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         
         // Main module
-        var main = particleSystem.main;
+        var main = ambientParticleSystem.main;
         main.maxParticles = particleCount;
         main.startLifetime = particleLifetime;
         main.startSpeed = driftSpeed;
@@ -122,19 +122,19 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         main.prewarm = true;
         
         // Emission module
-        var emission = particleSystem.emission;
+        var emission = ambientParticleSystem.emission;
         emission.enabled = true;
         emission.rateOverTime = particleCount / particleLifetime;
         
         // Shape module - box covering the battlefield
-        var shape = particleSystem.shape;
+        var shape = ambientParticleSystem.shape;
         shape.enabled = true;
         shape.shapeType = ParticleSystemShapeType.Box;
         shape.scale = new Vector3(spawnAreaSize, heightRange.y - heightRange.x, spawnAreaSize);
         shape.position = new Vector3(0, (heightRange.x + heightRange.y) / 2f, 0);
         
         // Velocity over lifetime (wind drift)
-        var velocityOverLifetime = particleSystem.velocityOverLifetime;
+        var velocityOverLifetime = ambientParticleSystem.velocityOverLifetime;
         velocityOverLifetime.enabled = true;
         velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
         velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(windDirection.x * windInfluence * -1f, windDirection.x * windInfluence);
@@ -142,7 +142,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         velocityOverLifetime.z = new ParticleSystem.MinMaxCurve(windDirection.z * windInfluence * -1f, windDirection.z * windInfluence);
         
         // Noise module for organic movement
-        var noise = particleSystem.noise;
+        var noise = ambientParticleSystem.noise;
         noise.enabled = true;
         noise.strength = 0.3f;
         noise.frequency = 0.5f;
@@ -150,7 +150,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         noise.damping = true;
         
         // Color over lifetime (fade in/out)
-        var colorOverLifetime = particleSystem.colorOverLifetime;
+        var colorOverLifetime = ambientParticleSystem.colorOverLifetime;
         colorOverLifetime.enabled = true;
         Gradient gradient = new Gradient();
         gradient.SetKeys(
@@ -160,7 +160,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         colorOverLifetime.color = gradient;
         
         // Size over lifetime (slight pulsing)
-        var sizeOverLifetime = particleSystem.sizeOverLifetime;
+        var sizeOverLifetime = ambientParticleSystem.sizeOverLifetime;
         sizeOverLifetime.enabled = true;
         AnimationCurve sizeCurve = new AnimationCurve();
         sizeCurve.AddKey(0f, 0.5f);
@@ -169,16 +169,16 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
         
         // Renderer settings
-        particleRenderer = particleGO.GetComponent<ParticleSystemRenderer>();
-        particleRenderer.renderMode = ParticleSystemRenderMode.Billboard;
-        particleRenderer.sortMode = ParticleSystemSortMode.Distance;
+        ambientParticleRenderer = particleGO.GetComponent<ParticleSystemRenderer>();
+        ambientParticleRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+        ambientParticleRenderer.sortMode = ParticleSystemSortMode.Distance;
         
         // Create and assign material
         Material particleMat = CreateParticleMaterial();
-        particleRenderer.material = particleMat;
+        ambientParticleRenderer.material = particleMat;
         
         // Start the system
-        particleSystem.Play();
+        ambientParticleSystem.Play();
     }
     
     /// <summary>
@@ -681,13 +681,13 @@ public class BattlefieldAmbientParticles : MonoBehaviour
     /// </summary>
     public void ClearParticles()
     {
-        if (particleSystem != null)
+        if (ambientParticleSystem != null)
         {
             if (Application.isPlaying)
-                Destroy(particleSystem.gameObject);
+                Destroy(ambientParticleSystem.gameObject);
             else
-                DestroyImmediate(particleSystem.gameObject);
-            particleSystem = null;
+                DestroyImmediate(ambientParticleSystem.gameObject);
+            ambientParticleSystem = null;
         }
         
         if (secondaryParticleSystem != null)

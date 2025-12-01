@@ -55,26 +55,34 @@ public static class ResourceCache
         // Initialize AddressableUnitLoader if available
         // Force instance creation to ensure it exists
         AddressableUnitLoader loader = AddressableUnitLoader.Instance;
-        if (loader != null)
+        if (loader == null)
         {
-            Debug.Log("[ResourceCache] Initialized with Addressables support (units load on-demand from bundles)");
-            Debug.Log($"[ResourceCache] AddressableUnitLoader instance created at: {loader.gameObject.name}");
-        }
-        else
-        {
-            Debug.LogWarning("[ResourceCache] AddressableUnitLoader.Instance is null! Units may fail to load. " +
-                "Make sure Addressables package is installed.");
+            Debug.LogWarning("[ResourceCache] AddressableUnitLoader.Instance is null! Units may fail to load.");
         }
     }
     
     /// <summary>
-    /// Initialize only essential resources for BattleTestSimple (units, civs, projectiles)
-    /// This prevents loading tech/culture trees that aren't needed for battle testing
+    /// Initialize only essential resources for BattleTestSimple menu phase.
+    /// OPTIMIZATION: Does NOT load combat units (with icons) until battle starts.
+    /// Units are loaded on-demand when GetAllCombatUnits() is called.
     /// </summary>
     public static void InitializeBattleTestResources()
     {
         Initialize();
-        // Pre-load only what BattleTestSimple needs
+        // MEMORY OPTIMIZATION: Only load civs and projectiles for menu
+        // Combat units (with large icons) are loaded on-demand when battle starts
+        EnsureCivDatasLoaded();
+        EnsureProjectilesLoaded();
+        // NOTE: Units are loaded lazily via GetAllCombatUnits() when needed
+    }
+    
+    /// <summary>
+    /// Initialize all battle resources including combat units.
+    /// Call this when battle actually starts, not during menu.
+    /// </summary>
+    public static void InitializeBattleResources()
+    {
+        Initialize();
         EnsureCombatUnitsLoaded();
         EnsureCivDatasLoaded();
         EnsureProjectilesLoaded();
@@ -113,6 +121,8 @@ public static class ResourceCache
         _resourceDataLoaded = false;
         _techDataLoaded = false;
         _cultureDataLoaded = false;
+        _unitNamesLoaded = false;
+        _cachedUnitNames = null;
     }
     
     /// <summary>
@@ -144,6 +154,8 @@ public static class ResourceCache
     
     /// <summary>
     /// Get all combat unit data (cached, lazy-loaded)
+    /// WARNING: This loads all units with their icons into memory!
+    /// For menu dropdowns, consider using GetCombatUnitNames() instead.
     /// </summary>
     public static CombatUnitData[] GetAllCombatUnits()
     {
@@ -152,16 +164,89 @@ public static class ResourceCache
         return _allCombatUnits ?? new CombatUnitData[0];
     }
     
+    // Cached unit names (lightweight, no icons)
+    private static string[] _cachedUnitNames;
+    private static bool _unitNamesLoaded = false;
+    
+    /// <summary>
+    /// Get just unit names for dropdown menus WITHOUT loading full ScriptableObjects.
+    /// This is much lighter on memory since it doesn't load icons.
+    /// </summary>
+    public static string[] GetCombatUnitNames()
+    {
+        if (_unitNamesLoaded && _cachedUnitNames != null)
+        {
+            return _cachedUnitNames;
+        }
+        
+        List<string> names = new List<string>();
+        
+#if UNITY_EDITOR
+        // In editor: Use AssetDatabase to get names without loading full assets
+        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CombatUnitData", new[] { "Assets/Units" });
+        foreach (string guid in guids)
+        {
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            // Extract name from path without loading the asset
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+            names.Add(fileName);
+        }
+#else
+        // In build: Need to load ScriptableObjects (no way around it without a manifest)
+        // But we can at least cache the names
+        var units = GetAllCombatUnits();
+        foreach (var unit in units)
+        {
+            if (unit != null)
+            {
+                names.Add(unit.unitName ?? "Unknown");
+            }
+        }
+#endif
+        
+        _cachedUnitNames = names.ToArray();
+        _unitNamesLoaded = true;
+        return _cachedUnitNames;
+    }
+    
+    /// <summary>
+    /// Get a specific combat unit by name (loads on demand)
+    /// </summary>
+    public static CombatUnitData GetCombatUnitByName(string unitName)
+    {
+        if (string.IsNullOrEmpty(unitName)) return null;
+        
+        // First check if units are already loaded
+        if (_combatUnitsLoaded && _allCombatUnits != null)
+        {
+            return System.Array.Find(_allCombatUnits, u => u != null && u.unitName == unitName);
+        }
+        
+#if UNITY_EDITOR
+        // In editor: Load just the specific unit
+        string[] guids = UnityEditor.AssetDatabase.FindAssets($"t:CombatUnitData {unitName}", new[] { "Assets/Units" });
+        foreach (string guid in guids)
+        {
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            CombatUnitData unit = UnityEditor.AssetDatabase.LoadAssetAtPath<CombatUnitData>(path);
+            if (unit != null && unit.unitName == unitName)
+            {
+                return unit;
+            }
+        }
+        return null;
+#else
+        // In build: Must load all units to find the one we want
+        EnsureCombatUnitsLoaded();
+        return System.Array.Find(_allCombatUnits, u => u != null && u.unitName == unitName);
+#endif
+    }
+    
     private static void EnsureCombatUnitsLoaded()
     {
         if (!_combatUnitsLoaded)
         {
-            // Memory logging for debugging
-            long memBefore = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
-            Debug.Log($"[ResourceCache] Memory BEFORE loading units: {memBefore / (1024f * 1024f):F1} MB");
-            
             // Load ScriptableObjects from Assets/Units/ (not Resources folder)
-            Debug.Log("[ResourceCache] Attempting to load CombatUnitData ScriptableObjects from Assets/Units/...");
             
 #if UNITY_EDITOR
             // In editor: Use AssetDatabase to load from Assets/Units/
@@ -210,46 +295,12 @@ public static class ResourceCache
 #endif
             _combatUnitsLoaded = true;
             
-            // Memory logging after loading
-            long memAfter = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
-            Debug.Log($"[ResourceCache] Memory AFTER loading units: {memAfter / (1024f * 1024f):F1} MB (delta: {(memAfter - memBefore) / (1024f * 1024f):F1} MB)");
-            
             int count = _allCombatUnits?.Length ?? 0;
-            Debug.Log($"[ResourceCache] Loaded {count} combat unit ScriptableObjects from Assets/Units/ (prefabs NOT loaded - using Addressables)");
             
             if (count == 0)
             {
                 Debug.LogError("[ResourceCache] WARNING: No CombatUnitData found in Assets/Units/ folder! " +
                     "Make sure your ScriptableObjects are in Assets/Units/");
-            }
-            else
-            {
-                // Log first few unit names and icon sizes for debugging
-                long totalIconMemory = 0;
-                int iconsWithSprite = 0;
-                
-                for (int i = 0; i < count; i++)
-                {
-                    if (_allCombatUnits[i] != null && _allCombatUnits[i].icon != null)
-                    {
-                        var tex = _allCombatUnits[i].icon.texture;
-                        if (tex != null)
-                        {
-                            // Estimate texture memory (width * height * 4 bytes for RGBA)
-                            long texMem = tex.width * tex.height * 4;
-                            totalIconMemory += texMem;
-                            iconsWithSprite++;
-                            
-                            // Log first 5 icons
-                            if (i < 5)
-                            {
-                                Debug.Log($"[ResourceCache] Unit '{_allCombatUnits[i].unitName}' icon: {tex.width}x{tex.height} (~{texMem / 1024f:F1} KB)");
-                            }
-                        }
-                    }
-                }
-                
-                Debug.Log($"[ResourceCache] Total: {iconsWithSprite} units with icons, estimated icon memory: {totalIconMemory / (1024f * 1024f):F1} MB");
             }
         }
     }
@@ -388,7 +439,6 @@ public static class ResourceCache
             // Use correct path: Resources/Tech
             _allTechData = Resources.LoadAll<TechData>("Tech");
             _techDataLoaded = true;
-            Debug.Log($"[ResourceCache] Loaded {_allTechData?.Length ?? 0} tech data entries from Resources/Tech");
         }
         return _allTechData ?? new TechData[0];
     }
@@ -405,7 +455,6 @@ public static class ResourceCache
             // Use correct path: Resources/Culture
             _allCultureData = Resources.LoadAll<CultureData>("Culture");
             _cultureDataLoaded = true;
-            Debug.Log($"[ResourceCache] Loaded {_allCultureData?.Length ?? 0} culture data entries from Resources/Culture");
         }
         return _allCultureData ?? new CultureData[0];
     }

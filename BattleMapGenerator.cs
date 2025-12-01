@@ -54,9 +54,9 @@ public class BattleMapGenerator : MonoBehaviour
     [Range(0, 200)]
     public int maxDecorations = 50;
     
-    // NOTE: Grass is rendered using Unity's optimized Terrain Detail system (SetupTerrainGrass).
-    // BattlefieldGrassSpawner was removed for performance - it created 500+ GameObjects with high overhead.
-    // Terrain Detail uses GPU instancing with zero GameObjects for much better performance.
+    // NOTE: Grass is rendered using GPUInstancedGrass component for high performance.
+    // This replaces Unity's Terrain Detail system which was unreliable.
+    // GPUInstancedGrass uses Graphics.DrawMeshInstanced for thousands of grass blades with minimal draw calls.
     
     [Header("Clouds")]
     [Tooltip("Optional cloud spawner for atmospheric clouds. Assign in inspector if you want clouds.")]
@@ -65,6 +65,26 @@ public class BattleMapGenerator : MonoBehaviour
     [Header("Ambient Particles")]
     [Tooltip("Optional particle spawner for atmospheric particles (dust, ash, pollen, etc). Assign in inspector if you want ambient particles.")]
     public BattlefieldAmbientParticles ambientParticles;
+    
+    [Header("GPU Instanced Grass")]
+    [Tooltip("Number of grass instances to spawn. Higher = denser grass but more GPU cost.")]
+    [Range(5000, 50000)]
+    public int grassInstanceCount = 20000;
+    
+    [Tooltip("Grass density multiplier. 1.0 = biome default, 2.0 = double density, 0.5 = half density")]
+    [Range(0.1f, 3f)]
+    public float grassDensityMultiplier = 1.5f;
+    
+    [Tooltip("Grass render distance in meters.")]
+    [Range(50f, 500f)]
+    public float grassRenderDistance = 150f;
+    
+    [Tooltip("Wind strength for grass animation")]
+    [Range(0f, 2f)]
+    public float grassWindStrength = 0.5f;
+    
+    // GPU grass system reference
+    private GPUInstancedGrass gpuGrass;
     
     [Header("Atmosphere (HDRP-like Effects)")]
     [Tooltip("Optional atmosphere system for volumetric fog, light shafts, and atmospheric scattering. Assign in inspector for cinematic visuals.")]
@@ -188,13 +208,19 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Spawn ambient particles (dust, ash, pollen, etc.) using BattlefieldAmbientParticles (if assigned)
+    /// Spawn ambient particles (dust, ash, pollen, etc.) using BattlefieldAmbientParticles (if assigned or auto-create)
     /// </summary>
     private void SpawnAmbientParticles()
     {
+        // Auto-create particle spawner if not assigned
         if (ambientParticles == null)
         {
-            return;
+            ambientParticles = GetComponent<BattlefieldAmbientParticles>();
+            if (ambientParticles == null)
+            {
+                ambientParticles = gameObject.AddComponent<BattlefieldAmbientParticles>();
+                Debug.Log("[BattleMapGenerator] Auto-created BattlefieldAmbientParticles component");
+            }
         }
         
         // Create particles with biome-appropriate settings
@@ -228,15 +254,20 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Spawn clouds above the battlefield using BattlefieldClouds (if assigned)
+    /// Spawn clouds above the battlefield using BattlefieldClouds (if assigned or auto-create)
     /// </summary>
     private void SpawnBattlefieldClouds()
     {
-        // Only spawn clouds if a cloud spawner is assigned in the inspector
+        // Auto-create cloud spawner if not assigned
         if (cloudSpawner == null)
         {
-            // No cloud spawner assigned - that's fine, clouds are optional
-            return;
+            // Create a cloud spawner component on this object
+            cloudSpawner = GetComponent<BattlefieldClouds>();
+            if (cloudSpawner == null)
+            {
+                cloudSpawner = gameObject.AddComponent<BattlefieldClouds>();
+                Debug.Log("[BattleMapGenerator] Auto-created BattlefieldClouds component");
+            }
         }
         
         // Create clouds with biome-appropriate settings
@@ -247,14 +278,39 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     /// <summary>
-    /// Grass rendering is now handled by Unity's Terrain Detail system.
-    /// This method is kept for code structure but does nothing - grass is set up
-    /// in SetupTerrainGrass() which is called during GenerateTerrainWithCustomSystem().
+    /// Spawn GPU Instanced grass across the battlefield.
+    /// Uses GPUInstancedGrass for high-performance grass rendering.
     /// </summary>
     private void SpawnBattlefieldGrass()
     {
-        // Grass is handled by SetupTerrainGrass() in GenerateTerrainWithCustomSystem()
-        // using Unity's optimized Terrain Detail system (GPU instanced, no GameObjects).
+        // Auto-create GPU grass system if not already present
+        if (gpuGrass == null)
+        {
+            gpuGrass = GetComponent<GPUInstancedGrass>();
+            if (gpuGrass == null)
+            {
+                gpuGrass = gameObject.AddComponent<GPUInstancedGrass>();
+            }
+        }
+        
+        // Configure grass settings
+        gpuGrass.grassCount = grassInstanceCount;
+        gpuGrass.densityMultiplier = grassDensityMultiplier;
+        gpuGrass.renderDistance = grassRenderDistance;
+        gpuGrass.windStrength = grassWindStrength;
+        gpuGrass.windDirection = GetBattlefieldWindDirection();
+        
+        // Get terrain reference if available
+        Terrain terrain = null;
+        if (terrainObjects.Count > 0)
+        {
+            terrain = terrainObjects[0].GetComponent<Terrain>();
+        }
+        
+        // Create the grass
+        gpuGrass.CreateGrass(mapSize, primaryBattleBiome, terrain);
+        
+        Debug.Log($"[BattleMapGenerator] Spawned GPU instanced grass for {primaryBattleBiome}");
     }
     
     /// <summary>
@@ -348,8 +404,8 @@ public class BattleMapGenerator : MonoBehaviour
         }
         terrainCollider.terrainData = terrainData;
         
-        // Set up grass/details on terrain (BEFORE applying material - grass needs terrain data ready)
-        SetupTerrainGrass(terrain, resolution);
+        // NOTE: Grass is now handled by GPUInstancedGrass in SpawnBattlefieldGrass()
+        // Old Unity Terrain Detail system was unreliable
         
         // Apply biome material/texture to terrain (guaranteed to work with Unity Terrain)
         ApplyBiomeMaterialToTerrain(terrain);
@@ -743,359 +799,7 @@ public class BattleMapGenerator : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Set up grass/details on the terrain using Unity's Detail system
-    /// </summary>
-    private void SetupTerrainGrass(Terrain terrain, int resolution)
-    {
-        if (terrain == null || terrain.terrainData == null) return;
-        
-        UnityEngine.TerrainData terrainData = terrain.terrainData;
-        
-        // Set detail resolution (how many detail patches across the terrain)
-        // Higher resolution = more detailed grass placement
-        int detailResolution = Mathf.Min(resolution, 1024); // Cap at 1024 for performance
-        terrainData.SetDetailResolution(detailResolution, 8); // 8 = number of detail layers supported
-        
-        // Create grass detail prototypes - use multiple for variety (AAA technique)
-        Texture2D grassTexture = CreateGrassTexture();
-        Texture2D tallGrassTexture = CreateTallGrassTexture();
-        
-        // Primary grass prototype - short, dense grass
-        DetailPrototype grassPrototype = new DetailPrototype();
-        grassPrototype.prototypeTexture = grassTexture;
-        grassPrototype.minWidth = 0.8f;
-        grassPrototype.maxWidth = 1.5f;
-        grassPrototype.minHeight = 0.4f;
-        grassPrototype.maxHeight = 0.8f;
-        grassPrototype.noiseSpread = 0.3f;
-        grassPrototype.healthyColor = CalculateGrassTint();
-        grassPrototype.dryColor = CalculateDryGrassTint();
-        grassPrototype.renderMode = DetailRenderMode.GrassBillboard;
-        
-        // Secondary prototype - taller grass for variety
-        DetailPrototype tallGrassPrototype = new DetailPrototype();
-        tallGrassPrototype.prototypeTexture = tallGrassTexture;
-        tallGrassPrototype.minWidth = 1.0f;
-        tallGrassPrototype.maxWidth = 2.0f;
-        tallGrassPrototype.minHeight = 0.6f;
-        tallGrassPrototype.maxHeight = 1.2f;
-        tallGrassPrototype.noiseSpread = 0.4f;
-        tallGrassPrototype.healthyColor = CalculateGrassTint() * 0.9f; // Slightly darker
-        tallGrassPrototype.dryColor = CalculateDryGrassTint();
-        tallGrassPrototype.renderMode = DetailRenderMode.GrassBillboard;
-        
-        // Set detail prototypes on terrain (2 types for variety)
-        terrainData.detailPrototypes = new DetailPrototype[] { grassPrototype, tallGrassPrototype };
-        
-        // Calculate grass density based on biome
-        float grassDensity = CalculateDetailDensity();
-        
-        // Skip grass for certain biomes (water, lava, etc.)
-        bool shouldHaveGrass = grassDensity > 0.05f && 
-                              primaryBattleBiome != Biome.Ocean &&
-                              primaryBattleBiome != Biome.Volcanic &&
-                              primaryBattleBiome != Biome.VenusLava &&
-                              primaryBattleBiome != Biome.IoVolcanic &&
-                              battleType != BattleType.Naval; // No grass in pure naval battles
-        
-        if (!shouldHaveGrass)
-        {
-            Debug.Log($"[BattleMapGenerator] Skipping grass setup for {primaryBattleBiome} biome (density: {grassDensity:F2})");
-            return;
-        }
-        
-        // Create detail maps for both grass types
-        int[,] detailMap = new int[detailResolution, detailResolution];
-        int[,] tallGrassMap = new int[detailResolution, detailResolution];
-        
-        // Pre-calculate noise scales for natural look (AAA technique: multiple octaves)
-        float noiseScale1 = 0.08f;  // Large patches
-        float noiseScale2 = 0.25f;  // Medium variation
-        float noiseScale3 = 0.6f;   // Fine detail
-        
-        // Paint grass based on biome and terrain conditions
-        for (int y = 0; y < detailResolution; y++)
-        {
-            for (int x = 0; x < detailResolution; x++)
-            {
-                // Get normalized position
-                float normalizedX = x / (float)detailResolution;
-                float normalizedZ = y / (float)detailResolution;
-                
-                // Get world position for noise sampling
-                float worldX = normalizedX * mapSize - mapSize / 2f;
-                float worldZ = normalizedZ * mapSize - mapSize / 2f;
-                
-                // Multi-octave noise for natural grass distribution (AAA technique)
-                float noise1 = Mathf.PerlinNoise(worldX * noiseScale1, worldZ * noiseScale1);
-                float noise2 = Mathf.PerlinNoise(worldX * noiseScale2 + 100, worldZ * noiseScale2 + 100);
-                float noise3 = Mathf.PerlinNoise(worldX * noiseScale3 + 200, worldZ * noiseScale3 + 200);
-                float combinedNoise = noise1 * 0.5f + noise2 * 0.3f + noise3 * 0.2f;
-                
-                // Calculate local density with softer variation
-                float localDensity = grassDensity * (0.6f + combinedNoise * 0.8f);
-                
-                // Reduce grass on steep slopes
-                float slope = CalculateSlopeAtPosition(terrainData, normalizedX, normalizedZ);
-                if (slope > 0.6f) // Very steep slope
-                {
-                    localDensity *= 0.1f;
-                }
-                else if (slope > 0.4f) // Steep slope
-                {
-                    localDensity *= 0.4f;
-                }
-                else if (slope > 0.25f) // Moderate slope
-                {
-                    localDensity *= 0.7f;
-                }
-                
-                // Short grass - more common
-                int shortGrassValue = Mathf.RoundToInt(localDensity * 12f);
-                detailMap[y, x] = Mathf.Clamp(shortGrassValue, 0, 15);
-                
-                // Tall grass - less common, appears in patches
-                float tallGrassChance = noise2 * noise1; // Only where both noise values are high
-                if (tallGrassChance > 0.35f && slope < 0.3f)
-                {
-                    int tallGrassValue = Mathf.RoundToInt(localDensity * 6f * (tallGrassChance - 0.35f) * 3f);
-                    tallGrassMap[y, x] = Mathf.Clamp(tallGrassValue, 0, 10);
-                }
-            }
-        }
-        
-        // Set detail maps on terrain
-        terrainData.SetDetailLayer(0, 0, 0, detailMap);      // Short grass
-        terrainData.SetDetailLayer(0, 0, 1, tallGrassMap);   // Tall grass
-        
-        // Configure terrain detail rendering settings (AAA settings)
-        terrain.detailObjectDistance = CalculateDetailDistance();
-        terrain.detailObjectDensity = 1.0f; // Full density
-        
-        // Configure wind settings for grass animation (URP supports these)
-        terrain.terrainData.wavingGrassStrength = CalculateWindBending();
-        terrain.terrainData.wavingGrassSpeed = CalculateWindSpeed();
-        terrain.terrainData.wavingGrassAmount = CalculateWindSize();
-        terrain.terrainData.wavingGrassTint = CalculateGrassTint();
-        
-        // Force terrain to refresh detail rendering
-        terrain.Flush();
-        
-        // Count grass for debug
-        int shortGrassCount = 0, tallGrassCount = 0;
-        for (int y = 0; y < detailResolution; y++)
-        {
-            for (int x = 0; x < detailResolution; x++)
-            {
-                if (detailMap[y, x] > 0) shortGrassCount++;
-                if (tallGrassMap[y, x] > 0) tallGrassCount++;
-            }
-        }
-        
-        Debug.Log($"[BattleMapGenerator] Grass setup complete for {primaryBattleBiome} - Density: {grassDensity:F2}, Distance: {terrain.detailObjectDistance:F0}m");
-        Debug.Log($"[BattleMapGenerator] Short grass: {shortGrassCount}, Tall grass: {tallGrassCount} (of {detailResolution * detailResolution} patches)");
-    }
-    
-    /// <summary>
-    /// Create a lush grass texture with many blades for dense coverage
-    /// AAA technique: more blades, variation in blade shapes, natural color variation
-    /// </summary>
-    private Texture2D CreateGrassTexture()
-    {
-        int width = 128;
-        int height = 128;
-        Texture2D grassTex = new Texture2D(width, height, TextureFormat.RGBA32, true);
-        
-        Color baseColor = CalculateGrassTint();
-        Color darkColor = baseColor * 0.7f;
-        Color lightColor = baseColor * 1.15f;
-        lightColor.a = 1f;
-        
-        // Clear to transparent
-        Color[] pixels = new Color[width * height];
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-        
-        // Create many overlapping grass blades (AAA density)
-        int bladeCount = 12;
-        System.Random rand = new System.Random(42); // Deterministic for consistency
-        
-        for (int blade = 0; blade < bladeCount; blade++)
-        {
-            // Random blade parameters
-            float bladeCenterX = (float)rand.NextDouble();
-            float bladeWidth = 0.06f + (float)rand.NextDouble() * 0.08f;
-            float bladeHeight = 0.5f + (float)rand.NextDouble() * 0.5f;
-            float bladeCurve = ((float)rand.NextDouble() - 0.5f) * 0.15f; // Slight curve
-            float bladeColorVariation = 0.85f + (float)rand.NextDouble() * 0.3f;
-            
-            for (int py = 0; py < height; py++)
-            {
-                float normalizedY = py / (float)height;
-                if (normalizedY > bladeHeight) continue;
-                
-                // Calculate blade center with curve
-                float curvedCenterX = bladeCenterX + bladeCurve * normalizedY * normalizedY;
-                
-                // Blade gets narrower toward top
-                float currentWidth = bladeWidth * (1f - normalizedY * 0.7f);
-                
-                for (int px = 0; px < width; px++)
-                {
-                    float normalizedX = px / (float)width;
-                    float distFromCenter = Mathf.Abs(normalizedX - curvedCenterX);
-                    
-                    if (distFromCenter < currentWidth)
-                    {
-                        // Inside blade
-                        float edgeFade = 1f - (distFromCenter / currentWidth);
-                        edgeFade = Mathf.Pow(edgeFade, 0.5f); // Softer edge
-                        
-                        // Fade at top
-                        float topFade = 1f - Mathf.Pow(normalizedY / bladeHeight, 2f);
-                        
-                        float alpha = edgeFade * topFade;
-                        
-                        // Color variation (lighter at edges, darker in center)
-                        Color bladeColor = Color.Lerp(darkColor, lightColor, edgeFade * 0.5f + normalizedY * 0.3f);
-                        bladeColor *= bladeColorVariation;
-                        bladeColor.a = alpha;
-                        
-                        int idx = py * width + px;
-                        if (bladeColor.a > pixels[idx].a)
-                        {
-                            pixels[idx] = bladeColor;
-                        }
-                    }
-                }
-            }
-        }
-        
-        grassTex.SetPixels(pixels);
-        grassTex.Apply(true);
-        grassTex.wrapMode = TextureWrapMode.Clamp;
-        grassTex.filterMode = FilterMode.Bilinear;
-        
-        return grassTex;
-    }
-    
-    /// <summary>
-    /// Create taller, wispier grass texture for variety
-    /// </summary>
-    private Texture2D CreateTallGrassTexture()
-    {
-        int width = 128;
-        int height = 192; // Taller texture
-        Texture2D grassTex = new Texture2D(width, height, TextureFormat.RGBA32, true);
-        
-        Color baseColor = CalculateGrassTint() * 0.95f;
-        Color darkColor = baseColor * 0.65f;
-        Color lightColor = baseColor * 1.1f;
-        lightColor.a = 1f;
-        
-        Color[] pixels = new Color[width * height];
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-        
-        // Fewer but taller, more distinct blades
-        int bladeCount = 7;
-        System.Random rand = new System.Random(123);
-        
-        for (int blade = 0; blade < bladeCount; blade++)
-        {
-            float bladeCenterX = 0.1f + (float)rand.NextDouble() * 0.8f;
-            float bladeWidth = 0.04f + (float)rand.NextDouble() * 0.05f;
-            float bladeHeight = 0.7f + (float)rand.NextDouble() * 0.3f;
-            float bladeCurve = ((float)rand.NextDouble() - 0.5f) * 0.25f;
-            float bladeColorVariation = 0.8f + (float)rand.NextDouble() * 0.35f;
-            
-            for (int py = 0; py < height; py++)
-            {
-                float normalizedY = py / (float)height;
-                if (normalizedY > bladeHeight) continue;
-                
-                float progress = normalizedY / bladeHeight;
-                float curvedCenterX = bladeCenterX + bladeCurve * progress * progress;
-                float currentWidth = bladeWidth * (1f - progress * 0.8f);
-                
-                for (int px = 0; px < width; px++)
-                {
-                    float normalizedX = px / (float)width;
-                    float distFromCenter = Mathf.Abs(normalizedX - curvedCenterX);
-                    
-                    if (distFromCenter < currentWidth)
-                    {
-                        float edgeFade = 1f - (distFromCenter / currentWidth);
-                        edgeFade = Mathf.Pow(edgeFade, 0.4f);
-                        float topFade = 1f - Mathf.Pow(progress, 1.5f);
-                        float alpha = edgeFade * topFade;
-                        
-                        Color bladeColor = Color.Lerp(darkColor, lightColor, edgeFade * 0.4f + progress * 0.4f);
-                        bladeColor *= bladeColorVariation;
-                        bladeColor.a = alpha;
-                        
-                        int idx = py * width + px;
-                        if (bladeColor.a > pixels[idx].a)
-                        {
-                            pixels[idx] = bladeColor;
-                        }
-                    }
-                }
-            }
-        }
-        
-        grassTex.SetPixels(pixels);
-        grassTex.Apply(true);
-        grassTex.wrapMode = TextureWrapMode.Clamp;
-        grassTex.filterMode = FilterMode.Bilinear;
-        
-        return grassTex;
-    }
-    
-    /// <summary>
-    /// Calculate dry grass tint based on biome
-    /// </summary>
-    private Color CalculateDryGrassTint()
-    {
-        return primaryBattleBiome switch
-        {
-            Biome.Forest => new Color(0.65f, 0.55f, 0.35f),
-            Biome.Jungle => new Color(0.55f, 0.6f, 0.35f),
-            Biome.Rainforest => new Color(0.5f, 0.55f, 0.3f),
-            Biome.Grassland => new Color(0.75f, 0.65f, 0.45f),
-            Biome.Plains => new Color(0.8f, 0.7f, 0.5f),
-            Biome.Savannah => new Color(0.85f, 0.7f, 0.45f),
-            Biome.Desert => new Color(0.9f, 0.8f, 0.6f),
-            Biome.Swamp => new Color(0.5f, 0.55f, 0.4f),
-            Biome.Marsh => new Color(0.55f, 0.6f, 0.45f),
-            Biome.Taiga => new Color(0.6f, 0.6f, 0.5f),
-            Biome.Snow => new Color(0.8f, 0.8f, 0.75f),
-            Biome.Tundra => new Color(0.7f, 0.7f, 0.6f),
-            _ => new Color(0.7f, 0.6f, 0.45f)
-        };
-    }
-    
-    /// <summary>
-    /// Calculate slope at a normalized position on the terrain
-    /// </summary>
-    private float CalculateSlopeAtPosition(UnityEngine.TerrainData terrainData, float normalizedX, float normalizedZ)
-    {
-        int heightmapRes = terrainData.heightmapResolution;
-        // Clamp to leave room for 2x2 sample (avoid array out of bounds)
-        int x = Mathf.Clamp(Mathf.RoundToInt(normalizedX * heightmapRes), 0, heightmapRes - 2);
-        int z = Mathf.Clamp(Mathf.RoundToInt(normalizedZ * heightmapRes), 0, heightmapRes - 2);
-        
-        // Get heights around this point
-        float[,] heights = terrainData.GetHeights(x, z, 2, 2);
-        
-        // Calculate gradient (slope)
-        float dx = (heights[1, 1] - heights[0, 1]) * terrainData.size.y / terrainData.heightmapResolution;
-        float dz = (heights[1, 1] - heights[1, 0]) * terrainData.size.y / terrainData.heightmapResolution;
-        
-        // Slope is the magnitude of the gradient
-        float slope = Mathf.Sqrt(dx * dx + dz * dz) / terrainData.size.y;
-        
-        return Mathf.Clamp01(slope);
-    }
+    // NOTE: Grass is now handled by GPUInstancedGrass - old Terrain Detail system removed
     
     /// <summary>
     /// Calculate optimal terrain resolution based on map size
@@ -1124,9 +828,7 @@ public class BattleMapGenerator : MonoBehaviour
         // Base map distance - distance at which terrain switches to base map
         terrain.basemapDistance = 2000f; // Keep high-res textures visible at distance
         
-        // === DETAIL/GRASS SETTINGS ===
-        terrain.detailObjectDistance = CalculateDetailDistance();
-        terrain.detailObjectDensity = 1.0f; // Maximum density
+        // NOTE: Grass is now handled by GPUInstancedGrass, not Terrain Details
         
         // === TREE SETTINGS ===
         terrain.treeDistance = CalculateTreeDistance();
@@ -1162,193 +864,6 @@ public class BattleMapGenerator : MonoBehaviour
     }
     
     // ========== BIOME-SPECIFIC CALCULATION METHODS ==========
-    
-    /// <summary>
-    /// Calculate detail density based on biome (forests = high, deserts = low)
-    /// AAA games use high density values to create lush environments
-    /// </summary>
-    private float CalculateDetailDensity()
-    {
-        float baseDensity = primaryBattleBiome switch
-        {
-            // Lush biomes - very high grass density
-            Biome.Grassland => 1.8f,
-            Biome.Plains => 1.5f,
-            Biome.Forest => 1.6f,
-            Biome.Jungle => 1.4f,       // Less grass, more undergrowth
-            Biome.Rainforest => 1.3f,
-            Biome.Savannah => 1.2f,
-            Biome.Marsh => 1.5f,
-            Biome.Swamp => 1.3f,
-            Biome.Taiga => 1.1f,
-            Biome.Steppe => 1.4f,
-            Biome.PineForest => 1.0f,
-            
-            // Moderate grass
-            Biome.Tundra => 0.7f,
-            Biome.Snow => 0.5f,
-            Biome.Frozen => 0.4f,
-            Biome.Mountain => 0.5f,
-            
-            // Sparse grass
-            Biome.Desert => 0.25f,
-            Biome.Scorched => 0.1f,
-            Biome.Ashlands => 0.15f,
-            Biome.Volcanic => 0.0f,
-            Biome.Hellscape => 0.1f,
-            Biome.Brimstone => 0.0f,
-            
-            // No grass
-            Biome.Ocean => 0.0f,
-            Biome.VenusLava => 0.0f,
-            Biome.IoVolcanic => 0.0f,
-            
-            // Planet-specific
-            Biome.MartianRegolith => 0.0f,
-            Biome.MartianDunes => 0.0f,
-            Biome.MartianCanyon => 0.0f,
-            Biome.MartianPolarIce => 0.0f,
-            Biome.MercuryBasalt => 0.0f,
-            Biome.MercuryCraters => 0.0f,
-            Biome.MercuryScarp => 0.0f,
-            Biome.MercurianIce => 0.0f,
-            
-            _ => 1.0f
-        };
-        
-        // Modify by moisture (wetter = more vegetation)
-        // Using softer scaling so dry areas still get some grass
-        float moistureModifier = 0.6f + battleTileMoisture * 0.8f; // Range: 0.6 - 1.4
-        return Mathf.Clamp(baseDensity * moistureModifier, 0f, 2.0f);
-    }
-    
-    /// <summary>
-    /// Calculate detail distance based on biome
-    /// Higher distances ensure grass is visible across the battlefield (AAA standard)
-    /// </summary>
-    private float CalculateDetailDistance()
-    {
-        // Use mapSize to ensure grass covers the visible area
-        float baseDistance = primaryBattleBiome switch
-        {
-            Biome.Grassland => 200f,
-            Biome.Plains => 180f,
-            Biome.Forest => 150f,
-            Biome.Jungle => 140f,
-            Biome.Rainforest => 160f,
-            Biome.Savannah => 170f,
-            Biome.Marsh => 140f,
-            Biome.Swamp => 130f,
-            Biome.Taiga => 140f,
-            Biome.Steppe => 180f,
-            Biome.Tundra => 120f,
-            Biome.Snow => 100f,
-            Biome.Desert => 80f,
-            Biome.Mountain => 80f,
-            _ => 150f
-        };
-        
-        // Scale with map size to ensure coverage
-        return Mathf.Max(baseDistance, mapSize * 1.5f);
-    }
-    
-    /// <summary>
-    /// Calculate wind speed based on biome (AAA: visible grass movement)
-    /// </summary>
-    private float CalculateWindSpeed()
-    {
-        return primaryBattleBiome switch
-        {
-            Biome.Desert => 0.9f,       // Windy deserts
-            Biome.Savannah => 0.8f,     // Windy savannah
-            Biome.Plains => 0.7f,       // Noticeable breeze
-            Biome.Grassland => 0.75f,   // Classic swaying grass
-            Biome.Steppe => 0.85f,      // Windy steppes
-            Biome.Mountain => 1.0f,     // Very windy mountains
-            Biome.Tundra => 0.9f,       // Cold winds
-            Biome.Forest => 0.5f,       // Sheltered forests
-            Biome.Jungle => 0.4f,       // Calm jungles
-            Biome.Swamp => 0.3f,        // Very calm swamps
-            Biome.Marsh => 0.35f,       // Slight breeze
-            _ => 0.6f
-        };
-    }
-    
-    /// <summary>
-    /// Calculate wind bending strength (how much grass bends)
-    /// </summary>
-    private float CalculateWindBending()
-    {
-        return primaryBattleBiome switch
-        {
-            Biome.Grassland => 0.7f,    // Visible bending
-            Biome.Plains => 0.65f,
-            Biome.Savannah => 0.6f,
-            Biome.Steppe => 0.75f,
-            Biome.Forest => 0.5f,
-            Biome.Jungle => 0.55f,
-            Biome.Marsh => 0.6f,
-            Biome.Swamp => 0.5f,
-            Biome.Tundra => 0.5f,
-            Biome.Desert => 0.4f,       // Sparse vegetation bends less visibly
-            _ => 0.55f
-        };
-    }
-    
-    /// <summary>
-    /// Calculate wind turbulence size (size of wind "waves")
-    /// </summary>
-    private float CalculateWindSize()
-    {
-        return primaryBattleBiome switch
-        {
-            Biome.Grassland => 0.7f,    // Visible rolling waves
-            Biome.Plains => 0.65f,
-            Biome.Savannah => 0.6f,
-            Biome.Steppe => 0.75f,
-            Biome.Forest => 0.5f,
-            Biome.Jungle => 0.55f,
-            Biome.Mountain => 0.8f,     // Large gusts
-            _ => 0.55f
-        };
-    }
-    
-    /// <summary>
-    /// Calculate grass tint color based on biome
-    /// AAA technique: vibrant, saturated colors that look good in-game
-    /// </summary>
-    private Color CalculateGrassTint()
-    {
-        return primaryBattleBiome switch
-        {
-            // Lush greens
-            Biome.Grassland => new Color(0.45f, 0.75f, 0.35f),    // Rich green grassland
-            Biome.Plains => new Color(0.55f, 0.7f, 0.4f),         // Yellow-green plains
-            Biome.Forest => new Color(0.4f, 0.65f, 0.35f),        // Deep forest green
-            Biome.Jungle => new Color(0.35f, 0.75f, 0.4f),        // Vibrant tropical green
-            Biome.Rainforest => new Color(0.3f, 0.7f, 0.35f),     // Deep rainforest
-            
-            // Yellows/Browns
-            Biome.Savannah => new Color(0.75f, 0.65f, 0.35f),     // Golden savannah
-            Biome.Steppe => new Color(0.7f, 0.6f, 0.4f),          // Tan steppe
-            Biome.Desert => new Color(0.8f, 0.7f, 0.5f),          // Sparse desert grass
-            
-            // Swamps
-            Biome.Swamp => new Color(0.4f, 0.55f, 0.35f),         // Dark murky green
-            Biome.Marsh => new Color(0.45f, 0.6f, 0.4f),          // Wetland green
-            
-            // Cold biomes
-            Biome.Taiga => new Color(0.5f, 0.6f, 0.45f),          // Blue-tinted green
-            Biome.PineForest => new Color(0.45f, 0.55f, 0.4f),    // Dark conifer green
-            Biome.Tundra => new Color(0.55f, 0.6f, 0.5f),         // Pale tundra
-            Biome.Snow => new Color(0.7f, 0.75f, 0.65f),          // Faded winter grass
-            Biome.Frozen => new Color(0.6f, 0.65f, 0.55f),        // Icy grass
-            Biome.Mountain => new Color(0.5f, 0.6f, 0.45f),       // Alpine grass
-            
-            // Default - pleasant green
-            _ => new Color(0.5f, 0.7f, 0.4f)
-        };
-    }
     
     /// <summary>
     /// Calculate tree distance based on biome

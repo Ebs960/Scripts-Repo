@@ -266,7 +266,6 @@ public class CombatUnitData : ScriptableObject
         // If prefab is already cached, return it
         if (_cachedPrefab != null)
         {
-            Debug.Log($"[CombatUnitData] Returning cached prefab for unit '{unitName}'");
             return _cachedPrefab;
         }
         
@@ -278,7 +277,6 @@ public class CombatUnitData : ScriptableObject
         }
         
         string addressKey = GetAddressableKey();
-        Debug.Log($"[CombatUnitData] Loading prefab for unit '{unitName}' via Addressables with address: '{addressKey}'");
         
         // Load from Addressables
         if (AddressableUnitLoader.Instance != null)
@@ -286,7 +284,6 @@ public class CombatUnitData : ScriptableObject
             _cachedPrefab = AddressableUnitLoader.Instance.LoadUnitPrefabSync(addressKey);
             if (_cachedPrefab != null)
             {
-                Debug.Log($"[CombatUnitData] Successfully loaded prefab for unit '{unitName}' using address '{addressKey}'");
                 return _cachedPrefab;
             }
             else

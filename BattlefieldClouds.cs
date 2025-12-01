@@ -127,7 +127,7 @@ public class BattlefieldClouds : MonoBehaviour
         // Skip if density is too low
         if (cloudDensity < 0.05f)
         {
-            Debug.Log($"[BattlefieldClouds] Skipping clouds for {biome} (density too low: {cloudDensity:F2})");
+            // Skipping clouds - density too low for this biome
             return;
         }
         
@@ -155,7 +155,7 @@ public class BattlefieldClouds : MonoBehaviour
             CreateCloudShadowProjector(cloudTexture);
         }
         
-        Debug.Log($"[BattlefieldClouds] Created clouds for {biome} - Density: {cloudDensity:F2}, Height: {cloudHeight}, Shadows: {enableCloudShadows}");
+        // Cloud creation complete - density: {cloudDensity}, height: {cloudHeight}
     }
     
     /// <summary>
@@ -233,7 +233,7 @@ public class BattlefieldClouds : MonoBehaviour
             }
         }
         
-        Debug.Log($"[BattlefieldClouds] Created Venus thick atmosphere with {thickAtmosphereLayers} cloud layers (shared texture)");
+        // Venus thick atmosphere created with {thickAtmosphereLayers} layers
     }
     
     /// <summary>
@@ -405,7 +405,7 @@ public class BattlefieldClouds : MonoBehaviour
         if (sharedCloudTexture == null)
         {
             sharedCloudTexture = CreateCloudTexture();
-            Debug.Log("[BattlefieldClouds] Created shared cloud texture (128x128)");
+            // Shared cloud texture created
         }
         return sharedCloudTexture;
     }
@@ -418,7 +418,7 @@ public class BattlefieldClouds : MonoBehaviour
         if (sharedVenusTexture == null)
         {
             sharedVenusTexture = CreateVenusCloudTexture(0.8f, 0);
-            Debug.Log("[BattlefieldClouds] Created shared Venus texture (128x128)");
+            // Shared Venus texture created
         }
         return sharedVenusTexture;
     }

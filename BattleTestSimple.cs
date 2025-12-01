@@ -296,14 +296,11 @@ public class BattleTestSimple : MonoBehaviour
     }
     
     /// <summary>
-    /// Load unit metadata in batches to prevent memory spikes
+    /// Load unit names for dropdown (lightweight - no icons loaded!)
+    /// MEMORY OPTIMIZATION: Uses ResourceCache.GetCombatUnitNames() which doesn't load full ScriptableObjects
     /// </summary>
     private IEnumerator LoadAvailableUnitsAsync()
     {
-        // OPTION 3: Metadata-Only Loading System
-        // Load only lightweight metadata (names/stats) for dropdown, NOT full ScriptableObjects
-        // This prevents memory spikes in menu phase while allowing full unit selection
-        
         if (unitMetadata == null)
         {
             unitMetadata = new List<UnitMetadata>();
@@ -311,72 +308,37 @@ public class BattleTestSimple : MonoBehaviour
         
         unitMetadata.Clear();
         
-        // Load data first (outside try-catch to allow yields)
-        CombatUnitData[] allUnitData = null;
-        bool loadSuccess = false;
+        LogMemoryUsage("Before ResourceCache.GetCombatUnitNames()");
         
-        LogMemoryUsage("Before ResourceCache.GetAllCombatUnits()");
-        
+        // MEMORY OPTIMIZATION: Get just unit names without loading full ScriptableObjects (no icons!)
+        string[] unitNames = null;
         try
         {
-            // Load ALL CombatUnitData ScriptableObjects temporarily to extract metadata
-            // NOTE: Resources.LoadAll still loads everything at once, but we can process in batches
-            allUnitData = ResourceCache.GetAllCombatUnits();
-            loadSuccess = true;
+            unitNames = ResourceCache.GetCombatUnitNames();
         }
         catch (System.Exception e)
         {
-            DebugLog($"Error loading unit data: {e.Message}");
-            loadSuccess = false;
+            DebugLog($"Error loading unit names: {e.Message}");
         }
         
-        LogMemoryUsage($"After ResourceCache.GetAllCombatUnits() - loaded {allUnitData?.Length ?? 0} units");
-        yield return null; // Yield after loading to spread memory allocation
+        LogMemoryUsage($"After ResourceCache.GetCombatUnitNames() - found {unitNames?.Length ?? 0} units");
+        yield return null;
         
-        // Process units in batches (outside try-catch to allow yields)
-        if (loadSuccess && allUnitData != null && allUnitData.Length > 0)
+        if (unitNames != null && unitNames.Length > 0)
         {
-            // Process units in batches to avoid frame spikes
-            const int batchSize = 50; // Process 50 units per frame
-            int processed = 0;
-            
-            // Extract only lightweight metadata (names and stats)
-            // DO NOT store references to ScriptableObjects - this prevents memory retention
-            // CRITICAL: Do NOT modify the ScriptableObjects (don't clear prefab refs) because
-            // they're shared with ResourceCache and we need prefabs later for spawning!
-            for (int i = 0; i < allUnitData.Length; i++)
+            // Create lightweight metadata with just names (stats will be loaded when battle starts)
+            foreach (string name in unitNames)
             {
-                var unitData = allUnitData[i];
-                if (unitData != null)
-                {
-                    var metadata = new UnitMetadata(
-                        unitData.unitName ?? "Unknown Unit",
-                        unitData.baseHealth,
-                        unitData.baseAttack,
-                        unitData.baseDefense
-                    );
-                    unitMetadata.Add(metadata);
-                }
-                
-                processed++;
-                // Yield every batchSize units to spread processing across frames
-                if (processed >= batchSize)
-                {
-                    processed = 0;
-                    yield return null;
-                }
+                // Use placeholder stats - actual stats loaded when battle starts
+                unitMetadata.Add(new UnitMetadata(name, 0, 0, 0));
             }
             
-            // Clear the local array reference - metadata is now in our lightweight list
-            // We don't modify the ScriptableObjects because they're cached in ResourceCache
-            allUnitData = null; // Remove local reference (ResourceCache still has them)
+            DebugLog($"Loaded {unitMetadata.Count} unit names (lightweight - no ScriptableObjects or icons loaded!)");
             
-            DebugLog($"Loaded {unitMetadata.Count} unit metadata entries (lightweight, no ScriptableObject references retained)");
-            
-            // Log some unit names for verification
+            // Log some names
             for (int i = 0; i < Mathf.Min(5, unitMetadata.Count); i++)
             {
-                DebugLog($"  - {unitMetadata[i].unitName} (HP:{unitMetadata[i].baseHealth}, ATK:{unitMetadata[i].baseAttack})");
+                DebugLog($"  - {unitMetadata[i].unitName}");
             }
             if (unitMetadata.Count > 5)
             {
@@ -385,11 +347,10 @@ public class BattleTestSimple : MonoBehaviour
         }
         else
         {
-            DebugLog("No CombatUnitData found in Resources/Units folder");
+            DebugLog("No unit names found - creating fallback");
             CreateFallbackMetadata();
         }
         
-        // Ensure we have at least one metadata entry for dropdown
         if (unitMetadata.Count == 0)
         {
             CreateFallbackMetadata();
@@ -905,64 +866,56 @@ public class BattleTestSimple : MonoBehaviour
                 defenderUnitName = unitMetadata[selectedDefenderUnitIndex].unitName;
             }
             
-            // Get all units temporarily to find the selected ones
-            var allUnitData = ResourceCache.GetAllCombatUnits();
+            // MEMORY OPTIMIZATION: Load ONLY the selected units by name
+            // This avoids loading all units with their icons
+            LogMemoryUsage("Before loading selected units");
             
-            if (allUnitData != null && allUnitData.Length > 0)
+            if (!string.IsNullOrEmpty(attackerUnitName))
             {
-                // Find and add ONLY the 2 selected units
-                foreach (var unitData in allUnitData)
+                selectedAttackerUnit = ResourceCache.GetCombatUnitByName(attackerUnitName);
+                if (selectedAttackerUnit != null)
                 {
-                    if (unitData == null) continue;
-                    
-                    // Check if this is the attacker unit
-                    if (attackerUnitName != null && unitData.unitName == attackerUnitName)
-                    {
-                        availableUnits.Add(unitData);
-                        selectedAttackerUnit = unitData;
-                        DebugLog($"Found attacker unit: {unitData.unitName}");
-                    }
-                    // Check if this is the defender unit (and it's different from attacker)
-                    else if (defenderUnitName != null && unitData.unitName == defenderUnitName && unitData != selectedAttackerUnit)
-                    {
-                        availableUnits.Add(unitData);
-                        selectedDefenderUnit = unitData;
-                        DebugLog($"Found defender unit: {unitData.unitName}");
-                    }
-                    
-                    // Early exit if we found both units
-                    if (selectedAttackerUnit != null && selectedDefenderUnit != null)
-                    {
-                        break;
-                    }
+                    availableUnits.Add(selectedAttackerUnit);
+                    DebugLog($"Loaded attacker unit: {selectedAttackerUnit.unitName}");
                 }
-                
-                // Clear the temporary array reference immediately to free memory
-                allUnitData = null;
-                
-                // If we didn't find both units, use minimal fallback (MEMORY OPTIMIZED: no prefab loading)
-                if (selectedAttackerUnit == null)
+            }
+            
+            if (!string.IsNullOrEmpty(defenderUnitName))
+            {
+                // Check if defender is same as attacker
+                if (defenderUnitName == attackerUnitName && selectedAttackerUnit != null)
                 {
-                    DebugLog($"Warning: Could not find attacker unit '{attackerUnitName}', using minimal fallback");
-                    CreateFallbackUnits();
-                    return; // Fallback creates both units, so we're done
-                }
-                
-                if (selectedDefenderUnit == null)
-                {
-                    DebugLog($"Warning: Could not find defender unit '{defenderUnitName}', using attacker unit for both sides");
-                    // Use attacker unit for both sides (better than loading all units)
                     selectedDefenderUnit = selectedAttackerUnit;
-                    availableUnits.Add(selectedDefenderUnit);
+                    DebugLog($"Defender unit same as attacker: {defenderUnitName}");
                 }
-                
-                DebugLog($"Loaded {availableUnits.Count} selected units (instead of all units - memory optimized)");
+                else
+                {
+                    selectedDefenderUnit = ResourceCache.GetCombatUnitByName(defenderUnitName);
+                    if (selectedDefenderUnit != null)
+                    {
+                        availableUnits.Add(selectedDefenderUnit);
+                        DebugLog($"Loaded defender unit: {selectedDefenderUnit.unitName}");
+                    }
+                }
             }
-            else
+            
+            LogMemoryUsage("After loading selected units");
+            
+            // Fallback if units not found
+            if (selectedAttackerUnit == null)
             {
-                DebugLog("No CombatUnitData found in Resources/Units folder");
+                DebugLog($"Warning: Could not find attacker unit '{attackerUnitName}', using minimal fallback");
                 CreateFallbackUnits();
+                return;
             }
+            
+            if (selectedDefenderUnit == null)
+            {
+                DebugLog($"Warning: Could not find defender unit '{defenderUnitName}', using attacker unit for both sides");
+                selectedDefenderUnit = selectedAttackerUnit;
+            }
+            
+            DebugLog($"Loaded {availableUnits.Count} selected units (memory optimized - only selected units loaded)");
         }
         catch (System.Exception e)
         {
@@ -993,17 +946,17 @@ public class BattleTestSimple : MonoBehaviour
         attackerUnitDropdown.ClearOptions();
         defenderUnitDropdown.ClearOptions();
         
-        // Add unit options from metadata (lightweight, no ScriptableObject references)
+        // Add unit options from metadata (just names - memory optimized, no stats until battle starts)
         var options = new List<string>();
         foreach (var metadata in unitMetadata)
         {
-            options.Add($"{metadata.unitName} (HP:{metadata.baseHealth}, ATK:{metadata.baseAttack})");
+            options.Add(metadata.unitName);
         }
         
         // If no units found, add fallback
         if (options.Count == 0)
         {
-            options.Add("Default Unit (HP:10, ATK:2)");
+            options.Add("Default Unit");
         }
         
         attackerUnitDropdown.AddOptions(options);

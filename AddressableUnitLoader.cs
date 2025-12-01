@@ -103,7 +103,6 @@ public class AddressableUnitLoader : MonoBehaviour
         }
 
         // Start new load operation
-        Debug.Log($"[AddressableUnitLoader] Attempting to load unit prefab with address: '{unitName}'");
         AsyncOperationHandle<GameObject> handle = Addressables.LoadAssetAsync<GameObject>(unitName);
         loadingOperations[unitName] = handle;
 
@@ -115,15 +114,11 @@ public class AddressableUnitLoader : MonoBehaviour
             {
                 GameObject prefab = operation.Result;
                 loadedPrefabs[unitName] = prefab;
-                Debug.Log($"[AddressableUnitLoader] Successfully loaded unit prefab: '{unitName}'");
                 onComplete?.Invoke(prefab);
             }
             else
             {
                 Debug.LogError($"[AddressableUnitLoader] Failed to load unit '{unitName}': {operation.OperationException?.Message ?? "Unknown error"}");
-                Debug.LogError($"[AddressableUnitLoader] Status: {operation.Status}");
-                Debug.LogError($"[AddressableUnitLoader] TIP: Make sure the prefab is marked as Addressable in the Inspector, " +
-                    $"and the Addressable address matches the unitName exactly: '{unitName}'");
                 onComplete?.Invoke(null);
             }
         };
@@ -147,7 +142,6 @@ public class AddressableUnitLoader : MonoBehaviour
         // Load synchronously (blocks until loaded)
         try
         {
-            Debug.Log($"[AddressableUnitLoader] Loading unit prefab synchronously with address: '{unitName}'");
             AsyncOperationHandle<GameObject> handle = Addressables.LoadAssetAsync<GameObject>(unitName);
             handle.WaitForCompletion();
 
@@ -155,15 +149,11 @@ public class AddressableUnitLoader : MonoBehaviour
             {
                 GameObject prefab = handle.Result;
                 loadedPrefabs[unitName] = prefab;
-                Debug.Log($"[AddressableUnitLoader] Successfully loaded unit prefab synchronously: '{unitName}'");
                 return prefab;
             }
             else
             {
-                Debug.LogError($"[AddressableUnitLoader] Failed to load unit '{unitName}' synchronously: {handle.OperationException?.Message ?? "Unknown error"}");
-                Debug.LogError($"[AddressableUnitLoader] Status: {handle.Status}");
-                Debug.LogError($"[AddressableUnitLoader] TIP: Make sure the prefab is marked as Addressable in the Inspector, " +
-                    $"and the Addressable address matches the unitName exactly: '{unitName}'");
+                Debug.LogError($"[AddressableUnitLoader] Failed to load unit '{unitName}': {handle.OperationException?.Message ?? "Unknown error"}");
                 Addressables.Release(handle);
                 return null;
             }
@@ -171,7 +161,6 @@ public class AddressableUnitLoader : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"[AddressableUnitLoader] Exception loading unit '{unitName}': {e.Message}");
-            Debug.LogError($"[AddressableUnitLoader] Stack trace: {e.StackTrace}");
             return null;
         }
     }
