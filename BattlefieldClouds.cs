@@ -92,6 +92,11 @@ public class BattlefieldClouds : MonoBehaviour
     private Vector2[] venusScrollOffsets;
     private GameObject venusGroundFog;
     
+    // Shared texture cache (memory optimization - reuse textures across layers)
+    private static Texture2D sharedCloudTexture;
+    private static Texture2D sharedVenusTexture;
+    private static int sharedTextureRefCount = 0;
+    
     // Shader property IDs
     private static readonly int MainTexID = Shader.PropertyToID("_MainTex");
     private static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
@@ -129,13 +134,14 @@ public class BattlefieldClouds : MonoBehaviour
         // Ensure cloud plane is large enough
         cloudPlaneSize = Mathf.Max(cloudPlaneSize, mapSize * 2f);
         
-        // Create cloud texture
-        Texture2D cloudTexture = CreateCloudTexture();
+        // Create or reuse shared cloud texture (memory optimization)
+        Texture2D cloudTexture = GetOrCreateSharedCloudTexture();
+        sharedTextureRefCount++;
         
         // Create primary cloud layer
         cloudLayer1 = CreateCloudPlane("CloudLayer1", cloudHeight, cloudTexture, cloudColor);
         
-        // Create secondary layer for depth
+        // Create secondary layer for depth (reuses same texture)
         if (useSecondLayer)
         {
             Color layer2Color = cloudColor;
@@ -143,7 +149,7 @@ public class BattlefieldClouds : MonoBehaviour
             cloudLayer2 = CreateCloudPlane("CloudLayer2", cloudHeight + secondLayerHeightOffset, cloudTexture, layer2Color);
         }
         
-        // Create shadow projector
+        // Create shadow projector (reuses same texture)
         if (enableCloudShadows)
         {
             CreateCloudShadowProjector(cloudTexture);
@@ -178,6 +184,10 @@ public class BattlefieldClouds : MonoBehaviour
             new Color(0.45f, 0.32f, 0.15f, 0.55f),  // Ground fog
         };
         
+        // Create or reuse shared Venus texture (memory optimization - all layers share one texture)
+        Texture2D sharedTexture = GetOrCreateSharedVenusTexture();
+        sharedTextureRefCount++;
+        
         // Create multiple cloud layers at different heights
         float baseHeight = 30f;  // Start low for oppressive atmosphere
         float heightSpacing = 25f;
@@ -186,18 +196,14 @@ public class BattlefieldClouds : MonoBehaviour
         {
             float layerHeight = baseHeight + (i * heightSpacing);
             
-            // Create texture with varying density for each layer
-            float layerDensity = 0.7f + (i * 0.05f); // Denser at top
-            Texture2D layerTexture = CreateVenusCloudTexture(layerDensity, i);
-            
-            // Get color for this layer
+            // Get color for this layer (varied by index for depth)
             Color layerColor = venusColors[Mathf.Min(i, venusColors.Length - 1)];
             
-            // Create cloud plane
+            // Create cloud plane (all layers share the same texture)
             string layerName = $"VenusCloudLayer_{i}";
-            venusCloudLayers[i] = CreateCloudPlane(layerName, layerHeight, layerTexture, layerColor);
+            venusCloudLayers[i] = CreateCloudPlane(layerName, layerHeight, sharedTexture, layerColor);
             venusCloudMaterials[i] = venusCloudLayers[i].GetComponent<MeshRenderer>().material;
-            venusScrollOffsets[i] = Vector2.zero;
+            venusScrollOffsets[i] = new Vector2(i * 0.1f, i * 0.05f); // Offset each layer for variety
             
             // Vary the wind direction slightly per layer (creates realistic swirling)
             float windAngle = (i * 15f) * Mathf.Deg2Rad;
@@ -208,16 +214,18 @@ public class BattlefieldClouds : MonoBehaviour
             
             // Store wind direction in material's secondary offset (we'll use it in Update)
             venusCloudMaterials[i].SetVector("_WindDir", new Vector4(layerWind.x, layerWind.y, 0, 0));
+            
+            // Vary texture scale per layer for more variation with shared texture
+            venusCloudMaterials[i].mainTextureScale = new Vector2(1.5f + i * 0.3f, 1.5f + i * 0.3f);
         }
         
-        // Create thick ground-level fog for Venus
+        // Create thick ground-level fog for Venus (reuses shared texture)
         CreateVenusGroundFog(mapSize);
         
-        // Create very dark shadows (Venus surface is very dark)
+        // Create very dark shadows (Venus surface is very dark) - reuses shared texture
         if (enableCloudShadows)
         {
-            Texture2D shadowTexture = CreateVenusCloudTexture(0.9f, 0);
-            CreateCloudShadowProjector(shadowTexture);
+            CreateCloudShadowProjector(sharedTexture);
             if (shadowMaterial != null)
             {
                 shadowMaterial.SetColor(BaseColorID, new Color(0, 0, 0, 0.6f));
@@ -225,15 +233,16 @@ public class BattlefieldClouds : MonoBehaviour
             }
         }
         
-        Debug.Log($"[BattlefieldClouds] Created Venus thick atmosphere with {thickAtmosphereLayers} cloud layers");
+        Debug.Log($"[BattlefieldClouds] Created Venus thick atmosphere with {thickAtmosphereLayers} cloud layers (shared texture)");
     }
     
     /// <summary>
     /// Create a Venus-specific cloud texture with sulfuric swirls
+    /// Reduced from 256x256 to 128x128 for memory optimization (4x savings)
     /// </summary>
     private Texture2D CreateVenusCloudTexture(float density, int layerIndex)
     {
-        int size = 256;
+        int size = 128; // Reduced from 256 for memory optimization
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
         texture.wrapMode = TextureWrapMode.Repeat;
         texture.filterMode = FilterMode.Bilinear;
@@ -296,6 +305,7 @@ public class BattlefieldClouds : MonoBehaviour
     
     /// <summary>
     /// Create thick ground-level fog for Venus atmosphere
+    /// Uses shared Venus texture for memory optimization
     /// </summary>
     private void CreateVenusGroundFog(float mapSize)
     {
@@ -311,8 +321,8 @@ public class BattlefieldClouds : MonoBehaviour
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         renderer.receiveShadows = false;
         
-        // Dense orange-brown ground fog
-        Texture2D fogTexture = CreateVenusCloudTexture(0.85f, 99);
+        // Dense orange-brown ground fog (reuses shared Venus texture)
+        Texture2D fogTexture = GetOrCreateSharedVenusTexture();
         Material fogMat = CreateCloudMaterial(fogTexture, new Color(0.6f, 0.4f, 0.2f, 0.5f));
         fogMat.mainTextureScale = new Vector2(4f, 4f); // Smaller scale for ground fog
         
@@ -388,11 +398,38 @@ public class BattlefieldClouds : MonoBehaviour
     }
     
     /// <summary>
+    /// Get or create a shared cloud texture (memory optimization)
+    /// </summary>
+    private Texture2D GetOrCreateSharedCloudTexture()
+    {
+        if (sharedCloudTexture == null)
+        {
+            sharedCloudTexture = CreateCloudTexture();
+            Debug.Log("[BattlefieldClouds] Created shared cloud texture (128x128)");
+        }
+        return sharedCloudTexture;
+    }
+    
+    /// <summary>
+    /// Get or create a shared Venus texture (memory optimization)
+    /// </summary>
+    private Texture2D GetOrCreateSharedVenusTexture()
+    {
+        if (sharedVenusTexture == null)
+        {
+            sharedVenusTexture = CreateVenusCloudTexture(0.8f, 0);
+            Debug.Log("[BattlefieldClouds] Created shared Venus texture (128x128)");
+        }
+        return sharedVenusTexture;
+    }
+    
+    /// <summary>
     /// Create a procedural cloud texture using Perlin noise
+    /// Reduced from 256x256 to 128x128 for memory optimization (4x savings)
     /// </summary>
     private Texture2D CreateCloudTexture()
     {
-        int size = 256;
+        int size = 128; // Reduced from 256 for memory optimization
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
         texture.wrapMode = TextureWrapMode.Repeat;
         texture.filterMode = FilterMode.Bilinear;
@@ -834,6 +871,32 @@ public class BattlefieldClouds : MonoBehaviour
         
         // Reset Venus mode flag
         venusAtmosphere = false;
+        
+        // Decrement shared texture reference count and cleanup if no longer needed
+        if (sharedTextureRefCount > 0)
+        {
+            sharedTextureRefCount--;
+            if (sharedTextureRefCount <= 0)
+            {
+                if (sharedCloudTexture != null)
+                {
+                    if (Application.isPlaying)
+                        Destroy(sharedCloudTexture);
+                    else
+                        DestroyImmediate(sharedCloudTexture);
+                    sharedCloudTexture = null;
+                }
+                if (sharedVenusTexture != null)
+                {
+                    if (Application.isPlaying)
+                        Destroy(sharedVenusTexture);
+                    else
+                        DestroyImmediate(sharedVenusTexture);
+                    sharedVenusTexture = null;
+                }
+                sharedTextureRefCount = 0;
+            }
+        }
     }
     
     void OnDestroy()
