@@ -31,6 +31,16 @@ public static class BiomeTerrainGeneratorFactory
         return generator;
     }
     
+    /// <summary>
+    /// Create a MoonTerrainGenerator configured for a specific body type
+    /// </summary>
+    private static MoonTerrainGenerator CreateMoonGenerator(MoonBodyType bodyType)
+    {
+        MoonTerrainGenerator generator = new MoonTerrainGenerator();
+        generator.ConfigureForBody(bodyType);
+        return generator;
+    }
+    
     private static IBiomeTerrainGenerator CreateGenerator(Biome biome)
     {
         return biome switch
@@ -81,22 +91,22 @@ public static class BiomeTerrainGeneratorFactory
             Biome.River => new OceanTerrainGenerator(),
             
             // === PLANET-SPECIFIC BIOMES ===
-            // Mars
+            // Mars (desert-like with canyons)
             Biome.MartianRegolith => new DesertTerrainGenerator(),
             Biome.MartianDunes => new DesertTerrainGenerator(),
             Biome.MartianCanyon => new MountainTerrainGenerator(),
             Biome.MartianPolarIce => new IceTerrainGenerator(),
             
-            // Venus
+            // Venus (volcanic/desert)
             Biome.VenusLava => new MountainTerrainGenerator(),
             Biome.VenusianPlains => new DesertTerrainGenerator(),
             Biome.VenusHighlands => new MountainTerrainGenerator(),
             
-            // Mercury
-            Biome.MercuryCraters => new MountainTerrainGenerator(),
-            Biome.MercuryBasalt => new DesertTerrainGenerator(),
-            Biome.MercuryScarp => new MountainTerrainGenerator(),
-            Biome.MercurianIce => new IceTerrainGenerator(),
+            // === MERCURY - Cratered Moon-like terrain ===
+            Biome.MercuryCraters => CreateMoonGenerator(MoonBodyType.Mercury),
+            Biome.MercuryBasalt => CreateMoonGenerator(MoonBodyType.Mercury),
+            Biome.MercuryScarp => CreateMoonGenerator(MoonBodyType.Mercury),
+            Biome.MercurianIce => CreateMoonGenerator(MoonBodyType.Mercury),
             
             // Gas Giants (flat cloud layers)
             Biome.JovianClouds => new OceanTerrainGenerator(),
@@ -109,19 +119,27 @@ public static class BiomeTerrainGeneratorFactory
             Biome.NeptuneIce => new IceTerrainGenerator(),
             Biome.NeptuneSurface => new OceanTerrainGenerator(),
             
-            // Dwarf Planets & Moons
-            Biome.PlutoCryo => new IceTerrainGenerator(),
-            Biome.PlutoTholins => new DesertTerrainGenerator(),
-            Biome.PlutoMountains => new MountainTerrainGenerator(),
-            Biome.TitanLakes => new OceanTerrainGenerator(),
-            Biome.TitanDunes => new DesertTerrainGenerator(),
-            Biome.TitanIce => new IceTerrainGenerator(),
-            Biome.EuropaIce => new IceTerrainGenerator(),
-            Biome.EuropaRidges => new IceTerrainGenerator(),
-            Biome.IoVolcanic => new MountainTerrainGenerator(),
-            Biome.IoSulfur => new DesertTerrainGenerator(),
-            Biome.MoonDunes => new DesertTerrainGenerator(),
-            Biome.MoonCaves => new MountainTerrainGenerator(),
+            // === PLUTO - Cratered icy dwarf planet ===
+            Biome.PlutoCryo => CreateMoonGenerator(MoonBodyType.Pluto),
+            Biome.PlutoTholins => CreateMoonGenerator(MoonBodyType.Pluto),
+            Biome.PlutoMountains => CreateMoonGenerator(MoonBodyType.Pluto),
+            
+            // === TITAN - Moon with atmosphere and lakes ===
+            Biome.TitanLakes => new OceanTerrainGenerator(), // Keep ocean for liquid methane lakes
+            Biome.TitanDunes => CreateMoonGenerator(MoonBodyType.Titan),
+            Biome.TitanIce => CreateMoonGenerator(MoonBodyType.Titan),
+            
+            // === EUROPA - Icy moon with ridges ===
+            Biome.EuropaIce => CreateMoonGenerator(MoonBodyType.Europa),
+            Biome.EuropaRidges => CreateMoonGenerator(MoonBodyType.Europa),
+            
+            // === IO - Volcanic moon ===
+            Biome.IoVolcanic => CreateMoonGenerator(MoonBodyType.Io),
+            Biome.IoSulfur => CreateMoonGenerator(MoonBodyType.Io),
+            
+            // === EARTH'S MOON - Classic lunar terrain ===
+            Biome.MoonDunes => CreateMoonGenerator(MoonBodyType.EarthMoon),
+            Biome.MoonCaves => CreateMoonGenerator(MoonBodyType.EarthMoon),
             
             // Special
             Biome.Steam => new SwampTerrainGenerator(), // Steam vents in flat areas

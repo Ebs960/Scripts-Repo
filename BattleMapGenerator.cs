@@ -57,6 +57,18 @@ public class BattleMapGenerator : MonoBehaviour
     [Header("Grass")]
     [Tooltip("Optional grass spawner for battlefield grass. Assign in inspector if you want grass.")]
     public BattlefieldGrassSpawner grassSpawner;
+    
+    [Header("Clouds")]
+    [Tooltip("Optional cloud spawner for atmospheric clouds. Assign in inspector if you want clouds.")]
+    public BattlefieldClouds cloudSpawner;
+    
+    [Header("Ambient Particles")]
+    [Tooltip("Optional particle spawner for atmospheric particles (dust, ash, pollen, etc). Assign in inspector if you want ambient particles.")]
+    public BattlefieldAmbientParticles ambientParticles;
+    
+    [Header("Atmosphere (HDRP-like Effects)")]
+    [Tooltip("Optional atmosphere system for volumetric fog, light shafts, and atmospheric scattering. Assign in inspector for cinematic visuals.")]
+    public BattlefieldAtmosphere atmosphere;
 
     [Header("Spawn Points")]
     [Tooltip("Distance between attacker and defender spawn points")]
@@ -164,6 +176,71 @@ public class BattleMapGenerator : MonoBehaviour
         
         // Spawn battlefield grass if we have a grass spawner or prefab
         SpawnBattlefieldGrass();
+        
+        // Spawn atmospheric clouds if we have a cloud spawner
+        SpawnBattlefieldClouds();
+        
+        // Spawn ambient particles (dust, ash, pollen, etc.)
+        SpawnAmbientParticles();
+        
+        // Create atmosphere effects (volumetric fog, light shafts, etc.)
+        SpawnAtmosphereEffects();
+    }
+    
+    /// <summary>
+    /// Spawn ambient particles (dust, ash, pollen, etc.) using BattlefieldAmbientParticles (if assigned)
+    /// </summary>
+    private void SpawnAmbientParticles()
+    {
+        if (ambientParticles == null)
+        {
+            return;
+        }
+        
+        // Create particles with biome-appropriate settings
+        ambientParticles.CreateParticles(mapSize, primaryBattleBiome);
+        
+        // Sync wind direction with grass if available
+        if (grassSpawner != null)
+        {
+            ambientParticles.SetWindDirection(grassSpawner.windDirection);
+        }
+    }
+    
+    /// <summary>
+    /// Spawn atmosphere effects (volumetric fog, light shafts, etc.) using BattlefieldAtmosphere (if assigned)
+    /// </summary>
+    private void SpawnAtmosphereEffects()
+    {
+        if (atmosphere == null)
+        {
+            return;
+        }
+        
+        // Create atmosphere with biome-appropriate settings
+        atmosphere.CreateAtmosphere(mapSize, primaryBattleBiome);
+    }
+    
+    /// <summary>
+    /// Spawn clouds above the battlefield using BattlefieldClouds (if assigned)
+    /// </summary>
+    private void SpawnBattlefieldClouds()
+    {
+        // Only spawn clouds if a cloud spawner is assigned in the inspector
+        if (cloudSpawner == null)
+        {
+            // No cloud spawner assigned - that's fine, clouds are optional
+            return;
+        }
+        
+        // Create clouds with biome-appropriate settings
+        cloudSpawner.CreateClouds(mapSize, primaryBattleBiome);
+        
+        // Sync wind direction with grass if both exist
+        if (grassSpawner != null)
+        {
+            cloudSpawner.SetWindDirection(grassSpawner.windDirection);
+        }
     }
     
     /// <summary>
@@ -239,6 +316,15 @@ public class BattleMapGenerator : MonoBehaviour
         UnityEngine.TerrainData terrainData = new UnityEngine.TerrainData();
         int resolution = CalculateOptimalResolution();
         terrainData.heightmapResolution = resolution;
+        
+        // CRITICAL: Set alphamapResolution BEFORE setting size
+        // This determines the resolution of texture painting (splatmaps)
+        // Default is tiny (16x16), causing texture to only appear in corner!
+        terrainData.alphamapResolution = resolution;
+        
+        // Also set baseMapResolution for distance rendering
+        terrainData.baseMapResolution = Mathf.Min(1024, resolution);
+        
         terrainData.size = new Vector3(mapSize, heightVariation, mapSize);
         
         // Get biome-specific generator

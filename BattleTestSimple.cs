@@ -3371,6 +3371,16 @@ public class FormationUnit : MonoBehaviour
     private const float SOLDIER_COMBAT_SEPARATION = 0.8f;
     private const float MIN_UNIT_SEPARATION = 1.2f; // Minimum distance between units to prevent overlap (buffer zone)
     
+    // Combat micro-movement constants (for natural fighting)
+    private const float ATTACK_LUNGE_DISTANCE = 0.4f;     // How far to lunge forward during attack
+    private const float ATTACK_LUNGE_DURATION = 0.15f;    // Duration of lunge forward
+    private const float ATTACK_RECOVERY_DURATION = 0.25f; // Duration of stepping back after attack
+    private const float HIT_RECOIL_DISTANCE = 0.25f;      // How far to recoil when hit
+    private const float HIT_RECOIL_DURATION = 0.1f;       // Duration of hit recoil
+    private const float COMBAT_IDLE_SWAY_AMOUNT = 0.15f;  // Random sway during combat idle
+    private const float COMBAT_CIRCLE_CHANCE = 0.15f;     // Chance to circle/reposition during combat
+    private const float COMBAT_CIRCLE_DISTANCE = 0.3f;    // Distance to circle strafe
+    
     // Badge refresh timer (avoid updating UI text every frame)
     private float badgeUpdateTimer = 0f;
     private const float BADGE_UPDATE_INTERVAL = 0.5f;
@@ -5775,6 +5785,7 @@ public class FormationUnit : MonoBehaviour
     
     /// <summary>
     /// Staggered attack coroutine - creates wave effect across formation
+    /// Enhanced with micro-movement for natural combat feel
     /// </summary>
     System.Collections.IEnumerator StaggeredAttack(CombatUnit attacker, CombatUnit defender, float delay, FormationUnit attackerFormation, FormationUnit defenderFormation)
     {
@@ -5820,6 +5831,14 @@ public class FormationUnit : MonoBehaviour
         // IsAttacking bool will be automatically set to true in CombatUnit.Update() -> UpdateAttackingAnimation()
         attacker.battleState = BattleUnitState.Attacking;
         defender.battleState = BattleUnitState.Attacking;
+        
+        // === COMBAT MICRO-MOVEMENT: Attack Lunge ===
+        // Attacker lunges forward during attack for natural feel
+        if (attacker != null && attacker.gameObject != null)
+        {
+            Vector3 lungeDirection = attackerToDefender.normalized;
+            StartCoroutine(CombatLunge(attacker.gameObject, lungeDirection, ATTACK_LUNGE_DISTANCE, ATTACK_LUNGE_DURATION));
+        }
         
         // Hit animation will play when ApplyDamage is called (defender gets hit)
         // No need to trigger Attack - IsAttacking bool handles it automatically
@@ -5880,6 +5899,23 @@ public class FormationUnit : MonoBehaviour
             ApplyKnockback(defender.gameObject, attacker.gameObject.transform.position, 0.3f);
         }
         
+        // === COMBAT MICRO-MOVEMENT: Hit Recoil ===
+        // Defender recoils when hit (smaller movement than knockback)
+        if (defender != null && defender.gameObject != null && finalDmgAB > 0)
+        {
+            Vector3 recoilDir = (defender.transform.position - attacker.transform.position).normalized;
+            recoilDir.y = 0;
+            StartCoroutine(CombatRecoil(defender.gameObject, recoilDir, HIT_RECOIL_DISTANCE, HIT_RECOIL_DURATION));
+        }
+        
+        // === COMBAT MICRO-MOVEMENT: Attacker Recovery Step-Back ===
+        // After attacking, step back slightly to reset stance
+        if (attacker != null && attacker.gameObject != null)
+        {
+            Vector3 recoveryDir = -attackerToDefender.normalized;
+            StartCoroutine(CombatRecoveryStepBack(attacker.gameObject, recoveryDir, ATTACK_LUNGE_DISTANCE * 0.7f, ATTACK_RECOVERY_DURATION));
+        }
+        
         // Gain experience from dealing damage
         if (finalDmgAB > 0)
         {
@@ -5936,6 +5972,13 @@ public class FormationUnit : MonoBehaviour
             // Set defender to attacking state so animation plays
             defender.battleState = BattleUnitState.Attacking;
             
+            // === COMBAT MICRO-MOVEMENT: Counter-Attack Lunge ===
+            if (defender != null && defender.gameObject != null)
+            {
+                Vector3 counterLungeDir = counterDefenderToAttacker.normalized;
+                StartCoroutine(CombatLunge(defender.gameObject, counterLungeDir, ATTACK_LUNGE_DISTANCE, ATTACK_LUNGE_DURATION));
+            }
+            
             int baseDmgBA = Mathf.Max(0, defender.CurrentAttack - attacker.CurrentDefense);
             
             // Apply flanking bonus for counter-attack
@@ -5964,6 +6007,21 @@ public class FormationUnit : MonoBehaviour
             if (finalDmgBA > 5) // Heavy hit threshold
             {
                 ApplyKnockback(attacker.gameObject, defender.gameObject.transform.position, 0.3f);
+            }
+            
+            // === COMBAT MICRO-MOVEMENT: Counter-Attack Hit Recoil ===
+            if (attacker != null && attacker.gameObject != null && finalDmgBA > 0)
+            {
+                Vector3 counterRecoilDir = (attacker.transform.position - defender.transform.position).normalized;
+                counterRecoilDir.y = 0;
+                StartCoroutine(CombatRecoil(attacker.gameObject, counterRecoilDir, HIT_RECOIL_DISTANCE, HIT_RECOIL_DURATION));
+            }
+            
+            // === COMBAT MICRO-MOVEMENT: Defender Recovery Step-Back ===
+            if (defender != null && defender.gameObject != null)
+            {
+                Vector3 defRecoveryDir = -counterDefenderToAttacker.normalized;
+                StartCoroutine(CombatRecoveryStepBack(defender.gameObject, defRecoveryDir, ATTACK_LUNGE_DISTANCE * 0.7f, ATTACK_RECOVERY_DURATION));
             }
             
             // Gain experience from dealing damage
@@ -6090,6 +6148,130 @@ public class FormationUnit : MonoBehaviour
             Vector3 finalPos = Ground(targetPos);
             finalPos = ClampFormationToBattlefieldBounds(finalPos);
             unit.transform.position = finalPos;
+        }
+    }
+    
+    /// <summary>
+    /// Combat micro-movement: Lunge forward during attack
+    /// Quick forward step that snaps back
+    /// </summary>
+    System.Collections.IEnumerator CombatLunge(GameObject unit, Vector3 direction, float distance, float duration)
+    {
+        if (unit == null) yield break;
+        
+        Vector3 startPos = unit.transform.position;
+        Vector3 lungeTarget = startPos + direction * distance;
+        lungeTarget = ClampFormationToBattlefieldBounds(lungeTarget);
+        
+        float elapsed = 0f;
+        
+        // Quick lunge forward (ease out for snappy feel)
+        while (elapsed < duration && unit != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = 1f - Mathf.Pow(1f - t, 2f); // Quadratic ease out
+            
+            Vector3 currentPos = Vector3.Lerp(startPos, lungeTarget, t);
+            unit.transform.position = Ground(currentPos);
+            yield return null;
+        }
+    }
+    
+    /// <summary>
+    /// Combat micro-movement: Recoil when hit
+    /// Small stagger backwards
+    /// </summary>
+    System.Collections.IEnumerator CombatRecoil(GameObject unit, Vector3 direction, float distance, float duration)
+    {
+        if (unit == null) yield break;
+        
+        Vector3 startPos = unit.transform.position;
+        Vector3 recoilTarget = startPos + direction * distance;
+        recoilTarget = ClampFormationToBattlefieldBounds(recoilTarget);
+        
+        float elapsed = 0f;
+        
+        // Quick recoil (ease out for natural deceleration)
+        while (elapsed < duration && unit != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = 1f - Mathf.Pow(1f - t, 3f); // Cubic ease out
+            
+            Vector3 currentPos = Vector3.Lerp(startPos, recoilTarget, t);
+            unit.transform.position = Ground(currentPos);
+            yield return null;
+        }
+    }
+    
+    /// <summary>
+    /// Combat micro-movement: Step back after attack to reset stance
+    /// Slower, more deliberate movement back to ready position
+    /// </summary>
+    System.Collections.IEnumerator CombatRecoveryStepBack(GameObject unit, Vector3 direction, float distance, float duration)
+    {
+        if (unit == null) yield break;
+        
+        // Small delay before stepping back (wind-down from attack)
+        yield return new WaitForSeconds(0.05f);
+        
+        if (unit == null) yield break;
+        
+        Vector3 startPos = unit.transform.position;
+        Vector3 recoveryTarget = startPos + direction * distance;
+        recoveryTarget = ClampFormationToBattlefieldBounds(recoveryTarget);
+        
+        float elapsed = 0f;
+        
+        // Smooth step back (ease in-out for deliberate feel)
+        while (elapsed < duration && unit != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f; // Ease in-out
+            
+            Vector3 currentPos = Vector3.Lerp(startPos, recoveryTarget, t);
+            unit.transform.position = Ground(currentPos);
+            yield return null;
+        }
+        
+        // Random chance to do a small sidestep/circle (combat repositioning)
+        if (unit != null && Random.value < COMBAT_CIRCLE_CHANCE)
+        {
+            yield return CombatCircleStep(unit, direction);
+        }
+    }
+    
+    /// <summary>
+    /// Combat micro-movement: Small sidestep to reposition during combat
+    /// Creates more dynamic, circling combat feel
+    /// </summary>
+    System.Collections.IEnumerator CombatCircleStep(GameObject unit, Vector3 forwardDirection)
+    {
+        if (unit == null) yield break;
+        
+        // Random left or right
+        Vector3 sideDirection = Random.value > 0.5f 
+            ? Vector3.Cross(forwardDirection, Vector3.up).normalized 
+            : Vector3.Cross(Vector3.up, forwardDirection).normalized;
+        
+        Vector3 startPos = unit.transform.position;
+        Vector3 sideTarget = startPos + sideDirection * COMBAT_CIRCLE_DISTANCE;
+        sideTarget = ClampFormationToBattlefieldBounds(sideTarget);
+        
+        float duration = 0.2f;
+        float elapsed = 0f;
+        
+        while (elapsed < duration && unit != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = t * t * (3f - 2f * t); // Smoothstep
+            
+            Vector3 currentPos = Vector3.Lerp(startPos, sideTarget, t);
+            unit.transform.position = Ground(currentPos);
+            yield return null;
         }
     }
     
@@ -6775,25 +6957,15 @@ public class FormationUnit : MonoBehaviour
             maxSoldierCount = this.maxSoldierCount;
         }
         
-        // Build badge text with soldier count, fatigue and optional ammo (using StringBuilder to avoid allocations)
-        System.Text.StringBuilder sb = new System.Text.StringBuilder(256); // Pre-allocate capacity
+        // Build badge text with soldier count (simplified format as requested)
+        System.Text.StringBuilder sb = new System.Text.StringBuilder(128); // Pre-allocate capacity
         sb.Append(formationName);
-        sb.Append("\nUnits ");
-        sb.Append(alive);
-        sb.Append("/");
-        sb.Append(soldiers.Count);
-        sb.Append(" | Soldiers ");
+        sb.Append("\n");
         sb.Append(currentSoldierCount);
         sb.Append("/");
         sb.Append(maxSoldierCount);
-        sb.Append("\nHP ");
-        sb.Append(currentHp);
-        sb.Append("/");
-        sb.Append(totalHp);
         sb.Append(" | Morale ");
         sb.Append(morale);
-        sb.Append("% | Fatigue ");
-        sb.Append(avgFatigue);
         sb.Append("%");
         
         if (isRangedFormation)

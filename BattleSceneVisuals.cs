@@ -53,6 +53,34 @@ public class BattleSceneVisuals : MonoBehaviour
     [Tooltip("Enable depth of field (subtle for RTS games)")]
     public bool enableDOF = false;
     
+    [Header("Cinematic Effects")]
+    [Tooltip("Enable subtle film grain for cinematic feel")]
+    public bool enableFilmGrain = true;
+    [Range(0f, 1f)]
+    public float filmGrainIntensity = 0.15f;
+    
+    [Tooltip("Enable chromatic aberration (lens distortion at edges)")]
+    public bool enableChromaticAberration = true;
+    [Range(0f, 1f)]
+    public float chromaticAberrationIntensity = 0.1f;
+    
+    [Tooltip("Enable motion blur (can affect gameplay visibility)")]
+    public bool enableMotionBlur = false;
+    [Range(0f, 1f)]
+    public float motionBlurIntensity = 0.3f;
+    
+    [Tooltip("Enable split toning for cinematic color grading")]
+    public bool enableSplitToning = true;
+    public Color shadowsTint = new Color(0.2f, 0.3f, 0.4f); // Cool shadows
+    public Color highlightsTint = new Color(1f, 0.95f, 0.85f); // Warm highlights
+    [Range(0f, 100f)]
+    public float splitToningBalance = 0f;
+    
+    [Tooltip("Enable lens distortion (barrel/pincushion)")]
+    public bool enableLensDistortion = false;
+    [Range(-1f, 1f)]
+    public float lensDistortionIntensity = -0.1f;
+    
     [Header("Fog Settings")]
     [Tooltip("Enable distance fog")]
     public bool enableFog = true;
@@ -72,6 +100,12 @@ public class BattleSceneVisuals : MonoBehaviour
     private ColorAdjustments colorAdjustments;
     private Vignette vignette;
     private DepthOfField depthOfField;
+    private FilmGrain filmGrain;
+    private ChromaticAberration chromaticAberration;
+    private MotionBlur motionBlur;
+    private SplitToning splitToning;
+    private LensDistortion lensDistortion;
+    private Tonemapping tonemapping;
     
     void Start()
     {
@@ -218,14 +252,77 @@ public class BattleSceneVisuals : MonoBehaviour
         }
         
         // Configure Tonemapping for HDR
-        if (!volumeProfile.TryGet(out Tonemapping tonemapping))
+        if (!volumeProfile.TryGet(out tonemapping))
         {
             tonemapping = volumeProfile.Add<Tonemapping>(true);
         }
         tonemapping.active = true;
         tonemapping.mode.Override(TonemappingMode.ACES); // Film-like tonemapping
         
-        Debug.Log("[BattleSceneVisuals] Post-processing configured with AAA effects");
+        // === CINEMATIC EFFECTS ===
+        
+        // Configure Film Grain (subtle cinematic texture)
+        if (enableFilmGrain)
+        {
+            if (!volumeProfile.TryGet(out filmGrain))
+            {
+                filmGrain = volumeProfile.Add<FilmGrain>(true);
+            }
+            filmGrain.active = true;
+            filmGrain.type.Override(FilmGrainLookup.Medium1);
+            filmGrain.intensity.Override(filmGrainIntensity);
+            filmGrain.response.Override(0.8f);
+        }
+        
+        // Configure Chromatic Aberration (lens edge distortion)
+        if (enableChromaticAberration)
+        {
+            if (!volumeProfile.TryGet(out chromaticAberration))
+            {
+                chromaticAberration = volumeProfile.Add<ChromaticAberration>(true);
+            }
+            chromaticAberration.active = true;
+            chromaticAberration.intensity.Override(chromaticAberrationIntensity);
+        }
+        
+        // Configure Motion Blur (optional - can affect gameplay)
+        if (enableMotionBlur)
+        {
+            if (!volumeProfile.TryGet(out motionBlur))
+            {
+                motionBlur = volumeProfile.Add<MotionBlur>(true);
+            }
+            motionBlur.active = true;
+            motionBlur.intensity.Override(motionBlurIntensity);
+            motionBlur.quality.Override(MotionBlurQuality.High);
+        }
+        
+        // Configure Split Toning (cinematic color separation)
+        if (enableSplitToning)
+        {
+            if (!volumeProfile.TryGet(out splitToning))
+            {
+                splitToning = volumeProfile.Add<SplitToning>(true);
+            }
+            splitToning.active = true;
+            splitToning.shadows.Override(shadowsTint);
+            splitToning.highlights.Override(highlightsTint);
+            splitToning.balance.Override(splitToningBalance);
+        }
+        
+        // Configure Lens Distortion (barrel/pincushion effect)
+        if (enableLensDistortion)
+        {
+            if (!volumeProfile.TryGet(out lensDistortion))
+            {
+                lensDistortion = volumeProfile.Add<LensDistortion>(true);
+            }
+            lensDistortion.active = true;
+            lensDistortion.intensity.Override(lensDistortionIntensity);
+            lensDistortion.scale.Override(1f);
+        }
+        
+        Debug.Log("[BattleSceneVisuals] Post-processing configured with AAA + cinematic effects");
     }
     
     /// <summary>

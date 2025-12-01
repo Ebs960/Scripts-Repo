@@ -2,11 +2,13 @@ using UnityEngine;
 
 /// <summary>
 /// Terrain generator for Plains biome
-/// Creates rolling hills with gentle slopes
+/// Creates rolling hills with gentle slopes using advanced FastNoiseLite fBm
 /// </summary>
 public class PlainsTerrainGenerator : IBiomeTerrainGenerator
 {
     private BiomeNoiseProfile noiseProfile;
+    private BattleTerrainNoiseSystem noiseSystem;
+    private BiomeTerrainSettings terrainSettings;
     
     public PlainsTerrainGenerator()
     {
@@ -26,6 +28,9 @@ public class PlainsTerrainGenerator : IBiomeTerrainGenerator
             useErosion = true,
             erosionStrength = 0.4f
         };
+        
+        // Use the new advanced terrain settings
+        terrainSettings = BiomeTerrainSettings.CreatePlains();
     }
     
     public void Generate(Terrain terrain, float elevation, float moisture, float temperature, float mapSize)
@@ -36,7 +41,17 @@ public class PlainsTerrainGenerator : IBiomeTerrainGenerator
         int resolution = terrainData.heightmapResolution;
         float[,] heights = new float[resolution, resolution];
         
-        // Generate heightmap using layered Perlin noise
+        // Initialize noise system with random seed for variety
+        noiseSystem = new BattleTerrainNoiseSystem(Random.Range(1, 100000));
+        
+        // Adjust settings based on elevation/moisture
+        terrainSettings.baseElevation = elevation * 0.3f;
+        terrainSettings.heightScale = 0.5f + elevation * 0.3f;
+        
+        // More moisture = more valleys (water erosion)
+        terrainSettings.valleyWeight = 0.1f + moisture * 0.2f;
+        
+        // Generate heightmap using advanced noise system
         for (int y = 0; y < resolution; y++)
         {
             for (int x = 0; x < resolution; x++)
@@ -44,63 +59,45 @@ public class PlainsTerrainGenerator : IBiomeTerrainGenerator
                 float worldX = (x / (float)resolution) * mapSize;
                 float worldZ = (y / (float)resolution) * mapSize;
                 
-                // Base height from elevation
-                float height = elevation * noiseProfile.baseHeight;
-                
-                // Add layered noise for rolling hills
-                float noiseValue = GenerateLayeredNoise(worldX, worldZ, noiseProfile);
-                
-                // Apply hilliness
-                height += noiseValue * noiseProfile.hilliness * noiseProfile.maxHeightVariation;
-                
-                // Normalize to 0-1 range
-                height = Mathf.Clamp01(height / noiseProfile.maxHeightVariation);
+                // Get height from advanced noise system
+                float height = noiseSystem.GetTerrainHeight(worldX, worldZ, terrainSettings);
                 
                 heights[y, x] = height;
             }
         }
         
-        // Apply erosion if enabled
-        if (noiseProfile.useErosion)
-        {
-            ApplyErosion(heights, resolution, noiseProfile.erosionStrength);
-        }
+        // Apply erosion pass
+        ApplyErosion(heights, resolution, moisture);
         
         // Set heights
         terrainData.SetHeights(0, 0, heights);
     }
     
-    private float GenerateLayeredNoise(float x, float z, BiomeNoiseProfile profile)
+    private void ApplyErosion(float[,] heights, int resolution, float moisture)
     {
-        float value = 0f;
-        float amplitude = 1f;
-        float frequency = profile.noiseScale;
+        // Multi-pass erosion for smoother terrain
+        int passes = 2;
+        float strength = noiseProfile.erosionStrength * (1f + moisture * 0.5f);
         
-        for (int i = 0; i < profile.octaves; i++)
+        for (int pass = 0; pass < passes; pass++)
         {
-            value += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
-            frequency *= profile.lacunarity;
-            amplitude *= profile.persistence;
-        }
-        
-        // Normalize to -1 to 1 range
-        float maxValue = (1f - Mathf.Pow(profile.persistence, profile.octaves)) / (1f - profile.persistence);
-        return (value / maxValue) * 2f - 1f;
-    }
-    
-    private void ApplyErosion(float[,] heights, int resolution, float strength)
-    {
-        // Simple erosion: flatten low areas slightly
-        for (int y = 1; y < resolution - 1; y++)
-        {
-            for (int x = 1; x < resolution - 1; x++)
+            for (int y = 1; y < resolution - 1; y++)
             {
-                float avg = (heights[y, x] + heights[y - 1, x] + heights[y + 1, x] + 
-                            heights[y, x - 1] + heights[y, x + 1]) / 5f;
-                
-                if (heights[y, x] < avg)
+                for (int x = 1; x < resolution - 1; x++)
                 {
-                    heights[y, x] = Mathf.Lerp(heights[y, x], avg, strength * 0.5f);
+                    // Calculate slope
+                    float slope = noiseSystem.CalculateSlope(heights, x, y, resolution);
+                    
+                    // Average with neighbors
+                    float avg = (heights[y, x] + heights[y - 1, x] + heights[y + 1, x] + 
+                                heights[y, x - 1] + heights[y, x + 1]) / 5f;
+                    
+                    // Flatten low areas and steep slopes
+                    if (heights[y, x] < avg || slope > 0.3f)
+                    {
+                        float erosionAmount = strength * (1f - Mathf.Clamp01(slope * 2f));
+                        heights[y, x] = Mathf.Lerp(heights[y, x], avg, erosionAmount * 0.3f);
+                    }
                 }
             }
         }

@@ -2,11 +2,13 @@ using UnityEngine;
 
 /// <summary>
 /// Terrain generator for Swamp/Marsh biomes
-/// Creates very flat terrain with occasional depressions (water areas)
+/// Creates very flat terrain with water pockets using cellular noise
 /// </summary>
 public class SwampTerrainGenerator : IBiomeTerrainGenerator
 {
     private BiomeNoiseProfile noiseProfile;
+    private BattleTerrainNoiseSystem noiseSystem;
+    private BiomeTerrainSettings terrainSettings;
     
     public SwampTerrainGenerator()
     {
@@ -24,8 +26,11 @@ public class SwampTerrainGenerator : IBiomeTerrainGenerator
             mountainThreshold = 0.3f,
             maxHeightVariation = 2f,
             useErosion = true,
-            erosionStrength = 0.7f // Strong erosion for flat swamps
+            erosionStrength = 0.7f
         };
+        
+        // Use advanced swamp terrain settings
+        terrainSettings = BiomeTerrainSettings.CreateSwamp();
     }
     
     public void Generate(Terrain terrain, float elevation, float moisture, float temperature, float mapSize)
@@ -36,6 +41,15 @@ public class SwampTerrainGenerator : IBiomeTerrainGenerator
         int resolution = terrainData.heightmapResolution;
         float[,] heights = new float[resolution, resolution];
         
+        // Initialize noise system
+        noiseSystem = new BattleTerrainNoiseSystem(Random.Range(1, 100000));
+        
+        // Adjust for moisture (more water pockets)
+        terrainSettings.baseElevation = elevation * 0.2f;
+        terrainSettings.valleyWeight = 0.4f + moisture * 0.3f;
+        terrainSettings.heightScale = 0.3f; // Very flat
+        
+        // Generate heightmap
         for (int y = 0; y < resolution; y++)
         {
             for (int x = 0; x < resolution; x++)
@@ -43,67 +57,86 @@ public class SwampTerrainGenerator : IBiomeTerrainGenerator
                 float worldX = (x / (float)resolution) * mapSize;
                 float worldZ = (y / (float)resolution) * mapSize;
                 
-                // Very flat base
-                float height = elevation * noiseProfile.baseHeight;
+                // Get base terrain height
+                float height = noiseSystem.GetTerrainHeight(worldX, worldZ, terrainSettings);
                 
-                // Add very subtle variation
-                float noiseValue = GenerateLayeredNoise(worldX, worldZ, noiseProfile);
-                height += noiseValue * noiseProfile.hilliness * noiseProfile.maxHeightVariation;
+                // Add water pockets using cellular noise (biome mask)
+                float waterPocket = AddWaterPockets(worldX, worldZ, moisture);
+                height -= waterPocket;
                 
-                // Create occasional depressions (water areas) based on moisture
-                if (moisture > 0.6f)
-                {
-                    float depressionNoise = Mathf.PerlinNoise(worldX * 0.02f, worldZ * 0.02f);
-                    if (depressionNoise < 0.3f) // 30% chance of depression
-                    {
-                        height -= (0.3f - depressionNoise) * 0.5f; // Create shallow depressions
-                    }
-                }
+                // Add mud mounds and islets
+                float moundNoise = AddMudMounds(worldX, worldZ);
+                height += moundNoise * 0.1f;
                 
-                height = Mathf.Clamp01(height / noiseProfile.maxHeightVariation);
-                heights[y, x] = height;
+                heights[y, x] = Mathf.Clamp01(height);
             }
         }
         
-        // Strong erosion for flat swamps
-        if (noiseProfile.useErosion)
-        {
-            ApplyErosion(heights, resolution, noiseProfile.erosionStrength);
-        }
+        // Apply heavy smoothing for flat swamp
+        ApplySwampSmoothing(heights, resolution);
         
         terrainData.SetHeights(0, 0, heights);
     }
     
-    private float GenerateLayeredNoise(float x, float z, BiomeNoiseProfile profile)
+    /// <summary>
+    /// Add water pocket depressions using cellular noise
+    /// </summary>
+    private float AddWaterPockets(float x, float z, float moisture)
     {
-        float value = 0f;
-        float amplitude = 1f;
-        float frequency = profile.noiseScale;
+        // Use cellular noise for natural-looking pools
+        float cellNoise = noiseSystem.GetBiomeMask(x, z, 1.5f);
         
-        for (int i = 0; i < profile.octaves; i++)
+        // Create pools where cellular value is low
+        float poolThreshold = 0.3f + (1f - moisture) * 0.2f;
+        
+        if (cellNoise < poolThreshold)
         {
-            value += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
-            frequency *= profile.lacunarity;
-            amplitude *= profile.persistence;
+            // Deeper pools in center, shallower at edges
+            float poolDepth = (poolThreshold - cellNoise) / poolThreshold;
+            poolDepth = poolDepth * poolDepth * 0.15f; // Max 15% depth
+            return poolDepth;
         }
         
-        float maxValue = (1f - Mathf.Pow(profile.persistence, profile.octaves)) / (1f - profile.persistence);
-        return (value / maxValue) * 2f - 1f;
+        return 0f;
     }
     
-    private void ApplyErosion(float[,] heights, int resolution, float strength)
+    /// <summary>
+    /// Add small mud mounds and islets
+    /// </summary>
+    private float AddMudMounds(float x, float z)
     {
-        // Multiple passes for very flat terrain
-        for (int pass = 0; pass < 3; pass++)
+        // Small-scale cellular noise for mounds
+        float featureNoise = noiseSystem.GetFeatureMask(x, z, 2f);
+        
+        // Only add mounds at peaks
+        if (featureNoise > 0.7f)
+        {
+            return (featureNoise - 0.7f) / 0.3f;
+        }
+        
+        return 0f;
+    }
+    
+    /// <summary>
+    /// Apply heavy smoothing for flat swamp terrain
+    /// </summary>
+    private void ApplySwampSmoothing(float[,] heights, int resolution)
+    {
+        // Multiple passes of heavy smoothing
+        for (int pass = 0; pass < 4; pass++)
         {
             for (int y = 1; y < resolution - 1; y++)
             {
                 for (int x = 1; x < resolution - 1; x++)
                 {
-                    float avg = (heights[y, x] + heights[y - 1, x] + heights[y + 1, x] + 
-                                heights[y, x - 1] + heights[y, x + 1]) / 5f;
+                    // 9-point average for smoother results
+                    float sum = heights[y, x];
+                    sum += heights[y - 1, x] + heights[y + 1, x];
+                    sum += heights[y, x - 1] + heights[y, x + 1];
+                    sum += heights[y - 1, x - 1] + heights[y - 1, x + 1];
+                    sum += heights[y + 1, x - 1] + heights[y + 1, x + 1];
                     
-                    heights[y, x] = Mathf.Lerp(heights[y, x], avg, strength);
+                    heights[y, x] = Mathf.Lerp(heights[y, x], sum / 9f, 0.6f);
                 }
             }
         }

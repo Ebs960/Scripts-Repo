@@ -2,11 +2,13 @@ using UnityEngine;
 
 /// <summary>
 /// Terrain generator for Desert biome
-/// Creates sand dunes and flat areas
+/// Creates sand dunes and flat areas using advanced FastNoiseLite with domain warping
 /// </summary>
 public class DesertTerrainGenerator : IBiomeTerrainGenerator
 {
     private BiomeNoiseProfile noiseProfile;
+    private BattleTerrainNoiseSystem noiseSystem;
+    private BiomeTerrainSettings terrainSettings;
     
     public DesertTerrainGenerator()
     {
@@ -26,6 +28,9 @@ public class DesertTerrainGenerator : IBiomeTerrainGenerator
             useErosion = true,
             erosionStrength = 0.5f
         };
+        
+        // Use advanced desert terrain settings
+        terrainSettings = BiomeTerrainSettings.CreateDesert();
     }
     
     public void Generate(Terrain terrain, float elevation, float moisture, float temperature, float mapSize)
@@ -36,7 +41,15 @@ public class DesertTerrainGenerator : IBiomeTerrainGenerator
         int resolution = terrainData.heightmapResolution;
         float[,] heights = new float[resolution, resolution];
         
-        // Generate heightmap with gentle dunes
+        // Initialize noise system
+        noiseSystem = new BattleTerrainNoiseSystem(Random.Range(1, 100000));
+        
+        // Adjust for temperature (hotter = more wind-shaped dunes)
+        terrainSettings.domainWarpStrength = 30f + temperature * 20f;
+        terrainSettings.detailWeight = 0.3f + temperature * 0.2f;
+        terrainSettings.baseElevation = elevation * 0.25f;
+        
+        // Generate heightmap with wind-shaped dunes
         for (int y = 0; y < resolution; y++)
         {
             for (int x = 0; x < resolution; x++)
@@ -44,63 +57,55 @@ public class DesertTerrainGenerator : IBiomeTerrainGenerator
                 float worldX = (x / (float)resolution) * mapSize;
                 float worldZ = (y / (float)resolution) * mapSize;
                 
-                // Base height from elevation
-                float height = elevation * noiseProfile.baseHeight;
+                // Get base terrain height
+                float height = noiseSystem.GetTerrainHeight(worldX, worldZ, terrainSettings);
                 
-                // Add gentle dune noise
-                float noiseValue = GenerateLayeredNoise(worldX, worldZ, noiseProfile);
+                // Add extra dune-specific noise (directional for wind effect)
+                float duneNoise = AddDuneNoise(worldX, worldZ);
+                height += duneNoise * 0.15f;
                 
-                // Apply gentle hilliness for dunes
-                height += noiseValue * noiseProfile.hilliness * noiseProfile.maxHeightVariation;
-                
-                // Normalize to 0-1 range
-                height = Mathf.Clamp01(height / noiseProfile.maxHeightVariation);
-                
-                heights[y, x] = height;
+                heights[y, x] = Mathf.Clamp01(height);
             }
         }
         
-        // Apply erosion to create flatter areas
-        if (noiseProfile.useErosion)
-        {
-            ApplyErosion(heights, resolution, noiseProfile.erosionStrength);
-        }
+        // Apply wind erosion
+        ApplyWindErosion(heights, resolution);
         
         // Set heights
         terrainData.SetHeights(0, 0, heights);
     }
     
-    private float GenerateLayeredNoise(float x, float z, BiomeNoiseProfile profile)
+    /// <summary>
+    /// Add directional dune noise for wind-shaped sand dunes
+    /// </summary>
+    private float AddDuneNoise(float x, float z)
     {
-        float value = 0f;
-        float amplitude = 1f;
-        float frequency = profile.noiseScale;
+        // Wind direction bias (stretches dunes along wind direction)
+        float windAngle = 0.7f; // Radians
+        float stretchedX = x * Mathf.Cos(windAngle) - z * Mathf.Sin(windAngle);
+        float stretchedZ = (x * Mathf.Sin(windAngle) + z * Mathf.Cos(windAngle)) * 0.3f;
         
-        for (int i = 0; i < profile.octaves; i++)
-        {
-            value += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
-            frequency *= profile.lacunarity;
-            amplitude *= profile.persistence;
-        }
+        // Layered dune noise
+        float dune = Mathf.PerlinNoise(stretchedX * 0.05f, stretchedZ * 0.15f);
+        dune += Mathf.PerlinNoise(stretchedX * 0.1f, stretchedZ * 0.3f) * 0.5f;
         
-        // Normalize to -1 to 1 range
-        float maxValue = (1f - Mathf.Pow(profile.persistence, profile.octaves)) / (1f - profile.persistence);
-        return (value / maxValue) * 2f - 1f;
+        return dune - 0.5f; // Center around 0
     }
     
-    private void ApplyErosion(float[,] heights, int resolution, float strength)
+    private void ApplyWindErosion(float[,] heights, int resolution)
     {
-        // Strong erosion for flat desert areas
-        for (int y = 1; y < resolution - 1; y++)
+        // Wind erosion: smooth along wind direction, sharpen perpendicular
+        for (int pass = 0; pass < 2; pass++)
         {
-            for (int x = 1; x < resolution - 1; x++)
+            for (int y = 1; y < resolution - 1; y++)
             {
-                float avg = (heights[y, x] + heights[y - 1, x] + heights[y + 1, x] + 
-                            heights[y, x - 1] + heights[y, x + 1]) / 5f;
-                
-                if (heights[y, x] < avg)
+                for (int x = 1; x < resolution - 1; x++)
                 {
-                    heights[y, x] = Mathf.Lerp(heights[y, x], avg, strength);
+                    // Wind direction weighted average
+                    float windAvg = heights[y, x - 1] * 0.3f + heights[y, x] * 0.4f + heights[y, x + 1] * 0.3f;
+                    
+                    // Blend with wind-smoothed value
+                    heights[y, x] = Mathf.Lerp(heights[y, x], windAvg, 0.3f);
                 }
             }
         }
