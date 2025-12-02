@@ -131,8 +131,9 @@ Shader "Custom/PlanetAtmosphereURP"
                 
                 // ===== ATMOSPHERIC DEPTH =====
                 // Calculate how much atmosphere we're looking through
+                // _AtmosphereThickness controls the overall thickness multiplier
                 half viewAngle = saturate(dot(V, planetNormal));
-                half atmosphereDepth = pow(1.0 - viewAngle, _Falloff) * _Density;
+                half atmosphereDepth = pow(1.0 - viewAngle, _Falloff) * _Density * _AtmosphereThickness;
                 
                 // ===== DAY/NIGHT TRANSITION =====
                 // Determine if this part of atmosphere is facing sun

@@ -114,7 +114,7 @@ public class GPUInstancedGrass : MonoBehaviour
     private Mesh[] grassMeshes; // Multiple blade meshes for variety
     private Material grassMaterial;
     private List<List<Matrix4x4[]>> grassBatchesByType = new List<List<Matrix4x4[]>>(); // Per blade type
-    private List<Vector4[]> grassColorBatches = new List<Vector4[]>();
+    private List<Vector4[]> grassColorBatches = new List<Vector4[]>(); // Per-instance colors (NOTE: Currently unused - requires custom shader with per-instance color support)
     private MaterialPropertyBlock propertyBlock;
     private Terrain terrain;
     private Camera mainCamera;
@@ -655,10 +655,21 @@ public class GPUInstancedGrass : MonoBehaviour
     /// </summary>
     private void CreateGrassMaterial()
     {
-        // Try to find appropriate shader
+        // Try to find appropriate shader with fallbacks
         Shader grassShader = Shader.Find("Universal Render Pipeline/Lit");
         if (grassShader == null)
+        {
             grassShader = Shader.Find("Standard");
+        }
+        if (grassShader == null)
+        {
+            grassShader = Shader.Find("Unlit/Color");
+        }
+        if (grassShader == null)
+        {
+            Debug.LogError("[GPUInstancedGrass] No shader found! Grass will not render. Make sure URP or Standard shaders are available.");
+            return; // Cannot create material without shader
+        }
         
         grassMaterial = new Material(grassShader);
         grassMaterial.name = "GPUGrassMaterial";
@@ -666,15 +677,19 @@ public class GPUInstancedGrass : MonoBehaviour
         // Enable GPU instancing
         grassMaterial.enableInstancing = true;
         
-        // Set base color
-        grassMaterial.SetColor("_BaseColor", grassColorBase);
-        grassMaterial.SetColor("_Color", grassColorBase);
+        // Set base color (check property existence first)
+        if (grassMaterial.HasProperty("_BaseColor"))
+            grassMaterial.SetColor("_BaseColor", grassColorBase);
+        else if (grassMaterial.HasProperty("_Color"))
+            grassMaterial.SetColor("_Color", grassColorBase);
         
         // Disable shadows for performance (optional - can enable if needed)
-        grassMaterial.SetFloat("_Cutoff", 0.1f);
+        if (grassMaterial.HasProperty("_Cutoff"))
+            grassMaterial.SetFloat("_Cutoff", 0.1f);
         
         // Double-sided rendering
-        grassMaterial.SetFloat("_Cull", 0); // Off
+        if (grassMaterial.HasProperty("_Cull"))
+            grassMaterial.SetFloat("_Cull", 0); // Off
         
         // Set smoothness low for matte grass look
         if (grassMaterial.HasProperty("_Smoothness"))
@@ -989,10 +1004,15 @@ public class GPUInstancedGrass : MonoBehaviour
     {
         if (!isInitialized || grassMaterial == null) return;
         
-        // Update wind parameters
-        grassMaterial.SetFloat(WindStrengthID, windStrength);
-        grassMaterial.SetFloat(WindSpeedID, windSpeed);
-        grassMaterial.SetVector(WindDirectionID, windDirection.normalized);
+        // Update wind parameters (only if shader supports them)
+        // Note: Standard URP/Lit shaders don't have these properties by default
+        // These would need to be added via a custom shader for wind animation
+        if (grassMaterial.HasProperty(WindStrengthID))
+            grassMaterial.SetFloat(WindStrengthID, windStrength);
+        if (grassMaterial.HasProperty(WindSpeedID))
+            grassMaterial.SetFloat(WindSpeedID, windSpeed);
+        if (grassMaterial.HasProperty(WindDirectionID))
+            grassMaterial.SetVector(WindDirectionID, windDirection.normalized);
         
         // Render grass with multiple blade types
         if (useMultipleBladeTypes && grassMeshes != null && grassBatchesByType.Count > 0)
@@ -1006,6 +1026,9 @@ public class GPUInstancedGrass : MonoBehaviour
                 {
                     if (batch != null && batch.Length > 0)
                     {
+                        // NOTE: Per-instance colors (grassColorBatches) are not currently applied
+                        // To enable per-instance colors, use a custom shader that supports _Colors array
+                        // and set it via MaterialPropertyBlock.SetVectorArray("_Colors", colorBatch)
                         Graphics.DrawMeshInstanced(grassMeshes[t], 0, grassMaterial, batch, batch.Length, propertyBlock);
                     }
                 }
@@ -1021,6 +1044,8 @@ public class GPUInstancedGrass : MonoBehaviour
             {
                 if (batch != null && batch.Length > 0)
                 {
+                    // NOTE: Per-instance colors (grassColorBatches) are not currently applied
+                    // To enable per-instance colors, use a custom shader that supports _Colors array
                     Graphics.DrawMeshInstanced(grassMesh, 0, grassMaterial, batch, batch.Length, propertyBlock);
                 }
             }

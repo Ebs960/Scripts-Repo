@@ -175,6 +175,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         
         // Create and assign material
         Material particleMat = CreateParticleMaterial();
+        if (particleMat == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] Failed to create particle material. Particles will not render.");
+            return; // Cannot create particle system without material
+        }
         ambientParticleRenderer.material = particleMat;
         
         // Start the system
@@ -283,6 +288,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
         
         Material emberMat = CreateEmissiveParticleMaterial(new Color(1f, 0.5f, 0.1f), 2f);
+        if (emberMat == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] Failed to create ember material. Embers will not render.");
+            return; // Cannot create particle system without material
+        }
         renderer.material = emberMat;
         
         secondaryParticleSystem.Play();
@@ -356,6 +366,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
         
         Material fireflyMat = CreateEmissiveParticleMaterial(new Color(0.8f, 1f, 0.4f), 3f);
+        if (fireflyMat == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] Failed to create firefly material. Fireflies will not render.");
+            return; // Cannot create particle system without material
+        }
         renderer.material = fireflyMat;
         
         secondaryParticleSystem.Play();
@@ -412,7 +427,13 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         
         var renderer = snowGO.GetComponent<ParticleSystemRenderer>();
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
-        renderer.material = CreateParticleMaterial();
+        Material snowMat = CreateParticleMaterial();
+        if (snowMat == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] Failed to create snow material. Snow will not render.");
+            return; // Cannot create particle system without material
+        }
+        renderer.material = snowMat;
         
         secondaryParticleSystem.Play();
     }
@@ -426,6 +447,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
         if (shader == null) shader = Shader.Find("Particles/Standard Unlit");
         if (shader == null) shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] No shader found! Particles will not render. Make sure URP or Standard shaders are available.");
+            return null; // Cannot create material without shader
+        }
         
         Material mat = new Material(shader);
         
@@ -451,6 +477,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
         if (shader == null) shader = Shader.Find("Particles/Standard Unlit");
         if (shader == null) shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+        {
+            Debug.LogError("[BattlefieldAmbientParticles] No shader found for emissive particles! Particles will not render.");
+            return null; // Cannot create material without shader
+        }
         
         Material mat = new Material(shader);
         mat.mainTexture = CreateSoftCircleTexture();

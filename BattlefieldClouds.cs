@@ -363,6 +363,11 @@ public class BattlefieldClouds : MonoBehaviour
         
         // Create material
         Material mat = CreateCloudMaterial(texture, color);
+        if (mat == null)
+        {
+            Debug.LogError($"[BattlefieldClouds] Failed to create cloud material for {name}. Cloud layer will not render.");
+            return null; // Cannot create cloud plane without material
+        }
         renderer.material = mat;
         
         // Store material reference for animation
@@ -393,6 +398,11 @@ public class BattlefieldClouds : MonoBehaviour
         if (shader == null)
         {
             shader = Shader.Find("Sprites/Default");
+        }
+        if (shader == null)
+        {
+            Debug.LogError("[BattlefieldClouds] No shader found! Clouds will not render. Make sure URP or Standard shaders are available.");
+            return null; // Cannot create material without shader
         }
         
         Material mat = new Material(shader);
@@ -659,6 +669,11 @@ public class BattlefieldClouds : MonoBehaviour
         // Create shadow material (multiply blend for darkening)
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Transparent");
+        if (shader == null)
+        {
+            Debug.LogError("[BattlefieldClouds] No shader found for cloud shadows! Shadows will not render.");
+            return; // Cannot create shadow material without shader
+        }
         
         shadowMaterial = new Material(shader);
         shadowMaterial.mainTexture = cloudTexture;
