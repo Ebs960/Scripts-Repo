@@ -2,6 +2,11 @@ using UnityEngine;
 using UnityEngine.AI; // For NavMesh runtime baking
 using System.Collections.Generic;
 using System.Linq;
+#if VISTA
+using Pinwheel.Vista.Graph;
+using Pinwheel.Vista;
+using Pinwheel.Vista.UnityTerrain;
+#endif
 
 /// <summary>
 /// Type of battle - affects terrain generation
@@ -89,6 +94,12 @@ public class BattleMapGenerator : MonoBehaviour
     [Header("Atmosphere (HDRP-like Effects)")]
     [Tooltip("Optional atmosphere system for volumetric fog, light shafts, and atmospheric scattering. Assign in inspector for cinematic visuals.")]
     public BattlefieldAtmosphere atmosphere;
+
+#if VISTA
+    [Header("Vista Pro Terrain (Optional)")]
+    [Tooltip("Optional Vista TerrainGraph used to generate battle terrains instead of the custom system.")]
+    public TerrainGraph runtimeGraph;
+#endif
 
     [Header("Spawn Points")]
     [Tooltip("Distance between attacker and defender spawn points")]
@@ -336,10 +347,19 @@ public class BattleMapGenerator : MonoBehaviour
 
     /// <summary>
     /// Generate terrain using custom Unity Terrain API with biome-specific generators
-    /// This provides full control over terrain generation and material application
+    /// or, if configured, using a Vista TerrainGraph.
     /// </summary>
     private void GenerateTerrainWithCustomSystem()
     {
+#if VISTA
+        // If a Vista TerrainGraph is assigned, use it instead of the custom generator.
+        if (runtimeGraph != null)
+        {
+            Debug.Log("[BattleMapGenerator] Using Vista TerrainGraph for battle terrain generation.");
+            GenerateTerrainWithVista();
+            return;
+        }
+#endif
         // Create terrain GameObject
         // Position terrain so its center is at (0,0,0)
         // TerrainData extends from (0,0,0) to (size.x, size.y, size.z) relative to terrain position
@@ -367,26 +387,9 @@ public class BattleMapGenerator : MonoBehaviour
         
         terrainData.size = new Vector3(mapSize, heightVariation, mapSize);
         
-        // Get biome-specific generator
-        IBiomeTerrainGenerator generator = BiomeTerrainGeneratorFactory.GetGenerator(primaryBattleBiome);
-        if (generator != null)
-        {
-            // Generate heightmap using biome-specific algorithm
-            // We need to create a temporary terrain to generate, then assign the data
-            Terrain tempTerrain = terrainGO.AddComponent<Terrain>();
-            tempTerrain.terrainData = terrainData;
-            generator.Generate(tempTerrain, battleTileElevation, battleTileMoisture, battleTileTemperature, mapSize);
-            Debug.Log($"[BattleMapGenerator] Generated terrain using {primaryBattleBiome} generator");
-        }
-        else
-        {
-            // Fallback: generate basic terrain
-            GenerateBasicTerrainHeightmap(terrainData, resolution);
-            Debug.LogWarning($"[BattleMapGenerator] No generator found for {primaryBattleBiome}, using basic terrain");
-        }
-        
-        // Apply terrain modification layers (water, rivers, etc.)
-        ApplyTerrainLayers(terrainData, resolution, mapSize, terrainGO.transform.position);
+        // Generate the actual terrain heights using our biome-aware height function
+        // Without this call the terrain would remain completely flat.
+        GenerateBasicTerrainHeightmap(terrainData, resolution);
         
         // Create Terrain component and assign data
         Terrain terrain = terrainGO.GetComponent<Terrain>();
@@ -430,87 +433,128 @@ public class BattleMapGenerator : MonoBehaviour
         
         Debug.Log($"[BattleMapGenerator] Custom terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}, Battle Type: {battleType}");
     }
-    
+
+#if VISTA
     /// <summary>
-    /// Apply terrain modification layers (water, rivers, etc.) to the heightmap
-    /// Uses a layered system for expandability
+    /// Generate the battle terrain using a Vista TerrainGraph.
+    /// This creates a Unity Terrain and lets Vista compute the heightmap, while we still apply our own materials and water/lava planes.
     /// </summary>
-    private void ApplyTerrainLayers(UnityEngine.TerrainData terrainData, int resolution, float mapSize, Vector3 terrainPosition)
+    private void GenerateTerrainWithVista()
     {
-        // Get current heightmap
-        float[,] heights = terrainData.GetHeights(0, 0, resolution, resolution);
-        
-        // Create and apply layers
-        List<ITerrainLayer> layers = new List<ITerrainLayer>();
-        
-        // Siege layer (for Siege battles - elevated positions)
-        SiegeTerrainLayer siegeLayer = new SiegeTerrainLayer(battleType == BattleType.Siege, mapSize);
-        if (siegeLayer.IsEnabled)
+        // Create terrain GameObject and position so its center is at (0,0,0)
+        GameObject terrainGO = new GameObject("BattleTerrain_Vista");
+        terrainGO.transform.SetParent(transform);
+        terrainGO.transform.position = new Vector3(-mapSize / 2f, 0f, -mapSize / 2f);
+
+        // Ensure terrain uses the Battlefield layer if it exists
+        int battlefieldLayer = LayerMask.NameToLayer("Battlefield");
+        if (battlefieldLayer != -1) terrainGO.layer = battlefieldLayer;
+
+        // Create TerrainData
+        UnityEngine.TerrainData terrainData = new UnityEngine.TerrainData();
+        int resolution = CalculateOptimalResolution();
+        terrainData.heightmapResolution = resolution;
+        terrainData.alphamapResolution = resolution;
+        terrainData.baseMapResolution = Mathf.Min(1024, resolution);
+        terrainData.size = new Vector3(mapSize, heightVariation, mapSize);
+
+        // Create Terrain and collider
+        Terrain terrain = terrainGO.AddComponent<Terrain>();
+        terrain.terrainData = terrainData;
+
+        TerrainCollider terrainCollider = terrainGO.AddComponent<TerrainCollider>();
+        terrainCollider.terrainData = terrainData;
+
+        // Attach a TerrainTile so we can reuse Vista's height population helpers
+        TerrainTile tile = terrainGO.GetComponent<TerrainTile>();
+        if (tile == null)
         {
-            layers.Add(siegeLayer);
+            tile = terrainGO.AddComponent<TerrainTile>();
         }
+
+        // Get biome settings to drive Vista configs (height scale etc.)
+        BiomeTerrainSettings settings = BiomeHelper.GetTerrainSettings(primaryBattleBiome);
+
+        // Build configs for the Vista graph
+        TerrainGenerationConfigs configs = TerrainGenerationConfigs.Create();
+        configs.resolution = resolution;
+        configs.terrainHeight = terrainData.size.y * settings.heightScale;
+
+        Vector3 size = terrainData.size;
+        Vector3 pos = terrainGO.transform.position;
+        configs.worldBounds = new Rect(pos.x, pos.z, size.x, size.z);
+
+        // Log key Vista terrain parameters for debugging
+        Debug.Log($"[BattleMapGenerator] Vista terrain config: mapSize={mapSize}, resolution={resolution}, terrainHeight={configs.terrainHeight:F2}, biome={primaryBattleBiome}, heightScale={settings.heightScale:F2}");
         
-        // Water layer (for Naval/Coastal battles)
-        WaterTerrainLayer waterLayer = new WaterTerrainLayer(battleType, mapSize);
-        if (waterLayer.IsEnabled)
+        // Collect HeightOutput node
+        var heightNode = runtimeGraph.GetNode(typeof(HeightOutputNode)) as HeightOutputNode;
+        if (heightNode == null)
         {
-            layers.Add(waterLayer);
+            Debug.LogError("[BattleMapGenerator] Vista runtimeGraph has no HeightOutputNode; cannot generate heightmap.");
         }
-        
-        // Lake layer (for moist biomes, but not in Naval battles where water is already everywhere)
-        bool shouldHaveLake = battleType != BattleType.Naval && 
-                             battleTileMoisture > 0.4f && 
-                             (primaryBattleBiome == Biome.Forest || 
-                              primaryBattleBiome == Biome.Jungle || 
-                              primaryBattleBiome == Biome.Plains ||
-                              primaryBattleBiome == Biome.Grassland ||
-                              primaryBattleBiome == Biome.Swamp);
-        LakeTerrainLayer lakeLayer = new LakeTerrainLayer(shouldHaveLake, mapSize, battleTileMoisture);
-        if (lakeLayer.IsEnabled)
+        else
         {
-            layers.Add(lakeLayer);
-        }
-        
-        // River layer (for moist biomes or if battle type allows)
-        bool shouldHaveRiver = battleType != BattleType.Naval && // No rivers in pure naval battles
-                              battleTileMoisture > 0.3f && 
-                              (primaryBattleBiome == Biome.Forest || 
-                               primaryBattleBiome == Biome.Jungle || 
-                               primaryBattleBiome == Biome.Plains ||
-                               primaryBattleBiome == Biome.Grassland);
-        RiverTerrainLayer riverLayer = new RiverTerrainLayer(shouldHaveRiver, mapSize, battleTileMoisture);
-        if (riverLayer.IsEnabled)
-        {
-            layers.Add(riverLayer);
-        }
-        
-        // Lava flow layer (for high-temperature volcanic biomes)
-        bool shouldHaveLavaFlow = battleTileTemperature > 0.7f && 
-                                 (primaryBattleBiome == Biome.Volcanic || 
-                                  primaryBattleBiome == Biome.Desert);
-        LavaFlowTerrainLayer lavaLayer = new LavaFlowTerrainLayer(shouldHaveLavaFlow, mapSize, battleTileTemperature, primaryBattleBiome);
-        if (lavaLayer.IsEnabled)
-        {
-            layers.Add(lavaLayer);
-        }
-        
-        // Sort layers by priority (lower priority = applied first)
-        layers.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-        
-        // Apply each layer
-        foreach (var layer in layers)
-        {
-            if (layer.IsEnabled)
+            string[] nodeIds = new[] { heightNode.id };
+
+            // Execute the graph immediately on this thread (simple integration for now)
+            DataPool data = runtimeGraph.ExecuteImmediate(nodeIds, configs, null, null);
+
+            // Extract the height RenderTexture from the pool
+            GraphRenderTexture graphRT = data.RemoveRTFromPool(heightNode.mainOutputSlot);
+            RenderTexture heightRT = graphRT; // implicit cast
+
+            if (heightRT != null)
             {
-                layer.ApplyLayer(heights, resolution, mapSize, terrainPosition);
+                // Use Vista's TerrainTile helper to convert the Vista height RT into Unity's packed heightmap
+                tile.PopulateHeightMap(heightRT);
+                tile.UpdateGeometry();
+
+                // Sample a few points from the generated heightmap for debugging
+                UnityEngine.TerrainData td = terrain.terrainData;
+                if (td != null)
+                {
+                    int hRes = td.heightmapResolution;
+                    float centerH = td.GetHeight(hRes / 2, hRes / 2);
+                    float corner00 = td.GetHeight(0, 0);
+                    float corner10 = td.GetHeight(hRes - 1, 0);
+                    float corner01 = td.GetHeight(0, hRes - 1);
+                    float corner11 = td.GetHeight(hRes - 1, hRes - 1);
+                    Debug.Log($"[BattleMapGenerator] Vista terrain sample heights (world Y): center={centerH:F2}, corners=({corner00:F2}, {corner10:F2}, {corner01:F2}, {corner11:F2})");
+                }
             }
+            else
+            {
+                Debug.LogError("[BattleMapGenerator] Vista graph did not produce a height RenderTexture.");
+            }
+
+            data.Dispose();
         }
-        
-        // Set modified heights back to terrain
-        terrainData.SetHeights(0, 0, heights);
-        
-        Debug.Log($"[BattleMapGenerator] Applied {layers.Count} terrain modification layers");
+
+        // Apply our existing biome material & AAA quality settings
+        ApplyBiomeMaterialToTerrain(terrain);
+        ConfigureTerrainQuality(terrain);
+
+        // Add water planes for Naval/Coastal battles
+        if (battleType == BattleType.Naval || battleType == BattleType.Coastal)
+        {
+            CreateWaterPlane(terrainGO, mapSize);
+        }
+
+        // Add lava planes for volcanic biomes with lava flows
+        if (battleTileTemperature > 0.7f &&
+            (primaryBattleBiome == Biome.Volcanic || primaryBattleBiome == Biome.Desert))
+        {
+            CreateLavaPlane(terrainGO, mapSize);
+        }
+
+        terrainObjects.Add(terrainGO);
+
+        Debug.Log($"[BattleMapGenerator] Vista terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}, Battle Type: {battleType}");
     }
+#endif
+    
+    // NOTE: Old C# ITerrainLayer system (siege/water/river/lava) removed - Vista graph now defines terrain height.
     
     /// <summary>
     /// Create a water plane for Naval/Coastal battles
@@ -656,6 +700,10 @@ public class BattleMapGenerator : MonoBehaviour
     private void GenerateBasicTerrainHeightmap(UnityEngine.TerrainData terrainData, int resolution)
     {
         float[,] heights = new float[resolution, resolution];
+        float minHeight = float.MaxValue;
+        float maxHeight = float.MinValue;
+        float sumHeight = 0f;
+        int sampleCount = 0;
         
         for (int y = 0; y < resolution; y++)
         {
@@ -665,11 +713,24 @@ public class BattleMapGenerator : MonoBehaviour
                 float worldZ = (y / (float)resolution) * mapSize;
                 
                 float height = CalculateHeightAtPosition(worldX, worldZ);
-                heights[y, x] = Mathf.Clamp01(height / heightVariation);
+                float normalized = Mathf.Clamp01(height / heightVariation);
+                heights[y, x] = normalized;
+                
+                // Track stats for debug
+                if (normalized < minHeight) minHeight = normalized;
+                if (normalized > maxHeight) maxHeight = normalized;
+                sumHeight += normalized;
+                sampleCount++;
             }
         }
         
         terrainData.SetHeights(0, 0, heights);
+        
+        if (sampleCount > 0)
+        {
+            float avgHeight = sumHeight / sampleCount;
+            Debug.Log($"[BattleMapGenerator] Custom terrain height stats (normalized 0-1) - min={minHeight:F3}, max={maxHeight:F3}, avg={avgHeight:F3}, mapSize={mapSize}, heightVariation={heightVariation}, elevationNoiseScale={elevationNoiseScale}, tileElevation={battleTileElevation:F2}, biome={primaryBattleBiome}");
+        }
     }
     
     /// <summary>
@@ -2104,6 +2165,76 @@ public class BattleMapGenerator : MonoBehaviour
     public List<Vector3> GetAttackerSpawnPoints() => attackerSpawnPoints;
     public List<Vector3> GetDefenderSpawnPoints() => defenderSpawnPoints;
     
+#if VISTA
+    /// <summary>
+    /// Generate terrain using a Vista TerrainGraph asynchronously.
+    /// NOTE: This runs the graph; applying its data back into the Terrain is handled by Vista's TerrainTile/VistaManager pipeline.
+    /// </summary>
+    public System.Collections.IEnumerator GenerateBattleTerrainAsync()
+    {
+        if (runtimeGraph == null)
+        {
+            Debug.LogWarning("[BattleMapGenerator] Vista runtime graph is not assigned; skipping Vista terrain generation.");
+            yield break;
+        }
+
+        // Resolve biome-specific settings
+        BiomeTerrainSettings settings = BiomeHelper.GetTerrainSettings(primaryBattleBiome);
+
+        // Find the first generated Terrain as Vista's target area
+        Terrain targetTerrain = null;
+        if (terrainObjects != null && terrainObjects.Count > 0)
+        {
+            targetTerrain = terrainObjects[0].GetComponent<Terrain>();
+        }
+
+        if (targetTerrain == null || targetTerrain.terrainData == null)
+        {
+            Debug.LogWarning("[BattleMapGenerator] No Terrain found for Vista graph to operate on.");
+            yield break;
+        }
+
+        Vector3 size = targetTerrain.terrainData.size;
+        Vector3 pos = targetTerrain.transform.position;
+        Bounds worldBounds = new Bounds(pos + size * 0.5f, size);
+
+        int resolution = targetTerrain.terrainData.heightmapResolution;
+
+        // Prepare configs (mirror what TerrainGraphUtilities does, but simplified for a single tile)
+        TerrainGenerationConfigs configs = new TerrainGenerationConfigs
+        {
+            resolution = resolution,
+            terrainHeight = size.y * settings.heightScale,
+            worldBounds = new Rect(worldBounds.min.x, worldBounds.min.z, worldBounds.size.x, worldBounds.size.z),
+            seed = 0
+        };
+
+        // Collect the HeightOutputNode (heightmap output); additional outputs can be added later if needed
+        var nodeIds = new List<string>();
+        var heightNode = runtimeGraph.GetNode(typeof(HeightOutputNode)) as HeightOutputNode;
+        if (heightNode != null)
+        {
+            nodeIds.Add(heightNode.id);
+        }
+
+        if (nodeIds.Count == 0)
+        {
+            Debug.LogWarning("[BattleMapGenerator] Vista graph has no HeightOutputNode; nothing to execute.");
+            yield break;
+        }
+
+        // Execute graph asynchronously (non-blocking over multiple frames)
+        ExecutionHandle handle = runtimeGraph.Execute(nodeIds.ToArray(), configs, null, null);
+        while (!handle.isCompleted)
+        {
+            yield return null;
+        }
+
+        // The Vista terrain system (VistaManager/TerrainTile) is responsible for reading DataPool
+        // and applying it to the Unity Terrain. Here we just ensure the graph has finished.
+        handle.Dispose();
+    }
+#endif
     
     /// <summary>
     /// Wait for NavMesh to be fully processed by Unity after baking

@@ -132,9 +132,6 @@ public class BattleTestSimple : MonoBehaviour
     public int formationsPerSide = 3;
     [Tooltip("Default number of soldiers per formation (only used if CombatUnitData.formationSize is not set)")]
     public int soldiersPerFormation = 9;
-    [Tooltip("DEPRECATED: Formation spacing is now controlled by CombatUnitData.formationSpacing. This field is kept for backward compatibility but is not used.")]
-    [System.Obsolete("Formation spacing is now controlled by CombatUnitData.formationSpacing. This field is no longer used.")]
-    public float formationSpacing = 2f;
     
     [Header("Battle Map")]
     [Tooltip("Battle map generator for creating terrain")]
@@ -187,6 +184,10 @@ public class BattleTestSimple : MonoBehaviour
     
     // Track all coroutines started by BattleTestSimple for proper cleanup
     private List<Coroutine> trackedCoroutines = new List<Coroutine>();
+    
+    // Constants for control types
+    private const string CONTROL_TYPE_PLAYER = "Player";
+    private const string CONTROL_TYPE_AI = "AI";
     
     void Awake()
     {
@@ -583,12 +584,7 @@ public class BattleTestSimple : MonoBehaviour
                     }
                     
                     // Check for interactive UI components that should block
-                    if (result.gameObject.GetComponent<UnityEngine.UI.Button>() != null ||
-                        result.gameObject.GetComponent<UnityEngine.UI.Toggle>() != null ||
-                        result.gameObject.GetComponent<UnityEngine.UI.Dropdown>() != null ||
-                        result.gameObject.GetComponent<TMPro.TMP_Dropdown>() != null ||
-                        result.gameObject.GetComponent<UnityEngine.UI.ScrollRect>() != null ||
-                        result.gameObject.GetComponent<UnityEngine.UI.Slider>() != null)
+                    if (IsInteractiveUIElement(result.gameObject))
                     {
                         // This is an interactive UI element, block movement
                         shouldBlockUI = true;
@@ -1081,8 +1077,8 @@ public class BattleTestSimple : MonoBehaviour
         {
             defenderControlDropdown.ClearOptions();
             reusableStringList.Clear();
-            reusableStringList.Add("Player");
-            reusableStringList.Add("AI");
+            reusableStringList.Add(CONTROL_TYPE_PLAYER);
+            reusableStringList.Add(CONTROL_TYPE_AI);
             defenderControlDropdown.AddOptions(reusableStringList);
             defenderControlDropdown.value = defenderControlType;
             defenderControlDropdown.onValueChanged.AddListener(OnDefenderControlChanged);
@@ -1154,37 +1150,7 @@ public class BattleTestSimple : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Apply custom hilliness to terrain generator
-    /// Modifies the biome generator's hilliness parameter before terrain generation
-    /// </summary>
-    private void ApplyCustomHilliness(float hillinessValue)
-    {
-        if (mapGenerator == null) return;
-        
-        // Clear generator cache to force recreation with new settings
-        // This ensures our modifications take effect
-        BiomeTerrainGeneratorFactory.ClearCache();
-        
-        // Get the generator for current biome
-        IBiomeTerrainGenerator generator = BiomeTerrainGeneratorFactory.GetGenerator(mapGenerator.primaryBattleBiome);
-        if (generator != null)
-        {
-            BiomeNoiseProfile profile = generator.GetNoiseProfile();
-            if (profile != null)
-            {
-                // Modify the profile (it's a class, so this modifies the actual profile)
-                float originalHilliness = profile.hilliness;
-                profile.hilliness = hillinessValue;
-                
-                // Also adjust maxHeightVariation based on hilliness for more dramatic effect
-                float originalMaxHeight = profile.maxHeightVariation;
-                profile.maxHeightVariation = Mathf.Lerp(2f, 15f, hillinessValue);
-                
-                DebugLog($"[BattleTestSimple] Applied custom hilliness: {originalHilliness:F2} -> {hillinessValue:F2}, Max height: {originalMaxHeight:F1} -> {profile.maxHeightVariation:F1}");
-            }
-        }
-    }
+    // NOTE: Old ApplyCustomHilliness pipeline removed - Vista now owns battle terrain.
     
     void CreateSimpleTest()
     {
@@ -1220,12 +1186,6 @@ public class BattleTestSimple : MonoBehaviour
                 mapGenerator.battleType = testBattleType;
                 DebugLog($"[BattleTestSimple] Editor test mode - Biome: {testBiome}, Battle Type: {testBattleType}");
                 
-                // Apply custom hilliness if enabled
-                if (useCustomHilliness)
-                {
-                    ApplyCustomHilliness(customHilliness);
-                    DebugLog($"[BattleTestSimple] Using custom hilliness: {customHilliness:F2}");
-                }
             }
             else
             {
@@ -1547,6 +1507,7 @@ public class BattleTestSimple : MonoBehaviour
         else
         {
             // Fallback to Find if cache is null (shouldn't happen, but safety check)
+            // Note: GameObject.Find is expensive - prefer using cachedTestGround
             var ground = GameObject.Find("TestGround");
             if (ground != null)
             {
@@ -1608,6 +1569,21 @@ public class BattleTestSimple : MonoBehaviour
         GameObject formationGO = new GameObject(formationName);
         formationGO.transform.position = GetGroundPosition(worldPosition);
         
+        // Orient the formation so attackers and defenders face each other across the X axis.
+        // BattleMapGenerator creates attacker spawns on negative X and defender spawns on positive X,
+        // so we make attackers look toward +X and defenders toward -X.
+        Vector3 desiredForward = isAttacker ? Vector3.right : Vector3.left;
+        formationGO.transform.rotation = Quaternion.LookRotation(desiredForward, Vector3.up);
+        
+        if (showDebugLogs)
+        {
+            float angleToDesired = Vector3.Angle(formationGO.transform.forward, desiredForward);
+            DebugLog($"[BattleTestSimple] {formationName} spawn at {worldPosition}, isAttacker={isAttacker}, forward={formationGO.transform.forward}, angleToDesired={angleToDesired:F1}°");
+            
+            // Draw a ray in the Scene view to visualize forward direction
+            Debug.DrawRay(formationGO.transform.position, formationGO.transform.forward * 5f, isAttacker ? Color.red : Color.blue, 5f);
+        }
+        
         // Add FormationUnit component
         FormationUnit formation = formationGO.AddComponent<FormationUnit>();
         formation.formationName = formationName;
@@ -1668,6 +1644,11 @@ public class BattleTestSimple : MonoBehaviour
         // Calculate formation positions based on shape and size from unit data
         int sideLength = Mathf.CeilToInt(Mathf.Sqrt(formationSize));
         
+        // Use the formation's orientation so rows actually face the opposing army.
+        Vector3 center = formation.transform.position;
+        Vector3 right = formation.transform.right;
+        Vector3 forward = formation.transform.forward;
+        
         for (int i = 0; i < formationSize; i++)
         {
             try
@@ -1680,45 +1661,46 @@ public class BattleTestSimple : MonoBehaviour
                     case FormationShape.Square:
                         int x = i % sideLength;
                         int z = i / sideLength;
-                        soldierPosition = centerPosition + new Vector3(
-                            (x - sideLength / 2f) * spacing,
-                            0,
-                            (z - sideLength / 2f) * spacing
-                        );
+                        soldierPosition =
+                            center +
+                            right * ((x - sideLength / 2f) * spacing) +
+                            forward * ((z - sideLength / 2f) * spacing);
                         break;
                         
                     case FormationShape.Circle:
                         float angle = (float)i / formationSize * 2f * Mathf.PI;
-                        soldierPosition = centerPosition + new Vector3(
-                            Mathf.Cos(angle) * spacing,
-                            0,
-                            Mathf.Sin(angle) * spacing
-                        );
+                        soldierPosition =
+                            center +
+                            (right * Mathf.Cos(angle) + forward * Mathf.Sin(angle)) * spacing;
                         break;
                         
                     case FormationShape.Wedge:
                         int row = i / 3;
                         int col = i % 3;
-                        soldierPosition = centerPosition + new Vector3(
-                            (col - 1) * spacing * (row + 1) * 0.5f,
-                            0,
-                            row * spacing
-                        );
+                        soldierPosition =
+                            center +
+                            right * ((col - 1) * spacing * (row + 1) * 0.5f) +
+                            forward * (row * spacing);
                         break;
                         
                     default:
                         // Fallback to square
                         x = i % sideLength;
                         z = i / sideLength;
-                        soldierPosition = centerPosition + new Vector3(
-                            (x - sideLength / 2f) * spacing,
-                            0,
-                            (z - sideLength / 2f) * spacing
-                        );
+                        soldierPosition =
+                            center +
+                            right * ((x - sideLength / 2f) * spacing) +
+                            forward * ((z - sideLength / 2f) * spacing);
                         break;
                 }
                 
-                DebugLog($"Creating soldier {i + 1} at position {soldierPosition}");
+                if (showDebugLogs && i == 0)
+                {
+                    // Log and visualize first soldier to verify facing and alignment
+                    float angleToFormation = Vector3.Angle(forward, formation.transform.forward);
+                    DebugLog($"[BattleTestSimple] First soldier for {formation.formationName} spawn at {soldierPosition}, formationForward={formation.transform.forward}, angleToFormationForward={angleToFormation:F1}°");
+                    Debug.DrawRay(soldierPosition, formation.transform.forward * 3f, Color.yellow, 5f);
+                }
                 
                 // Create soldier using existing CombatUnit system
                 GameObject soldier = CreateCombatUnitSoldier($"Soldier{i + 1}", soldierPosition, teamColor, formation.isAttacker, formation);
@@ -1798,28 +1780,35 @@ public class BattleTestSimple : MonoBehaviour
                 
                 if (prefab != null)
                 {
-                    // Use actual unit prefab
-                    soldier = Instantiate(prefab, position, Quaternion.identity);
+                    // Use actual unit prefab and align its facing with the formation
+                    Quaternion rotation = formation != null ? formation.transform.rotation : Quaternion.identity;
+                    soldier = Instantiate(prefab, position, rotation);
                     soldier.name = soldierName;
                     
                     // Put soldier on Units layer if present
-                    int uLayer = LayerMask.NameToLayer("Units"); if (uLayer != -1) soldier.layer = uLayer;
+                    SetSoldierLayer(soldier);
                     DebugLog($"Created {soldierName} using prefab: {unitData.unitName} (loaded from Addressables)");
                 }
                 else
                 {
                     // Fallback to simple unit if prefab not available
                     soldier = CreateFallbackSoldier(soldierName, position, teamColor);
-                    int uLayer = LayerMask.NameToLayer("Units"); if (uLayer != -1) soldier.layer = uLayer;
+                    SetSoldierLayer(soldier);
                     DebugLog($"Created {soldierName} using fallback (prefab not found in Addressables for unit '{unitData.unitName}')");
                 }
             }
-            else
-            {
-                // No unit data available
-                soldier = CreateFallbackSoldier(soldierName, position, teamColor);
-                int uLayer = LayerMask.NameToLayer("Units"); if (uLayer != -1) soldier.layer = uLayer;
+                else
+                {
+                    // No unit data available
+                    soldier = CreateFallbackSoldier(soldierName, position, teamColor);
+                    SetSoldierLayer(soldier);
                 DebugLog($"Created {soldierName} using fallback (no unit data)");
+            }
+
+            // Ensure fallback soldiers also face the same direction as their formation
+            if (formation != null)
+            {
+                soldier.transform.rotation = formation.transform.rotation;
             }
             
             // Add CombatUnit component for animations and stats
@@ -2181,6 +2170,16 @@ public class BattleTestSimple : MonoBehaviour
         return null;
     }
     
+    /// <summary>
+    /// Helper method to set soldier layer to "Units" if the layer exists
+    /// </summary>
+    private void SetSoldierLayer(GameObject soldier)
+    {
+        if (soldier == null) return;
+        int uLayer = LayerMask.NameToLayer("Units");
+        if (uLayer != -1) soldier.layer = uLayer;
+    }
+    
     GameObject CreateFallbackSoldier(string soldierName, Vector3 position, Color teamColor)
     {
         // Create a simple fallback soldier
@@ -2334,6 +2333,22 @@ public class BattleTestSimple : MonoBehaviour
     void DebugLog(string message)
     {
         // Debug.Log removed for performance - use Debug.LogWarning or Debug.LogError for important messages
+    }
+    
+    /// <summary>
+    /// Check if a GameObject has any interactive UI components that should block input
+    /// </summary>
+    private bool IsInteractiveUIElement(GameObject obj)
+    {
+        if (obj == null) return false;
+        
+        // Use TryGetComponent for better performance (Unity 2019.3+)
+        return obj.TryGetComponent<UnityEngine.UI.Button>(out _) ||
+               obj.TryGetComponent<UnityEngine.UI.Toggle>(out _) ||
+               obj.TryGetComponent<UnityEngine.UI.Dropdown>(out _) ||
+               obj.TryGetComponent<TMPro.TMP_Dropdown>(out _) ||
+               obj.TryGetComponent<UnityEngine.UI.ScrollRect>(out _) ||
+               obj.TryGetComponent<UnityEngine.UI.Slider>(out _);
     }
     
     /// <summary>
@@ -2838,12 +2853,34 @@ public class BattleTestSimple : MonoBehaviour
     
     /// <summary>
     /// Create formations from lists of units (for BattleManager compatibility)
+    /// Formations are spawned in rows with attackers and defenders facing each other.
     /// </summary>
     private void CreateFormationsFromUnits(List<CombatUnit> attackerUnitsList, List<CombatUnit> defenderUnitsList)
     {
         // Group units into formations
         List<Vector3> attackerSpawns = mapGenerator != null ? mapGenerator.GetAttackerSpawnPoints() : GetDefaultAttackerSpawns();
         List<Vector3> defenderSpawns = mapGenerator != null ? mapGenerator.GetDefenderSpawnPoints() : GetDefaultDefenderSpawns();
+
+        // Compute approximate centers of attacker and defender lines so we can face formations toward each other
+        Vector3 attackerCenter = Vector3.zero;
+        if (attackerSpawns.Count > 0)
+        {
+            foreach (var pos in attackerSpawns)
+            {
+                attackerCenter += pos;
+            }
+            attackerCenter /= attackerSpawns.Count;
+        }
+
+        Vector3 defenderCenter = Vector3.zero;
+        if (defenderSpawns.Count > 0)
+        {
+            foreach (var pos in defenderSpawns)
+            {
+                defenderCenter += pos;
+            }
+            defenderCenter /= defenderSpawns.Count;
+        }
         
         // Create formations for attackers
         int formationIndex = 0;
@@ -2851,8 +2888,14 @@ public class BattleTestSimple : MonoBehaviour
         {
             if (formationIndex >= attackerSpawns.Count) break;
             Vector3 spawnPos = attackerSpawns[formationIndex];
-            CreateFormationFromUnits($"AttackerFormation{formationIndex + 1}", spawnPos, Color.red, true, 
-                attackerUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, attackerUnitsList.Count - i)));
+            // Attackers face the defender line
+            CreateFormationFromUnits(
+                $"AttackerFormation{formationIndex + 1}",
+                spawnPos,
+                Color.red,
+                true,
+                attackerUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, attackerUnitsList.Count - i)),
+                defenderCenter);
             formationIndex++;
         }
         
@@ -2862,8 +2905,14 @@ public class BattleTestSimple : MonoBehaviour
         {
             if (formationIndex >= defenderSpawns.Count) break;
             Vector3 spawnPos = defenderSpawns[formationIndex];
-            CreateFormationFromUnits($"DefenderFormation{formationIndex + 1}", spawnPos, Color.blue, false,
-                defenderUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, defenderUnitsList.Count - i)));
+            // Defenders face the attacker line
+            CreateFormationFromUnits(
+                $"DefenderFormation{formationIndex + 1}",
+                spawnPos,
+                Color.blue,
+                false,
+                defenderUnitsList.GetRange(i, Mathf.Min(soldiersPerFormation, defenderUnitsList.Count - i)),
+                attackerCenter);
             formationIndex++;
         }
     }
@@ -2871,11 +2920,19 @@ public class BattleTestSimple : MonoBehaviour
     /// <summary>
     /// Create a formation from existing units (for BattleManager compatibility)
     /// </summary>
-    private void CreateFormationFromUnits(string formationName, Vector3 position, Color teamColor, bool isAttacker, List<CombatUnit> units)
+    private void CreateFormationFromUnits(string formationName, Vector3 position, Color teamColor, bool isAttacker, List<CombatUnit> units, Vector3 lookAtPosition)
     {
         // Create formation GameObject
         GameObject formationGO = new GameObject(formationName);
         formationGO.transform.position = GetGroundPosition(position);
+        
+        // Orient formation so its forward faces the opposing line (only if we have a valid look-at position)
+        Vector3 lookDirection = lookAtPosition - formationGO.transform.position;
+        lookDirection.y = 0f;
+        if (lookDirection.sqrMagnitude > 0.001f)
+        {
+            formationGO.transform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+        }
         
         // Add FormationUnit component
         FormationUnit formation = formationGO.AddComponent<FormationUnit>();
@@ -2909,46 +2966,45 @@ public class BattleTestSimple : MonoBehaviour
                 // Calculate position based on formation shape from unit data
                 Vector3 soldierPosition;
                 
+                // Use formation's orientation so rows actually face the opposing army
+                Vector3 right = formationGO.transform.right;
+                Vector3 forward = formationGO.transform.forward;
+
                 switch (shape)
                 {
                     case FormationShape.Square:
                         int x = i % sideLength;
                         int z = i / sideLength;
-                        soldierPosition = position + new Vector3(
-                            (x - sideLength / 2f) * spacing,
-                            0,
-                            (z - sideLength / 2f) * spacing
-                        );
+                        soldierPosition =
+                            formationGO.transform.position +
+                            right * ((x - sideLength / 2f) * spacing) +
+                            forward * ((z - sideLength / 2f) * spacing);
                         break;
                         
                     case FormationShape.Circle:
                         float angle = (float)i / soldiersToSpawn * 2f * Mathf.PI;
-                        soldierPosition = position + new Vector3(
-                            Mathf.Cos(angle) * spacing,
-                            0,
-                            Mathf.Sin(angle) * spacing
-                        );
+                        soldierPosition =
+                            formationGO.transform.position +
+                            (right * Mathf.Cos(angle) + forward * Mathf.Sin(angle)) * spacing;
                         break;
                         
                     case FormationShape.Wedge:
                         int row = i / 3;
                         int col = i % 3;
-                        soldierPosition = position + new Vector3(
-                            (col - 1) * spacing * (row + 1) * 0.5f,
-                            0,
-                            row * spacing
-                        );
+                        soldierPosition =
+                            formationGO.transform.position +
+                            right * ((col - 1) * spacing * (row + 1) * 0.5f) +
+                            forward * (row * spacing);
                         break;
                         
                     default:
                         // Fallback to square
                         x = i % sideLength;
                         z = i / sideLength;
-                        soldierPosition = position + new Vector3(
-                            (x - sideLength / 2f) * spacing,
-                            0,
-                            (z - sideLength / 2f) * spacing
-                        );
+                        soldierPosition =
+                            formationGO.transform.position +
+                            right * ((x - sideLength / 2f) * spacing) +
+                            forward * ((z - sideLength / 2f) * spacing);
                         break;
                 }
                 
@@ -3172,10 +3228,6 @@ public class FormationUnit : MonoBehaviour
     public float formationRadius = 3f;
     
     [Header("Movement")]
-    [Tooltip("DEPRECATED: Movement speed is now controlled by CombatUnit.EffectiveMoveSpeed. This field is kept for backward compatibility but is not used.")]
-    [System.Obsolete("Movement speed is now controlled by CombatUnit.EffectiveMoveSpeed. This field is no longer used.")]
-    public float moveSpeed = 3f;
-    
     // IMPROVED: Movement state machine replaces boolean flags
     [Tooltip("Current movement state of the formation")]
     public FormationMovementState movementState = FormationMovementState.Idle;
@@ -3384,9 +3436,6 @@ public class FormationUnit : MonoBehaviour
     {
         if (formationNavAgent == null)
         {
-            // DEBUG: Comprehensive NavMesh diagnostics
-            DebugNavMeshStatus(formationCenter);
-            
             // Check if NavMesh is available (may not be ready if map is still generating)
             if (!NavMesh.SamplePosition(formationCenter, out NavMeshHit hit, 1f, NavMesh.AllAreas))
             {
@@ -3637,12 +3686,6 @@ public class FormationUnit : MonoBehaviour
             float delay = Mathf.Min(initialDelay * Mathf.Pow(2f, attempt), maxDelay);
             yield return new WaitForSeconds(delay);
             
-            // DEBUG: Run diagnostics on every 3rd attempt to avoid spam
-            if (attempt % 3 == 0)
-            {
-                DebugNavMeshStatus(formationCenter);
-            }
-            
             // Check if NavMesh is ready by trying to sample a position
             if (NavMesh.SamplePosition(formationCenter, out NavMeshHit testHit, 10f, NavMesh.AllAreas))
             {
@@ -3671,8 +3714,6 @@ public class FormationUnit : MonoBehaviour
         
         // If we get here, NavMesh setup failed after all retries
         Debug.LogError($"[FormationUnit] Failed to set up NavMesh for {formationName} after {maxRetries} attempts. NavMesh may not be available at this location.");
-        Debug.LogError($"[FormationUnit] Final diagnostics:");
-        DebugNavMeshStatus(formationCenter);
     }
     
     void OnDestroy()

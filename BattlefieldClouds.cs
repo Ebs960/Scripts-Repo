@@ -36,7 +36,7 @@ public class BattlefieldClouds : MonoBehaviour
     
     [Header("Multiple Layers")]
     [Tooltip("Enable second cloud layer for depth")]
-    public bool useSecondLayer = true;
+    public bool useSecondLayer = false;
     
     [Tooltip("Height offset for second layer")]
     public float secondLayerHeightOffset = 30f;

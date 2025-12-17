@@ -323,6 +323,19 @@ public class BiomeTerrainSettings
     [Tooltip("Domain warp strength")]
     [Range(0f, 100f)]
     public float domainWarpStrength = 30f;
+
+    [Header("Vista Pro Bridge (Optional)")]
+    [Tooltip("Logical noise scale passed into Vista graphs (maps to exposed float properties).")]
+    public float noiseScale = 1f;
+
+    [Tooltip("Logical elevation multiplier for Vista graphs (scales terrain height).")]
+    public float elevationMultiplier = 1f;
+
+    [Tooltip("Default terrain texture for this biome when using Vista.")]
+    public Texture2D texture;
+
+    [Tooltip("Default tree prefabs for this biome when using Vista.")]
+    public GameObject[] treePrefabs;
     
     /// <summary>
     /// Create default plains settings

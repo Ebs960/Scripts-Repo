@@ -878,4 +878,81 @@ public static class BiomeHelper {
             _ => 0f
         };
     }
+
+    /// <summary>
+    /// Get biome-specific terrain settings used by the battle map generator and (optionally) Vista graphs.
+    /// This reuses the existing BiomeTerrainSettings from BattleTerrainNoiseSystem so we don't duplicate config.
+    /// </summary>
+    public static BiomeTerrainSettings GetTerrainSettings(Biome biome)
+    {
+        switch (biome)
+        {
+            case Biome.Plains:
+            case Biome.Grassland:
+            case Biome.Savannah:
+                return BiomeTerrainSettings.CreatePlains();
+
+            case Biome.Desert:
+            case Biome.Scorched:
+            case Biome.Ashlands:
+                return BiomeTerrainSettings.CreateDesert();
+
+            case Biome.Mountain:
+            case Biome.PlutoMountains:
+                return BiomeTerrainSettings.CreateMountain();
+
+            case Biome.Forest:
+            case Biome.PineForest:
+            case Biome.Rainforest:
+            case Biome.Jungle:
+                return BiomeTerrainSettings.CreateForest();
+
+            case Biome.Swamp:
+            case Biome.Marsh:
+            case Biome.Floodlands:
+                return BiomeTerrainSettings.CreateSwamp();
+
+            case Biome.Snow:
+            case Biome.Glacier:
+            case Biome.Frozen:
+            case Biome.Arctic:
+            case Biome.IcicleField:
+            case Biome.CryoForest:
+            case Biome.MartianPolarIce:
+            case Biome.MercurianIce:
+            case Biome.EuropaIce:
+                return BiomeTerrainSettings.CreateIce();
+
+            case Biome.Ocean:
+            case Biome.Seas:
+            case Biome.Coast:
+            case Biome.TitanLakes:
+                return BiomeTerrainSettings.CreateOcean();
+
+            case Biome.Volcanic:
+            case Biome.VenusLava:
+            case Biome.IoVolcanic:
+                return BiomeTerrainSettings.CreateVolcanic();
+
+            case Biome.MoonDunes:
+            case Biome.MoonCaves:
+            case Biome.MartianRegolith:
+            case Biome.MartianCanyon:
+            case Biome.MartianDunes:
+            case Biome.MercuryCraters:
+            case Biome.MercuryBasalt:
+            case Biome.MercuryScarp:
+            case Biome.PlutoCryo:
+            case Biome.PlutoTholins:
+                return BiomeTerrainSettings.CreateMoon();
+
+            case Biome.VenusianPlains:
+            case Biome.VenusHighlands:
+                return BiomeTerrainSettings.CreateVenus();
+
+            default:
+                // Sensible default for any unmapped biome
+                return BiomeTerrainSettings.CreatePlains();
+        }
+    }
 }
