@@ -170,8 +170,23 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
     private void Update()
     {
+        // CRITICAL: If we're supposed to be in flat mode but globe is still visible, keep trying to hide it
+        if (isFlatActive && globeVisualRoot == null)
+        {
+            TryAutoBindGlobeRoot();
+            if (globeVisualRoot != null)
+            {
+                globeVisualRoot.SetActive(false);
+                Debug.Log($"[FlatGlobeZoomViewController] Late-bound and disabled globe: {globeVisualRoot.name}");
+            }
+        }
+
         // Periodically check for planet changes (handles single-planet mode and planet switching)
-        if (autoBindGlobeRootFromGameManager && (Time.frameCount % 10 == 0))
+        bool checkPlanet = autoBindGlobeRootFromGameManager && (Time.frameCount % 10 == 0);
+        // Also check every frame if we're missing the globe root in flat mode
+        checkPlanet |= (isFlatActive && globeVisualRoot == null);
+        
+        if (checkPlanet)
         {
             var gm = GameManager.Instance;
             if (gm != null)
@@ -188,7 +203,16 @@ public class FlatGlobeZoomViewController : MonoBehaviour
                     _cachedPlanetIndex = currentIndex;
                     TryAutoBindGlobeRoot();
                     RebuildFlatForCurrentPlanet();
-                    SetGlobeActive(!isFlatActive);
+                    
+                    // Force globe off if we're in flat mode
+                    if (isFlatActive && globeVisualRoot != null)
+                    {
+                        globeVisualRoot.SetActive(false);
+                    }
+                    else
+                    {
+                        SetGlobeActive(!isFlatActive);
+                    }
 
                     if (_pendingForceStartFlat && gen != null)
                     {
@@ -289,9 +313,27 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
     private void SetGlobeActive(bool active)
     {
+        // Try to bind if we don't have a reference yet
+        if (globeVisualRoot == null)
+            TryAutoBindGlobeRoot();
+
         // COMPLETELY disable globe root in flat mode - simple and clean
         if (globeVisualRoot != null)
+        {
             globeVisualRoot.SetActive(active);
+        }
+        else if (!active)
+        {
+            // Fallback: if we still don't have the root but need to hide the globe,
+            // try to find and disable any PlanetGenerator in the scene
+            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetCurrentPlanetGenerator() : null;
+            if (planetGen != null)
+            {
+                globeVisualRoot = planetGen.gameObject;
+                globeVisualRoot.SetActive(false);
+                Debug.Log($"[FlatGlobeZoomViewController] Bound and disabled globe: {globeVisualRoot.name}");
+            }
+        }
     }
 
     private void UpdateFlatCamera()
@@ -397,6 +439,16 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
         targetCamera.transform.position = camPos;
         targetCamera.transform.LookAt(_flatLookAtPoint);
+    }
+
+    private void LateUpdate()
+    {
+        // SAFETY NET: Ensure globe stays disabled when in flat mode
+        // This catches cases where something else might re-enable it
+        if (isFlatActive && globeVisualRoot != null && globeVisualRoot.activeSelf)
+        {
+            globeVisualRoot.SetActive(false);
+        }
     }
 
     private void TryAutoBindGlobeRoot()
