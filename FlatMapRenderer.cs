@@ -49,10 +49,15 @@ public class FlatMapRenderer : MonoBehaviour
     [Tooltip("If >= 0, force all spawned objects (and children) to this layer. If < 0, keep prefab layers.")]
     [SerializeField] private int overrideLayer = -1;
 
+    [Header("Pre-Build Options")]
+    [Tooltip("If true, the flat map will be pre-built when planet generation completes (via GameManager.OnPlanetReady event).")]
+    [SerializeField] private bool preBuildOnPlanetReady = true;
+
     [Header("Runtime (Read-only)")]
     [SerializeField] private bool isBuilt;
 
     private readonly Dictionary<int, GameObject> _primaryByTileIndex = new();
+    private bool _subscribedToPlanetReady;
 
     public float MapWidth => mapWidth;
     public float MapHeight => mapHeight;
@@ -70,6 +75,55 @@ public class FlatMapRenderer : MonoBehaviour
         }
         pos = default;
         return false;
+    }
+
+    private void OnEnable()
+    {
+        TrySubscribeToPlanetReady();
+    }
+
+    private void OnDisable()
+    {
+        TryUnsubscribeFromPlanetReady();
+    }
+
+    private void Start()
+    {
+        // Try subscribing in Start in case GameManager was created after OnEnable
+        TrySubscribeToPlanetReady();
+    }
+
+    private void TrySubscribeToPlanetReady()
+    {
+        if (!preBuildOnPlanetReady) return;
+        if (_subscribedToPlanetReady) return;
+        if (GameManager.Instance == null) return;
+
+        GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        _subscribedToPlanetReady = true;
+    }
+
+    private void TryUnsubscribeFromPlanetReady()
+    {
+        if (!_subscribedToPlanetReady) return;
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        _subscribedToPlanetReady = false;
+    }
+
+    private void HandlePlanetReady(int planetIndex)
+    {
+        // Only pre-build if we're starting in flat mode or want tiles ready
+        if (GameManager.Instance == null) return;
+
+        var gen = GameManager.Instance.GetCurrentPlanetGenerator();
+        if (gen == null) return;
+
+        // Check if this is the planet we should build for
+        if (GameManager.Instance.currentPlanetIndex != planetIndex) return;
+
+        Debug.Log($"[FlatMapRenderer] Pre-building flat map for planet {planetIndex}");
+        Rebuild(gen);
     }
 
     public void Clear()
@@ -204,6 +258,10 @@ public class FlatMapRenderer : MonoBehaviour
             return null;
         }
 
+        // CRITICAL: Cloned objects inherit active state from source.
+        // If source was inactive (e.g., globe hidden), we must activate the clone.
+        go.SetActive(true);
+
         go.name = isClone ? $"FlatTile_{tileIndex}_Clone" : $"FlatTile_{tileIndex}";
 
         // Ensure TileIndexHolder for picking
@@ -219,6 +277,9 @@ public class FlatMapRenderer : MonoBehaviour
         go.transform.rotation = Quaternion.identity;
         go.transform.localScale = Vector3.one * tileScaleMultiplier;
 
+        // CRITICAL: Enable all renderers on the clone (they may have been disabled on the source)
+        EnableAllRenderers(go);
+
         // Ensure collider for picking
         EnsureColliderForPicking(go);
 
@@ -226,6 +287,21 @@ public class FlatMapRenderer : MonoBehaviour
             SetLayerRecursively(go, overrideLayer);
 
         return go;
+    }
+
+    /// <summary>
+    /// Enable all Renderer components on this GameObject and its children.
+    /// This is necessary because source objects may have had renderers disabled by MapViewController.
+    /// </summary>
+    private static void EnableAllRenderers(GameObject go)
+    {
+        if (go == null) return;
+        
+        var renderers = go.GetComponentsInChildren<Renderer>(true);
+        foreach (var r in renderers)
+        {
+            if (r != null) r.enabled = true;
+        }
     }
 
     private static void EnsureColliderForPicking(GameObject go)

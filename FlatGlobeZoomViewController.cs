@@ -1,46 +1,28 @@
 using UnityEngine;
 
 /// <summary>
-/// Controls flat-vs-globe presentation switching using a zoom parameter derived from camera distance.
+/// Handles zoom-based transitions between Flat and Globe modes, and flat camera controls.
 /// 
-/// - Does NOT change spherical tile logic.
-/// - Flat map is a DUPLICATE set of visuals - globe tiles are not touched.
-/// - Globe root is COMPLETELY DISABLED in flat mode for clean separation.
+/// IMPORTANT: This script does NOT control visibility directly.
+/// It delegates to MapViewController (the single authority) for mode switching.
 /// 
-/// Camera behavior:
-/// - In flat mode: orbit/pivot camera similar to PlanetaryCameraManager but over flat plane.
-/// - In globe mode: leaves control to PlanetaryCameraManager (orbital camera).
+/// Responsibilities:
+/// - Monitor zoom level and request mode changes via MapViewController
+/// - Control flat camera (orbit/pan/zoom) when in flat mode
 /// </summary>
 public class FlatGlobeZoomViewController : MonoBehaviour
 {
-    [Header("View Roots")]
+    [Header("References")]
     [SerializeField] private FlatMapRenderer flatMapRenderer;
-    [Tooltip("Root object for the globe presentation (PlanetGenerator). Will be COMPLETELY DISABLED in flat mode.")]
-    [SerializeField] private GameObject globeVisualRoot;
-    [Tooltip("When true, automatically binds globeVisualRoot to GameManager.GetCurrentPlanetGenerator().gameObject.")]
-    [SerializeField] private bool autoBindGlobeRootFromGameManager = true;
-
-    [Header("Zoom Source")]
-    [Tooltip("If assigned, uses orbitRadius as cameraDistance and enables/disables this component for globe mode.")]
     [SerializeField] private PlanetaryCameraManager planetaryCamera;
-
-    [Tooltip("Camera to control for flat mode (defaults to Camera.main).")]
     [SerializeField] private Camera targetCamera;
 
     [Header("Zoom Thresholds")]
-    [Tooltip("CameraDistance at which zoomT becomes 0 (flat end).")]
+    [Tooltip("Camera distance at which we switch TO flat mode (zooming in).")]
     [SerializeField] private float flatZoomDistance = 2f;
 
-    [Tooltip("CameraDistance at which zoomT becomes 1 (globe end).")]
+    [Tooltip("Camera distance at which we switch TO globe mode (zooming out).")]
     [SerializeField] private float globeZoomDistance = 30f;
-
-    [Header("Blend Thresholds")]
-    [SerializeField, Range(0f, 1f)] private float flatOnlyMaxT = 0.3f;
-    [SerializeField, Range(0f, 1f)] private float globeOnlyMinT = 0.7f;
-
-    [Header("Startup")]
-    [Tooltip("When true, forces the game to start in flat mode (surface view).")]
-    [SerializeField] private bool startInFlatMode = true;
 
     [Header("Flat Camera - Position")]
     [SerializeField] private bool controlCameraInFlatMode = true;
@@ -51,13 +33,10 @@ public class FlatGlobeZoomViewController : MonoBehaviour
     [Header("Flat Camera - Pan (WASD / Arrow Keys)")]
     [SerializeField] private float flatPanSpeed = 60f;
 
-    [Header("Flat Camera - Orbit/Pivot (like PlanetaryCameraManager)")]
-    [Tooltip("Enable mouse drag rotation (right mouse button).")]
+    [Header("Flat Camera - Orbit/Pivot (Right Mouse)")]
     [SerializeField] private bool enableOrbitRotation = true;
     [SerializeField] private float orbitSensitivity = 0.3f;
-    [Tooltip("Minimum pitch angle (looking down). 10 = nearly top-down, 89 = horizon.")]
     [SerializeField] private float minPitch = 20f;
-    [Tooltip("Maximum pitch angle. 90 = straight down.")]
     [SerializeField] private float maxPitch = 90f;
 
     [Header("Flat Camera - Zoom")]
@@ -68,9 +47,7 @@ public class FlatGlobeZoomViewController : MonoBehaviour
     [SerializeField] private float mouseDragPanSpeed = 0.5f;
 
     [Header("Runtime (Read-only)")]
-    [SerializeField] private float zoomT;
-    [SerializeField] private bool isFlatActive;
-    [SerializeField] private float flatDistanceDriver;
+    [SerializeField] private float currentZoomDistance;
 
     // Flat camera state
     private Vector3 _flatLookAtPoint;
@@ -84,12 +61,14 @@ public class FlatGlobeZoomViewController : MonoBehaviour
     private bool _cachedGlobeOrtho;
     private float _cachedGlobeOrthoSize;
 
-    private bool _pendingForceStartFlat;
-    private int _cachedPlanetIndex = -1;
+    // Subscription tracking to prevent double subscription
+    private bool _isSubscribedToModeChanged;
 
     private void Awake()
     {
-        if (targetCamera == null) targetCamera = Camera.main;
+        if (targetCamera == null) 
+            targetCamera = Camera.main;
+
         if (planetaryCamera != null)
         {
             if (Mathf.Approximately(flatZoomDistance, 2f) && !Mathf.Approximately(planetaryCamera.minOrbitRadius, 0f))
@@ -104,22 +83,38 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
     private void OnEnable()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        TrySubscribeToModeChanged();
     }
 
     private void OnDisable()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        TryUnsubscribeFromModeChanged();
+    }
+
+    private void TrySubscribeToModeChanged()
+    {
+        if (_isSubscribedToModeChanged) return;
+        if (MapViewController.Instance == null) return;
+
+        MapViewController.Instance.OnModeChanged += HandleModeChanged;
+        _isSubscribedToModeChanged = true;
+    }
+
+    private void TryUnsubscribeFromModeChanged()
+    {
+        if (!_isSubscribedToModeChanged) return;
+        
+        // Safe null check - Instance may already be destroyed
+        if (MapViewController.Instance != null)
+            MapViewController.Instance.OnModeChanged -= HandleModeChanged;
+        
+        _isSubscribedToModeChanged = false;
     }
 
     private void Start()
     {
-        _pendingForceStartFlat = startInFlatMode;
-
-        TryAutoBindGlobeRoot();
-        RebuildFlatForCurrentPlanet();
+        // Try subscribing again in case MapViewController was created after OnEnable
+        TrySubscribeToModeChanged();
 
         if (targetCamera != null)
         {
@@ -129,178 +124,63 @@ public class FlatGlobeZoomViewController : MonoBehaviour
         }
 
         _flatLookAtPoint = Vector3.zero;
-
-        if (planetaryCamera != null)
-            flatDistanceDriver = Mathf.Clamp(planetaryCamera.orbitRadius, flatZoomDistance, globeZoomDistance);
-        else
-            flatDistanceDriver = flatZoomDistance;
-
-        if (startInFlatMode)
-        {
-            SetFlatActive(true);
-            SetGlobeActive(false);
-            zoomT = 0f;
-        }
-    }
-
-    private void HandlePlanetReady(int planetIndex)
-    {
-        if (GameManager.Instance != null && planetIndex == GameManager.Instance.currentPlanetIndex)
-        {
-            TryAutoBindGlobeRoot();
-            RebuildFlatForCurrentPlanet();
-            SetGlobeActive(!isFlatActive);
-
-            if (_pendingForceStartFlat)
-            {
-                _pendingForceStartFlat = false;
-                SetFlatActive(true);
-                SetGlobeActive(false);
-                zoomT = 0f;
-            }
-        }
-    }
-
-    private void RebuildFlatForCurrentPlanet()
-    {
-        if (flatMapRenderer == null) return;
-        var gen = GameManager.Instance != null ? GameManager.Instance.GetCurrentPlanetGenerator() : null;
-        if (gen != null) flatMapRenderer.Rebuild(gen);
-    }
-
-    private void Update()
-    {
-        // CRITICAL: If we're supposed to be in flat mode but globe is still visible, keep trying to hide it
-        if (isFlatActive && globeVisualRoot == null)
-        {
-            TryAutoBindGlobeRoot();
-            if (globeVisualRoot != null)
-            {
-                globeVisualRoot.SetActive(false);
-                Debug.Log($"[FlatGlobeZoomViewController] Late-bound and disabled globe: {globeVisualRoot.name}");
-            }
-        }
-
-        // Periodically check for planet changes (handles single-planet mode and planet switching)
-        bool checkPlanet = autoBindGlobeRootFromGameManager && (Time.frameCount % 10 == 0);
-        // Also check every frame if we're missing the globe root in flat mode
-        checkPlanet |= (isFlatActive && globeVisualRoot == null);
         
-        if (checkPlanet)
-        {
-            var gm = GameManager.Instance;
-            if (gm != null)
-            {
-                int currentIndex = gm.currentPlanetIndex;
-                var gen = gm.GetCurrentPlanetGenerator();
-
-                bool planetChanged = currentIndex != _cachedPlanetIndex;
-                bool rootMissing = globeVisualRoot == null;
-                bool rootChanged = gen != null && globeVisualRoot != gen.gameObject;
-
-                if (planetChanged || rootMissing || rootChanged)
-                {
-                    _cachedPlanetIndex = currentIndex;
-                    TryAutoBindGlobeRoot();
-                    RebuildFlatForCurrentPlanet();
-                    
-                    // Force globe off if we're in flat mode
-                    if (isFlatActive && globeVisualRoot != null)
-                    {
-                        globeVisualRoot.SetActive(false);
-                    }
-                    else
-                    {
-                        SetGlobeActive(!isFlatActive);
-                    }
-
-                    if (_pendingForceStartFlat && gen != null)
-                    {
-                        _pendingForceStartFlat = false;
-                        SetFlatActive(true);
-                        SetGlobeActive(false);
-                        zoomT = 0f;
-                    }
-                }
-            }
-        }
-
-        float cameraDistance = GetCameraDistance();
-        zoomT = Mathf.InverseLerp(flatZoomDistance, globeZoomDistance, cameraDistance);
-
-        // View switching rules
-        bool flatOn = zoomT < flatOnlyMaxT;
-        bool globeOn = zoomT > globeOnlyMinT;
-
-        // Middle band: allow overlap (for future fading)
-        if (!flatOn && !globeOn)
-        {
-            flatOn = zoomT < globeOnlyMinT;
-            globeOn = zoomT > flatOnlyMaxT;
-        }
-
-        SetFlatActive(flatOn);
-        SetGlobeActive(globeOn);
-
-        if (controlCameraInFlatMode && isFlatActive)
-            UpdateFlatCamera();
+        // Initialize currentZoomDistance from actual camera state
+        InitializeZoomDistance();
     }
 
-    private float GetCameraDistance()
+    private void InitializeZoomDistance()
     {
-        if (isFlatActive)
-            return flatDistanceDriver;
-
-        if (planetaryCamera != null)
-            return planetaryCamera.orbitRadius;
-
-        if (targetCamera == null) return 0f;
-        return targetCamera.transform.position.magnitude;
-    }
-
-    private void SetFlatActive(bool active)
-    {
-        if (isFlatActive == active) return;
-        isFlatActive = active;
-
-        // Show/hide flat map
-        if (flatMapRenderer != null)
-            flatMapRenderer.gameObject.SetActive(active);
-
-        // Disable orbital camera in flat mode
+        // If we have a planetary camera, use its actual orbit radius
         if (planetaryCamera != null)
         {
-            if (active)
-            {
-                flatDistanceDriver = Mathf.Clamp(planetaryCamera.orbitRadius, flatZoomDistance, globeZoomDistance);
-                planetaryCamera.enabled = false;
-            }
-            else
-            {
-                planetaryCamera.orbitRadius = Mathf.Clamp(flatDistanceDriver, planetaryCamera.minOrbitRadius, planetaryCamera.maxOrbitRadius);
-                planetaryCamera.enabled = true;
-            }
+            currentZoomDistance = planetaryCamera.orbitRadius;
+        }
+        else
+        {
+            // Default to flat zoom distance
+            currentZoomDistance = flatZoomDistance;
+        }
+    }
+
+    private void HandleModeChanged(MapViewController.MapViewMode newMode)
+    {
+        bool isFlat = newMode == MapViewController.MapViewMode.Flat;
+
+        // Configure planetary camera
+        if (planetaryCamera != null)
+        {
+            planetaryCamera.enabled = !isFlat;
         }
 
-        // Enable camera wrap in flat mode
+        // Configure camera wrap
         if (targetCamera != null)
         {
             var wrap = targetCamera.GetComponent<FlatMapWrapCamera>();
-            if (wrap != null) wrap.SetWrapEnabled(active);
+            if (wrap != null) wrap.SetWrapEnabled(isFlat);
         }
 
         if (!controlCameraInFlatMode || targetCamera == null) return;
 
-        if (active)
+        if (isFlat)
         {
             // Cache globe camera settings
             _cachedGlobeFov = targetCamera.fieldOfView;
             _cachedGlobeOrtho = targetCamera.orthographic;
             _cachedGlobeOrthoSize = targetCamera.orthographicSize;
 
-            // Initialize flat camera over center
+            // Initialize flat camera state
             _flatLookAtPoint = Vector3.zero;
-            targetCamera.orthographic = false; // Perspective for orbit feel
+            _flatHeight = flatCameraStartHeight;
+            _flatPitch = 60f;
+            _flatYaw = 0f;
+            
+            // Calculate and set flat camera position immediately
+            PositionFlatCamera();
+            
+            targetCamera.orthographic = false;
+            
+            Debug.Log($"[FlatGlobeZoomViewController] Switched to FLAT mode, camera repositioned to height {_flatHeight}");
         }
         else
         {
@@ -308,31 +188,71 @@ public class FlatGlobeZoomViewController : MonoBehaviour
             targetCamera.orthographic = _cachedGlobeOrtho;
             targetCamera.orthographicSize = _cachedGlobeOrthoSize;
             targetCamera.fieldOfView = _cachedGlobeFov;
+            
+            // Planetary camera will handle repositioning when it's re-enabled
+            Debug.Log("[FlatGlobeZoomViewController] Switched to GLOBE mode");
         }
     }
 
-    private void SetGlobeActive(bool active)
+    /// <summary>
+    /// Immediately position the camera for flat map view based on current flat camera state.
+    /// </summary>
+    private void PositionFlatCamera()
     {
-        // Try to bind if we don't have a reference yet
-        if (globeVisualRoot == null)
-            TryAutoBindGlobeRoot();
+        if (targetCamera == null) return;
+        
+        float pitchRad = _flatPitch * Mathf.Deg2Rad;
+        float yawRadFinal = _flatYaw * Mathf.Deg2Rad;
 
-        // COMPLETELY disable globe root in flat mode - simple and clean
-        if (globeVisualRoot != null)
+        float horizontalDist = _flatHeight / Mathf.Tan(pitchRad);
+        float offsetX = -Mathf.Sin(yawRadFinal) * horizontalDist;
+        float offsetZ = -Mathf.Cos(yawRadFinal) * horizontalDist;
+
+        Vector3 camPos = new Vector3(
+            _flatLookAtPoint.x + offsetX,
+            _flatHeight,
+            _flatLookAtPoint.z + offsetZ
+        );
+
+        targetCamera.transform.position = camPos;
+        targetCamera.transform.LookAt(_flatLookAtPoint);
+    }
+
+    private void Update()
+    {
+        // Only process if authority exists
+        if (MapViewController.Instance == null) return;
+
+        // Late subscription if MapViewController was created after our Start()
+        TrySubscribeToModeChanged();
+
+        bool isFlat = MapViewController.Instance.IsFlatMode;
+
+        // Handle zoom-based mode switching
+        if (isFlat)
         {
-            globeVisualRoot.SetActive(active);
-        }
-        else if (!active)
-        {
-            // Fallback: if we still don't have the root but need to hide the globe,
-            // try to find and disable any PlanetGenerator in the scene
-            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetCurrentPlanetGenerator() : null;
-            if (planetGen != null)
+            // In flat mode - check if we should switch to globe (zooming out)
+            if (currentZoomDistance >= globeZoomDistance)
             {
-                globeVisualRoot = planetGen.gameObject;
-                globeVisualRoot.SetActive(false);
-                Debug.Log($"[FlatGlobeZoomViewController] Bound and disabled globe: {globeVisualRoot.name}");
+                MapViewController.Instance.SetGlobeMode();
+                if (planetaryCamera != null)
+                    planetaryCamera.orbitRadius = globeZoomDistance;
             }
+        }
+        else
+        {
+            // In globe mode - check if we should switch to flat (zooming in)
+            if (planetaryCamera != null && planetaryCamera.orbitRadius <= flatZoomDistance)
+            {
+                currentZoomDistance = flatZoomDistance;
+                MapViewController.Instance.SetFlatMode();
+            }
+        }
+
+        // Update flat camera if in flat mode
+        if (isFlat && controlCameraInFlatMode)
+        {
+            UpdateFlatCamera();
         }
     }
 
@@ -356,7 +276,7 @@ public class FlatGlobeZoomViewController : MonoBehaviour
             if (Mathf.Abs(scroll) > 0.001f)
             {
                 _flatHeight = Mathf.Clamp(_flatHeight - scroll * flatZoomScrollSpeed, flatCameraMinHeight, flatCameraMaxHeight);
-                flatDistanceDriver = Mathf.Clamp(flatDistanceDriver - scroll * flatZoomScrollSpeed * 0.5f, flatZoomDistance, globeZoomDistance);
+                currentZoomDistance = Mathf.Clamp(currentZoomDistance - scroll * flatZoomScrollSpeed * 0.5f, flatZoomDistance, globeZoomDistance);
             }
         }
 
@@ -369,7 +289,6 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
         if (Mathf.Abs(dx) > 0.001f || Mathf.Abs(dz) > 0.001f)
         {
-            // Pan relative to camera yaw
             float yawRad = _flatYaw * Mathf.Deg2Rad;
             float cosYaw = Mathf.Cos(yawRad);
             float sinYaw = Mathf.Sin(yawRad);
@@ -409,7 +328,6 @@ public class FlatGlobeZoomViewController : MonoBehaviour
                 Vector3 delta = Input.mousePosition - _lastMousePos;
                 _lastMousePos = Input.mousePosition;
 
-                // Pan relative to camera orientation
                 float yawRad = _flatYaw * Mathf.Deg2Rad;
                 float cosYaw = Mathf.Cos(yawRad);
                 float sinYaw = Mathf.Sin(yawRad);
@@ -422,11 +340,9 @@ public class FlatGlobeZoomViewController : MonoBehaviour
         }
 
         // === APPLY CAMERA TRANSFORM ===
-        // Calculate camera position orbiting around _flatLookAtPoint
         float pitchRad = _flatPitch * Mathf.Deg2Rad;
         float yawRadFinal = _flatYaw * Mathf.Deg2Rad;
 
-        // Spherical to Cartesian offset from look-at point
         float horizontalDist = _flatHeight / Mathf.Tan(pitchRad);
         float offsetX = -Mathf.Sin(yawRadFinal) * horizontalDist;
         float offsetZ = -Mathf.Cos(yawRadFinal) * horizontalDist;
@@ -439,24 +355,5 @@ public class FlatGlobeZoomViewController : MonoBehaviour
 
         targetCamera.transform.position = camPos;
         targetCamera.transform.LookAt(_flatLookAtPoint);
-    }
-
-    private void LateUpdate()
-    {
-        // SAFETY NET: Ensure globe stays disabled when in flat mode
-        // This catches cases where something else might re-enable it
-        if (isFlatActive && globeVisualRoot != null && globeVisualRoot.activeSelf)
-        {
-            globeVisualRoot.SetActive(false);
-        }
-    }
-
-    private void TryAutoBindGlobeRoot()
-    {
-        if (!autoBindGlobeRootFromGameManager) return;
-        if (GameManager.Instance == null) return;
-        var gen = GameManager.Instance.GetCurrentPlanetGenerator();
-        if (gen == null) return;
-        globeVisualRoot = gen.gameObject;
     }
 }

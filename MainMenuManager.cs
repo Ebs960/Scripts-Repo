@@ -10,6 +10,15 @@ public class MapTypeSpriteEntry
     public Sprite sprite;
 }
 
+/// <summary>
+/// Fallback icons based on climate index when exact map type name isn't found.
+/// </summary>
+[System.Serializable]
+public class ClimateIconEntry
+{
+    public Sprite sprite;
+}
+
 public class MainMenuManager : MonoBehaviour
 {
     [Header("Panel References")]
@@ -88,6 +97,14 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Map Type Visualization")]
     public List<MapTypeSpriteEntry> mapTypeSpriteEntries = new List<MapTypeSpriteEntry>();
+    
+    [Header("Climate Fallback Icons (used when exact map name not found)")]
+    [Tooltip("Fallback icons by climate index: 0=Frozen, 1=Cold, 2=Temperate, 3=Warm, 4=Hot, 5=Scorching")]
+    public Sprite[] climateFallbackIcons = new Sprite[6];
+    
+    [Header("Land Type Fallback Icons (secondary fallback)")]
+    [Tooltip("Fallback icons by land type: 0=Archipelago, 1=Islands, 2=Standard, 3=Continents, 4=Pangaea")]
+    public Sprite[] landTypeFallbackIcons = new Sprite[5];
 
     [Header("Animal Settings")]
     public TMP_Dropdown animalPrevalenceDropdown;
@@ -553,8 +570,9 @@ public class MainMenuManager : MonoBehaviour
         // Retrieve current map type name (without the "Map Type:" prefix)
         string currentName = mapTypeName != null ? mapTypeName.text.Replace("Map Type: ", "").Trim() : string.Empty;
 
-        // Try to find a sprite that matches this name
         Sprite matchedSprite = null;
+        
+        // PRIORITY 1: Try exact name match
         foreach (var entry in mapTypeSpriteEntries)
         {
             if (entry != null && entry.sprite != null && string.Equals(entry.mapTypeName, currentName, System.StringComparison.OrdinalIgnoreCase))
@@ -562,6 +580,36 @@ public class MainMenuManager : MonoBehaviour
                 matchedSprite = entry.sprite;
                 break;
             }
+        }
+        
+        // PRIORITY 2: Try partial match (first word of map type name)
+        if (matchedSprite == null && !string.IsNullOrEmpty(currentName))
+        {
+            string firstWord = currentName.Split(' ')[0].ToLower();
+            foreach (var entry in mapTypeSpriteEntries)
+            {
+                if (entry != null && entry.sprite != null && !string.IsNullOrEmpty(entry.mapTypeName))
+                {
+                    string entryFirstWord = entry.mapTypeName.Split(' ')[0].ToLower();
+                    if (entryFirstWord == firstWord)
+                    {
+                        matchedSprite = entry.sprite;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // PRIORITY 3: Use climate-based fallback icon
+        if (matchedSprite == null && climateFallbackIcons != null && selectedClimatePreset >= 0 && selectedClimatePreset < climateFallbackIcons.Length)
+        {
+            matchedSprite = climateFallbackIcons[selectedClimatePreset];
+        }
+        
+        // PRIORITY 4: Use land-type-based fallback icon
+        if (matchedSprite == null && landTypeFallbackIcons != null && selectedLandPreset >= 0 && selectedLandPreset < landTypeFallbackIcons.Length)
+        {
+            matchedSprite = landTypeFallbackIcons[selectedLandPreset];
         }
 
         if (matchedSprite != null)
@@ -571,6 +619,7 @@ public class MainMenuManager : MonoBehaviour
         }
         else
         {
+            // No icon available at all - still show something generic or hide
             mapTypeIcon.gameObject.SetActive(false);
         }
     }
