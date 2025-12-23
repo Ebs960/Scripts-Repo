@@ -7,60 +7,55 @@ using System.Linq; // Add this for array extension methods like Contains
 using TMPro;
 using GameCombat;
 
-[RequireComponent(typeof(Animator))]
-public class WorkerUnit : MonoBehaviour
+// WorkerUnit inherits from BaseUnit - equipment, movement, health, animations are shared
+public class WorkerUnit : BaseUnit
 {
-    [SerializeField] SphericalHexGrid grid;
-    [Header("Equipment Attachment Points")]
-    [Tooltip("Transform where weapons will be attached")]
-    public Transform weaponHolder;
-    [Tooltip("Transform where shields will be attached")]
-    public Transform shieldHolder;
-    [Tooltip("Transform where armor will be displayed")]
-    public Transform armorHolder;
-    [Tooltip("Transform where miscellaneous items will be attached")]
-    public Transform miscHolder;
-    [Tooltip("Transform where projectile/ranged weapon visuals will be attached (separate from melee weapon)")]
-    public Transform projectileWeaponHolder;
-    PlanetGenerator planet;
-    Animator animator;
-
+    // grid, planet, animator, equipment holders are inherited from BaseUnit
+    
     [Header("Animation Control")]
     private Animator unitAnimator;
-    
-    // Animation parameter hashes for efficiency
+
+    // Worker-specific animation hashes (base hashes like isWalkingHash, attackHash are in BaseUnit)
     private readonly int idleYoungHash = Animator.StringToHash("IdleYoung");
     private readonly int idleExperiencedHash = Animator.StringToHash("IdleExperienced");
-    private readonly int attackHash = Animator.StringToHash("Attack");
-    private readonly int hitHash = Animator.StringToHash("Hit");
-    private readonly int deathHash = Animator.StringToHash("Death");
-    private readonly int routHash = Animator.StringToHash("Rout");
     private readonly int foundCityHash = Animator.StringToHash("FoundCity");
-    private readonly int isWalkingHash = Animator.StringToHash("IsWalking");
     private readonly int forageHash = Animator.StringToHash("Forage");
-    private readonly int buildHash = Animator.StringToHash("Build");  // Worker-specific
+    private readonly int buildHash = Animator.StringToHash("Build");
 
     [Header("Progression")]
     public int level = 1;  // starts at 1
 
     [field: SerializeField] public WorkerUnitData data { get; private set; }
-    public Civilization owner { get; private set; }
+    // owner, currentHealth are inherited from BaseUnit
 
-    public int currentHealth { get; private set; }
+    // === IMPLEMENT ABSTRACT MEMBERS FROM BaseUnit ===
+    
+    public override string UnitName => data?.unitName ?? "Worker";
+    public override int BaseAttack => data?.baseAttack ?? 0;
+    public override int BaseDefense => data?.baseDefense ?? 0;
+    public override int BaseHealth => data?.baseHealth ?? 0;
+    public override float BaseRange => 1f; // Workers default to melee range
+    
+    public override int MaxHealth
+    {
+        get
+        {
+            var wb = AggregateWorkerBonusesLocal(owner, data);
+            int maxHP = Mathf.RoundToInt((data != null ? data.baseHealth : 0) + wb.healthAdd);
+            maxHP = Mathf.RoundToInt(maxHP * (1f + wb.healthPct));
+            return maxHP;
+        }
+    }
+    
+    protected override EquipmentTarget AcceptedEquipmentTarget => EquipmentTarget.WorkerUnit;
+    protected override float MeleeEngageDuration => data?.meleeEngageDuration ?? 8f;
     public int currentWorkPoints { get; private set; }
     public int currentAttackPoints { get; private set; }
     public int currentMovePoints { get; private set; }
     
-    // Trap immobilization state
-    private int trappedTurnsRemaining = 0;
-    public bool IsTrapped => trappedTurnsRemaining > 0;
-    
-    // Flag for tracking winter movement penalty
-    public bool hasWinterPenalty { get; set; }
+    // Trap immobilization (trappedTurnsRemaining, IsTrapped, hasWinterPenalty) inherited from BaseUnit
 
-    [Header("Weather")]
-    [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
-    public bool takesWeatherDamage = true;
+    // takesWeatherDamage is inherited from BaseUnit
 
     // Persistent ID used for save/load to identify this worker across sessions
     [SerializeField]
@@ -79,60 +74,24 @@ public class WorkerUnit : MonoBehaviour
     }
 
 
-    [Header("Equipped Items (Editable)")]
-    [SerializeField] private EquipmentData _equippedWeapon;
-    [SerializeField] private EquipmentData _equippedShield;
-    [SerializeField] private EquipmentData _equippedArmor;
-    [SerializeField] private EquipmentData _equippedMiscellaneous;
-    [SerializeField] private EquipmentData _equippedProjectileWeapon;
+    // Equipment fields (_equippedWeapon, _equippedShield, etc.) are inherited from BaseUnit
+    // updateEquipmentInEditor, _activeProjectile are inherited from BaseUnit
 
     [Header("Holder-based Attachment (no IK)")]
-    [Tooltip("If true, equipment will be attached using holder alignment. When true, weapons will align their grip transforms to the holder; when false, items are parented with local zero.")]
+    [Tooltip("If true, equipment will be attached using holder alignment.")]
     public bool useHolderAttachment = true;
-
-    [Header("Editor")]
-    [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
-    [SerializeField] private bool updateEquipmentInEditor = true;
     
-    [Header("Active Projectile")]
-    [Tooltip("The projectile type this worker will use when firing ranged weapons (can be changed in equipment UI)")]
-    [SerializeField] private GameCombat.ProjectileData _activeProjectile;
-    
-    /// <summary>
-    /// The active projectile this worker uses for ranged attacks
-    /// </summary>
-    public GameCombat.ProjectileData ActiveProjectile
-    {
-        get => _activeProjectile;
-        set => _activeProjectile = value;
-    }
+    // ActiveProjectile, equippedItemObjects, projectile queueing fields, engagedInMelee 
+    // are all inherited from BaseUnit
 
-    // Track instantiated equipment objects by slot
-    private readonly System.Collections.Generic.Dictionary<EquipmentType, GameObject> equippedItemObjects = new System.Collections.Generic.Dictionary<EquipmentType, GameObject>();
-
-    // Projectile / queued projectile support (parity with CombatUnit)
-    [Header("Projectiles")]
-    [Tooltip("If true, projectiles from weapons will be fired via an animation event calling FireQueuedProjectile(); if false they fire immediately during Attack.")]
-    public bool useAnimationEventForProjectiles = true;
-    private EquipmentData queuedProjectileEquipment;
-    private CombatUnit queuedProjectileTargetUnit;
-    private Vector3 queuedProjectileTargetPosition;
-    private int queuedProjectileDamage = -1;
-    private bool hasQueuedProjectile = false;
-    private bool engagedInMelee = false;
-    private Coroutine meleeEngageCoroutine = null;
-
-    // Backwards-compatible current equipped reference and abilities list
-    public EquipmentData equipped { get; private set; }
-    public List<Ability> unlockedAbilities { get; private set; } = new List<Ability>();
-    public event System.Action OnEquipmentChanged;
+    // equipped, unlockedAbilities, OnEquipmentChanged are inherited from BaseUnit
     // neutral root for visuals and follow maps
     private Transform equipmentRoot;
     private readonly System.Collections.Generic.Dictionary<EquipmentType, Transform> equippedHolderMap = new System.Collections.Generic.Dictionary<EquipmentType, Transform>();
     private readonly System.Collections.Generic.Dictionary<EquipmentType, Quaternion> equippedAuthLocal = new System.Collections.Generic.Dictionary<EquipmentType, Quaternion>();
     private readonly System.Collections.Generic.Dictionary<EquipmentType, Transform> equippedVisualRoots = new System.Collections.Generic.Dictionary<EquipmentType, Transform>();
 
-    private void UpdateEquipmentVisuals()
+    public override void UpdateEquipmentVisuals()
     {
         // Remove any existing equipment visual objects
         foreach (var item in equippedItemObjects.Values)
@@ -151,16 +110,16 @@ public class WorkerUnit : MonoBehaviour
 
         // Process ALL slots, including empty ones to ensure proper cleanup
         ProcessEquipmentSlot(EquipmentType.Weapon, equippedWeapon, weaponHolder);
-    // Projectile slot (worker may have a projectile tool)
-    ProcessEquipmentSlot(EquipmentType.Weapon, equippedProjectileWeapon, projectileWeaponHolder);
+        // Projectile slot (worker may have a projectile tool)
+        ProcessEquipmentSlot(EquipmentType.Weapon, equippedProjectileWeapon, projectileWeaponHolder);
         ProcessEquipmentSlot(EquipmentType.Shield, equippedShield, shieldHolder);
         ProcessEquipmentSlot(EquipmentType.Armor, equippedArmor, armorHolder);
         ProcessEquipmentSlot(EquipmentType.Miscellaneous, equippedMiscellaneous, miscHolder);
     }
     
-    private void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
+    protected override void ProcessEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
-        // If no holder is assigned, skip visual processing. We no longer create temporary holder GameObjects.
+        // If no holder is assigned, skip visual processing.
         if (holder == null)
         {
             return;
@@ -191,7 +150,7 @@ public class WorkerUnit : MonoBehaviour
         UpdateEquipmentSlot(type, itemData, holder);
     }
 
-    protected virtual void UpdateEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
+    protected override void UpdateEquipmentSlot(EquipmentType type, EquipmentData itemData, Transform holder)
     {
         if (holder == null)
         {
@@ -277,17 +236,7 @@ public class WorkerUnit : MonoBehaviour
 
         equippedItemObjects[type] = equipObj;
     }
-    private static Transform FindChildRecursive(Transform root, string name)
-    {
-        if (root == null || string.IsNullOrEmpty(name)) return null;
-        foreach (Transform child in root)
-        {
-            if (child.name == name) return child;
-            var found = FindChildRecursive(child, name);
-            if (found != null) return found;
-        }
-        return null;
-    }
+    // FindChildRecursive is inherited from BaseUnit
 
     private static bool IsDescendantOf(Transform node, Transform potentialAncestor)
     {
@@ -301,68 +250,8 @@ public class WorkerUnit : MonoBehaviour
         return false;
     }
 
-    public EquipmentData equippedWeapon
-    {
-        get => _equippedWeapon; // Remove fallback logic
-        set
-        {
-            if (_equippedWeapon == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
-            {
-                return;
-            }
-            _equippedWeapon = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedProjectileWeapon {
-        get => _equippedProjectileWeapon;
-        private set {
-            if (_equippedProjectileWeapon == value) return;
-            _equippedProjectileWeapon = value;
-            if (Application.isPlaying || updateEquipmentInEditor) UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedShield {
-        get => _equippedShield; // Remove fallback logic
-        set {
-            if (_equippedShield == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
-            {
-                return;
-            }
-            _equippedShield = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedArmor {
-        get => _equippedArmor; // Remove fallback logic
-        set {
-            if (_equippedArmor == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
-            {
-                return;
-            }
-            _equippedArmor = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedMiscellaneous {
-        get => _equippedMiscellaneous; // Remove fallback logic
-        set {
-            if (_equippedMiscellaneous == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.CombatUnit)
-            {
-                return;
-            }
-            _equippedMiscellaneous = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
+    // equippedWeapon, equippedShield, equippedArmor, equippedMiscellaneous, equippedProjectileWeapon
+    // are all inherited from BaseUnit with automatic CombatUnit vs WorkerUnit validation
 
     /// <summary>
     /// Editor button to equip all default equipment from the assigned data asset.
@@ -378,7 +267,7 @@ public class WorkerUnit : MonoBehaviour
         equippedShield = data.defaultShield;
         equippedArmor = data.defaultArmor;
         equippedMiscellaneous = data.defaultMiscellaneous;
-        if (data.defaultProjectileWeapon != null) equippedProjectileWeapon = data.defaultProjectileWeapon;
+        if (data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
         #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
         #endif
@@ -387,7 +276,7 @@ public class WorkerUnit : MonoBehaviour
     /// <summary>
     /// Equips an item in the appropriate slot based on its type
     /// </summary>
-    public virtual void EquipItem(EquipmentData equipmentData)
+    public override void EquipItem(EquipmentData equipmentData)
     {
         if (equipmentData == null) return;
         bool changed = false;
@@ -468,110 +357,19 @@ public class WorkerUnit : MonoBehaviour
         OnEquipmentChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Finds a projectile spawn transform on the currently equipped item of the given type.
-    /// Falls back to sensible holders when equipment doesn't specify a specific spawn transform.
-    /// </summary>
-    public Transform GetProjectileSpawnTransform(EquipmentData equipment)
-    {
-        if (equipment != null && equipment.useEquipmentProjectileSpawn && !string.IsNullOrEmpty(equipment.projectileSpawnName))
-        {
-            if (equippedItemObjects != null)
-            {
-                foreach (var kv in equippedItemObjects)
-                {
-                    var go = kv.Value; if (go == null) continue;
-                    if (go.name.Contains(equipment.equipmentPrefab != null ? equipment.equipmentPrefab.name : equipment.equipmentName))
-                    {
-                        var found = FindChildRecursive(go.transform, equipment.projectileSpawnName);
-                        if (found != null) return found;
-                    }
-                }
-            }
-        }
+    // Projectile methods (GetProjectileSpawnTransform, SpawnProjectileFromEquipment, QueueProjectileForAnimation,
+    // FireQueuedProjectile, CancelQueuedProjectile) are inherited from BaseUnit
 
-        if (projectileWeaponHolder != null) return projectileWeaponHolder;
-        if (weaponHolder != null) return weaponHolder;
-        return this.transform;
-    }
-
-    public void SpawnProjectileFromEquipment(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit = null, int overrideDamage = -1)
-    {
-        // PROJECTILE SYSTEM: Use active projectile if available, otherwise fall back to equipment's default
-        GameCombat.ProjectileData projectileToUse = null;
-        
-        // Priority 1: Use worker's active projectile if it matches the weapon's category
-        if (_activeProjectile != null && equipment != null && equipment.usesProjectiles && 
-            _activeProjectile.category == equipment.projectileCategory)
-        {
-            projectileToUse = _activeProjectile;
-        }
-        // Priority 2: Fall back to equipment's default projectile
-        else if (equipment != null && equipment.projectileData != null)
-        {
-            projectileToUse = equipment.projectileData;
-        }
-        
-        // If no valid projectile found, abort
-        if (projectileToUse == null || projectileToUse.projectilePrefab == null) return;
-        
-        Transform spawn = GetProjectileSpawnTransform(equipment);
-        Vector3 startPos = spawn != null ? spawn.position : transform.position;
-            GameObject projGO = null;
-            // Spawn from the unified object pool
-            if (SimpleObjectPool.Instance != null)
-            {
-                projGO = SimpleObjectPool.Instance.Get(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-            }
-            else
-            {
-                projGO = Instantiate(projectileToUse.projectilePrefab, startPos, Quaternion.identity);
-                var marker = projGO.GetComponent<PooledPrefabMarker>(); if (marker == null) marker = projGO.AddComponent<PooledPrefabMarker>(); marker.originalPrefab = projectileToUse.projectilePrefab;
-            }
-        if (projGO == null) return;
-        Projectile proj = projGO.GetComponent<Projectile>(); if (proj == null) proj = projGO.AddComponent<Projectile>();
-        proj.Initialize(projectileToUse, startPos, targetPosition, this.gameObject, targetUnit != null ? targetUnit.transform : null, overrideDamage);
-    }
-
-    public void QueueProjectileForAnimation(EquipmentData equipment, Vector3 targetPosition, CombatUnit targetUnit, int damage)
-    {
-        queuedProjectileEquipment = equipment; queuedProjectileTargetUnit = targetUnit; queuedProjectileTargetPosition = targetPosition; queuedProjectileDamage = damage; hasQueuedProjectile = (equipment != null && equipment.projectileData != null);
-    }
-
-    public void FireQueuedProjectile()
-    {
-        if (!hasQueuedProjectile || queuedProjectileEquipment == null) return;
-        SpawnProjectileFromEquipment(queuedProjectileEquipment, queuedProjectileTargetPosition, queuedProjectileTargetUnit, queuedProjectileDamage);
-        hasQueuedProjectile = false; queuedProjectileEquipment = null; queuedProjectileTargetUnit = null; queuedProjectileDamage = -1;
-    }
-
-    public void CancelQueuedProjectile()
-    {
-        hasQueuedProjectile = false; queuedProjectileEquipment = null; queuedProjectileTargetUnit = null; queuedProjectileDamage = -1;
-    }
-
-    // Melee engage handling
+    // ApplyDamage(int, CombatUnit, bool) needs to use the base class version with BaseUnit
     public bool ApplyDamage(int damageAmount, CombatUnit attacker, bool attackerIsMelee)
     {
-        if (attackerIsMelee && data != null)
-        {
-            engagedInMelee = true;
-            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
-            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(data.meleeEngageDuration));
-        }
-        return ApplyDamage(damageAmount);
+        return base.ApplyDamage(damageAmount, attacker, attackerIsMelee);
     }
 
-    private System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
-    {
-        float t = 0f; while (t < delay) { t += Time.deltaTime; yield return null; }
-        engagedInMelee = false; meleeEngageCoroutine = null;
-    }
+    // EndMeleeEngageAfterDelay is inherited from BaseUnit
 
-    // --- Combat Stats (if applicable) ---
-    public int BaseAttack => (data != null) ? data.baseAttack : 0;
-    public int BaseDefense => (data != null) ? data.baseDefense : 0;
-    public int BaseRange => 1; // Worker data doesn't define range; default to 1
+    // BaseAttack, BaseDefense, BaseRange are implemented as abstract overrides above
+    // WorkerUnit-specific properties:
     public int BaseAttackPoints => 1; // Default attack points for worker
 
     public float EquipmentAttackBonus
@@ -725,15 +523,10 @@ public class WorkerUnit : MonoBehaviour
         return a;
     }
 
-    void Awake()
+    protected override void Awake()
     {
-        animator = GetComponent<Animator>();
-        // FIXED: For civilization units, always use Earth (planet index 0)
-        // Don't use GetCurrentPlanetGenerator which can point to wrong planet during multi-planet generation
-        planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
-        if (planet != null) grid = planet.Grid;
-        unitAnimator = GetComponent<Animator>();
-        UnitRegistry.Register(gameObject);
+        base.Awake(); // Handles animator, planet, grid, and UnitRegistry.Register
+        unitAnimator = animator; // Use the animator from base class
     // Ensure the unit is accessible by persistent id as well
     UnitRegistry.RegisterPersistent(this.PersistentId, gameObject);
 
@@ -813,11 +606,12 @@ public class WorkerUnit : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    protected override void OnDestroy()
     {
-        // Unsubscribe from events
-    GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
-        UnitRegistry.Unregister(gameObject);
+        // Unsubscribe from WorkerUnit-specific events
+        GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
+        // Base handles equipment cleanup and UnitRegistry
+        base.OnDestroy();
     }
 
     public void Initialize(WorkerUnitData unitData, Civilization unitOwner)
@@ -1256,9 +1050,7 @@ public class WorkerUnit : MonoBehaviour
         ImprovementManager.Instance?.UnassignWorkerFromAllJobs(this);
     }
 
-    public int currentTileIndex;
-    public float moveSpeed = 2f;
-    public bool isMoving { get; set; }
+    // currentTileIndex, moveSpeed, isMoving are inherited from BaseUnit
 
     public void MoveTo(int targetTileIndex)
     {
@@ -1268,14 +1060,14 @@ public class WorkerUnit : MonoBehaviour
         StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
     }
 
-    public void ResetForNewTurn()
+    public override void ResetForNewTurn()
     {
         // Aggregate targeted bonuses
         var wb = AggregateWorkerBonusesLocal(owner, data);
         currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
         int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
 
-        // If trapped, decrement duration and block movement this turn
+        // If trapped, decrement duration and block movement this turn (trappedTurnsRemaining is in BaseUnit)
         if (IsTrapped)
         {
             trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
@@ -1318,12 +1110,8 @@ public class WorkerUnit : MonoBehaviour
         }
     }
 
-    // Apply immobilization effect from traps
-    public void ApplyTrap(int turns)
-    {
-        trappedTurnsRemaining = Mathf.Max(trappedTurnsRemaining, turns);
-    }
-    
+    // ApplyTrap(int turns) is inherited from BaseUnit
+
     /// <summary>
     /// Checks if the unit is on a hazardous biome and applies damage if needed
     /// </summary>

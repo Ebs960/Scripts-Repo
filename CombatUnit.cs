@@ -17,7 +17,7 @@ public enum BattleUnitState
     Dead            // Unit eliminated
 }
 
-public class CombatUnit : MonoBehaviour
+public class CombatUnit : BaseUnit
 {
     [Header("Stats (Override Data Asset)")]
     [SerializeField] private int attack = 0;
@@ -27,128 +27,26 @@ public class CombatUnit : MonoBehaviour
     [SerializeField] private int morale = 0;
     [SerializeField] private bool useOverrideStats = false;
     
-    [Header("Equipment Attachment Points")]
-    [Tooltip("Transform where weapons will be attached")]
-    public Transform weaponHolder;
-    [Tooltip("Transform where projectile/ranged weapon visuals will be attached (separate from melee weapon)")]
-    public Transform projectileWeaponHolder;
-    [Tooltip("Transform where shields will be attached")]
-    public Transform shieldHolder;
-    [Tooltip("Transform where armor will be displayed")]
-    public Transform armorHolder;
-    [Tooltip("Transform where miscellaneous items will be attached")]
-    public Transform miscHolder;
-
-    
-    
-    // Dictionary to track instantiated equipment GameObjects
-    protected Dictionary<EquipmentType, GameObject> equippedItemObjects = new Dictionary<EquipmentType, GameObject>();
     // Extra map for secondary equipment visuals (e.g., projectile weapon stored separately)
     protected Dictionary<string, GameObject> extraEquippedItemObjects = new Dictionary<string, GameObject>();
-    // Melee engagement is now handled by range checks in UpdateMeleeEngagementState()
-    // Old timer-based system removed
-    
-    // Equipment in use (beyond just the single 'equipped' reference)
-    [Header("Equipped Items (Editable)")]
-    [SerializeField] private EquipmentData _equippedWeapon;
-    [SerializeField] private EquipmentData _equippedShield;
-    [SerializeField] private EquipmentData _equippedArmor;
-    [SerializeField] private EquipmentData _equippedMiscellaneous;
-    // Separate weapon slot for projectile weapons; melee uses the main equipped weapon and `weaponHolder`.
-    [SerializeField] private EquipmentData _equippedProjectileWeapon;
-    
-    [Header("Editor")]
-    [Tooltip("If true, changing equipment in the Inspector will update visuals immediately in Edit mode. Disable to keep equipment invisible when editing the prefab/scene.")]
-    [SerializeField] private bool updateEquipmentInEditor = true;
-    
-    [Header("Active Projectile")]
-    [Tooltip("The projectile type this unit will use when firing ranged weapons (can be changed in equipment UI)")]
-    [SerializeField] private GameCombat.ProjectileData _activeProjectile;
-    
-    /// <summary>
-    /// The active projectile this unit uses for ranged attacks
-    /// </summary>
-    public GameCombat.ProjectileData ActiveProjectile
-    {
-        get => _activeProjectile;
-        set => _activeProjectile = value;
-    }
     
     public EquipmentData Weapon => equippedWeapon;
     public EquipmentData Shield => equippedShield;
     public EquipmentData Armor => equippedArmor;
     public EquipmentData Miscellaneous => equippedMiscellaneous;
-
     public EquipmentData ProjectileWeapon => equippedProjectileWeapon;
 
-    public EquipmentData equippedWeapon
-    {
-        get => _equippedWeapon;  // Simplified getter - no fallback
-        set
-        {
-            if (_equippedWeapon == value) return;
-            // Prevent equipping worker-only items on combat units
-            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
-            {
-                return;
-            }
-            _equippedWeapon = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    // Melee no longer has a dedicated slot; melee uses `equippedWeapon` and `weaponHolder`.
-
-    public EquipmentData equippedProjectileWeapon
-    {
-        get => _equippedProjectileWeapon;
-        private set
-        {
-            if (_equippedProjectileWeapon == value) return;
-            _equippedProjectileWeapon = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedShield {
-        get => _equippedShield; // Remove fallback logic
-        set {
-            if (_equippedShield == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
-            {
-                return;
-            }
-            _equippedShield = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedArmor {
-        get => _equippedArmor; // Remove fallback logic
-        set {
-            if (_equippedArmor == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
-            {
-                return;
-            }
-            _equippedArmor = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
-    public EquipmentData equippedMiscellaneous {
-        get => _equippedMiscellaneous; // Remove fallback logic
-        set {
-            if (_equippedMiscellaneous == value) return;
-            if (value != null && value.targetUnit == EquipmentTarget.WorkerUnit)
-            {
-                return;
-            }
-            _equippedMiscellaneous = value;
-            if (Application.isPlaying || updateEquipmentInEditor)
-                UpdateEquipmentVisuals();
-        }
-    }
+    // === IMPLEMENT ABSTRACT MEMBERS FROM BaseUnit ===
+    
+    public override string UnitName => data?.unitName ?? "Unknown";
+    
+    public override int BaseAttack => useOverrideStats && attack > 0 ? attack : (data?.baseAttack ?? 0);
+    public override int BaseDefense => useOverrideStats && defense > 0 ? defense : (data?.baseDefense ?? 0);
+    public override int BaseHealth => useOverrideStats && health > 0 ? health : (data?.baseHealth ?? 0);
+    public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);
+    
+    protected override EquipmentTarget AcceptedEquipmentTarget => EquipmentTarget.CombatUnit;
+    protected override float MeleeEngageDuration => data?.meleeEngageDuration ?? 8f;
     /// <summary>
     /// Editor button to equip all default equipment from the assigned data asset.
     /// </summary>
@@ -169,26 +67,12 @@ public class CombatUnit : MonoBehaviour
         UnityEditor.EditorUtility.SetDirty(this);
         #endif
     }
-    
-    SphericalHexGrid grid;
-    PlanetGenerator planet;
-    Animator animator;
+
+    // grid, planet, animator are inherited from BaseUnit
 
 
-    [Header("Projectiles")]
-    [Tooltip("If true, projectiles from weapons will be fired via an animation event calling FireQueuedProjectile(); if false they fire immediately during Attack.")]
-    public bool useAnimationEventForProjectiles = true;
-
-    // Queued projectile data populated on Attack and fired from animation event
-    private EquipmentData queuedProjectileEquipment;
-    private CombatUnit queuedProjectileTargetUnit;
-    private Vector3 queuedProjectileTargetPosition;
-    private int queuedProjectileDamage = -1;
-    private bool hasQueuedProjectile = false;
-
-    // Melee engagement state: when true the unit uses its melee weapon instead of projectile weapon
-    // Now based on actual enemy proximity, not a fixed timer
-    private bool engagedInMelee = false;
+    // Projectile fields (useAnimationEventForProjectiles, queuedProjectile*, hasQueuedProjectile, engagedInMelee) 
+    // are inherited from BaseUnit
     
     // Throttle melee range checks for performance (check every 0.3 seconds)
     private float lastMeleeRangeCheck = 0f;
@@ -196,7 +80,7 @@ public class CombatUnit : MonoBehaviour
     private const float MELEE_ENGAGEMENT_RANGE = 2.5f; // Distance to consider "in melee range"
 
     [field: SerializeField] public CombatUnitData data { get; private set; }  // Now serializable and assignable in Inspector
-    public Civilization owner { get; private set; }
+    // owner, currentHealth are inherited from BaseUnit
 
     // Remove old events and use GameEventManager instead
     public event System.Action OnDeath;
@@ -205,13 +89,9 @@ public class CombatUnit : MonoBehaviour
     public event System.Action<int,int> OnMoraleChanged;
     public event System.Action OnEquipmentChanged;
 
-    // Equipment & Abilities
-    // Currently equipped item (last set via Equip/EquipItem) used for yield calculations, too
-    public EquipmentData equipped { get; private set; }
-    public List<Ability> unlockedAbilities { get; private set; } = new List<Ability>();
+    // equipped, unlockedAbilities, currentHealth are inherited from BaseUnit
 
-    // Runtime stats
-    public int currentHealth { get; private set; }
+    // CombatUnit-specific runtime stats
     public int experience { get; private set; }
     public int level { get; private set; }
     // New: morale runtime stat
@@ -312,8 +192,9 @@ public class CombatUnit : MonoBehaviour
 
 
 
-    void Start()
+    protected override void Start()
     {
+        base.Start();
         // If equipment was assigned in Inspector before play mode, ensure visuals are created at runtime
         if (Application.isPlaying)
         {
@@ -322,17 +203,10 @@ public class CombatUnit : MonoBehaviour
     }
 
 
-    void Awake()
+    protected override void Awake()
     {
-        // CRITICAL FIX: Use GetComponentInChildren to find Animator on child objects (like Armature)
-        // Prefabs often have Animator on child objects, not root
-        animator = GetComponentInChildren<Animator>();
-        if (animator == null)
-        {
-            // Fallback to root if no child Animator found
-            animator = GetComponent<Animator>();
-        }
-        
+        base.Awake(); // This handles animator, grid, planet, and UnitRegistry
+
         // CRITICAL FIX: Ensure animator is properly configured
         if (animator != null)
         {
@@ -426,22 +300,15 @@ public class CombatUnit : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    protected override void OnDestroy()
     {
-        // Clean up all equipment GameObjects
-        foreach (var item in equippedItemObjects.Values)
-        {
-            if (item != null)
-                Destroy(item);
-        }
-        equippedItemObjects.Clear();
-        
-        // Unsubscribe from events
+        // Unsubscribe from CombatUnit-specific events
         GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
         GameEventManager.Instance.OnCombatStarted -= HandleCombatStarted;
         GameEventManager.Instance.OnDamageApplied -= HandleDamageApplied;
 
-        UnitRegistry.Unregister(gameObject);
+        // Base handles equipment cleanup and UnitRegistry
+        base.OnDestroy();
     }
 
     public void Initialize(CombatUnitData unitData, Civilization unitOwner)
@@ -783,7 +650,7 @@ public class CombatUnit : MonoBehaviour
             return Mathf.RoundToInt(valF);
         }
     }
-    public int MaxHealth
+    public override int MaxHealth
     {
         get
         {
@@ -1881,20 +1748,12 @@ public class CombatUnit : MonoBehaviour
         }
     }
     
-    public int currentTileIndex;
-    public float moveSpeed = 2f;
+    // currentTileIndex, moveSpeed are inherited from BaseUnit
     
-    // Animation parameter hashes for efficiency (like WorkerUnit)
-    private static readonly int isWalkingHash = Animator.StringToHash("IsWalking");
+    // CombatUnit-specific animation hashes (base hashes like isWalkingHash, attackHash, etc. are in BaseUnit)
     private static readonly int isIdleHash = Animator.StringToHash("IsIdle");
     private static readonly int isAttackingHash = Animator.StringToHash("IsAttacking");
     private static readonly int isRoutingHash = Animator.StringToHash("IsRouting");
-    
-    // Animation trigger hashes - standardized to capitalized (matching WorkerUnit)
-    private static readonly int attackHash = Animator.StringToHash("Attack");
-    private static readonly int hitHash = Animator.StringToHash("Hit");
-    private static readonly int deathHash = Animator.StringToHash("Death");
-    private static readonly int routHash = Animator.StringToHash("Rout");
     private static readonly int rangedAttackHash = Animator.StringToHash("RangedAttack");
     
     // Centralized animation state tracking
@@ -1903,8 +1762,9 @@ public class CombatUnit : MonoBehaviour
     
     /// <summary>
     /// Is this unit currently moving? Automatically syncs with animator IsWalking parameter
+    /// Hides base class implementation to add animation sync
     /// </summary>
-    public bool isMoving 
+    public new bool isMoving 
     { 
         get => _isMoving;
         set 
@@ -1946,14 +1806,14 @@ public class CombatUnit : MonoBehaviour
     /// <summary>
     /// Resets movement and attack points at start of turn. Also replenishes morale.
     /// </summary>
-    public void ResetForNewTurn()
+    public override void ResetForNewTurn()
     {
-        // If trapped, decrement duration
+        // If trapped, decrement duration (trappedTurnsRemaining is in BaseUnit)
         if (IsTrapped)
         {
             trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
         }
-        
+
         // Morale replenishment
         int moraleRecovery = 10; // Default minimum recovery
         ChangeMorale(moraleRecovery);

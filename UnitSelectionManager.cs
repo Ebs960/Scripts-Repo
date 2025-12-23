@@ -13,8 +13,8 @@ public class UnitSelectionManager : MonoBehaviour
     [SerializeField] private Color selectedUnitHighlightColor = Color.yellow;
     [SerializeField] private GameObject selectionIndicatorPrefab; // Optional visual indicator
     
-    // Currently selected unit
-    private MonoBehaviour selectedUnit; // Can be CombatUnit or WorkerUnit
+    // Currently selected unit - now uses BaseUnit as common type
+    private BaseUnit selectedUnit; // Can be CombatUnit or WorkerUnit (both inherit from BaseUnit)
     private GameObject selectionIndicator;
     // Cached highlight/selection materials to avoid allocations
     private static Material s_selectionIndicatorMaterial;
@@ -131,8 +131,9 @@ public class UnitSelectionManager : MonoBehaviour
 
     /// <summary>
     /// Get a unit occupying the given tile index (authoritative for both globe and flat views).
+    /// Returns BaseUnit since both CombatUnit and WorkerUnit inherit from it.
     /// </summary>
-    private MonoBehaviour GetUnitOnTile(int tileIndex)
+    private BaseUnit GetUnitOnTile(int tileIndex)
     {
         if (TileSystem.Instance == null) return null;
         var td = TileSystem.Instance.GetTileData(tileIndex);
@@ -141,13 +142,9 @@ public class UnitSelectionManager : MonoBehaviour
         var obj = UnitRegistry.GetObject(td.occupantId);
         if (obj == null) return null;
 
-        // Prefer combat unit, then worker unit.
-        var cu = obj.GetComponent<CombatUnit>();
-        if (cu != null) return cu;
-        var wu = obj.GetComponent<WorkerUnit>();
-        if (wu != null) return wu;
-
-        return null;
+        // Try to get as BaseUnit (covers both CombatUnit and WorkerUnit)
+        var baseUnit = obj.GetComponent<BaseUnit>();
+        return baseUnit;
     }
     
     /// <summary>
@@ -401,22 +398,19 @@ public class UnitSelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get the name of a unit (works for both CombatUnit and WorkerUnit)
+    /// Get the name of a unit (works for both CombatUnit and WorkerUnit via BaseUnit)
     /// </summary>
-    private string GetUnitName(MonoBehaviour unit)
+    private string GetUnitName(BaseUnit unit)
     {
-        if (unit is CombatUnit combatUnit)
-            return combatUnit.data.unitName;
-        else if (unit is WorkerUnit workerUnit)
-            return workerUnit.data.unitName;
-        else
-            return unit.name;
+        if (unit != null)
+            return unit.UnitName;
+        return "Unknown";
     }
     
     /// <summary>
     /// Get the currently selected unit
     /// </summary>
-    public MonoBehaviour GetSelectedUnit()
+    public BaseUnit GetSelectedUnit()
     {
         return selectedUnit;
     }
