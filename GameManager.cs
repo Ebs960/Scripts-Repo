@@ -20,8 +20,6 @@ public class GameManager : MonoBehaviour
     public GameObject planetGeneratorPrefab;
     [Tooltip("Generic planet prefab for non-Earth planets (Mars, Venus, etc.)")]
     public GameObject genericPlanetPrefab;
-    [Tooltip("MoonGenerator prefab to instantiate - assign 'New Map Shit/Moon.prefab'")]
-    public GameObject moonGeneratorPrefab;
 
     [Header("Manager Prefabs")]
     [Tooltip("CivilizationManager prefab with pre-configured references")]
@@ -68,7 +66,6 @@ public class GameManager : MonoBehaviour
 
     [Header("References")]
     public PlanetGenerator planetGenerator;
-    public MoonGenerator moonGenerator;
     public CivilizationManager civilizationManager;
     public ClimateManager climateManager;
     public DiplomacyManager diplomacyManager;
@@ -83,7 +80,6 @@ public class GameManager : MonoBehaviour
 
     // Multi-planet storage
     private Dictionary<int, PlanetGenerator> planetGenerators = new Dictionary<int, PlanetGenerator>();
-    private Dictionary<int, MoonGenerator> moonGenerators = new Dictionary<int, MoonGenerator>();
     private Dictionary<int, CivilizationManager> planetCivManagers = new Dictionary<int, CivilizationManager>();
     private Dictionary<int, PlanetData> planetData = new Dictionary<int, PlanetData>();
     
@@ -97,7 +93,6 @@ public class GameManager : MonoBehaviour
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
-    public MoonGenerator GetMoonGenerator(int planetIndex) => moonGenerators.TryGetValue(planetIndex, out var moon) ? moon : null;
     public ClimateManager GetClimateManager(int planetIndex) => ClimateManager.Instance;
     public Dictionary<int, PlanetData> GetPlanetData() => planetData;
     
@@ -123,18 +118,6 @@ public class GameManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get the currently active moon generator (multi-planet aware)
-    /// </summary>
-    public MoonGenerator GetCurrentMoonGenerator()
-    {
-        if (enableMultiPlanetSystem)
-        {
-            return moonGenerators.TryGetValue(currentPlanetIndex, out var moon) ? moon : null;
-        }
-        return moonGenerator;
-    }
-    
-    /// <summary>
     /// Set the current planet index and update references (multi-planet mode)
     /// </summary>
     public void SetCurrentPlanet(int planetIndex)
@@ -156,10 +139,9 @@ public class GameManager : MonoBehaviour
         
         // Rebind TileSystem to the new current planet
         var gen = GetPlanetGenerator(currentPlanetIndex);
-        var moon = GetMoonGenerator(currentPlanetIndex);
         if (TileSystem.Instance != null && gen != null)
         {
-            TileSystem.Instance.InitializeFromPlanet(gen, moon);
+            TileSystem.Instance.InitializeFromPlanet(gen);
         }
     }
 
@@ -400,13 +382,48 @@ public class GameManager : MonoBehaviour
         
     }
 
+    private const string GameSceneName = "Game";
+    private bool _autoInitStarted = false;
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded_AutoInit;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded_AutoInit;
+    }
+
     private void Start()
     {
-        // Auto-initialize game scene if not already in progress (replaces GameSceneInitializer)
-        if (!gameInProgress)
-        {
-            StartCoroutine(InitializeGameScene(loadingPanelPrefab));
-        }
+        // IMPORTANT:
+        // Do NOT start world generation from MainMenu.
+        // Game initialization should start only when the "Game" scene is active.
+        TryAutoInitializeForActiveScene();
+    }
+
+    private void OnSceneLoaded_AutoInit(Scene scene, LoadSceneMode mode)
+    {
+        // If we persist across scenes, Start() will not run again—so we trigger auto-init here.
+        TryAutoInitializeForActiveScene();
+    }
+
+    private void TryAutoInitializeForActiveScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid()) return;
+
+        // Only auto-start in the gameplay scene.
+        if (!string.Equals(scene.name, GameSceneName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Guard: never start twice.
+        if (_autoInitStarted) return;
+        if (gameInProgress) return;
+
+        _autoInitStarted = true;
+        StartCoroutine(InitializeGameScene(loadingPanelPrefab));
     }
 
     /// <summary>
@@ -764,47 +781,7 @@ public class GameManager : MonoBehaviour
             Debug.LogError("PlanetGenerator prefab is not assigned in GameManager!");
         }
 
-        // Instantiate MoonGenerator from prefab if moon generation is enabled
-        if (generateMoon && moonGeneratorPrefab != null)
-        {
-            GameObject moonGO = Instantiate(moonGeneratorPrefab);
-            moonGenerator = moonGO.GetComponent<MoonGenerator>();
-
-            // Position the moon away from the planet
-            moonGO.transform.position = new Vector3(15f, 40f, 0f); // offset position
-
-            if (moonGenerator != null)
-            {
-                // Configure moon generator with reduced subdivisions proportional to size
-                GetMapSizeParams(mapSize, out int planetSubdivisions, out float planetRadius);
-                float moonRadius = planetRadius / 2.5f;
-
-                // Scale moon subdivisions: since radius is 1/5th, reduce subdivisions by 2 levels
-                // This gives approximately 1/5th the tile count
-                int moonSubdivisions = Mathf.Max(2, planetSubdivisions - 2); // Minimum of 3 to avoid too few tiles
-
-                // Assign loading panel controller if present (use cached reference)
-                if (cachedLoadingPanel == null)
-                    cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
-                if (cachedLoadingPanel != null)
-                {
-                    moonGenerator.SetLoadingPanel(cachedLoadingPanel);
-                }
-
-                // Configure moon with correct radius and reduced subdivisions
-                moonGenerator.ConfigureMoon(moonSubdivisions, moonRadius);
-
-                
-
-                // No more hexasphereRenderer setup needed for moon
-
-                // TileSystem will be initialized after surface generation
-            }
-            else
-            {
-                Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
-            }
-        }
+        // Moon bodies are now generated as PlanetGenerator entries in the multi-planet system.
     }
 
     /// <summary>
@@ -907,7 +884,7 @@ public class GameManager : MonoBehaviour
             if (planetGenerator != null)
             {
                 var grid = planetGenerator.Grid;
-                unitMovementController.SetReferences(grid, planetGenerator, moonGenerator);
+                unitMovementController.SetReferences(grid, planetGenerator);
                 
             }
             else
@@ -1000,6 +977,15 @@ public class GameManager : MonoBehaviour
                 Debug.LogWarning("[GameManager] Earth surface not ready for water mesh generation (single-planet mode)");
             }
         }
+
+        // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
+        UpdateLoadingProgress(0.75f, "Building surface map...");
+        var flatRendererSingle = FindAnyObjectByType<FlatMapRenderer>(FindObjectsInactive.Include);
+        if (flatRendererSingle != null && planetGenerator != null)
+        {
+            flatRendererSingle.Rebuild(planetGenerator);
+        }
+
         if (minimapUI != null)
         {
             
@@ -1134,12 +1120,11 @@ public class GameManager : MonoBehaviour
         if (unitMovementController != null)
         {
             var currentPlanet = GetCurrentPlanetGenerator();
-            var currentMoon = GetCurrentMoonGenerator();
             if (currentPlanet != null)
             {
                 var grid = currentPlanet.Grid;
-                unitMovementController.SetReferences(grid, currentPlanet, currentMoon);
-                Debug.Log("[GameManager] Set UnitMovementController references to current planet and moon generators");
+                unitMovementController.SetReferences(grid, currentPlanet);
+                Debug.Log("[GameManager] Set UnitMovementController references to current planet generator");
             }
             else
             {
@@ -1274,6 +1259,15 @@ public class GameManager : MonoBehaviour
             UpdateLoadingProgress(0.80f, "Minimap generation skipped...");
         }
 
+        // Flat equirectangular surface map (presentation-only) — build it during loading for the current planet.
+        UpdateLoadingProgress(0.82f, "Building surface map...");
+        var flatRendererMulti = FindAnyObjectByType<FlatMapRenderer>(FindObjectsInactive.Include);
+        var genForFlat = GetCurrentPlanetGenerator();
+        if (flatRendererMulti != null && genForFlat != null)
+        {
+            flatRendererMulti.Rebuild(genForFlat);
+        }
+
         // Update loading progress - UI setup
         UpdateLoadingProgress(0.85f, "Setting up interface systems...");
         
@@ -1400,78 +1394,8 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private MoonGenerator CreateMoonForPlanet(int planetIndex, PlanetGenerator generator, string bodyName)
-    {
-        MoonGenerator moonGen = null;
-
-        switch (bodyName)
-        {
-            case "Earth":
-                if (generateMoon)
-                {
-                    if (moonGeneratorPrefab != null)
-                    {
-                        GameObject moonGO = Instantiate(moonGeneratorPrefab);
-                        moonGO.name = $"Planet_{planetIndex}_Moon";
-                        moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
-
-                        moonGen = moonGO.GetComponent<MoonGenerator>();
-                        if (moonGen != null)
-                        {
-                            float moonRadius = generator.radius / 2.5f;
-                            int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
-
-                            if (cachedLoadingPanel == null)
-                                cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
-                            if (cachedLoadingPanel != null)
-                                moonGen.SetLoadingPanel(cachedLoadingPanel);
-
-                            moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
-                        }
-                        else
-                        {
-                            Debug.LogError("MoonGenerator prefab does not have a MoonGenerator component!");
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[GameManager] moonGeneratorPrefab is NULL for Earth! Creating basic MoonGenerator.");
-                        GameObject moonGO = new GameObject($"Planet_{planetIndex}_Moon");
-                        moonGO.transform.position = generator.transform.position + new Vector3(15f, 40f, 0f);
-                        
-                        moonGen = moonGO.AddComponent<MoonGenerator>();
-                        float moonRadius = generator.radius / 2.5f;
-                        int moonSubdivisions = Mathf.Max(2, generator.subdivisions - 2);
-
-                        if (cachedLoadingPanel == null)
-                            cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
-                        if (cachedLoadingPanel != null)
-                            moonGen.SetLoadingPanel(cachedLoadingPanel);
-
-                        moonGen.ConfigureMoon(moonSubdivisions, moonRadius);
-                    }
-                }
-                break;
-
-            // Future moons for other bodies can be handled here
-            default:
-                break;
-        }
-
-        if (moonGen != null)
-        {
-            moonGenerators[planetIndex] = moonGen;
-            if (bodyName == "Earth")
-                moonGenerator = moonGen;
-            // TileSystem will be bound to the active planet as needed
-        }
-        else
-        {
-            moonGenerators[planetIndex] = null;
-        }
-
-        return moonGen;
-    }
+    // NOTE: MoonGenerator has been removed. Moons are treated as regular PlanetGenerator bodies
+    // (CelestialBodyType.Moon) within the multi-planet system.
 
     /// <summary>
     /// Initialize the multi-planet system with multiple planets
@@ -1490,6 +1414,7 @@ public class GameManager : MonoBehaviour
             realBodies = new List<string>
             {
                 "Earth",
+                "Luna",
                 "Mars", "Venus", "Mercury",
                 "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
                 "Io", "Europa", "Ganymede", "Callisto", "Titan"
@@ -1515,6 +1440,9 @@ public class GameManager : MonoBehaviour
                 planetIndex = i,
                 planetName = name,
                 planetType = GetPlanetType(name),
+                celestialBodyType = (name == "Luna" || name == "Io" || name == "Europa" || name == "Ganymede" || name == "Callisto" || name == "Titan")
+                    ? CelestialBodyType.Moon
+                    : CelestialBodyType.Planet,
                 planetSize = GetPlanetSize(name),
                 isHomeWorld = (i == 0),
                 distanceFromStar = GetDistanceFromStar(name),
@@ -1584,8 +1512,7 @@ public class GameManager : MonoBehaviour
             // Ensure TileSystem is initialized to Earth before spawning
             if (TileSystem.Instance != null)
             {
-                var earthMoon = GetMoonGenerator(0);
-                TileSystem.Instance.InitializeFromPlanet(earthPlanetGen, earthMoon);
+                TileSystem.Instance.InitializeFromPlanet(earthPlanetGen);
             }
             
             // Spawn civilizations on Earth
@@ -1631,6 +1558,8 @@ public class GameManager : MonoBehaviour
             // Inner planets
             case "Earth":
                 return new Vector3(0, 0, 0); // Earth at origin
+            case "Luna":
+                return new Vector3(moonDistance, 0, 0); // Luna near Earth
             case "Mars":
                 return new Vector3(baseSpacing, 0, 0);
             case "Venus":
@@ -1678,6 +1607,7 @@ public class GameManager : MonoBehaviour
         return bodyName switch
         {
             "Earth" => PlanetType.Terran,
+            "Luna" => PlanetType.Barren,
             "Mars" => PlanetType.Desert,
             "Venus" => PlanetType.Volcanic,
             "Mercury" => PlanetType.Barren,
@@ -1712,7 +1642,7 @@ public class GameManager : MonoBehaviour
             "Neptune" => MapSize.Standard,
             "Pluto" => MapSize.Small,
             // Moons are generally smaller
-            "Io" or "Europa" or "Ganymede" or "Callisto" or "Titan" => MapSize.Small,
+            "Luna" or "Io" or "Europa" or "Ganymede" or "Callisto" or "Titan" => MapSize.Small,
             _ => MapSize.Standard
         };
     }
@@ -1734,6 +1664,7 @@ public class GameManager : MonoBehaviour
             "Neptune" => 30.1f,
             "Pluto" => 39.5f,
             // Moons have same distance as their parent planet
+            "Luna" => 1.0f, // Earth's distance
             "Io" or "Europa" or "Ganymede" or "Callisto" => 5.2f, // Jupiter's distance
             "Titan" => 9.5f, // Saturn's distance
             _ => 1.0f
@@ -1757,6 +1688,7 @@ public class GameManager : MonoBehaviour
             "Neptune" => 60190f,
             "Pluto" => 90560f,
             // Moons orbit their parent planet, not the sun
+            "Luna" => 27.32f,
             "Io" => 1.77f,
             "Europa" => 3.55f,
             "Ganymede" => 7.15f,
@@ -1782,6 +1714,7 @@ public class GameManager : MonoBehaviour
             "Uranus" => -195f,
             "Neptune" => -200f,
             "Pluto" => -230f,
+            "Luna" => -20f,
             "Io" => -130f,
             "Europa" => -160f,
             "Ganymede" => -180f,
@@ -1799,6 +1732,7 @@ public class GameManager : MonoBehaviour
         return bodyName switch
         {
             "Earth" => "The blue marble - humanity's home world with vast oceans and diverse biomes",
+            "Luna" => "Earth's moon - an airless, cratered world of grey regolith and ancient impacts",
             "Mars" => "The red planet - a cold, desert world with ancient riverbeds and polar ice caps",
             "Venus" => "The morning star - a volcanic hell world shrouded in thick, toxic atmosphere",
             "Mercury" => "The innermost planet - a scorched, cratered world of extreme temperatures",
@@ -1926,12 +1860,6 @@ public class GameManager : MonoBehaviour
     
     OnPlanetSurfaceGenerated?.Invoke(planetIndex);
 
-        var moonGen = CreateMoonForPlanet(planetIndex, generator, body);
-        if (moonGen != null)
-        {
-            yield return StartCoroutine(moonGen.GenerateSurface());
-        }
-
         // Planet generation complete - no per-planet ClimateManager needed
         // The global ClimateManager will handle all planets from FindCoreManagersInScene
         
@@ -1969,7 +1897,6 @@ public class GameManager : MonoBehaviour
 
         
         currentPlanetIndex = planetIndex;
-        moonGenerator = moonGenerators.TryGetValue(planetIndex, out var mg) ? mg : null;
 
         // Ensure grid is built and surface generated if needed
         var generator = planetGenerators[planetIndex];
@@ -1988,17 +1915,11 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(generator.EnsureVisualsSpawned());
         }
 
-        if (moonGenerator != null && moonGenerator.Grid.TileCount > 0 && moonGenerator.Tiles.Count == 0)
-        {
-            
-            yield return StartCoroutine(moonGenerator.GenerateSurface());
-        }
-
         // Update references in other systems
         // Rebind TileSystem to this planet
         if (TileSystem.Instance != null)
         {
-            TileSystem.Instance.InitializeFromPlanet(generator, moonGenerator);
+            TileSystem.Instance.InitializeFromPlanet(generator);
         }
 
         
@@ -2023,20 +1944,10 @@ public class GameManager : MonoBehaviour
             sunBB.SetBaseRadius(planetGenerator.radius);
         }
 
-        // Generate moon if enabled
-        if (generateMoon && moonGenerator != null)
-        {
-            
-            // Wait a frame to ensure planet is fully initialized
-            yield return null;
-            // Call GenerateSurface on the moon generator as a coroutine
-            yield return StartCoroutine(moonGenerator.GenerateSurface());
-        }
-
-        // Initialize TileSystem once the planet (and optional moon) are generated
+        // Initialize TileSystem once the planet is generated
         if (TileSystem.Instance != null && planetGenerator != null)
         {
-            TileSystem.Instance.InitializeFromPlanet(planetGenerator, moonGenerator);
+            TileSystem.Instance.InitializeFromPlanet(planetGenerator);
         }
 
     
@@ -2105,62 +2016,31 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Switch view to Earth's moon (Luna) in multi-planet setups, or to the single moon in single-planet mode.
+    /// Switch view to Earth's moon (Luna). Moons are treated as regular planets (CelestialBodyType.Moon).
     /// </summary>
     public void GoToEarthMoon()
     {
-        // Determine Earth index if using real system; otherwise assume index 0
-        int earthIndex = 0;
-        if (enableMultiPlanetSystem)
+        // Find Luna body index
+        int lunaIndex = -1;
+        foreach (var kv in planetData)
         {
-            foreach (var kv in planetData)
+            if (string.Equals(kv.Value.planetName, "Luna", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.Equals(kv.Value.planetName, "Earth", StringComparison.OrdinalIgnoreCase))
-                {
-                    earthIndex = kv.Key;
-                    break;
-                }
-            }
-
-            if (currentPlanetIndex != earthIndex)
-            {
-                // Switch current planet to Earth synchronously if already generated
-                if (planetGenerators.ContainsKey(earthIndex))
-                {
-                    currentPlanetIndex = earthIndex;
-                    moonGenerator = moonGenerators.TryGetValue(earthIndex, out var mg) ? mg : null;
-                    if (TileSystem.Instance != null)
-                    {
-                        var gen = GetPlanetGenerator(currentPlanetIndex);
-                        TileSystem.Instance.InitializeFromPlanet(gen, moonGenerator);
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"[GameManager] Earth index {earthIndex} not ready.");
-                }
+                lunaIndex = kv.Key;
+                break;
             }
         }
-
-        // Ensure Earth has a moon
-        var currentMoon = GetCurrentMoonGenerator();
-        if (currentMoon == null)
+        if (lunaIndex < 0)
         {
-            Debug.LogWarning("[GameManager] No moon generator available for current planet. Cannot go to moon.");
+            Debug.LogWarning("[GameManager] Luna not found in planetData. Ensure the multi-planet system includes Luna.");
             return;
         }
-
-        // Move camera to orbit the moon
-        var camMgr = FindAnyObjectByType<PlanetaryCameraManager>();
-        if (camMgr != null)
+        if (!enableMultiPlanetSystem)
         {
-            camMgr.SwitchToMoon(true);
-            
+            Debug.LogWarning("[GameManager] GoToEarthMoon requires multi-planet mode (moons are separate bodies).");
+            return;
         }
-        else
-        {
-            Debug.LogWarning("[GameManager] PlanetaryCameraManager not found. Cannot switch camera to moon.");
-        }
+        SetCurrentPlanet(lunaIndex);
     }
 
     /// <summary>
@@ -2284,7 +2164,6 @@ public class GameManager : MonoBehaviour
         
         // Clear planet/moon generator references
         planetGenerators.Clear();
-        moonGenerators.Clear();
         planetCivManagers.Clear();
         planetData.Clear();
         

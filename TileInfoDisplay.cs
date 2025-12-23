@@ -125,20 +125,31 @@ public class TileInfoDisplay : MonoBehaviour
         if (!isReady)
             return;
 
-        bool isMoon = TileSystem.Instance != null && TileSystem.Instance.IsCurrentHoverOnMoon;
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileDataForBody(tileIndex, isMoon) : null;
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null)
             return;
 
-        Vector3 tileSurfacePosition = TileSystem.Instance != null
-            ? TileSystem.Instance.GetTileSurfacePositionForBody(tileIndex, isMoon, 0.1f)
-            : worldPos;
+        // IMPORTANT (Flat map compatibility):
+        // In flat view, the raycast hit point is on the flat plane and the spherical "surface" position
+        // is not what the player is looking at. Prefer the flat tile position when a FlatMapRenderer is active.
+        Vector3 tileSurfacePosition = worldPos;
+        var flat = FindAnyObjectByType<FlatMapRenderer>();
+        if (flat != null && flat.isActiveAndEnabled && flat.TryGetFlatWorldPosition(tileIndex, out var flatPos))
+        {
+            tileSurfacePosition = flatPos + Vector3.up * 0.1f;
+        }
+        else
+        {
+            tileSurfacePosition = TileSystem.Instance != null
+                ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0.1f)
+                : worldPos;
+        }
 
-        UpdateHighlight(tileSurfacePosition, isMoon);
-        UpdateText(tileData, tileIndex, isMoon);
+        UpdateHighlight(tileSurfacePosition, false);
+        UpdateText(tileData, tileIndex, false);
 
         lastHoveredTileIndex = tileIndex;
-        lastHoverWasMoon = isMoon;
+        lastHoverWasMoon = false;
     }
 
     void OnTileExitedEvent()
@@ -238,19 +249,11 @@ public class TileInfoDisplay : MonoBehaviour
 
         if (GameManager.Instance != null)
         {
-            var generator = isMoon
-                ? GameManager.Instance.GetCurrentMoonGenerator() as IHexasphereGenerator
-                : GameManager.Instance.GetCurrentPlanetGenerator() as IHexasphereGenerator;
-
+            var generator = GameManager.Instance.GetCurrentPlanetGenerator();
             if (generator != null)
             {
-                // Cast to MonoBehaviour to access transform (since PlanetGenerator/MoonGenerator are MonoBehaviours)
-                MonoBehaviour generatorMono = generator as MonoBehaviour;
-                if (generatorMono != null)
-                {
-                    Vector3 center = generatorMono.transform.position;
-                    normal = (tileSurfacePosition - center).normalized;
-                }
+                Vector3 center = generator.transform.position;
+                normal = (tileSurfacePosition - center).normalized;
             }
         }
 
@@ -399,7 +402,7 @@ public class TileInfoDisplay : MonoBehaviour
         {
             // Re-apply last highlight when re-enabled.
             Vector3 tileSurfacePosition = TileSystem.Instance != null
-                ? TileSystem.Instance.GetTileSurfacePositionForBody(lastHoveredTileIndex, lastHoverWasMoon, 0.1f)
+                ? TileSystem.Instance.GetTileSurfacePosition(lastHoveredTileIndex, 0.1f)
                 : Vector3.zero;
             if (tileSurfacePosition != Vector3.zero)
                 UpdateHighlight(tileSurfacePosition, lastHoverWasMoon);

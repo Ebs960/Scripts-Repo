@@ -323,10 +323,6 @@ public class SpaceRouteManager : MonoBehaviour
         if (MatchesMapping(fromPlanet, toPlanet) || MatchesMapping(toPlanet, fromPlanet))
             return true;
 
-        // Support single-planet setups where the moon shares the same index as its planet
-        if (fromPlanet == toPlanet)
-            return gameManager.GetMoonGenerator(fromPlanet) != null;
-
         return false;
     }
 

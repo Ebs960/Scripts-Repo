@@ -60,9 +60,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     
 
     // Private fields
-    // Planet and Moon minimap caches
+    // Planet minimap caches (moons are treated as separate planets)
     private readonly Dictionary<int, Texture> _minimapTextures = new();
-    private readonly Dictionary<int, Texture> _moonMinimapTextures = new();
     // Fast path: per-body (planet or moon) LUT cache mapping pixel -> tile index
     // Key: P{planetIndex}_M{0|1}_W{w}_H{h}
     private static readonly Dictionary<string, int[]> _bodyIndexLUT = new();
@@ -80,7 +79,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private GameManager _gameManager;
     private bool _minimapsPreGenerated = false;
     private LoadingPanelController _loadingPanel;
-    private bool _lastIsOnMoon = false; // track camera target to auto-switch minimap
+    // Moons are separate planets now; no "onMoon" camera mode tracking.
     private PlanetaryCameraManager _cachedCameraManager; // Cached reference to avoid repeated FindAnyObjectByType calls
     
     // UI mirroring cache
@@ -110,20 +109,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         string key = $"P{planetIndex}_M{(isMoon?1:0)}";
         if (_tileAtlasCache.TryGetValue(key, out var atlas)) return atlas;
-        // Attempt build (separate branches to avoid mixed type in ternary)
-        SphericalHexGrid grid = null;
-        if (isMoon)
-        {
-            var moonGen = _gameManager?.GetMoonGenerator(planetIndex);
-            grid = moonGen?.Grid;
-        }
-        else
-        {
-            PlanetGenerator planetGen = null;
-            if (_gameManager != null)
-                planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
-            grid = planetGen?.Grid;
-        }
+        // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
+        PlanetGenerator planetGen = null;
+        if (_gameManager != null)
+            planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+        SphericalHexGrid grid = planetGen?.Grid;
         if (grid == null) return null;
         return EnsureTileColorAtlas(planetIndex, isMoon, grid);
     }
@@ -317,19 +307,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             // Pre-fetch all tile data in one pass
             tileDataArray = new HexTileData[tileCount];
-            PlanetGenerator planetGen = isMoon ? null : (_gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator);
-            MoonGenerator moonGen = isMoon ? _gameManager.GetMoonGenerator(planetIndex) : null;
+            // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
+            PlanetGenerator planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
 
         for (int i = 0; i < tileCount; i++)
         {
-                if (isMoon)
-                {
-                    tileDataArray[i] = moonGen?.GetHexTileData(i);
-                }
-                else
-                {
-                    tileDataArray[i] = planetGen?.GetHexTileData(i);
-                }
+                tileDataArray[i] = planetGen?.GetHexTileData(i);
                 
                 // Fallback to TileSystem if needed
                 if (tileDataArray[i] == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
@@ -652,17 +635,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         // Update position indicator every frame for smooth tracking
         UpdatePositionIndicator();
-
-        // Auto-switch between planet and moon minimap when camera target changes
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
-        if (isOnMoon != _lastIsOnMoon)
-        {
-            _lastIsOnMoon = isOnMoon;
-            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
-        }
     }
 
     private void OnEnable()
@@ -755,19 +727,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             // Planet
             yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, false, minimapResolution));
 
-            // Moon (if any)
-            var moonGen = _gameManager.GetMoonGenerator(planetIndex);
-            if (moonGen != null && moonGen.Grid != null && moonGen.Grid.TileCount > 0)
-            {
-                yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, true, minimapResolution));
-            }
-
             // Update progress (batched - only update every few planets to reduce UI overhead)
             if (_loadingPanel != null && (planetIndex % 2 == 0 || planetIndex == totalPlanets - 1))
             {
                 float progress = 0.8f + (0.1f * (float)(planetIndex + 1) / totalPlanets);
                 _loadingPanel.SetProgress(progress);
-                _loadingPanel.SetStatus($"Generated minimap for {planetName}...{(moonGen != null ? " (and moon)" : string.Empty)}");
+                _loadingPanel.SetStatus($"Generated minimap for {planetName}...");
             }
 
             // PERFORMANCE: Reduced yields - only yield every other planet for better throughput
@@ -821,13 +786,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private IEnumerator GenerateBodyMinimapCoroutine(int planetIndex, bool isMoon, Vector2Int resolution)
     {
         PlanetGenerator planetGenRef = null;
-        MoonGenerator moonGenRef = null;
-        if (isMoon)
-            moonGenRef = _gameManager.GetMoonGenerator(planetIndex);
-        else
-            planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+        // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
+        planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
 
-        var grid = isMoon ? moonGenRef?.Grid : planetGenRef?.Grid;
+        var grid = planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) yield break;
 
         int width = resolution.x;
@@ -868,7 +830,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, tileAtlas);
             if (gpuRT != null)
             {
-                if (isMoon) _moonMinimapTextures[planetIndex] = gpuRT; else _minimapTextures[planetIndex] = gpuRT;
+                _minimapTextures[planetIndex] = gpuRT;
                 yield break;
             }
         }
@@ -881,9 +843,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // PERFORMANCE: Uses synchronous LUT generation for immediate use
     private Texture GenerateBodyMinimapImmediate(int planetIndex, bool isMoon)
     {
-        MoonGenerator moonGenRef = null; PlanetGenerator planetGenRef = null;
-        if (isMoon) moonGenRef = _gameManager.GetMoonGenerator(planetIndex); else planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
-        var grid = isMoon ? moonGenRef?.Grid : planetGenRef?.Grid;
+        PlanetGenerator planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+        var grid = planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) return null;
         int width = minimapResolution.x; int height = minimapResolution.y;
         
@@ -897,7 +858,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             var gpuRT = RunComputeMinimap(planetIndex, isMoon, width, height, lut, atlas);
             if (gpuRT != null)
             {
-                if (isMoon) _moonMinimapTextures[planetIndex] = gpuRT; else _minimapTextures[planetIndex] = gpuRT;
+                _minimapTextures[planetIndex] = gpuRT;
                 return gpuRT;
             }
         }
@@ -926,20 +887,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
         _minimapTextures.Clear();
-        foreach (var tex in _moonMinimapTextures.Values)
-        {
-            if (tex == null) continue;
-            if (tex is RenderTexture rt)
-            {
-                rt.Release();
-                Destroy(rt);
-            }
-            else
-            {
-                Destroy(tex);
-            }
-        }
-        _moonMinimapTextures.Clear();
         _minimapsPreGenerated = false;
     // Clear per-body tile atlas cache as it depends on tile data
     _tileAtlasCache.Clear();
@@ -1132,16 +1079,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void ShowMinimapForPlanet(int planetIndex)
     {
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
-
         if (_minimapsPreGenerated)
         {
             // Use pre-generated texture when present; otherwise, generate on-demand
-            if (!isOnMoon)
-            {
                 if (_minimapTextures.TryGetValue(planetIndex, out var tex) && tex != null)
                 {
                     if (minimapImage != null)
@@ -1160,45 +1100,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     if (generated != null && minimapImage != null) minimapImage.texture = generated;
                     SetZoom(1f);
                 }
-            }
-            else
-            {
-                if (_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) && mtex != null)
-                {
-                    if (minimapImage != null)
-                    {
-                        if (mtex is RenderTexture mrt)
-                            minimapImage.texture = mrt;
-                        else
-                            minimapImage.texture = mtex;
-                    }
-                    SetZoom(1f);
-                }
-                else
-                {
-                    var generated = GenerateBodyMinimapImmediate(planetIndex, true);
-                    if (generated != null && minimapImage != null) minimapImage.texture = generated;
-                    SetZoom(1f);
-                }
-            }
         }
         else
         {
             // Fallback to on-demand generation
-            if (!isOnMoon)
-            {
-                if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
-                    tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
-                if (minimapImage != null && tex != null) minimapImage.texture = tex;
-                SetZoom(1f);
-            }
-            else
-            {
-                if (!_moonMinimapTextures.TryGetValue(planetIndex, out var mtex) || mtex == null)
-                    mtex = GenerateBodyMinimapImmediate(planetIndex, true) as Texture;
-                if (minimapImage != null && mtex != null) minimapImage.texture = mtex;
-                SetZoom(1f);
-            }
+            if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
+                tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
+            if (minimapImage != null && tex != null) minimapImage.texture = tex;
+            SetZoom(1f);
         }
     }
 
@@ -1380,31 +1289,15 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Mathf.Cos(lonRad) * Mathf.Cos(latRad)
         ).normalized;
 
-        // Decide target body (planet or moon) and respect its transform
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
-        Vector3 worldDir;
-        if (isOnMoon)
-        {
-            var moonGen = _gameManager?.GetCurrentMoonGenerator();
-            worldDir = moonGen != null ? moonGen.transform.TransformDirection(localDir).normalized : localDir;
-        }
-        else
-        {
-            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-            worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
-        }
+        // Moons are separate planets now; always target the current planet's transform.
+        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+        Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
 
         // Use cached reference to avoid expensive FindAnyObjectByType call
         if (_cachedCameraManager == null)
             _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
         if (_cachedCameraManager != null)
-        {
-            // Pass whether we are targeting the moon so the camera orbits the right body
-            _cachedCameraManager.JumpToDirection(worldDir, isOnMoon);
-        }
+            _cachedCameraManager.JumpToDirection(worldDir, false);
     }
 
     public void OnScroll(PointerEventData eventData)
@@ -1495,15 +1388,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             return;
         }
 
-        int planetIndex = Mathf.Clamp(_gameManager.currentPlanetIndex, 0, Mathf.Max(0, _gameManager.maxPlanets - 1));
-        var moonGen = _gameManager.GetMoonGenerator(planetIndex);
-        if (moonGen == null || moonGen.Grid == null || moonGen.Grid.TileCount == 0)
-        {
+        if (_gameManager == null || !_gameManager.enableMultiPlanetSystem)
             return;
-        }
 
-        _cachedCameraManager.SwitchToMoon(true);
-        ShowMinimapForPlanet(planetIndex);
+        // Moons are separate planets now. Switch to Luna (if present).
+        _gameManager.GoToEarthMoon();
+        ShowMinimapForPlanet(_gameManager.currentPlanetIndex);
     }
 
     /// <summary>
@@ -1524,8 +1414,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             _gameManager.SetCurrentPlanet(targetIndex);
         }
-        _cachedCameraManager.SwitchToMoon(false);
-
         // Reflect in UI
         if (planetDropdown != null)
         {
@@ -1546,25 +1434,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var camera = Camera.main;
         if (camera == null) return;
 
-        // Determine whether to show indicator on planet or moon based on camera target
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        bool isOnMoon = _cachedCameraManager != null && _cachedCameraManager.IsOnMoon;
-
-        Vector3 bodyPosition;
-        if (isOnMoon)
-        {
-            var moonGen = _gameManager?.GetCurrentMoonGenerator();
-            if (moonGen == null) return;
-            bodyPosition = moonGen.transform.position;
-        }
-        else
-        {
-            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-            if (currentPlanetGen == null) return;
-            bodyPosition = currentPlanetGen.transform.position;
-        }
+        // Moons are separate planets now; indicator always tracks the current planet.
+        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+        if (currentPlanetGen == null) return;
+        Vector3 bodyPosition = currentPlanetGen.transform.position;
         
         // Calculate camera position relative to planet center
     Vector3 relativePos = camera.transform.position - bodyPosition;

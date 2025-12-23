@@ -9,7 +9,6 @@ public class UnitMovementController : MonoBehaviour
     public static UnitMovementController Instance { get; private set; }
     private SphericalHexGrid grid;
     private PlanetGenerator planet;
-    private MoonGenerator moon;
     
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 10f;
@@ -47,13 +46,12 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Set references from GameManager after generators are created
     /// </summary>
-    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen, MoonGenerator moonGen)
+    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen)
     {
         grid = icoGrid;
         planet = planetGen;
-        moon = moonGen;
         
-        Debug.Log($"[UnitMovementController] References set from GameManager - Grid: {grid != null}, Planet: {planet != null}, Moon: {moon != null}");
+        Debug.Log($"[UnitMovementController] References set from GameManager - Grid: {grid != null}, Planet: {planet != null}");
     }
     
     /// <summary>
@@ -68,17 +66,12 @@ public class UnitMovementController : MonoBehaviour
             planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         }
         
-        if (moon == null)
-        {
-            moon = GameManager.Instance?.GetCurrentMoonGenerator();
-        }
-        
         if (grid == null && planet != null)
         {
             grid = planet.Grid;
         }
         
-        Debug.Log($"[UnitMovementController] Found references in scene - Grid: {grid != null}, Planet: {planet != null}, Moon: {moon != null}");
+        Debug.Log($"[UnitMovementController] Found references in scene - Grid: {grid != null}, Planet: {planet != null}");
         
         // If we still don't have grid but we have planet, try to get grid from planet
         if (grid == null && planet != null)

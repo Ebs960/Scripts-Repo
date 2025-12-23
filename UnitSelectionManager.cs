@@ -116,10 +116,38 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
     {
-        // Left-click selection is routed via TileSystem; select/deselect units here
-        var clickedUnit = GetUnitAtPosition(worldPos);
+        // Left-click selection is routed via TileSystem; select/deselect units here.
+        //
+        // IMPORTANT (Flat map compatibility):
+        // In flat equirectangular view, worldPos is on the flat plane, not near the unit's 3D position.
+        // The authoritative identity is tileIndex. Use occupantId -> UnitRegistry first, then fall back
+        // to a worldPos proximity lookup for legacy meshes.
+        var clickedUnit = GetUnitOnTile(tileIndex);
+        if (clickedUnit == null)
+            clickedUnit = GetUnitAtPosition(worldPos);
         if (clickedUnit != null) SelectUnit(clickedUnit); else DeselectUnit();
         // Note: Right-click movement remains handled in Update() to detect mouse button 1
+    }
+
+    /// <summary>
+    /// Get a unit occupying the given tile index (authoritative for both globe and flat views).
+    /// </summary>
+    private MonoBehaviour GetUnitOnTile(int tileIndex)
+    {
+        if (TileSystem.Instance == null) return null;
+        var td = TileSystem.Instance.GetTileData(tileIndex);
+        if (td == null || td.occupantId == 0) return null;
+
+        var obj = UnitRegistry.GetObject(td.occupantId);
+        if (obj == null) return null;
+
+        // Prefer combat unit, then worker unit.
+        var cu = obj.GetComponent<CombatUnit>();
+        if (cu != null) return cu;
+        var wu = obj.GetComponent<WorkerUnit>();
+        if (wu != null) return wu;
+
+        return null;
     }
     
     /// <summary>

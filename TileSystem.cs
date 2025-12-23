@@ -34,7 +34,6 @@ public class TileSystem : MonoBehaviour
 
     [Header("Planet References")]
     [SerializeField] private PlanetGenerator planetRef;          // primary planet (single-planet scope)
-    [SerializeField] private MoonGenerator moonRef;              // optional moon (not fully integrated)
 
     [Header("Runtime Flags")] public bool isReady;
 
@@ -42,7 +41,7 @@ public class TileSystem : MonoBehaviour
     [Tooltip("Camera for raycasts (auto-detects if null)")] public Camera mainCamera;
     [Tooltip("Maximum raycast distance for tile input")] public float maxRaycastDistance = 1000f;
     [Tooltip("Layer mask used for tile raycasts")] public LayerMask tileRaycastMask = -1;
-    private int lastHoveredTileIndex = -1; private bool lastHoverWasMoon = false;
+    private int lastHoveredTileIndex = -1;
 
     // Dirty tracking
     private readonly HashSet<int> _dirtyOverlayTiles = new();
@@ -88,9 +87,9 @@ public class TileSystem : MonoBehaviour
         if (hit.hit)
         {
             int tileIndex = hit.tileIndex;
-            if (tileIndex >= 0 && (tileIndex != lastHoveredTileIndex || hit.isMoon != lastHoverWasMoon))
+            if (tileIndex >= 0 && tileIndex != lastHoveredTileIndex)
             {
-                lastHoveredTileIndex = tileIndex; lastHoverWasMoon = hit.isMoon;
+                lastHoveredTileIndex = tileIndex;
                 OnTileHovered?.Invoke(tileIndex, hit.worldPosition);
             }
         }
@@ -98,7 +97,7 @@ public class TileSystem : MonoBehaviour
         {
             if (lastHoveredTileIndex >= 0)
             {
-                lastHoveredTileIndex = -1; lastHoverWasMoon = false;
+                lastHoveredTileIndex = -1;
                 OnTileHoverExited?.Invoke();
             }
         }
@@ -119,11 +118,11 @@ public class TileSystem : MonoBehaviour
     }
 
     #region Initialization
-    public void InitializeFromPlanet(PlanetGenerator planetGen, MoonGenerator moonGen = null)
+    public void InitializeFromPlanet(PlanetGenerator planetGen)
     {
         if (planetGen == null || planetGen.Grid == null) { Debug.LogWarning("[TileSystem] Planet generator missing grid."); return; }
         int tileCount = planetGen.Grid.TileCount;
-        planetRef = planetGen; moonRef = moonGen;
+        planetRef = planetGen;
         tiles = new HexTileData[tileCount];
         ownerByTile = new int[tileCount]; for (int i=0;i<tileCount;i++) ownerByTile[i] = -1;
         tileCenters = planetGen.Grid.tileCenters; // direct reference
@@ -325,35 +324,20 @@ public class TileSystem : MonoBehaviour
     public void SetLocalPlayerCiv(int civId) { localPlayerCivId = civId; if (!alliedCivs.Contains(civId)) alliedCivs.Add(civId); RebuildMergedFog(); MarkAllTilesDirty(); }
     #endregion
 
-		#region Hover context helpers
-		/// <summary>
-		/// True if the last hover raycast landed on a moon tile (current frame).
-		/// </summary>
-		public bool IsCurrentHoverOnMoon => lastHoverWasMoon;
-		#endregion
-
-    
-
     #region Input Raycast Helpers
-    private (bool hit, int tileIndex, Vector3 worldPosition, bool isMoon) GetMouseHitInfo()
+    private (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
     {
         Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
-        if (mainCamera == null) return (false, -1, Vector3.zero, false);
+        if (mainCamera == null) return (false, -1, Vector3.zero);
         if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, tileRaycastMask))
         {
             var holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
             if (holder != null)
             {
-                bool isMoonTile = false;
-                if (moonRef != null)
-                {
-                    var t = holder.transform; var parent = moonRef.transform;
-                    while (t != null) { if (t == parent) { isMoonTile = true; break; } t = t.parent; }
-                }
-                return (true, holder.tileIndex, hitInfo.point, isMoonTile);
+                return (true, holder.tileIndex, hitInfo.point);
             }
         }
-        return (false, -1, Vector3.zero, false);
+        return (false, -1, Vector3.zero);
     }
     #endregion
 
@@ -368,22 +352,6 @@ public class TileSystem : MonoBehaviour
 		#region Tile Data Access / Mutations (stubs)
     public HexTileData GetTileData(int tile) => (tiles != null && tile >=0 && tile < tiles.Length) ? tiles[tile] : null;
 
-		/// <summary>
-		/// Get tile data for the current planet or the current moon.
-		/// </summary>
-		public HexTileData GetTileDataForBody(int tile, bool isMoon)
-		{
-			if (isMoon)
-			{
-				// Prefer moon generator authoritative data
-				return moonRef != null ? moonRef.GetHexTileData(tile) : null;
-			}
-			// Planet path
-			var td = GetTileData(tile);
-			if (td != null) return td;
-			// Fallback to generator if tiles[] not populated yet
-			return planetRef != null ? planetRef.GetHexTileData(tile) : null;
-		}
     public void SetTileData(int tile, HexTileData data)
     {
         if (!isReady || tiles == null) return;
@@ -395,28 +363,6 @@ public class TileSystem : MonoBehaviour
     public Vector3 GetTileCenter(int tile) => (tileCenters != null && tile >=0 && tile < tileCenters.Length) ? tileCenters[tile] : Vector3.zero;
     public int[] GetNeighbors(int tile) => (neighbors != null && tile >=0 && tile < neighbors.Length) ? neighbors[tile] : System.Array.Empty<int>();
     public bool IsReady() => isReady;
-    #endregion
-
-		#region Surface Position Helpers (planet and moon)
-		/// <summary>
-		/// Get a world-space point on the tile surface for either the planet or the moon.
-		/// </summary>
-		public Vector3 GetTileSurfacePositionForBody(int tile, bool isMoon, float unitOffset = 0f)
-		{
-			if (isMoon)
-			{
-				if (moonRef == null || moonRef.Grid == null) return Vector3.zero;
-				if (tile < 0 || tile >= moonRef.Grid.tileCenters.Length) return Vector3.zero;
-				var centerDir = moonRef.Grid.tileCenters[tile].normalized;
-				float radius = moonRef.Grid.Radius;
-				float elevation = moonRef.GetTileElevation(tile);
-				float elevationScale = radius * 0.1f;
-				return moonRef.transform.TransformPoint(centerDir * (radius + elevation * elevationScale + unitOffset));
-			}
-
-			// Planet
-			return GetTileSurfacePosition(tile, unitOffset);
-		}
 		#endregion
 
     #region Multi-Planet Stubs

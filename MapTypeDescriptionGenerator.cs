@@ -5,37 +5,37 @@ public static class MapTypeDescriptionGenerator
 {
     // Climate description templates (shortened)
     private static readonly string[] climateDescriptions = {
-        "Frozen landscapes with harsh, icy conditions.",
-        "Cold regions with long winters and short growing seasons.",
-        "Temperate regions with distinct seasons and moderate climates.",
-        "Warm environments with extended growing seasons.",
-        "Hot climates with scorching temperatures year-round.",
-        "Extremely hot landscapes with blistering heat waves."
+        "Frozen landscapes of iron-hard ice, glittering drifts, and knife-edge winds.",
+        "Cold regions with long winters, brittle forests, and short growing seasons that reward careful planning.",
+        "Temperate realms of shifting seasons—fertile valleys, stormy coasts, and steady, livable heartlands.",
+        "Warm environments with long summers, heavy skies, and rich growth where water can be secured.",
+        "Hot climates where sun-baked earth and mirage heat punish the unprepared and elevate control of water.",
+        "Scorching worlds of blistering heat waves and hostile horizons—survival itself is a victory condition."
     };
 
     // Moisture description templates (shortened)
     private static readonly string[] moistureDescriptions = {
-        "Extremely dry conditions with limited vegetation.",
-        "Arid environments with scarce water sources.",
-        "Balanced precipitation and moderate vegetation.",
-        "Moist conditions with lush plant growth.",
-        "Wet climates with abundant rainfall.",
-        "Oceanic conditions with perpetual rainfall."
+        "Extremely dry conditions: dust, scrub, and wide-open skies with only stubborn life clinging on.",
+        "Arid environments with scarce water sources—oases, seasonal rivers, and contested wells define expansion.",
+        "Balanced precipitation supporting mixed biomes, reliable agriculture, and varied strategic options.",
+        "Moist conditions with vigorous plant growth, deep soils, and rapid regrowth after conflict.",
+        "Wet climates with frequent storms, swollen rivers, and plentiful biomass—movement is the main tax.",
+        "Oceanic conditions with perpetual rainfall, fog banks, and coastlines that never truly dry."
     };
 
     // Land type description templates (shortened)
     private static readonly string[] landTypeDescriptions = {
-        "Many small islands scattered across vast oceans.",
-        "Significant island chains with substantial landmasses.",
-        "Several major continents separated by large bodies of water.",
-        "A massive supercontinent encompassing most of the planet."
+        "A scattered world of countless islands, where sea lanes are lifelines and isolation shapes empires.",
+        "Great island chains and broad seas—naval reach decides which shores become heartlands.",
+        "Multiple major continents divided by oceans, creating distinct theaters of war and exploration.",
+        "A dominant supercontinent sprawling across the globe, where borders are long and rivals are close."
     };
 
     // Elevation description templates (shortened)
     private static readonly string[] elevationDescriptions = {
-        "Predominantly flat terrain.",
-        "Rolling hills and elevated plateaus.",
-        "Towering mountain ranges divide the landscape."
+        "Predominantly flat terrain—fast expansion, long sightlines, and few natural chokepoints.",
+        "Rolling hills and elevated plateaus—defensible ridges, varied routes, and tactical high ground.",
+        "Towering mountain ranges—hard borders, narrow passes, and dramatic strategic choke points."
     };
 
     // Continent-specific elevation descriptions (shortened)
@@ -179,7 +179,19 @@ public static class MapTypeDescriptionGenerator
 
         // Default: add land type and elevation descriptions (shortened)
         string elevationDesc = (landType == 3) ? elevationDescriptionsContinents[elevation] : elevationDescriptions[elevation];
-        string desc = firstSentence + " " + landTypeDescriptions[landType] + " " + elevationDesc + ". " + geopoliticalDesc;
+        string desc =
+            firstSentence + " " +
+            landTypeDescriptions[landType] + " " +
+            elevationDesc + ". " +
+            geopoliticalDesc;
+
+        // Add a short “what matters here” kicker (kept deterministic from indices only).
+        if (landType <= 1)
+            desc += " Expect coastal strongholds, convoy routes, and wars decided by who controls the straits.";
+        else if (landType == 4)
+            desc += " Expect relentless border pressure—there are few places to hide from a determined neighbor.";
+        else
+            desc += " Expect distinct fronts and regional power blocs as civilizations consolidate their continents.";
 
         // If the map type name contains 'Rivers', append a note about double rivers
         string mapTypeName = MapTypeNameGenerator.GetMapTypeName(climate, moisture, landType, elevation);
@@ -192,22 +204,22 @@ public static class MapTypeDescriptionGenerator
         switch (animalPrevalence)
         {
             case 0:
-                desc += " Wildlife is virtually extinct.";
+                desc += " Wildlife is virtually extinct—nature offers little beyond silence and bones.";
                 break;
             case 1:
-                desc += " Animals are rare.";
+                desc += " Animals are rare, glimpsed more often in stories than in the wild.";
                 break;
             case 2:
-                desc += " Wildlife is present in isolated pockets.";
+                desc += " Wildlife survives in isolated pockets, wary and hard to track.";
                 break;
             case 3:
                 // Normal, no extra text
                 break;
             case 4:
-                desc += " The world teems with wildlife.";
+                desc += " The world teems with wildlife—hunters prosper and borders are never truly safe.";
                 break;
             case 5:
-                desc += " A world ruled by beasts!";
+                desc += " A world ruled by beasts—every expedition risks becoming prey.";
                 break;
         }
 
