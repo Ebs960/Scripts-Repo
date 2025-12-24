@@ -241,22 +241,17 @@ public class UnitSelectionManager : MonoBehaviour
     /// <summary>
     /// Find a unit at the given world position
     /// </summary>
-    private MonoBehaviour GetUnitAtPosition(Vector3 worldPosition)
+    private BaseUnit GetUnitAtPosition(Vector3 worldPosition)
     {
         // Use a small sphere to detect units near the click position
         Collider[] colliders = Physics.OverlapSphere(worldPosition, 0.5f);
         
         foreach (var collider in colliders)
         {
-            // Check for CombatUnit
-            var combatUnit = collider.GetComponentInParent<CombatUnit>();
-            if (combatUnit != null)
-                return combatUnit;
-            
-            // Check for WorkerUnit
-            var workerUnit = collider.GetComponentInParent<WorkerUnit>();
-            if (workerUnit != null)
-                return workerUnit;
+            // Try to get BaseUnit (covers both CombatUnit and WorkerUnit)
+            var baseUnit = collider.GetComponentInParent<BaseUnit>();
+            if (baseUnit != null)
+                return baseUnit;
         }
         
         return null;
@@ -265,7 +260,7 @@ public class UnitSelectionManager : MonoBehaviour
     /// <summary>
     /// Select a unit
     /// </summary>
-    public void SelectUnit(MonoBehaviour unit)
+    public void SelectUnit(BaseUnit unit)
     {
         if (unit == null)
             return;

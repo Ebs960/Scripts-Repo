@@ -195,19 +195,19 @@ public class PlanetaryCameraManager : MonoBehaviour
             int tileIndex = -1;
 
             // Click detection for current planet (moons are separate planets now)
-            var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-            if (planet != null && planet.Grid != null &&
-                RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
-            {
-                Vector3 localDir = (hitPoint - planet.transform.position).normalized;
-                tileIndex = planet.Grid.GetTileAtPosition(localDir);
-
-                if (tileIndex >= 0)
+                var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+                if (planet != null && planet.Grid != null &&
+                    RaySphereIntersection(ray, planet.transform.position, planet.transform.localScale.x * 0.5f, out Vector3 hitPoint))
                 {
-                    Debug.Log($"Clicked on tile index: {tileIndex}");
-                    var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
-                    if (tile != null)
+                    Vector3 localDir = (hitPoint - planet.transform.position).normalized;
+                    tileIndex = planet.Grid.GetTileAtPosition(localDir);
+
+                    if (tileIndex >= 0)
                     {
+                    Debug.Log($"Clicked on tile index: {tileIndex}");
+                        var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+                        if (tile != null)
+                        {
                         Debug.Log($"Biome: {tile.biome}, Elevation: {tile.elevation}, Food: {tile.food}");
                     }
                 }

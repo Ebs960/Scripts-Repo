@@ -13,7 +13,7 @@ using UnityEngine;
 public class FlatGlobeZoomViewController : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private FlatMapRenderer flatMapRenderer;
+    [SerializeField] private FlatMapTextureRenderer flatMapRenderer;
     [SerializeField] private PlanetaryCameraManager planetaryCamera;
     [SerializeField] private Camera targetCamera;
 

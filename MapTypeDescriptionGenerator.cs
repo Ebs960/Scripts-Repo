@@ -134,7 +134,7 @@ public static class MapTypeDescriptionGenerator
     };
 
     // Special combination descriptions for climate + moisture
-    private static readonly string[,] climateMoistureDescriptions = {
+        private static readonly string[,] climateMoistureDescriptions = {
         // Desert      Arid        Standard     Moist        Wet         Oceanic      Rainforest
         { "A frozen desert where ice replaces sand and blizzards scour the land clean of all but the hardiest life. Snow dunes shift like their sandy cousins, burying all traces of those who came before.", 
           "A frigid wasteland where sparse snowfall leaves the frozen ground exposed to cutting winds. Hardy lichens cling to rocks, providing sustenance for the few creatures adapted to this harsh realm.", 
@@ -296,7 +296,7 @@ public static class MapTypeDescriptionGenerator
         if (!string.IsNullOrEmpty(mapTypeName))
         {
             if (mapTypeName.IndexOf("Rivers", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
+        {
                 desc.Append("\n\nGreat rivers snake across this land, their waters the lifeblood of civilizations. Where rivers meet, cities rise; where they flood, empires are humbled.");
             }
             if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -337,17 +337,17 @@ public static class MapTypeDescriptionGenerator
         {
             desc.Append(" ");
             if (cityStateCount <= 2)
-            {
+        {
                 desc.Append("A handful of independent city-states cling to their autonomy, their strategic locations making them valuable prizes for any would-be conqueror—or useful allies for those who prefer subtlety to force.");
-            }
+        }
             else if (cityStateCount <= 4)
-            {
+        {
                 desc.Append("Numerous city-states dot the map, their merchants and mercenaries for hire to the highest bidder. Controlling these independent powers can tip the balance in any conflict.");
-            }
-            else
-            {
+        }
+        else
+        {
                 desc.Append("A constellation of city-states fragments the political landscape, each pursuing its own interests. These small powers play the great civilizations against each other, profiting from chaos.");
-            }
+        }
         }
         
         // Tribal dynamics
@@ -355,9 +355,9 @@ public static class MapTypeDescriptionGenerator
         {
             desc.Append(" ");
             if (tribeCount <= 2)
-            {
+        {
                 desc.Append("Scattered tribes persist in the wilderness, their warriors fierce and their lands difficult to claim. They may be conquered or converted, but never ignored.");
-            }
+        }
             else if (tribeCount <= 4)
             {
                 desc.Append("Warlike tribal confederations control the untamed regions, raiding the borders of civilization and retreating into lands no army can easily follow.");
@@ -367,7 +367,7 @@ public static class MapTypeDescriptionGenerator
                 desc.Append("Numerous tribal groups roam the wilds, their combined strength rivaling that of established nations. A wise leader treats with them; a foolish one dismisses them at great peril.");
             }
         }
-
+        
         return desc.ToString();
     }
     

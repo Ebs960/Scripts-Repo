@@ -423,7 +423,7 @@ public class GameManager : MonoBehaviour
         if (gameInProgress) return;
 
         _autoInitStarted = true;
-        StartCoroutine(InitializeGameScene(loadingPanelPrefab));
+            StartCoroutine(InitializeGameScene(loadingPanelPrefab));
     }
 
     /// <summary>
@@ -980,7 +980,7 @@ public class GameManager : MonoBehaviour
 
         // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
         UpdateLoadingProgress(0.75f, "Building surface map...");
-        var flatRendererSingle = FindAnyObjectByType<FlatMapRenderer>(FindObjectsInactive.Include);
+        var flatRendererSingle = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
         if (flatRendererSingle != null && planetGenerator != null)
         {
             flatRendererSingle.Rebuild(planetGenerator);
@@ -1261,7 +1261,7 @@ public class GameManager : MonoBehaviour
 
         // Flat equirectangular surface map (presentation-only) — build it during loading for the current planet.
         UpdateLoadingProgress(0.82f, "Building surface map...");
-        var flatRendererMulti = FindAnyObjectByType<FlatMapRenderer>(FindObjectsInactive.Include);
+        var flatRendererMulti = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
         var genForFlat = GetCurrentPlanetGenerator();
         if (flatRendererMulti != null && genForFlat != null)
         {
@@ -1846,9 +1846,7 @@ public class GameManager : MonoBehaviour
 
     
     yield return StartCoroutine(generator.GenerateSurface());
-    // Safety: ensure visuals exist before registration/events
-    yield return StartCoroutine(generator.EnsureVisualsSpawned());
-    
+    // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
     
     // CRITICAL FIX: Register the planet generator BEFORE firing events
     // This ensures the generator is available when spawn events fire
@@ -1911,8 +1909,7 @@ public class GameManager : MonoBehaviour
         {
             
             yield return StartCoroutine(generator.GenerateSurface());
-            // Ensure visuals exist after generation when switching planets
-            yield return StartCoroutine(generator.EnsureVisualsSpawned());
+            // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
         }
 
         // Update references in other systems
@@ -1933,9 +1930,7 @@ public class GameManager : MonoBehaviour
         
         // Use GenerateSurface as a coroutine and wait for all map generation to finish
         yield return StartCoroutine(planetGenerator.GenerateSurface());
-        // Safety: ensure tile prefabs/decorations are spawned
-        if (planetGenerator != null)
-            yield return StartCoroutine(planetGenerator.EnsureVisualsSpawned());
+        // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
 
         // Automatically update SunBillboard radius after planet is generated
         var sunBB = FindAnyObjectByType<SunBillboard>();
@@ -2022,21 +2017,21 @@ public class GameManager : MonoBehaviour
     {
         // Find Luna body index
         int lunaIndex = -1;
-        foreach (var kv in planetData)
-        {
-            if (string.Equals(kv.Value.planetName, "Luna", StringComparison.OrdinalIgnoreCase))
+            foreach (var kv in planetData)
             {
+            if (string.Equals(kv.Value.planetName, "Luna", StringComparison.OrdinalIgnoreCase))
+                {
                 lunaIndex = kv.Key;
-                break;
+                    break;
+                }
             }
-        }
         if (lunaIndex < 0)
-        {
+            {
             Debug.LogWarning("[GameManager] Luna not found in planetData. Ensure the multi-planet system includes Luna.");
             return;
         }
         if (!enableMultiPlanetSystem)
-        {
+                {
             Debug.LogWarning("[GameManager] GoToEarthMoon requires multi-planet mode (moons are separate bodies).");
             return;
         }

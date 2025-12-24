@@ -296,16 +296,16 @@ public class UnitMovementController : MonoBehaviour
             else if (workerUnit != null)
                 ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
 
-            // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
+                // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
             if (unit.currentHealth <= 0 || unit.IsTrapped)
-            {
-                // Fire movement completed event up to this step and exit early
-                GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
+                {
+                    // Fire movement completed event up to this step and exit early
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
                 if (combatUnit != null)
                     combatUnit.isMoving = false;
                 else
                     unit.UpdateWalkingState(false);
-                yield break;
+                    yield break;
             }
             
             // Fire movement event for each step

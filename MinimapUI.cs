@@ -37,7 +37,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public RectTransform positionIndicator;
 
     [Header("Minimap Settings")]
-    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(1024, 512); // Higher resolution for better quality
+    [Tooltip("Resolution for minimap texture. Higher = better quality but more memory. Recommended: 1024x512 to 4096x2048")]
+    [SerializeField] private Vector2Int minimapResolution = new Vector2Int(1024, 512);
+    
+    [Tooltip("If true, reuse the flat map texture (if available) instead of regenerating. Much faster and uses less memory.")]
+    [SerializeField] private bool reuseFlatMapTexture = true;
     [Tooltip("Number of rows to process per frame during LUT generation (higher = faster but more frame time)")]
     [SerializeField] private int lutRowsPerFrame = 50; // Process 50 rows per frame for smooth generation
     [SerializeField] private MinimapColorProvider colorProvider;
@@ -110,9 +114,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         string key = $"P{planetIndex}_M{(isMoon?1:0)}";
         if (_tileAtlasCache.TryGetValue(key, out var atlas)) return atlas;
         // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
-        PlanetGenerator planetGen = null;
-        if (_gameManager != null)
-            planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            PlanetGenerator planetGen = null;
+            if (_gameManager != null)
+                planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
         SphericalHexGrid grid = planetGen?.Grid;
         if (grid == null) return null;
         return EnsureTileColorAtlas(planetIndex, isMoon, grid);
@@ -311,8 +315,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             PlanetGenerator planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
 
         for (int i = 0; i < tileCount; i++)
-        {
-                tileDataArray[i] = planetGen?.GetHexTileData(i);
+                {
+                    tileDataArray[i] = planetGen?.GetHexTileData(i);
                 
                 // Fallback to TileSystem if needed
                 if (tileDataArray[i] == null && TileSystem.Instance != null && TileSystem.Instance.IsReady())
@@ -787,7 +791,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         PlanetGenerator planetGenRef = null;
         // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
-        planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
 
         var grid = planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) yield break;
@@ -1079,6 +1083,47 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void ShowMinimapForPlanet(int planetIndex)
     {
+        // OPTIMIZATION: Try to reuse flat map texture first (if enabled and available)
+        if (reuseFlatMapTexture)
+        {
+            var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+            if (flatMapRenderer != null && flatMapRenderer.IsBuilt && flatMapRenderer.MapTexture != null)
+            {
+                // Check if this is the current planet (flat map shows current planet)
+                var currentPlanet = _gameManager != null ? _gameManager.GetCurrentPlanetGenerator() : null;
+                var targetPlanet = _gameManager != null && _gameManager.enableMultiPlanetSystem 
+                    ? _gameManager.GetPlanetGenerator(planetIndex) 
+                    : _gameManager?.planetGenerator;
+                
+                if (currentPlanet == targetPlanet)
+                {
+                    // Reuse flat map texture - downscale if needed
+                    Texture minimapTex = flatMapRenderer.MapTexture;
+                    
+                    // If minimap resolution is different, downscale
+                    if (minimapResolution.x != flatMapRenderer.MapTexture.width || 
+                        minimapResolution.y != flatMapRenderer.MapTexture.height)
+                    {
+                        var downscaled = flatMapRenderer.GetDownscaledTexture(minimapResolution.x, minimapResolution.y);
+                        if (downscaled != null)
+                        {
+                            minimapTex = downscaled;
+                            // Cache it for this planet
+                            _minimapTextures[planetIndex] = minimapTex;
+                        }
+                    }
+                    
+                    if (minimapImage != null && minimapTex != null)
+                    {
+                        minimapImage.texture = minimapTex;
+                        SetZoom(1f);
+                        return; // Successfully reused flat map texture
+                    }
+                }
+            }
+        }
+        
+        // Fallback to pre-generated or on-demand generation
         if (_minimapsPreGenerated)
         {
             // Use pre-generated texture when present; otherwise, generate on-demand
@@ -1099,15 +1144,15 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                     var generated = GenerateBodyMinimapImmediate(planetIndex, false);
                     if (generated != null && minimapImage != null) minimapImage.texture = generated;
                     SetZoom(1f);
-                }
+            }
         }
         else
         {
             // Fallback to on-demand generation
-            if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
-                tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
-            if (minimapImage != null && tex != null) minimapImage.texture = tex;
-            SetZoom(1f);
+                if (!_minimapTextures.TryGetValue(planetIndex, out var tex) || tex == null)
+                    tex = GenerateBodyMinimapImmediate(planetIndex, false) as Texture;
+                if (minimapImage != null && tex != null) minimapImage.texture = tex;
+                SetZoom(1f);
         }
     }
 
@@ -1290,7 +1335,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         ).normalized;
 
         // Moons are separate planets now; always target the current planet's transform.
-        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
         Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
 
         // Use cached reference to avoid expensive FindAnyObjectByType call
@@ -1435,8 +1480,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (camera == null) return;
 
         // Moons are separate planets now; indicator always tracks the current planet.
-        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-        if (currentPlanetGen == null) return;
+            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+            if (currentPlanetGen == null) return;
         Vector3 bodyPosition = currentPlanetGen.transform.position;
         
         // Calculate camera position relative to planet center

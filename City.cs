@@ -432,7 +432,7 @@ public class City : MonoBehaviour
         {
             oldOwner.workerUnits.Remove(w);
             rebelCiv.workerUnits.Add(w);
-            w.Initialize(w.data, rebelCiv);   // reset its owner
+            w.Initialize(w.data, rebelCiv, w.currentTileIndex);   // reset its owner, keep position
         }
 
         // 5) Reassign map-ownership of the city's tiles
@@ -1045,7 +1045,7 @@ public class City : MonoBehaviour
             case WorkerUnitData w:
                 var wGO = Instantiate(w.prefab, pos, Quaternion.identity);
                 var worker = wGO.GetComponent<WorkerUnit>();
-                worker.Initialize(w, owner);
+                worker.Initialize(w, owner, centerTileIndex);
                 owner.workerUnits.Add(worker);
                 
                 // Award governor experience for unit production
@@ -1588,7 +1588,7 @@ public class City : MonoBehaviour
                 {
                     attackerCiv.workerUnits.Add(w);
                 }
-                w.Initialize(w.data, attackerCiv);   // reset its owner
+                w.Initialize(w.data, attackerCiv, w.currentTileIndex);   // reset its owner, keep position
             }
             
             // 4) Reassign map-ownership of the city's tiles

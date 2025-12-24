@@ -327,16 +327,53 @@ public class TileSystem : MonoBehaviour
     #region Input Raycast Helpers
     private (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
     {
-        Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
-        if (mainCamera == null) return (false, -1, Vector3.zero);
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance, tileRaycastMask))
+        // NEW SYSTEM: Use WorldPicker for texture-based picking (flat map or globe)
+        var worldPicker = FindAnyObjectByType<WorldPicker>();
+        if (worldPicker != null)
         {
-            var holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
-            if (holder != null)
+            if (worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
             {
-                return (true, holder.tileIndex, hitInfo.point);
+                return (true, tileIndex, worldPos);
             }
         }
+        
+        // FALLBACK: Raycast against sphere for globe view (if WorldPicker not available)
+        Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
+        if (mainCamera == null) return (false, -1, Vector3.zero);
+        
+        // Try raycast against globe sphere collider
+        if (planetRef != null && planetRef.Grid != null)
+        {
+            var globeRenderer = FindAnyObjectByType<GlobeRenderer>();
+            if (globeRenderer != null)
+            {
+                var sphereCollider = globeRenderer.GetComponent<SphereCollider>();
+                if (sphereCollider != null && sphereCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
+                {
+                    // Convert hit point to direction and get tile index
+                    Vector3 localDir = (hitInfo.point - planetRef.transform.position).normalized;
+                    int tileIndex = planetRef.Grid.GetTileAtPosition(localDir);
+                    if (tileIndex >= 0)
+                        return (true, tileIndex, hitInfo.point);
+                }
+            }
+        }
+        
+        // FALLBACK: Raycast against flat map quad
+        var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+        if (flatMapRenderer != null)
+        {
+            var quadCollider = flatMapRenderer.GetComponent<Collider>();
+            if (quadCollider != null && quadCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
+            {
+                // Get UV from hit point and use LUT to find tile
+                Vector2 uv = flatMapRenderer.GetUVFromWorldPosition(hitInfo.point);
+                int tileIndex = flatMapRenderer.GetTileIndexAtUV(uv.x, uv.y);
+                if (tileIndex >= 0)
+                    return (true, tileIndex, hitInfo.point);
+            }
+        }
+        
         return (false, -1, Vector3.zero);
     }
     #endregion

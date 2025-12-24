@@ -131,18 +131,20 @@ public class TileInfoDisplay : MonoBehaviour
 
         // IMPORTANT (Flat map compatibility):
         // In flat view, the raycast hit point is on the flat plane and the spherical "surface" position
-        // is not what the player is looking at. Prefer the flat tile position when a FlatMapRenderer is active.
+        // is not what the player is looking at. Prefer the flat tile position when a FlatMapTextureRenderer is active.
         Vector3 tileSurfacePosition = worldPos;
-        var flat = FindAnyObjectByType<FlatMapRenderer>();
-        if (flat != null && flat.isActiveAndEnabled && flat.TryGetFlatWorldPosition(tileIndex, out var flatPos))
+        var flat = FindAnyObjectByType<FlatMapTextureRenderer>();
+        if (flat != null && flat.isActiveAndEnabled && flat.IsBuilt)
         {
-            tileSurfacePosition = flatPos + Vector3.up * 0.1f;
+            // Get UV from world position and convert back to world position for flat map
+            Vector2 uv = flat.GetUVFromWorldPosition(worldPos);
+            tileSurfacePosition = flat.GetWorldPositionFromUV(uv.x, uv.y) + Vector3.up * 0.1f;
         }
         else
         {
             tileSurfacePosition = TileSystem.Instance != null
                 ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0.1f)
-                : worldPos;
+            : worldPos;
         }
 
         UpdateHighlight(tileSurfacePosition, false);
@@ -253,7 +255,7 @@ public class TileInfoDisplay : MonoBehaviour
             if (generator != null)
             {
                 Vector3 center = generator.transform.position;
-                normal = (tileSurfacePosition - center).normalized;
+                    normal = (tileSurfacePosition - center).normalized;
             }
         }
 

@@ -53,6 +53,14 @@ public abstract class BaseUnit : MonoBehaviour
     
     public event System.Action OnEquipmentChanged;
 
+    /// <summary>
+    /// Invoke the OnEquipmentChanged event (protected so subclasses can call it)
+    /// </summary>
+    protected void RaiseEquipmentChanged()
+    {
+        OnEquipmentChanged?.Invoke();
+    }
+
     #endregion
 
     #region Core Unit Fields

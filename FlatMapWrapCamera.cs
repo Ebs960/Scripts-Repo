@@ -8,8 +8,8 @@ using UnityEngine;
 /// </summary>
 public class FlatMapWrapCamera : MonoBehaviour
 {
-    [Tooltip("Flat map renderer that defines mapWidth.")]
-    [SerializeField] private FlatMapRenderer flatMap;
+    [Tooltip("Flat map texture renderer that defines mapWidth.")]
+    [SerializeField] private FlatMapTextureRenderer flatMap;
 
     [Tooltip("Enable wrap behavior. Typically enabled only in flat mode.")]
     [SerializeField] private bool wrapEnabled = true;

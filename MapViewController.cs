@@ -2,21 +2,21 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
-/// <summary>
-/// SINGLE AUTHORITY for map view mode.
-/// 
-/// This is the ONE place that decides whether we're in Globe or Flat mode.
-/// All other systems must query this controller - they do NOT decide visibility themselves.
-/// 
-/// Responsibilities:
-/// - Enable/disable FlatMapRenderer
-/// - Enable/disable Globe VISUALS ONLY (renderers/colliders) - NOT the whole GameObject
-/// - Switch camera behavior
-/// - Block input to inactive mode
-/// 
-/// CRITICAL: We do NOT call SetActive(false) on PlanetGenerator because it holds game DATA.
-/// We only disable the visual components (Renderers and Colliders).
-/// </summary>
+    /// <summary>
+    /// SINGLE AUTHORITY for map view mode.
+    /// 
+    /// This is the ONE place that decides whether we're in Globe or Flat mode.
+    /// All other systems must query this controller - they do NOT decide visibility themselves.
+    /// 
+    /// Responsibilities:
+    /// - Enable/disable FlatMapTextureRenderer
+    /// - Enable/disable GlobeRenderer
+    /// - Switch camera behavior
+    /// - Block input to inactive mode
+    /// 
+    /// CRITICAL: We do NOT call SetActive(false) on PlanetGenerator because it holds game DATA.
+    /// We only disable the visual components (Renderers and Colliders).
+    /// </summary>
 public class MapViewController : MonoBehaviour
 {
     public static MapViewController Instance { get; private set; }
@@ -31,14 +31,14 @@ public class MapViewController : MonoBehaviour
     [SerializeField] private MapViewMode currentMode = MapViewMode.Flat;
 
     [Header("View References")]
-    [Tooltip("The flat map renderer. Will be ENABLED in Flat mode, DISABLED in Globe mode.")]
-    [SerializeField] private FlatMapRenderer flatMapRenderer;
+    [Tooltip("The flat map texture renderer. Will be ENABLED in Flat mode, DISABLED in Globe mode.")]
+    [SerializeField] private FlatMapTextureRenderer flatMapRenderer;
+    
+    [Tooltip("The globe renderer. Will be ENABLED in Globe mode, DISABLED in Flat mode.")]
+    [SerializeField] private GlobeRenderer globeRenderer;
 
-    [Tooltip("The globe visual root (PlanetGenerator GameObject). Renderers/Colliders will be toggled, but GameObject stays active.")]
-    [SerializeField] private GameObject globeVisualRoot;
-
-    [Tooltip("Auto-bind globeVisualRoot from GameManager if not assigned.")]
-    [SerializeField] private bool autoBindGlobeRoot = true;
+    [Tooltip("The planet generator (for data access).")]
+    [SerializeField] private PlanetGenerator planetGenerator;
 
     [Header("Camera References")]
     [SerializeField] private PlanetaryCameraManager globeCamera;
@@ -73,11 +73,7 @@ public class MapViewController : MonoBehaviour
 
     private bool _initialized;
     private float _lastEnforceTime;
-
-    // Cached globe components for efficient toggling
-    private List<Renderer> _globeRenderers = new List<Renderer>();
-    private List<Collider> _globeColliders = new List<Collider>();
-    private bool _globeComponentsCached;
+    private bool _subscribedToPlanetEvents;
 
     private void Awake()
     {
@@ -92,28 +88,100 @@ public class MapViewController : MonoBehaviour
         if (mainCamera == null)
             mainCamera = Camera.main;
     }
+    
+    private void OnEnable()
+    {
+        TrySubscribeToPlanetEvents();
+    }
+    
+    private void OnDisable()
+    {
+        TryUnsubscribeFromPlanetEvents();
+    }
+    
+    private void TrySubscribeToPlanetEvents()
+    {
+        if (_subscribedToPlanetEvents) return;
+        if (GameManager.Instance == null) return;
+        
+        GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        _subscribedToPlanetEvents = true;
+    }
+    
+    private void TryUnsubscribeFromPlanetEvents()
+    {
+        if (!_subscribedToPlanetEvents) return;
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        _subscribedToPlanetEvents = false;
+    }
+    
+    private void HandlePlanetReady(int planetIndex)
+    {
+        // Auto-update planet reference when a planet becomes ready
+        var newPlanet = GetCurrentPlanetGenerator();
+        if (newPlanet != null && newPlanet != planetGenerator)
+        {
+            Debug.Log($"[MapViewController] Planet {planetIndex} ready, updating references");
+            OnPlanetChanged();
+        }
+    }
 
     private void Start()
     {
-        // Bind globe root if needed
-        TryBindGlobeRoot();
+        // Subscribe to planet events
+        TrySubscribeToPlanetEvents();
+        
+        // Try to find components if not assigned
+        if (flatMapRenderer == null)
+            flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+        
+        if (globeRenderer == null)
+            globeRenderer = FindAnyObjectByType<GlobeRenderer>();
+        
+        // Auto-assign current planet (will be null if planets not created yet, that's OK)
+        planetGenerator = GetCurrentPlanetGenerator();
 
-        // Apply startup mode
-        SetMode(startMode, force: true);
+        // Apply startup mode (only if we have a planet)
+        if (planetGenerator != null)
+        {
+            SetMode(startMode, force: true);
+        }
+        else
+        {
+            // Wait for planet to be ready - will be triggered by HandlePlanetReady
+            Debug.Log("[MapViewController] No planet available yet, will initialize when planet is ready");
+        }
         _initialized = true;
     }
 
     private void Update()
     {
-        // Continuously try to bind globe root until we have it
-        if (autoBindGlobeRoot && globeVisualRoot == null)
+        // Late subscription if GameManager was created after our Start()
+        TrySubscribeToPlanetEvents();
+        
+        // Try to find components if still missing
+        if (flatMapRenderer == null)
+            flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+        
+        if (globeRenderer == null)
+            globeRenderer = FindAnyObjectByType<GlobeRenderer>();
+        
+        // Auto-update planet reference if it changed (multi-planet support)
+        var currentPlanet = GetCurrentPlanetGenerator();
+        if (currentPlanet != null && currentPlanet != planetGenerator)
         {
-            TryBindGlobeRoot();
-            if (globeVisualRoot != null)
+            Debug.Log("[MapViewController] Detected planet change, updating references");
+            OnPlanetChanged();
+        }
+        else if (planetGenerator == null && currentPlanet != null)
+        {
+            // First time planet becomes available
+            planetGenerator = currentPlanet;
+            if (!_initialized)
             {
-                // Cache components and re-apply mode now that we have the globe reference
-                CacheGlobeComponents();
-                ApplyModeVisuals();
+                SetMode(startMode, force: true);
+                _initialized = true;
             }
         }
 
@@ -128,37 +196,6 @@ public class MapViewController : MonoBehaviour
             _lastEnforceTime = Time.time;
             EnforceModeVisuals();
         }
-    }
-
-    /// <summary>
-    /// Cache all Renderers and Colliders under the globe root for efficient toggling.
-    /// This must be called after the globe is generated.
-    /// </summary>
-    private void CacheGlobeComponents()
-    {
-        _globeRenderers.Clear();
-        _globeColliders.Clear();
-
-        if (globeVisualRoot == null) return;
-
-        // Find the TilePrefabs container - this is where the visual tiles live
-        var tilePrefabsParent = globeVisualRoot.transform.Find("TilePrefabs");
-        if (tilePrefabsParent != null)
-        {
-            // Cache renderers and colliders from tile prefabs
-            _globeRenderers.AddRange(tilePrefabsParent.GetComponentsInChildren<Renderer>(true));
-            _globeColliders.AddRange(tilePrefabsParent.GetComponentsInChildren<Collider>(true));
-        }
-
-        // Also get any renderers/colliders on the root itself (like atmosphere, etc.)
-        var rootRenderer = globeVisualRoot.GetComponent<Renderer>();
-        if (rootRenderer != null) _globeRenderers.Add(rootRenderer);
-        
-        var rootCollider = globeVisualRoot.GetComponent<Collider>();
-        if (rootCollider != null) _globeColliders.Add(rootCollider);
-
-        _globeComponentsCached = true;
-        Debug.Log($"[MapViewController] Cached {_globeRenderers.Count} renderers and {_globeColliders.Count} colliders from globe");
     }
 
     /// <summary>
@@ -203,18 +240,12 @@ public class MapViewController : MonoBehaviour
         bool flatActive = currentMode == MapViewMode.Flat;
         bool globeActive = currentMode == MapViewMode.Globe;
 
-        // === GLOBE VISUALS (disable FIRST before flat map rebuild) ===
-        // CRITICAL: We only disable renderers/colliders, NOT the entire GameObject.
-        // This keeps game systems (TileSystem, etc.) working.
-        SetGlobeVisualsEnabled(globeActive);
-
         // === FLAT MAP ===
         if (flatMapRenderer != null)
         {
-            flatMapRenderer.gameObject.SetActive(flatActive);
+            flatMapRenderer.SetVisible(flatActive);
 
-            // Rebuild flat map when switching to flat mode
-            // Note: Globe is already visually hidden at this point, so cloning is safe
+            // Rebuild flat map when switching to flat mode if needed
             if (flatActive && !flatMapRenderer.IsBuilt)
             {
                 var gen = GetCurrentPlanetGenerator();
@@ -223,34 +254,21 @@ public class MapViewController : MonoBehaviour
             }
         }
 
-        Debug.Log($"[MapViewController] Applied visuals - Flat: {flatActive}, Globe renderers: {globeActive}");
-    }
-
-    /// <summary>
-    /// Enable or disable globe visual components (Renderers and Colliders) without disabling the GameObject.
-    /// This allows game systems to keep running while hiding the globe visually.
-    /// </summary>
-    private void SetGlobeVisualsEnabled(bool enabled)
-    {
-        // If we haven't cached components yet, try now
-        if (!_globeComponentsCached && globeVisualRoot != null)
+        // === GLOBE ===
+        if (globeRenderer != null)
         {
-            CacheGlobeComponents();
+            globeRenderer.SetVisible(globeActive);
+
+            // Rebuild globe when switching to globe mode if needed
+            if (globeActive && !globeRenderer.IsBuilt)
+            {
+                var gen = GetCurrentPlanetGenerator();
+                if (gen != null && flatMapRenderer != null && flatMapRenderer.IsBuilt)
+                    globeRenderer.Rebuild(gen, flatMapRenderer);
+            }
         }
 
-        // Toggle all cached renderers
-        foreach (var rend in _globeRenderers)
-        {
-            if (rend != null)
-                rend.enabled = enabled;
-        }
-
-        // Toggle all cached colliders
-        foreach (var col in _globeColliders)
-        {
-            if (col != null)
-                col.enabled = enabled;
-        }
+        Debug.Log($"[MapViewController] Applied visuals - Flat: {flatActive}, Globe: {globeActive}");
     }
 
     private void ApplyModeCamera()
@@ -275,38 +293,26 @@ public class MapViewController : MonoBehaviour
         bool globeActive = currentMode == MapViewMode.Globe;
 
         // Ensure flat map state matches mode
-        if (flatMapRenderer != null && flatMapRenderer.gameObject.activeSelf != flatActive)
+        if (flatMapRenderer != null)
         {
-            flatMapRenderer.gameObject.SetActive(flatActive);
-            Debug.Log($"[MapViewController] Enforced flat map active state to {flatActive}");
-        }
-
-        // Ensure globe renderers/colliders match mode
-        // (We no longer call SetActive on the whole globe)
-        if (_globeComponentsCached)
-        {
-            // Check a sample renderer to see if enforcement is needed
-            if (_globeRenderers.Count > 0 && _globeRenderers[0] != null)
+            // Check if renderer is enabled (we use SetVisible which controls the renderer)
+            var renderer = flatMapRenderer.GetComponent<MeshRenderer>();
+            if (renderer != null && renderer.enabled != flatActive)
             {
-                if (_globeRenderers[0].enabled != globeActive)
-                {
-                    SetGlobeVisualsEnabled(globeActive);
-                    Debug.Log($"[MapViewController] Enforced globe visuals enabled state to {globeActive}");
-                }
+                flatMapRenderer.SetVisible(flatActive);
+                Debug.Log($"[MapViewController] Enforced flat map visibility to {flatActive}");
             }
         }
-    }
 
-    private void TryBindGlobeRoot()
-    {
-        if (!autoBindGlobeRoot) return;
-        if (globeVisualRoot != null) return;
-
-        var gen = GetCurrentPlanetGenerator();
-        if (gen != null)
+        // Ensure globe renderer matches mode
+        if (globeRenderer != null)
         {
-            globeVisualRoot = gen.gameObject;
-            Debug.Log($"[MapViewController] Bound globe root: {globeVisualRoot.name}");
+            var renderer = globeRenderer.GetComponent<MeshRenderer>();
+            if (renderer != null && renderer.enabled != globeActive)
+            {
+                globeRenderer.SetVisible(globeActive);
+                Debug.Log($"[MapViewController] Enforced globe visibility to {globeActive}");
+            }
         }
     }
 
@@ -322,45 +328,31 @@ public class MapViewController : MonoBehaviour
     /// </summary>
     public void OnPlanetChanged()
     {
-        // Clear cached components from old planet
-        _globeComponentsCached = false;
-        _globeRenderers.Clear();
-        _globeColliders.Clear();
-
-        globeVisualRoot = null; // Force rebind
-        TryBindGlobeRoot();
-
-        // Recache components for new planet
-        if (globeVisualRoot != null)
-        {
-            CacheGlobeComponents();
-        }
+        planetGenerator = GetCurrentPlanetGenerator();
 
         // Rebuild flat map for new planet
         if (currentMode == MapViewMode.Flat && flatMapRenderer != null)
         {
-            flatMapRenderer.Clear(); // Clear old flat tiles
-            var gen = GetCurrentPlanetGenerator();
-            if (gen != null)
-                flatMapRenderer.Rebuild(gen);
+            flatMapRenderer.Clear();
+            if (planetGenerator != null)
+                flatMapRenderer.Rebuild(planetGenerator);
         }
 
-        ApplyModeVisuals();
-    }
+        // Rebuild globe for new planet
+        if (currentMode == MapViewMode.Globe && globeRenderer != null)
+        {
+            globeRenderer.Clear();
+            if (planetGenerator != null && flatMapRenderer != null && flatMapRenderer.IsBuilt)
+                globeRenderer.Rebuild(planetGenerator, flatMapRenderer);
+        }
 
-    /// <summary>
-    /// Force recache of globe visual components.
-    /// Call this if globe visuals have been regenerated.
-    /// </summary>
-    public void RefreshGlobeComponentCache()
-    {
-        _globeComponentsCached = false;
-        CacheGlobeComponents();
         ApplyModeVisuals();
     }
 
     private void OnDestroy()
     {
+        TryUnsubscribeFromPlanetEvents();
+        
         if (Instance == this)
             Instance = null;
     }
