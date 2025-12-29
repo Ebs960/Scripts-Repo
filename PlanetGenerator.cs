@@ -1311,7 +1311,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         isScorchedMapType = mapTypeName.Contains("Scorched");
         isInfernalMapType = mapTypeName.Contains("Infernal");
         isDemonicMapType = mapTypeName.Contains("Demonic");
-        isIceWorldMapType = mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial");
+        isIceWorldMapType = mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial")|| mapTypeName.Contains("Ice");
         isMonsoonMapType = mapTypeName.Contains("Monsoon") || mapTypeName.Contains("Floodlands");
     }
 
