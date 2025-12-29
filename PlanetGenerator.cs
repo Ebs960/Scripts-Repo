@@ -346,19 +346,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Noise threshold for island generation (higher = smaller islands)")]
     public float islandThreshold = 0.05f;
 
-    // --- Terrain Prefab Support ---
-    [System.Serializable]
-    public struct BiomePrefabEntry {
-        public Biome biome;
-        public GameObject[] flatPrefabs; // Prefabs for flat tiles
-        public GameObject[] hillPrefabs; // Prefabs for hill tiles
-        public GameObject[] mountainPrefabs; // Prefabs for mountain tiles
-        public GameObject[] pentagonFlatPrefabs; // Prefabs for flat pentagon tiles
-        public GameObject[] pentagonHillPrefabs; // Prefabs for hill pentagon tiles
-        public GameObject[] pentagonMountainPrefabs; // Prefabs for mountain pentagon tiles
-    }
-
-    // OBSOLETE: Tile prefab system removed - new system uses texture-based rendering
 
     [Header("Decoration System")]
     [Tooltip("Modern decoration system for spawning biome-specific decorations")]
@@ -1324,6 +1311,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         isScorchedMapType = mapTypeName.Contains("Scorched");
         isInfernalMapType = mapTypeName.Contains("Infernal");
         isDemonicMapType = mapTypeName.Contains("Demonic");
+        isIceWorldMapType = mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial");
+        isMonsoonMapType = mapTypeName.Contains("Monsoon") || mapTypeName.Contains("Floodlands");
     }
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)

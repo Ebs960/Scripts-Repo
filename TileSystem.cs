@@ -325,7 +325,7 @@ public class TileSystem : MonoBehaviour
     #endregion
 
     #region Input Raycast Helpers
-    private (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
+    public (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
     {
         // NEW SYSTEM: Use WorldPicker for texture-based picking (flat map or globe)
         var worldPicker = FindAnyObjectByType<WorldPicker>();
@@ -402,11 +402,170 @@ public class TileSystem : MonoBehaviour
     public bool IsReady() => isReady;
 		#endregion
 
-    #region Multi-Planet Stubs
-    // Temporary stubs until true multi-planet block architecture is added
-    public HexTileData GetTileDataFromPlanet(int tile, int planetIndex) => GetTileData(tile);
-    public void SetTileDataOnPlanet(int tile, HexTileData data, int planetIndex) => SetTileData(tile, data);
-    public Vector3 GetTileCenterFromPlanet(int tile, int planetIndex) => GetTileCenter(tile);
+    #region Multi-Planet Support
+    /// <summary>
+    /// Gets tile data from a specific planet by querying the planet generator directly.
+    /// This allows querying tile data from planets other than the current one.
+    /// </summary>
+    public HexTileData GetTileDataFromPlanet(int tile, int planetIndex)
+    {
+        // If querying current planet, use the cached array for performance
+        if (planetRef != null && isReady)
+        {
+            int currentPlanetIndex = -1;
+            if (GameManager.Instance != null)
+            {
+                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
+                    ? GameManager.Instance.currentPlanetIndex 
+                    : 0;
+            }
+            
+            if (planetIndex == currentPlanetIndex)
+            {
+                return GetTileData(tile);
+            }
+        }
+        
+        // Query the specific planet's generator
+        PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
+        if (planetGen != null)
+        {
+            return planetGen.GetHexTileData(tile);
+        }
+        
+        // Fallback to current planet if requested planet not found
+        return GetTileData(tile);
+    }
+    
+    /// <summary>
+    /// Sets tile data on a specific planet by updating the planet generator directly.
+    /// This allows updating tile data on planets other than the current one.
+    /// </summary>
+    public void SetTileDataOnPlanet(int tile, HexTileData data, int planetIndex)
+    {
+        if (data == null) return;
+        
+        // If updating current planet, use the cached array and mark dirty
+        if (planetRef != null && isReady)
+        {
+            int currentPlanetIndex = -1;
+            if (GameManager.Instance != null)
+            {
+                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
+                    ? GameManager.Instance.currentPlanetIndex 
+                    : 0;
+            }
+            
+            if (planetIndex == currentPlanetIndex)
+            {
+                SetTileData(tile, data);
+                // Also update the planet generator to keep in sync
+                if (planetRef != null)
+                {
+                    planetRef.SetHexTileData(tile, data);
+                }
+                return;
+            }
+        }
+        
+        // Update the specific planet's generator
+        PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
+        if (planetGen != null)
+        {
+            planetGen.SetHexTileData(tile, data);
+        }
+    }
+    
+    /// <summary>
+    /// Gets the tile center position from a specific planet's grid.
+    /// This allows querying tile positions from planets other than the current one.
+    /// </summary>
+    public Vector3 GetTileCenterFromPlanet(int tile, int planetIndex)
+    {
+        // If querying current planet, use the cached array for performance
+        if (planetRef != null && isReady)
+        {
+            int currentPlanetIndex = -1;
+            if (GameManager.Instance != null)
+            {
+                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
+                    ? GameManager.Instance.currentPlanetIndex 
+                    : 0;
+            }
+            
+            if (planetIndex == currentPlanetIndex)
+            {
+                return GetTileCenter(tile);
+            }
+        }
+        
+        // Query the specific planet's grid
+        PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
+        if (planetGen != null && planetGen.Grid != null)
+        {
+            var grid = planetGen.Grid;
+            if (tile >= 0 && tile < grid.tileCenters.Length)
+            {
+                return grid.tileCenters[tile];
+            }
+        }
+        
+        // Fallback to current planet if requested planet not found
+        return GetTileCenter(tile);
+    }
+    
+    /// <summary>
+    /// Gets the owner of a tile on a specific planet.
+    /// NOTE: Currently ownership is only tracked for the current planet in TileSystem.
+    /// For true multi-planet ownership, this would need per-planet ownership storage.
+    /// </summary>
+    public int GetOwnerFromPlanet(int tile, int planetIndex)
+    {
+        // If querying current planet, use the cached array
+        if (planetRef != null && isReady)
+        {
+            int currentPlanetIndex = -1;
+            if (GameManager.Instance != null)
+            {
+                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
+                    ? GameManager.Instance.currentPlanetIndex 
+                    : 0;
+            }
+            
+            if (planetIndex == currentPlanetIndex)
+            {
+                return GetOwner(tile);
+            }
+        }
+        
+        // TODO: For true multi-planet support, we'd need per-planet ownership storage
+        // For now, ownership is only tracked for the current planet
+        // Return -1 (neutral) for other planets
+        return -1;
+    }
+    
+    /// <summary>
+    /// Helper method to get a planet generator by index
+    /// </summary>
+    private PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
+    {
+        if (GameManager.Instance == null) return null;
+        
+        if (GameManager.Instance.enableMultiPlanetSystem)
+        {
+            return GameManager.Instance.GetPlanetGenerator(planetIndex);
+        }
+        else
+        {
+            // Single planet mode: only index 0 is valid
+            if (planetIndex == 0)
+            {
+                return GameManager.Instance.GetCurrentPlanetGenerator();
+            }
+        }
+        
+        return null;
+    }
     #endregion
 
     #region Religion Helpers

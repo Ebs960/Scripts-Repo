@@ -74,45 +74,45 @@ public static class MapTypeDescriptionGenerator
         // Archipelago (0)
         "A scattered constellation of islands spreads across endless seas, each a world unto itself. " +
         "Some are mere specks of sand and palm, while others rise as volcanic peaks wreathed in cloud. " +
-        "The ocean is highway and barrier both—mastery of the waves determines who shall rise and who shall fall into obscurity.",
+        "The ocean connects and divides these lands—those who master the waves can travel freely between distant shores.",
         
         // Islands (1)
         "Great islands and lesser isles dot the expansive waters, connected by treacherous straits and hidden reefs. " +
         "Each landmass bears its own character: some verdant and teeming with life, others barren and wind-scoured. " +
-        "Naval power is the key to dominion, for those who control the sea lanes control the fate of nations.",
+        "The sea shapes all aspects of life here, connecting distant communities and isolating others in their own island worlds.",
         
         // Standard (2)
-        "Multiple continents divide the world's great oceans, each a theater for its own dramas of conquest and civilization. " +
-        "Peninsulas reach out like grasping fingers, sheltered bays invite settlement, and mountain ranges form natural borders " +
-        "that have shaped the rise and fall of empires since time immemorial.",
+        "Multiple continents divide the world's great oceans, each a stage for its own stories of discovery and civilization. " +
+        "Peninsulas reach out like grasping fingers, sheltered bays invite settlement, and mountain ranges create natural divisions " +
+        "that have shaped the development of distinct cultures and regions since time immemorial.",
         
         // Continents (3)
         "Vast continental landmasses dominate this world, their interiors stretching for countless leagues from coast to coast. " +
-        "Here, geography writes history in bold strokes—great rivers serve as arteries of commerce, mountain ranges as the walls of kingdoms, " +
+        "Here, geography writes history in bold strokes—great rivers serve as arteries of commerce, mountain ranges create natural boundaries, " +
         "and the sheer scale of the land means that many regions have never seen the face of an outsider.",
         
         // Pangaea (4)
         "A single colossal supercontinent sprawls across the globe, its borders touching every climate from frozen pole to blistering equator. " +
-        "There is no escape by sea here, no distant shore to flee to—all rivals share the same immense landmass, " +
-        "and conflicts that begin at one edge inevitably ripple across the entire world."
+        "There are no distant shores to discover here—all peoples share the same immense landmass, " +
+        "and events that occur at one edge inevitably ripple across the entire world."
     };
 
     // Elevation descriptions - terrain character
     private static readonly string[] elevationDescriptions = {
         // Flat (0)
         "The land lies flat and open beneath vast skies, with horizons that seem to stretch into infinity. " +
-        "Armies can march for days without encountering a hill worth naming, and cavalry reign supreme across the endless plains. " +
-        "There are few places to hide and fewer natural fortresses—strength must be built, not found.",
+        "Travelers can journey for days without encountering a hill worth naming, and the endless plains offer unobstructed views in every direction. " +
+        "There are few places to hide and fewer natural landmarks—communities must build their own identity upon this blank canvas.",
         
         // Hilly (1)
-        "Rolling hills and weathered ridges break up the landscape, offering commanding views and defensible positions to those wise enough to claim them. " +
-        "Valleys shelter fertile farmland and hidden settlements, while hilltop strongholds have watched over their domains for generations. " +
-        "The terrain favors the prepared and punishes the reckless.",
+        "Rolling hills and weathered ridges break up the landscape, offering commanding views of the surrounding countryside. " +
+        "Valleys shelter fertile farmland and peaceful settlements, while hilltop communities have watched over their domains for generations. " +
+        "The terrain creates natural boundaries and shelters, shaping the flow of life across the land.",
         
         // Mountainous (2)
         "Towering peaks pierce the clouds, their snow-capped summits visible for hundreds of leagues. " +
-        "Ancient mountain ranges divide the world into isolated regions, with narrow passes serving as choke points " +
-        "where a handful of determined defenders can hold back armies. Legends speak of treasures hidden in high caves and forgotten valleys."
+        "Ancient mountain ranges divide the world into isolated regions, with narrow passes providing the only routes between valleys. " +
+        "Legends speak of treasures hidden in high caves and forgotten valleys deep within these remote peaks."
     };
 
     // Continent-specific elevation descriptions
@@ -124,7 +124,7 @@ public static class MapTypeDescriptionGenerator
         
         // Hilly (1)
         "Immense continental plateaus rise and fall in great waves, their escarpments creating dramatic vistas that steal the breath. " +
-        "River systems have carved deep canyons through the uplands, creating natural highways and barriers in equal measure. " +
+        "River systems have carved deep canyons through the uplands, creating natural pathways through the rugged terrain. " +
         "The highlands are rich in minerals, drawing prospectors and miners from distant lands.",
         
         // Mountainous (2)
@@ -295,14 +295,49 @@ public static class MapTypeDescriptionGenerator
         string mapTypeName = MapTypeNameGenerator.GetMapTypeName(climate, moisture, landType, elevation);
         if (!string.IsNullOrEmpty(mapTypeName))
         {
+            // Rivers map type - doubled river generation
             if (mapTypeName.IndexOf("Rivers", System.StringComparison.OrdinalIgnoreCase) >= 0)
-        {
+            {
                 desc.Append("\n\nGreat rivers snake across this land, their waters the lifeblood of civilizations. Where rivers meet, cities rise; where they flood, empires are humbled.");
             }
-            if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                mapTypeName.IndexOf("Infernal", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            
+            // Rainforest map type - unique Rainforest biome
+            if (mapTypeName.IndexOf("Rainforest", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. Those who would survive must be prepared to face horrors beyond mortal comprehension.");
+                desc.Append("\n\nThe world itself breathes with life—towering canopies hide secrets in their green depths, and the very air hums with the chorus of a million creatures. Here, the rainforest claims dominion, its fertile embrace nurturing civilizations that learn to thrive within its verdant embrace.");
+            }
+            
+            // Demonic map type - Brimstone, Hellscape, and other hellish biomes
+            if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. The land itself rebels—sulfurous wastelands poison the air, hellscapes burn with infernal fire, and the very ground cracks to reveal the abyss beneath. Those who would survive must be prepared to face horrors beyond mortal comprehension, where the earth bleeds brimstone and charred forests stand as monuments to forgotten battles.");
+            }
+            
+            // Infernal map type - Volcanic, Steam, CharredForest biomes
+            if (mapTypeName.IndexOf("Infernal", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                desc.Append("\n\nThe earth's inner fire breaks through the surface in a symphony of destruction and renewal. Volcanic peaks belch smoke and ash, scalding steam vents carve paths through the rock, and forests stand charred yet defiant—testaments to life's persistence even in the face of infernal heat. Here, the planet's molten heart beats close to the surface, reshaping the land with each eruption.");
+            }
+            
+            // Scorched map type - Scorched, Ashlands, CharredForest biomes
+            if (mapTypeName.IndexOf("Scorched", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                desc.Append("\n\nThe sun's fury has baked this world into submission. Vast scorched wastes stretch beneath an unforgiving sky, while ash drifts like grey snow across lands where fire has claimed all. Charred forests stand as skeletal reminders of what once was, and steam vents hiss warnings to those who dare the deepest reaches. Survival here is an art taught by the harsh sun itself.");
+            }
+            
+            // Ice World map type - CryoForest and IcicleField biomes
+            if (mapTypeName.IndexOf("Ice", System.StringComparison.OrdinalIgnoreCase) >= 0 || 
+                mapTypeName.IndexOf("Icicle", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                mapTypeName.IndexOf("Cryo", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                desc.Append("\n\nEternal winter reigns supreme, crafting a world of crystalline beauty and deadly cold. Frozen forests of impossible forms pierce the perpetual twilight, while fields of icicles catch the aurora's light like nature's own cathedral. Life has learned to flourish in the ice, creating biomes unlike any found in warmer worlds—cryoforests where trees of frost grow, and icicle fields where silence itself seems to freeze solid.");
+            }
+            
+            // Monsoon map type - Floodlands biome
+            if (mapTypeName.IndexOf("Monsoon", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                mapTypeName.IndexOf("Floodlands", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                desc.Append("\n\nThe sky weeps without end, and the earth drinks until it can drink no more. Floodlands stretch for leagues, where the boundary between land and water dissolves into a labyrinth of channels and wetlands. Here, life moves to the rhythm of the endless rain—settlements built on stilts, crops that thrive in the deluge, and civilizations that have learned to dance with the flood rather than fight it.");
             }
         }
 
@@ -317,19 +352,19 @@ public static class MapTypeDescriptionGenerator
         // Civilization dynamics
         if (civCount <= 2)
         {
-            desc.Append("Two great powers face each other across this world, their rivalry the defining conflict of the age. There can be only one supreme civilization—diplomacy is merely war by other means.");
+            desc.Append("Two great powers stand as twin colossi, their shadows stretching across the world. Between them flows an ocean of tension and possibility—a dance of opposites that defines the very nature of existence here. Their contest is not mere conflict but the fundamental question of what form the future shall take.");
         }
         else if (civCount <= 4)
         {
-            desc.Append($"A balance of power exists between {GetNumberWord(civCount)} rival civilizations, each watching the others with wary eyes. Alliances form and dissolve like morning mist, and today's friend may be tomorrow's conqueror.");
+            desc.Append($"{GetNumberWord(civCount).Substring(0,1).ToUpper() + GetNumberWord(civCount).Substring(1)} distinct peoples carve their destinies across this world, each watching the others with the careful attention of those who understand that in a room of mirrors, every reflection matters. Alliances shimmer into being and dissolve like morning mist—today's handshake becomes tomorrow's calculated move.");
         }
         else if (civCount <= 6)
         {
-            desc.Append($"{GetNumberWord(civCount).Substring(0,1).ToUpper() + GetNumberWord(civCount).Substring(1)} civilizations vie for supremacy in a complex web of diplomacy, trade, and warfare. No single power can dominate alone, and the shrewd leader plays rivals against each other.");
+            desc.Append($"{GetNumberWord(civCount).Substring(0,1).ToUpper() + GetNumberWord(civCount).Substring(1)} civilizations weave their fates in an intricate tapestry where no thread moves in isolation. The wise understand that power here is fluid—a river that cannot be dammed by any single hand, but can be channeled by those who read its currents.");
         }
         else
         {
-            desc.Append($"A crowded world of {civCount} ambitious civilizations creates a pressure cooker of competition. Resources are scarce, borders are contested, and the weak are devoured by the strong.");
+            desc.Append($"In a world crowded with {civCount} ambitious peoples, space itself becomes a currency. The air hums with the constant negotiation of borders, resources, and influence. Here, survival favors those who understand that every alliance is temporary, every peace conditional, and every territory a question mark in the great equation of dominance.");
         }
         
         // City-state dynamics
@@ -338,15 +373,15 @@ public static class MapTypeDescriptionGenerator
             desc.Append(" ");
             if (cityStateCount <= 2)
         {
-                desc.Append("A handful of independent city-states cling to their autonomy, their strategic locations making them valuable prizes for any would-be conqueror—or useful allies for those who prefer subtlety to force.");
+                desc.Append("A few independent cities stand like islands of autonomy in the great currents of power. Their positions make them prizes coveted by many, yet they maintain their freedom through the careful art of balance—tipping the scales without toppling them.");
         }
             else if (cityStateCount <= 4)
         {
-                desc.Append("Numerous city-states dot the map, their merchants and mercenaries for hire to the highest bidder. Controlling these independent powers can tip the balance in any conflict.");
+                desc.Append("Scattered city-states dot the landscape like bright coins in a dark stream. Their merchants ply routes between empires, their mercenaries fight others' wars, their influence far exceeding their size. To control them is to control the invisible threads that bind the world.");
         }
         else
         {
-                desc.Append("A constellation of city-states fragments the political landscape, each pursuing its own interests. These small powers play the great civilizations against each other, profiting from chaos.");
+                desc.Append("A constellation of independent cities fragments the political sky, each a small sun around which fortunes orbit. They play the great powers like instruments, each note calculated, each harmony temporary. In their independence lies opportunity—and danger.");
         }
         }
         
@@ -356,15 +391,15 @@ public static class MapTypeDescriptionGenerator
             desc.Append(" ");
             if (tribeCount <= 2)
         {
-                desc.Append("Scattered tribes persist in the wilderness, their warriors fierce and their lands difficult to claim. They may be conquered or converted, but never ignored.");
+                desc.Append("Wild tribes haunt the margins, their warriors fierce as the lands they call home. They move through territory that breaks empires—places where maps dissolve and only the land itself knows the paths. To ignore them is to invite their memory; to confront them is to learn the price of hubris.");
         }
             else if (tribeCount <= 4)
             {
-                desc.Append("Warlike tribal confederations control the untamed regions, raiding the borders of civilization and retreating into lands no army can easily follow.");
+                desc.Append("Tribal confederations hold the wild places, their strength flowing like water through terrain that breaks armies. They strike where least expected and fade where pursuit cannot follow. Civilized powers treat with them not from generosity but necessity—their raids are weather, their treaties are seasons.");
             }
             else
             {
-                desc.Append("Numerous tribal groups roam the wilds, their combined strength rivaling that of established nations. A wise leader treats with them; a foolish one dismisses them at great peril.");
+                desc.Append("The wilderness itself seems to bear tribes, their numbers rivaling the so-called civilized nations. They understand the land in ways that books cannot teach, moving through it with a knowledge written in blood and memory. To dismiss them is folly; to understand them is power.");
             }
         }
         

@@ -138,6 +138,18 @@ public class City : MonoBehaviour
         {
             if (!owner.ownedTileIndices.Contains(idx))
                 owner.ownedTileIndices.Add(idx);
+            
+            // Also set tileData.owner for consistent ownership tracking
+            if (TileSystem.Instance != null)
+            {
+                var tileData = TileSystem.Instance.GetTileData(idx);
+                if (tileData != null)
+                {
+                    tileData.owner = owner;
+                    tileData.controllingCity = this;
+                    TileSystem.Instance.SetTileData(idx, tileData);
+                }
+            }
         }
 
         CreateLabelUI();

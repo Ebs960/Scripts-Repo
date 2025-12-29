@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// Renders a flat equirectangular map using a texture instead of individual tile meshes.
@@ -30,6 +31,10 @@ public class FlatMapTextureRenderer : MonoBehaviour
     [Tooltip("Optional MinimapColorProvider for custom coloring. If null, uses BiomeColorHelper.")]
     [SerializeField] private MinimapColorProvider colorProvider;
     
+    [Header("GPU Acceleration")]
+    [Tooltip("Optional compute shader for GPU-accelerated texture baking. If null, uses CPU path.")]
+    [SerializeField] private ComputeShader textureBakerComputeShader;
+    
     [Header("Pre-Build Options")]
     [Tooltip("If true, the flat map will be pre-built when planet generation completes.")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
@@ -38,9 +43,11 @@ public class FlatMapTextureRenderer : MonoBehaviour
     [Tooltip("Enable elevation displacement on flat map (requires subdivided mesh)")]
     [SerializeField] private bool enableElevationDisplacement = true;
     [Tooltip("Number of subdivisions for the flat map mesh (higher = smoother displacement, more vertices)")]
-    [SerializeField] private int meshSubdivisions = 64; // Subdivisions per side (64x64 = 4096 quads)
+    [SerializeField] private int meshSubdivisions = 256; // Subdivisions per side (256x128 recommended for good detail)
     [Tooltip("Displacement strength multiplier (how much elevation affects height)")]
     [SerializeField] private float displacementStrength = 0.1f; // 10% of map height
+    [Tooltip("Custom shader for GPU-based vertex displacement. If null, uses Standard shader.")]
+    [SerializeField] private Shader flatMapDisplacementShader;
     
     private GameObject quadObject;
     private MeshRenderer quadRenderer;
@@ -146,8 +153,17 @@ public class FlatMapTextureRenderer : MonoBehaviour
         // Store planet reference
         this.planetGen = planetGen;
         
-        // Bake texture using PlanetTextureBaker
-        bakeResult = PlanetTextureBaker.Bake(planetGen, colorProvider, textureWidth, textureHeight);
+        // Bake texture using PlanetTextureBaker (GPU path if compute shader available)
+        if (textureBakerComputeShader != null)
+        {
+            // Use GPU-accelerated texture baking (dramatically faster)
+            bakeResult = PlanetTextureBaker.BakeGPU(planetGen, colorProvider, textureBakerComputeShader, textureWidth, textureHeight);
+        }
+        else
+        {
+            // Fallback to CPU path
+            bakeResult = PlanetTextureBaker.Bake(planetGen, colorProvider, textureWidth, textureHeight);
+        }
         
         if (bakeResult.texture == null)
         {
@@ -170,12 +186,105 @@ public class FlatMapTextureRenderer : MonoBehaviour
             mapMaterial.SetTexture("_MainTex", mapTexture);
         }
         
+        // Initialize TerrainOverlayGPU (Phase 6: GPU overlays)
+        InitializeTerrainOverlays();
+        
         isBuilt = true;
         
         // Update WorldPicker if it exists
         UpdateWorldPicker();
         
         Debug.Log($"[FlatMapTextureRenderer] Built flat map texture ({textureWidth}x{textureHeight}). MapWidth={mapWidth:F1}, MapHeight={mapHeight:F1}");
+    }
+    
+    /// <summary>
+    /// Initialize TerrainOverlayGPU system for fog and ownership overlays.
+    /// </summary>
+    private void InitializeTerrainOverlays()
+    {
+        var overlayGPU = FindAnyObjectByType<TerrainOverlayGPU>();
+        if (overlayGPU != null && bakeResult.lut != null)
+        {
+            overlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, textureWidth, textureHeight);
+            
+            // Subscribe to TileSystem events for overlay updates
+            SubscribeToTileSystemEvents(overlayGPU);
+            
+            // Apply overlay textures to material
+            ApplyOverlayTexturesToMaterial(overlayGPU);
+        }
+    }
+    
+    private TerrainOverlayGPU _cachedOverlayGPU;
+    
+    /// <summary>
+    /// Subscribe to TileSystem events to update overlays when fog/ownership changes.
+    /// </summary>
+    private void SubscribeToTileSystemEvents(TerrainOverlayGPU overlayGPU)
+    {
+        if (TileSystem.Instance == null) return;
+        
+        _cachedOverlayGPU = overlayGPU;
+        
+        // Unsubscribe first to avoid duplicates
+        TileSystem.Instance.OnTileOwnerChanged -= HandleTileOwnerChanged;
+        TileSystem.Instance.OnFogChanged -= HandleFogChanged;
+        
+        // Subscribe to events
+        TileSystem.Instance.OnTileOwnerChanged += HandleTileOwnerChanged;
+        TileSystem.Instance.OnFogChanged += HandleFogChanged;
+    }
+    
+    private void HandleTileOwnerChanged(int tile, int oldOwner, int newOwner)
+    {
+        if (_cachedOverlayGPU != null)
+        {
+            _cachedOverlayGPU.MarkTilesDirty(new[] { tile });
+            _cachedOverlayGPU.UpdateOverlays();
+        }
+    }
+    
+    private void HandleFogChanged(int civId, List<int> changedTiles)
+    {
+        if (_cachedOverlayGPU != null)
+        {
+            _cachedOverlayGPU.MarkTilesDirty(changedTiles);
+            _cachedOverlayGPU.UpdateOverlays();
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.OnTileOwnerChanged -= HandleTileOwnerChanged;
+            TileSystem.Instance.OnFogChanged -= HandleFogChanged;
+        }
+    }
+    
+    /// <summary>
+    /// Apply overlay textures (fog mask and ownership) to the material.
+    /// </summary>
+    private void ApplyOverlayTexturesToMaterial(TerrainOverlayGPU overlayGPU)
+    {
+        if (mapMaterial == null) return;
+        
+        // Apply fog mask texture
+        var fogMask = overlayGPU.GetFogMaskTexture();
+        if (fogMask != null)
+        {
+            mapMaterial.SetTexture("_FogMask", fogMask);
+            mapMaterial.SetFloat("_EnableFog", overlayGPU.EnableFogOverlay ? 1f : 0f);
+        }
+        
+        // Apply ownership overlay texture
+        var ownershipTex = overlayGPU.GetOwnershipTexture();
+        if (ownershipTex != null)
+        {
+            mapMaterial.SetTexture("_OwnershipOverlay", ownershipTex);
+            mapMaterial.SetFloat("_EnableOwnership", overlayGPU.EnableOwnershipOverlay ? 1f : 0f);
+        }
     }
     
     private void UpdateWorldPicker()
@@ -245,6 +354,8 @@ public class FlatMapTextureRenderer : MonoBehaviour
     
     /// <summary>
     /// Create a subdivided plane mesh for elevation displacement.
+    /// GPU-accelerated: Uses vertex shader displacement instead of CPU heightmap sampling.
+    /// This is dramatically faster than the old CPU GetPixel() approach.
     /// </summary>
     private void CreateSubdividedPlane()
     {
@@ -255,62 +366,50 @@ public class FlatMapTextureRenderer : MonoBehaviour
         quadObject.transform.localRotation = Quaternion.identity;
         quadObject.transform.localScale = Vector3.one; // Scale is handled in mesh
         
-        // Generate subdivided mesh
+        // Generate subdivided mesh (flat plane - displacement happens in GPU vertex shader)
         Mesh mesh = new Mesh();
         mesh.name = "SubdividedPlane";
         
-        int segments = meshSubdivisions;
-        int vertexCount = (segments + 1) * (segments + 1);
+        int segmentsX = meshSubdivisions;
+        int segmentsY = Mathf.RoundToInt(meshSubdivisions * (mapHeight / mapWidth)); // Maintain aspect ratio
+        int vertexCount = (segmentsX + 1) * (segmentsY + 1);
         Vector3[] vertices = new Vector3[vertexCount];
         Vector2[] uvs = new Vector2[vertexCount];
         Vector3[] normals = new Vector3[vertexCount];
         
-        // Generate vertices with elevation displacement
-        for (int y = 0; y <= segments; y++)
+        // Generate flat vertices (displacement will be done in GPU vertex shader)
+        for (int y = 0; y <= segmentsY; y++)
         {
-            for (int x = 0; x <= segments; x++)
+            for (int x = 0; x <= segmentsX; x++)
             {
-                int index = y * (segments + 1) + x;
+                int index = y * (segmentsX + 1) + x;
                 
-                // UV coordinates (0-1)
-                float u = (float)x / segments;
-                float v = (float)y / segments;
+                // UV coordinates (0-1) with horizontal wrapping
+                float u = (float)x / segmentsX;
+                float v = (float)y / segmentsY;
                 uvs[index] = new Vector2(u, v);
                 
                 // World position (centered, scaled by map dimensions)
+                // Y will be displaced by vertex shader based on heightmap
                 float worldX = (u - 0.5f) * mapWidth;
                 float worldZ = (v - 0.5f) * mapHeight;
                 
-                // Sample heightmap for elevation displacement
-                float elevation = 0f;
-                if (bakeResult.heightmap != null)
-                {
-                    // Sample heightmap at UV coordinate
-                    int texX = Mathf.Clamp(Mathf.FloorToInt(u * textureWidth), 0, textureWidth - 1);
-                    int texY = Mathf.Clamp(Mathf.FloorToInt(v * textureHeight), 0, textureHeight - 1);
-                    Color heightColor = bakeResult.heightmap.GetPixel(texX, texY);
-                    elevation = heightColor.r; // Red channel stores elevation (0-1)
-                }
-                
-                // Apply displacement (push vertices up based on elevation)
-                float displacement = elevation * displacementStrength * mapHeight * 0.1f; // 10% of map height max
-                float worldY = flatY + displacement;
-                
-                vertices[index] = new Vector3(worldX, worldY, worldZ);
-                normals[index] = Vector3.up; // Will be recalculated
+                // Start with flat plane - GPU shader will displace based on heightmap
+                vertices[index] = new Vector3(worldX, flatY, worldZ);
+                normals[index] = Vector3.up; // Will be recalculated after displacement
             }
         }
         
         // Generate triangles
-        int[] triangles = new int[segments * segments * 6];
+        int[] triangles = new int[segmentsX * segmentsY * 6];
         int triIndex = 0;
         
-        for (int y = 0; y < segments; y++)
+        for (int y = 0; y < segmentsY; y++)
         {
-            for (int x = 0; x < segments; x++)
+            for (int x = 0; x < segmentsX; x++)
             {
-                int current = y * (segments + 1) + x;
-                int next = current + segments + 1;
+                int current = y * (segmentsX + 1) + x;
+                int next = current + segmentsX + 1;
                 
                 // First triangle
                 triangles[triIndex++] = current;
@@ -327,7 +426,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
         mesh.vertices = vertices;
         mesh.uv = uvs;
         mesh.triangles = triangles;
-        mesh.RecalculateNormals();
+        mesh.normals = normals; // Will be recalculated by GPU after displacement
         mesh.RecalculateBounds();
         
         // Add MeshFilter and MeshRenderer
@@ -336,10 +435,31 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         quadRenderer = quadObject.AddComponent<MeshRenderer>();
         
-        // Create material with texture wrapping
-        mapMaterial = new Material(Shader.Find("Standard"));
+        // Create material with GPU displacement shader
+        Shader shaderToUse = flatMapDisplacementShader;
+        if (shaderToUse == null)
+        {
+            // Try to find the custom shader
+            shaderToUse = Shader.Find("Custom/FlatMapDisplacement");
+            if (shaderToUse == null)
+            {
+                // Fallback to Standard shader (no displacement, but still works)
+                Debug.LogWarning("[FlatMapTextureRenderer] FlatMapDisplacement shader not found, using Standard shader. Displacement will be disabled.");
+                shaderToUse = Shader.Find("Standard");
+            }
+        }
+        
+        mapMaterial = new Material(shaderToUse);
         mapMaterial.mainTexture = mapTexture;
         mapMaterial.SetTexture("_MainTex", mapTexture);
+        
+        // Apply heightmap for GPU vertex displacement
+        if (bakeResult.heightmap != null)
+        {
+            mapMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
+            mapMaterial.SetFloat("_FlatHeightScale", displacementStrength);
+            mapMaterial.SetFloat("_MapHeight", mapHeight);
+        }
         
         // Enable horizontal wrapping
         if (mapTexture != null)
@@ -353,7 +473,9 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         quadRenderer.material = mapMaterial;
         
-        // Add MeshCollider for picking (more accurate than BoxCollider for displaced mesh)
+        // Add MeshCollider for picking
+        // Note: MeshCollider will use the original flat mesh, but picking will still work
+        // The visual displacement is GPU-only and doesn't affect collision
         var meshCollider = quadObject.AddComponent<MeshCollider>();
         meshCollider.sharedMesh = mesh;
     }
@@ -422,17 +544,34 @@ public class FlatMapTextureRenderer : MonoBehaviour
     }
     
     /// <summary>
-    /// Get a downscaled version of the map texture for minimap use.
+    /// Get a downscaled version of the map texture for minimap use (GPU-accelerated).
+    /// Phase 5: Uses Graphics.Blit for GPU downscaling - essentially free!
+    /// Returns RenderTexture for best performance (no CPU readback).
     /// </summary>
-    public Texture2D GetDownscaledTexture(int targetWidth, int targetHeight)
+    /// <param name="targetWidth">Target width for downscaled texture</param>
+    /// <param name="targetHeight">Target height for downscaled texture</param>
+    /// <param name="returnTexture2D">If true, converts to Texture2D (slow CPU readback). If false, returns RenderTexture (fast, GPU-only).</param>
+    /// <returns>Downscaled texture (RenderTexture if returnTexture2D=false, Texture2D if true)</returns>
+    public Texture GetDownscaledTexture(int targetWidth, int targetHeight, bool returnTexture2D = false)
     {
         if (mapTexture == null)
             return null;
         
-        // Create downscaled texture
-        RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight);
+        // GPU-accelerated downscaling using Graphics.Blit (essentially free!)
+        RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
+        rt.filterMode = FilterMode.Bilinear;
+        rt.wrapMode = TextureWrapMode.Repeat;
         Graphics.Blit(mapTexture, rt);
         
+        // Return RenderTexture directly for best performance (no CPU readback)
+        if (!returnTexture2D)
+        {
+            // Note: Caller must release this RenderTexture when done using RenderTexture.ReleaseTemporary(rt)
+            // For cached usage, consider storing the RenderTexture and releasing on cleanup
+            return rt;
+        }
+        
+        // Fallback: Convert to Texture2D if explicitly requested (slow CPU readback)
         RenderTexture previous = RenderTexture.active;
         RenderTexture.active = rt;
         

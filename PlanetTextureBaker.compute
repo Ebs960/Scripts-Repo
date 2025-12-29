@@ -1,0 +1,44 @@
+#pragma kernel BakeTextures
+
+// Input buffers
+StructuredBuffer<int> _PixelToTileLUT;      // Pixel index -> tile index
+StructuredBuffer<float4> _TileBiomeColors; // Tile index -> RGBA color
+StructuredBuffer<float> _TileElevations;    // Tile index -> elevation (0-1)
+
+// Output textures
+RWTexture2D<float4> _BiomeTexture;         // RGBA32 biome texture
+RWTexture2D<float> _HeightTexture;         // RFloat heightmap texture
+
+// Parameters
+int _Width;
+int _Height;
+int _TileCount;
+
+[numthreads(8,8,1)]
+void BakeTextures (uint3 id : SV_DispatchThreadID)
+{
+    // Bounds check
+    if (id.x >= _Width || id.y >= _Height) return;
+    
+    // Calculate pixel index (row-major order)
+    int pixelIndex = (int)(id.y * _Width + id.x);
+    
+    // Lookup tile index from LUT
+    int tileIndex = _PixelToTileLUT[pixelIndex];
+    
+    // Clamp tile index to valid range
+    if (tileIndex < 0 || tileIndex >= _TileCount)
+        tileIndex = 0;
+    
+    // Sample biome color
+    float4 biomeColor = _TileBiomeColors[tileIndex];
+    
+    // Sample elevation
+    float elevation = _TileElevations[tileIndex];
+    elevation = clamp(elevation, 0.0, 1.0);
+    
+    // Write to output textures
+    _BiomeTexture[int2(id.x, id.y)] = biomeColor;
+    _HeightTexture[int2(id.x, id.y)] = elevation;
+}
+

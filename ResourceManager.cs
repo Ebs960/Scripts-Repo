@@ -18,6 +18,7 @@ public class ResourceManager : MonoBehaviour
     
     // Prevent multiple initialization
     private bool _isInitialized = false;
+    private bool _subscribedToPlanetReady = false;
 
     void Awake()
     {
@@ -32,27 +33,51 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    void Start()
+    void OnEnable()
     {
-        // Wait for TileSystem before proceeding
-        if (TileSystem.Instance == null || !TileSystem.Instance.IsReady())
-        {
-            Debug.LogWarning("[ResourceManager] TileSystem not ready yet, will retry in Start");
-            StartCoroutine(WaitForTileSystem());
-            return;
-        }
-        
-        InitializeResourceManager();
+        TrySubscribeToPlanetReady();
     }
 
-    private System.Collections.IEnumerator WaitForTileSystem()
+    void OnDisable()
     {
-        while (TileSystem.Instance == null || !TileSystem.Instance.IsReady())
-        {
-            yield return new WaitForSeconds(0.1f);
-        }
+        TryUnsubscribeFromPlanetReady();
+    }
+
+    void Start()
+    {
+        TrySubscribeToPlanetReady();
         
-        InitializeResourceManager();
+        // If TileSystem is already ready, initialize immediately
+        if (TileSystem.Instance != null && TileSystem.Instance.IsReady())
+        {
+            InitializeResourceManager();
+        }
+    }
+
+    private void TrySubscribeToPlanetReady()
+    {
+        if (_subscribedToPlanetReady) return;
+        if (GameManager.Instance == null) return;
+        
+        GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        _subscribedToPlanetReady = true;
+    }
+
+    private void TryUnsubscribeFromPlanetReady()
+    {
+        if (!_subscribedToPlanetReady) return;
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        _subscribedToPlanetReady = false;
+    }
+
+    private void HandlePlanetReady(int planetIndex)
+    {
+        // Initialize when planet is ready (TileSystem will be ready by then)
+        if (TileSystem.Instance != null && TileSystem.Instance.IsReady())
+        {
+            InitializeResourceManager();
+        }
     }
     
     private void InitializeResourceManager()
@@ -80,8 +105,8 @@ public class ResourceManager : MonoBehaviour
         // Start listening to events
         if (TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
-            
-    _isInitialized = true;
+
+        _isInitialized = true;
     }
     
     /// <summary>
@@ -94,8 +119,8 @@ public class ResourceManager : MonoBehaviour
             Debug.LogWarning("[ResourceManager] Cannot spawn resources - not initialized yet");
             return;
         }
-        
-    SpawnResources();
+
+        SpawnResources();
     }
 
     void OnDestroy()
@@ -109,8 +134,6 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     public void ResetForNewGame()
     {
-        
-        
         // Clear existing resources
         foreach (var resource in spawnedResources)
         {
@@ -121,8 +144,6 @@ public class ResourceManager : MonoBehaviour
         
         // Reset initialization flag
         _isInitialized = false;
-        
-        
     }
 
     /// <summary>
@@ -143,8 +164,6 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        
-        
         // MULTI-PLANET FIX: Spawn resources on all planets, not just current one
         if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
         {
@@ -166,7 +185,6 @@ public class ResourceManager : MonoBehaviour
         }
         else
         {
-            
             // Single planet mode: use current planet
             if (grid == null || planetGenerator == null)
             {
@@ -186,9 +204,6 @@ public class ResourceManager : MonoBehaviour
     {
         var planetGrid = planetGen.Grid;
         int tileCount = planetGrid.TileCount;
-        int resourcesSpawned = 0;
-        
-        
 
         for (int idx = 0; idx < tileCount; idx++)
         {
@@ -209,12 +224,9 @@ public class ResourceManager : MonoBehaviour
                 if (Random.value <= rd.spawnChance)
                 {
                     SpawnResourceInstance(rd, idx, planetIndex);
-                    resourcesSpawned++;
                 }
             }
         }
-        
-        
     }
 
     // Load resources from Resources folder if not set in inspector
@@ -249,29 +261,66 @@ public class ResourceManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns how many nodes of each resource a civ controls (by tile ownership).
+    /// Returns how many nodes of each resource a civ controls across all planets (by tile ownership).
+    /// Uses tile data owner field for accurate per-planet ownership verification.
     /// </summary>
     public Dictionary<ResourceData,int> GetInventory(Civilization civ)
     {
         var dict = new Dictionary<ResourceData,int>();
+        
+        if (civ == null) return dict;
+        
         foreach (var inst in spawnedResources)
         {
-            if (civ.ownedTileIndices.Contains(inst.tileIndex))
+            if (inst == null || inst.data == null) continue;
+            
+            // Check ownership by querying the tile data from the specific planet
+            // This is the authoritative source for ownership (tileData.owner is now always set)
+            bool ownsTile = false;
+            
+            if (TileSystem.Instance != null)
             {
-                if (!dict.ContainsKey(inst.data)) dict[inst.data] = 0;
-                dict[inst.data]++;
+                var tileData = TileSystem.Instance.GetTileDataFromPlanet(inst.tileIndex, inst.planetIndex);
+                if (tileData != null && tileData.owner == civ)
+                {
+                    ownsTile = true;
+                }
+            }
+            
+            if (ownsTile)
+            {
+                if (dict.TryGetValue(inst.data, out int count))
+                    dict[inst.data] = count + 1;
+                else
+                    dict[inst.data] = 1;
             }
         }
         return dict;
     }
 
     /// <summary>
-    /// Returns the spawned ResourceInstance at the given tile index, or null if none.
+    /// Returns the spawned ResourceInstance at the given tile index on the specified planet, or null if none.
+    /// </summary>
+    public ResourceInstance GetResourceInstanceAtTile(int tileIndex, int planetIndex)
+    {
+        if (spawnedResources.Count == 0) return null;
+        return spawnedResources.FirstOrDefault(r => r != null && r.tileIndex == tileIndex && r.planetIndex == planetIndex);
+    }
+
+    /// <summary>
+    /// Returns the spawned ResourceInstance at the given tile index on the current planet, or null if none.
+    /// Convenience overload that uses GameManager.currentPlanetIndex.
     /// </summary>
     public ResourceInstance GetResourceInstanceAtTile(int tileIndex)
     {
-        if (spawnedResources == null || spawnedResources.Count == 0) return null;
-        return spawnedResources.FirstOrDefault(r => r != null && r.tileIndex == tileIndex);
+        int currentPlanet = 0;
+        if (GameManager.Instance != null)
+        {
+            currentPlanet = GameManager.Instance.enableMultiPlanetSystem 
+                ? GameManager.Instance.currentPlanetIndex 
+                : 0;
+        }
+        return GetResourceInstanceAtTile(tileIndex, currentPlanet);
     }
 
     /// <summary>
@@ -279,18 +328,25 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     public void ForageResource(ResourceInstance inst, Civilization civ)
     {
+        if (inst == null || inst.data == null) return;
+        
         var rd = inst.data;
         civ.food         += rd.forageFood;
         civ.gold         += rd.forageGold;
         civ.science      += rd.forageScience;
         civ.culture      += rd.forageCulture;
         civ.policyPoints += rd.foragePolicyPoints;
+        civ.faith        += rd.forageFaith;
 
-        // Clear the tile's resource in the hex data
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(inst.tileIndex) : null;
-        if (tileData != null) {
-            tileData.resource = null;
-            if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(inst.tileIndex, tileData);
+        // Clear the tile's resource in the hex data using planet-aware method
+        if (TileSystem.Instance != null)
+        {
+            var tileData = TileSystem.Instance.GetTileDataFromPlanet(inst.tileIndex, inst.planetIndex);
+            if (tileData != null)
+            {
+                tileData.resource = null;
+                TileSystem.Instance.SetTileDataOnPlanet(inst.tileIndex, tileData, inst.planetIndex);
+            }
         }
 
         spawnedResources.Remove(inst);
@@ -302,14 +358,8 @@ public class ResourceManager : MonoBehaviour
     {
         if (resource == null) return;
 
-        // Ensure we have a grid reference
-        if (grid == null && planetGenerator != null)
-            grid = planetGenerator.Grid;
-
-        if (grid == null) return;
-
         // Get the position for the resource on the specified planet
-    Vector3 position = TileSystem.Instance.GetTileCenterFromPlanet(tileIndex, planetIndex);
+        Vector3 position = TileSystem.Instance.GetTileCenterFromPlanet(tileIndex, planetIndex);
 
         // Use object pooling if available
         GameObject go = SimpleObjectPool.Instance != null
@@ -319,6 +369,7 @@ public class ResourceManager : MonoBehaviour
         var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
         inst.data = resource;
         inst.tileIndex = tileIndex;
+        inst.planetIndex = planetIndex;
         spawnedResources.Add(inst);
 
         // Update the tile data to reflect the new resource

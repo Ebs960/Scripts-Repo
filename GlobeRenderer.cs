@@ -21,6 +21,10 @@ public class GlobeRenderer : MonoBehaviour
     [Tooltip("Custom shader for globe rendering. If null, uses standard shader with texture.")]
     [SerializeField] private Shader globeShader;
     
+    [Header("GPU Acceleration")]
+    [Tooltip("Optional compute shader for GPU-accelerated texture baking. If null, uses CPU path.")]
+    [SerializeField] private ComputeShader textureBakerComputeShader;
+    
     private GameObject sphereObject;
     private MeshRenderer sphereRenderer;
     private Material globeMaterial;
@@ -105,12 +109,59 @@ public class GlobeRenderer : MonoBehaviour
         if (sphereRenderer != null)
             sphereRenderer.material = globeMaterial;
         
+        // Initialize TerrainOverlayGPU (Phase 6: GPU overlays)
+        InitializeTerrainOverlays(flatMap);
+        
         isBuilt = true;
         
         // Update WorldPicker if it exists
         UpdateWorldPicker(flatMap);
         
         Debug.Log($"[GlobeRenderer] Built globe renderer with radius {sphereRadius:F1}");
+    }
+    
+    /// <summary>
+    /// Initialize TerrainOverlayGPU system for fog and ownership overlays.
+    /// </summary>
+    private void InitializeTerrainOverlays(FlatMapTextureRenderer flatMap)
+    {
+        var overlayGPU = FindAnyObjectByType<TerrainOverlayGPU>();
+        if (overlayGPU != null && flatMap != null)
+        {
+            var bakeResult = flatMap.GetBakeResult();
+            if (bakeResult.lut != null)
+            {
+                overlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, 
+                                     bakeResult.width, bakeResult.height);
+                
+                // Apply overlay textures to material
+                ApplyOverlayTexturesToMaterial(overlayGPU);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Apply overlay textures (fog mask and ownership) to the material.
+    /// </summary>
+    private void ApplyOverlayTexturesToMaterial(TerrainOverlayGPU overlayGPU)
+    {
+        if (globeMaterial == null) return;
+        
+        // Apply fog mask texture
+        var fogMask = overlayGPU.GetFogMaskTexture();
+        if (fogMask != null)
+        {
+            globeMaterial.SetTexture("_FogMask", fogMask);
+            globeMaterial.SetFloat("_EnableFog", overlayGPU.EnableFogOverlay ? 1f : 0f);
+        }
+        
+        // Apply ownership overlay texture
+        var ownershipTex = overlayGPU.GetOwnershipTexture();
+        if (ownershipTex != null)
+        {
+            globeMaterial.SetTexture("_OwnershipOverlay", ownershipTex);
+            globeMaterial.SetFloat("_EnableOwnership", overlayGPU.EnableOwnershipOverlay ? 1f : 0f);
+        }
     }
     
     private void UpdateWorldPicker(FlatMapTextureRenderer flatMap)
@@ -228,7 +279,7 @@ public class GlobeRenderer : MonoBehaviour
         collider.radius = sphereRadius;
     }
     
-    private void CreateGlobeMaterial(Texture2D mapTexture, Texture2D heightmap)
+    private void CreateGlobeMaterial(Texture mapTexture, Texture heightmap)
     {
         // Use custom shader if available, otherwise use standard
         if (globeShader != null)
@@ -241,11 +292,12 @@ public class GlobeRenderer : MonoBehaviour
             globeMaterial = new Material(Shader.Find("Standard"));
         }
         
-        // Apply textures
+        // Apply textures (supports both Texture2D and RenderTexture from GPU baking)
         globeMaterial.mainTexture = mapTexture;
         globeMaterial.SetTexture("_MainTex", mapTexture);
         
         // Apply heightmap if available (for elevation displacement)
+        // Supports both Texture2D (R8) and RenderTexture (RFloat) from GPU baking
         if (heightmap != null)
         {
             globeMaterial.SetTexture("_Heightmap", heightmap);

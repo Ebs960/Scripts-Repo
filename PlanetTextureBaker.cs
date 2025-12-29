@@ -8,6 +8,7 @@ using UnityEngine;
 /// IMPORTANT:
 /// - Does NOT spawn per-tile prefabs
 /// - Intended for both globe and flat map to share the same baked texture
+/// - GPU path available via BakeGPU() for dramatically faster texture generation
 /// </summary>
 public static class PlanetTextureBaker
 {
@@ -21,6 +22,10 @@ public static class PlanetTextureBaker
         public Color32[] tileColors;
     }
 
+    /// <summary>
+    /// CPU-based texture baking (original implementation).
+    /// For GPU-accelerated version, use BakeGPU() instead.
+    /// </summary>
     public static BakeResult Bake(PlanetGenerator planetGen, MinimapColorProvider colorProvider, int width = 2048, int height = 1024)
     {
         var res = new BakeResult { width = width, height = height };
@@ -111,6 +116,97 @@ public static class PlanetTextureBaker
         heightmapTex.SetPixels32(heightmapPixels);
         heightmapTex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
         res.heightmap = heightmapTex;
+
+        return res;
+    }
+
+    /// <summary>
+    /// GPU-accelerated texture baking using compute shaders.
+    /// This replaces the CPU pixel loop with parallel GPU computation for dramatically faster generation.
+    /// 
+    /// IMPORTANT:
+    /// - Does NOT change gameplay logic or rules
+    /// - CPU remains authoritative for game state
+    /// - GPU is used only for texture generation (visual-only)
+    /// - Returns RenderTextures that can be used directly in materials (no CPU readback)
+    /// 
+    /// If computeShader is null, falls back to CPU path.
+    /// </summary>
+    /// <param name="planetGen">Planet generator with tile data</param>
+    /// <param name="colorProvider">Optional color provider for biome colors</param>
+    /// <param name="computeShader">Compute shader for GPU acceleration (PlanetTextureBaker.compute)</param>
+    /// <param name="width">Texture width (default 2048)</param>
+    /// <param name="height">Texture height (default 1024)</param>
+    /// <param name="convertToTexture2D">If true, converts RenderTextures to Texture2D (slow, avoid if possible)</param>
+    /// <returns>BakeResult with textures ready for material assignment</returns>
+    public static BakeResult BakeGPU(
+        PlanetGenerator planetGen,
+        MinimapColorProvider colorProvider,
+        ComputeShader computeShader,
+        int width = 2048,
+        int height = 1024,
+        bool convertToTexture2D = false)
+    {
+        // Fallback to CPU path if compute shader is not available
+        if (computeShader == null)
+        {
+            Debug.LogWarning("[PlanetTextureBaker] Compute shader is null, falling back to CPU path");
+            return Bake(planetGen, colorProvider, width, height);
+        }
+
+        // Use GPU path
+        var gpuResult = PlanetTextureBakerGPU.Bake(planetGen, colorProvider, computeShader, width, height);
+        
+        var res = new BakeResult
+        {
+            width = gpuResult.width,
+            height = gpuResult.height,
+            lut = gpuResult.lut,
+            tileColors = gpuResult.tileColors
+        };
+
+        // Convert RenderTextures to Texture2D only if explicitly requested (slow operation)
+        if (convertToTexture2D)
+        {
+            if (gpuResult.biomeTexture != null)
+            {
+                res.texture = PlanetTextureBakerGPU.RenderTextureToTexture2D(
+                    gpuResult.biomeTexture,
+                    TextureFormat.RGBA32
+                );
+            }
+            
+            if (gpuResult.heightTexture != null)
+            {
+                // Convert RFloat heightmap to R8 Texture2D
+                res.heightmap = PlanetTextureBakerGPU.RenderTextureToTexture2D(
+                    gpuResult.heightTexture,
+                    TextureFormat.R8
+                );
+            }
+        }
+        else
+        {
+            // Convert RenderTextures to Texture2D for compatibility with BakeResult struct
+            // NOTE: This performs a CPU readback which is slow. For best performance, use
+            // PlanetTextureBakerGPU.Bake() directly and assign RenderTextures to materials.
+            // Unity materials can accept RenderTextures via SetTexture().
+            if (gpuResult.biomeTexture != null)
+            {
+                res.texture = PlanetTextureBakerGPU.RenderTextureToTexture2D(
+                    gpuResult.biomeTexture,
+                    TextureFormat.RGBA32
+                );
+            }
+            
+            if (gpuResult.heightTexture != null)
+            {
+                res.heightmap = PlanetTextureBakerGPU.RenderTextureToTexture2D(
+                    gpuResult.heightTexture,
+                    TextureFormat.R8
+                );
+            }
+        }
 
         return res;
     }

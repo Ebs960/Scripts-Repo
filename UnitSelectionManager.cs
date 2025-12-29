@@ -213,25 +213,15 @@ public class UnitSelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get mouse raycast hit information
+    /// Get mouse raycast hit information using the new texture-based picking system
     /// </summary>
     private (bool hit, Vector3 worldPosition, int tileIndex) GetMouseHitInfo()
     {
-        if (mainCamera == null)
-            return (false, Vector3.zero, -1);
-
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-
-        // Use TileSystem raycast mask if available; otherwise default
-        int layerMask = Physics.DefaultRaycastLayers;
+        // Use TileSystem's new texture-based picking system (replaces old TileIndexHolder approach)
         if (TileSystem.Instance != null)
-            layerMask = TileSystem.Instance.tileRaycastMask.value;
-
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, Mathf.Infinity, layerMask))
         {
-            var holder = hitInfo.collider.GetComponentInParent<TileIndexHolder>();
-            if (holder != null)
-                return (true, hitInfo.point, holder.tileIndex);
+            var result = TileSystem.Instance.GetMouseHitInfo();
+            return (result.hit, result.worldPosition, result.tileIndex);
         }
 
         return (false, Vector3.zero, -1);

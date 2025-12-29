@@ -1,0 +1,96 @@
+#pragma kernel UpdateFogMask
+#pragma kernel UpdateOwnership
+
+// Input buffers
+StructuredBuffer<int> _PixelToTileLUT;      // Pixel index -> tile index
+StructuredBuffer<byte> _FogByTile;          // Tile index -> fog value (0=hidden, 1=explored, 2=visible)
+StructuredBuffer<int> _OwnerByTile;        // Tile index -> owner (-1=neutral, >=0=civId)
+StructuredBuffer<float4> _OwnerColors;      // Owner index -> color
+
+// Output textures
+RWTexture2D<float> _FogMask;                // R8 fog mask (0=hidden, 0.5=explored, 1=visible)
+RWTexture2D<float4> _OwnershipOverlay;      // RGBA32 ownership overlay
+
+// Parameters
+int _Width;
+int _Height;
+int _TileCount;
+int _OwnerColorCount;
+float _OwnershipBlend;
+int _OwnershipMode; // 0 = blend, 1 = replace
+
+[numthreads(8,8,1)]
+void UpdateFogMask (uint3 id : SV_DispatchThreadID)
+{
+    // Bounds check
+    if (id.x >= _Width || id.y >= _Height) return;
+    
+    // Calculate pixel index
+    int pixelIndex = (int)(id.y * _Width + id.x);
+    
+    // Lookup tile index from LUT
+    int tileIndex = _PixelToTileLUT[pixelIndex];
+    
+    // Clamp tile index
+    if (tileIndex < 0 || tileIndex >= _TileCount)
+        tileIndex = 0;
+    
+    // Get fog value (0=hidden, 1=explored, 2=visible)
+    byte fogValue = _FogByTile[tileIndex];
+    
+    // Convert to mask value (0=hidden/black, 0.5=explored/gray, 1=visible/white)
+    float maskValue = 0.0;
+    if (fogValue == 2)
+        maskValue = 1.0; // Visible
+    else if (fogValue == 1)
+        maskValue = 0.5; // Explored (gray)
+    // fogValue == 0 stays 0.0 (hidden/black)
+    
+    // Write fog mask
+    _FogMask[int2(id.x, id.y)] = maskValue;
+}
+
+[numthreads(8,8,1)]
+void UpdateOwnership (uint3 id : SV_DispatchThreadID)
+{
+    // Bounds check
+    if (id.x >= _Width || id.y >= _Height) return;
+    
+    // Calculate pixel index
+    int pixelIndex = (int)(id.y * _Width + id.x);
+    
+    // Lookup tile index from LUT
+    int tileIndex = _PixelToTileLUT[pixelIndex];
+    
+    // Clamp tile index
+    if (tileIndex < 0 || tileIndex >= _TileCount)
+        tileIndex = 0;
+    
+    // Get owner
+    int owner = _OwnerByTile[tileIndex];
+    
+    // Default: transparent (no ownership)
+    float4 overlayColor = float4(0, 0, 0, 0);
+    
+    // If tile has an owner, get owner color
+    if (owner >= 0 && owner < _OwnerColorCount)
+    {
+        float4 ownerColor = _OwnerColors[owner];
+        
+        // Apply ownership overlay
+        if (_OwnershipMode == 0)
+        {
+            // Blend mode: tint with owner color
+            overlayColor = float4(ownerColor.rgb * _OwnershipBlend, _OwnershipBlend);
+        }
+        else
+        {
+            // Replace mode: full owner color
+            overlayColor = ownerColor;
+        }
+    }
+    
+    // Write ownership overlay
+    _OwnershipOverlay[int2(id.x, id.y)] = overlayColor;
+}
+
