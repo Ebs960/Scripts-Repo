@@ -6,18 +6,18 @@ public static class MapTypeNameGenerator
     private static readonly string[][] baseNames = {
         new[] { "Polar", "Arctic", "Frozen", "Glacial", "Ice", "Frost" },
         new[] { "Northern", "Boreal", "Taiga", "Tundra", "Pine", "Snow" },
-        new[] { "Central", "Grassy", "Temperate", "Verdant", "Misty", "Emerald" },
+        new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald" },
         new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon" },
         new[] { "Desert", "Arid", "Sweltering", "Oasis", "Jungle", "Steam" },
-        new[] { "Scorched", "Barren", "Burning", "Mirage", "Infernal", "Demonic" }
+        new[] { "Scorched", "Barren", "Mirage", "Burning", "Infernal", "Demonic" }
     };
 
     private static readonly string[] oceanTerrain = { "Shards", "Atoll", "Isles", "Archipelago", "Seas", "Chain" };
     
-    private static readonly string[] waterTerrain = { "Ponds", "Waters", "Lagoon", "Rivers", "Lakes", "Cove"};
+    private static readonly string[] waterTerrain = { "Ponds", "Waters", "Lagoons", "Rivers", "Lakes", "Coves"};
 
     private static readonly string[][] elevationTerrain = {
-        new[] { "Basin", "Plains", "Lowlands", "Valley", "Flats", "Coast" },
+        new[] { "Basin", "Plains", "Lowlands", "Valley", "Flats", "Coasts" },
         new[] { "Hills", "Highlands", "Ridges", "Heights", "Uplands", "Cliffs" },
         new[] { "Peaks", "Range", "Mountains", "Summit", "Crags", "Alps" }
     };
@@ -25,12 +25,11 @@ public static class MapTypeNameGenerator
     private static readonly string[][] elevationTerrainContinents = {
         new[] { "Tablelands", "Plains", "Low Plateaus", "Basins", "Steppes", "Coastal Plain" }, // Low elevation
         new[] { "Plateaus", "Uplands", "Escarpments", "Highlands", "Continental Rise", "Shield" }, // Hilly
-        new[] { "Massif", "Peaks", "Continental Divide", "Great Range", "Crest", "Summits" } // Mountainous
+        new[] { "Massif", "Peaks", "Continental Divide", "Summits", "Crest", "Great Range" } // Mountainous
     };
 
     private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland" };
 
-    private static readonly string[] continentalTerrain = { "Realm", "Lands", "Domain", "Country", "Landmass", "Continents" };
 
     private static readonly string[][] pangaeaMods = {
         new[] { "Great", "Endless", "Vast", "Boundless", "Sweeping", "Ancient" },

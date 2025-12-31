@@ -279,7 +279,7 @@ public class MainMenuManager : MonoBehaviour
         {
             // Clear and populate options
             moisturePresetDropdown.ClearOptions();
-            moisturePresetDropdown.AddOptions(new List<string> { "Desert", "Arid", "Standard", "Moist", "Wet", "Oceanic" });
+            moisturePresetDropdown.AddOptions(new List<string> { "Very Low", "Low", "Standard", "High", "Very High", "Extreme" });
             moisturePresetDropdown.value = selectedMoisturePreset;
             moisturePresetDropdown.onValueChanged.AddListener(OnMoisturePresetChanged);
         }
