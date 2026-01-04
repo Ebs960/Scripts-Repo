@@ -81,6 +81,7 @@ public class GameManager : MonoBehaviour
     // Multi-planet storage
     private Dictionary<int, PlanetGenerator> planetGenerators = new Dictionary<int, PlanetGenerator>();
     private Dictionary<int, CivilizationManager> planetCivManagers = new Dictionary<int, CivilizationManager>();
+    private Dictionary<int, ClimateManager> planetClimateManagers = new Dictionary<int, ClimateManager>();
     private Dictionary<int, PlanetData> planetData = new Dictionary<int, PlanetData>();
     
     // Planet lifecycle events (event-driven readiness)
@@ -93,7 +94,7 @@ public class GameManager : MonoBehaviour
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
-    public ClimateManager GetClimateManager(int planetIndex) => ClimateManager.Instance;
+    public ClimateManager GetClimateManager(int planetIndex) => planetClimateManagers.TryGetValue(planetIndex, out var cm) ? cm : ClimateManager.Instance;
     public Dictionary<int, PlanetData> GetPlanetData() => planetData;
     
     /// <summary>
@@ -113,8 +114,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public ClimateManager GetCurrentClimateManager()
     {
-        // Global ClimateManager handles all planets
-        return ClimateManager.Instance;
+        return GetClimateManager(currentPlanetIndex);
     }
     
     /// <summary>
@@ -136,6 +136,7 @@ public class GameManager : MonoBehaviour
         
         Debug.Log($"[GameManager] Switching current planet to {planetIndex}");
         currentPlanetIndex = planetIndex;
+        climateManager = GetClimateManager(currentPlanetIndex);
         
         // Rebind TileSystem to the new current planet
         var gen = GetPlanetGenerator(currentPlanetIndex);
@@ -1327,7 +1328,7 @@ public class GameManager : MonoBehaviour
     private void ApplyRealPlanetIdentity(PlanetGenerator g, string bodyName)
     {
         g.ClearRealPlanetFlags();
-        g.allowOceans = true; g.allowRivers = true; g.allowIslands = true;
+        g.allowOceans = true; g.enableRivers = true; g.allowIslands = true;
 
         switch (bodyName)
         {
@@ -1335,59 +1336,59 @@ public class GameManager : MonoBehaviour
                 break;
             case "Mars":
                 g.isMarsWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Venus":
                 g.isVenusWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Mercury":
                 g.isMercuryWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Jupiter":
                 g.isJupiterWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Saturn":
                 g.isSaturnWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Uranus":
                 g.isUranusWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Neptune":
                 g.isNeptuneWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Io":
                 g.isIoWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Europa":
                 g.isEuropaWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Ganymede":
                 g.isGanymedeWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Callisto":
                 g.isCallistoWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Titan":
                 g.isTitanWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Luna":
                 g.isLunaWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             case "Pluto":
                 g.isPlutoWorldType = true;
-                g.allowOceans = false; g.allowRivers = false; g.allowIslands = false;
+                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
             default:
                 break;
@@ -1804,6 +1805,7 @@ public class GameManager : MonoBehaviour
             Destroy(planetGO);
             yield break;
         }
+        generator.planetIndex = planetIndex;
 
         if (planetData.ContainsKey(planetIndex))
             planetData[planetIndex].planetName = body;
@@ -1852,14 +1854,27 @@ public class GameManager : MonoBehaviour
     // This ensures the generator is available when spawn events fire
     planetGenerators[planetIndex] = generator;
 
+    if (climateManagerPrefab != null)
+    {
+        var cmGO = Instantiate(climateManagerPrefab);
+        cmGO.name = $"ClimateManager_Planet_{planetIndex}";
+        cmGO.transform.SetParent(planetGO.transform, false);
+        var cm = cmGO.GetComponent<ClimateManager>();
+        if (cm != null)
+        {
+            cm.isGlobalClimateManager = false;
+            cm.planetIndex = planetIndex;
+            planetClimateManagers[planetIndex] = cm;
+        }
+    }
+
     // TileSystem will be bound to the active planet as needed
     
     // Now fire the surface generated event - spawning will find the registered generator
     
     OnPlanetSurfaceGenerated?.Invoke(planetIndex);
 
-        // Planet generation complete - no per-planet ClimateManager needed
-        // The global ClimateManager will handle all planets from FindCoreManagersInScene
+        // Planet generation complete - per-planet ClimateManager attached above
         
 
     // Managers attached/configured

@@ -14,6 +14,7 @@ public class SeasonalTextureEntry
 public class ClimateManager : MonoBehaviour
 {
     public static ClimateManager Instance { get; private set; }
+    public static event Action<int, Season> OnPlanetSeasonChanged;
 
     [Header("Season Configuration")]
     public int turnsPerSeason = 3;
@@ -30,6 +31,7 @@ public class ClimateManager : MonoBehaviour
     [Header("Multi-Planet Support")]
     [Tooltip("This global ClimateManager handles climate for all planets in the solar system")]
     public bool isGlobalClimateManager = true;
+    public int planetIndex = 0;
     
     // Per-planet climate data
     private Dictionary<int, Season> planetSeasons = new Dictionary<int, Season>();
@@ -50,44 +52,66 @@ public class ClimateManager : MonoBehaviour
 
     void Awake()
     {
-        // Global ClimateManager - always use singleton pattern
-        if (Instance != null && Instance != this)
+        if (isGlobalClimateManager)
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
         }
-        Instance = this;
 
         BuildSeasonalTextureLookup();
         
         // Initialize climate data for all planets when in multi-planet mode
-        if (GameManager.Instance?.enableMultiPlanetSystem == true)
+        if (isGlobalClimateManager)
         {
-            InitializeMultiPlanetClimate();
+            if (GameManager.Instance?.enableMultiPlanetSystem == true)
+            {
+                InitializeMultiPlanetClimate();
+            }
         }
     }
 
     void Start()
     {
-        UpdateReferences();
-
-        if (TurnManager.Instance != null)
+        if (isGlobalClimateManager)
         {
-            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+            UpdateReferences();
+
+            if (TurnManager.Instance != null)
+            {
+                TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+            }
+            else
+            {
+                Debug.LogWarning("[ClimateManager] Could not find TurnManager to subscribe to turn changes.");
+            }
+
+            CheckSeasonChange();
         }
         else
         {
-            Debug.LogWarning("[ClimateManager] Could not find TurnManager to subscribe to turn changes.");
+            if (Instance != null)
+            {
+                OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
+            }
         }
-
-        CheckSeasonChange();
     }
 
     void OnDestroy()
     {
-        if (TurnManager.Instance != null)
+        if (isGlobalClimateManager)
         {
-            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+            if (TurnManager.Instance != null)
+            {
+                TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+            }
+        }
+        else
+        {
+            OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
         }
     }
 
@@ -181,6 +205,7 @@ public class ClimateManager : MonoBehaviour
         Debug.Log($"[ClimateManager] Changing to {season} season on planet {planetIndex}");
 
         OnSeasonChanged?.Invoke(season);
+        OnPlanetSeasonChanged?.Invoke(planetIndex, season);
 
         if (season == Season.Winter)
         {
@@ -379,6 +404,14 @@ public class ClimateManager : MonoBehaviour
             {
                 Debug.LogError("[ClimateManager] Could not find PlanetGenerator in scene!");
             }
+        }
+    }
+
+    private void HandlePlanetSeasonChanged(int idx, Season season)
+    {
+        if (idx == planetIndex)
+        {
+            OnSeasonChanged?.Invoke(season);
         }
     }
 }

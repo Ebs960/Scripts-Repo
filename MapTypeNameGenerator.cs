@@ -23,17 +23,16 @@ public static class MapTypeNameGenerator
     };
 
     private static readonly string[][] elevationTerrainContinents = {
-        new[] { "Tablelands", "Plains", "Low Plateaus", "Basins", "Steppes", "Coastal Plain" }, // Low elevation
+        new[] { "Tablelands", "Plains", "Low Plateaus", "Country", "Steppes", "Coastal Plain" }, // Low elevation
         new[] { "Plateaus", "Uplands", "Escarpments", "Highlands", "Continental Rise", "Shield" }, // Hilly
         new[] { "Massif", "Peaks", "Continental Divide", "Summits", "Crest", "Great Range" } // Mountainous
     };
 
     private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland" };
 
-
     private static readonly string[][] pangaeaMods = {
         new[] { "Great", "Endless", "Vast", "Boundless", "Sweeping", "Ancient" },
-        new[] { "Rolling", "Rugged", "Forested", "Windswept", "Diverse", "Wild" },
+        new[] { "Rolling", "Rugged", "Forested", "Windswept", "Untamed", "Wild" },
         new[] { "Towering", "Majestic", "Colossal", "Mighty", "Stony", "Sheer" }
     };
 

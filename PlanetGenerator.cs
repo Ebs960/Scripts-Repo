@@ -381,7 +381,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     [Header("Feature Toggles")]
     public bool allowOceans = true;
-    public bool allowRivers = true;
     public bool allowIslands = true;
 
     public void ClearRealPlanetFlags()
@@ -476,21 +475,47 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 #endif
     }
     
+    public int planetIndex = 0;
+
     void Start()
     {
-        // Subscribe to season changes to update visuals
-        if (ClimateManager.Instance != null)
+        ClimateManager mgr = null;
+        if (GameManager.Instance != null)
         {
-            ClimateManager.Instance.OnSeasonChanged += HandleSeasonChange;
+            if (GameManager.Instance.enableMultiPlanetSystem)
+                mgr = GameManager.Instance.GetClimateManager(planetIndex);
+            else
+                mgr = GameManager.Instance.GetClimateManager(0);
+        }
+        else
+        {
+            mgr = ClimateManager.Instance;
+        }
+
+        if (mgr != null)
+        {
+            mgr.OnSeasonChanged += HandleSeasonChange;
         }
     }
 
     void OnDestroy()
     {
-        // Unsubscribe to prevent memory leaks
-        if (ClimateManager.Instance != null)
+        ClimateManager mgr = null;
+        if (GameManager.Instance != null)
         {
-            ClimateManager.Instance.OnSeasonChanged -= HandleSeasonChange;
+            if (GameManager.Instance.enableMultiPlanetSystem)
+                mgr = GameManager.Instance.GetClimateManager(planetIndex);
+            else
+                mgr = GameManager.Instance.GetClimateManager(0);
+        }
+        else
+        {
+            mgr = ClimateManager.Instance;
+        }
+
+        if (mgr != null)
+        {
+            mgr.OnSeasonChanged -= HandleSeasonChange;
         }
 
     }
@@ -881,7 +906,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int landNow = data.Values.Count(d => d.isLand && d.biome != Biome.Glacier);
 
         // ---------- 6.5 River Generation Pass (MOVED TO AFTER COAST/SEAS) ----
-        if (allowRivers)
+        if (enableRivers)
             yield return StartCoroutine(GenerateRivers(isLandTile, data));
 
         if (loadingPanelController != null)
