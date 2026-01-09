@@ -130,7 +130,7 @@ public class UnitSelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Get a unit occupying the given tile index (authoritative for both globe and flat views).
+    /// Get a unit occupying the given tile index.
     /// Returns BaseUnit since both CombatUnit and WorkerUnit inherit from it.
     /// </summary>
     private BaseUnit GetUnitOnTile(int tileIndex)

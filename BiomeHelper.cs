@@ -100,7 +100,7 @@ public static class BiomeHelper {
         bool isTitanWorldType = false, bool isEuropaWorldType = false,
         bool isIoWorldType = false, bool isGanymedeWorldType = false,
         bool isCallistoWorldType = false, bool isLunaWorldType = false,
-        float latitude = 0f, float longitude = 0f)
+        float northSouth = 0f, float eastWest = 0f)
     {
         // Debug logging for planet-specific biome assignment (only for non-Earth planets)
         if (isMarsWorldType || isVenusWorldType || isMercuryWorldType || isJupiterWorldType ||
@@ -140,7 +140,7 @@ public static class BiomeHelper {
         
         if (isEarthPlanet)
         {
-            float absLatitude = Mathf.Abs(latitude);
+            float absLatitude = Mathf.Abs(northSouth);
             
             // FORCE POLAR CAP: make the very top/bottom strictly Arctic for all tiles (no Glaciers).
             // Using ~80° -> 0.80 in normalized [-1,1]. Adjust if you want a larger/smaller cap.
@@ -206,17 +206,17 @@ public static class BiomeHelper {
             return Biome.VenusianPlains; // Default Venus
         }
         
-        // MERCURY - Day/Night hemispheres based on longitude
+        // MERCURY - Day/Night hemispheres based on east-west split
         if (isMercuryWorldType) {
-            // Determine if this is day side (longitude -90 to +90) or night side (longitude 90 to 270 or -90 to -270)
-            float normalizedLong = longitude; // longitude should be in range -180 to +180
+            // Determine if this is day side (east-west near center) or night side (edges)
+            float normalizedLong = eastWest * 180f; // -180 to +180
             bool isDaySide = (normalizedLong >= -90f && normalizedLong <= 90f);
             
             // Debug logging for Mercury hemisphere assignment
             if (UnityEngine.Random.Range(0, 1000) < 5) // 0.5% chance to log
             {
                 string side = isDaySide ? "Day" : "Night";
-                UnityEngine.Debug.Log($"[BiomeHelper] Mercury hemisphere - Long: {longitude:F1}°, Side: {side}");
+                UnityEngine.Debug.Log($"[BiomeHelper] Mercury hemisphere - EastWest: {normalizedLong:F1}°, Side: {side}");
             }
             
             if (isDaySide) {
@@ -240,12 +240,11 @@ public static class BiomeHelper {
             }
         }
         
-        // JUPITER - Latitude-based: storms at poles, clouds elsewhere
+        // JUPITER - North/south based: storms at poles, clouds elsewhere
         if (isJupiterWorldType) {
-            // Latitude is expected in radians normalized to [-PI/2, PI/2] and then scaled to [-1,1] or already normalized [-1,1].
-            // In this project latitude is passed in normalized range [-1,1]. Use absolute value to detect polar caps.
-            float absLat = Mathf.Abs(latitude);
-            // Consider 70+ degrees latitude as polar region (0.78 in normalized [-1,1])
+            // North/south is passed in normalized range [-1,1]. Use absolute value to detect polar caps.
+            float absLat = Mathf.Abs(northSouth);
+            // Consider 70+ degrees as polar region (0.78 in normalized [-1,1])
             if (absLat >= 0.78f) return Biome.JovianStorm; // Polar storms
             return Biome.JovianClouds; // Elsewhere
         }

@@ -235,7 +235,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public static PlanetGenerator Instance { get; private set; }
 
 
-    [Header("Sphere Settings")] 
+    [Header("Map Settings")] 
     public int subdivisions = 8;
     public bool randomSeed = true;
     public int seed = 12345;
@@ -552,35 +552,38 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         
         // ---------- 2. Generate Deterministic Continent Seeds ------------------
-        List<Vector3> continentSeeds = GenerateDeterministicSeeds(numberOfContinents, seed ^ 0xD00D);
+        List<Vector2> continentSeeds = GenerateDeterministicSeeds(numberOfContinents, seed ^ 0xD00D);
 
         // ---------- 3. Find Noise Peak within each Mask ------------------------
         Dictionary<int, bool> isLandTile = new Dictionary<int, bool>();
-        Dictionary<int, Vector2> tileLatLon = new Dictionary<int, Vector2>();
-        Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)> seedPeaks =
-            new Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)>();
+        Dictionary<int, Vector2> tilePositions = new Dictionary<int, Vector2>();
+        Dictionary<Vector2, (int peakTileIndex, float peakNoiseValue)> seedPeaks =
+            new Dictionary<Vector2, (int peakTileIndex, float peakNoiseValue)>();
         Dictionary<int, float> tileNoiseCache = new Dictionary<int, float>(); // Cache noise values
 
-        // Pre-calculate LatLon for all tiles
+        float mapWidth = grid.MapWidth;
+        float mapHeight = grid.MapHeight;
+        float maxContinentWidthWorld = (maxContinentWidthDegrees / 360f) * mapWidth;
+        float maxContinentHeightWorld = (maxContinentHeightDegrees / 180f) * mapHeight;
+
+        // Pre-calculate tile positions for all tiles
         for (int i = 0; i < tileCount; i++) {
             Vector3 center = grid.tileCenters[i];
-            float latitude = Mathf.Asin(center.normalized.y) * Mathf.Rad2Deg;
-            float longitude = Mathf.Atan2(center.normalized.x, center.normalized.z) * Mathf.Rad2Deg;
-            tileLatLon[i] = new Vector2(latitude, longitude);
+            tilePositions[i] = new Vector2(center.x, center.z);
         }
 
         int processedSeeds = 0;
         // Find the highest noise point within each seed's mask
-        foreach (Vector3 seedPos in continentSeeds) {
+        foreach (Vector2 seedPos in continentSeeds) {
             int currentPeakIndex = -1;
             float currentPeakValue = -1f; // Noise is 0-1, so -1 is safe starting point
 
             for (int i = 0; i < tileCount; i++) {
-                Vector3 tilePos = grid.tileCenters[i].normalized;
-                if (IsTileInMask(tilePos, tileLatLon[i], seedPos, maxContinentWidthDegrees, maxContinentHeightDegrees)) {
+                Vector2 tilePos = tilePositions[i];
+                if (IsTileInMask(tilePos, seedPos, maxContinentWidthWorld, maxContinentHeightWorld, mapWidth)) {
                     float noiseValue;
                     if (!tileNoiseCache.TryGetValue(i, out noiseValue)) {
-                        Vector3 noisePos = tilePos + noiseOffset;
+                        Vector3 noisePos = new Vector3(tilePos.x, 0f, tilePos.y) + noiseOffset;
                         noiseValue = noise.GetContinent(noisePos * continentNoiseFrequency);
                         tileNoiseCache[i] = noiseValue;
                     }
@@ -611,16 +614,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // ---------- 4. Generate Land: Guarantee Peaks + Fill Threshold ---------
         for (int i = 0; i < tileCount; i++) {
             isLandTile[i] = false; // Default to water
-            Vector3 tilePos = grid.tileCenters[i].normalized;
+            Vector2 tilePos = tilePositions[i];
 
-            foreach (Vector3 seedPos in continentSeeds) {
+            foreach (Vector2 seedPos in continentSeeds) {
                 // Skip seeds that didn't find a valid peak/mask
                 if (!seedPeaks.ContainsKey(seedPos)) continue;
 
                 (int peakIndex, float peakValue) = seedPeaks[seedPos];
 
                 // Check if tile is within the mask for this seed
-                if (IsTileInMask(tilePos, tileLatLon[i], seedPos, maxContinentWidthDegrees, maxContinentHeightDegrees)) {
+                if (IsTileInMask(tilePos, seedPos, maxContinentWidthWorld, maxContinentHeightWorld, mapWidth)) {
 
                     // A) Guarantee the peak tile is land
                     if (i == peakIndex) {
@@ -632,7 +635,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     // B) Check noise threshold for other tiles within the mask
                     float noiseValue = tileNoiseCache.ContainsKey(i) ? tileNoiseCache[i] : -1f; // Get cached or default
                     if (noiseValue == -1f) { // Recalculate if not cached (should be rare)
-                        Vector3 noisePos = tilePos + noiseOffset;
+                        Vector3 noisePos = new Vector3(tilePos.x, 0f, tilePos.y) + noiseOffset;
                         noiseValue = noise.GetContinent(noisePos * continentNoiseFrequency);
                     }
 
@@ -658,7 +661,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // ---------- 4.5. Generate Islands (NEW) ---------
         if (allowIslands)
-            yield return StartCoroutine(GenerateIslands(isLandTile, tileLatLon, tileNoiseCache, tileCount));
+            yield return StartCoroutine(GenerateIslands(isLandTile, tilePositions, tileNoiseCache, tileCount));
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceans)
@@ -668,9 +671,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         for (int i = 0; i < tileCount; i++)
         {
-            Vector3 n = grid.tileCenters[i].normalized;
+            Vector3 n = grid.tileCenters[i];
             bool isLand = isLandTile[i];
-            Vector3 noisePoint = n + noiseOffset;
+            Vector3 noisePoint = new Vector3(n.x, 0f, n.z) + noiseOffset;
             
             // Calculate raw noise elevation (0-1 range)
             float noiseElevation = noise.GetElevation(noisePoint * elevationFreq);
@@ -680,15 +683,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Apply moisture bias - clamp to ensure it stays in 0-1 range
             moisture = Mathf.Clamp01(moisture + moistureBias);
             
-            Vector2 latLon = tileLatLon[i];
-            float absLatitude = Mathf.Abs(latLon.x) / 90f;
+            Vector2 tilePos = tilePositions[i];
+            float northness = Mathf.Clamp(tilePos.y / (mapHeight * 0.5f), -1f, 1f);
+            float absNorthness = Mathf.Abs(northness);
             
-            // Generate temperature from noise and latitude
-            float latitudeTemp = 1f - Mathf.Pow(absLatitude, 0.7f); 
+            // Generate temperature from noise and north/south position
+            float northTemp = 1f - Mathf.Pow(absNorthness, 0.7f); 
             float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
             
-            // Blend: e.g., 70% latitude influence, 30% noise influence
-            float temperature = (latitudeTemp * 0.7f) + (noiseTemp * 0.3f);
+            // Blend: e.g., 70% north/south influence, 30% noise influence
+            float temperature = (northTemp * 0.7f) + (noiseTemp * 0.3f);
             temperature = Mathf.Clamp01(temperature + temperatureBias);
 
             Biome biome;
@@ -918,7 +922,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // --- Visual Generation ---
         // NOTE: Tile prefab spawning is disabled. The new system uses texture-based rendering.
-        // FlatMapTextureRenderer and GlobeRenderer handle visualization.
+        // FlatMapTextureRenderer handles visualization.
         // Tile data is still generated and stored - only visualization changed.
 
         // Finalize
@@ -1057,12 +1061,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // --------------------------- Helper Functions ----------------------------
 
-        IEnumerator GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tileLatLon, 
+        IEnumerator GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tilePositions, 
                            Dictionary<int, float> tileNoiseCache, int tileCount) {
             
             
             // Generate island seed positions
-            List<Vector3> islandSeeds = GenerateIslandSeeds(GameSetupData.numberOfIslands, seed ^ 0xF15);
+            List<Vector2> islandSeeds = GenerateIslandSeeds(GameSetupData.numberOfIslands, seed ^ 0xF15);
             
             // Island parameters (smaller than continents)
             float islandWidthDegrees = maxContinentWidthDegrees * 0.6f;  // INCREASED: Was 0.3f, now much bigger
@@ -1071,14 +1075,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             float islandThreshold = landThreshold - 0.08f; // LOWERED: Was -0.05f, now even easier to become land
             
             int localIslandTilesGenerated = 0;
+            float mapWidth = grid.MapWidth;
+            float mapHeight = grid.MapHeight;
+            float islandWidthWorld = (islandWidthDegrees / 360f) * mapWidth;
+            float islandHeightWorld = (islandHeightDegrees / 180f) * mapHeight;
             
             // BATCH YIELD
             int islandCheckCounter = 0;
             // Find noise peaks within each island mask
-            Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)> islandPeaks = 
-                new Dictionary<Vector3, (int peakTileIndex, float peakNoiseValue)>();
+            Dictionary<Vector2, (int peakTileIndex, float peakNoiseValue)> islandPeaks = 
+                new Dictionary<Vector2, (int peakTileIndex, float peakNoiseValue)>();
             
-            foreach (Vector3 seedPos in islandSeeds) {
+            foreach (Vector2 seedPos in islandSeeds) {
                 int currentPeakIndex = -1;
                 float currentPeakValue = -1f;
                 
@@ -1086,11 +1094,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     // Skip tiles that are already land (from continents)
                     if (isLandTile[i]) continue;
                     
-                    Vector3 tilePos = grid.tileCenters[i].normalized;
-                    if (IsTileInIslandMask(tilePos, tileLatLon[i], seedPos, islandWidthDegrees, islandHeightDegrees)) {
+                    Vector2 tilePos = tilePositions[i];
+                    if (IsTileInIslandMask(tilePos, seedPos, islandWidthWorld, islandHeightWorld, mapWidth)) {
                         float noiseValue;
                         if (!tileNoiseCache.TryGetValue(i, out noiseValue)) {
-                            Vector3 noisePos = tilePos + noiseOffset;
+                            Vector3 noisePos = new Vector3(tilePos.x, 0f, tilePos.y) + noiseOffset;
                             noiseValue = noise.GetContinent(noisePos * islandNoiseFrequency);
                             tileNoiseCache[i] = noiseValue;
                         }
@@ -1124,14 +1132,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 // Skip tiles that are already land
                 if (isLandTile[i]) continue;
                 
-                Vector3 tilePos = grid.tileCenters[i].normalized;
+                Vector2 tilePos = tilePositions[i];
                 
-                foreach (Vector3 seedPos in islandSeeds) {
+                foreach (Vector2 seedPos in islandSeeds) {
                     if (!islandPeaks.ContainsKey(seedPos)) continue;
                     
                     (int peakIndex, float peakValue) = islandPeaks[seedPos];
                     
-                    if (IsTileInIslandMask(tilePos, tileLatLon[i], seedPos, islandWidthDegrees, islandHeightDegrees)) {
+                    if (IsTileInIslandMask(tilePos, seedPos, islandWidthWorld, islandHeightWorld, mapWidth)) {
                         
                         // Guarantee the peak tile is land
                         if (i == peakIndex) {
@@ -1143,7 +1151,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         // Check noise threshold for other tiles
                         float noiseValue = tileNoiseCache.ContainsKey(i) ? tileNoiseCache[i] : -1f;
                         if (noiseValue == -1f) {
-                            Vector3 noisePos = tilePos + noiseOffset;
+                            Vector3 noisePos = new Vector3(tilePos.x, 0f, tilePos.y) + noiseOffset;
                             noiseValue = noise.GetContinent(noisePos * islandNoiseFrequency);
                         }
                         
@@ -1174,28 +1182,31 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         /// <summary>
         /// Generates seed positions for islands using a more random approach than continents
         /// </summary>
-        private List<Vector3> GenerateIslandSeeds(int count, int rndSeed) {
-            List<Vector3> seeds = new List<Vector3>();
+        private List<Vector2> GenerateIslandSeeds(int count, int rndSeed) {
+            List<Vector2> seeds = new List<Vector2>();
             System.Random rand = new System.Random(rndSeed);
+            float mapWidth = grid.MapWidth;
+            float mapHeight = grid.MapHeight;
             
             // Islands use a more scattered, random placement
             int attempts = 0;
             int maxAttempts = count * 10; // Limit attempts to prevent infinite loops
-            float minDistanceBetweenIslands = 20f; // Minimum degrees between island centers
+            float minDistanceBetweenIslands = (20f / 360f) * mapWidth;
             
             while (seeds.Count < count && attempts < maxAttempts) {
                 attempts++;
                 
-                // Generate random position on sphere
-                Vector3 candidate = UnityEngine.Random.insideUnitSphere.normalized;
-                if (candidate == Vector3.zero) candidate = Vector3.up;
+                // Generate random position on the flat map
+                float x = (float)(rand.NextDouble() * mapWidth - mapWidth * 0.5f);
+                float z = (float)(rand.NextDouble() * mapHeight - mapHeight * 0.5f);
+                Vector2 candidate = new Vector2(x, z);
                 
                 // Check distance from existing seeds (both continents and islands)
                 bool tooClose = false;
                 
                 // Check distance from continent seeds
                 foreach (var continentSeed in GenerateDeterministicSeeds(numberOfContinents, seed ^ 0xD00D)) {
-                    if (Vector3.Angle(candidate, continentSeed) < minDistanceBetweenIslands * 2f) {
+                    if (WrappedDistance(candidate, continentSeed, mapWidth) < minDistanceBetweenIslands * 2f) {
                         tooClose = true;
                         break;
                     }
@@ -1204,7 +1215,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 // Check distance from other island seeds
                 if (!tooClose) {
                     foreach (var islandSeed in seeds) {
-                        if (Vector3.Angle(candidate, islandSeed) < minDistanceBetweenIslands) {
+                        if (WrappedDistance(candidate, islandSeed, mapWidth) < minDistanceBetweenIslands) {
                             tooClose = true;
                             break;
                         }
@@ -1213,11 +1224,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 
                 if (!tooClose) {
                     // Apply small random offset
-                    float offsetRange = seedPositionVariance * 0.5f; // Smaller offset for islands
-                    float offsetX = (float)(rand.NextDouble() * offsetRange * 2 - offsetRange);
-                    float offsetY = (float)(rand.NextDouble() * offsetRange * 2 - offsetRange);
-                    float offsetZ = (float)(rand.NextDouble() * offsetRange * 2 - offsetRange);
-                    candidate = (candidate + new Vector3(offsetX, offsetY, offsetZ)).normalized;
+                    float offsetRangeX = (seedPositionVariance * 0.5f / 360f) * mapWidth;
+                    float offsetRangeZ = (seedPositionVariance * 0.5f / 180f) * mapHeight;
+                    float offsetX = (float)(rand.NextDouble() * offsetRangeX * 2 - offsetRangeX);
+                    float offsetZ = (float)(rand.NextDouble() * offsetRangeZ * 2 - offsetRangeZ);
+                    candidate = new Vector2(candidate.x + offsetX, candidate.y + offsetZ);
                     
                     seeds.Add(candidate);
                 }
@@ -1233,31 +1244,28 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         /// <summary>
         /// Check if a tile is within an island mask (smaller and more circular than continent masks)
         /// </summary>
-        bool IsTileInIslandMask(Vector3 tilePosNormalized, Vector2 tileLatLon, Vector3 seedPosNormalized, 
-                               float maxWidthDeg, float maxHeightDeg) {
-            Vector2 seedLatLon = GetLatLonFromVector(seedPosNormalized);
-            float latDiff = Mathf.Abs(tileLatLon.x - seedLatLon.x);
-            float lonDiff = Mathf.DeltaAngle(tileLatLon.y, seedLatLon.y);
-            float widthScale = Mathf.Cos(Mathf.Deg2Rad * tileLatLon.x);
-            float scaledLonDiff = Mathf.Abs(lonDiff * widthScale);
+        bool IsTileInIslandMask(Vector2 tilePos, Vector2 seedPos, float maxWidth, float maxHeight, float mapWidth) {
+            float dx = Mathf.Abs(tilePos.x - seedPos.x);
+            dx = Mathf.Min(dx, mapWidth - dx);
+            float dz = Mathf.Abs(tilePos.y - seedPos.y);
             
-            float latThreshold = maxHeightDeg / 2f;
-            float lonThreshold = maxWidthDeg / 2f;
+            float halfWidth = maxWidth * 0.5f;
+            float halfHeight = maxHeight * 0.5f;
             
             // Islands use a more circular/elliptical shape
-            float latFactor = latDiff / latThreshold;
-            float lonFactor = scaledLonDiff / lonThreshold;
+            float xFactor = dx / Mathf.Max(0.0001f, halfWidth);
+            float zFactor = dz / Mathf.Max(0.0001f, halfHeight);
             
             // Elliptical distance check
-            float ellipticalDistance = latFactor * latFactor + lonFactor * lonFactor;
+            float ellipticalDistance = xFactor * xFactor + zFactor * zFactor;
             
             if (ellipticalDistance > 1.0f) return false;
             
             // Add some noise to the edge for more natural island shapes
             if (ellipticalDistance > 0.6f) {
                 float edgeNoise = Mathf.PerlinNoise(
-                    tilePosNormalized.x * 8f + tilePosNormalized.z * 6f,
-                    tilePosNormalized.y * 7f + 0.3f
+                    tilePos.x * 0.02f,
+                    tilePos.y * 0.02f
                 );
                 
                 // Make the edge more jagged
@@ -1342,16 +1350,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
-        // Calculate latitude and longitude for special biome rules
-        float latitude = 0f;
-        float longitude = 0f;
+        // Calculate north/south and east/west normalized positions for special biome rules
+        float northSouth = 0f;
+        float eastWest = 0f;
         if (grid != null && grid.IsBuilt && tileIndex < grid.tileCenters.Length)
         {
             Vector3 tileCenter = grid.tileCenters[tileIndex];
-            // Convert to normalized latitude (-1 to +1, where ±1 are poles)
-            latitude = tileCenter.y / radius;
-            // Convert to longitude (-180 to +180 degrees)
-            longitude = Mathf.Atan2(tileCenter.z, tileCenter.x) * Mathf.Rad2Deg;
+            northSouth = Mathf.Clamp(tileCenter.z / (grid.MapHeight * 0.5f), -1f, 1f);
+            eastWest = Mathf.Clamp(tileCenter.x / (grid.MapWidth * 0.5f), -1f, 1f);
         }
         
         Biome assignedBiome = BiomeHelper.GetBiome(
@@ -1361,7 +1367,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
             isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
             isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
-            isCallistoWorldType, isLunaWorldType, latitude, longitude
+            isCallistoWorldType, isLunaWorldType, northSouth, eastWest
         );
         
         // Validate and log inappropriate biome assignments
@@ -1430,72 +1436,89 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// </summary>
 
     // --- Helper methods moved to class scope ---
-    private List<Vector3> GenerateDeterministicSeeds(int count, int rndSeed) {
-        List<Vector3> seeds = new List<Vector3>();
+    private List<Vector2> GenerateDeterministicSeeds(int count, int rndSeed) {
+        List<Vector2> seeds = new List<Vector2>();
         System.Random rand = new System.Random(rndSeed);
-        System.Func<Vector3, Vector3> addOffset = (Vector3 v) => {
-            float range = seedPositionVariance * 2f;
-            float offsetX = (float)(rand.NextDouble() * range - seedPositionVariance);
-            float offsetY = (float)(rand.NextDouble() * range - seedPositionVariance);
-            float offsetZ = (float)(rand.NextDouble() * range - seedPositionVariance);
-            return (v + new Vector3(offsetX, offsetY, offsetZ)).normalized;
+        float mapWidth = grid.MapWidth;
+        float mapHeight = grid.MapHeight;
+        float offsetRangeX = (seedPositionVariance / 360f) * mapWidth;
+        float offsetRangeZ = (seedPositionVariance / 180f) * mapHeight;
+
+        System.Func<Vector2, Vector2> addOffset = (Vector2 v) => {
+            float offsetX = (float)(rand.NextDouble() * offsetRangeX * 2 - offsetRangeX);
+            float offsetZ = (float)(rand.NextDouble() * offsetRangeZ * 2 - offsetRangeZ);
+            return new Vector2(v.x + offsetX, v.y + offsetZ);
         };
+
         if (count <= 0) return seeds;
-        Vector3 northPole = Vector3.up;
-        Vector3 southPole = Vector3.down;
-        Vector3 equatorFwd = Vector3.forward;
-        Vector3 equatorBack = Vector3.back;
-        Vector3 equatorRight = Vector3.right;
-        Vector3 equatorLeft = Vector3.left;
-        seeds.Add(addOffset(northPole));
+
+        float halfWidth = mapWidth * 0.5f;
+        float halfHeight = mapHeight * 0.5f;
+        Vector2 center = Vector2.zero;
+        Vector2 north = new Vector2(0f, halfHeight * 0.6f);
+        Vector2 south = new Vector2(0f, -halfHeight * 0.6f);
+        Vector2 east = new Vector2(halfWidth * 0.6f, 0f);
+        Vector2 west = new Vector2(-halfWidth * 0.6f, 0f);
+        Vector2 northeast = new Vector2(halfWidth * 0.4f, halfHeight * 0.4f);
+        Vector2 northwest = new Vector2(-halfWidth * 0.4f, halfHeight * 0.4f);
+        Vector2 southeast = new Vector2(halfWidth * 0.4f, -halfHeight * 0.4f);
+        Vector2 southwest = new Vector2(-halfWidth * 0.4f, -halfHeight * 0.4f);
+
+        seeds.Add(addOffset(center));
         if (count == 1) return seeds;
-        seeds.Add(addOffset(southPole));
+        seeds.Add(addOffset(north));
         if (count == 2) return seeds;
-        if (count >= 3) seeds.Add(addOffset(equatorFwd));
-        if (count >= 4) seeds.Add(addOffset(equatorRight));
-        if (count >= 5) seeds.Add(addOffset(equatorBack));
-        if (count >= 6) seeds.Add(addOffset(equatorLeft));
+        seeds.Add(addOffset(south));
+        if (count == 3) return seeds;
+        seeds.Add(addOffset(east));
+        if (count == 4) return seeds;
+        seeds.Add(addOffset(west));
+        if (count == 5) return seeds;
+        seeds.Add(addOffset(northeast));
         if (count == 6) return seeds;
-        if (count >= 7) seeds.Add(addOffset(new Vector3(1, 1, 1).normalized));
-        if (count >= 8) seeds.Add(addOffset(new Vector3(-1, -1, -1).normalized));
+        seeds.Add(addOffset(northwest));
+        if (count == 7) return seeds;
+        seeds.Add(addOffset(southeast));
         if (count == 8) return seeds;
-                    // Debug.LogWarning($"Deterministic placement only defined up to 8 seeds. Adding remaining {count - seeds.Count} randomly.");
+        seeds.Add(addOffset(southwest));
+        if (count == 9) return seeds;
+
         int guard = 0;
         int maxTries = 5000;
-        float minAngle = 30f;
+        float minDistance = (30f / 360f) * mapWidth;
         while (seeds.Count < count && guard < maxTries) {
             guard++;
-            Vector3 candidate = UnityEngine.Random.insideUnitSphere.normalized;
-            if (candidate == Vector3.zero) candidate = Vector3.up;
+            Vector2 candidate = new Vector2(
+                (float)(rand.NextDouble() * mapWidth - halfWidth),
+                (float)(rand.NextDouble() * mapHeight - halfHeight)
+            );
             bool ok = true;
             foreach (var s in seeds) {
-                if (Vector3.Angle(candidate, s) < minAngle) { ok = false; break; }
+                if (WrappedDistance(candidate, s, mapWidth) < minDistance) { ok = false; break; }
             }
             if (ok) seeds.Add(candidate);
         }
         return seeds;
     }
 
-    private bool IsTileInMask(Vector3 tilePosNormalized, Vector2 tileLatLon, Vector3 seedPosNormalized, float maxWidthDeg, float maxHeightDeg) {
-        Vector2 seedLatLon = GetLatLonFromVector(seedPosNormalized);
-        float latDiff = Mathf.Abs(tileLatLon.x - seedLatLon.x);
-        float lonDiff = Mathf.DeltaAngle(tileLatLon.y, seedLatLon.y);
-        float widthScale = Mathf.Cos(Mathf.Deg2Rad * tileLatLon.x);
-        float scaledLonDiff = Mathf.Abs(lonDiff * widthScale);
-        float latThreshold = maxHeightDeg / 2f;
-        float lonThreshold = maxWidthDeg / 2f;
-        if (latDiff > latThreshold * 1.5f || scaledLonDiff > lonThreshold * 1.5f) {
+    private bool IsTileInMask(Vector2 tilePos, Vector2 seedPos, float maxWidth, float maxHeight, float mapWidth) {
+        float dx = Mathf.Abs(tilePos.x - seedPos.x);
+        dx = Mathf.Min(dx, mapWidth - dx);
+        float dz = Mathf.Abs(tilePos.y - seedPos.y);
+        float halfWidth = maxWidth * 0.5f;
+        float halfHeight = maxHeight * 0.5f;
+        if (dx > halfWidth * 1.5f || dz > halfHeight * 1.5f) {
             return false;
         }
-        if (latDiff > latThreshold * 0.7f || scaledLonDiff > lonThreshold * 0.7f) {
-            float latFactor = Mathf.InverseLerp(latThreshold * 0.7f, latThreshold, latDiff);
-            float lonFactor = Mathf.InverseLerp(lonThreshold * 0.7f, lonThreshold, scaledLonDiff);
-            float edgeFactor = Mathf.Max(latFactor, lonFactor);
+        if (dx > halfWidth * 0.7f || dz > halfHeight * 0.7f) {
+            float xFactor = Mathf.InverseLerp(halfWidth * 0.7f, halfWidth, dx);
+            float zFactor = Mathf.InverseLerp(halfHeight * 0.7f, halfHeight, dz);
+            float edgeFactor = Mathf.Max(xFactor, zFactor);
             float edgeNoise = Mathf.PerlinNoise(
-                tilePosNormalized.x * 3.7f + tilePosNormalized.z * 2.3f,
-                tilePosNormalized.y * 4.1f + 0.5f
+                tilePos.x * 0.01f,
+                tilePos.y * 0.01f
             );
-            float ellipseFactor = (latFactor * latFactor + lonFactor * lonFactor) / 2f;
+            float ellipseFactor = (xFactor * xFactor + zFactor * zFactor) * 0.5f;
             float finalFactor = edgeFactor * (0.7f + 0.3f * ellipseFactor);
             if (edgeNoise < finalFactor) {
                 return false;
@@ -1504,11 +1527,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         return true;
     }
 
-    private Vector2 GetLatLonFromVector(Vector3 v) {
-        float latitude = Mathf.Asin(v.y) * Mathf.Rad2Deg;
-        float longitude = Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
-        return new Vector2(latitude, longitude);
+    private float WrappedDistance(Vector2 a, Vector2 b, float mapWidth) {
+        float dx = Mathf.Abs(a.x - b.x);
+        dx = Mathf.Min(dx, mapWidth - dx);
+        float dz = Mathf.Abs(a.y - b.y);
+        return Mathf.Sqrt(dx * dx + dz * dz);
     }
 }
-
-

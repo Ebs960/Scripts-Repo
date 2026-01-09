@@ -327,7 +327,7 @@ public class TileSystem : MonoBehaviour
     #region Input Raycast Helpers
     public (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
     {
-        // NEW SYSTEM: Use WorldPicker for texture-based picking (flat map or globe)
+        // NEW SYSTEM: Use WorldPicker for texture-based picking (flat map)
         var worldPicker = FindAnyObjectByType<WorldPicker>();
         if (worldPicker != null)
         {
@@ -337,29 +337,10 @@ public class TileSystem : MonoBehaviour
             }
         }
         
-        // FALLBACK: Raycast against sphere for globe view (if WorldPicker not available)
+        // FALLBACK: Raycast against flat map quad (if WorldPicker not available)
         Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
         if (mainCamera == null) return (false, -1, Vector3.zero);
-        
-        // Try raycast against globe sphere collider
-        if (planetRef != null && planetRef.Grid != null)
-        {
-            var globeRenderer = FindAnyObjectByType<GlobeRenderer>();
-            if (globeRenderer != null)
-            {
-                var sphereCollider = globeRenderer.GetComponent<SphereCollider>();
-                if (sphereCollider != null && sphereCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
-                {
-                    // Convert hit point to direction and get tile index
-                    Vector3 localDir = (hitInfo.point - planetRef.transform.position).normalized;
-                    int tileIndex = planetRef.Grid.GetTileAtPosition(localDir);
-                    if (tileIndex >= 0)
-                        return (true, tileIndex, hitInfo.point);
-                }
-            }
-        }
-        
-        // FALLBACK: Raycast against flat map quad
+
         var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
         if (flatMapRenderer != null)
         {
@@ -638,13 +619,13 @@ public class TileSystem : MonoBehaviour
     {
         if (planetRef == null || planetRef.Grid == null) return GetTileCenter(tile);
         if (tile < 0 || tile >= planetRef.Grid.tileCenters.Length) return Vector3.zero;
-        var centerDir = planetRef.Grid.tileCenters[tile].normalized;
-        float radius = planetRef.Grid.Radius;
+        var center = planetRef.Grid.tileCenters[tile];
         float elevation = planetRef.GetTileElevation(tile);
         var td = GetTileData(tile);
         if (td != null && td.isHill) elevation += planetRef.hillElevationBoost;
-        float elevationScale = radius * 0.1f;
-        return planetRef.transform.TransformPoint(centerDir * (radius + elevation * elevationScale + unitOffset));
+        float elevationScale = planetRef.Grid.MapHeight * 0.1f;
+        Vector3 worldPos = new Vector3(center.x, elevation * elevationScale + unitOffset, center.z);
+        return planetRef.transform.TransformPoint(worldPos);
     }
 
     public bool IsTileAccessible(int tile, bool mustBeLand, int unitId)
