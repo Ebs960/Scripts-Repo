@@ -66,7 +66,7 @@ Shader "Custom/GlobeMap"
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
             // Convert sphere UV to lat/lon for equirectangular sampling
-            // UV is already in equirectangular format (u = longitude, v = latitude)
+            // UV is already in map format (u = horizontal, v = vertical)
             float2 uv = IN.uv_MainTex;
             
             // Sample the flat map texture
@@ -116,4 +116,3 @@ Shader "Custom/GlobeMap"
     
     FallBack "Diffuse"
 }
-

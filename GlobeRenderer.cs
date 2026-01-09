@@ -222,7 +222,7 @@ public class GlobeRenderer : MonoBehaviour
                 normals[index] = vertices[index].normalized;
                 
                 // UV mapping (equirectangular)
-                // U = longitude (0 to 1), V = latitude (0 to 1, but inverted for standard UV)
+                // U/V map coordinates (0..1)
                 float u = (float)seg / segments;
                 float v = 1f - (float)ring / rings; // Invert V for standard UV
                 uvs[index] = new Vector2(u, v);
@@ -344,4 +344,3 @@ public class GlobeRenderer : MonoBehaviour
         return sphereRadius;
     }
 }
-

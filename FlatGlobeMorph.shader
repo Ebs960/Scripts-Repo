@@ -67,9 +67,9 @@ Shader "Custom/FlatGlobeMorph"
             // Calculate globe position (sphere position + outward displacement along normal)
             // Convert UV to spherical coordinates (equirectangular mapping)
             float2 uv = v.texcoord.xy;
-            // U: 0-1 maps to longitude -PI to PI
+            // U: 0-1 maps to the horizontal wrap range
             float lon = (uv.x - 0.5f) * 2.0f * 3.14159265f;
-            // V: 0-1 maps to latitude PI/2 to -PI/2 (inverted for standard UV)
+            // V: 0-1 maps to the vertical range (inverted for standard UV)
             float lat = (0.5f - uv.y) * 3.14159265f;
             
             float cosLat = cos(lat);
@@ -145,4 +145,3 @@ Shader "Custom/FlatGlobeMorph"
     
     FallBack "Diffuse"
 }
-

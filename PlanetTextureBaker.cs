@@ -46,11 +46,11 @@ public static class PlanetTextureBaker
             Biome biome = td != null ? td.biome : planetGen.GetBaseBiome(i);
 
             // Compute equirect UV from tile center direction so BiomeTextures mode can sample consistently.
-            Vector3 dir = grid.tileCenters[i].normalized;
-            float lon = Mathf.Atan2(dir.z, dir.x);                 // -PI..PI
-            float lat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));   // -PI/2..PI/2
-            float u = (lon / (2f * Mathf.PI)) + 0.5f;
-            float v = (lat / Mathf.PI) + 0.5f;
+            Vector3 center = grid.tileCenters[i];
+            float u = (center.x + grid.MapWidth * 0.5f) / grid.MapWidth;
+            float v = (center.z + grid.MapHeight * 0.5f) / grid.MapHeight;
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
             var uv = new Vector2(u, v);
 
             Color c;
@@ -211,4 +211,3 @@ public static class PlanetTextureBaker
         return res;
     }
 }
-

@@ -150,26 +150,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private IEnumerator GenerateLUTBatched(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height, string key)
     {
         var lut = new int[width * height];
-
-        // Precompute trig arrays (fast, no need to batch)
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
-        }
+        float mapWidth = grid.MapWidth;
+        float mapHeight = grid.MapHeight;
 
         // Process rows in batches to avoid blocking
         int rowsProcessed = 0;
@@ -179,15 +161,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             
             for (int y = rowsProcessed; y < rowsProcessed + rowsThisFrame; y++)
             {
-                float sinLat = sinLatArr[y];
-                float cosLat = cosLatArr[y];
                 int yBase = y * width;
+                float v = (y + 0.5f) / height;
+                float worldZ = (v - 0.5f) * mapHeight;
                 for (int x = 0; x < width; x++)
                 {
-                    float sinLon = sinLonArr[x];
-                    float cosLon = cosLonArr[x];
-                    Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                    int tileIndex = grid.GetTileAtPosition(dir);
+                    float u = (x + 0.5f) / width;
+                    float worldX = (u - 0.5f) * mapWidth;
+                    int tileIndex = grid.GetTileAtPosition(new Vector3(worldX, 0f, worldZ));
                     lut[yBase + x] = tileIndex;
                 }
             }
@@ -207,39 +188,20 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_bodyIndexLUT.TryGetValue(key, out var cached)) return cached;
 
         var lut = new int[width * height];
-
-        // Precompute trig
-        float[] sinLatArr = new float[height];
-        float[] cosLatArr = new float[height];
-        for (int y = 0; y < height; y++)
-        {
-            float v = (y + 0.5f) / height;
-            float latRad = Mathf.PI * (0.5f - v);
-            sinLatArr[y] = Mathf.Sin(latRad);
-            cosLatArr[y] = Mathf.Cos(latRad);
-        }
-        float[] sinLonArr = new float[width];
-        float[] cosLonArr = new float[width];
-        for (int x = 0; x < width; x++)
-        {
-            float u = (x + 0.5f) / width;
-            float lonRad = 2f * Mathf.PI * (u - 0.5f);
-            sinLonArr[x] = Mathf.Sin(lonRad);
-            cosLonArr[x] = Mathf.Cos(lonRad);
-        }
+        float mapWidth = grid.MapWidth;
+        float mapHeight = grid.MapHeight;
 
         // Process all rows (for immediate use cases)
         for (int y = 0; y < height; y++)
         {
-            float sinLat = sinLatArr[y];
-            float cosLat = cosLatArr[y];
             int yBase = y * width;
+            float v = (y + 0.5f) / height;
+            float worldZ = (v - 0.5f) * mapHeight;
             for (int x = 0; x < width; x++)
             {
-                float sinLon = sinLonArr[x];
-                float cosLon = cosLonArr[x];
-                Vector3 dir = new Vector3(sinLon * cosLat, sinLat, cosLon * cosLat);
-                int tileIndex = grid.GetTileAtPosition(dir);
+                float u = (x + 0.5f) / width;
+                float worldX = (u - 0.5f) * mapWidth;
+                int tileIndex = grid.GetTileAtPosition(new Vector3(worldX, 0f, worldZ));
                 lut[yBase + x] = tileIndex;
             }
         }
@@ -1315,34 +1277,24 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         // Apply current zoom/pan window
         var uvRect = minimapImage.uvRect;           // (x,y,width,height) in 0..1
-    float worldU = uvRect.x + normX * uvRect.width;
-    float worldV = uvRect.y + normY * uvRect.height;
-
-    // Some pipelines rotate the minimap content by 180°. Compensate by shifting U by 0.5.
-    float adjU = Mathf.Repeat(worldU + 0.5f, 1f);
-
-    // Inverse of position indicator mapping
-        // Indicator uses: u = 1 - (lon + PI) / (2PI)  =>  lon = 2PI * (1 - u) - PI
-        //                  v = 0.5 + (lat / PI)      =>  lat = (v - 0.5) * PI
-    float lonRad = 2f * Mathf.PI * (1f - adjU) - Mathf.PI;
-        float latRad = (worldV - 0.5f) * Mathf.PI;
-
-        // Equirectangular to local direction
-        Vector3 localDir = new Vector3(
-            Mathf.Sin(lonRad) * Mathf.Cos(latRad),
-            Mathf.Sin(latRad),
-            Mathf.Cos(lonRad) * Mathf.Cos(latRad)
-        ).normalized;
+        float worldU = uvRect.x + normX * uvRect.width;
+        float worldV = uvRect.y + normY * uvRect.height;
 
         // Moons are separate planets now; always target the current planet's transform.
-            var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
-        Vector3 worldDir = currentPlanetGen != null ? currentPlanetGen.transform.TransformDirection(localDir).normalized : localDir;
+        var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
+        var grid = currentPlanetGen != null ? currentPlanetGen.Grid : null;
+        if (grid == null) return;
+
+        float worldX = (worldU - 0.5f) * grid.MapWidth;
+        float worldZ = (worldV - 0.5f) * grid.MapHeight;
+        Vector3 localTarget = new Vector3(worldX, 0f, worldZ);
+        Vector3 worldTarget = currentPlanetGen != null ? currentPlanetGen.transform.TransformPoint(localTarget) : localTarget;
 
         // Use cached reference to avoid expensive FindAnyObjectByType call
         if (_cachedCameraManager == null)
             _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
         if (_cachedCameraManager != null)
-            _cachedCameraManager.JumpToDirection(worldDir, false);
+            _cachedCameraManager.JumpToWorldPoint(worldTarget);
     }
 
     public void OnScroll(PointerEventData eventData)
@@ -1483,25 +1435,15 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             var currentPlanetGen = _gameManager?.GetCurrentPlanetGenerator();
             if (currentPlanetGen == null) return;
         Vector3 bodyPosition = currentPlanetGen.transform.position;
+        var grid = currentPlanetGen.Grid;
+        if (grid == null) return;
         
-        // Calculate camera position relative to planet center
-    Vector3 relativePos = camera.transform.position - bodyPosition;
-        
-        // Normalize to get direction from planet center
-        Vector3 direction = relativePos.normalized;
-        
-        // Convert to spherical coordinates (latitude/longitude)
-        float lat = Mathf.Asin(direction.y); // Latitude (-π/2 to π/2)
-        float lon = Mathf.Atan2(direction.x, direction.z); // Longitude (-π to π)
+        // Calculate camera position relative to planet center on the flat map
+        Vector3 relativePos = camera.transform.position - bodyPosition;
         
         // Convert to UV coordinates (0-1)
-        // Longitude: -π to π -> 0 to 1 (0 = left edge, 1 = right edge)
-        // Try horizontal flip to match minimap orientation
-        float u = 1f- (lon + Mathf.PI) / (2f * Mathf.PI);
-        
-        // Latitude: -π/2 to π/2 -> 0 to 1 (0 = top edge, 1 = bottom edge)
-        // The texture is flipped vertically after generation, so we need to invert the V coordinate
-        float v = 0.5f + (lat / Mathf.PI); // Invert to match the flipped texture
+        float u = (relativePos.x / grid.MapWidth) + 0.5f;
+        float v = (relativePos.z / grid.MapHeight) + 0.5f;
         
         // Clamp to valid range
         u = Mathf.Repeat(u, 1f);

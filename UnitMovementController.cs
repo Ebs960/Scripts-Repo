@@ -187,7 +187,7 @@ public class UnitMovementController : MonoBehaviour
 
     /// <summary>
     /// Unified movement method for any unit type.
-    /// Moves unit along the given path with proper spherical orientation.
+    /// Moves unit along the given path with flat-map orientation.
     /// Now uses BaseUnit for shared functionality.
     /// </summary>
     public IEnumerator MoveAlongPath(BaseUnit unit, List<int> path)
@@ -232,17 +232,9 @@ public class UnitMovementController : MonoBehaviour
             // Calculate movement cost for event (not used for movement points, but needed for event signature)
             int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, null) : 1;
             
-            // Calculate positions including extrusion
+            // Calculate positions including elevation
             Vector3 startPosition = unitTransform.position;
-            SphericalHexGrid currentGrid = grid;
             Vector3 endPosition = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex, 0f);
-            Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;
-
-            // Get normals and radii for spherical interpolation
-            Vector3 startNormal = (startPosition - planetCenter).normalized;
-            Vector3 endNormal = (endPosition - planetCenter).normalized;
-            float startRadius = Vector3.Distance(startPosition, planetCenter);
-            float endRadius = Vector3.Distance(endPosition, planetCenter);
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);
             if (journeyLength < 0.001f) continue;
@@ -256,27 +248,15 @@ public class UnitMovementController : MonoBehaviour
                 float timeProgress = (Time.time - startTime) / journeyDuration;
                 float curveProgress = movementCurve.Evaluate(Mathf.Clamp01(timeProgress));
                 
-                // Interpolate normal and radius separately for smooth movement over curved, extruded surface
-                Vector3 currentNormal = Vector3.Slerp(startNormal, endNormal, curveProgress);
-                float currentRadius = Mathf.Lerp(startRadius, endRadius, curveProgress);
-
-                // Calculate new position
-                unitTransform.position = planetCenter + currentNormal * currentRadius;
+                // Interpolate position directly on the flat map
+                unitTransform.position = Vector3.Lerp(startPosition, endPosition, curveProgress);
                 
-                // --- NEW ROTATION LOGIC ---
-                // The surface normal is the "up" direction for the unit
-                Vector3 surfaceNormal = currentNormal;
-                
-                // Calculate the direction of the current movement segment
-                Vector3 movementDirection = (endPosition - startPosition).normalized;
-
-                // Project the movement direction onto the current tangent plane to get the "forward" vector
-                Vector3 forward = Vector3.ProjectOnPlane(movementDirection, surfaceNormal).normalized;
-                
-                // Apply smooth rotation, only if the forward vector is valid
-                if (forward.sqrMagnitude > 0.001f)
+                // Rotate to face movement direction on the XZ plane
+                Vector3 movementDirection = endPosition - startPosition;
+                movementDirection.y = 0f;
+                if (movementDirection.sqrMagnitude > 0.001f)
                 {
-                    Quaternion targetRotation = Quaternion.LookRotation(forward, surfaceNormal);
+                    Quaternion targetRotation = Quaternion.LookRotation(movementDirection.normalized, Vector3.up);
                     unitTransform.rotation = Quaternion.Slerp(unitTransform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
                 }
                 
@@ -336,7 +316,7 @@ public class UnitMovementController : MonoBehaviour
     }
 
     /// <summary>
-    /// Properly positions and orients a unit on the planet surface using surface normal
+    /// Properly positions and orients a unit on the flat map surface
     /// </summary>
     private void PositionUnitOnSurface(Transform unitTransform, int tileIndex)
     {
@@ -345,33 +325,13 @@ public class UnitMovementController : MonoBehaviour
     var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return;
 
-        SphericalHexGrid currentGrid = grid;
-
-        // Get the extruded center of the tile. This is the new correct surface position.
-    Vector3 surfacePosition = TileSystem.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
+        // Get the elevated center of the tile on the flat map.
+        Vector3 surfacePosition = TileSystem.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
         unitTransform.position = surfacePosition;
-
-        Vector3 planetCenter = planet != null ? planet.transform.position : Vector3.zero;
-        Vector3 surfaceNormal = (surfacePosition - planetCenter).normalized;
-
-        // Orient unit to stand upright on the surface
-        Vector3 planetUp = planet != null ? planet.transform.up : Vector3.up;
-        Vector3 right = Vector3.Cross(planetUp, surfaceNormal);
         
-        // Handle poles where right vector might be zero
-        if (right.sqrMagnitude < 0.01f)
-        {
-            right = Vector3.Cross(Vector3.forward, surfaceNormal);
-            if (right.sqrMagnitude < 0.01f)
-            {
-                right = Vector3.Cross(Vector3.right, surfaceNormal);
-            }
-        }
-        right.Normalize();
-        
-        Vector3 forward = Vector3.Cross(right, surfaceNormal).normalized;
-        
-        // Set rotation so unit stands upright on surface
-        unitTransform.rotation = Quaternion.LookRotation(forward, surfaceNormal);
+        Vector3 forward = unitTransform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+        unitTransform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
     }
 } 

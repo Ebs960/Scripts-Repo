@@ -274,13 +274,11 @@ public class GameManager : MonoBehaviour
     public class HexTileData
     {
         public int tileIndex;
-        public float latitude, longitude; // Center of tile (deg)
         public float u, v; // Equirectangular UV (0-1)
         public int biomeIndex;
         public float height; // 0-1, for heightmap alpha
         public int food, production, gold, science, culture;
         public string name;
-        public Vector3 centerUnitVector; // For fast 3D lookup
     }
 
     // --- References to high-res planet textures and grid ---
@@ -288,42 +286,6 @@ public class GameManager : MonoBehaviour
     public SphericalHexGrid planetGrid;
 
     public List<HexTileData> hexTiles = new List<HexTileData>();
-
-
-    // --- Fast nearest tile lookup (by 3D unit vector) ---
-    public HexTileData GetNearestHexTile(Vector3 worldPoint, Transform planetTransform)
-    {
-        Vector3 local = planetTransform.InverseTransformPoint(worldPoint).normalized;
-        float minDist = float.MaxValue;
-        HexTileData nearest = null;
-        for (int i = 0; i < hexTiles.Count; i++)
-        {
-            float dist = (hexTiles[i].centerUnitVector - local).sqrMagnitude;
-            if (dist < minDist)
-            {
-                minDist = dist;
-                nearest = hexTiles[i];
-            }
-        }
-        return nearest;
-    }
-
-    // --- Utility: Convert lat/lon to unit vector ---
-    public static Vector3 LatLonToUnitVector(float latitude, float longitude)
-    {
-        float latRad = latitude * Mathf.Deg2Rad;
-        float lonRad = longitude * Mathf.Deg2Rad;
-        float x = Mathf.Cos(latRad) * Mathf.Sin(lonRad);
-        float y = Mathf.Sin(latRad);
-        float z = Mathf.Cos(latRad) * Mathf.Cos(lonRad);
-        return new Vector3(x, y, z).normalized;
-    }
-
-    // --- Public API: Get tile info at world point ---
-    public HexTileData GetHexTileAtWorldPoint(Vector3 worldPoint)
-    {
-        return GetNearestHexTile(worldPoint, this.transform);
-    }
 
     // Helper to get subdivisions and radius from preset
     public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
@@ -2697,5 +2659,4 @@ public class GameManager : MonoBehaviour
     }
     */ // End DEPRECATED spawning logic
 }
-
 
