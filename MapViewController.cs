@@ -228,7 +228,7 @@ public class MapViewController : MonoBehaviour
 
     private void ApplyModeCamera()
     {
-        // Flat camera is handled by FlatGlobeZoomViewController or PlanetaryCameraManager.
+        // Flat camera is handled by FlatMap camera controllers.
     }
 
     /// <summary>

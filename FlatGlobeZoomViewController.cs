@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Handles flat map camera controls (pan/zoom/orbit) with no globe transitions.
+/// Handles flat map camera controls (pan/zoom/orbit) with no mode transitions.
 /// </summary>
 public class FlatGlobeZoomViewController : MonoBehaviour
 {

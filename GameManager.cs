@@ -927,7 +927,7 @@ public class GameManager : MonoBehaviour
                 var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
                 if (waterGen != null)
                 {
-                    waterGen.Generate(earthGen.radius);
+                    waterGen.Generate(earthGen);
                     
                 }
                 else
@@ -1150,7 +1150,7 @@ public class GameManager : MonoBehaviour
                 var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
                 if (waterGen != null)
                 {
-                    waterGen.Generate(earthGen.radius);
+                    waterGen.Generate(earthGen);
                     
                 }
                 else
@@ -1810,7 +1810,7 @@ public class GameManager : MonoBehaviour
 
     
     yield return StartCoroutine(generator.GenerateSurface());
-    // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
+    // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
     
     // CRITICAL FIX: Register the planet generator BEFORE firing events
     // This ensures the generator is available when spawn events fire
@@ -1886,7 +1886,7 @@ public class GameManager : MonoBehaviour
         {
             
             yield return StartCoroutine(generator.GenerateSurface());
-            // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
+            // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
         }
 
         // Update references in other systems
@@ -1907,7 +1907,7 @@ public class GameManager : MonoBehaviour
         
         // Use GenerateSurface as a coroutine and wait for all map generation to finish
         yield return StartCoroutine(planetGenerator.GenerateSurface());
-        // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer/GlobeRenderer)
+        // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
 
         // Automatically update SunBillboard radius after planet is generated
         var sunBB = FindAnyObjectByType<SunBillboard>();
@@ -2659,4 +2659,3 @@ public class GameManager : MonoBehaviour
     }
     */ // End DEPRECATED spawning logic
 }
-

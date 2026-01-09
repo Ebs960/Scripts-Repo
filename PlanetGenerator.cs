@@ -235,7 +235,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public static PlanetGenerator Instance { get; private set; }
 
 
-    [Header("Sphere Settings")] 
+    [Header("Map Settings")] 
     public int subdivisions = 8;
     public bool randomSeed = true;
     public int seed = 12345;
@@ -922,7 +922,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // --- Visual Generation ---
         // NOTE: Tile prefab spawning is disabled. The new system uses texture-based rendering.
-        // FlatMapTextureRenderer and GlobeRenderer handle visualization.
+        // FlatMapTextureRenderer handles visualization.
         // Tile data is still generated and stored - only visualization changed.
 
         // Finalize

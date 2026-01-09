@@ -11,7 +11,7 @@ using TMPro;
 /// - Pre-generates all planet minimaps during game initialization.
 /// - Shows loading progress via LoadingPanelController.
 /// - Switch between planets instantly via dropdown.
-/// - Scroll wheel or buttons to zoom; click to move the orbital camera to that spot.
+/// - Scroll wheel or buttons to zoom; click to move the camera to that spot.
 /// - TextMeshPro support for dropdown and zoom level display.
 /// </summary>
 public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler, IScrollHandler

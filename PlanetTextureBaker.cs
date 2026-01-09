@@ -7,7 +7,7 @@ using UnityEngine;
 /// 
 /// IMPORTANT:
 /// - Does NOT spawn per-tile prefabs
-/// - Intended for both globe and flat map to share the same baked texture
+/// - Intended for flat map rendering and minimap sharing
 /// - GPU path available via BakeGPU() for dramatically faster texture generation
 /// </summary>
 public static class PlanetTextureBaker

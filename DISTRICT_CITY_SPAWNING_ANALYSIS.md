@@ -37,21 +37,18 @@ All game object spawning systems use tile data from the grid, not tile prefabs.
 - **Problem**: Tile prefabs no longer exist
 - **Solution**: Updated `TileSystem.GetMouseHitInfo()` to:
   1. Use `WorldPicker` (if available) - UV/LUT-based picking
-  2. Fallback to raycast against `GlobeRenderer` sphere collider
-  3. Fallback to raycast against `FlatMapTextureRenderer` quad collider
+  2. Fallback to raycast against `FlatMapTextureRenderer` quad collider
 - **Status**: ✅ **FIXED** - Tile picking now works with new system
 
 ## Integration Points
 
 ### WorldPicker Integration
 - `FlatMapTextureRenderer` now updates `WorldPicker` with LUT data
-- `GlobeRenderer` now updates `WorldPicker` with collider reference
-- Both renderers ensure colliders exist for raycast picking
+- Renderer ensures colliders exist for raycast picking
 
 ### TileSystem Updates
 - `GetMouseHitInfo()` now supports:
   - WorldPicker (preferred method)
-  - Globe sphere collider raycast
   - Flat map quad collider raycast with UV-to-tile lookup
 
 ## Conclusion
@@ -62,4 +59,3 @@ All game object spawning systems use tile data from the grid, not tile prefabs.
 3. Don't depend on tile prefab GameObjects
 
 **Tile picking has been updated** to work with the new texture-based rendering system.
-

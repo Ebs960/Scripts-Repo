@@ -124,7 +124,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
             mapMaterial = null;
         }
         
-        // Don't destroy texture - it might be shared with globe/minimap
+        // Don't destroy texture - it might be shared with the minimap
         mapTexture = null;
         isBuilt = false;
     }
