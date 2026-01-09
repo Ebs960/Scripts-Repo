@@ -3,13 +3,8 @@ using UnityEngine.InputSystem;
 
 public class PlanetaryCameraManager : MonoBehaviour
 {
-    [Header("Skybox Settings")]
-    public Material earthSkybox;
-    private Skybox cameraSkybox;
-
-    [Header("Sun Billboard")]
-    private SunBillboard _sunBB;
-    private Light sceneSun;
+    [Header("Camera Basics")]
+    // Globe-related skybox and sun billboard removed
 
     [Header("Flat Camera Settings")]
     public float panSpeed = 60f;
@@ -26,24 +21,7 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void Awake()
     {
-        cameraSkybox = GetComponent<Skybox>();
-        if (cameraSkybox == null)
-            cameraSkybox = gameObject.AddComponent<Skybox>();
-
         _cameraHeight = Mathf.Clamp(_cameraHeight, minHeight, maxHeight);
-
-        // Find the SunBillboard and Directional Light in the scene
-        _sunBB = FindAnyObjectByType<SunBillboard>();
-        sceneSun = FindAnyObjectByType<Light>();
-        if (_sunBB != null && sceneSun != null)
-        {
-            _sunBB.sun = sceneSun;
-        }
-
-        if (_sunBB != null)
-        {
-            _sunBB.AssignCamera(GetComponent<Camera>());
-        }
     }
 
     void HandleInput()
@@ -110,33 +88,9 @@ public class PlanetaryCameraManager : MonoBehaviour
     {
         HandleInput();
         UpdateCameraPosition();
-        UpdateSkybox();
-        if (_sunBB != null && _sunBB.targetCam == null)
-        {
-            _sunBB.AssignCamera(GetComponent<Camera>());
-        }
     }
 
-    void UpdateSkybox()
-    {
-        if (earthSkybox == null || cameraSkybox == null)
-            return;
-
-        cameraSkybox.material = earthSkybox;
-        float blendValue = Mathf.InverseLerp(minHeight, maxHeight, _cameraHeight);
-
-        if (cameraSkybox.material.HasProperty("_Blend"))
-            cameraSkybox.material.SetFloat("_Blend", blendValue);
-    }
-
-    // Public method to assign the camera to the SunBillboard after planet creation
-    public void AssignSunBillboardCamera()
-    {
-        if (_sunBB != null)
-        {
-            _sunBB.AssignCamera(GetComponent<Camera>());
-        }
-    }
+    // Globe/skybox features removed
 
     public void ZoomBy(float delta)
     {
