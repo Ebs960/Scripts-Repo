@@ -85,7 +85,7 @@ public class NoiseSampler
     public float GetTemperature(float absLatitude)
     {
         float t = 1f - absLatitude;         // 1 = hot, 0 = cold
-        t = Mathf.Pow(t, 1.0f);             // linear: stronger latitude effect (was 0.6f)
+        t = Mathf.Pow(t, 1.0f);             // linear: stronger north/south effect (was 0.6f)
         // Add subtle noise to soften zone boundaries
         float noise = moistNoise.GetNoise(absLatitude * 100f, 0f, 0f) * 0.07f; // Range ~[-0.07, +0.07]
         t += noise;

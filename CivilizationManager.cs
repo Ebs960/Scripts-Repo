@@ -1516,12 +1516,10 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // Get the tile position and convert to direction from planet center
-    Vector3 tileWorldPosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(pioneerTileIndex, 0f, 0) : Vector3.zero;
-        Vector3 planetCenter = planet.transform.position;
-        Vector3 directionToTile = (tileWorldPosition - planetCenter).normalized;
+        Vector3 tileWorldPosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(pioneerTileIndex, 0f, 0) : Vector3.zero;
 
-        // Use the camera manager's JumpToDirection method to focus on the tile
-        cameraManager.JumpToDirection(directionToTile, false); // false = planet (not moon)
+        // Focus the camera on the tile in flat space
+        cameraManager.JumpToWorldPoint(tileWorldPosition);
 
         Debug.Log($"Camera positioned to focus on player pioneer at tile {pioneerTileIndex}");
     }

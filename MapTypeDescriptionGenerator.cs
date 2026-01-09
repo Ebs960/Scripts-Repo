@@ -92,7 +92,7 @@ public static class MapTypeDescriptionGenerator
         "and the sheer scale of the land means that many regions have never seen the face of an outsider.",
         
         // Pangaea (4)
-        "A single colossal supercontinent sprawls across the globe, its borders touching every climate from frozen pole to blistering equator. " +
+        "A single colossal supercontinent sprawls across the world, its borders touching every climate from frozen pole to blistering equator. " +
         "There are no distant shores to discover here—all peoples share the same immense landmass, " +
         "and events that occur at one edge inevitably ripple across the entire world."
     };

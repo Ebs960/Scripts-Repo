@@ -8,20 +8,20 @@ using System.Collections.Generic;
 public class FlatMapTextureRenderer : MonoBehaviour
 {
     [Header("Texture Settings")]
-    [Tooltip("Resolution width (longitude samples)")]
+    [Tooltip("Resolution width (horizontal samples)")]
     [SerializeField] private int textureWidth = 2048;
     
-    [Tooltip("Resolution height (latitude samples)")]
+    [Tooltip("Resolution height (vertical samples)")]
     [SerializeField] private int textureHeight = 1024;
     
     [Header("Map Dimensions")]
     [Tooltip("When enabled, mapWidth/mapHeight are derived from the planet radius (mapWidth = 2πR, mapHeight = πR).")]
     [SerializeField] private bool autoScaleToPlanetRadius = true;
     
-    [Tooltip("Full horizontal span of the map in world units (corresponds to 360° of longitude).")]
+    [Tooltip("Full horizontal span of the map in world units (wraps east-west).")]
     [SerializeField] private float mapWidth = 360f;
     
-    [Tooltip("Full vertical span of the map in world units (corresponds to 180° of latitude).")]
+    [Tooltip("Full vertical span of the map in world units (no vertical wrap).")]
     [SerializeField] private float mapHeight = 180f;
     
     [Tooltip("Constant Y height for the flat map plane.")]
@@ -124,7 +124,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
             mapMaterial = null;
         }
         
-        // Don't destroy texture - it might be shared with globe/minimap
+        // Don't destroy texture - it might be shared with the minimap
         mapTexture = null;
         isBuilt = false;
     }
@@ -145,9 +145,8 @@ public class FlatMapTextureRenderer : MonoBehaviour
         // Calculate map dimensions
         if (autoScaleToPlanetRadius)
         {
-            float r = Mathf.Max(0.0001f, planetGen.radius);
-            mapWidth = 2f * Mathf.PI * r;
-            mapHeight = Mathf.PI * r;
+            mapWidth = planetGen.Grid.MapWidth;
+            mapHeight = planetGen.Grid.MapHeight;
         }
         
         // Store planet reference
@@ -589,4 +588,3 @@ public class FlatMapTextureRenderer : MonoBehaviour
         return downscaled;
     }
 }
-

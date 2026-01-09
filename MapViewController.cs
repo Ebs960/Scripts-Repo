@@ -5,12 +5,12 @@ using System.Collections.Generic;
     /// <summary>
     /// SINGLE AUTHORITY for map view mode.
     /// 
-    /// This is the ONE place that decides whether we're in Globe or Flat mode.
+    /// This is the ONE place that decides whether we're in Flat mode.
     /// All other systems must query this controller - they do NOT decide visibility themselves.
     /// 
     /// Responsibilities:
     /// - Enable/disable FlatMapTextureRenderer
-    /// - Enable/disable GlobeRenderer
+    /// - Enable/disable FlatMapTextureRenderer
     /// - Switch camera behavior
     /// - Block input to inactive mode
     /// 
@@ -23,7 +23,6 @@ public class MapViewController : MonoBehaviour
 
     public enum MapViewMode
     {
-        Globe,
         Flat
     }
 
@@ -31,17 +30,13 @@ public class MapViewController : MonoBehaviour
     [SerializeField] private MapViewMode currentMode = MapViewMode.Flat;
 
     [Header("View References")]
-    [Tooltip("The flat map texture renderer. Will be ENABLED in Flat mode, DISABLED in Globe mode.")]
+    [Tooltip("The flat map texture renderer. Will be ENABLED in Flat mode.")]
     [SerializeField] private FlatMapTextureRenderer flatMapRenderer;
     
-    [Tooltip("The globe renderer. Will be ENABLED in Globe mode, DISABLED in Flat mode.")]
-    [SerializeField] private GlobeRenderer globeRenderer;
-
     [Tooltip("The planet generator (for data access).")]
     [SerializeField] private PlanetGenerator planetGenerator;
 
     [Header("Camera References")]
-    [SerializeField] private PlanetaryCameraManager globeCamera;
     [SerializeField] private Camera mainCamera;
 
     [Header("Startup")]
@@ -65,11 +60,6 @@ public class MapViewController : MonoBehaviour
     /// Is the flat map currently the active view?
     /// </summary>
     public bool IsFlatMode => currentMode == MapViewMode.Flat;
-
-    /// <summary>
-    /// Is the globe currently the active view?
-    /// </summary>
-    public bool IsGlobeMode => currentMode == MapViewMode.Globe;
 
     private bool _initialized;
     private float _lastEnforceTime;
@@ -136,9 +126,6 @@ public class MapViewController : MonoBehaviour
         if (flatMapRenderer == null)
             flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
         
-        if (globeRenderer == null)
-            globeRenderer = FindAnyObjectByType<GlobeRenderer>();
-        
         // Auto-assign current planet (will be null if planets not created yet, that's OK)
         planetGenerator = GetCurrentPlanetGenerator();
 
@@ -163,9 +150,6 @@ public class MapViewController : MonoBehaviour
         // Try to find components if still missing
         if (flatMapRenderer == null)
             flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-        
-        if (globeRenderer == null)
-            globeRenderer = FindAnyObjectByType<GlobeRenderer>();
         
         // Auto-update planet reference if it changed (multi-planet support)
         var currentPlanet = GetCurrentPlanetGenerator();
@@ -218,27 +202,13 @@ public class MapViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Toggle between Globe and Flat modes.
-    /// </summary>
-    public void ToggleMode()
-    {
-        SetMode(currentMode == MapViewMode.Flat ? MapViewMode.Globe : MapViewMode.Flat);
-    }
-
-    /// <summary>
     /// Switch to Flat mode.
     /// </summary>
     public void SetFlatMode() => SetMode(MapViewMode.Flat);
 
-    /// <summary>
-    /// Switch to Globe mode.
-    /// </summary>
-    public void SetGlobeMode() => SetMode(MapViewMode.Globe);
-
     private void ApplyModeVisuals()
     {
         bool flatActive = currentMode == MapViewMode.Flat;
-        bool globeActive = currentMode == MapViewMode.Globe;
 
         // === FLAT MAP ===
         if (flatMapRenderer != null)
@@ -253,35 +223,12 @@ public class MapViewController : MonoBehaviour
                     flatMapRenderer.Rebuild(gen);
             }
         }
-
-        // === GLOBE ===
-        if (globeRenderer != null)
-        {
-            globeRenderer.SetVisible(globeActive);
-
-            // Rebuild globe when switching to globe mode if needed
-            if (globeActive && !globeRenderer.IsBuilt)
-            {
-                var gen = GetCurrentPlanetGenerator();
-                if (gen != null && flatMapRenderer != null && flatMapRenderer.IsBuilt)
-                    globeRenderer.Rebuild(gen, flatMapRenderer);
-            }
-        }
-
-        Debug.Log($"[MapViewController] Applied visuals - Flat: {flatActive}, Globe: {globeActive}");
+        Debug.Log($"[MapViewController] Applied visuals - Flat: {flatActive}");
     }
 
     private void ApplyModeCamera()
     {
-        bool flatActive = currentMode == MapViewMode.Flat;
-
-        // Globe camera (orbital) - only active in globe mode
-        if (globeCamera != null)
-        {
-            globeCamera.enabled = !flatActive;
-        }
-
-        // Flat camera is handled by FlatGlobeZoomViewController or similar
+        // Flat camera is handled by FlatMap camera controllers.
     }
 
     /// <summary>
@@ -290,7 +237,6 @@ public class MapViewController : MonoBehaviour
     private void EnforceModeVisuals()
     {
         bool flatActive = currentMode == MapViewMode.Flat;
-        bool globeActive = currentMode == MapViewMode.Globe;
 
         // Ensure flat map state matches mode
         if (flatMapRenderer != null)
@@ -301,17 +247,6 @@ public class MapViewController : MonoBehaviour
             {
                 flatMapRenderer.SetVisible(flatActive);
                 Debug.Log($"[MapViewController] Enforced flat map visibility to {flatActive}");
-            }
-        }
-
-        // Ensure globe renderer matches mode
-        if (globeRenderer != null)
-        {
-            var renderer = globeRenderer.GetComponent<MeshRenderer>();
-            if (renderer != null && renderer.enabled != globeActive)
-            {
-                globeRenderer.SetVisible(globeActive);
-                Debug.Log($"[MapViewController] Enforced globe visibility to {globeActive}");
             }
         }
     }
@@ -336,14 +271,6 @@ public class MapViewController : MonoBehaviour
             flatMapRenderer.Clear();
             if (planetGenerator != null)
                 flatMapRenderer.Rebuild(planetGenerator);
-        }
-
-        // Rebuild globe for new planet
-        if (currentMode == MapViewMode.Globe && globeRenderer != null)
-        {
-            globeRenderer.Clear();
-            if (planetGenerator != null && flatMapRenderer != null && flatMapRenderer.IsBuilt)
-                globeRenderer.Rebuild(planetGenerator, flatMapRenderer);
         }
 
         ApplyModeVisuals();
