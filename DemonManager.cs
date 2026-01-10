@@ -119,7 +119,7 @@ public class DemonManager : MonoBehaviour
         
         // Get spawn position on the selected planet
     // Get a surface position via TileSystem planet-aware API
-    Vector3 spawnPos = TileSystem.Instance.GetTileSurfacePosition(spawnTileIndex, 0.5f, spawnPlanetIndex);
+    Vector3 spawnPos = TileSystem.Instance.GetTileCenterFlat(spawnTileIndex);
 
         // Pick random demon type
         DemonUnitData demonType = demonUnits[Random.Range(0, demonUnits.Length)];

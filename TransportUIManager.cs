@@ -355,7 +355,7 @@ public class TransportUIManager : MonoBehaviour
             highlightObj.name = $"TileHighlight_{tileIndex}";
 
             // Position at tile center, slightly above
-            Vector3 tileCenter = planet.transform.TransformPoint(grid.tileCenters[tileIndex]);
+            Vector3 tileCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : Vector3.zero;
             highlightObj.transform.position = tileCenter + Vector3.up * 0.05f;
             
             // Scale the highlight to match tile size

@@ -1311,7 +1311,7 @@ public class Civilization : MonoBehaviour
         var grid = planetGenerator != null ? planetGenerator.Grid : null;
         if (grid != null)
         {
-            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(city.centerTileIndex, 0.5f) : Vector3.zero;
+            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
             var missionaryPrefab = missionaryData.GetPrefab();
             if (missionaryPrefab == null)
             {

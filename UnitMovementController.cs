@@ -83,7 +83,7 @@ public class UnitMovementController : MonoBehaviour
 
     /// <summary>
     /// Finds a path (list of tile indices) from start to end using A*, considering each tile's movement cost.
-    /// Handles both planet and moon tiles.
+    /// Flat-map only; uses TileSystem for neighbors and costs.
     /// Returns null if unreachable.
     /// </summary>
     public List<int> FindPath(int startIndex, int endIndex)
@@ -94,13 +94,6 @@ public class UnitMovementController : MonoBehaviour
         if (startTile == null || endTile == null)
         {
             Debug.LogWarning($"[UnitMovementController] Pathfinding error: Tiles invalid. Start: {startIndex}, End: {endIndex}");
-            return null;
-        }
-
-        SphericalHexGrid currentGrid = grid;
-        if (currentGrid == null)
-        {
-            Debug.LogError("[UnitMovementController] SphericalHexGrid reference is null for pathfinding!");
             return null;
         }
 
@@ -116,9 +109,10 @@ public class UnitMovementController : MonoBehaviour
         };
 
         startNode.gCost = 0;
+        // Use planar centers for heuristic on flat map
         startNode.hCost = Vector3.Distance(
-            TileSystem.Instance.GetTileSurfacePosition(startIndex, unitOffset: 0f),
-            TileSystem.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
+            TileSystem.Instance.GetTileCenterFlat(startIndex),
+            TileSystem.Instance.GetTileCenterFlat(endIndex));
 
 
         while (openSet.Count > 0)
@@ -158,9 +152,10 @@ public class UnitMovementController : MonoBehaviour
                     
                     neighborNode.parent = currentNode;
                     neighborNode.gCost = tentativeGCost;
+                    // Heuristic based on planar distance between tile centers
                     neighborNode.hCost = Vector3.Distance(
-                        TileSystem.Instance.GetTileSurfacePosition(neighborIndex, unitOffset: 0f),
-                        TileSystem.Instance.GetTileSurfacePosition(endIndex, unitOffset: 0f));
+                        TileSystem.Instance.GetTileCenterFlat(neighborIndex),
+                        TileSystem.Instance.GetTileCenterFlat(endIndex));
                     
                     if (openSet.Contains(neighborNode))
                         openSet.Remove(neighborNode);
@@ -192,7 +187,7 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public IEnumerator MoveAlongPath(BaseUnit unit, List<int> path)
     {
-        if (unit == null || path == null || path.Count == 0 || grid == null)
+        if (unit == null || path == null || path.Count == 0)
             yield break;
             
         // BaseUnit provides common properties for all unit types
@@ -232,9 +227,9 @@ public class UnitMovementController : MonoBehaviour
             // Calculate movement cost for event (not used for movement points, but needed for event signature)
             int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, null) : 1;
             
-            // Calculate positions including elevation
+            // Calculate planar positions on the flat map
             Vector3 startPosition = unitTransform.position;
-            Vector3 endPosition = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex, 0f);
+            Vector3 endPosition = TileSystem.Instance.GetTileCenterFlat(targetTileIndex);
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);
             if (journeyLength < 0.001f) continue;
@@ -263,7 +258,7 @@ public class UnitMovementController : MonoBehaviour
                 yield return null;
             }
             
-            // Snap to final position and orientation
+            // Snap to final position and orientation on flat map
             PositionUnitOnSurface(unitTransform, targetTileIndex);
             
             // Update current tile and occupancy using BaseUnit properties
@@ -320,15 +315,13 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     private void PositionUnitOnSurface(Transform unitTransform, int tileIndex)
     {
-        if (grid == null) return;
-        
-    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return;
 
-        // Get the elevated center of the tile on the flat map.
-        Vector3 surfacePosition = TileSystem.Instance.GetTileSurfacePosition(tileIndex, unitOffset: 0f);
-        unitTransform.position = surfacePosition;
-        
+        // Place unit at planar tile center with upright orientation
+        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        unitTransform.position = flatCenter;
+
         Vector3 forward = unitTransform.forward;
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;

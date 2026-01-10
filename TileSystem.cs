@@ -378,7 +378,26 @@ public class TileSystem : MonoBehaviour
         _dirtyOverlayTiles.Add(tile);
         // Could raise a generic OnTileDataChanged later
     }
-    public Vector3 GetTileCenter(int tile) => (tileCenters != null && tile >=0 && tile < tileCenters.Length) ? tileCenters[tile] : Vector3.zero;
+    // Thin flat-map alias: legacy calls now return flat centers
+    public Vector3 GetTileCenter(int tile) => GetTileCenterFlat(tile);
+    /// <summary>
+    /// Get the planar (flat map) center for a tile. Uses X/Z from tile center and sets Y to the flat map plane height.
+    /// </summary>
+    public Vector3 GetTileCenterFlat(int tile)
+    {
+        if (tileCenters == null || tile < 0 || tile >= tileCenters.Length) return Vector3.zero;
+        var c = tileCenters[tile];
+        float flatY = 0f;
+        if (GameManager.Instance != null)
+        {
+            flatY = GameManager.Instance.GetFlatPlaneY();
+        }
+        else if (planetRef != null)
+        {
+            flatY = planetRef.transform.position.y;
+        }
+        return new Vector3(c.x, flatY, c.z);
+    }
     public int[] GetNeighbors(int tile) => (neighbors != null && tile >=0 && tile < neighbors.Length) ? neighbors[tile] : System.Array.Empty<int>();
     public bool IsReady() => isReady;
 		#endregion
@@ -463,7 +482,7 @@ public class TileSystem : MonoBehaviour
     /// </summary>
     public Vector3 GetTileCenterFromPlanet(int tile, int planetIndex)
     {
-        // If querying current planet, use the cached array for performance
+        // If querying current planet, reuse flat center
         if (planetRef != null && isReady)
         {
             int currentPlanetIndex = -1;
@@ -476,23 +495,25 @@ public class TileSystem : MonoBehaviour
             
             if (planetIndex == currentPlanetIndex)
             {
-                return GetTileCenter(tile);
+                return GetTileCenterFlat(tile);
             }
         }
         
-        // Query the specific planet's grid
+        // Query the specific planet's grid and project to its flat plane
         PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
         if (planetGen != null && planetGen.Grid != null)
         {
             var grid = planetGen.Grid;
             if (tile >= 0 && tile < grid.tileCenters.Length)
             {
-                return grid.tileCenters[tile];
+                var c = grid.tileCenters[tile];
+                float yPlane = planetGen.transform.position.y;
+                return new Vector3(c.x, yPlane, c.z);
             }
         }
         
-        // Fallback to current planet if requested planet not found
-        return GetTileCenter(tile);
+        // Fallback to current planet flat center
+        return GetTileCenterFlat(tile);
     }
     
     /// <summary>
@@ -596,7 +617,34 @@ public class TileSystem : MonoBehaviour
     #endregion
 
     #region Range / Distance
-    public float GetTileDistance(int a, int b) => Vector3.Distance(GetTileCenter(a), GetTileCenter(b));
+    /// <summary>
+    /// Get hex-step distance between two tiles using BFS (respects adjacency, not Euclidean).
+    /// Returns -1 if no path exists (isolated tiles).
+    /// </summary>
+    public int GetTileDistance(int a, int b)
+    {
+        if (!isReady || a < 0 || b < 0 || a >= neighbors.Length || b >= neighbors.Length) return -1;
+        if (a == b) return 0;
+        HashSet<int> visited = new HashSet<int> { a };
+        Queue<(int idx, int dist)> q = new(); q.Enqueue((a, 0));
+        while (q.Count > 0)
+        {
+            var (idx, dist) = q.Dequeue();
+            var neigh = neighbors[idx]; if (neigh == null) continue;
+            for (int i = 0; i < neigh.Length; i++)
+            {
+                int n = neigh[i];
+                if (n == b) return dist + 1;
+                if (visited.Add(n)) q.Enqueue((n, dist + 1));
+            }
+        }
+        return -1; // No path
+    }
+    
+    /// <summary>
+    /// Get Euclidean distance for continuous movement/physics (not pathfinding).
+    /// </summary>
+    public float GetTileDistanceFlat(int a, int b) => Vector3.Distance(GetTileCenterFlat(a), GetTileCenterFlat(b));
 
     public List<int> GetTilesWithinSteps(int start, int steps)
     {
@@ -617,15 +665,9 @@ public class TileSystem : MonoBehaviour
 		#region Surface / Accessibility / Occupancy
     public Vector3 GetTileSurfacePosition(int tile, float unitOffset = 0f)
     {
-        if (planetRef == null || planetRef.Grid == null) return GetTileCenter(tile);
-        if (tile < 0 || tile >= planetRef.Grid.tileCenters.Length) return Vector3.zero;
-        var center = planetRef.Grid.tileCenters[tile];
-        float elevation = planetRef.GetTileElevation(tile);
-        var td = GetTileData(tile);
-        if (td != null && td.isHill) elevation += planetRef.hillElevationBoost;
-        float elevationScale = planetRef.Grid.MapHeight * 0.1f;
-        Vector3 worldPos = new Vector3(center.x, elevation * elevationScale + unitOffset, center.z);
-        return planetRef.transform.TransformPoint(worldPos);
+        // Flat-only: return planar center with optional Y offset
+        var c = GetTileCenterFlat(tile);
+        return new Vector3(c.x, c.y + unitOffset, c.z);
     }
 
     public bool IsTileAccessible(int tile, bool mustBeLand, int unitId)

@@ -63,7 +63,7 @@ public class MainMenuManager : MonoBehaviour
 
     // Map settings
     [Header("Map Settings")]
-    [Tooltip("Controls the planet's hexasphere subdivision level. Higher values increase the number of tiles and map size.")]
+    [Tooltip("Controls the flat grid resolution. Higher values increase the number of tiles and map size.")]
     public TextMeshProUGUI planetSizeText;
     public TMP_Dropdown mapSizeDropdown; // Dropdown for map size
     
@@ -429,11 +429,11 @@ public class MainMenuManager : MonoBehaviour
     private void UpdatePlanetSizeText()
     {
         GameManager.MapSize size = GameSetupData.mapSize;
-        int subdivisions; float radius;
-        GameManager.GetMapSizeParams(size, out subdivisions, out radius);
+        // Flat-only: show width x height based on size preset
+        GameManager.GetFlatMapSizeParams(size, out float width, out float height);
         string displayName = GetMapSizeDisplayName(size);
         if (planetSizeText != null)
-            planetSizeText.text = $"Map Size: {displayName}";
+            planetSizeText.text = $"Map Size: {displayName} ({width}x{height})";
     }
     
     private string GetMapSizeDisplayName(GameManager.MapSize size)

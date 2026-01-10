@@ -799,36 +799,18 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Position unit on planet surface with correct orientation
+    /// Position unit on surface (flat-only). Places unit at planar tile center and keeps upright orientation.
     /// </summary>
     protected virtual void PositionUnitOnSurface(int tileIndex)
     {
-        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
-        if (earthPlanet == null) return;
+        if (TileSystem.Instance == null) return;
+        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        transform.position = flatCenter;
 
-        Vector3 tileSurfaceCenter = TileSystem.Instance != null 
-            ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0f, 0) 
-            : transform.position;
-
-        transform.position = tileSurfaceCenter;
-
-        // Calculate surface normal (away from planet center)
-        Vector3 surfaceNormal = (tileSurfaceCenter - earthPlanet.transform.position).normalized;
-
-        // Calculate forward direction (tangent to surface)
-        Vector3 northDirection = Vector3.up;
-        Vector3 tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, northDirection), surfaceNormal).normalized;
-
-        if (tangentForward.magnitude < 0.1f)
-        {
-            Vector3 eastDirection = Vector3.right;
-            tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, eastDirection), surfaceNormal).normalized;
-        }
-
-        if (tangentForward.magnitude < 0.1f)
-            tangentForward = Vector3.forward;
-
-        transform.rotation = Quaternion.LookRotation(tangentForward, surfaceNormal);
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+        transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
         currentTileIndex = tileIndex;
     }
 

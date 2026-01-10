@@ -268,9 +268,8 @@ public class City : MonoBehaviour
             var cam = Camera.main;
             if (cam != null)
             {
-                Vector3 planetCenter = planetGenerator != null ? planetGenerator.transform.position : Vector3.zero;
-                Vector3 normal = (transform.position - planetCenter).normalized;
-                Vector3 labelPos = transform.position + normal * labelVerticalOffset;
+                // Flat-only label placement: offset upward
+                Vector3 labelPos = transform.position + Vector3.up * labelVerticalOffset;
                 labelCanvas.transform.position = labelPos;
                 labelCanvas.transform.rotation = cam.transform.rotation;
                 float camDist = Vector3.Distance(cam.transform.position, labelPos);
@@ -730,8 +729,8 @@ public class City : MonoBehaviour
             return false;
             
         // Check if tile is within territory radius
-        var cityPos = planetGenerator.Grid.tileCenters[centerTileIndex];
-        var tilePos = planetGenerator.Grid.tileCenters[tileIndex];
+        var cityPos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
+        var tilePos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : transform.position;
         float distance = Vector3.Distance(cityPos, tilePos);
         if (distance > TerritoryRadius * 1.0f) // Scale factor based on your map scale
             return false;
@@ -940,7 +939,7 @@ public class City : MonoBehaviour
         
         // Spawn the unit
         if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-        Vector3 pos = planetGenerator.Grid.tileCenters[centerTileIndex];
+        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
         
         var prefab = unitData.GetPrefab();
         if (prefab == null)
@@ -1013,7 +1012,7 @@ public class City : MonoBehaviour
     /// </summary>
     private void CompleteItem(ScriptableObject d) {
         if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-        Vector3 pos = planetGenerator.Grid.tileCenters[centerTileIndex];
+        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
 
         switch (d) {
             case CombatUnitData u:
@@ -1208,7 +1207,7 @@ public class City : MonoBehaviour
             return;
             
         // Get position for the district
-        Vector3 pos = planetGenerator.Grid.tileCenters[tileIndex];
+        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : transform.position;
         
         // Instantiate the district
         GameObject districtInstance = null;
@@ -1412,7 +1411,7 @@ public class City : MonoBehaviour
         if (planetGenerator == null) return 0; // Safety check
 
         var owned = owner.ownedTileIndices; // Needs access to owner's tile list
-        Vector3 cityCenterPos = planetGenerator.Grid.tileCenters[centerTileIndex];
+        Vector3 cityCenterPos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
         float maxDist = 1.0f * TerritoryRadius; // Default spacing value
         
         // Create test tile once to determine which yield type the selector accesses
@@ -1447,7 +1446,7 @@ public class City : MonoBehaviour
 
         foreach (int idx in owned)
         {
-            Vector3 tilePos = planetGenerator.Grid.tileCenters[idx];
+            Vector3 tilePos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(idx) : transform.position;
             float distanceSqr = (cityCenterPos - tilePos).sqrMagnitude;
             if (distanceSqr <= maxDist * maxDist)
             {

@@ -69,6 +69,8 @@ public class PauseMenuManager : MonoBehaviour
         public string playerCivName;
         public int playerCivIndex;
         public GameManager.MapSize mapSize;
+        public float flatMapWidth;
+        public float flatMapHeight;
         public bool enableMultiPlanetSystem;
         public int currentPlanetIndex;
         

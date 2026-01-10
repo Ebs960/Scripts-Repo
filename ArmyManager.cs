@@ -183,7 +183,7 @@ public class ArmyManager : MonoBehaviour
             army.currentTileIndex = units[0].currentTileIndex;
             if (TileSystem.Instance != null)
             {
-                Vector3 worldPos = TileSystem.Instance.GetTileCenter(army.currentTileIndex);
+                Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(army.currentTileIndex);
                 army.transform.position = worldPos;
             }
         }

@@ -613,7 +613,7 @@ public class CombatUnit : BaseUnit
 
     public void MoveAlongPath(List<int> path)
     {
-        SphericalHexGrid currentGrid = grid;
+        // Flat-only movement: rely on TileSystem for planar centers
 
         foreach (int idx in path)
         {
@@ -621,7 +621,11 @@ public class CombatUnit : BaseUnit
 
             // Movement points removed - movement speed is now fatigue-based
 
-            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenter(idx) : currentGrid.tileCenters[idx];
+            if (TileSystem.Instance == null) {
+                Debug.LogWarning("[CombatUnit] TileSystem not ready; skipping movement step.");
+                continue;
+            }
+            Vector3 pos = TileSystem.Instance.GetTileCenterFlat(idx);
             transform.position = pos;
 
             // Update tile occupancy
@@ -1416,58 +1420,16 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
-        if (G == null)
-        {
-            Debug.LogError("SphericalHexGrid reference is null in PositionUnitOnSurface.");
-            return;
-        }
+        // Flat-only placement: ignore spherical grid, place on planar tile center
+        if (TileSystem.Instance == null) return;
+        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        transform.position = flatCenter;
 
-        // FIXED: For civilization units, always use Earth (planet index 0)
-        // Check if Earth surface is ready
-        var earthPlanet = GameManager.Instance?.GetPlanetGenerator(0);
-        if (earthPlanet == null)
-        {
-            Debug.LogError("Earth planet generator not found for unit positioning!");
-            return;
-        }
-        
-        if (!earthPlanet.HasGeneratedSurface)
-        {
-            Debug.LogError($"Earth planet not ready for unit positioning! HasGeneratedSurface = {earthPlanet.HasGeneratedSurface}");
-            return;
-        }
-        
-        // Get the extruded center of the tile in world space on Earth
-    Vector3 tileSurfaceCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0f, 0) : Vector3.zero; // Force Earth (planet index 0)
-        
-        // Set unit position directly on the surface
-        transform.position = tileSurfaceCenter;
-
-        // FIXED: Calculate proper surface normal pointing AWAY from planet center (toward atmosphere)
-        Vector3 surfaceNormal = (tileSurfaceCenter - earthPlanet.transform.position).normalized;
-        
-        // FIXED: Use a more robust method to calculate forward direction
-        // Get a reference direction (north pole direction projected onto the surface)
-        Vector3 northDirection = Vector3.up;
-        Vector3 tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, northDirection), surfaceNormal).normalized;
-        
-        // If the cross product fails (at poles), use an alternative reference
-        if (tangentForward.magnitude < 0.1f)
-        {
-            Vector3 eastDirection = Vector3.right;
-            tangentForward = Vector3.Cross(Vector3.Cross(surfaceNormal, eastDirection), surfaceNormal).normalized;
-        }
-        
-        // Final fallback if still problematic
-        if (tangentForward.magnitude < 0.1f)
-        {
-            tangentForward = Vector3.forward;
-        }
-        
-        // Set rotation so unit stands upright on the surface
-        transform.rotation = Quaternion.LookRotation(tangentForward, surfaceNormal);
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+        transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
         currentTileIndex = tileIndex;
-        
     }
 
     private void UpdateIdleAnimation()
@@ -1851,7 +1813,11 @@ public class CombatUnit : BaseUnit
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
     var targetTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(targetTileIndex) : null;
-    unit.transform.position = (TileSystem.Instance != null ? TileSystem.Instance.GetTileCenter(targetTileIndex) : (grid != null ? grid.tileCenters[targetTileIndex] : unit.transform.position));
+    if (TileSystem.Instance == null) {
+        Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
+        return false;
+    }
+    unit.transform.position = TileSystem.Instance.GetTileCenterFlat(targetTileIndex);
         unit.currentTileIndex = targetTileIndex;
         
         // Update tile occupancy

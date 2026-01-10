@@ -461,7 +461,7 @@ public class Army : MonoBehaviour
         // Update visual position
         if (TileSystem.Instance != null)
         {
-            Vector3 worldPos = TileSystem.Instance.GetTileCenter(tileIndex);
+            Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(tileIndex);
             transform.position = worldPos;
         }
         
@@ -654,7 +654,7 @@ public class Army : MonoBehaviour
         if (armyVisual == null) return;
         if (TileSystem.Instance == null) return;
         
-        Vector3 worldPos = TileSystem.Instance.GetTileCenter(currentTileIndex);
+        Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(currentTileIndex);
         transform.position = worldPos;
     }
     

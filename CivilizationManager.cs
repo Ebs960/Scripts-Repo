@@ -1346,7 +1346,7 @@ public class CivilizationManager : MonoBehaviour
         
         // Instantiate pioneer (same as animals - no parenting to planet)
         // FIXED: Use Earth-specific positioning for pioneer
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(tile, 0.5f, 0) : Vector3.zero; // Force planet index 0 (Earth)
+    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tile) : Vector3.zero;
         Debug.Log($"[CivilizationManager] Pioneer position calculated: {pos}");
         
         var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
@@ -1516,7 +1516,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         // Get the tile position and convert to direction from planet center
-        Vector3 tileWorldPosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(pioneerTileIndex, 0f, 0) : Vector3.zero;
+        Vector3 tileWorldPosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(pioneerTileIndex) : Vector3.zero;
 
         // Focus the camera on the tile in flat space
         cameraManager.JumpToWorldPoint(tileWorldPosition);

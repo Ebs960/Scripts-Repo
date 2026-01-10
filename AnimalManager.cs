@@ -346,8 +346,13 @@ public class AnimalManager : MonoBehaviour
         if (candidates.Count == 0) return;
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        // FIXED: Use Earth-specific positioning for animal spawning
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(chosenIndex, 0.5f, 0) : planet.transform.TransformPoint(planet.Grid.tileCenters[chosenIndex]);
+        // Flat-only positioning for animal spawning
+        if (TileSystem.Instance == null)
+        {
+            Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals in flat-only mode.");
+            return;
+        }
+        Vector3 pos = TileSystem.Instance.GetTileCenterFlat(chosenIndex);
 
         var animalPrefab = rule.unitData.GetPrefab();
         if (animalPrefab == null)
@@ -367,11 +372,8 @@ public class AnimalManager : MonoBehaviour
         unit.Initialize(rule.unitData, null);
         unit.currentTileIndex = chosenIndex;
         
-        // Properly orient the animal on the planetary surface
-        if (planet != null && planet.Grid != null)
-        {
-            unit.PositionUnitOnSurface(planet.Grid, chosenIndex);
-        }
+        // Ensure upright orientation on flat map
+        unit.PositionUnitOnSurface(null, chosenIndex);
 
         activeAnimals.Add(unit);
         unit.OnDeath += () =>

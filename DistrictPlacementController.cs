@@ -301,7 +301,7 @@ public class DistrictPlacementController : MonoBehaviour
 
     private void HighlightTile(int tileIndex, Color color)
     {
-        if (grid == null || planet == null) return;
+        if (TileSystem.Instance == null || !TileSystem.Instance.IsReady()) return;
 
         if (!tileHighlights.ContainsKey(tileIndex))
         {
@@ -317,7 +317,7 @@ public class DistrictPlacementController : MonoBehaviour
                 tileHighlights[tileIndex] = highlightObj;
             }
 
-            Vector3 worldPos = planet.transform.TransformPoint(grid.tileCenters[tileIndex]);
+            Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(tileIndex);
             highlightObj.transform.position = worldPos + Vector3.up * 0.05f;
             float tileSize = 0.2f;
             highlightObj.transform.localScale = new Vector3(tileSize, tileSize, tileSize);

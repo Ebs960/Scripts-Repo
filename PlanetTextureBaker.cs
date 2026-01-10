@@ -14,8 +14,8 @@ public static class PlanetTextureBaker
 {
     public struct BakeResult
     {
-        public Texture2D texture;
-        public Texture2D heightmap; // NEW: Heightmap texture for elevation displacement
+        public RenderTexture texture;  // GPU RenderTexture - use directly in materials, no CPU readback
+        public RenderTexture heightmap; // GPU RenderTexture - heightmap for elevation displacement
         public int[] lut;
         public int width;
         public int height;
@@ -30,15 +30,29 @@ public static class PlanetTextureBaker
     {
         var res = new BakeResult { width = width, height = height };
         if (planetGen == null || planetGen.Grid == null || !planetGen.Grid.IsBuilt)
+        {
+            Debug.LogError($"[PlanetTextureBaker] Bake FAILED: planetGen null? {planetGen == null}, Grid null? {planetGen?.Grid == null}, IsBuilt? {planetGen?.Grid?.IsBuilt}");
             return res;
+        }
 
         var grid = planetGen.Grid;
         int tileCount = grid.TileCount;
-        if (tileCount <= 0) return res;
+        if (tileCount <= 0)
+        {
+            Debug.LogError($"[PlanetTextureBaker] Bake FAILED: tileCount is {tileCount}");
+            return res;
+        }
+
+        Debug.Log($"[PlanetTextureBaker] Starting Bake: tileCount={tileCount}, resolution={width}x{height}");
+        Debug.Log($"[PlanetTextureBaker] colorProvider is {(colorProvider == null ? "NULL" : "ASSIGNED")}");
 
         // Build per-tile color atlas and elevation data
         var tileColors = new Color32[tileCount];
         var tileElevations = new float[tileCount]; // Store elevation for heightmap
+        
+        int colorProviderUsed = 0;
+        int biomeHelperUsed = 0;
+        
         for (int i = 0; i < tileCount; i++)
         {
             var td = planetGen.GetHexTileData(i);
@@ -46,7 +60,7 @@ public static class PlanetTextureBaker
             Biome biome = td != null ? td.biome : planetGen.GetBaseBiome(i);
 
             // Compute equirect UV from tile center direction so BiomeTextures mode can sample consistently.
-            Vector3 center = grid.tileCenters[i];
+            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
             float u = (center.x + grid.MapWidth * 0.5f) / grid.MapWidth;
             float v = (center.z + grid.MapHeight * 0.5f) / grid.MapHeight;
             u = Mathf.Repeat(u, 1f);
@@ -58,13 +72,20 @@ public static class PlanetTextureBaker
             {
                 // If td is null, we still need a dummy object for provider; fall back to biome color.
                 if (td != null)
+                {
                     c = colorProvider.ColorFor(td, uv);
+                    colorProviderUsed++;
+                }
                 else
+                {
                     c = BiomeColorHelper.GetMinimapColor(biome);
+                    biomeHelperUsed++;
+                }
             }
             else
             {
                 c = BiomeColorHelper.GetMinimapColor(biome);
+                biomeHelperUsed++;
             }
 
             tileColors[i] = (Color32)c;
@@ -72,22 +93,52 @@ public static class PlanetTextureBaker
             // Store elevation (0-1 range, will be encoded in heightmap)
             float elevation = td != null ? td.elevation : planetGen.GetTileElevation(i);
             tileElevations[i] = Mathf.Clamp01(elevation);
+            
+            // Sample a few tiles to show what colors are being generated
+            if (i < 5 || i == tileCount - 1)
+            {
+                Debug.Log($"[PlanetTextureBaker]   Tile {i}: biome={biome}, color=({tileColors[i].r},{tileColors[i].g},{tileColors[i].b},{tileColors[i].a})");
+            }
         }
+        
+        Debug.Log($"[PlanetTextureBaker] Color distribution: {colorProviderUsed} from provider, {biomeHelperUsed} from BiomeColorHelper");
         res.tileColors = tileColors;
 
         // LUT: pixel -> tileIndex
         var lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
         res.lut = lut;
-        if (lut == null || lut.Length != width * height) return res;
+        if (lut == null || lut.Length != width * height)
+        {
+            Debug.LogError($"[PlanetTextureBaker] LUT build FAILED! lut is {(lut == null ? "NULL" : $"length {lut.Length}, expected {width * height}")}");
+            return res;
+        }
+        
+        Debug.Log($"[PlanetTextureBaker] LUT built successfully: {width}x{height} = {lut.Length} pixels");
 
         // Paint pixels by LUT indirection (no polygon rasterization)
         var pixels = new Color32[width * height];
         var heightmapPixels = new Color32[width * height]; // NEW: Heightmap pixels
+        
+        int magentaCount = 0;
+        int validTileCount = 0;
+        
         for (int p = 0; p < pixels.Length; p++)
         {
             int idx = lut[p];
             if (idx < 0 || idx >= tileColors.Length) idx = 0;
-            pixels[p] = tileColors[idx];
+            
+            Color32 tileColor = tileColors[idx];
+            pixels[p] = tileColor;
+            
+            // Count magenta pixels to debug
+            if (tileColor.r == 255 && tileColor.g == 0 && tileColor.b == 255)
+            {
+                magentaCount++;
+            }
+            else
+            {
+                validTileCount++;
+            }
             
             // Encode elevation in heightmap (grayscale: black=low, white=high)
             float elevation = (idx >= 0 && idx < tileElevations.Length) ? tileElevations[idx] : 0f;
@@ -95,27 +146,63 @@ public static class PlanetTextureBaker
             heightmapPixels[p] = new Color32(heightValue, heightValue, heightValue, 255);
         }
 
-        // Build color texture
+        Debug.Log($"[PlanetTextureBaker] Pixel distribution: {validTileCount} valid colors, {magentaCount} magenta fallback pixels");
+        
+        // Build CPU textures then upload to GPU RenderTextures
         var tex = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: true, linear: false)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear,
+            name = $"PlanetTexture_CPU_{planetGen.gameObject.name}_{width}x{height}"
+        };
+        tex.SetPixels32(pixels);
+        tex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
+
+        var heightmapTex = new Texture2D(width, height, TextureFormat.R8, mipChain: true, linear: true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = $"PlanetHeightmap_CPU_{planetGen.gameObject.name}_{width}x{height}"
+        };
+        heightmapTex.SetPixels32(heightmapPixels);
+        heightmapTex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
+
+        // Create RenderTextures
+        var biomeRT = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
         {
             wrapMode = TextureWrapMode.Repeat,
             filterMode = FilterMode.Trilinear,
             name = $"PlanetTexture_{planetGen.gameObject.name}_{width}x{height}"
         };
-        tex.SetPixels32(pixels);
-        tex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
-        res.texture = tex;
+        biomeRT.Create();
 
-        // Build heightmap texture
-        var heightmapTex = new Texture2D(width, height, TextureFormat.R8, mipChain: true, linear: true)
+        // Heightmap RT: prefer single-channel if supported, else fallback to ARGB32
+        RenderTexture heightRT;
+#if UNITY_2020_2_OR_NEWER
+        heightRT = new RenderTexture(width, height, 0, UnityEngine.Experimental.Rendering.GraphicsFormat.R8_UNorm)
         {
             wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear, // Bilinear for smooth height transitions
+            filterMode = FilterMode.Bilinear,
             name = $"PlanetHeightmap_{planetGen.gameObject.name}_{width}x{height}"
         };
-        heightmapTex.SetPixels32(heightmapPixels);
-        heightmapTex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
-        res.heightmap = heightmapTex;
+#else
+        heightRT = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = $"PlanetHeightmap_{planetGen.gameObject.name}_{width}x{height}"
+        };
+#endif
+        heightRT.Create();
+
+        // Upload CPU textures to RTs
+        Graphics.Blit(tex, biomeRT);
+        Graphics.Blit(heightmapTex, heightRT);
+
+        res.texture = biomeRT;
+        res.heightmap = heightRT;
+        
+        Debug.Log($"[PlanetTextureBaker] Created RenderTextures: biomeRT={biomeRT.width}x{biomeRT.height}, heightRT={heightRT.width}x{heightRT.height}");
 
         return res;
     }
@@ -165,47 +252,19 @@ public static class PlanetTextureBaker
             tileColors = gpuResult.tileColors
         };
 
-        // Convert RenderTextures to Texture2D only if explicitly requested (slow operation)
-        if (convertToTexture2D)
+        // Use RenderTextures directly - no CPU readback conversion
+        // Materials accept RenderTextures via SetTexture(), avoiding slow Texture2D conversion
+        // This preserves all GPU-generated data without color loss from ReadPixels()
+        if (gpuResult.biomeTexture != null)
         {
-            if (gpuResult.biomeTexture != null)
-            {
-                res.texture = PlanetTextureBakerGPU.RenderTextureToTexture2D(
-                    gpuResult.biomeTexture,
-                    TextureFormat.RGBA32
-                );
-            }
-            
-            if (gpuResult.heightTexture != null)
-            {
-                // Convert RFloat heightmap to R8 Texture2D
-                res.heightmap = PlanetTextureBakerGPU.RenderTextureToTexture2D(
-                    gpuResult.heightTexture,
-                    TextureFormat.R8
-                );
-            }
+            res.texture = gpuResult.biomeTexture;
+            Debug.Log($"[PlanetTextureBaker] Using GPU RenderTexture directly ({gpuResult.biomeTexture.width}x{gpuResult.biomeTexture.height})");
         }
-        else
+        
+        if (gpuResult.heightTexture != null)
         {
-            // Convert RenderTextures to Texture2D for compatibility with BakeResult struct
-            // NOTE: This performs a CPU readback which is slow. For best performance, use
-            // PlanetTextureBakerGPU.Bake() directly and assign RenderTextures to materials.
-            // Unity materials can accept RenderTextures via SetTexture().
-            if (gpuResult.biomeTexture != null)
-            {
-                res.texture = PlanetTextureBakerGPU.RenderTextureToTexture2D(
-                    gpuResult.biomeTexture,
-                    TextureFormat.RGBA32
-                );
-            }
-            
-            if (gpuResult.heightTexture != null)
-            {
-                res.heightmap = PlanetTextureBakerGPU.RenderTextureToTexture2D(
-                    gpuResult.heightTexture,
-                    TextureFormat.R8
-                );
-            }
+            res.heightmap = gpuResult.heightTexture;
+            Debug.Log($"[PlanetTextureBaker] Using GPU heightmap RenderTexture directly");
         }
 
         return res;

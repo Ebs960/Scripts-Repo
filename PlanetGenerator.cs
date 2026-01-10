@@ -34,11 +34,11 @@ public struct BiomeDecorationEntry
     
     [Header("Positioning")]
     [Range(0.1f, 0.9f)]
-    [Tooltip("Minimum distance from tile center (as fraction of tile radius)")]
+    [Tooltip("Minimum distance from tile center (as fraction of tile size)")]
     public float minDistanceFromCenter;
     
     [Range(0.1f, 0.95f)]
-    [Tooltip("Maximum distance from tile center (as fraction of tile radius)")]
+    [Tooltip("Maximum distance from tile center (as fraction of tile size)")]
     public float maxDistanceFromCenter;
     
     [Header("Scale and Rotation")]
@@ -236,10 +236,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
 
     [Header("Map Settings")] 
-    public int subdivisions = 8;
     public bool randomSeed = true;
     public int seed = 12345;
-    public float radius = 21f; // Default radius, will be overridden by GameManager
+    // Spherical radius removed in flat-only refactor
 
     // Public property to access the seed
     public int Seed => seed;
@@ -359,7 +358,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Normalize tile distances for uniform spacing (slower but better visuals)")]
     public bool enableTileNormalization = false;
 
-    [Tooltip("Wait this many frames before initial generation so SphericalHexGrid has finished generating.")]
+    [Tooltip("Wait this many frames before initial generation so the flat grid has finished generating.")]
     public int initializationDelay = 1;
 
     [Header("Map Type")]
@@ -566,9 +565,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         float maxContinentWidthWorld = (maxContinentWidthDegrees / 360f) * mapWidth;
         float maxContinentHeightWorld = (maxContinentHeightDegrees / 180f) * mapHeight;
 
-        // Pre-calculate tile positions for all tiles
+        // Pre-calculate tile positions for all tiles (flat-only)
         for (int i = 0; i < tileCount; i++) {
-            Vector3 center = grid.tileCenters[i];
+            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
             tilePositions[i] = new Vector2(center.x, center.z);
         }
 
@@ -671,9 +670,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         for (int i = 0; i < tileCount; i++)
         {
-            Vector3 n = grid.tileCenters[i];
+            Vector3 c = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
             bool isLand = isLandTile[i];
-            Vector3 noisePoint = new Vector3(n.x, 0f, n.z) + noiseOffset;
+            Vector3 noisePoint = new Vector3(c.x, 0f, c.z) + noiseOffset;
             
             // Calculate raw noise elevation (0-1 range)
             float noiseElevation = noise.GetElevation(noisePoint * elevationFreq);
@@ -1353,11 +1352,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Calculate north/south and east/west normalized positions for special biome rules
         float northSouth = 0f;
         float eastWest = 0f;
-        if (grid != null && grid.IsBuilt && tileIndex < grid.tileCenters.Length)
+        if (TileSystem.Instance != null)
         {
-            Vector3 tileCenter = grid.tileCenters[tileIndex];
-            northSouth = Mathf.Clamp(tileCenter.z / (grid.MapHeight * 0.5f), -1f, 1f);
-            eastWest = Mathf.Clamp(tileCenter.x / (grid.MapWidth * 0.5f), -1f, 1f);
+            Vector3 tileCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+            float mapW = GameManager.Instance != null ? GameManager.Instance.GetFlatMapWidth() : 1f;
+            float mapH = GameManager.Instance != null ? GameManager.Instance.GetFlatMapHeight() : 1f;
+            northSouth = Mathf.Clamp(tileCenter.z / (mapH * 0.5f), -1f, 1f);
+            eastWest = Mathf.Clamp(tileCenter.x / (mapW * 0.5f), -1f, 1f);
         }
         
         Biome assignedBiome = BiomeHelper.GetBiome(

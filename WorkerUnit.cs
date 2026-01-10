@@ -197,7 +197,9 @@ public class WorkerUnit : BaseUnit
         {
             foreach (var city in civ.cities)
             {
-                float d = Vector3.Distance(grid.tileCenters[currentTileIndex], grid.tileCenters[city.centerTileIndex]);
+                Vector3 a = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
+                Vector3 b = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
+                float d = Vector3.Distance(a, b);
                 if (d < minCityDist) return false;
             }
         }

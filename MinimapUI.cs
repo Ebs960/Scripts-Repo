@@ -1287,8 +1287,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         float worldX = (worldU - 0.5f) * grid.MapWidth;
         float worldZ = (worldV - 0.5f) * grid.MapHeight;
-        Vector3 localTarget = new Vector3(worldX, 0f, worldZ);
-        Vector3 worldTarget = currentPlanetGen != null ? currentPlanetGen.transform.TransformPoint(localTarget) : localTarget;
+        float yPlane = currentPlanetGen != null ? currentPlanetGen.transform.position.y : 0f;
+        var flatRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+        if (flatRenderer != null) yPlane = flatRenderer.transform.position.y;
+        Vector3 worldTarget = new Vector3(worldX, yPlane, worldZ);
 
         // Use cached reference to avoid expensive FindAnyObjectByType call
         if (_cachedCameraManager == null)

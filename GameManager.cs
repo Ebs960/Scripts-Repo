@@ -287,23 +287,47 @@ public class GameManager : MonoBehaviour
 
     public List<HexTileData> hexTiles = new List<HexTileData>();
 
-    // Helper to get subdivisions and radius from preset
-    public static void GetMapSizeParams(MapSize size, out int subdivisions, out float radius)
+    [Header("Flat Map Size (Flat-Only)")]
+    [Tooltip("Flat map width in world units (X extent)." )]
+    public float flatMapWidth = 512f;
+    [Tooltip("Flat map height in world units (Z extent)." )]
+    public float flatMapHeight = 256f;
+    [Tooltip("Y height of the flat map plane (used for world placement)." )]
+    public float flatPlaneY = 0f;
+
+    // Flat-map-only: tile resolution by size preset
+    public static void GetFlatTileResolution(MapSize size, out int tilesX, out int tilesZ)
     {
         switch (size)
         {
-            case MapSize.Small: subdivisions = 4; radius = 15f; break;   // 642 tiles
-            case MapSize.Standard: subdivisions = 4; radius = 29f; break;   // 642 tiles
-            case MapSize.Large: subdivisions = 5; radius = 80f; break;   // 2 562 tiles
-            default: subdivisions = 4; radius = 25f; break;
+            case MapSize.Small: tilesX = 64; tilesZ = 32; break;
+            case MapSize.Standard: tilesX = 96; tilesZ = 48; break;
+            case MapSize.Large: tilesX = 128; tilesZ = 64; break;
+            default: tilesX = 96; tilesZ = 48; break;
         }
     }
 
-    public static float GetMoonRadius(MapSize size)
+    // Flat-map-only: map width/height by size preset
+    public static void GetFlatMapSizeParams(MapSize size, out float width, out float height)
     {
-        GetMapSizeParams(size, out _, out float planetRadius);
-        return planetRadius / 5f;
+        switch (size)
+        {
+            case MapSize.Small: width = 384f; height = 192f; break;
+            case MapSize.Standard: width = 512f; height = 256f; break;
+            case MapSize.Large: width = 768f; height = 384f; break;
+            default: width = 512f; height = 256f; break;
+        }
     }
+
+    public void SetFlatMapDimensionsFromSize(MapSize size)
+    {
+        GetFlatMapSizeParams(size, out flatMapWidth, out flatMapHeight);
+        Debug.Log($"[GameManager] Flat map dimensions set from size {size}: {flatMapWidth}x{flatMapHeight}");
+    }
+
+    public float GetFlatMapWidth() => flatMapWidth;
+    public float GetFlatMapHeight() => flatMapHeight;
+    public float GetFlatPlaneY() => flatPlaneY;
 
     private void Awake()
     {
@@ -339,6 +363,8 @@ public class GameManager : MonoBehaviour
         numberOfCityStates = GameSetupData.numberOfCityStates;
         numberOfTribes = GameSetupData.numberOfTribes;
         mapSize = GameSetupData.mapSize;
+        // Set flat map dimensions from chosen size (flat-only)
+        SetFlatMapDimensionsFromSize(mapSize);
         animalPrevalence = GameSetupData.animalPrevalence;
         generateMoon = GameSetupData.generateMoon;
 
@@ -699,17 +725,14 @@ public class GameManager : MonoBehaviour
                 planetGenerator.SetLoadingPanel(cachedLoadingPanel);
             }
 
-            // --- Use map size preset ---
-            int subdivisions; float radius;
-            GetMapSizeParams(mapSize, out subdivisions, out radius);
+            // --- Use flat map size preset ---
+            GetFlatMapSizeParams(mapSize, out float width, out float height);
+            GetFlatTileResolution(mapSize, out int tilesX, out int tilesZ);
 
-
-            // Generate grid data using the new proper geodesic hexasphere system with the correct radius
+            // Generate flat grid using explicit dimensions
             if (planetGenerator != null)
             {
-                planetGenerator.radius = radius; // Set the radius property
-                planetGenerator.Grid.GenerateFromSubdivision(subdivisions, radius);
-                // No more hexasphereRenderer setup needed
+                planetGenerator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height);
             }
 
             // Configure planet generator with GameSetupData settings
@@ -947,6 +970,7 @@ public class GameManager : MonoBehaviour
         if (flatRendererSingle != null && planetGenerator != null)
         {
             flatRendererSingle.Rebuild(planetGenerator);
+            flatPlaneY = flatRendererSingle.transform.position.y;
         }
 
         if (minimapUI != null)
@@ -1229,6 +1253,7 @@ public class GameManager : MonoBehaviour
         if (flatRendererMulti != null && genForFlat != null)
         {
             flatRendererMulti.Rebuild(genForFlat);
+            flatPlaneY = flatRendererMulti.transform.position.y;
         }
 
         // Update loading progress - UI setup
@@ -1236,25 +1261,7 @@ public class GameManager : MonoBehaviour
         
 
 
-        // Configure SunBillboard for multi-planet system
-        var sunBB = FindAnyObjectByType<SunBillboard>();
-        if (sunBB != null)
-        {
-            var currentPlanet = GetCurrentPlanetGenerator();
-            if (currentPlanet != null)
-            {
-                sunBB.SetBaseRadius(currentPlanet.radius);
-                Debug.Log($"[GameManager] SunBillboard radius set to {currentPlanet.radius} for current planet");
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] Current PlanetGenerator is null, cannot set SunBillboard radius!");
-            }
-        }
-        else
-        {
-            Debug.Log("[GameManager] No SunBillboard found in scene");
-        }
+        // SunBillboard removed in flat-only refactor
 
         
 
@@ -1783,20 +1790,11 @@ public class GameManager : MonoBehaviour
             
         }
 
-        if (body == "Earth")
-        {
-            GetMapSizeParams(GameSetupData.mapSize, out int subdiv, out float rad);
-            generator.subdivisions = subdiv;
-            generator.radius = rad;
-        }
-        else
-        {
-            GetMapSizeParams(MapSize.Standard, out int subdiv, out float rad);
-            generator.subdivisions = subdiv;
-            generator.radius = rad;
-        }
-
-    generator.Grid.GenerateFromSubdivision(generator.subdivisions, generator.radius);
+        // Build grid using flat dimensions
+        MapSize sizePreset = (body == "Earth") ? GameSetupData.mapSize : MapSize.Standard;
+        GetFlatMapSizeParams(sizePreset, out float width, out float height);
+        GetFlatTileResolution(sizePreset, out int tilesX, out int tilesZ);
+        generator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height);
     // Notify grid built
     OnPlanetGridBuilt?.Invoke(planetIndex);
 
@@ -1877,10 +1875,10 @@ public class GameManager : MonoBehaviour
         var generator = planetGenerators[planetIndex];
         if (generator != null && !generator.Grid.IsBuilt)
         {
-            GetMapSizeParams(planetData[planetIndex].planetSize, out int subDivs, out float rad);
-            generator.subdivisions = subDivs;
-            generator.radius = rad;
-            generator.Grid.GenerateFromSubdivision(subDivs, rad);
+            var sizePreset = planetData[planetIndex].planetSize;
+            GetFlatMapSizeParams(sizePreset, out float width, out float height);
+            GetFlatTileResolution(sizePreset, out int tilesX, out int tilesZ);
+            generator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height);
         }
         if (generator != null && generator.Grid.TileCount > 0 && !generator.HasGeneratedSurface)
         {
@@ -1909,12 +1907,7 @@ public class GameManager : MonoBehaviour
         yield return StartCoroutine(planetGenerator.GenerateSurface());
         // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
 
-        // Automatically update SunBillboard radius after planet is generated
-        var sunBB = FindAnyObjectByType<SunBillboard>();
-        if (sunBB != null && planetGenerator != null)
-        {
-            sunBB.SetBaseRadius(planetGenerator.radius);
-        }
+        // SunBillboard removed in flat-only refactor
 
         // Initialize TileSystem once the planet is generated
         if (TileSystem.Instance != null && planetGenerator != null)
@@ -2164,7 +2157,9 @@ public class GameManager : MonoBehaviour
                 mapSize = mapSize,
                 enableMultiPlanetSystem = enableMultiPlanetSystem,
                 currentPlanetIndex = currentPlanetIndex,
-                gameInProgress = gameInProgress
+                gameInProgress = gameInProgress,
+                flatMapWidth = GetFlatMapWidth(),
+                flatMapHeight = GetFlatMapHeight(),
             };
             
             // Get player civilization info
@@ -2299,6 +2294,18 @@ public class GameManager : MonoBehaviour
         currentTurn = saveData.currentTurn;
         gameInProgress = saveData.gameInProgress;
         mapSize = saveData.mapSize;
+        // Restore flat map dimensions (fallback to preset if missing)
+        if (saveData.flatMapWidth > 0f && saveData.flatMapHeight > 0f)
+        {
+            flatMapWidth = saveData.flatMapWidth;
+            flatMapHeight = saveData.flatMapHeight;
+            Debug.Log($"[GameManager] Restored flat map dims from save: {flatMapWidth}x{flatMapHeight}");
+        }
+        else
+        {
+            SetFlatMapDimensionsFromSize(mapSize);
+            Debug.Log($"[GameManager] Save missing flat dims; using preset {mapSize}: {flatMapWidth}x{flatMapHeight}");
+        }
         enableMultiPlanetSystem = saveData.enableMultiPlanetSystem;
         currentPlanetIndex = saveData.currentPlanetIndex;
 

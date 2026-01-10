@@ -56,7 +56,7 @@ public class WaterMeshGenerator : MonoBehaviour
 
             if (!IsWaterBiome(tileData.biome)) continue;
 
-            Vector3 center = grid.tileCenters[i];
+            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
             float halfW = tileWidth * 0.5f - insetX;
             float halfH = tileHeight * 0.5f - insetZ;
 

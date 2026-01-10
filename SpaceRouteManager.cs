@@ -441,8 +441,13 @@ public class SpaceRouteManager : MonoBehaviour
         var tileData = planetGen.GetHexTileData(landingTile);
         if (tileData != null)
         {
-            // Get tile world position and place unit
-            Vector3 tileCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(landingTile, 0f, planetIndex) : planetGen.Grid.tileCenters[landingTile];
+            // Get tile world position and place unit (flat-only)
+            if (TileSystem.Instance == null)
+            {
+                Debug.LogError("[SpaceRouteManager] TileSystem not ready; cannot place unit in flat-only mode.");
+                return;
+            }
+            Vector3 tileCenter = TileSystem.Instance.GetTileCenterFlat(landingTile);
             unit.transform.position = tileCenter;
             unit.transform.SetParent(planetGen.transform);
         }

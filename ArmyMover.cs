@@ -69,7 +69,7 @@ public class ArmyMover : MonoBehaviour
             Vector3 targetPos = Vector3.zero;
             if (TileSystem.Instance != null)
             {
-                targetPos = TileSystem.Instance.GetTileCenter(targetTile);
+                targetPos = TileSystem.Instance.GetTileCenterFlat(targetTile);
             }
             
             // Move towards target position

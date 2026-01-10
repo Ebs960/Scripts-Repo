@@ -15,9 +15,6 @@ public class FlatMapTextureRenderer : MonoBehaviour
     [SerializeField] private int textureHeight = 1024;
     
     [Header("Map Dimensions")]
-    [Tooltip("When enabled, mapWidth/mapHeight are derived from the planet radius (mapWidth = 2πR, mapHeight = πR).")]
-    [SerializeField] private bool autoScaleToPlanetRadius = true;
-    
     [Tooltip("Full horizontal span of the map in world units (wraps east-west).")]
     [SerializeField] private float mapWidth = 360f;
     
@@ -42,7 +39,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
     [Header("Elevation Displacement")]
     [Tooltip("Enable elevation displacement on flat map (requires subdivided mesh)")]
     [SerializeField] private bool enableElevationDisplacement = true;
-    [Tooltip("Number of subdivisions for the flat map mesh (higher = smoother displacement, more vertices)")]
+    [Tooltip("Number of mesh segments for the flat map (higher = smoother displacement, more vertices)")]
     [SerializeField] private int meshSubdivisions = 256; // Subdivisions per side (256x128 recommended for good detail)
     [Tooltip("Displacement strength multiplier (how much elevation affects height)")]
     [SerializeField] private float displacementStrength = 0.1f; // 10% of map height
@@ -52,7 +49,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
     private GameObject quadObject;
     private MeshRenderer quadRenderer;
     private Material mapMaterial;
-    private Texture2D mapTexture;
+    private RenderTexture mapTexture;  // Changed from Texture2D to RenderTexture - use GPU texture directly
     private PlanetTextureBaker.BakeResult bakeResult;
     private bool isBuilt;
     private bool _subscribedToPlanetReady;
@@ -62,7 +59,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
     public float MapWidth => mapWidth;
     public float MapHeight => mapHeight;
     public bool IsBuilt => isBuilt;
-    public Texture2D MapTexture => mapTexture;
+    public Texture MapTexture => mapTexture;  // RenderTexture implements Texture interface
     
     private void OnEnable()
     {
@@ -142,11 +139,22 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         Clear();
         
-        // Calculate map dimensions
-        if (autoScaleToPlanetRadius)
+        // Calculate map dimensions from GameManager
+        if (GameManager.Instance != null)
         {
-            mapWidth = planetGen.Grid.MapWidth;
-            mapHeight = planetGen.Grid.MapHeight;
+            float gmW = GameManager.Instance.GetFlatMapWidth();
+            float gmH = GameManager.Instance.GetFlatMapHeight();
+            if (gmW > 0.001f && gmH > 0.001f)
+            {
+                mapWidth = gmW;
+                mapHeight = gmH;
+            }
+        }
+        // Fallback: if dimensions are invalid or extremely small, use sensible defaults
+        if (mapWidth <= 0.001f || mapHeight <= 0.001f)
+        {
+            mapWidth = Mathf.Max(mapWidth, 360f);
+            mapHeight = Mathf.Max(mapHeight, 180f);
         }
         
         // Store planet reference
@@ -166,11 +174,15 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         if (bakeResult.texture == null)
         {
-            Debug.LogError("[FlatMapTextureRenderer] Failed to bake planet texture.");
+            Debug.LogError("[FlatMapTextureRenderer] Failed to bake planet texture. bakeResult.texture is NULL!");
+            Debug.LogError($"[FlatMapTextureRenderer] colorProvider is {(colorProvider == null ? "NULL" : "ASSIGNED")}");
+            Debug.LogError($"[FlatMapTextureRenderer] bakeResult.lut length: {(bakeResult.lut != null ? bakeResult.lut.Length : 0)}");
             return;
         }
         
         mapTexture = bakeResult.texture;
+        Debug.Log($"[FlatMapTextureRenderer] Successfully baked texture (RenderTexture): {(mapTexture != null ? mapTexture.name : "NULL")}");
+        Debug.Log($"[FlatMapTextureRenderer] RenderTexture: Dimensions {(mapTexture != null ? mapTexture.width + "x" + mapTexture.height : "NULL")}, Format ARGB32");
         
         // Create quad (or subdivided mesh if displacement enabled)
         if (enableElevationDisplacement && bakeResult.heightmap != null)
@@ -183,6 +195,12 @@ public class FlatMapTextureRenderer : MonoBehaviour
         {
             mapMaterial.mainTexture = mapTexture;
             mapMaterial.SetTexture("_MainTex", mapTexture);
+            Debug.Log($"[FlatMapTextureRenderer] Applied texture to material: {mapMaterial.name}");
+            Debug.Log($"[FlatMapTextureRenderer] Material._MainTex: {(mapMaterial.GetTexture("_MainTex") != null ? "ASSIGNED" : "NULL")}");
+        }
+        else
+        {
+            Debug.LogError("[FlatMapTextureRenderer] mapMaterial is NULL, cannot apply texture!");
         }
         
         // Initialize TerrainOverlayGPU (Phase 6: GPU overlays)
@@ -192,6 +210,22 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         // Update WorldPicker if it exists
         UpdateWorldPicker();
+        
+        // FINAL VALIDATION: Check that texture is actually applied and visible
+        if (quadRenderer != null && mapMaterial != null)
+        {
+            Texture appliedTex = mapMaterial.GetTexture("_MainTex");
+            if (appliedTex == null)
+            {
+                Debug.LogError("[FlatMapTextureRenderer] CRITICAL: mapMaterial._MainTex is NULL even though we set it!");
+                Debug.LogError($"[FlatMapTextureRenderer] Material: {mapMaterial.name}");
+                Debug.LogError($"[FlatMapTextureRenderer] Shader: {mapMaterial.shader.name}");
+            }
+            else
+            {
+                Debug.Log($"[FlatMapTextureRenderer] SUCCESS: mapMaterial._MainTex is {appliedTex.name}");
+            }
+        }
         
         Debug.Log($"[FlatMapTextureRenderer] Built flat map texture ({textureWidth}x{textureHeight}). MapWidth={mapWidth:F1}, MapHeight={mapHeight:F1}");
     }
@@ -205,10 +239,8 @@ public class FlatMapTextureRenderer : MonoBehaviour
         if (overlayGPU != null && bakeResult.lut != null)
         {
             overlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, textureWidth, textureHeight);
-            
             // Subscribe to TileSystem events for overlay updates
             SubscribeToTileSystemEvents(overlayGPU);
-            
             // Apply overlay textures to material
             ApplyOverlayTexturesToMaterial(overlayGPU);
         }
@@ -294,8 +326,8 @@ public class FlatMapTextureRenderer : MonoBehaviour
         if (worldPicker != null && bakeResult.lut != null)
         {
             worldPicker.lut = bakeResult.lut;
-            worldPicker.lutWidth = textureWidth;
-            worldPicker.lutHeight = textureHeight;
+            worldPicker.lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+            worldPicker.lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
             worldPicker.flatMapCollider = quadObject?.GetComponent<Collider>();
         }
     }
@@ -315,24 +347,42 @@ public class FlatMapTextureRenderer : MonoBehaviour
         if (quadRenderer == null)
             quadRenderer = quadObject.AddComponent<MeshRenderer>();
         
-        // Create material with texture wrapping
-        mapMaterial = new Material(Shader.Find("Standard"));
-        mapMaterial.mainTexture = mapTexture;
-        mapMaterial.SetTexture("_MainTex", mapTexture);
+        // Create material with the required URP custom shader (no fallbacks)
+        Shader shaderToUse = flatMapDisplacementShader != null ? flatMapDisplacementShader : Shader.Find("Custom/FlatMapDisplacement_URP");
+        if (shaderToUse == null)
+        {
+            Debug.LogError("[FlatMapTextureRenderer] CreateQuad: Custom/FlatMapDisplacement_URP not found. Assign 'flatMapDisplacementShader' in inspector.");
+            return;
+        }
+        mapMaterial = new Material(shaderToUse);
+        Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Created material with {shaderToUse.name}");
         
-        // Apply heightmap if available
+        if (mapMaterial != null && mapTexture != null)
+        {
+            mapMaterial.mainTexture = mapTexture;
+            mapMaterial.SetTexture("_MainTex", mapTexture);
+            Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Assigned mapTexture to material._MainTex");
+        }
+        else
+        {
+            Debug.LogError($"[FlatMapTextureRenderer] CreateQuad: FAILED - mapMaterial is {(mapMaterial == null ? "NULL" : "VALID")}, mapTexture is {(mapTexture == null ? "NULL" : "VALID")}");
+        }
+        
+        // Apply heightmap and parameters
         if (bakeResult.heightmap != null)
         {
             mapMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
-            mapMaterial.SetFloat("_DisplacementStrength", displacementStrength);
-            // Use a custom shader that supports displacement, or use vertex colors
-            // For now, we'll use vertex displacement in CreateSubdividedPlane
+            mapMaterial.SetFloat("_FlatHeightScale", displacementStrength);
+            mapMaterial.SetFloat("_MapHeight", mapHeight);
         }
+        mapMaterial.SetFloat("_Metallic", 0.0f);
+        mapMaterial.SetFloat("_Smoothness", 0.3f);
         
         // Enable horizontal wrapping
         if (mapTexture != null)
         {
             mapTexture.wrapMode = TextureWrapMode.Repeat;
+            Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Set mapTexture wrapMode to Repeat");
         }
         if (bakeResult.heightmap != null)
         {
@@ -340,6 +390,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
         }
         
         quadRenderer.material = mapMaterial;
+        Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Assigned material to renderer");
         
         // Ensure collider exists for raycast picking
         var collider = quadObject.GetComponent<Collider>();
@@ -438,19 +489,24 @@ public class FlatMapTextureRenderer : MonoBehaviour
         Shader shaderToUse = flatMapDisplacementShader;
         if (shaderToUse == null)
         {
-            // Try to find the custom shader
-            shaderToUse = Shader.Find("Custom/FlatMapDisplacement");
+            // Require the URP custom shader; no fallbacks
+            shaderToUse = Shader.Find("Custom/FlatMapDisplacement_URP");
             if (shaderToUse == null)
             {
-                // Fallback to Standard shader (no displacement, but still works)
-                Debug.LogWarning("[FlatMapTextureRenderer] FlatMapDisplacement shader not found, using Standard shader. Displacement will be disabled.");
-                shaderToUse = Shader.Find("Standard");
+                Debug.LogError("[FlatMapTextureRenderer] Custom/FlatMapDisplacement_URP not found. Assign 'flatMapDisplacementShader' in the inspector or ensure the URP shader asset exists.");
+                return; // Abort setup to avoid magenta from invalid materials
             }
         }
         
         mapMaterial = new Material(shaderToUse);
+        Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Created material with shader {(shaderToUse != null ? shaderToUse.name : "NULL")}");
+        
         mapMaterial.mainTexture = mapTexture;
         mapMaterial.SetTexture("_MainTex", mapTexture);
+        // Ensure material scalars are applied
+        mapMaterial.SetFloat("_Metallic", 0.0f);
+        mapMaterial.SetFloat("_Smoothness", 0.3f);
+        Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Set _MainTex to {mapTexture.name}");
         
         // Apply heightmap for GPU vertex displacement
         if (bakeResult.heightmap != null)
@@ -458,17 +514,12 @@ public class FlatMapTextureRenderer : MonoBehaviour
             mapMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
             mapMaterial.SetFloat("_FlatHeightScale", displacementStrength);
             mapMaterial.SetFloat("_MapHeight", mapHeight);
+            Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Set _Heightmap, _FlatHeightScale, _MapHeight");
         }
         
-        // Enable horizontal wrapping
-        if (mapTexture != null)
-        {
-            mapTexture.wrapMode = TextureWrapMode.Repeat;
-        }
-        if (bakeResult.heightmap != null)
-        {
-            bakeResult.heightmap.wrapMode = TextureWrapMode.Repeat;
-        }
+        // RenderTextures handle wrapping at the shader level; material wrap mode is set via shader
+        // No need to set wrapMode on RenderTexture - it's configured during bake
+        Debug.Log("[FlatMapTextureRenderer] CreateSubdividedPlane: RenderTextures assigned (wrapping configured at bake time)");
         
         quadRenderer.material = mapMaterial;
         
@@ -478,6 +529,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
         var meshCollider = quadObject.AddComponent<MeshCollider>();
         meshCollider.sharedMesh = mesh;
     }
+
     
     /// <summary>
     /// Get the world position for a given UV coordinate (0-1).

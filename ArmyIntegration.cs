@@ -37,7 +37,7 @@ public static class ArmyIntegration
                 unit.currentTileIndex = nearbyArmy.currentTileIndex;
                 if (TileSystem.Instance != null)
                 {
-                    Vector3 armyPos = TileSystem.Instance.GetTileCenter(nearbyArmy.currentTileIndex);
+                    Vector3 armyPos = TileSystem.Instance.GetTileCenterFlat(nearbyArmy.currentTileIndex);
                     unit.transform.position = armyPos;
                 }
                 Debug.Log($"[ArmyIntegration] Added {unit.data.unitName} to nearby army {nearbyArmy.armyName}");

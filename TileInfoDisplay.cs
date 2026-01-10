@@ -143,7 +143,7 @@ public class TileInfoDisplay : MonoBehaviour
         else
         {
             tileSurfacePosition = TileSystem.Instance != null
-                ? TileSystem.Instance.GetTileSurfacePosition(tileIndex, 0.1f)
+                ? TileSystem.Instance.GetTileCenterFlat(tileIndex)
             : worldPos;
         }
 
@@ -404,7 +404,7 @@ public class TileInfoDisplay : MonoBehaviour
         {
             // Re-apply last highlight when re-enabled.
             Vector3 tileSurfacePosition = TileSystem.Instance != null
-                ? TileSystem.Instance.GetTileSurfacePosition(lastHoveredTileIndex, 0.1f)
+                ? TileSystem.Instance.GetTileCenterFlat(lastHoveredTileIndex)
                 : Vector3.zero;
             if (tileSurfacePosition != Vector3.zero)
                 UpdateHighlight(tileSurfacePosition, lastHoverWasMoon);

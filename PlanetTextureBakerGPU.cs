@@ -55,13 +55,13 @@ public static class PlanetTextureBakerGPU
         
         if (planetGen == null || planetGen.Grid == null || !planetGen.Grid.IsBuilt)
         {
-            Debug.LogWarning("[PlanetTextureBakerGPU] Invalid planet generator or grid not built");
+            Debug.LogError("[PlanetTextureBakerGPU] FAILED: Invalid planet generator or grid not built");
             return res;
         }
 
         if (computeShader == null)
         {
-            Debug.LogError("[PlanetTextureBakerGPU] Compute shader is null! Falling back to CPU path.");
+            Debug.LogError("[PlanetTextureBakerGPU] Compute shader is NULL! This is the problem!");
             return res;
         }
 
@@ -69,45 +69,68 @@ public static class PlanetTextureBakerGPU
         int tileCount = grid.TileCount;
         if (tileCount <= 0)
         {
-            Debug.LogWarning("[PlanetTextureBakerGPU] Grid has no tiles");
+            Debug.LogError($"[PlanetTextureBakerGPU] FAILED: Grid has {tileCount} tiles");
             return res;
         }
+
+        Debug.Log($"[PlanetTextureBakerGPU] Starting GPU bake: {width}x{height}, {tileCount} tiles");
 
         // Build per-tile color atlas and elevation data (CPU - this is game state, not visual)
         var tileColors = new Color32[tileCount];
         var tileElevations = new float[tileCount];
+        
+        int colorProviderUsed = 0;
+        int biomeHelperUsed = 0;
+        
         for (int i = 0; i < tileCount; i++)
         {
             var td = planetGen.GetHexTileData(i);
             Biome biome = td != null ? td.biome : planetGen.GetBaseBiome(i);
 
-            // Compute equirect UV from tile center direction (same as CPU path)
-            Vector3 dir = grid.tileCenters[i].normalized;
-            float lon = Mathf.Atan2(dir.z, dir.x);
-            float lat = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f));
-            float u = (lon / (2f * Mathf.PI)) + 0.5f;
-            float v = (lat / Mathf.PI) + 0.5f;
+            // Compute equirect UV from flat tile center (flat-only)
+            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
+            float u = (center.x + grid.MapWidth * 0.5f) / grid.MapWidth;
+            float v = (center.z + grid.MapHeight * 0.5f) / grid.MapHeight;
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
             var uv = new Vector2(u, v);
 
             Color c;
+            // Use MinimapColorProvider to get actual biome texture colors (samples texture at UV)
             if (colorProvider != null)
             {
                 if (td != null)
+                {
                     c = colorProvider.ColorFor(td, uv);
+                    colorProviderUsed++;
+                }
                 else
-                    c = BiomeColorHelper.GetMinimapColor(biome);
+                {
+                    Debug.LogWarning($"[PlanetTextureBakerGPU] Tile {i} has no HexTileData, cannot sample from provider");
+                    c = Color.magenta;
+                }
             }
             else
             {
-                c = BiomeColorHelper.GetMinimapColor(biome);
+                Debug.LogError("[PlanetTextureBakerGPU] CRITICAL: MinimapColorProvider is NULL! GPU bake needs biome textures from the provider.");
+                c = Color.magenta;
+                biomeHelperUsed++;
             }
 
             tileColors[i] = (Color32)c;
+            
+            // Sample a few tiles
+            if (i < 5 || i == tileCount - 1)
+            {
+                Debug.Log($"[PlanetTextureBakerGPU] Tile {i}: biome={biome}, color=({tileColors[i].r},{tileColors[i].g},{tileColors[i].b},{tileColors[i].a})");
+            }
             
             // Store elevation (0-1 range)
             float elevation = td != null ? td.elevation : planetGen.GetTileElevation(i);
             tileElevations[i] = Mathf.Clamp01(elevation);
         }
+        
+        Debug.Log($"[PlanetTextureBakerGPU] Color distribution: {colorProviderUsed} from provider, {biomeHelperUsed} from BiomeColorHelper");
         res.tileColors = tileColors;
 
         // Build LUT: pixel -> tileIndex (CPU - this is spatial mapping, not visual)
@@ -147,32 +170,42 @@ public static class PlanetTextureBakerGPU
         int kernel = computeShader.FindKernel("BakeTextures");
         if (kernel < 0)
         {
-            Debug.LogError("[PlanetTextureBakerGPU] Kernel 'BakeTextures' not found in compute shader!");
+            Debug.LogError("[PlanetTextureBakerGPU] CRITICAL: Kernel 'BakeTextures' not found in compute shader!");
+            Debug.LogError("[PlanetTextureBakerGPU] The compute shader doesn't have the BakeTextures kernel defined!");
             return res;
         }
+        
+        Debug.Log("[PlanetTextureBakerGPU] Found BakeTextures kernel");
 
         // Set buffers
         computeShader.SetBuffer(kernel, "_PixelToTileLUT", lutBuffer);
         computeShader.SetBuffer(kernel, "_TileBiomeColors", colorBuffer);
         computeShader.SetBuffer(kernel, "_TileElevations", elevationBuffer);
+        Debug.Log("[PlanetTextureBakerGPU] Set compute buffers");
 
         // Set output textures
         computeShader.SetTexture(kernel, "_BiomeTexture", biomeRT);
         computeShader.SetTexture(kernel, "_HeightTexture", heightRT);
+        Debug.Log("[PlanetTextureBakerGPU] Set output textures");
 
         // Set parameters
         computeShader.SetInt("_Width", width);
         computeShader.SetInt("_Height", height);
         computeShader.SetInt("_TileCount", tileCount);
+        Debug.Log($"[PlanetTextureBakerGPU] Set parameters: {width}x{height}, {tileCount} tiles");
 
         // Dispatch compute shader (8x8 thread groups)
         int threadGroupsX = Mathf.CeilToInt(width / 8f);
         int threadGroupsY = Mathf.CeilToInt(height / 8f);
+        Debug.Log($"[PlanetTextureBakerGPU] Dispatching compute shader: {threadGroupsX}x{threadGroupsY} thread groups");
         computeShader.Dispatch(kernel, threadGroupsX, threadGroupsY, 1);
+        Debug.Log("[PlanetTextureBakerGPU] Compute shader dispatch COMPLETE");
 
         // Return results (RenderTextures are ready to use, no CPU readback)
         res.biomeTexture = biomeRT;
         res.heightTexture = heightRT;
+        
+        Debug.Log($"[PlanetTextureBakerGPU] GPU bake complete! Returning biomeRT ({biomeRT.width}x{biomeRT.height}), heightRT ({heightRT.width}x{heightRT.height})");
 
         return res;
     }
