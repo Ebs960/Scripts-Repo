@@ -2338,7 +2338,6 @@ currentPlanetIndex = planetIndex;
         else
         {
             SetFlatMapDimensionsFromSize(mapSize);
-            Debug.Log($"[GameManager] Save missing flat dims; using preset {mapSize}: {flatMapWidth}x{flatMapHeight}");
         }
         enableMultiPlanetSystem = saveData.enableMultiPlanetSystem;
         currentPlanetIndex = saveData.currentPlanetIndex;
@@ -2637,8 +2636,7 @@ _spawnedCivsAndAnimals = true;
             Debug.LogWarning("[GameManager] Forcing Earth (0) context before spawning");
             currentPlanetIndex = 0;
         }
-Debug.Log($"[GameManager] Earth planet generator exists? {GetPlanetGenerator(0) != null}");
-// Civs
+        // Civs
         UpdateLoadingProgress(0.75f, "Spawning civilizations...");
 if (civilizationManager != null)
         {

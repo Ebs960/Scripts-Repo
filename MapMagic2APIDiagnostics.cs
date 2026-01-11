@@ -30,7 +30,7 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
     [ContextMenu("Run Diagnostics")]
     public void RunDiagnostics()
     {
-// Find MapMagic component
+        // Find MapMagic component
         object mapMagicInstance = FindMapMagicComponent();
         if (mapMagicInstance == null)
         {
@@ -39,20 +39,19 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         }
         
         var mapMagicType = mapMagicInstance.GetType();
-Debug.Log($"MapMagic Component Assembly: {mapMagicType.Assembly.FullName}");
         
         // QUESTION 1: What's the exact type of the graph property?
-InspectGraphProperty(mapMagicType, mapMagicInstance);
+        InspectGraphProperty(mapMagicType, mapMagicInstance);
         
         // QUESTION 2: Can we access exposed variables programmatically?
-InspectExposedVariables(mapMagicType, mapMagicInstance);
+        InspectExposedVariables(mapMagicType, mapMagicInstance);
         
         // QUESTION 3: Does MapMagic 2 expose a public API for node creation/modification?
-InspectNodeAPI(mapMagicType, mapMagicInstance);
+        InspectNodeAPI(mapMagicType, mapMagicInstance);
         
         // QUESTION 4: Can we modify node parameters after graph creation?
-InspectRuntimeNodeModification(mapMagicType, mapMagicInstance);
-}
+        InspectRuntimeNodeModification(mapMagicType, mapMagicInstance);
+    }
     
     private object FindMapMagicComponent()
     {
@@ -74,18 +73,18 @@ InspectRuntimeNodeModification(mapMagicType, mapMagicInstance);
         }
         else
         {
-// Get ALL components and check their types
+            // Get ALL components and check their types
             Component[] allComponents = targetObject.GetComponents<Component>();
-foreach (var comp in allComponents)
+            foreach (var comp in allComponents)
             {
                 if (comp == null) continue;
                 var compType = comp.GetType();
-// Check if this looks like a MapMagic component
+                // Check if this looks like a MapMagic component
                 if (compType.Name.Contains("MapMagic") || 
                     compType.FullName.Contains("MapMagic") ||
                     compType.Name.Contains("Map") && compType.Name.Contains("Magic"))
                 {
-return comp;
+                    return comp;
                 }
             }
         }
@@ -110,13 +109,13 @@ return comp;
             
             if (mapMagicType != null)
             {
-// Try on assigned object first
+                // Try on assigned object first
                 if (targetObject != null)
                 {
                     var comp = targetObject.GetComponent(mapMagicType);
                     if (comp != null)
                     {
-return comp;
+                        return comp;
                     }
                 }
                 
@@ -124,7 +123,7 @@ return comp;
                 var found = FindFirstObjectByType(mapMagicType);
                 if (found != null)
                 {
-return found;
+                    return found;
                 }
             }
         }
@@ -157,15 +156,11 @@ return found;
             if (graphValue != null)
             {
                 var graphType = graphValue.GetType();
-Debug.Log($"  - Property Type: {graphProperty.PropertyType.FullName}");
-Debug.Log($"  - Is ScriptableObject: {typeof(ScriptableObject).IsAssignableFrom(graphType)}");
-// Check if it's writable
-                if (graphProperty.CanWrite)
+                // Check if it's writable - this is diagnostic info only
+                if (!graphProperty.CanWrite)
                 {
-}
-                else
-                {
-}
+                    Debug.LogWarning("  - Graph property is read-only");
+                }
             }
             else
             {
@@ -179,11 +174,10 @@ Debug.Log($"  - Is ScriptableObject: {typeof(ScriptableObject).IsAssignableFrom(
             if (graphField != null)
             {
                 var graphValue = graphField.GetValue(mapMagicInstance);
-                if (graphValue != null)
+                if (graphValue == null)
                 {
-                    var graphType = graphValue.GetType();
-Debug.Log($"  - Field Type: {graphField.FieldType.FullName}");
-}
+                    Debug.LogWarning("  - Graph field exists but value is NULL");
+                }
             }
             else
             {
@@ -210,7 +204,8 @@ Debug.Log($"  - Field Type: {graphField.FieldType.FullName}");
         }
         
         var graphType = graph.GetType();
-// Look for exposed variables property
+        
+        // Look for exposed variables property
         var exposedProperty = graphType.GetProperty("exposed", BindingFlags.Public | BindingFlags.Instance);
         if (exposedProperty == null)
         {
@@ -228,42 +223,35 @@ Debug.Log($"  - Field Type: {graphField.FieldType.FullName}");
         if (exposedProperty != null)
         {
             var exposedValue = exposedProperty.GetValue(graph);
-Debug.Log($"  - Property Name: {exposedProperty.Name}");
-if (exposedValue != null)
+            if (exposedValue != null)
             {
                 var exposedType = exposedValue.GetType();
-// Try to find SetValue/GetValue methods
+                
+                // Try to find SetValue/GetValue methods
                 var setValueMethod = exposedType.GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance);
                 if (setValueMethod == null)
                 {
                     setValueMethod = exposedType.GetMethod("set_Item", BindingFlags.Public | BindingFlags.Instance); // Indexer
                 }
                 
-                if (setValueMethod != null)
-                {
-Debug.Log($"    Parameters: {string.Join(", ", System.Array.ConvertAll(setValueMethod.GetParameters(), p => $"{p.ParameterType.Name} {p.Name}"))}");
-                }
-                else
+                if (setValueMethod == null)
                 {
                     Debug.LogWarning($"  - ✗ SetValue method NOT FOUND");
                 }
-                
-                // Check if it's a dictionary or collection
-                if (exposedValue is System.Collections.IDictionary dict)
-                {
-}
             }
         }
         else
         {
             Debug.LogWarning("  - ✗ Exposed variables property NOT FOUND!");
-// List all public properties
+            
+            // List all public properties
             var allProperties = graphType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-foreach (var prop in allProperties)
+            foreach (var prop in allProperties)
             {
                 if (prop.Name.ToLower().Contains("exposed") || prop.Name.ToLower().Contains("variable"))
                 {
-}
+                    Debug.LogWarning($"  - Found related property: {prop.Name}");
+                }
             }
         }
     }
@@ -302,18 +290,7 @@ foreach (var prop in allProperties)
             generatorsProperty = graphType.GetProperty("Nodes", BindingFlags.Public | BindingFlags.Instance);
         }
         
-        if (generatorsProperty != null)
-        {
-Debug.Log($"  - Property Name: {generatorsProperty.Name}");
-var generators = generatorsProperty.GetValue(graph);
-            if (generators != null)
-            {
-                if (generators is System.Collections.ICollection collection)
-                {
-}
-            }
-        }
-        else
+        if (generatorsProperty == null)
         {
             Debug.LogWarning("  - ✗ Node/Generator collection property NOT FOUND!");
         }
@@ -329,11 +306,7 @@ var generators = generatorsProperty.GetValue(graph);
             createNodeMethod = graphType.GetMethod("CreateGenerator", BindingFlags.Public | BindingFlags.Instance);
         }
         
-        if (createNodeMethod != null)
-        {
-Debug.Log($"  - Method Name: {createNodeMethod.Name}");
-}
-        else
+        if (createNodeMethod == null)
         {
             Debug.LogWarning("  - ✗ Node creation method NOT FOUND (may need to use reflection)");
         }
@@ -401,12 +374,8 @@ Debug.Log($"  - Method Name: {createNodeMethod.Name}");
                         modifiableCount++;
                     }
                 }
-Debug.Log($"  - {modifiableCount} nodes have modifiable properties (intensity/frequency/scale/value)");
                 
-                if (modifiableCount > 0)
-                {
-}
-                else
+                if (modifiableCount == 0)
                 {
                     Debug.LogWarning($"  - ✗ No modifiable properties found on nodes");
                 }

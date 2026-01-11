@@ -123,12 +123,6 @@ public static class BiomeHelper {
             else if (isGanymedeWorldType) planetType = "Ganymede";
             else if (isCallistoWorldType) planetType = "Callisto";
             else if (isLunaWorldType) planetType = "Luna";
-            
-            // Only log a sample of biome assignments to avoid spam
-            if (UnityEngine.Random.Range(0, 1000) < 1) // 0.1% chance to log
-            {
-                UnityEngine.Debug.Log($"[BiomeHelper] {planetType} biome assignment - Land: {isLand}, Temp: {temperature:F2}, Moisture: {moisture:F2}");
-            }
         }
 
         // === EARTH-ONLY GUARANTEED POLAR OVERRIDE - FIRST PRIORITY ===
@@ -211,13 +205,6 @@ public static class BiomeHelper {
             // Determine if this is day side (east-west near center) or night side (edges)
             float normalizedLong = eastWest * 180f; // -180 to +180
             bool isDaySide = (normalizedLong >= -90f && normalizedLong <= 90f);
-            
-            // Debug logging for Mercury hemisphere assignment
-            if (UnityEngine.Random.Range(0, 1000) < 5) // 0.5% chance to log
-            {
-                string side = isDaySide ? "Day" : "Night";
-                UnityEngine.Debug.Log($"[BiomeHelper] Mercury hemisphere - EastWest: {normalizedLong:F1}°, Side: {side}");
-            }
             
             if (isDaySide) {
                 // Day side - Hot hemisphere gets traditional Mercury biomes

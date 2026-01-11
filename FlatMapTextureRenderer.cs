@@ -146,7 +146,6 @@ TrySubscribeToSurfaceReady(gen);
         var gen = _surfaceEventSource ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         TryUnsubscribeFromSurfaceReady();
         if (gen == null) return;
-        Debug.Log("[FlatMapTextureRenderer] Surface generated; building flat map texture.");
         Rebuild(gen);
     }
     
@@ -225,7 +224,6 @@ TrySubscribeToSurfaceReady(gen);
         }
         
         mapTexture = bakeResult.texture;
-Debug.Log($"[FlatMapTextureRenderer] RenderTexture: Dimensions {(mapTexture != null ? mapTexture.width + "x" + mapTexture.height : "NULL")}, Format ARGB32");
         
         // Create quad (or subdivided mesh if displacement enabled)
         if (enableElevationDisplacement && bakeResult.heightmap != null)
@@ -238,7 +236,6 @@ Debug.Log($"[FlatMapTextureRenderer] RenderTexture: Dimensions {(mapTexture != n
         {
             mapMaterial.mainTexture = mapTexture;
             mapMaterial.SetTexture("_MainTex", mapTexture);
-Debug.Log($"[FlatMapTextureRenderer] Material._MainTex: {(mapMaterial.GetTexture("_MainTex") != null ? "ASSIGNED" : "NULL")}");
         }
         else
         {

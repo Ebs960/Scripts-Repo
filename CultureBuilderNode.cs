@@ -216,8 +216,6 @@ public class CultureBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler
     
     private void ShowContextMenu(Vector2 screenPosition)
     {
-        // Simple context menu logging for now
-Debug.Log("Available actions:");
-Debug.Log("- Connect (Ctrl+Click another culture)");
-}
+        // Context menu placeholder - implement UI popup as needed
+    }
 }

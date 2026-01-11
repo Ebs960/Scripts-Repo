@@ -205,7 +205,6 @@ TrySubscribeToSurfaceReady(gen);
         TryUnsubscribeFromSurfaceReady();
         if (gen == null) return;
         
-        Debug.Log("[HexMapChunkManager] Surface generated; building chunks.");
         BuildChunks(gen);
     }
     

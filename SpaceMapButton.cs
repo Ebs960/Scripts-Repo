@@ -119,15 +119,15 @@ foreach (var ui in allSpaceMapUIs)
         if (tradeButton != null)
         {
             // This assumes you have a panel to show. A more robust solution would be needed.
-            tradeButton.onClick.AddListener(() => Debug.Log("Trade button clicked."));
+            tradeButton.onClick.AddListener(() => { });
             if (UIManager.Instance != null)
                 UIManager.Instance.WireUIInteractions(tradeButton.gameObject);
         }
 
         if (ruinsButton != null)
         {
-            // We might not have a specific panel for ruins, but we can log something.
-            ruinsButton.onClick.AddListener(() => Debug.Log("Ancient Ruins button clicked."));
+            // We might not have a specific panel for ruins.
+            ruinsButton.onClick.AddListener(() => { });
             if (UIManager.Instance != null)
                 UIManager.Instance.WireUIInteractions(ruinsButton.gameObject);
         }

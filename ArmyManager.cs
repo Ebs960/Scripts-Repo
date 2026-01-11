@@ -382,7 +382,6 @@ return army;
         {
             var attackerCiv = attackerArmies[0].owner;
             var defenderCiv = defenderArmies[0].owner;
-Debug.Log($"[ArmyManager] Loading battle scene and generating battle map...");
             
             // Start battle - this will load the BattleScene and generate the battle map
             BattleTestSimple.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);

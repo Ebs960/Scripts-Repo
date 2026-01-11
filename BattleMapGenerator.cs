@@ -177,7 +177,6 @@ GenerateTerrainWithCustomSystem();
         
         // Set up AAA-quality visuals for the battle scene
         SetupBattleVisuals();
-Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
     }
     
     /// <summary>
@@ -1740,7 +1739,6 @@ int successfulPlacements = 0;
             spawnPos.y = GetTerrainHeightAtPosition(spawnPos);
             defenderSpawnPoints.Add(spawnPos);
         }
-Debug.Log($"[BattleMapGenerator] Formation layout: {unitsPerRow} units per row, {numRows} rows deep");
     }
     
     /// <summary>
@@ -1857,17 +1855,8 @@ foreach (var terrainObj in terrainObjects)
                 {
                     objBounds = collider.bounds;
                 }
-Debug.Log($"    Layer: {layer} ({layerName})");
-Debug.Log($"    Bounds: {objBounds?.ToString() ?? "unknown"}");
-Debug.Log($"    TerrainCollider: {terrainCollider != null}");
-Debug.Log($"    MeshFilter: {meshFilter != null}");
-Debug.Log($"    In buildBounds: {objBounds.HasValue && buildBounds.Intersects(objBounds.Value)}");
             }
         }
-        
-        // Also check what layer mask we're using
-Debug.Log($"  - Layer mask: {layerMask} (binary: {System.Convert.ToString(layerMask, 2)})");
-Debug.Log($"  - Collect geometry: RenderMeshes={NavMeshCollectGeometry.RenderMeshes}, PhysicsColliders={NavMeshCollectGeometry.PhysicsColliders}");
 // Filter sources to only include our terrain and obstacles
         // This ensures we only bake the procedurally generated map, not other scene objects
         // FIXED: Also check child objects and use a more robust matching method
@@ -1957,9 +1946,6 @@ break;
         // DEBUG: Log NavMesh data details
         if (navMeshData != null)
         {
-Debug.Log($"  - Sources used: {filteredSources.Count}/{sources.Count}");
-Debug.Log($"  - Source objects: {filteredSources.Count}");
-            
             // Log what types of sources we're using
             int meshSources = 0, colliderSources = 0;
             foreach (var source in filteredSources)

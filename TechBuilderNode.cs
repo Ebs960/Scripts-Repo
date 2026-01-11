@@ -216,8 +216,6 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
     
     private void ShowContextMenu(Vector2 screenPosition)
     {
-        // Simple context menu logging for now
-Debug.Log("Available actions:");
-Debug.Log("- Connect (Ctrl+Click another node)");
-}
+        // Context menu placeholder - implement UI popup as needed
+    }
 }

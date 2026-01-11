@@ -56,8 +56,6 @@ public class DiplomacyUI : MonoBehaviour
     {
         if (closeButton != null)
         {
-Debug.Log($"[DiplomacyUI] Close button parent: {closeButton.transform.parent?.name}");
-            
             // Check if close button is on the main Canvas
             Canvas parentCanvas = closeButton.GetComponentInParent<Canvas>();
             if (parentCanvas != null)
@@ -106,19 +104,6 @@ Hide();
     
     private void ValidateUIReferences()
     {
-// Main Panel
-Debug.Log($"  closeButton: {(closeButton != null ? "OK" : "NULL")}");
-        
-        // Left Section
-Debug.Log($"  civListItemPrefab: {(civListItemPrefab != null ? "OK" : "NULL")}");
-// Middle Section
-Debug.Log($"  selectedCivName: {(selectedCivName != null ? "OK" : "NULL")}");
-Debug.Log($"  relationshipStatus: {(relationshipStatus != null ? "OK" : "NULL")}");
-        
-        // Right Section
-Debug.Log($"  proposePeaceButton: {(proposePeaceButton != null ? "OK" : "NULL")}");
-Debug.Log($"  denounceButton: {(denounceButton != null ? "OK" : "NULL")}");
-        
         // Count critical missing references
         int criticalMissing = 0;
         if (mainPanel == null) criticalMissing++;

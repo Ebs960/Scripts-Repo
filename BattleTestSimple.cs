@@ -3532,13 +3532,8 @@ formationNavAgent = gameObject.GetComponent<NavMeshAgent>();
         // Check if any NavMesh data exists
         var allNavMeshData = NavMesh.CalculateTriangulation();
         bool hasNavMeshData = allNavMeshData.vertices != null && allNavMeshData.vertices.Length > 0;
-Debug.Log($"  - Has NavMesh Data: {hasNavMeshData}");
         
-        if (hasNavMeshData)
-        {
-Debug.Log($"  - NavMesh Indices: {allNavMeshData.indices.Length}");
-}
-        else
+        if (!hasNavMeshData)
         {
             Debug.LogWarning($"  - No NavMesh data found! NavMesh may not be baked yet.");
         }

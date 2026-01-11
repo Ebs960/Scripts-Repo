@@ -42,7 +42,6 @@ public static class PlanetTextureBaker
             Debug.LogError($"[PlanetTextureBaker] Bake FAILED: tileCount is {tileCount}");
             return res;
         }
-Debug.Log($"[PlanetTextureBaker] colorProvider is {(colorProvider == null ? "NULL" : "ASSIGNED")}");
         bool usePerPixelTextures = (colorProvider != null &&
             (colorProvider.renderMode == MinimapRenderMode.BiomeTextures ||
              colorProvider.renderMode == MinimapRenderMode.CustomTexture));

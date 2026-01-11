@@ -753,11 +753,8 @@ Hide();
     [ContextMenu("Test Close Button")]
     public void TestCloseButton()
     {
-if (closeButton != null)
+        if (closeButton != null)
         {
-Debug.Log($"Close button active: {closeButton.gameObject.activeInHierarchy}");
-Debug.Log($"Canvas has GraphicRaycaster: {spaceMapCanvas?.GetComponent<GraphicRaycaster>() != null}");
-            
             // Test the hide method directly
             Hide();
         }

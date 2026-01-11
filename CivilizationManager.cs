@@ -1216,7 +1216,6 @@ break; // Only propose one alliance per turn
         {
             Debug.LogWarning("[CivilizationManager] Cannot position camera: No player pioneer found!");
         }
-Debug.Log($"[CivilizationManager] Total worker units spawned: {civs.Sum(c => c.workerUnits.Count)}");
     }
 
     /// <summary>
