@@ -29,8 +29,7 @@ public class MusicManager : MonoBehaviour
                 if (musicSource == null)
                 {
                 musicSource = gameObject.AddComponent<AudioSource>();
-                    Debug.Log("MusicManager: No AudioSource found, added one automatically.");
-                }
+}
             }
 
             musicSource.loop = false; // Don't loop in-game music tracks
@@ -46,22 +45,17 @@ public class MusicManager : MonoBehaviour
 
     public void PlayMusic()
     {
-        Debug.Log("[MusicManager] PlayMusic() called");
-        
-        // Check if music is enabled
+// Check if music is enabled
         bool musicEnabled = PlayerPrefs.GetInt("MusicEnabled", 1) == 1;
-        Debug.Log($"[MusicManager] Music enabled: {musicEnabled}");
-        if (!musicEnabled)
+if (!musicEnabled)
         {
-            Debug.Log("MusicManager: Music is disabled, not playing.");
-            return;
+return;
         }
 
         // Play the current playlist if available
         if (currentPlaylist != null && currentPlaylist.Count > 0)
         {
-            Debug.Log($"[MusicManager] Current playlist has {currentPlaylist.Count} tracks, playing...");
-            PlayMusicFromList(currentPlaylist);
+PlayMusicFromList(currentPlaylist);
         }
         else
         {
@@ -71,15 +65,13 @@ public class MusicManager : MonoBehaviour
             // List all available playlists for debugging
             foreach (var playlist in musicPlaylists)
             {
-                Debug.Log($"[MusicManager] Available playlist: {playlist.Key.Item1}, {playlist.Key.Item2}, {playlist.Key.Item3} with {playlist.Value.Count} tracks");
-            }
+}
             
             // FALLBACK: Try to play any available playlist
             if (musicPlaylists.Count > 0)
             {
                 var firstPlaylist = musicPlaylists.First();
-                Debug.Log($"[MusicManager] FALLBACK: Playing first available playlist: {firstPlaylist.Key.Item1}, {firstPlaylist.Key.Item2}, {firstPlaylist.Key.Item3}");
-                PlayMusicFromList(firstPlaylist.Value);
+PlayMusicFromList(firstPlaylist.Value);
             }
             else
             {
@@ -90,9 +82,7 @@ public class MusicManager : MonoBehaviour
 
     private void PlayMusicFromList(List<AudioClip> musicList)
     {
-        Debug.Log($"[MusicManager] PlayMusicFromList called with {musicList?.Count ?? 0} tracks");
-        
-        if (musicList == null || musicList.Count == 0)
+if (musicList == null || musicList.Count == 0)
         {
             Debug.LogWarning("MusicManager: PlayMusicFromList called with empty list.");
             return;
@@ -101,31 +91,24 @@ public class MusicManager : MonoBehaviour
         // If already playing from same playlist, don't restart
         if (currentPlaylist == musicList && musicSource.isPlaying)
         {
-            Debug.Log("[MusicManager] Already playing from same playlist, not restarting");
-            return;
+return;
         }
 
         // MEMORY FIX: Only create a new copy if we need to shuffle, otherwise just reference
         if (shufflePlaylists)
         {
-            Debug.Log("[MusicManager] Shuffling playlist (creating copy)");
-            currentPlaylist = new List<AudioClip>(musicList);
+currentPlaylist = new List<AudioClip>(musicList);
             ShufflePlaylist(currentPlaylist);
         }
         else
         {
-            Debug.Log("[MusicManager] Using playlist reference (no copy)");
-            currentPlaylist = musicList; // Just reference, no copy
+currentPlaylist = musicList; // Just reference, no copy
         }
         
         currentTrackIndex = 0;
-
-        Debug.Log($"[MusicManager] Setting up new playlist with {currentPlaylist.Count} tracks");
-
-        if (!isChangingTrack)
+if (!isChangingTrack)
         {
-            Debug.Log("[MusicManager] Starting coroutine to fade and play from playlist");
-            StartCoroutine(FadeAndPlayFromPlaylist());
+StartCoroutine(FadeAndPlayFromPlaylist());
         }
         else
         {
@@ -135,8 +118,7 @@ public class MusicManager : MonoBehaviour
 
     public void InitializeMusicTracks()
     {
-        Debug.Log("[MusicManager] InitializeMusicTracks() starting...");
-        musicPlaylists.Clear();
+musicPlaylists.Clear();
 
         // Check if CivilizationManager exists
         if (CivilizationManager.Instance == null)
@@ -159,10 +141,7 @@ public class MusicManager : MonoBehaviour
             Debug.LogWarning($"[MusicManager] Player civilization {playerCiv?.civData?.civName ?? "NULL"} has no musicData!");
             return;
         }
-
-        Debug.Log($"[MusicManager] Loading music ONLY for player civilization: {playerCiv.civData.civName}");
-
-        foreach (var ageMusic in playerCiv.civData.musicData.ageMusicTracks)
+foreach (var ageMusic in playerCiv.civData.musicData.ageMusicTracks)
         {
             if (ageMusic.peaceMusicTracks?.Count > 0)
             {
@@ -178,16 +157,10 @@ public class MusicManager : MonoBehaviour
                 musicPlaylists[warKey] = ageMusic.warMusicTracks;
             }
         }
-
-        Debug.Log($"[MusicManager] Total playlists created: {musicPlaylists.Count} (player civ only)");
-
-        // Set initial music for player civilization
+// Set initial music for player civilization
         var currentAge = playerCiv.GetCurrentAge();
-        Debug.Log($"[MusicManager] Player civ current age: {currentAge}");
-        UpdateMusic(playerCiv, currentAge, DiplomaticState.Peace);
-
-        Debug.Log("[MusicManager] InitializeMusicTracks() completed");
-    }
+UpdateMusic(playerCiv, currentAge, DiplomaticState.Peace);
+}
 
     public void UpdateMusic(Civilization civ, TechAge currentAge, DiplomaticState currentState)
     {
@@ -195,18 +168,14 @@ public class MusicManager : MonoBehaviour
 
         List<AudioClip> newPlaylist = null;
         var lookupKey = (civ.civData.civName, currentAge, currentState);
-        Debug.Log($"MusicManager: Attempting to update music for {lookupKey.civName}, Age: {lookupKey.currentAge}, State: {lookupKey.currentState}");
-        
-        if (musicPlaylists.TryGetValue(lookupKey, out newPlaylist))
+if (musicPlaylists.TryGetValue(lookupKey, out newPlaylist))
         {
             if (newPlaylist == null || newPlaylist.Count == 0)
             {
                 Debug.LogWarning($"MusicManager: Found playlist for {lookupKey.civName} but it's empty.");
                 return;
             }
-
-            Debug.Log($"MusicManager: Successfully found playlist with {newPlaylist.Count} tracks.");
-            PlayMusicFromList(newPlaylist);
+PlayMusicFromList(newPlaylist);
         }
         else
         {
@@ -244,8 +213,7 @@ public class MusicManager : MonoBehaviour
 
     private IEnumerator FadeAndPlayFromPlaylist()
     {
-        Debug.Log("[MusicManager] FadeAndPlayFromPlaylist coroutine started");
-        isChangingTrack = true;
+isChangingTrack = true;
 
         if (currentPlaylist == null || currentPlaylist.Count == 0)
         {
@@ -256,14 +224,11 @@ public class MusicManager : MonoBehaviour
 
         if (currentTrackIndex >= currentPlaylist.Count)
         {
-            Debug.Log("[MusicManager] Track index reset to 0");
-            currentTrackIndex = 0;
+currentTrackIndex = 0;
         }
 
         AudioClip nextTrack = currentPlaylist[currentTrackIndex];
-        Debug.Log($"[MusicManager] Playing track {currentTrackIndex}: {nextTrack?.name ?? "NULL"}");
-
-        if (nextTrack == null)
+if (nextTrack == null)
         {
             Debug.LogError("[MusicManager] Next track is null! Cannot play.");
             isChangingTrack = false;
@@ -273,9 +238,7 @@ public class MusicManager : MonoBehaviour
         // Fade out
         float startVolume = musicSource.volume;
         float elapsedTime = 0f;
-        Debug.Log($"[MusicManager] Starting fade out from volume {startVolume}");
-
-        while (elapsedTime < fadeDuration)
+while (elapsedTime < fadeDuration)
         {
             musicSource.volume = Mathf.Lerp(startVolume, 0f, elapsedTime / fadeDuration);
             elapsedTime += Time.deltaTime;
@@ -283,25 +246,18 @@ public class MusicManager : MonoBehaviour
         }
 
         // Change track
-        Debug.Log("[MusicManager] Stopping current track and setting new one");
-        musicSource.Stop();
+musicSource.Stop();
         musicSource.clip = nextTrack;
         musicSource.Play();
-
-        Debug.Log($"[MusicManager] Started playing: {nextTrack.name}, isPlaying: {musicSource.isPlaying}");
-
-        // Fade in
+// Fade in
         elapsedTime = 0f;
-        Debug.Log($"[MusicManager] Starting fade in to volume {startVolume}");
-        while (elapsedTime < fadeDuration)
+while (elapsedTime < fadeDuration)
         {
             musicSource.volume = Mathf.Lerp(0f, startVolume, elapsedTime / fadeDuration);
             elapsedTime += Time.deltaTime;
             yield return null;
         }
-
-        Debug.Log("[MusicManager] FadeAndPlayFromPlaylist coroutine completed");
-        isChangingTrack = false;
+isChangingTrack = false;
     }
 
     public void OnMusicTrackFinished()
@@ -363,9 +319,7 @@ public class MusicManager : MonoBehaviour
     /// </summary>
     public void CleanupAudioResources()
     {
-        Debug.Log("[MusicManager] Cleaning up audio resources...");
-        
-        // Stop playback
+// Stop playback
         StopMusicImmediate();
         
         // Clear playlist references
@@ -377,9 +331,7 @@ public class MusicManager : MonoBehaviour
         
         // Force unload unused audio assets
         Resources.UnloadUnusedAssets();
-        
-        Debug.Log("[MusicManager] Audio cleanup complete");
-    }
+}
 
     void OnDestroy()
     {

@@ -85,8 +85,7 @@ public class CityUI : MonoBehaviour
 
     public void ShowForCity(City city)
     {
-        Debug.Log($"[CityUI] ShowForCity called for city: {city?.cityName ?? "NULL"}, this={gameObject.name}, activeSelf={gameObject.activeSelf}");
-        currentCity = city;
+currentCity = city;
         if (currentCity == null)
         {
             Debug.LogError("CityUI: ShowForCity called with a null city.");
@@ -102,8 +101,7 @@ public class CityUI : MonoBehaviour
 
         RefreshUI();
         gameObject.SetActive(true);
-        Debug.Log($"[CityUI] ShowForCity finished. UI should now be active: {gameObject.activeSelf}");
-    }
+}
 
     private void OnGovernorDropdownChanged(int idx)
     {
@@ -135,8 +133,7 @@ public class CityUI : MonoBehaviour
     }
     public void RefreshUI()
     {
-        Debug.Log($"[CityUI] RefreshUI called. currentCity: {currentCity?.cityName ?? "NULL"}, UI: {gameObject.name}, activeSelf: {gameObject.activeSelf}");
-        if (currentCity == null)
+if (currentCity == null)
         {
             Hide();
             return;

@@ -133,9 +133,7 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"[GameManager] Planet {planetIndex} does not exist");
             return;
         }
-        
-        Debug.Log($"[GameManager] Switching current planet to {planetIndex}");
-        currentPlanetIndex = planetIndex;
+currentPlanetIndex = planetIndex;
         climateManager = GetClimateManager(currentPlanetIndex);
         
         // Rebind TileSystem to the new current planet
@@ -322,8 +320,7 @@ public class GameManager : MonoBehaviour
     public void SetFlatMapDimensionsFromSize(MapSize size)
     {
         GetFlatMapSizeParams(size, out flatMapWidth, out flatMapHeight);
-        Debug.Log($"[GameManager] Flat map dimensions set from size {size}: {flatMapWidth}x{flatMapHeight}");
-    }
+}
 
     public float GetFlatMapWidth() => flatMapWidth;
     public float GetFlatMapHeight() => flatMapHeight;
@@ -377,11 +374,42 @@ public class GameManager : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded_AutoInit;
+        SceneManager.sceneUnloaded += OnSceneUnloaded_Cleanup;
     }
 
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded_AutoInit;
+        SceneManager.sceneUnloaded -= OnSceneUnloaded_Cleanup;
+    }
+
+    /// <summary>
+    /// MEMORY FIX: Clean up GPU caches and resources when scenes unload to prevent memory leaks in editor
+    /// </summary>
+    private void OnSceneUnloaded_Cleanup(Scene scene)
+    {
+// Clear GPU texture/buffer caches (these persist as static and leak in editor)
+        PlanetTextureBakerGPU.ClearAllCaches();
+        
+        // Clear ResourceCache to free ScriptableObject references
+        ResourceCache.Clear();
+        
+        // Clear TileSystem caches if it exists
+        if (TileSystem.Instance != null)
+        {
+            TileSystem.Instance.ClearAllCaches();
+        }
+        
+        // Request garbage collection to free memory immediately
+        System.GC.Collect();
+        Resources.UnloadUnusedAssets();
+    }
+
+    private void OnApplicationQuit()
+    {
+        // Final cleanup on application quit
+        PlanetTextureBakerGPU.ClearAllCaches();
+        ResourceCache.Clear();
     }
 
     private void Start()
@@ -801,9 +829,7 @@ public class GameManager : MonoBehaviour
         // Wait for game to be ready
         yield return new WaitUntil(() => gameInProgress);
 
-        // Wake the tile-info UI (only after solar system is ready)
-        if (TileInfoDisplay.Instance != null)
-            TileInfoDisplay.Instance.SetReady();
+        // TileHoverSystem is self-initializing, no setup needed
     }
 
     /// <summary>
@@ -965,13 +991,21 @@ public class GameManager : MonoBehaviour
         }
 
         // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
+        // Prefer HexMapChunkManager (chunk-based with seamless wrap) over FlatMapTextureRenderer (legacy single quad)
         UpdateLoadingProgress(0.75f, "Building surface map...");
+        var chunkManagerSingle = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
         var flatRendererSingle = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
-        if (flatRendererSingle != null && planetGenerator != null)
+        
+        if (chunkManagerSingle != null && planetGenerator != null)
+        {
+            chunkManagerSingle.Rebuild(planetGenerator);
+            flatPlaneY = chunkManagerSingle.transform.position.y;
+}
+        else if (flatRendererSingle != null && planetGenerator != null)
         {
             flatRendererSingle.Rebuild(planetGenerator);
             flatPlaneY = flatRendererSingle.transform.position.y;
-        }
+}
 
         if (minimapUI != null)
         {
@@ -1111,8 +1145,7 @@ public class GameManager : MonoBehaviour
             {
                 var grid = currentPlanet.Grid;
                 unitMovementController.SetReferences(grid, currentPlanet);
-                Debug.Log("[GameManager] Set UnitMovementController references to current planet generator");
-            }
+}
             else
             {
                 Debug.LogWarning("GameManager: Current PlanetGenerator is null, cannot set UnitMovementController references!");
@@ -1247,14 +1280,22 @@ public class GameManager : MonoBehaviour
         }
 
         // Flat equirectangular surface map (presentation-only) — build it during loading for the current planet.
+        // Prefer HexMapChunkManager (chunk-based with seamless wrap) over FlatMapTextureRenderer (legacy single quad)
         UpdateLoadingProgress(0.82f, "Building surface map...");
+        var chunkManagerMulti = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
         var flatRendererMulti = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
         var genForFlat = GetCurrentPlanetGenerator();
-        if (flatRendererMulti != null && genForFlat != null)
+        
+        if (chunkManagerMulti != null && genForFlat != null)
+        {
+            chunkManagerMulti.Rebuild(genForFlat);
+            flatPlaneY = chunkManagerMulti.transform.position.y;
+}
+        else if (flatRendererMulti != null && genForFlat != null)
         {
             flatRendererMulti.Rebuild(genForFlat);
             flatPlaneY = flatRendererMulti.transform.position.y;
-        }
+}
 
         // Update loading progress - UI setup
         UpdateLoadingProgress(0.85f, "Setting up interface systems...");
@@ -2201,10 +2242,7 @@ public class GameManager : MonoBehaviour
             string filePath = System.IO.Path.Combine(saveDirectory, fileName);
             string jsonData = JsonUtility.ToJson(saveData, true);
             System.IO.File.WriteAllText(filePath, jsonData);
-            
-            Debug.Log($"[GameManager] Game saved successfully to: {filePath}");
-            
-            // Show notification if UIManager is available
+// Show notification if UIManager is available
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowNotification($"Game saved: {saveData.saveName}");
@@ -2257,10 +2295,7 @@ public class GameManager : MonoBehaviour
             
             // Use existing LoadGameFromSaveData method
             LoadGameFromSaveData(saveData);
-            
-            Debug.Log($"[GameManager] Game loaded successfully from: {filePath}");
-            
-            // Show notification if UIManager is available
+// Show notification if UIManager is available
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowNotification($"Game loaded: {saveData.saveName}");
@@ -2299,8 +2334,7 @@ public class GameManager : MonoBehaviour
         {
             flatMapWidth = saveData.flatMapWidth;
             flatMapHeight = saveData.flatMapHeight;
-            Debug.Log($"[GameManager] Restored flat map dims from save: {flatMapWidth}x{flatMapHeight}");
-        }
+}
         else
         {
             SetFlatMapDimensionsFromSize(mapSize);
@@ -2444,9 +2478,7 @@ public class GameManager : MonoBehaviour
     [ContextMenu("Start Battle Test")]
     public void StartBattleTest()
     {
-        Debug.Log("[GameManager] Starting battle test...");
-        
-        // Create test civilizations
+// Create test civilizations
         Civilization attackerCiv = CreateTestCivilization("Test Attacker", true);
         Civilization defenderCiv = CreateTestCivilization("Test Defender", false);
 
@@ -2538,39 +2570,30 @@ public class GameManager : MonoBehaviour
     // =================== Event-driven spawn gating ===================
     private void EnsureSpawnAfterEarthReady()
     {
-        Debug.Log("[GameManager] EnsureSpawnAfterEarthReady called");
-        
-        // Check if Earth is already ready (might happen if called after generation)
+// Check if Earth is already ready (might happen if called after generation)
         var earth = GetPlanetGenerator(0);
         if (earth != null && earth.HasGeneratedSurface)
         {
-            Debug.Log("[GameManager] Earth surface already generated, spawning immediately");
-            if (!_spawnedCivsAndAnimals)
+if (!_spawnedCivsAndAnimals)
                 StartCoroutine(SpawnCivsAndAnimals());
             return;
         }
 
         // Set up event listener for when Earth surface is generated
-        Debug.Log("[GameManager] Setting up event listener for Earth surface generation");
-        void OnEarthSurface(int idx)
+void OnEarthSurface(int idx)
         {
-            Debug.Log($"[GameManager] OnEarthSurface event called for planet {idx}");
-            if (idx != 0) 
+if (idx != 0) 
             {
-                Debug.Log($"[GameManager] Ignoring planet {idx}, only care about Earth (index 0)");
-                return; // Only care about Earth (index 0)
+return; // Only care about Earth (index 0)
             }
-            Debug.Log("[GameManager] Earth surface generation event received - starting spawn process");
-            OnPlanetSurfaceGenerated -= OnEarthSurface; // Unsubscribe to prevent multiple calls
+OnPlanetSurfaceGenerated -= OnEarthSurface; // Unsubscribe to prevent multiple calls
             if (!_spawnedCivsAndAnimals)
             {
-                Debug.Log("[GameManager] Starting SpawnCivsAndAnimals coroutine from event");
-                StartCoroutine(SpawnCivsAndAnimals());
+StartCoroutine(SpawnCivsAndAnimals());
             }
             else
             {
-                Debug.Log("[GameManager] Spawn already completed, skipping event spawn");
-            }
+}
         }
         OnPlanetSurfaceGenerated += OnEarthSurface;
         
@@ -2580,8 +2603,7 @@ public class GameManager : MonoBehaviour
 
     private System.Collections.IEnumerator SpawnWhenEarthReadyPolling()
     {
-        Debug.Log("[GameManager] SpawnWhenEarthReadyPolling started (fallback mechanism)");
-        var earth = GetPlanetGenerator(0);
+var earth = GetPlanetGenerator(0);
         int maxWaitFrames = 600; // 10 seconds at 60fps
         int waitFrames = 0;
         
@@ -2599,37 +2621,28 @@ public class GameManager : MonoBehaviour
         
         if (!_spawnedCivsAndAnimals)
         {
-            Debug.Log("[GameManager] Polling fallback triggering spawn");
-            yield return StartCoroutine(SpawnCivsAndAnimals());
+yield return StartCoroutine(SpawnCivsAndAnimals());
         }
         else
         {
-            Debug.Log("[GameManager] Spawn already completed, polling fallback exiting");
-        }
+}
     }
 
     private System.Collections.IEnumerator SpawnCivsAndAnimals()
     {
-        Debug.Log("[GameManager] SpawnCivsAndAnimals coroutine started");
-        _spawnedCivsAndAnimals = true;
+_spawnedCivsAndAnimals = true;
 
         if (enableMultiPlanetSystem && currentPlanetIndex != 0)
         {
             Debug.LogWarning("[GameManager] Forcing Earth (0) context before spawning");
             currentPlanetIndex = 0;
         }
-        
-        Debug.Log($"[GameManager] Current planet index before spawning: {currentPlanetIndex}");
-        Debug.Log($"[GameManager] Earth planet generator exists? {GetPlanetGenerator(0) != null}");
-        Debug.Log($"[GameManager] Earth surface generated? {GetPlanetGenerator(0)?.HasGeneratedSurface}");
-
-        // Civs
+Debug.Log($"[GameManager] Earth planet generator exists? {GetPlanetGenerator(0) != null}");
+// Civs
         UpdateLoadingProgress(0.75f, "Spawning civilizations...");
-        Debug.Log($"[GameManager] About to spawn civilizations. CivilizationManager null? {civilizationManager == null}");
-        if (civilizationManager != null)
+if (civilizationManager != null)
         {
-            Debug.Log($"[GameManager] Spawning civilizations on Earth (currentPlanetIndex = {currentPlanetIndex})");
-            CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
+CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
             if (playerCivData == null)
                 Debug.LogWarning("No player civilization selected in GameSetupData. Using default.");
 
@@ -2649,14 +2662,11 @@ public class GameManager : MonoBehaviour
 
         // Animals
         UpdateLoadingProgress(0.85f, "Spawning wildlife...");
-        Debug.Log("[GameManager] About to spawn animals");
-        var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
-        Debug.Log($"[GameManager] AnimalManager found? {animalManagerInstance != null}");
-        if (animalManagerInstance != null)
+var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+if (animalManagerInstance != null)
         {
             animalManagerInstance.SpawnInitialAnimals();
-            Debug.Log("[GameManager] Animal spawning completed");
-        }
+}
         else
         {
             Debug.LogWarning("GameManager: AnimalManager not found, cannot spawn initial animals.");

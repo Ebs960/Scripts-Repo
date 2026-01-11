@@ -42,9 +42,10 @@ public static class PlanetTextureBaker
             Debug.LogError($"[PlanetTextureBaker] Bake FAILED: tileCount is {tileCount}");
             return res;
         }
-
-        Debug.Log($"[PlanetTextureBaker] Starting Bake: tileCount={tileCount}, resolution={width}x{height}");
-        Debug.Log($"[PlanetTextureBaker] colorProvider is {(colorProvider == null ? "NULL" : "ASSIGNED")}");
+Debug.Log($"[PlanetTextureBaker] colorProvider is {(colorProvider == null ? "NULL" : "ASSIGNED")}");
+        bool usePerPixelTextures = (colorProvider != null &&
+            (colorProvider.renderMode == MinimapRenderMode.BiomeTextures ||
+             colorProvider.renderMode == MinimapRenderMode.CustomTexture));
 
         // Build per-tile color atlas and elevation data
         var tileColors = new Color32[tileCount];
@@ -97,12 +98,9 @@ public static class PlanetTextureBaker
             // Sample a few tiles to show what colors are being generated
             if (i < 5 || i == tileCount - 1)
             {
-                Debug.Log($"[PlanetTextureBaker]   Tile {i}: biome={biome}, color=({tileColors[i].r},{tileColors[i].g},{tileColors[i].b},{tileColors[i].a})");
-            }
+}
         }
-        
-        Debug.Log($"[PlanetTextureBaker] Color distribution: {colorProviderUsed} from provider, {biomeHelperUsed} from BiomeColorHelper");
-        res.tileColors = tileColors;
+res.tileColors = tileColors;
 
         // LUT: pixel -> tileIndex
         var lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
@@ -112,10 +110,7 @@ public static class PlanetTextureBaker
             Debug.LogError($"[PlanetTextureBaker] LUT build FAILED! lut is {(lut == null ? "NULL" : $"length {lut.Length}, expected {width * height}")}");
             return res;
         }
-        
-        Debug.Log($"[PlanetTextureBaker] LUT built successfully: {width}x{height} = {lut.Length} pixels");
-
-        // Paint pixels by LUT indirection (no polygon rasterization)
+// Paint pixels by LUT indirection (no polygon rasterization)
         var pixels = new Color32[width * height];
         var heightmapPixels = new Color32[width * height]; // NEW: Heightmap pixels
         
@@ -126,29 +121,42 @@ public static class PlanetTextureBaker
         {
             int idx = lut[p];
             if (idx < 0 || idx >= tileColors.Length) idx = 0;
-            
-            Color32 tileColor = tileColors[idx];
-            pixels[p] = tileColor;
-            
-            // Count magenta pixels to debug
-            if (tileColor.r == 255 && tileColor.g == 0 && tileColor.b == 255)
+
+            if (usePerPixelTextures)
             {
-                magentaCount++;
+                // Per-pixel sampling from provider textures using equirectangular UV
+                int x = p % width;
+                int y = p / width;
+                Vector2 uv = new Vector2((float)x / (float)width, (float)y / (float)height);
+                var td = planetGen.GetHexTileData(idx);
+                Color c = (colorProvider != null && td != null)
+                    ? colorProvider.ColorFor(td, uv)
+                    : BiomeColorHelper.GetMinimapColor(td != null ? td.biome : Biome.Any);
+                var c32 = (Color32)c;
+                pixels[p] = c32;
+
+                if (c32.r == 255 && c32.g == 0 && c32.b == 255)
+                    magentaCount++;
+                else
+                    validTileCount++;
             }
             else
             {
-                validTileCount++;
+                Color32 tileColor = tileColors[idx];
+                pixels[p] = tileColor;
+
+                if (tileColor.r == 255 && tileColor.g == 0 && tileColor.b == 255)
+                    magentaCount++;
+                else
+                    validTileCount++;
             }
-            
+
             // Encode elevation in heightmap (grayscale: black=low, white=high)
             float elevation = (idx >= 0 && idx < tileElevations.Length) ? tileElevations[idx] : 0f;
             byte heightValue = (byte)(Mathf.Clamp01(elevation) * 255);
             heightmapPixels[p] = new Color32(heightValue, heightValue, heightValue, 255);
         }
-
-        Debug.Log($"[PlanetTextureBaker] Pixel distribution: {validTileCount} valid colors, {magentaCount} magenta fallback pixels");
-        
-        // Build CPU textures then upload to GPU RenderTextures
+// Build CPU textures then upload to GPU RenderTextures
         var tex = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: true, linear: false)
         {
             wrapMode = TextureWrapMode.Repeat,
@@ -201,10 +209,7 @@ public static class PlanetTextureBaker
 
         res.texture = biomeRT;
         res.heightmap = heightRT;
-        
-        Debug.Log($"[PlanetTextureBaker] Created RenderTextures: biomeRT={biomeRT.width}x{biomeRT.height}, heightRT={heightRT.width}x{heightRT.height}");
-
-        return res;
+return res;
     }
 
     /// <summary>
@@ -258,14 +263,12 @@ public static class PlanetTextureBaker
         if (gpuResult.biomeTexture != null)
         {
             res.texture = gpuResult.biomeTexture;
-            Debug.Log($"[PlanetTextureBaker] Using GPU RenderTexture directly ({gpuResult.biomeTexture.width}x{gpuResult.biomeTexture.height})");
-        }
+}
         
         if (gpuResult.heightTexture != null)
         {
             res.heightmap = gpuResult.heightTexture;
-            Debug.Log($"[PlanetTextureBaker] Using GPU heightmap RenderTexture directly");
-        }
+}
 
         return res;
     }

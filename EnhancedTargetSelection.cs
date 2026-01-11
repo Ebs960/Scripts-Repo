@@ -85,9 +85,7 @@ public class EnhancedTargetSelection : MonoBehaviour
         targetTypeScores["Cavalry"] = 0.7f;
         targetTypeScores["HeavyCavalry"] = 0.6f;
         targetTypeScores["Artillery"] = 1.2f;
-        
-        Debug.Log($"[EnhancedTargetSelection] Initialized learning system for {unit.data.unitName}");
-    }
+}
     
     /// <summary>
     /// Select the best target using enhanced evaluation
@@ -118,8 +116,7 @@ public class EnhancedTargetSelection : MonoBehaviour
         
         if (bestTarget != null)
         {
-            Debug.Log($"[EnhancedTargetSelection] {unit.data.unitName} selected {bestTarget.data.unitName} (score: {bestScore:F2})");
-        }
+}
         
         return bestTarget;
     }
@@ -299,9 +296,7 @@ public class EnhancedTargetSelection : MonoBehaviour
         
         // Clamp values to reasonable range
         targetTypeScores[targetType] = Mathf.Clamp(targetTypeScores[targetType], 0.1f, 3.0f);
-        
-        Debug.Log($"[EnhancedTargetSelection] Learned from successful attack on {targetType}: {targetTypeScores[targetType]:F2}");
-    }
+}
     
     /// <summary>
     /// Learn from failed attack
@@ -324,9 +319,7 @@ public class EnhancedTargetSelection : MonoBehaviour
         
         // Clamp values to reasonable range
         targetTypeScores[targetType] = Mathf.Clamp(targetTypeScores[targetType], 0.1f, 3.0f);
-        
-        Debug.Log($"[EnhancedTargetSelection] Learned from failed attack on {targetType}: {targetTypeScores[targetType]:F2}");
-    }
+}
     
     /// <summary>
     /// Update learning system (call this periodically)
@@ -358,8 +351,7 @@ public class EnhancedTargetSelection : MonoBehaviour
         learnedPreferences.Clear();
         targetTypeScores.Clear();
         InitializeLearning();
-        Debug.Log($"[EnhancedTargetSelection] Reset learning system for {unit.data.unitName}");
-    }
+}
     
     /// <summary>
     /// Helper method to call methods on ai using reflection (since BattleAI type may not exist)

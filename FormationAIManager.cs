@@ -101,9 +101,7 @@ public class FormationAIManager : MonoBehaviour
         
         lastCoordinationTime = Time.time;
         lastTacticalTime = Time.time;
-        
-        Debug.Log($"[FormationAIManager] Initialized with {allFormations.Count} formations ({attackerFormations.Count} attackers, {defenderFormations.Count} defenders)");
-    }
+}
     
     /// <summary>
     /// Register a formation with the AI manager (called by FormationUnit when ready)
@@ -123,9 +121,7 @@ public class FormationAIManager : MonoBehaviour
         
         // Update formation centers
         UpdateFormationCenters();
-        
-        Debug.Log($"[FormationAIManager] Registered formation: {formation.formationName} ({(formation.isAttacker ? "Attacker" : "Defender")}) - Total: {allFormations.Count} ({attackerFormations.Count} attackers, {defenderFormations.Count} defenders)");
-    }
+}
     
     /// <summary>
     /// Unregister a formation from the AI manager (called when formation is destroyed)
@@ -138,9 +134,7 @@ public class FormationAIManager : MonoBehaviour
         allFormations.Remove(formation);
         attackerFormations.Remove(formation);
         defenderFormations.Remove(formation);
-        
-        Debug.Log($"[FormationAIManager] Unregistered formation: {formation.formationName} - Remaining: {allFormations.Count} ({attackerFormations.Count} attackers, {defenderFormations.Count} defenders)");
-    }
+}
     
     void Update()
     {

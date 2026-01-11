@@ -156,8 +156,7 @@ public class PauseMenuManager : MonoBehaviour
         // Check for escape key - ONLY handle if we're the singleton instance
         if (Input.GetKeyDown(KeyCode.Escape) && canTogglePause && Instance == this)
         {
-            Debug.Log($"[PauseMenuManager] Escape key pressed. canTogglePause: {canTogglePause}, isPaused: {isPaused}");
-            TogglePause();
+TogglePause();
         }
     }
 
@@ -219,14 +218,11 @@ public class PauseMenuManager : MonoBehaviour
     private void EnablePauseToggle()
     {
         canTogglePause = true;
-        Debug.Log("[PauseMenuManager] Pause toggle enabled");
-    }
+}
 
     public void TogglePause()
     {
-        Debug.Log($"[PauseMenuManager] TogglePause called. Current state - isPaused: {isPaused}");
-        
-        if (isPaused)
+if (isPaused)
         {
             ResumeGame();
         }
@@ -239,9 +235,7 @@ public class PauseMenuManager : MonoBehaviour
     public void PauseGame()
     {
         if (isPaused) return;
-
-        Debug.Log("[PauseMenuManager] PauseGame called");
-        isPaused = true;
+isPaused = true;
         Time.timeScale = 0f;
 
         // Hide save/load UI when opening pause menu (start fresh)
@@ -250,13 +244,11 @@ public class PauseMenuManager : MonoBehaviour
         // Use UIManager to show pause menu
         if (UIManager.Instance != null)
         {
-            Debug.Log("[PauseMenuManager] Showing pause menu via UIManager");
-            UIManager.Instance.ShowPauseMenu();
+UIManager.Instance.ShowPauseMenu();
         }
         else if (pauseMenuPanel != null)
         {
-            Debug.Log("[PauseMenuManager] Showing pause menu directly (UIManager not available)");
-            pauseMenuPanel.SetActive(true);
+pauseMenuPanel.SetActive(true);
         }
         else
         {
@@ -268,10 +260,7 @@ public class PauseMenuManager : MonoBehaviour
         {
             GameManager.Instance.gamePaused = true;
         }
-
-        Debug.Log("Game Paused");
-
-        // Inform InputManager: elevate to Modal and disable gameplay input
+// Inform InputManager: elevate to Modal and disable gameplay input
         if (InputManager.Instance != null)
         {
             InputManager.Instance.SetPriority(InputManager.InputPriority.Modal);
@@ -282,21 +271,17 @@ public class PauseMenuManager : MonoBehaviour
     public void ResumeGame()
     {
         if (!isPaused) return;
-
-        Debug.Log("[PauseMenuManager] ResumeGame called");
-        isPaused = false;
+isPaused = false;
         Time.timeScale = 1f;
 
         // Use UIManager to hide pause menu
         if (UIManager.Instance != null)
         {
-            Debug.Log("[PauseMenuManager] Hiding pause menu via UIManager");
-            UIManager.Instance.HidePauseMenu();
+UIManager.Instance.HidePauseMenu();
         }
         else if (pauseMenuPanel != null)
         {
-            Debug.Log("[PauseMenuManager] Hiding pause menu directly");
-            pauseMenuPanel.SetActive(false);
+pauseMenuPanel.SetActive(false);
         }
 
         if (optionsPanel != null)
@@ -307,10 +292,7 @@ public class PauseMenuManager : MonoBehaviour
         {
             GameManager.Instance.gamePaused = false;
         }
-
-        Debug.Log("Game Resumed");
-
-        // Restore InputManager to background priority and re-enable input
+// Restore InputManager to background priority and re-enable input
         if (InputManager.Instance != null)
         {
             InputManager.Instance.SetPriority(InputManager.InputPriority.Background);
@@ -323,21 +305,17 @@ public class PauseMenuManager : MonoBehaviour
     /// </summary>
     private void HideSaveLoadUI()
     {
-        Debug.Log("[PauseMenuManager] Hiding save/load UI elements at startup");
-        
-        // Hide the main save/load panel if it exists
+// Hide the main save/load panel if it exists
         if (saveLoadPanel != null)
         {
             saveLoadPanel.SetActive(false);
-            Debug.Log("[PauseMenuManager] Save/load panel hidden");
-        }
+}
         
         // Hide individual save/load components as fallback
         if (saveSlotContainer != null && saveSlotContainer.gameObject != null)
         {
             saveSlotContainer.gameObject.SetActive(false);
-            Debug.Log("[PauseMenuManager] Save slot container hidden");
-        }
+}
         
         if (createNewSaveButton != null && createNewSaveButton.gameObject != null)
         {
@@ -360,14 +338,11 @@ public class PauseMenuManager : MonoBehaviour
     /// </summary>
     private void ShowSaveLoadUI()
     {
-        Debug.Log("[PauseMenuManager] Showing save/load UI elements");
-        
-        // Show the main save/load panel if it exists
+// Show the main save/load panel if it exists
         if (saveLoadPanel != null)
         {
             saveLoadPanel.SetActive(true);
-            Debug.Log("[PauseMenuManager] Save/load panel shown");
-        }
+}
         
         // Show individual save/load components as fallback
         if (saveSlotContainer != null && saveSlotContainer.gameObject != null)
@@ -396,8 +371,7 @@ public class PauseMenuManager : MonoBehaviour
     /// </summary>
     public void ReturnToPauseMenu()
     {
-        Debug.Log("[PauseMenuManager] Returning to main pause menu from save/load");
-        HideSaveLoadUI();
+HideSaveLoadUI();
         // The main pause menu should already be active, so we don't need to show it again
     }
 
@@ -430,9 +404,7 @@ public class PauseMenuManager : MonoBehaviour
 
             UpdateSaveStatus($"Game saved to slot {selectedSaveSlot + 1}!");
             RefreshSaveSlots();
-            
-            Debug.Log($"Game saved successfully to slot {selectedSaveSlot}");
-        }
+}
         catch (System.Exception e)
         {
             UpdateSaveStatus("Failed to save game!");
@@ -466,8 +438,7 @@ public class PauseMenuManager : MonoBehaviour
                 ApplySaveData(slotData.saveData);
                 UpdateSaveStatus($"Game loaded from slot {selectedSaveSlot + 1}!");
                 ResumeGame();
-                Debug.Log($"Game loaded successfully from slot {selectedSaveSlot}");
-            }
+}
             else
             {
                 UpdateSaveStatus("Save data is corrupted or empty.");
@@ -550,9 +521,7 @@ public class PauseMenuManager : MonoBehaviour
                 mainCamera.transform.position = saveData.cameraPosition;
                 mainCamera.transform.eulerAngles = saveData.cameraRotation;
             }
-
-            Debug.Log($"Applied save data (partial): Turn {saveData.currentTurn}, Player: {saveData.playerCivName}");
-        }
+}
     }
 
     private string GenerateSaveName()
@@ -606,9 +575,7 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ExitToMainMenu()
     {
-        Debug.Log("Exit to Main Menu clicked");
-        
-        // Resume time before changing scenes
+// Resume time before changing scenes
         Time.timeScale = 1f;
         
         // Stop game music
@@ -623,9 +590,7 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ExitGame()
     {
-        Debug.Log("Exit Game clicked");
-        
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
         #else
             Application.Quit();
@@ -683,15 +648,13 @@ public class PauseMenuManager : MonoBehaviour
 
     private void InitializeSaveSystem()
     {
-        Debug.Log("[PauseMenuManager] Initializing save system (UI remains hidden until needed)");
-        // Don't refresh save slots immediately - wait until save/load is actually accessed
+// Don't refresh save slots immediately - wait until save/load is actually accessed
         // This prevents save slot UI from appearing at startup
     }
 
     public void ShowSaveMenu()
     {
-        Debug.Log("[PauseMenuManager] ShowSaveMenu called");
-        ShowSaveLoadUI();
+ShowSaveLoadUI();
         RefreshSaveSlots();
         UpdateSaveStatus("Select a slot to save your game.");
         // You can add specific save menu UI here if needed
@@ -699,8 +662,7 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ShowLoadMenu()
     {
-        Debug.Log("[PauseMenuManager] ShowLoadMenu called");
-        ShowSaveLoadUI();
+ShowSaveLoadUI();
         RefreshSaveSlots();
         UpdateSaveStatus("Select a slot to load your game.");
         // You can add specific load menu UI here if needed
@@ -708,9 +670,7 @@ public class PauseMenuManager : MonoBehaviour
 
     private void RefreshSaveSlots()
     {
-        Debug.Log("[PauseMenuManager] RefreshSaveSlots called");
-        
-        // Clear existing save slot buttons
+// Clear existing save slot buttons
         foreach (var button in saveSlotButtons)
         {
             if (button?.gameObject != null)
@@ -721,8 +681,7 @@ public class PauseMenuManager : MonoBehaviour
         // Create save slot buttons
         if (saveSlotContainer != null && saveSlotButtonPrefab != null)
         {
-            Debug.Log($"[PauseMenuManager] Creating {maxSaveSlots} save slot buttons");
-            for (int i = 0; i < maxSaveSlots; i++)
+for (int i = 0; i < maxSaveSlots; i++)
             {
                 CreateSaveSlotButton(i);
             }
@@ -835,8 +794,7 @@ public class PauseMenuManager : MonoBehaviour
         {
             saveStatusText.text = message;
         }
-        Debug.Log($"Save Status: {message}");
-    }
+}
 
     #endregion
 
@@ -945,9 +903,7 @@ public class PauseMenuManager : MonoBehaviour
         {
             GameManager.Instance.OnGameStarted += OnGameStarted;
         }
-        
-        Debug.Log($"Autosave system initialized. Interval: {autosaveInterval} turns, Max files: {maxAutosaveFiles}");
-    }
+}
     
     private void OnDestroy()
     {
@@ -967,8 +923,7 @@ public class PauseMenuManager : MonoBehaviour
     {
         // Reset autosave tracking when a new game starts
         lastAutosaveTurn = -1;
-        Debug.Log("Game started - autosave tracking reset");
-    }
+}
     
     private void OnTurnChanged(Civilization civ, int newTurn)
     {
@@ -1017,10 +972,7 @@ public class PauseMenuManager : MonoBehaviour
             
             string jsonData = JsonUtility.ToJson(slotData, true);
             File.WriteAllText(filePath, jsonData);
-            
-            Debug.Log($"Autosave completed: {fileName}");
-            
-            // Show notification if enabled
+// Show notification if enabled
             if (showAutosaveNotification)
             {
                 ShowAutosaveNotification("Game autosaved");
@@ -1056,8 +1008,7 @@ public class PauseMenuManager : MonoBehaviour
                 try
                 {
                     autosaveFiles[i].Delete();
-                    Debug.Log($"Deleted old autosave: {autosaveFiles[i].Name}");
-                }
+}
                 catch (System.Exception e)
                 {
                     Debug.LogWarning($"Failed to delete old autosave {autosaveFiles[i].Name}: {e.Message}");
@@ -1136,8 +1087,7 @@ public class PauseMenuManager : MonoBehaviour
             ApplySaveData(autosaveData);
             UpdateSaveStatus($"Loaded autosave from Turn {autosaveData.currentTurn}");
             ResumeGame();
-            Debug.Log($"Autosave loaded successfully: {autosaveData.saveName}");
-        }
+}
         catch (System.Exception e)
         {
             UpdateSaveStatus("Failed to load autosave!");
@@ -1156,7 +1106,7 @@ public class PauseMenuManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"Autosave: {message}"); // Fallback to console
+// Fallback to console
         }
     }
     
@@ -1176,12 +1126,10 @@ public class PauseMenuManager : MonoBehaviour
         
         if (enabled)
         {
-            Debug.Log("Autosave enabled");
-        }
+}
         else
         {
-            Debug.Log("Autosave disabled");
-        }
+}
     }
     
     // Change autosave interval at runtime
@@ -1189,8 +1137,7 @@ public class PauseMenuManager : MonoBehaviour
     {
         autosaveInterval = Mathf.Max(1, interval);
         PlayerPrefs.SetInt("AutosaveInterval", autosaveInterval);
-        Debug.Log($"Autosave interval set to {autosaveInterval} turns");
-    }
+}
 
     #endregion
 

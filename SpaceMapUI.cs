@@ -84,20 +84,16 @@ public class SpaceMapUI : MonoBehaviour
     
     private void SetupButtonListeners()
     {
-        Debug.Log("[SpaceMapUI] Setting up button listeners in Start()");
-        
-        if (closeButton != null)
+if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners(); // Clear any existing listeners
             closeButton.onClick.AddListener(() => {
-                Debug.Log("[SpaceMapUI] Close button clicked!");
-                Hide();
+Hide();
             });
             
             // Ensure button is interactable
             closeButton.interactable = true;
-            Debug.Log("[SpaceMapUI] Close button listener added and set to interactable");
-        }
+}
         else
         {
             Debug.LogError("[SpaceMapUI] Close button is null in Start()! UI may not be properly initialized.");
@@ -110,12 +106,10 @@ public class SpaceMapUI : MonoBehaviour
             travelButton.onClick.AddListener(() => {
                 if (selectedPlanet != null)
                 {
-                    Debug.Log($"[SpaceMapUI] Travel button clicked for {selectedPlanet.planetName}");
-                    ConfirmTravel(selectedPlanet);
+ConfirmTravel(selectedPlanet);
                 }
             });
-            Debug.Log("[SpaceMapUI] Travel button listener added");
-        }
+}
     }
 
     /// <summary>
@@ -137,8 +131,7 @@ public class SpaceMapUI : MonoBehaviour
             if (spaceMapCanvas.GetComponent<GraphicRaycaster>() == null)
             {
                 spaceMapCanvas.gameObject.AddComponent<GraphicRaycaster>();
-                Debug.Log("[SpaceMapUI] Added GraphicRaycaster to canvas for button interaction");
-            }
+}
         }
 
         if (spaceMapPanel == null)
@@ -211,8 +204,7 @@ public class SpaceMapUI : MonoBehaviour
         CreatePlanetInfoPanel();
         
         // Note: Button listeners are set up in Start() method
-        Debug.Log("[SpaceMapUI] SpaceMapPanel created - button listeners will be set up in Start()");
-    }
+}
 
     /// <summary>
     /// Create planet info panel
@@ -708,8 +700,7 @@ public class SpaceMapUI : MonoBehaviour
                 
                 if (success)
                 {
-                    Debug.Log($"[SpaceMapUI] Started space travel for {selectedUnit.name} to {planet.planetName}");
-                    Hide();
+Hide();
                     return;
                 }
                 else
@@ -745,19 +736,15 @@ public class SpaceMapUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
-        Debug.Log("[SpaceMapUI] Hide() called - attempting to close space map");
-        
-        // Hide the entire canvas or root object
+// Hide the entire canvas or root object
         if (spaceMapCanvas != null)
         {
             spaceMapCanvas.gameObject.SetActive(false);
-            Debug.Log("[SpaceMapUI] Space map canvas deactivated");
-        }
+}
         else
         {
             gameObject.SetActive(false);
-            Debug.Log("[SpaceMapUI] SpaceMapUI GameObject deactivated (fallback)");
-        }
+}
     }
     
     /// <summary>
@@ -766,13 +753,10 @@ public class SpaceMapUI : MonoBehaviour
     [ContextMenu("Test Close Button")]
     public void TestCloseButton()
     {
-        Debug.Log("[SpaceMapUI] Testing close button manually");
-        if (closeButton != null)
+if (closeButton != null)
         {
-            Debug.Log($"Close button exists: {closeButton.gameObject.name}");
-            Debug.Log($"Close button active: {closeButton.gameObject.activeInHierarchy}");
-            Debug.Log($"Close button interactable: {closeButton.interactable}");
-            Debug.Log($"Canvas has GraphicRaycaster: {spaceMapCanvas?.GetComponent<GraphicRaycaster>() != null}");
+Debug.Log($"Close button active: {closeButton.gameObject.activeInHierarchy}");
+Debug.Log($"Canvas has GraphicRaycaster: {spaceMapCanvas?.GetComponent<GraphicRaycaster>() != null}");
             
             // Test the hide method directly
             Hide();

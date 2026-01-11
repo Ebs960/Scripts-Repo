@@ -288,8 +288,7 @@ public class City : MonoBehaviour
 
     private void OnLabelClicked()
     {
-        Debug.Log($"[City] Label clicked for city: {cityName}");
-        if (UIManager.Instance != null)
+if (UIManager.Instance != null)
         {
             var cityPanel = UIManager.Instance.GetPanel("CityPanel");
             if (cityPanel != null)
@@ -410,9 +409,7 @@ public class City : MonoBehaviour
     /// </summary>
     private void TriggerRevolt()
     {
-        Debug.Log($"🔴 City '{cityName}' has revolted from {owner.civData.civName}!");
-
-        // 1) Remove from old owner
+// 1) Remove from old owner
         var oldOwner = owner;
         if (oldOwner.cities.Contains(this))
             oldOwner.cities.Remove(this);
@@ -971,9 +968,7 @@ public class City : MonoBehaviour
             unit.currentTileIndex = centerTileIndex;
             ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
         }
-        
-        Debug.Log($"Purchased {unitData.unitName} in {cityName} for {unitData.faithCost} faith.");
-        return true;
+return true;
     }
 
     /// <summary>
@@ -1092,8 +1087,7 @@ public class City : MonoBehaviour
                 if (projectile != null && owner != null)
                 {
                     owner.AddProjectile(projectile, 1); // Produce 1 unit of projectiles per completion
-                    Debug.Log($"{cityName} produced {projectile.projectileName} for {owner.civData.civName}");
-                }
+}
                 break;
                 
             case DistrictData district:
@@ -1133,8 +1127,7 @@ public class City : MonoBehaviour
             
             if (oldTuple.instance != null)
             {
-                Debug.Log($"Replacing {oldTuple.data.buildingName} with {b.buildingName}");
-                Destroy(oldTuple.instance);
+Destroy(oldTuple.instance);
             }
             
             // Remove from list
@@ -1171,8 +1164,7 @@ public class City : MonoBehaviour
                     {
                         bool ok = owner.ProduceEquipment(production.equipment, production.quantity);
                         if (ok)
-                            Debug.Log($"Building {b.buildingName} immediately granted {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
-                        else
+else
                             Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
                     }
                     else
@@ -1189,14 +1181,11 @@ public class City : MonoBehaviour
                             }
                             productionQueue.Add(new ProdEntry(production.equipment, prodCost, goldCost, null, null, false, false, ProdEntry.Type.Equipment));
                         }
-                        Debug.Log($"Building {b.buildingName} enqueued {production.quantity}x {production.equipment.equipmentName} in {cityName} (cost {prodCost} each)");
-                    }
+}
                 }
             }
         }
-        
-        Debug.Log($"Building {b.buildingName} completed in {cityName}");
-    }
+}
     
     /// <summary>
     /// Adds a district to the city on a specific tile
@@ -1238,9 +1227,7 @@ public class City : MonoBehaviour
         
         // Add to city's districts
         builtDistricts.Add((district, districtInstance, tileIndex));
-        
-        Debug.Log($"District {district.districtName} built in {cityName} at tile {tileIndex}");
-    }
+}
 
     /// <summary>
     /// Apply the effects of a newly constructed building
@@ -1266,8 +1253,7 @@ public class City : MonoBehaviour
             if (level > oldLevel && governor != null)
             {
                 governor.RecordStat(TraitTrigger.PopulationGrowth);
-                Debug.Log($"City {cityName} grew to level {level}! Governor {governor.Name} gained experience.");
-            }
+}
         }
     }
 
@@ -1521,9 +1507,7 @@ public class City : MonoBehaviour
     /// <param name="capturingCiv">The civilization that captured the city (from the unit that attacked). If null, will find from units on the city tile.</param>
     void HandleSurrender(Civilization capturingCiv = null)
     {
-        Debug.Log($"{cityName} has surrendered!");
-        
-        // Find the capturing civilization - prioritize the one that actually attacked
+// Find the capturing civilization - prioritize the one that actually attacked
         Civilization attackerCiv = capturingCiv ?? lastAttackingCiv;
         
         // If still not found, find from units on the city tile (the unit that took it)
@@ -1631,9 +1615,7 @@ public class City : MonoBehaviour
             {
                 UIManager.Instance.ShowNotification($"{cityName} has been captured by {attackerCiv.civData.civName}!");
             }
-            
-            Debug.Log($"✅ City '{cityName}' captured from {oldOwner.civData.civName} by {attackerCiv.civData.civName}");
-        }
+}
         else
         {
             // No attacker found - city is destroyed/abandoned
@@ -1813,10 +1795,7 @@ public class City : MonoBehaviour
             
         var newRoute = new TradeRoute(this, destinationCity);
         activeTradeRoutes.Add(newRoute);
-        
-        Debug.Log($"Trade route established from {cityName} to {destinationCity.cityName}");
-        
-        return true;
+return true;
     }
     
     /// <summary>
@@ -1841,8 +1820,7 @@ public class City : MonoBehaviour
         if (route != null)
         {
             activeTradeRoutes.Remove(route);
-            Debug.Log($"Trade route cancelled between {cityName} and {otherCity.cityName}");
-            return true;
+return true;
         }
         
         return false;
@@ -1871,21 +1849,16 @@ public class City : MonoBehaviour
     // Add this method to allow clicking on a city to open the City UI
     void OnMouseDown()
     {
-        Debug.Log($"[City] OnMouseDown called for city: {cityName} at position {transform.position}");
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
+if (UnityEngine.EventSystems.EventSystem.current != null && 
             UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
-            Debug.Log($"[City] Click on {cityName} ignored, was on UI.");
-            return;
+return;
         }
-        Debug.Log($"[City] Clicked on {cityName}.");
-        var cityUI = FindAnyObjectByType<CityUI>();
+var cityUI = FindAnyObjectByType<CityUI>();
         if (cityUI != null)
         {
-            Debug.Log($"[City] Found CityUI: {cityUI.gameObject.name}, activeSelf: {cityUI.gameObject.activeSelf}");
-            cityUI.ShowForCity(this);
-            Debug.Log($"[City] Called ShowForCity on CityUI for {cityName}");
-        }
+cityUI.ShowForCity(this);
+}
         else
         {
             Debug.LogWarning("[City] No CityUI found in scene to show.");
@@ -1897,8 +1870,7 @@ public class City : MonoBehaviour
     /// </summary>
     public void UpdateCityModelForAge()
     {
-        Debug.Log($"[City] UpdateCityModelForAge called for {cityName}");
-        // 1. Get the correct prefab for the new age
+// 1. Get the correct prefab for the new age
         GameObject newPrefab = null;
         if (owner?.civData?.cityPrefabsByAge != null)
         {
@@ -1944,8 +1916,7 @@ public class City : MonoBehaviour
         }
 
         // 5. Destroy the old city object
-        Debug.Log($"[City] Upgraded {cityName} to new age model: {newPrefab.name}");
-        Destroy(gameObject);
+Destroy(gameObject);
                 }
 
     // Add a method to set references

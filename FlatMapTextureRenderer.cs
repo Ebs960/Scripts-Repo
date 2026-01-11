@@ -53,8 +53,10 @@ public class FlatMapTextureRenderer : MonoBehaviour
     private PlanetTextureBaker.BakeResult bakeResult;
     private bool isBuilt;
     private bool _subscribedToPlanetReady;
+    private bool _subscribedToSurfaceReady;
     private WorldPicker worldPicker;
     private PlanetGenerator planetGen; // Store for material setup
+    private PlanetGenerator _surfaceEventSource; // Current generator subscribed for surface ready
     
     public float MapWidth => mapWidth;
     public float MapHeight => mapHeight;
@@ -69,6 +71,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
     private void OnDisable()
     {
         TryUnsubscribeFromPlanetReady();
+        TryUnsubscribeFromSurfaceReady();
     }
     
     private void Start()
@@ -103,7 +106,47 @@ public class FlatMapTextureRenderer : MonoBehaviour
         
         if (GameManager.Instance.currentPlanetIndex != planetIndex) return;
         
-        Debug.Log($"[FlatMapTextureRenderer] Pre-building flat map texture for planet {planetIndex}");
+        if (gen.HasGeneratedSurface)
+        {
+Rebuild(gen);
+        }
+        else
+        {
+TrySubscribeToSurfaceReady(gen);
+        }
+    }
+
+    private void TrySubscribeToSurfaceReady(PlanetGenerator gen)
+    {
+        if (gen == null) return;
+        if (_subscribedToSurfaceReady && _surfaceEventSource == gen) return;
+        
+        // Ensure we don't have stale subscriptions
+        TryUnsubscribeFromSurfaceReady();
+        
+        gen.OnSurfaceGenerated += HandleSurfaceGenerated;
+        _surfaceEventSource = gen;
+        _subscribedToSurfaceReady = true;
+    }
+    
+    private void TryUnsubscribeFromSurfaceReady()
+    {
+        if (!_subscribedToSurfaceReady) return;
+        if (_surfaceEventSource != null)
+        {
+            _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
+        }
+        _surfaceEventSource = null;
+        _subscribedToSurfaceReady = false;
+    }
+    
+    private void HandleSurfaceGenerated()
+    {
+        // Called when the subscribed PlanetGenerator completes surface generation
+        var gen = _surfaceEventSource ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        TryUnsubscribeFromSurfaceReady();
+        if (gen == null) return;
+        Debug.Log("[FlatMapTextureRenderer] Surface generated; building flat map texture.");
         Rebuild(gen);
     }
     
@@ -160,17 +203,18 @@ public class FlatMapTextureRenderer : MonoBehaviour
         // Store planet reference
         this.planetGen = planetGen;
         
-        // Bake texture using PlanetTextureBaker (GPU path if compute shader available)
-        if (textureBakerComputeShader != null)
+        // Bake texture using PlanetTextureBaker
+        // Use GPU only when rendering solid biome colors; textures/custom require per-pixel UV sampling (CPU)
+        bool gpuAllowed = (textureBakerComputeShader != null) &&
+                          (colorProvider == null || colorProvider.renderMode == MinimapRenderMode.BiomeColors);
+        if (gpuAllowed)
         {
-            // Use GPU-accelerated texture baking (dramatically faster)
             bakeResult = PlanetTextureBaker.BakeGPU(planetGen, colorProvider, textureBakerComputeShader, textureWidth, textureHeight);
-        }
+}
         else
         {
-            // Fallback to CPU path
             bakeResult = PlanetTextureBaker.Bake(planetGen, colorProvider, textureWidth, textureHeight);
-        }
+}
         
         if (bakeResult.texture == null)
         {
@@ -181,8 +225,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
         }
         
         mapTexture = bakeResult.texture;
-        Debug.Log($"[FlatMapTextureRenderer] Successfully baked texture (RenderTexture): {(mapTexture != null ? mapTexture.name : "NULL")}");
-        Debug.Log($"[FlatMapTextureRenderer] RenderTexture: Dimensions {(mapTexture != null ? mapTexture.width + "x" + mapTexture.height : "NULL")}, Format ARGB32");
+Debug.Log($"[FlatMapTextureRenderer] RenderTexture: Dimensions {(mapTexture != null ? mapTexture.width + "x" + mapTexture.height : "NULL")}, Format ARGB32");
         
         // Create quad (or subdivided mesh if displacement enabled)
         if (enableElevationDisplacement && bakeResult.heightmap != null)
@@ -195,8 +238,7 @@ public class FlatMapTextureRenderer : MonoBehaviour
         {
             mapMaterial.mainTexture = mapTexture;
             mapMaterial.SetTexture("_MainTex", mapTexture);
-            Debug.Log($"[FlatMapTextureRenderer] Applied texture to material: {mapMaterial.name}");
-            Debug.Log($"[FlatMapTextureRenderer] Material._MainTex: {(mapMaterial.GetTexture("_MainTex") != null ? "ASSIGNED" : "NULL")}");
+Debug.Log($"[FlatMapTextureRenderer] Material._MainTex: {(mapMaterial.GetTexture("_MainTex") != null ? "ASSIGNED" : "NULL")}");
         }
         else
         {
@@ -223,12 +265,9 @@ public class FlatMapTextureRenderer : MonoBehaviour
             }
             else
             {
-                Debug.Log($"[FlatMapTextureRenderer] SUCCESS: mapMaterial._MainTex is {appliedTex.name}");
-            }
+}
         }
-        
-        Debug.Log($"[FlatMapTextureRenderer] Built flat map texture ({textureWidth}x{textureHeight}). MapWidth={mapWidth:F1}, MapHeight={mapHeight:F1}");
-    }
+}
     
     /// <summary>
     /// Initialize TerrainOverlayGPU system for fog and ownership overlays.
@@ -355,14 +394,11 @@ public class FlatMapTextureRenderer : MonoBehaviour
             return;
         }
         mapMaterial = new Material(shaderToUse);
-        Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Created material with {shaderToUse.name}");
-        
-        if (mapMaterial != null && mapTexture != null)
+if (mapMaterial != null && mapTexture != null)
         {
             mapMaterial.mainTexture = mapTexture;
             mapMaterial.SetTexture("_MainTex", mapTexture);
-            Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Assigned mapTexture to material._MainTex");
-        }
+}
         else
         {
             Debug.LogError($"[FlatMapTextureRenderer] CreateQuad: FAILED - mapMaterial is {(mapMaterial == null ? "NULL" : "VALID")}, mapTexture is {(mapTexture == null ? "NULL" : "VALID")}");
@@ -382,17 +418,14 @@ public class FlatMapTextureRenderer : MonoBehaviour
         if (mapTexture != null)
         {
             mapTexture.wrapMode = TextureWrapMode.Repeat;
-            Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Set mapTexture wrapMode to Repeat");
-        }
+}
         if (bakeResult.heightmap != null)
         {
             bakeResult.heightmap.wrapMode = TextureWrapMode.Repeat;
         }
         
         quadRenderer.material = mapMaterial;
-        Debug.Log($"[FlatMapTextureRenderer] CreateQuad: Assigned material to renderer");
-        
-        // Ensure collider exists for raycast picking
+// Ensure collider exists for raycast picking
         var collider = quadObject.GetComponent<Collider>();
         if (collider == null)
         {
@@ -499,29 +532,22 @@ public class FlatMapTextureRenderer : MonoBehaviour
         }
         
         mapMaterial = new Material(shaderToUse);
-        Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Created material with shader {(shaderToUse != null ? shaderToUse.name : "NULL")}");
-        
-        mapMaterial.mainTexture = mapTexture;
+mapMaterial.mainTexture = mapTexture;
         mapMaterial.SetTexture("_MainTex", mapTexture);
         // Ensure material scalars are applied
         mapMaterial.SetFloat("_Metallic", 0.0f);
         mapMaterial.SetFloat("_Smoothness", 0.3f);
-        Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Set _MainTex to {mapTexture.name}");
-        
-        // Apply heightmap for GPU vertex displacement
+// Apply heightmap for GPU vertex displacement
         if (bakeResult.heightmap != null)
         {
             mapMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
             mapMaterial.SetFloat("_FlatHeightScale", displacementStrength);
             mapMaterial.SetFloat("_MapHeight", mapHeight);
-            Debug.Log($"[FlatMapTextureRenderer] CreateSubdividedPlane: Set _Heightmap, _FlatHeightScale, _MapHeight");
-        }
+}
         
         // RenderTextures handle wrapping at the shader level; material wrap mode is set via shader
         // No need to set wrapMode on RenderTexture - it's configured during bake
-        Debug.Log("[FlatMapTextureRenderer] CreateSubdividedPlane: RenderTextures assigned (wrapping configured at bake time)");
-        
-        quadRenderer.material = mapMaterial;
+quadRenderer.material = mapMaterial;
         
         // Add MeshCollider for picking
         // Note: MeshCollider will use the original flat mesh, but picking will still work

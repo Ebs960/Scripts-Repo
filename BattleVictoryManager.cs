@@ -317,8 +317,7 @@ public class BattleVictoryManager : MonoBehaviour
     {
         if (showDebugInfo)
         {
-            Debug.Log($"[BattleVictoryManager] {message}");
-        }
+}
     }
 }
 

@@ -274,9 +274,7 @@ public class TechUI : MonoBehaviour
             
             CreateTechNode(tech, position, techNodeSize);
         }
-        
-        Debug.Log($"Created tech tree with custom layout from {layoutFileName}");
-    }
+}
 
     private void CreateTechNode(TechData tech, Vector2 position, Vector2 nodeSize = default)
     {
@@ -413,18 +411,14 @@ public class TechUI : MonoBehaviour
     {
         currentlySelectedTech = tech;
         UpdateInfoPanel(tech);
-
-        Debug.Log($"[TechUI] Attempting to research: {tech?.techName}");
-        if (playerCiv != null && playerCiv.CanResearch(tech))
+if (playerCiv != null && playerCiv.CanResearch(tech))
         {
-            Debug.Log($"[TechUI] CanResearch returned TRUE for {tech.techName}. Calling StartResearch.");
-            playerCiv.StartResearch(tech);
+playerCiv.StartResearch(tech);
             RefreshUI();
         }
         else
         {
-            Debug.Log($"[TechUI] CanResearch returned FALSE for {tech?.techName}.");
-        }
+}
 
         foreach (var btnUI in techButtons)
         {
@@ -482,8 +476,7 @@ public class TechUI : MonoBehaviour
 
     public void RefreshUI()
     {
-        Debug.Log("[TechUI] RefreshUI called");
-        if (playerCiv == null) return;
+if (playerCiv == null) return;
         // Update button states
         RefreshTechButtonStates();
         // Update info panel for the currently selected tech or current research
@@ -562,8 +555,7 @@ public class TechUI : MonoBehaviour
         {
             string json = System.IO.File.ReadAllText(filePath);
             TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(json);
-            Debug.Log($"Loaded tech tree layout with {layout?.techPositions?.Count ?? 0} tech positions");
-            return layout;
+return layout;
         }
         catch (System.Exception e)
         {

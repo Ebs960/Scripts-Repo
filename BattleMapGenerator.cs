@@ -144,9 +144,7 @@ public class BattleMapGenerator : MonoBehaviour
     /// </summary>
     public void GenerateBattleMap(float mapSize, int attackerUnits, int defenderUnits)
     {
-        Debug.Log($"[BattleMapGenerator] GenerateBattleMap called: mapSize={mapSize}, biome={primaryBattleBiome}, elevation={battleTileElevation}");
-        
-        this.mapSize = mapSize;
+this.mapSize = mapSize;
         // Map center is at (0,0,0) - terrain is positioned to center at this point
         mapCenter = Vector3.zero;
         
@@ -156,8 +154,7 @@ public class BattleMapGenerator : MonoBehaviour
         ClearExistingMap();
         
         // Generate terrain using custom system
-        Debug.Log("[BattleMapGenerator] Using custom Unity Terrain API generation");
-        GenerateTerrainWithCustomSystem();
+GenerateTerrainWithCustomSystem();
         
         // Verify mapCenter is at terrain center
         if (terrainObjects.Count > 0)
@@ -169,8 +166,7 @@ public class BattleMapGenerator : MonoBehaviour
                 Vector3 terrainSize = terrain.terrainData.size;
                 Vector3 calculatedCenter = terrainPos + terrainSize * 0.5f;
                 mapCenter = new Vector3(calculatedCenter.x, 0f, calculatedCenter.z); // Use terrain Y=0 level for spawns
-                Debug.Log($"[BattleMapGenerator] Terrain center calculated: {mapCenter} (terrain pos: {terrainPos}, size: {terrainSize})");
-            }
+}
         }
         
         AddBiomeDecorations();
@@ -181,9 +177,7 @@ public class BattleMapGenerator : MonoBehaviour
         
         // Set up AAA-quality visuals for the battle scene
         SetupBattleVisuals();
-        
-        Debug.Log($"[BattleMapGenerator] Generated {primaryBattleBiome} battle map ({mapSize}x{mapSize}) with elevation {battleTileElevation:F2}, battle type: {battleType}");
-        Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
+Debug.Log($"[BattleMapGenerator] Terrain objects created: {terrainObjects.Count}, Decorations spawned: {spawnedObjects.Count}");
     }
     
     /// <summary>
@@ -199,8 +193,7 @@ public class BattleMapGenerator : MonoBehaviour
         {
             GameObject visualsGO = new GameObject("BattleSceneVisuals");
             visuals = visualsGO.AddComponent<BattleSceneVisuals>();
-            Debug.Log("[BattleMapGenerator] Created BattleSceneVisuals for AAA-quality rendering");
-        }
+}
         
         // Apply biome-specific visual settings
         visuals.ApplyBiomeVisuals(primaryBattleBiome);
@@ -230,8 +223,7 @@ public class BattleMapGenerator : MonoBehaviour
             if (ambientParticles == null)
             {
                 ambientParticles = gameObject.AddComponent<BattlefieldAmbientParticles>();
-                Debug.Log("[BattleMapGenerator] Auto-created BattlefieldAmbientParticles component");
-            }
+}
         }
         
         // Create particles with biome-appropriate settings
@@ -277,8 +269,7 @@ public class BattleMapGenerator : MonoBehaviour
             if (cloudSpawner == null)
             {
                 cloudSpawner = gameObject.AddComponent<BattlefieldClouds>();
-                Debug.Log("[BattleMapGenerator] Auto-created BattlefieldClouds component");
-            }
+}
         }
         
         // Create clouds with biome-appropriate settings
@@ -320,9 +311,7 @@ public class BattleMapGenerator : MonoBehaviour
         
         // Create the grass
         gpuGrass.CreateGrass(mapSize, primaryBattleBiome, terrain);
-        
-        Debug.Log($"[BattleMapGenerator] Spawned GPU instanced grass for {primaryBattleBiome}");
-    }
+}
     
     /// <summary>
     /// Clear any existing map objects
@@ -355,8 +344,7 @@ public class BattleMapGenerator : MonoBehaviour
         // If a Vista TerrainGraph is assigned, use it instead of the custom generator.
         if (runtimeGraph != null)
         {
-            Debug.Log("[BattleMapGenerator] Using Vista TerrainGraph for battle terrain generation.");
-            GenerateTerrainWithVista();
+GenerateTerrainWithVista();
             return;
         }
 #endif
@@ -430,9 +418,7 @@ public class BattleMapGenerator : MonoBehaviour
         }
         
         terrainObjects.Add(terrainGO);
-        
-        Debug.Log($"[BattleMapGenerator] Custom terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}, Battle Type: {battleType}");
-    }
+}
 
 #if VISTA
     /// <summary>
@@ -485,9 +471,7 @@ public class BattleMapGenerator : MonoBehaviour
         configs.worldBounds = new Rect(pos.x, pos.z, size.x, size.z);
 
         // Log key Vista terrain parameters for debugging
-        Debug.Log($"[BattleMapGenerator] Vista terrain config: mapSize={mapSize}, resolution={resolution}, terrainHeight={configs.terrainHeight:F2}, biome={primaryBattleBiome}, heightScale={settings.heightScale:F2}");
-        
-        // Collect HeightOutput node
+// Collect HeightOutput node
         var heightNode = runtimeGraph.GetNode(typeof(HeightOutputNode)) as HeightOutputNode;
         if (heightNode == null)
         {
@@ -520,8 +504,7 @@ public class BattleMapGenerator : MonoBehaviour
                     float corner10 = td.GetHeight(hRes - 1, 0);
                     float corner01 = td.GetHeight(0, hRes - 1);
                     float corner11 = td.GetHeight(hRes - 1, hRes - 1);
-                    Debug.Log($"[BattleMapGenerator] Vista terrain sample heights (world Y): center={centerH:F2}, corners=({corner00:F2}, {corner10:F2}, {corner01:F2}, {corner11:F2})");
-                }
+}
             }
             else
             {
@@ -549,9 +532,7 @@ public class BattleMapGenerator : MonoBehaviour
         }
 
         terrainObjects.Add(terrainGO);
-
-        Debug.Log($"[BattleMapGenerator] Vista terrain generated: {mapSize}x{mapSize}, Resolution: {resolution}, Battle Type: {battleType}");
-    }
+}
 #endif
     
     // NOTE: Old C# ITerrainLayer system (siege/water/river/lava) removed - Vista graph now defines terrain height.
@@ -621,9 +602,7 @@ public class BattleMapGenerator : MonoBehaviour
         {
             waterGO.layer = waterLayer;
         }
-        
-        Debug.Log($"[BattleMapGenerator] Created water plane for {battleType} battle");
-    }
+}
     
     /// <summary>
     /// Create a lava plane for volcanic biomes with lava flows
@@ -690,9 +669,7 @@ public class BattleMapGenerator : MonoBehaviour
         {
             lavaGO.layer = lavaLayer;
         }
-        
-        Debug.Log($"[BattleMapGenerator] Created lava plane for volcanic biome");
-    }
+}
     
     /// <summary>
     /// Generate basic terrain heightmap (fallback when no biome generator available)
@@ -729,8 +706,7 @@ public class BattleMapGenerator : MonoBehaviour
         if (sampleCount > 0)
         {
             float avgHeight = sumHeight / sampleCount;
-            Debug.Log($"[BattleMapGenerator] Custom terrain height stats (normalized 0-1) - min={minHeight:F3}, max={maxHeight:F3}, avg={avgHeight:F3}, mapSize={mapSize}, heightVariation={heightVariation}, elevationNoiseScale={elevationNoiseScale}, tileElevation={battleTileElevation:F2}, biome={primaryBattleBiome}");
-        }
+}
     }
     
     /// <summary>
@@ -743,10 +719,7 @@ public class BattleMapGenerator : MonoBehaviour
             Debug.LogError("[BattleMapGenerator] Cannot apply biome material: terrain or terrainData is null");
             return;
         }
-        
-        Debug.Log($"[BattleMapGenerator] Applying biome texture to terrain for biome: {primaryBattleBiome}");
-        
-        // Get biome settings
+// Get biome settings
         Texture2D albedoTexture = null;
         Texture2D normalTexture = null;
         
@@ -754,8 +727,7 @@ public class BattleMapGenerator : MonoBehaviour
         {
             albedoTexture = settings.albedoTexture;
             normalTexture = settings.normalTexture;
-            Debug.Log($"[BattleMapGenerator] Found biome settings - Albedo: {(albedoTexture != null ? albedoTexture.name : "NULL")}, Normal: {(normalTexture != null ? normalTexture.name : "NULL")}");
-        }
+}
         else
         {
             Debug.LogWarning($"[BattleMapGenerator] No biome settings found for {primaryBattleBiome}! Terrain will use default material.");
@@ -771,8 +743,7 @@ public class BattleMapGenerator : MonoBehaviour
         if (urpTerrainMaterial != null)
         {
             terrain.materialTemplate = urpTerrainMaterial;
-            Debug.Log($"[BattleMapGenerator] Assigned URP terrain material: {urpTerrainMaterial.shader.name}");
-        }
+}
         else
         {
             Debug.LogWarning("[BattleMapGenerator] Could not create URP terrain material - terrain may appear pink!");
@@ -797,9 +768,7 @@ public class BattleMapGenerator : MonoBehaviour
             
             // Set the terrain layer on terrainData
             terrain.terrainData.terrainLayers = new TerrainLayer[] { terrainLayer };
-            Debug.Log($"[BattleMapGenerator] Created and assigned terrain layer with texture: {albedoTexture.name}");
-            
-            // Paint the entire terrain with this layer (100% coverage)
+// Paint the entire terrain with this layer (100% coverage)
             int alphamapWidth = terrain.terrainData.alphamapWidth;
             int alphamapHeight = terrain.terrainData.alphamapHeight;
             float[,,] alphamaps = new float[alphamapHeight, alphamapWidth, 1]; // 1 layer
@@ -814,8 +783,7 @@ public class BattleMapGenerator : MonoBehaviour
             }
             
             terrain.terrainData.SetAlphamaps(0, 0, alphamaps);
-            Debug.Log($"[BattleMapGenerator] Painted terrain with 100% coverage using alphamaps ({alphamapWidth}x{alphamapHeight})");
-        }
+}
         else
         {
             // Fallback: Create a TerrainLayer with biome color texture
@@ -855,9 +823,7 @@ public class BattleMapGenerator : MonoBehaviour
                 }
             }
             terrain.terrainData.SetAlphamaps(0, 0, alphamaps);
-            
-            Debug.Log($"[BattleMapGenerator] Created default TerrainLayer with biome color for: {primaryBattleBiome}");
-        }
+}
     }
     
     // NOTE: Grass is now handled by GPUInstancedGrass - old Terrain Detail system removed
@@ -919,10 +885,7 @@ public class BattleMapGenerator : MonoBehaviour
                 terrain.materialTemplate.SetFloat("_HeightTransition", 0.5f);
             }
         }
-        
-        Debug.Log($"[BattleMapGenerator] Terrain quality configured (AAA) - Pixel error: {terrain.heightmapPixelError}, " +
-                  $"Detail distance: {terrain.detailObjectDistance}m, Base map distance: {terrain.basemapDistance}m");
-    }
+}
     
     // ========== BIOME-SPECIFIC CALCULATION METHODS ==========
     
@@ -1038,9 +1001,7 @@ public class BattleMapGenerator : MonoBehaviour
         
         // Expand bounds slightly to ensure we capture everything
         combinedBounds.Expand(10f);
-        
-        Debug.Log($"[BattleMapGenerator] Calculated terrain bounds: {combinedBounds} from {terrainObjects.Count} terrain objects");
-        return combinedBounds;
+return combinedBounds;
     }
     
     /// <summary>
@@ -1136,8 +1097,7 @@ public class BattleMapGenerator : MonoBehaviour
                 terrainShader = Shader.Find(path);
                 if (terrainShader != null)
                 {
-                    Debug.Log($"[BattleMapGenerator] Found fallback terrain shader: {path}");
-                    break;
+break;
                 }
             }
         }
@@ -1149,9 +1109,7 @@ public class BattleMapGenerator : MonoBehaviour
         }
         
         Material material = new Material(terrainShader);
-        Debug.Log($"[BattleMapGenerator] Created URP terrain material with shader: {terrainShader.name}");
-        
-        return material;
+return material;
     }
     
     /// <summary>
@@ -1208,9 +1166,7 @@ public class BattleMapGenerator : MonoBehaviour
             waterMaterial.color = new Color(0.1f, 0.3f, 0.6f, 0.75f);
             waterMaterial.SetFloat("_Glossiness", 0.95f);
         }
-        
-        Debug.Log($"[BattleMapGenerator] Created water material with shader: {waterShader.name}");
-        return waterMaterial;
+return waterMaterial;
     }
     
     /// <summary>
@@ -1265,9 +1221,7 @@ public class BattleMapGenerator : MonoBehaviour
             lavaMaterial.color = new Color(0.9f, 0.3f, 0.1f, 0.85f);
             lavaMaterial.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 2f);
         }
-        
-        Debug.Log($"[BattleMapGenerator] Created lava material with shader: {lavaShader.name}");
-        return lavaMaterial;
+return lavaMaterial;
     }
     
     /// <summary>
@@ -1312,10 +1266,7 @@ public class BattleMapGenerator : MonoBehaviour
             Debug.LogError("[BattleMapGenerator] Make sure URP is properly installed and configured.");
             return null;
         }
-        
-        Debug.Log($"[BattleMapGenerator] Using shader: {terrainShader.name} for terrain material");
-        
-        Material material = new Material(terrainShader);
+Material material = new Material(terrainShader);
         
         // Try to get biome settings for textures
         if (biomeSettingsLookup.TryGetValue(primaryBattleBiome, out BiomeSettings settings))
@@ -1338,9 +1289,7 @@ public class BattleMapGenerator : MonoBehaviour
                 {
                     material.mainTexture = settings.albedoTexture;
                 }
-                
-                Debug.Log($"[BattleMapGenerator] Applied albedo texture to terrain material: {settings.albedoTexture.name}");
-            }
+}
             else
             {
                 // No texture - use biome color
@@ -1358,9 +1307,7 @@ public class BattleMapGenerator : MonoBehaviour
                 {
                     material.color = biomeColor;
                 }
-                
-                Debug.Log($"[BattleMapGenerator] Applied biome color to terrain material (no texture available): {biomeColor}");
-            }
+}
             
             // Apply normal texture if available
             if (settings.normalTexture != null)
@@ -1375,9 +1322,7 @@ public class BattleMapGenerator : MonoBehaviour
                     material.SetTexture("_NormalMap", settings.normalTexture);
                     material.EnableKeyword("_NORMALMAP");
                 }
-                
-                Debug.Log($"[BattleMapGenerator] Applied normal texture to terrain material: {settings.normalTexture.name}");
-            }
+}
         }
         else
         {
@@ -1448,10 +1393,7 @@ public class BattleMapGenerator : MonoBehaviour
         {
             decorationCount = Mathf.Min(decorationCount, maxDecorations);
         }
-        
-        Debug.Log($"[BattleMapGenerator] Placing {decorationCount} decorations for biome {primaryBattleBiome}");
-        
-        int successfulPlacements = 0;
+int successfulPlacements = 0;
         int maxAttempts = decorationCount * 3; // Try up to 3x to find valid positions
         int attempts = 0;
         
@@ -1489,9 +1431,7 @@ public class BattleMapGenerator : MonoBehaviour
                 }
             }
         }
-        
-        Debug.Log($"[BattleMapGenerator] Successfully placed {successfulPlacements} decorations (attempted {attempts} times)");
-    }
+}
     
     /// <summary>
     /// Get terrain height at a position using raycasting (works with MapMagic terrain and fallback mesh)
@@ -1569,9 +1509,7 @@ public class BattleMapGenerator : MonoBehaviour
                 }
             }
         }
-        
-        Debug.Log($"[BattleMapGenerator] Initialized biome settings for {biomeSettingsLookup.Count} biomes");
-    }
+}
 
     /// <summary>
     /// Apply visual properties based on biome using textures from biome settings
@@ -1802,9 +1740,7 @@ public class BattleMapGenerator : MonoBehaviour
             spawnPos.y = GetTerrainHeightAtPosition(spawnPos);
             defenderSpawnPoints.Add(spawnPos);
         }
-        
-        Debug.Log($"[BattleMapGenerator] Created {attackerSpawnPoints.Count} attacker spawn points at {attackerSpawn} and {defenderSpawnPoints.Count} defender spawn points at {defenderSpawn}");
-        Debug.Log($"[BattleMapGenerator] Formation layout: {unitsPerRow} units per row, {numRows} rows deep");
+Debug.Log($"[BattleMapGenerator] Formation layout: {unitsPerRow} units per row, {numRows} rows deep");
     }
     
     /// <summary>
@@ -1864,9 +1800,7 @@ public class BattleMapGenerator : MonoBehaviour
     /// </summary>
     private void GenerateNavigationMesh()
     {
-        Debug.Log("[BattleMapGenerator] Starting runtime NavMesh baking...");
-        
-        // Get NavMesh build settings (use default settings with ID 0)
+// Get NavMesh build settings (use default settings with ID 0)
         // You can create custom settings in the Navigation window and reference them by ID
         NavMeshBuildSettings buildSettings = NavMesh.GetSettingsByID(0);
         
@@ -1877,18 +1811,12 @@ public class BattleMapGenerator : MonoBehaviour
         Bounds buildBounds = terrainBounds.size.magnitude > 0.1f 
             ? terrainBounds 
             : new Bounds(mapCenter, new Vector3(mapSize, 20f, mapSize));
-        
-        Debug.Log($"[BattleMapGenerator] Using buildBounds: {buildBounds} (calculated from {terrainObjects.Count} terrain objects)");
-        
-        // Collect all sources (terrain and obstacles) using NavMeshBuilder
+// Collect all sources (terrain and obstacles) using NavMeshBuilder
         // This automatically finds all colliders and meshes in the bounds
         // FIXED: Use Battlefield layer to match terrain object layer
         int battlefieldLayer = LayerMask.NameToLayer("Battlefield");
         int layerMask = battlefieldLayer != -1 ? (1 << battlefieldLayer) : ~0; // Use Battlefield layer, or all layers if it doesn't exist
-        
-        Debug.Log($"[BattleMapGenerator] Collecting NavMesh sources on layer mask: {layerMask} (Battlefield layer index: {battlefieldLayer})");
-        
-        List<NavMeshBuildSource> sources = new List<NavMeshBuildSource>();
+List<NavMeshBuildSource> sources = new List<NavMeshBuildSource>();
         NavMeshBuilder.CollectSources(
             buildBounds,
             layerMask, // Use Battlefield layer to match terrain
@@ -1899,16 +1827,13 @@ public class BattleMapGenerator : MonoBehaviour
         );
         
         // DEBUG: Log what sources were collected
-        Debug.Log($"[BattleMapGenerator] Collected {sources.Count} NavMesh sources from bounds {buildBounds}");
-        if (sources.Count > 0)
+if (sources.Count > 0)
         {
             Vector3 firstSourcePos = sources[0].transform.GetColumn(3); // Position is in the 4th column of Matrix4x4
-            Debug.Log($"[BattleMapGenerator] First source: shape={sources[0].shape}, component={sources[0].component?.name ?? "null"}, position={firstSourcePos}");
-        }
+}
         
         // DEBUG: Log terrain objects with detailed info
-        Debug.Log($"[BattleMapGenerator] Checking {terrainObjects.Count} terrain objects:");
-        foreach (var terrainObj in terrainObjects)
+foreach (var terrainObj in terrainObjects)
         {
             if (terrainObj != null)
             {
@@ -1932,28 +1857,18 @@ public class BattleMapGenerator : MonoBehaviour
                 {
                     objBounds = collider.bounds;
                 }
-                
-                Debug.Log($"  - {terrainObj.name}:");
-                Debug.Log($"    Layer: {layer} ({layerName})");
-                Debug.Log($"    Position: {position}");
-                Debug.Log($"    Bounds: {objBounds?.ToString() ?? "unknown"}");
-                Debug.Log($"    Terrain Component: {terrainComponent != null}");
-                Debug.Log($"    TerrainCollider: {terrainCollider != null}");
-                Debug.Log($"    Generic Collider: {collider != null} (type: {collider?.GetType().Name ?? "none"}, isTrigger: {collider?.isTrigger ?? false})");
-                Debug.Log($"    MeshFilter: {meshFilter != null}");
-                Debug.Log($"    Parent: {terrainObj.transform.parent?.name ?? "none"}");
-                Debug.Log($"    In buildBounds: {objBounds.HasValue && buildBounds.Intersects(objBounds.Value)}");
+Debug.Log($"    Layer: {layer} ({layerName})");
+Debug.Log($"    Bounds: {objBounds?.ToString() ?? "unknown"}");
+Debug.Log($"    TerrainCollider: {terrainCollider != null}");
+Debug.Log($"    MeshFilter: {meshFilter != null}");
+Debug.Log($"    In buildBounds: {objBounds.HasValue && buildBounds.Intersects(objBounds.Value)}");
             }
         }
         
         // Also check what layer mask we're using
-        Debug.Log($"[BattleMapGenerator] NavMesh collection settings:");
-        Debug.Log($"  - Layer mask: {layerMask} (binary: {System.Convert.ToString(layerMask, 2)})");
-        Debug.Log($"  - Battlefield layer index: {battlefieldLayer}");
-        Debug.Log($"  - Collect geometry: RenderMeshes={NavMeshCollectGeometry.RenderMeshes}, PhysicsColliders={NavMeshCollectGeometry.PhysicsColliders}");
-        Debug.Log($"  - Build bounds: {buildBounds}");
-        
-        // Filter sources to only include our terrain and obstacles
+Debug.Log($"  - Layer mask: {layerMask} (binary: {System.Convert.ToString(layerMask, 2)})");
+Debug.Log($"  - Collect geometry: RenderMeshes={NavMeshCollectGeometry.RenderMeshes}, PhysicsColliders={NavMeshCollectGeometry.PhysicsColliders}");
+// Filter sources to only include our terrain and obstacles
         // This ensures we only bake the procedurally generated map, not other scene objects
         // FIXED: Also check child objects and use a more robust matching method
         List<NavMeshBuildSource> filteredSources = new List<NavMeshBuildSource>();
@@ -1968,8 +1883,7 @@ public class BattleMapGenerator : MonoBehaviour
                 if (terrainObj != null && IsSourceFromObject(source, terrainObj))
                 {
                     isOurObject = true;
-                    Debug.Log($"[BattleMapGenerator] Matched source to terrain object: {terrainObj.name}");
-                    break;
+break;
                 }
             }
             
@@ -2016,8 +1930,7 @@ public class BattleMapGenerator : MonoBehaviour
                 {
                     filteredSources.Add(source);
                     string sourceName = source.component != null ? source.component.name : "Unknown";
-                    Debug.Log($"[BattleMapGenerator] Fallback: Added source from {sourceName} at {sourcePos}");
-                }
+}
             }
         }
         
@@ -2044,10 +1957,8 @@ public class BattleMapGenerator : MonoBehaviour
         // DEBUG: Log NavMesh data details
         if (navMeshData != null)
         {
-            Debug.Log($"[BattleMapGenerator] NavMesh Data Details:");
-            Debug.Log($"  - Sources used: {filteredSources.Count}/{sources.Count}");
-            Debug.Log($"  - Bounds: {buildBounds}");
-            Debug.Log($"  - Source objects: {filteredSources.Count}");
+Debug.Log($"  - Sources used: {filteredSources.Count}/{sources.Count}");
+Debug.Log($"  - Source objects: {filteredSources.Count}");
             
             // Log what types of sources we're using
             int meshSources = 0, colliderSources = 0;
@@ -2058,8 +1969,7 @@ public class BattleMapGenerator : MonoBehaviour
                          source.shape == NavMeshBuildSourceShape.Sphere ||
                          source.shape == NavMeshBuildSourceShape.Capsule) colliderSources++;
             }
-            Debug.Log($"  - Mesh sources: {meshSources}, Collider sources: {colliderSources}");
-        }
+}
         else
         {
             Debug.LogError("[BattleMapGenerator] NavMesh data is null! Baking failed.");
@@ -2068,9 +1978,7 @@ public class BattleMapGenerator : MonoBehaviour
         // IMPROVED: Wait a frame to ensure NavMesh is fully processed by Unity
         // This helps prevent formations from failing to find NavMesh immediately after baking
         StartCoroutine(WaitForNavMeshReady());
-        
-        Debug.Log($"[BattleMapGenerator] NavMesh baked successfully! Sources: {filteredSources.Count}/{sources.Count}, Bounds: {buildBounds}");
-    }
+}
     
     
     // Helper methods
@@ -2248,9 +2156,7 @@ public class BattleMapGenerator : MonoBehaviour
         // DEBUG: Check NavMesh data immediately
         var navMeshTri = NavMesh.CalculateTriangulation();
         bool hasData = navMeshTri.vertices != null && navMeshTri.vertices.Length > 0;
-        Debug.Log($"[BattleMapGenerator] NavMesh data check: Has data = {hasData}, Vertices = {navMeshTri.vertices?.Length ?? 0}");
-        
-        // Verify NavMesh is queryable by sampling a position at the map center
+// Verify NavMesh is queryable by sampling a position at the map center
         int attempts = 0;
         const int maxAttempts = 10;
         
@@ -2259,9 +2165,7 @@ public class BattleMapGenerator : MonoBehaviour
             // Try sampling at map center
             if (NavMesh.SamplePosition(mapCenter, out NavMeshHit hit, 10f, NavMesh.AllAreas))
             {
-                Debug.Log($"[BattleMapGenerator] NavMesh confirmed ready after {attempts + 1} frame(s) at center {mapCenter} (sampled to {hit.position})");
-                
-                // DEBUG: Test a few more positions to ensure NavMesh is fully ready
+// DEBUG: Test a few more positions to ensure NavMesh is fully ready
                 bool allTestsPassed = true;
                 for (int i = 0; i < 5; i++)
                 {
@@ -2279,8 +2183,7 @@ public class BattleMapGenerator : MonoBehaviour
                 
                 if (allTestsPassed)
                 {
-                    Debug.Log($"[BattleMapGenerator] All NavMesh tests passed! NavMesh is fully ready.");
-                }
+}
                 
                 yield break;
             }

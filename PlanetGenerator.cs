@@ -408,6 +408,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// </summary>
     public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
     public bool HasGeneratedSurface { get; private set; } = false;
+    // Raised when surface generation fully completes
+    public event System.Action OnSurfaceGenerated;
     private LoadingPanelController loadingPanelController;
 
     // OBSOLETE: Prefab loading removed - new system uses texture-based rendering
@@ -566,8 +568,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         float maxContinentHeightWorld = (maxContinentHeightDegrees / 180f) * mapHeight;
 
         // Pre-calculate tile positions for all tiles (flat-only)
+        // Use grid.tileCenters directly; TileSystem initializes after surface generation
         for (int i = 0; i < tileCount; i++) {
-            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
+            Vector3 center = (grid != null && grid.tileCenters != null && i < grid.tileCenters.Length)
+                ? grid.tileCenters[i]
+                : Vector3.zero;
             tilePositions[i] = new Vector2(center.x, center.z);
         }
 
@@ -668,9 +673,23 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             for (int i = 0; i < tileCount; i++) isLandTile[i] = true;
         }
 
+        // Track climate ranges for diagnostics
+        float temperatureMin = 1f, temperatureMax = 0f;
+        float moistureMin = 1f, moistureMax = 0f;
+
+        // Sample a few representative tiles for detailed climate logs (avoid spam)
+        List<int> climateSampleIndices = new List<int>();
+        if (tileCount > 0) climateSampleIndices.Add(0);
+        if (tileCount > 4) climateSampleIndices.Add(tileCount / 4);
+        if (tileCount > 2) climateSampleIndices.Add(tileCount / 2);
+        if (tileCount > 4) climateSampleIndices.Add((3 * tileCount) / 4);
+        if (tileCount > 1) climateSampleIndices.Add(tileCount - 1);
+
         for (int i = 0; i < tileCount; i++)
         {
-            Vector3 c = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
+            Vector3 c = (grid != null && grid.tileCenters != null && i < grid.tileCenters.Length)
+                ? grid.tileCenters[i]
+                : Vector3.zero;
             bool isLand = isLandTile[i];
             Vector3 noisePoint = new Vector3(c.x, 0f, c.z) + noiseOffset;
             
@@ -693,6 +712,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Blend: e.g., 70% north/south influence, 30% noise influence
             float temperature = (northTemp * 0.7f) + (noiseTemp * 0.3f);
             temperature = Mathf.Clamp01(temperature + temperatureBias);
+            // Track ranges
+            if (temperature < temperatureMin) temperatureMin = temperature;
+            if (temperature > temperatureMax) temperatureMax = temperature;
+            if (moisture < moistureMin) moistureMin = moisture;
+            if (moisture > moistureMax) moistureMax = moisture;
+
+            // Detailed sample logs for a handful of tiles
+            if (climateSampleIndices.Contains(i))
+            {
+}
 
             Biome biome;
             bool isHill = false;
@@ -761,6 +790,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             data[i] = td;
             baseData[i] = td; // Store base state
 
+            if (climateSampleIndices.Contains(i))
+            {
+}
+
             // BATCH YIELD
             if (i > 0 && i % 250 == 0)
             {
@@ -772,6 +805,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 yield return null;
             }
         }
+
+        // Log climate variability after biome assignment loop
+// Log top biome counts as a quick distribution check
+        var biomeCounts = new Dictionary<Biome, int>();
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!data.ContainsKey(i)) continue;
+            Biome b = data[i].biome;
+            if (!biomeCounts.ContainsKey(b)) biomeCounts[b] = 0;
+            biomeCounts[b]++;
+        }
+        var ordered = biomeCounts.OrderByDescending(kv => kv.Value).Take(8).ToList();
+        foreach (var kv in ordered)
+        {
+}
 
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
@@ -927,6 +975,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Finalize
         HasGeneratedSurface = true;
         Tiles = data.Values.ToList();
+        
+        // DIAGNOSTIC: Log elevation statistics
+        LogElevationDiagnostics(data);
+        
+        // Notify listeners that surface is ready for rendering
+        try { OnSurfaceGenerated?.Invoke(); } catch (System.Exception ex) { Debug.LogError($"[PlanetGenerator] OnSurfaceGenerated invocation error: {ex.Message}"); }
         
 
         // --------------------------- River Generation ----------------------------
@@ -1349,14 +1403,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
-        // Calculate north/south and east/west normalized positions for special biome rules
+        // Calculate north/south and east/west normalized positions using the generator's grid
         float northSouth = 0f;
         float eastWest = 0f;
-        if (TileSystem.Instance != null)
+        if (grid != null && grid.IsBuilt && tileIndex >= 0 && tileIndex < grid.TileCount)
         {
-            Vector3 tileCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
-            float mapW = GameManager.Instance != null ? GameManager.Instance.GetFlatMapWidth() : 1f;
-            float mapH = GameManager.Instance != null ? GameManager.Instance.GetFlatMapHeight() : 1f;
+            Vector3 tileCenter = grid.tileCenters[tileIndex];
+            float mapW = Mathf.Max(0.001f, grid.MapWidth);
+            float mapH = Mathf.Max(0.001f, grid.MapHeight);
             northSouth = Mathf.Clamp(tileCenter.z / (mapH * 0.5f), -1f, 1f);
             eastWest = Mathf.Clamp(tileCenter.x / (mapW * 0.5f), -1f, 1f);
         }
@@ -1533,5 +1587,55 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         dx = Mathf.Min(dx, mapWidth - dx);
         float dz = Mathf.Abs(a.y - b.y);
         return Mathf.Sqrt(dx * dx + dz * dz);
+    }
+    
+    /// <summary>
+    /// DIAGNOSTIC: Log elevation statistics after map generation.
+    /// This helps identify why terrain might appear flat.
+    /// </summary>
+    private void LogElevationDiagnostics(Dictionary<int, HexTileData> tileData)
+    {
+        if (tileData == null || tileData.Count == 0)
+        {
+            Debug.LogError("[PlanetGenerator] ELEVATION DIAGNOSTIC: No tile data available!");
+            return;
+        }
+        
+        float minElev = float.MaxValue;
+        float maxElev = float.MinValue;
+        float avgElev = 0f;
+        int landCount = 0;
+        int hillCount = 0;
+        int mountainCount = 0;
+        int flatCount = 0;
+        int zeroElevCount = 0;
+        
+        foreach (var kvp in tileData)
+        {
+            var td = kvp.Value;
+            float elev = td.elevation;
+            
+            if (elev < minElev) minElev = elev;
+            if (elev > maxElev) maxElev = elev;
+            avgElev += elev;
+            
+            if (td.isLand) landCount++;
+            if (td.elevationTier == ElevationTier.Hill) hillCount++;
+            else if (td.elevationTier == ElevationTier.Mountain) mountainCount++;
+            else flatCount++;
+            
+            if (elev <= 0.001f) zeroElevCount++;
+        }
+        
+        avgElev /= tileData.Count;
+        
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Total Tiles: {tileData.Count}, Land: {landCount}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Range: {minElev:F4} to {maxElev:F4} (avg: {avgElev:F4})");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Tiers - Flat: {flatCount}, Hills: {hillCount}, Mountains: {mountainCount}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Zero/Near-Zero Elevation Tiles: {zeroElevCount}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - baseLandElevation: {baseLandElevation}, maxTotalElevation: {maxTotalElevation}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - hillThreshold: {hillThreshold}, mountainThreshold: {mountainThreshold}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
     }
 }

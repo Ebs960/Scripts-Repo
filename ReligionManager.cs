@@ -206,8 +206,7 @@ public class ReligionManager : MonoBehaviour
         
         // Register the new religion
         foundedReligions.Add((religion, founder));
-        Debug.Log($"Religion {religion.religionName} founded by {founder.civData.civName}");
-    }
+}
     
     /// <summary>
     /// Get all religions that have been founded in the game

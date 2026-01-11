@@ -75,15 +75,12 @@ public class PlayerUI : MonoBehaviour
             techButton.onClick.RemoveAllListeners();
             techButton.onClick.AddListener(() => 
             {
-                Debug.Log("Tech button clicked");
-                
-                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+// Use lazy initialization - get current civ from TurnManager if our stored reference is null
                 Civilization civToUse = currentCiv;
                 if (civToUse == null && TurnManager.Instance != null)
                 {
                     civToUse = TurnManager.Instance.GetCurrentCivilization();
-                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
-                }
+}
                 
                 if (UIManager.Instance != null && civToUse != null)
                 {
@@ -101,15 +98,12 @@ public class PlayerUI : MonoBehaviour
             cultureButton.onClick.RemoveAllListeners();
             cultureButton.onClick.AddListener(() => 
             {
-                Debug.Log("Culture button clicked");
-                
-                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+// Use lazy initialization - get current civ from TurnManager if our stored reference is null
                 Civilization civToUse = currentCiv;
                 if (civToUse == null && TurnManager.Instance != null)
                 {
                     civToUse = TurnManager.Instance.GetCurrentCivilization();
-                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
-                }
+}
                 
                 if (UIManager.Instance != null && civToUse != null)
                 {
@@ -154,14 +148,11 @@ public class PlayerUI : MonoBehaviour
             equipmentButton.onClick.RemoveAllListeners();
             equipmentButton.onClick.AddListener(() =>
             {
-                Debug.Log("Equipment button clicked");
-
-                Civilization civToUse = currentCiv;
+Civilization civToUse = currentCiv;
                 if (civToUse == null && TurnManager.Instance != null)
                 {
                     civToUse = TurnManager.Instance.GetCurrentCivilization();
-                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback for equipment panel");
-                }
+}
 
                 if (UIManager.Instance != null && civToUse != null)
                 {
@@ -180,15 +171,12 @@ public class PlayerUI : MonoBehaviour
             diplomacyButton.onClick.RemoveAllListeners();
             diplomacyButton.onClick.AddListener(() => 
             {
-                Debug.Log("Diplomacy button clicked");
-                
-                // Use lazy initialization - get current civ from TurnManager if our stored reference is null
+// Use lazy initialization - get current civ from TurnManager if our stored reference is null
                 Civilization civToUse = currentCiv;
                 if (civToUse == null && TurnManager.Instance != null)
                 {
                     civToUse = TurnManager.Instance.GetCurrentCivilization();
-                    Debug.Log("PlayerUI: Using current civilization from TurnManager as fallback");
-                }
+}
                 
                 if (UIManager.Instance != null && civToUse != null)
                 {
@@ -201,9 +189,7 @@ public class PlayerUI : MonoBehaviour
                 }
             });
         }
-
-        Debug.Log("PlayerUI: Button listeners set up.");
-    }
+}
 
     /// <summary>
     /// Initializes the PlayerUI display with the player's data. 
@@ -211,16 +197,13 @@ public class PlayerUI : MonoBehaviour
     /// </summary>
     public void InitializePlayerDisplay(Civilization civ, int round)
     {
-        Debug.Log($"PlayerUI: InitializePlayerDisplay called for {civ?.civData?.civName ?? "NULL"}, Round: {round}");
-        
-        // Only activate if loading is not active
+// Only activate if loading is not active
         bool shouldActivate = !IsLoadingActive();
         
         if (playerPanel != null) 
         {
             playerPanel.SetActive(shouldActivate);
-            Debug.Log($"PlayerUI: playerPanel activation set to {shouldActivate} by InitializePlayerDisplay.");
-        }
+}
         else
         {
             Debug.LogWarning("PlayerUI: playerPanel is null during InitializePlayerDisplay.");
@@ -252,8 +235,7 @@ public class PlayerUI : MonoBehaviour
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
         {
-            Debug.Log("[PlayerUI] Minimap generation still in progress, keeping UI hidden");
-            return true;
+return true;
         }
         
         return false;
@@ -348,21 +330,17 @@ public class PlayerUI : MonoBehaviour
 
     private void HandleTurnChanged(Civilization civ, int round)
     {
-        Debug.Log($"[PlayerUI] HandleTurnChanged called for civ: {civ?.civData.civName ?? "NULL"}, round: {round}");
-        if (civ == null)
+if (civ == null)
         {
             Debug.LogError("[PlayerUI] HandleTurnChanged received a null civilization. Aborting.");
             return;
         }
 
         bool isPlayer = civ.isPlayerControlled;
-        Debug.Log($"[PlayerUI] Is player turn? {isPlayer}.");
-        
-        // Show/hide turn change panel
+// Show/hide turn change panel
         if (turnChangePanel != null)
         {
-            Debug.Log($"[PlayerUI] Setting turnChangePanel active state to: {!isPlayer}");
-            turnChangePanel.SetActive(!isPlayer);
+turnChangePanel.SetActive(!isPlayer);
         } else {
             Debug.LogWarning("[PlayerUI] turnChangePanel reference is NOT assigned in the inspector!");
         }
@@ -370,20 +348,16 @@ public class PlayerUI : MonoBehaviour
         // Update main player panel only if it's the player's turn
         if (isPlayer)
         {
-            Debug.Log("[PlayerUI] Updating main player panel.");
-            UpdatePlayerPanel(civ, round);
+UpdatePlayerPanel(civ, round);
         }
 
         // Update the content of the turn change panel regardless of its state
-        Debug.Log("[PlayerUI] Updating turn change panel content.");
-            UpdateTurnChangePanel(civ, round);
+UpdateTurnChangePanel(civ, round);
     }
 
     private void UpdatePlayerPanel(Civilization civ, int round)
     {
-        Debug.Log($"PlayerUI: Updating player panel for {civ.civData.civName}");
-        
-        currentCiv = civ;
+currentCiv = civ;
         
         // Top info
         if (civNameText != null) civNameText.text = civ.civData.civName;

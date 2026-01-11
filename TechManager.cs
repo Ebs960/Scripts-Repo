@@ -81,8 +81,7 @@ public class TechManager : MonoBehaviour
         // First check if it's already researched
         if (civ.researchedTechs.Contains(tech))
         {
-            Debug.Log("Already researched " + tech.techName);
-            return;
+return;
         }
         
         // Check if prereqs are met
@@ -90,17 +89,14 @@ public class TechManager : MonoBehaviour
         {
             if (prereq != null && !civ.researchedTechs.Contains(prereq))
             {
-                Debug.Log("Cannot research " + tech.techName + " - missing prereq " + prereq.techName);
-                return;
+return;
             }
         }
         
         // Start researching
         civ.currentTech = tech;
         civ.currentTechProgress = 0;
-        Debug.Log("Started researching " + tech.techName);
-        
-        // TODO: play sound, show feedback, etc.
+// TODO: play sound, show feedback, etc.
     }
     
     /// <summary>
@@ -109,10 +105,7 @@ public class TechManager : MonoBehaviour
     public void CompleteResearch(Civilization civ, TechData tech)
     {
         if (civ == null || tech == null) return;
-        
-        Debug.Log($"{civ.civData.civName} completed research: {tech.techName}");
-        
-        // Inform the civilization
+// Inform the civilization
         civ.HandleTechResearched(tech);
         
         // Reset current research

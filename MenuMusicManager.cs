@@ -33,8 +33,7 @@ public class MenuMusicManager : MonoBehaviour
             if (musicSource == null)
             {
                 musicSource = gameObject.AddComponent<AudioSource>();
-                Debug.Log("MenuMusicManager: Added AudioSource component automatically");
-            }
+}
 
             musicSource.loop = loopMenuMusic;
             musicSource.volume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
@@ -91,8 +90,7 @@ public class MenuMusicManager : MonoBehaviour
         bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
         if (!musicEnabled)
         {
-            Debug.Log("MenuMusicManager: Menu music is disabled, not playing.");
-            return;
+return;
         }
 
         if (menuMusic != null && menuMusic.Count > 0)

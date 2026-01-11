@@ -67,9 +67,7 @@ public class UnitReinforcementManager : MonoBehaviour
                 ApplyReinforcement(unit);
             }
         }
-        
-        Debug.Log("[UnitReinforcementManager] Applied reinforcement to all units");
-    }
+}
     
     /// <summary>
     /// Apply reinforcement to a single unit
@@ -93,8 +91,7 @@ public class UnitReinforcementManager : MonoBehaviour
         
         if (unit.soldierCount > oldCount)
         {
-            Debug.Log($"[UnitReinforcementManager] {unit.data.unitName} reinforced: {oldCount} -> {unit.soldierCount} soldiers ({(unit.isGarrisonedInCity ? "in city" : "outside")})");
-        }
+}
     }
     
     /// <summary>

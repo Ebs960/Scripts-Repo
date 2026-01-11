@@ -94,8 +94,7 @@ public class SpaceRouteManager : MonoBehaviour
         if (turnManager != null)
         {
             // Hook into turn end event (you'll need to expose this in TurnManager)
-            Debug.Log("[SpaceRouteManager] Connected to TurnManager for space travel progression");
-        }
+}
         else
         {
             Debug.LogWarning("[SpaceRouteManager] TurnManager not found! Space travel won't progress automatically.");
@@ -195,10 +194,7 @@ public class SpaceRouteManager : MonoBehaviour
 
         // Add to active travels
         activeTravels.Add(task);
-
-        Debug.Log($"[SpaceRouteManager] Started space travel: {task.unitName} from Planet {fromPlanetIndex} to Planet {toPlanetIndex} ({distance:F2} AU, {travelTurns} turns)");
-
-        // Notify listeners
+// Notify listeners
         OnTravelStarted?.Invoke(task);
 
         // Also prompt UI status panel to update now (on launch)
@@ -225,10 +221,7 @@ public class SpaceRouteManager : MonoBehaviour
             var travel = activeTravels[i];
             travel.turnsRemaining--;
             activeTravels[i] = travel; // Update the struct
-
-            Debug.Log($"[SpaceRouteManager] {travel.unitName} space travel: {travel.turnsRemaining} turns remaining");
-
-            // Update visual position in space
+// Update visual position in space
             UpdateVisualTravelProgress(travel);
 
             // Notify progress
@@ -259,9 +252,7 @@ public class SpaceRouteManager : MonoBehaviour
 
     private void CompleteTravelTask(SpaceTravelTask task)
     {
-        Debug.Log($"[SpaceRouteManager] Completing travel: {task.unitName} arriving at Planet {task.destinationPlanetIndex}");
-
-        // Remove from active travels
+// Remove from active travels
         activeTravels.Remove(task);
 
         // Place unit on destination planet
@@ -269,9 +260,7 @@ public class SpaceRouteManager : MonoBehaviour
 
         // Notify completion
         OnTravelCompleted?.Invoke(task);
-
-        Debug.Log($"[SpaceRouteManager] {task.unitName} successfully arrived at Planet {task.destinationPlanetIndex}");
-    }
+}
 
     private float CalculateDistanceBetweenPlanets(int planetA, int planetB)
     {
@@ -389,8 +378,7 @@ public class SpaceRouteManager : MonoBehaviour
         }
 
         // Unit remains visible but is now "in space"
-        Debug.Log($"[SpaceRouteManager] {unit.name} is now traveling through space from Planet {fromPlanetIndex} to Planet {toPlanetIndex}");
-    }
+}
 
     private void UpdateVisualTravelProgress(SpaceTravelTask travel)
     {
@@ -454,9 +442,7 @@ public class SpaceRouteManager : MonoBehaviour
 
         // Reactivate the unit
         unit.SetActive(true);
-
-        Debug.Log($"[SpaceRouteManager] Placed {unit.name} on Planet {planetIndex} at tile {landingTile}");
-    }
+}
 
     private int FindLandingTile(PlanetGenerator planetGen)
     {
@@ -501,9 +487,7 @@ public class SpaceRouteManager : MonoBehaviour
         
         // Remove from active travels
         activeTravels.Remove(task);
-
-        Debug.Log($"[SpaceRouteManager] Cancelled travel for {task.unitName}, returned to Planet {task.originPlanetIndex}");
-        return true;
+return true;
     }
 
     /// <summary>

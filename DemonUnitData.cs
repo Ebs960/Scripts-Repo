@@ -15,4 +15,12 @@ public class DemonUnitData : CombatUnitData
     
     [Tooltip("Whether this demon can cross water tiles")]
     public bool canCrossWater = false;
+    
+    [Header("Demon Army Settings")]
+    [Tooltip("Movement points per turn when this demon type leads an army")]
+    [Range(1, 5)]
+    public int demonArmyMovePoints = 2;
+    
+    [Tooltip("Prefab for demon army visual on campaign map (optional - uses default if null)")]
+    public GameObject demonArmyPrefab;
 } 

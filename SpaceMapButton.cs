@@ -60,16 +60,13 @@ public class SpaceMapButton : MonoBehaviour
             Debug.LogError("[SpaceMapButton] Check that your SpaceMapUI GameObject is active and the component is attached properly.");
             // List all objects with SpaceMapUI components for debugging
             SpaceMapUI[] allSpaceMapUIs = FindObjectsByType<SpaceMapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            Debug.Log($"[SpaceMapButton] Found {allSpaceMapUIs.Length} SpaceMapUI components in scene:");
-            foreach (var ui in allSpaceMapUIs)
+foreach (var ui in allSpaceMapUIs)
             {
-                Debug.Log($"[SpaceMapButton] - {ui.name} on GameObject: {ui.gameObject.name} (Active: {ui.gameObject.activeInHierarchy}, Scene: {ui.gameObject.scene.name})");
-            }
+}
         }
         else
         {
-            Debug.Log($"[SpaceMapButton] Found existing SpaceMapUI: {spaceMapUI.name} (Active: {spaceMapUI.gameObject.activeInHierarchy})");
-            // No need to initialize with SolarSystemManager; SpaceMapUI now uses GameManager for planet data
+// No need to initialize with SolarSystemManager; SpaceMapUI now uses GameManager for planet data
         }
     }
 
@@ -141,21 +138,16 @@ public class SpaceMapButton : MonoBehaviour
     /// </summary>
     public void OpenSpaceMap()
     {
-        Debug.Log("[SpaceMapButton] OpenSpaceMap called");
-
-        // Always re-find SpaceMapUI in case of scene reloads
+// Always re-find SpaceMapUI in case of scene reloads
         spaceMapUI = FindSpaceMapUIInScene();
 
         if (spaceMapUI != null)
         {
-            Debug.Log($"[SpaceMapButton] Found SpaceMapUI: {spaceMapUI.name} on GameObject: {spaceMapUI.gameObject.name}");
-
-            // FORCE the GameObject to be active first
+// FORCE the GameObject to be active first
             if (!spaceMapUI.gameObject.activeInHierarchy)
             {
                 spaceMapUI.gameObject.SetActive(true);
-                Debug.Log($"[SpaceMapButton] Activated GameObject: {spaceMapUI.gameObject.name}");
-            }
+}
 
             // Make sure the Canvas is also active if it's a parent
             Transform parent = spaceMapUI.transform.parent;
@@ -164,8 +156,7 @@ public class SpaceMapButton : MonoBehaviour
                 if (parent.GetComponent<Canvas>() != null && !parent.gameObject.activeInHierarchy)
                 {
                     parent.gameObject.SetActive(true);
-                    Debug.Log($"[SpaceMapButton] Activated Canvas: {parent.name}");
-                }
+}
                 parent = parent.parent;
             }
 
@@ -173,8 +164,7 @@ public class SpaceMapButton : MonoBehaviour
 
             // Now show the UI
             spaceMapUI.Show();
-            Debug.Log("[SpaceMapButton] SpaceMapUI.Show() called successfully");
-        }
+}
         else
         {
             Debug.LogError("[SpaceMapButton] Could not find SpaceMapUI in scene!");
@@ -182,14 +172,11 @@ public class SpaceMapButton : MonoBehaviour
 
             // Debug: List all GameObjects with "Space" in the name
             GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-            Debug.Log($"[SpaceMapButton] Searching through {allObjects.Length} GameObjects...");
-
-            foreach (GameObject obj in allObjects)
+foreach (GameObject obj in allObjects)
             {
                 if (obj.name.ToLower().Contains("space"))
                 {
-                    Debug.Log($"[SpaceMapButton] Found GameObject with 'space': {obj.name} (Active: {obj.activeInHierarchy}) - Components: {string.Join(", ", obj.GetComponents<Component>().Select(c => c.GetType().Name))}");
-                }
+}
             }
         }
     }
@@ -210,14 +197,11 @@ public class SpaceMapButton : MonoBehaviour
     /// </summary>
     private SpaceMapUI FindSpaceMapUIInScene()
     {
-        Debug.Log("[SpaceMapButton] FindSpaceMapUIInScene called");
-        
-        // Method 1: Try normal active search first
+// Method 1: Try normal active search first
         SpaceMapUI activeUI = FindFirstObjectByType<SpaceMapUI>();
         if (activeUI != null)
         {
-            Debug.Log($"[SpaceMapButton] Found active SpaceMapUI: {activeUI.name}");
-            return activeUI;
+return activeUI;
         }
 
         // Method 2: Search including inactive objects using the new API
@@ -227,8 +211,7 @@ public class SpaceMapButton : MonoBehaviour
             // Make sure it's a scene object, not a prefab
             if (ui.gameObject.scene.name != null && ui.gameObject.scene.name != "")
             {
-                Debug.Log($"[SpaceMapButton] Found inactive SpaceMapUI: {ui.name} in scene: {ui.gameObject.scene.name}");
-                return ui;
+return ui;
             }
         }
 
@@ -241,16 +224,14 @@ public class SpaceMapButton : MonoBehaviour
                 SpaceMapUI uiComponent = go.GetComponent<SpaceMapUI>();
                 if (uiComponent != null && go.scene.name != null && go.scene.name != "")
                 {
-                    Debug.Log($"[SpaceMapButton] Found SpaceMapUI by name search: {go.name}");
-                    return uiComponent;
+return uiComponent;
                 }
                 
                 // Also check children
                 uiComponent = go.GetComponentInChildren<SpaceMapUI>();
                 if (uiComponent != null && go.scene.name != null && go.scene.name != "")
                 {
-                    Debug.Log($"[SpaceMapButton] Found SpaceMapUI in children of: {go.name}");
-                    return uiComponent;
+return uiComponent;
                 }
             }
         }
@@ -276,9 +257,7 @@ public class QuickSpaceMapSetup : MonoBehaviour
         buttonGO.transform.SetParent(transform, false);
         
         SpaceMapButton spaceMapButton = buttonGO.AddComponent<SpaceMapButton>();
-        
-        Debug.Log("[QuickSpaceMapSetup] Space map button created. Consider using SpaceMapButton component directly.");
-        // Wire UI interactions for the runtime-created object (if it creates UI later)
+// Wire UI interactions for the runtime-created object (if it creates UI later)
         if (UIManager.Instance != null)
             UIManager.Instance.WireUIInteractions(buttonGO);
     }

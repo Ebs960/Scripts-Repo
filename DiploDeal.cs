@@ -37,8 +37,7 @@ public class PeaceTreaty : DiploDeal
     public override void Abort(Civilization a, Civilization b)
     {
         // Breaking a peace treaty causes reputation penalty
-        Debug.Log($"{a.civData.civName} broke peace treaty with {b.civData.civName} - reputation penalty applied");
-        // Apply reputation penalty directly in Civilization if needed
+// Apply reputation penalty directly in Civilization if needed
         // Example: a.diplomacyReputation -= 10;
     }
 }
@@ -117,8 +116,7 @@ public class AllianceDeal : DiploDeal
         DiplomacyManager.Instance.SetState(a, b, DiplomaticState.Alliance);
         
         // Share vision - removed FogOfWarManager dependency
-        Debug.Log($"{a.civData.civName} and {b.civData.civName} now share vision");
-        // Vision sharing would be implemented directly in a visibility system
+// Vision sharing would be implemented directly in a visibility system
     }
     
     public override void Abort(Civilization a, Civilization b)
@@ -126,11 +124,8 @@ public class AllianceDeal : DiploDeal
         DiplomacyManager.Instance.SetState(a, b, DiplomaticState.Peace);
         
         // Stop sharing vision - removed FogOfWarManager dependency
-        Debug.Log($"{a.civData.civName} and {b.civData.civName} no longer share vision");
-        
-        // Apply major reputation penalty for breaking alliance
-        Debug.Log($"{a.civData.civName} broke alliance with {b.civData.civName} - major reputation penalty applied");
-        // Apply reputation penalty directly if needed
+// Apply major reputation penalty for breaking alliance
+// Apply reputation penalty directly if needed
         // Example: a.diplomacyReputation -= 25;
     }
 } 

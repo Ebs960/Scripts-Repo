@@ -22,6 +22,9 @@ public class AnimalManager : MonoBehaviour
     // Track animals that were recently attacked (for prey behavior)
     private Dictionary<CombatUnit, int> recentlyAttackedAnimals = new Dictionary<CombatUnit, int>();
     private const int PREY_MEMORY_TURNS = 2;
+    
+    // Track animal movement points (keyed by animal instance)
+    private Dictionary<CombatUnit, int> animalMovePoints = new Dictionary<CombatUnit, int>();
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
 
@@ -33,12 +36,10 @@ public class AnimalManager : MonoBehaviour
 
     public void SpawnInitialAnimals()
     {
-        Debug.Log("[AnimalManager] SpawnInitialAnimals called");
-        int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
+int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
         float[] multipliers = { 0f, 0.25f, 0.5f, 1f, 2f, 3f };
         float mult = multipliers[Mathf.Clamp(prevalence, 0, multipliers.Length - 1)];
-        Debug.Log($"[AnimalManager] Animal prevalence: {prevalence}, multiplier: {mult}");
-        if (mult == 0f) return;
+if (mult == 0f) return;
 
         foreach (var rule in spawnRules)
         {
@@ -57,8 +58,7 @@ public class AnimalManager : MonoBehaviour
         if (animal != null && animal.data.unitType == CombatCategory.Animal)
         {
             recentlyAttackedAnimals[animal] = GameManager.Instance.currentTurn;
-            Debug.Log($"Animal {animal.data.unitName} marked as recently attacked on turn {GameManager.Instance.currentTurn}");
-        }
+}
     }
     
     /// <summary>
@@ -181,38 +181,62 @@ public class AnimalManager : MonoBehaviour
             if (unit == null)
             {
                 activeAnimals.Remove(unit);
+                animalMovePoints.Remove(unit);
                 continue;
             }
 
             unit.ResetForNewTurn();
+            
+            // Reset movement points for this animal based on its data
+            int baseMovePoints = unit.data != null ? unit.data.animalMovePoints : 1;
+            animalMovePoints[unit] = baseMovePoints;
 
             var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(unit.currentTileIndex) : null;
             if (tileData == null) continue;
 
-            // Determine movement behavior based on animal type
-            bool moved = false;
-            switch (unit.data.animalBehavior)
+            // Animals can move multiple times per turn based on their movement points
+            while (GetAnimalMovePoints(unit) > 0)
             {
-                case AnimalBehaviorType.Predator:
-                    moved = HandlePredatorMovement(unit);
+                // Determine movement behavior based on animal type
+                bool moved = false;
+                switch (unit.data.animalBehavior)
+                {
+                    case AnimalBehaviorType.Predator:
+                        moved = HandlePredatorMovement(unit);
+                        break;
+                        
+                    case AnimalBehaviorType.Prey:
+                        moved = HandlePreyMovement(unit);
+                        break;
+                        
+                    case AnimalBehaviorType.Neutral:
+                    default:
+                        moved = HandleNeutralMovement(unit);
+                        break;
+                }
+                
+                // If couldn't move, break out of movement loop
+                if (!moved)
                     break;
-                    
-                case AnimalBehaviorType.Prey:
-                    moved = HandlePreyMovement(unit);
-                    break;
-                    
-                case AnimalBehaviorType.Neutral:
-                default:
-                    moved = HandleNeutralMovement(unit);
-                    break;
-            }
-            
-            // If no special behavior movement occurred, fall back to random movement
-            if (!moved)
-            {
-                HandleNeutralMovement(unit);
             }
         }
+    }
+    
+    /// <summary>
+    /// Get remaining movement points for an animal this turn
+    /// </summary>
+    private int GetAnimalMovePoints(CombatUnit animal)
+    {
+        return animalMovePoints.TryGetValue(animal, out int points) ? points : 0;
+    }
+    
+    /// <summary>
+    /// Deduct movement points for an animal after moving
+    /// </summary>
+    private void DeductAnimalMovePoints(CombatUnit animal, int cost)
+    {
+        if (animalMovePoints.ContainsKey(animal))
+            animalMovePoints[animal] = Mathf.Max(0, animalMovePoints[animal] - cost);
     }
     
     /// <summary>
@@ -237,6 +261,9 @@ public class AnimalManager : MonoBehaviour
     /// </summary>
     private bool HandlePredatorMovement(CombatUnit predator)
     {
+        // Check if predator has movement points
+        if (GetAnimalMovePoints(predator) <= 0) return false;
+        
         var target = FindNearestCivilizationUnit(predator);
         if (target == null) return false;
         
@@ -266,9 +293,10 @@ public class AnimalManager : MonoBehaviour
             }
         }
         
+        // Deduct movement point and move
+        DeductAnimalMovePoints(predator, 1);
         predator.MoveTo(bestDestination);
-        Debug.Log($"Predator {predator.data.unitName} hunting towards {target.data.unitName}");
-        return true;
+return true;
     }
     
     /// <summary>
@@ -276,13 +304,15 @@ public class AnimalManager : MonoBehaviour
     /// </summary>
     private bool HandlePreyMovement(CombatUnit prey)
     {
+        // Check if prey has movement points
+        if (GetAnimalMovePoints(prey) <= 0) return false;
+        
         bool wasAttacked = WasRecentlyAttacked(prey);
         
         if (wasAttacked)
         {
             // Prey was recently attacked, so it's aggressive and will hunt like a predator
-            Debug.Log($"Prey {prey.data.unitName} is aggressively seeking revenge!");
-            return HandlePredatorMovement(prey); // Use predator logic for aggressive behavior
+return HandlePredatorMovement(prey); // Use predator logic for aggressive behavior
         }
         else
         {
@@ -290,9 +320,9 @@ public class AnimalManager : MonoBehaviour
             int? fleeDestination = GetFleeDirection(prey);
             if (fleeDestination.HasValue)
             {
+                DeductAnimalMovePoints(prey, 1);
                 prey.MoveTo(fleeDestination.Value);
-                Debug.Log($"Prey {prey.data.unitName} fleeing from civilization units");
-                return true;
+return true;
             }
         }
         
@@ -304,6 +334,9 @@ public class AnimalManager : MonoBehaviour
     /// </summary>
     private bool HandleNeutralMovement(CombatUnit unit)
     {
+        // Check if unit has movement points
+        if (GetAnimalMovePoints(unit) <= 0) return false;
+        
     var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
@@ -316,6 +349,7 @@ public class AnimalManager : MonoBehaviour
         if (validDestinations.Count > 0)
         {
             int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
+            DeductAnimalMovePoints(unit, 1);
             unit.MoveTo(targetTile);
             return true;
         }
@@ -380,7 +414,68 @@ public class AnimalManager : MonoBehaviour
         {
             activeAnimals.Remove(unit);
             recentlyAttackedAnimals.Remove(unit);
+            animalMovePoints.Remove(unit);
             UnitRegistry.Unregister(unit.gameObject);
         };
+    }
+    
+    /// <summary>
+    /// Remove an animal from the manager (called when hunted or killed)
+    /// </summary>
+    public void RemoveAnimal(CombatUnit animal)
+    {
+        if (animal == null) return;
+        
+        activeAnimals.Remove(animal);
+        recentlyAttackedAnimals.Remove(animal);
+        animalMovePoints.Remove(animal);
+        UnitRegistry.Unregister(animal.gameObject);
+}
+    
+    /// <summary>
+    /// Get all active animals (for UI or other systems to query)
+    /// </summary>
+    public List<CombatUnit> GetActiveAnimals()
+    {
+        return new List<CombatUnit>(activeAnimals);
+    }
+    
+    /// <summary>
+    /// Get animals at a specific tile
+    /// </summary>
+    public List<CombatUnit> GetAnimalsAtTile(int tileIndex)
+    {
+        var result = new List<CombatUnit>();
+        foreach (var animal in activeAnimals)
+        {
+            if (animal != null && animal.currentTileIndex == tileIndex)
+            {
+                result.Add(animal);
+            }
+        }
+        return result;
+    }
+    
+    /// <summary>
+    /// Get animals adjacent to a specific tile (for hunting range checks)
+    /// </summary>
+    public List<CombatUnit> GetAnimalsNearTile(int tileIndex)
+    {
+        var result = new List<CombatUnit>();
+        
+        // Animals on the tile
+        result.AddRange(GetAnimalsAtTile(tileIndex));
+        
+        // Animals on adjacent tiles
+        if (TileSystem.Instance != null)
+        {
+            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
+            foreach (int neighbor in neighbors)
+            {
+                result.AddRange(GetAnimalsAtTile(neighbor));
+            }
+        }
+        
+        return result;
     }
 }

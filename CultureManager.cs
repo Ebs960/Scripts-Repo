@@ -78,8 +78,7 @@ public class CultureManager : MonoBehaviour
     {
         if (!civ.CanCultivate(cult)) return;
         civ.StartCulture(cult);
-        Debug.Log($"{civ.civData.civName} adopted culture {cult.cultureName}");
-    }
+}
 
     /// <summary>
     /// Called when a culture is fully adopted by a civilization.
@@ -87,10 +86,7 @@ public class CultureManager : MonoBehaviour
     public void CompleteCultureAdoption(Civilization civ, CultureData cult)
     {
         if (civ == null || cult == null) return;
-
-        Debug.Log($"{civ.civData.civName} completed adoption of culture: {cult.cultureName}");
-
-        // Inform the civilization (which will add to researchedCultures and apply bonuses)
+// Inform the civilization (which will add to researchedCultures and apply bonuses)
         civ.OnCultureAdopted(cult);
 
         // Reset current culture research in the civilization

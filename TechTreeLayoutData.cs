@@ -29,9 +29,7 @@ public class TechTreeLayoutData : ScriptableObject
         
         EditorUtility.FocusProjectWindow();
         Selection.activeObject = asset;
-        
-        Debug.Log($"Created TechTreeLayoutData asset at: {path}");
-    }
+}
 #endif
     [System.Serializable]
     public class TechPosition

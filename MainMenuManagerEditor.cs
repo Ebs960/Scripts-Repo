@@ -6,25 +6,40 @@ using UnityEngine;
 public class MainMenuManagerEditor : Editor
 {
     SerializedProperty spriteEntriesProp;
-    List<string> allNames;
+    
+    // MEMORY FIX: STATIC cache - persists across inspector open/close and even domain reloads
+    // Map type names are constant strings that never change during a session
+    // Building them costs CPU, so we cache forever until explicit refresh
+    private static List<string> s_allNames;
+    private static string[] s_cachedNamesArray;
+    private static bool s_namesInitialized = false;
 
     void OnEnable()
     {
         spriteEntriesProp = serializedObject.FindProperty("mapTypeSpriteEntries");
-        RefreshMapTypeNames();
+        
+        // Only build if never built before (static persists across inspector open/close)
+        if (!s_namesInitialized || s_cachedNamesArray == null)
+        {
+            RefreshMapTypeNames();
+        }
     }
+    
+    // No OnDisable cleanup - we WANT the cache to persist forever!
 
     private void RefreshMapTypeNames()
     {
-        allNames = MapTypeNameGenerator.BuildAllNames();
-        if (allNames.Count == 0)
+        s_allNames = MapTypeNameGenerator.BuildAllNames();
+        s_cachedNamesArray = s_allNames.ToArray();
+        s_namesInitialized = true;
+        
+        if (s_allNames.Count == 0)
         {
             Debug.LogError("No map type names were generated!");
         }
         else
         {
-            Debug.Log($"Generated {allNames.Count} map type names");
-        }
+}
     }
 
     public override void OnInspectorGUI()
@@ -39,12 +54,19 @@ public class MainMenuManagerEditor : Editor
 
         if (GUILayout.Button("Refresh Map Types"))
         {
+            // Only rebuild when explicitly requested by user (e.g., if they edited MapTypeNameGenerator)
             RefreshMapTypeNames();
         }
 
         if (GUILayout.Button("Add Entry"))
         {
             spriteEntriesProp.arraySize++;
+        }
+        
+        // Safety check - ensure we have cached data (handles domain reload edge cases)
+        if (s_cachedNamesArray == null || s_cachedNamesArray.Length == 0)
+        {
+            RefreshMapTypeNames();
         }
 
         for (int i = 0; i < spriteEntriesProp.arraySize; i++)
@@ -56,14 +78,19 @@ public class MainMenuManagerEditor : Editor
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.BeginHorizontal();
             
-            // Ensure we have a valid index
-            int currentIndex = string.IsNullOrEmpty(nameProp.stringValue) ? 0 : 
-                             allNames.Contains(nameProp.stringValue) ? allNames.IndexOf(nameProp.stringValue) : 0;
-            
-            int newIndex = EditorGUILayout.Popup("Map Type", currentIndex, allNames.ToArray());
-            if (newIndex >= 0 && newIndex < allNames.Count)
+            // Find current index in cached list
+            int currentIndex = 0;
+            if (!string.IsNullOrEmpty(nameProp.stringValue) && s_allNames != null)
             {
-                nameProp.stringValue = allNames[newIndex];
+                int foundIndex = s_allNames.IndexOf(nameProp.stringValue);
+                if (foundIndex >= 0) currentIndex = foundIndex;
+            }
+            
+            // Use static cached array - zero allocations per frame!
+            int newIndex = EditorGUILayout.Popup("Map Type", currentIndex, s_cachedNamesArray);
+            if (newIndex >= 0 && newIndex < s_cachedNamesArray.Length)
+            {
+                nameProp.stringValue = s_cachedNamesArray[newIndex];
             }
 
             if (GUILayout.Button("X", GUILayout.Width(20)))

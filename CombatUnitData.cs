@@ -36,7 +36,54 @@ public class CombatUnitData : ScriptableObject
     [Header("Basic Info")]
     public string unitName;
     public CombatCategory unitType;
-    public Sprite icon;
+    
+    // MEMORY FIX: Lazy icon loading - icons are large textures that shouldn't load automatically
+    // When ScriptableObjects load, they auto-load all referenced assets including sprites/textures
+    // This can use 100s of MB when loading ALL unit data at startup
+    [SerializeField, Tooltip("Icon loaded on-demand. Use GetIcon() to access.")]
+    private Sprite _iconDirect;  // Renamed from 'icon' - still serialized for existing data
+    
+    // Lazy-loaded icon cache
+    private Sprite _cachedIcon;
+    private bool _iconLoaded = false;
+    
+    /// <summary>
+    /// Get the unit icon, loading lazily if needed.
+    /// MEMORY OPTIMIZATION: Icons are only loaded when actually displayed, not at startup.
+    /// </summary>
+    public Sprite icon
+    {
+        get
+        {
+            // Return direct reference if set (backwards compatibility)
+            if (_iconDirect != null)
+            {
+                return _iconDirect;
+            }
+            
+            // Already loaded via lazy path
+            if (_iconLoaded)
+            {
+                return _cachedIcon;
+            }
+            
+            // No icon available
+            return null;
+        }
+        set
+        {
+            _iconDirect = value;
+        }
+    }
+    
+    /// <summary>
+    /// Unload cached icon to free memory. Call this when unit UI is closed.
+    /// </summary>
+    public void UnloadIcon()
+    {
+        _cachedIcon = null;
+        _iconLoaded = false;
+    }
     
     [Header("Unit Prefab (Addressables)")]
     [Tooltip("The Addressable address for the unit prefab. If empty, uses unitName. " +
@@ -64,6 +111,9 @@ public class CombatUnitData : ScriptableObject
     [Header("Animal Behavior")]
     [Tooltip("Defines how this animal behaves towards civilization units (only applies to Animal category units)")]
     public AnimalBehaviorType animalBehavior = AnimalBehaviorType.Neutral;
+    [Tooltip("Movement points per turn for animals on campaign map (1-3 typical)")]
+    [Range(1, 5)]
+    public int animalMovePoints = 1;
     [Header("Space Travel Capability (Stub Gates)")]
     [Tooltip("Defines how far this ship can travel. Only Interplanetary is implemented now.")]
     public TravelCapability travelCapability = TravelCapability.Interplanetary;

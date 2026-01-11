@@ -123,9 +123,7 @@ public class BattlefieldAtmosphere : MonoBehaviour
         {
             CreateDustInLight();
         }
-        
-        Debug.Log($"[BattlefieldAtmosphere] Created atmosphere for {biome} - HeightFog: {enableHeightFog}, LightShafts: {enableLightShafts}, Dust: {enableDustInLight}");
-    }
+}
     
     /// <summary>
     /// Find the main directional light in the scene

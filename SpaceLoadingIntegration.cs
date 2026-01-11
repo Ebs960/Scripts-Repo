@@ -51,9 +51,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
         {
             SpaceLoadingPanelController.Instance.HideSpaceLoading();
         }
-        
-        Debug.Log("[SpaceLoadingIntegration] All space UI hidden on game start");
-    }
+}
 
     /// <summary>
     /// Sets up space loading integration automatically
@@ -74,9 +72,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
                 loadingPanel.spaceLoadingPanelPrefab = spaceLoadingPanelPrefab;
                 loadingPanel.persistSpaceLoadingPanel = persistSpaceLoadingPanel;
                 loadingPanel.enableSpaceLoadingIntegration = true;
-                
-                Debug.Log($"[SpaceLoadingIntegration] Configured LoadingPanelController on {loadingPanel.gameObject.name}");
-                setupCount++;
+setupCount++;
             }
         }
         
@@ -89,9 +85,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
         
         // After setup, ensure all space loading panels are hidden
         StartCoroutine(HideAllSpaceLoadingPanels());
-        
-        Debug.Log($"[SpaceLoadingIntegration] Setup complete! Configured {setupCount} loading panel(s)");
-    }
+}
     
     /// <summary>
     /// Creates a basic loading panel if none exists
@@ -108,9 +102,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
         
         // IMPORTANT: Hide any created space loading panels
         StartCoroutine(HideSpaceLoadingAfterFrame(loadingPanel));
-        
-        Debug.Log("[SpaceLoadingIntegration] Created basic LoadingPanelController");
-    }
+}
     
     /// <summary>
     /// Hide space loading panel after it's been created and initialized
@@ -146,9 +138,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
         {
             panel.HideSpaceLoading();
         }
-        
-        Debug.Log("[SpaceLoadingIntegration] All space loading panels hidden");
-    }
+}
     
     /// <summary>
     /// Test the space loading system
@@ -169,9 +159,7 @@ public class SpaceLoadingIntegration : MonoBehaviour
     
     private System.Collections.IEnumerator TestSpaceLoadingCoroutine(LoadingPanelController loadingPanel)
     {
-        Debug.Log("[SpaceLoadingIntegration] Testing space loading...");
-        
-        // Test space loading
+// Test space loading
         loadingPanel.ShowLoading("Traveling to Mars...", true);
         yield return new UnityEngine.WaitForSeconds(3f);
         
@@ -181,7 +169,5 @@ public class SpaceLoadingIntegration : MonoBehaviour
         
         // Hide all
         loadingPanel.HideAllLoading();
-        
-        Debug.Log("[SpaceLoadingIntegration] Test complete!");
-    }
+}
 }

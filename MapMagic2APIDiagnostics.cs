@@ -30,9 +30,7 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
     [ContextMenu("Run Diagnostics")]
     public void RunDiagnostics()
     {
-        Debug.Log("=== MapMagic 2 API Diagnostics ===");
-        
-        // Find MapMagic component
+// Find MapMagic component
         object mapMagicInstance = FindMapMagicComponent();
         if (mapMagicInstance == null)
         {
@@ -41,27 +39,20 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         }
         
         var mapMagicType = mapMagicInstance.GetType();
-        Debug.Log($"MapMagic Component Type: {mapMagicType.FullName}");
-        Debug.Log($"MapMagic Component Assembly: {mapMagicType.Assembly.FullName}");
+Debug.Log($"MapMagic Component Assembly: {mapMagicType.Assembly.FullName}");
         
         // QUESTION 1: What's the exact type of the graph property?
-        Debug.Log("\n--- QUESTION 1: Graph Property Type ---");
-        InspectGraphProperty(mapMagicType, mapMagicInstance);
+InspectGraphProperty(mapMagicType, mapMagicInstance);
         
         // QUESTION 2: Can we access exposed variables programmatically?
-        Debug.Log("\n--- QUESTION 2: Exposed Variables Access ---");
-        InspectExposedVariables(mapMagicType, mapMagicInstance);
+InspectExposedVariables(mapMagicType, mapMagicInstance);
         
         // QUESTION 3: Does MapMagic 2 expose a public API for node creation/modification?
-        Debug.Log("\n--- QUESTION 3: Node Creation/Modification API ---");
-        InspectNodeAPI(mapMagicType, mapMagicInstance);
+InspectNodeAPI(mapMagicType, mapMagicInstance);
         
         // QUESTION 4: Can we modify node parameters after graph creation?
-        Debug.Log("\n--- QUESTION 4: Runtime Node Parameter Modification ---");
-        InspectRuntimeNodeModification(mapMagicType, mapMagicInstance);
-        
-        Debug.Log("\n=== Diagnostics Complete ===");
-    }
+InspectRuntimeNodeModification(mapMagicType, mapMagicInstance);
+}
     
     private object FindMapMagicComponent()
     {
@@ -83,25 +74,18 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         }
         else
         {
-            Debug.Log($"Checking GameObject: {targetObject.name}");
-            
-            // Get ALL components and check their types
+// Get ALL components and check their types
             Component[] allComponents = targetObject.GetComponents<Component>();
-            Debug.Log($"Found {allComponents.Length} components on GameObject:");
-            
-            foreach (var comp in allComponents)
+foreach (var comp in allComponents)
             {
                 if (comp == null) continue;
                 var compType = comp.GetType();
-                Debug.Log($"  - {compType.Name} ({compType.FullName})");
-                
-                // Check if this looks like a MapMagic component
+// Check if this looks like a MapMagic component
                 if (compType.Name.Contains("MapMagic") || 
                     compType.FullName.Contains("MapMagic") ||
                     compType.Name.Contains("Map") && compType.Name.Contains("Magic"))
                 {
-                    Debug.Log($"  ✓ Found MapMagic component: {compType.FullName}");
-                    return comp;
+return comp;
                 }
             }
         }
@@ -126,16 +110,13 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
             
             if (mapMagicType != null)
             {
-                Debug.Log($"Trying to find component of type: {mapMagicType.FullName}");
-                
-                // Try on assigned object first
+// Try on assigned object first
                 if (targetObject != null)
                 {
                     var comp = targetObject.GetComponent(mapMagicType);
                     if (comp != null)
                     {
-                        Debug.Log($"  ✓ Found component on assigned GameObject!");
-                        return comp;
+return comp;
                     }
                 }
                 
@@ -143,8 +124,7 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
                 var found = FindFirstObjectByType(mapMagicType);
                 if (found != null)
                 {
-                    Debug.Log($"  ✓ Found component in scene!");
-                    return found;
+return found;
                 }
             }
         }
@@ -177,21 +157,15 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
             if (graphValue != null)
             {
                 var graphType = graphValue.GetType();
-                Debug.Log($"✓ Graph Property Found!");
-                Debug.Log($"  - Property Type: {graphProperty.PropertyType.FullName}");
-                Debug.Log($"  - Actual Value Type: {graphType.FullName}");
-                Debug.Log($"  - Is ScriptableObject: {typeof(ScriptableObject).IsAssignableFrom(graphType)}");
-                Debug.Log($"  - Is Null: {graphValue == null}");
-                
-                // Check if it's writable
+Debug.Log($"  - Property Type: {graphProperty.PropertyType.FullName}");
+Debug.Log($"  - Is ScriptableObject: {typeof(ScriptableObject).IsAssignableFrom(graphType)}");
+// Check if it's writable
                 if (graphProperty.CanWrite)
                 {
-                    Debug.Log($"  - ✓ Graph property is WRITABLE (can be changed at runtime)");
-                }
+}
                 else
                 {
-                    Debug.Log($"  - ✗ Graph property is READ-ONLY (cannot be changed at runtime)");
-                }
+}
             }
             else
             {
@@ -208,10 +182,8 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
                 if (graphValue != null)
                 {
                     var graphType = graphValue.GetType();
-                    Debug.Log($"✓ Graph Field Found!");
-                    Debug.Log($"  - Field Type: {graphField.FieldType.FullName}");
-                    Debug.Log($"  - Actual Value Type: {graphType.FullName}");
-                }
+Debug.Log($"  - Field Type: {graphField.FieldType.FullName}");
+}
             }
             else
             {
@@ -238,9 +210,7 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         }
         
         var graphType = graph.GetType();
-        Debug.Log($"Graph Type: {graphType.FullName}");
-        
-        // Look for exposed variables property
+// Look for exposed variables property
         var exposedProperty = graphType.GetProperty("exposed", BindingFlags.Public | BindingFlags.Instance);
         if (exposedProperty == null)
         {
@@ -258,16 +228,11 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         if (exposedProperty != null)
         {
             var exposedValue = exposedProperty.GetValue(graph);
-            Debug.Log($"✓ Exposed Variables Property Found!");
-            Debug.Log($"  - Property Name: {exposedProperty.Name}");
-            Debug.Log($"  - Property Type: {exposedProperty.PropertyType.FullName}");
-            
-            if (exposedValue != null)
+Debug.Log($"  - Property Name: {exposedProperty.Name}");
+if (exposedValue != null)
             {
                 var exposedType = exposedValue.GetType();
-                Debug.Log($"  - Actual Value Type: {exposedType.FullName}");
-                
-                // Try to find SetValue/GetValue methods
+// Try to find SetValue/GetValue methods
                 var setValueMethod = exposedType.GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance);
                 if (setValueMethod == null)
                 {
@@ -276,8 +241,7 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
                 
                 if (setValueMethod != null)
                 {
-                    Debug.Log($"  - ✓ SetValue method found: {setValueMethod.Name}");
-                    Debug.Log($"    Parameters: {string.Join(", ", System.Array.ConvertAll(setValueMethod.GetParameters(), p => $"{p.ParameterType.Name} {p.Name}"))}");
+Debug.Log($"    Parameters: {string.Join(", ", System.Array.ConvertAll(setValueMethod.GetParameters(), p => $"{p.ParameterType.Name} {p.Name}"))}");
                 }
                 else
                 {
@@ -287,24 +251,19 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
                 // Check if it's a dictionary or collection
                 if (exposedValue is System.Collections.IDictionary dict)
                 {
-                    Debug.Log($"  - Is Dictionary/Collection: YES ({dict.Count} items)");
-                }
+}
             }
         }
         else
         {
             Debug.LogWarning("  - ✗ Exposed variables property NOT FOUND!");
-            Debug.Log("  - Checking for alternative names...");
-            
-            // List all public properties
+// List all public properties
             var allProperties = graphType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            Debug.Log($"  - All public properties on graph ({allProperties.Length}):");
-            foreach (var prop in allProperties)
+foreach (var prop in allProperties)
             {
                 if (prop.Name.ToLower().Contains("exposed") || prop.Name.ToLower().Contains("variable"))
                 {
-                    Debug.Log($"    * {prop.Name} ({prop.PropertyType.Name})");
-                }
+}
             }
         }
     }
@@ -345,17 +304,13 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         
         if (generatorsProperty != null)
         {
-            Debug.Log($"✓ Node/Generator Collection Found!");
-            Debug.Log($"  - Property Name: {generatorsProperty.Name}");
-            Debug.Log($"  - Property Type: {generatorsProperty.PropertyType.FullName}");
-            
-            var generators = generatorsProperty.GetValue(graph);
+Debug.Log($"  - Property Name: {generatorsProperty.Name}");
+var generators = generatorsProperty.GetValue(graph);
             if (generators != null)
             {
                 if (generators is System.Collections.ICollection collection)
                 {
-                    Debug.Log($"  - Collection Count: {collection.Count}");
-                }
+}
             }
         }
         else
@@ -376,10 +331,8 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
         
         if (createNodeMethod != null)
         {
-            Debug.Log($"✓ Node Creation Method Found!");
-            Debug.Log($"  - Method Name: {createNodeMethod.Name}");
-            Debug.Log($"  - Parameters: {string.Join(", ", System.Array.ConvertAll(createNodeMethod.GetParameters(), p => $"{p.ParameterType.Name} {p.Name}"))}");
-        }
+Debug.Log($"  - Method Name: {createNodeMethod.Name}");
+}
         else
         {
             Debug.LogWarning("  - ✗ Node creation method NOT FOUND (may need to use reflection)");
@@ -448,14 +401,11 @@ public class MapMagic2APIDiagnostics : MonoBehaviour
                         modifiableCount++;
                     }
                 }
-                
-                Debug.Log($"✓ Found {nodeCount} nodes in graph");
-                Debug.Log($"  - {modifiableCount} nodes have modifiable properties (intensity/frequency/scale/value)");
+Debug.Log($"  - {modifiableCount} nodes have modifiable properties (intensity/frequency/scale/value)");
                 
                 if (modifiableCount > 0)
                 {
-                    Debug.Log($"  - ✓ Nodes CAN be modified at runtime!");
-                }
+}
                 else
                 {
                     Debug.LogWarning($"  - ✗ No modifiable properties found on nodes");

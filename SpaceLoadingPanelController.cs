@@ -108,9 +108,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
 
         // Hide immediately
         HideSpaceLoading();
-        
-        Debug.Log("[SpaceLoadingPanel] Initialized and hidden on startup");
-    }
+}
 
     void Start()
     {
@@ -144,8 +142,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
         videoDisplay.texture = videoRenderTexture;
 
         videoInitialized = true;
-        Debug.Log("[SpaceLoadingPanel] Video system initialized");
-    }
+}
 
     /// <summary>
     /// Show the space loading panel with optional spaceship display
@@ -173,9 +170,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
 
         // Play audio
         PlayWarpAudio();
-
-        Debug.Log("[SpaceLoadingPanel] Space loading panel shown");
-    }
+}
 
     /// <summary>
     /// Hide the space loading panel
@@ -198,9 +193,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
         // Stop audio
         if (spaceAudioSource != null && spaceAudioSource.isPlaying)
             spaceAudioSource.Stop();
-
-        Debug.Log("[SpaceLoadingPanel] Space loading panel hidden");
-    }
+}
 
     /// <summary>
     /// Update loading progress (0.0 to 1.0)
@@ -281,8 +274,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
         if (isLoading)
         {
             source.Play();
-            Debug.Log("[SpaceLoadingPanel] Warp drive video started");
-        }
+}
     }
 
     /// <summary>

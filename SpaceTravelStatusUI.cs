@@ -133,8 +133,7 @@ public class SpaceTravelStatusUI : MonoBehaviour
     private void OnTravelStarted(SpaceRouteManager.SpaceTravelTask travel)
     {
         CreateTravelEntry(travel);
-        Debug.Log($"[SpaceTravelStatusUI] Added travel entry for {travel.unitName}");
-    }
+}
 
     private void OnTravelProgressed(SpaceRouteManager.SpaceTravelTask travel)
     {
@@ -144,8 +143,7 @@ public class SpaceTravelStatusUI : MonoBehaviour
     private void OnTravelCompleted(SpaceRouteManager.SpaceTravelTask travel)
     {
         // Entry will be removed in UpdateDisplay()
-        Debug.Log($"[SpaceTravelStatusUI] Travel completed for {travel.unitName}");
-    }
+}
 
     private void CreateTravelEntry(SpaceRouteManager.SpaceTravelTask travel)
     {
@@ -332,8 +330,7 @@ public class SpaceTravelEntry : MonoBehaviour
             bool cancelled = SpaceRouteManager.Instance.CancelTravel(travelTaskId);
             if (cancelled)
             {
-                Debug.Log($"[SpaceTravelEntry] Cancelled travel task {travelTaskId}");
-            }
+}
         }
     }
 

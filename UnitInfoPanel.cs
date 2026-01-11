@@ -64,8 +64,7 @@ public class UnitInfoPanel : MonoBehaviour
             currentWorkerUnit = null; // Ensure worker unit is cleared
             currentArmy = null; // Clear army
             unitNameForLog = currentCombatUnit.data.unitName;
-            Debug.Log($"UnitInfoPanel.ShowPanel: Processing CombatUnit: {unitNameForLog}");
-            PopulateForCombatUnit(currentCombatUnit);
+PopulateForCombatUnit(currentCombatUnit);
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
         }
         else if (unitObject is WorkerUnit workerUnit)
@@ -74,8 +73,7 @@ public class UnitInfoPanel : MonoBehaviour
             currentCombatUnit = null; // Ensure combat unit is cleared
             currentArmy = null; // Clear army
             unitNameForLog = currentWorkerUnit.data.unitName;
-            Debug.Log($"UnitInfoPanel.ShowPanel: Processing WorkerUnit: {unitNameForLog}");
-            PopulateForWorkerUnit(currentWorkerUnit);
+PopulateForWorkerUnit(currentWorkerUnit);
 
             // Show or hide the Settle City button
             if (settleCityButton != null)
@@ -90,8 +88,7 @@ public class UnitInfoPanel : MonoBehaviour
             currentCombatUnit = null; // Clear combat unit
             currentWorkerUnit = null; // Clear worker unit
             unitNameForLog = army.armyName;
-            Debug.Log($"UnitInfoPanel.ShowPanel: Processing Army: {unitNameForLog}");
-            PopulateForArmy(army);
+PopulateForArmy(army);
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for armies
         }
         else
@@ -107,12 +104,8 @@ public class UnitInfoPanel : MonoBehaviour
             Debug.LogError($"UnitInfoPanel.ShowPanel: The internal 'unitInfoPanel' GameObject reference is NULL for {unitNameForLog}! Cannot activate panel. Check prefab assignment in UnitInfoPanel.cs Inspector.");
             return;
         }
-
-        Debug.Log($"UnitInfoPanel.ShowPanel: About to activate unitInfoPanel for {unitNameForLog}. Current state: {unitInfoPanel.activeSelf}");
-        unitInfoPanel.SetActive(true);
-        Debug.Log($"UnitInfoPanel.ShowPanel: unitInfoPanel for {unitNameForLog} should now be active. New state: {unitInfoPanel.activeSelf}");
-
-        // Update common elements if any, or specific ones again if needed after activation
+unitInfoPanel.SetActive(true);
+// Update common elements if any, or specific ones again if needed after activation
         // RefreshLayout(); // If you have dynamic content that needs a layout refresh
     }
 
@@ -295,21 +288,18 @@ public class UnitInfoPanel : MonoBehaviour
     {
         // Implement the logic to hide all sections of the panel
         // This is a placeholder and should be replaced with the actual implementation
-        Debug.Log("UnitInfoPanel: Hiding all sections");
-    }
+}
 
     private void PopulateForCombatUnit(CombatUnit combatUnit)
     {
         // Implement the logic to populate the panel for a CombatUnit
         // This is a placeholder and should be replaced with the actual implementation
-        Debug.Log("UnitInfoPanel: Populating for CombatUnit");
-        UpdateUnitInfoForCombatUnit();
+UpdateUnitInfoForCombatUnit();
     }
 
     private void PopulateForWorkerUnit(WorkerUnit workerUnit)
     {
-        Debug.Log("UnitInfoPanel: Populating for WorkerUnit");
-        UpdateUnitInfoForWorkerUnit();
+UpdateUnitInfoForWorkerUnit();
 
         // Default forage button state
         if (forageButton != null)

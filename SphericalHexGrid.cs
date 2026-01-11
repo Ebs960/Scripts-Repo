@@ -109,9 +109,7 @@ public class SphericalHexGrid
                 tileCorners[index] = corners;
             }
         }
-
-        Debug.Log($"[FlatHexGrid] Tiles: {tileCount} (Width: {Width}, Height: {Height})");
-    }
+}
 
     private int AddCorner(Vector3 corner)
     {

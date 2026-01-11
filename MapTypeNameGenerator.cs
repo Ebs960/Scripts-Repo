@@ -9,7 +9,7 @@ public static class MapTypeNameGenerator
         new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald" },
         new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon" },
         new[] { "Desert", "Arid", "Sweltering", "Oasis", "Jungle", "Steam" },
-        new[] { "Scorched", "Barren", "Mirage", "Burning", "Infernal", "Demonic" }
+        new[] { "Scorched", "Barren", "Burning", "Mirage", "Infernal", "Demonic" }
     };
 
     private static readonly string[] oceanTerrain = { "Shards", "Atoll", "Isles", "Archipelago", "Seas", "Chain" };
@@ -25,7 +25,7 @@ public static class MapTypeNameGenerator
     private static readonly string[][] elevationTerrainContinents = {
         new[] { "Tablelands", "Plains", "Low Plateaus", "Country", "Steppes", "Coastal Plain" }, // Low elevation
         new[] { "Plateaus", "Uplands", "Escarpments", "Highlands", "Continental Rise", "Shield" }, // Hilly
-        new[] { "Massif", "Peaks", "Continental Divide", "Summits", "Crest", "Great Range" } // Mountainous
+        new[] { "Massif", "Peaks", "Continental Divide", "Great Range", "Crest", "Summits" } // Mountainous
     };
 
     private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland" };

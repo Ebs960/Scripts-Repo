@@ -42,12 +42,10 @@ public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler
             backgroundImage.color = normalColor;
 
         // Debug logs for diagnosis
-        Debug.Log($"[CulturePaletteItem.Initialize] Culture: {culture?.cultureName ?? "<null>"} | Icon: {(culture?.cultureIcon != null ? "Y" : "N")} | Parent: {transform.parent?.name} | Active: {gameObject.activeSelf}");
-        var rect = GetComponent<RectTransform>();
+var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
-            Debug.Log($"[CulturePaletteItem.Initialize] RectTransform: anchoredPos={rect.anchoredPosition} sizeDelta={rect.sizeDelta} scale={rect.localScale}");
-        }
+}
     }
     
     public void OnBeginDrag(PointerEventData eventData)

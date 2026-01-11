@@ -11,9 +11,25 @@ public class PlanetaryCameraManager : MonoBehaviour
     public float zoomSpeed = 40f;
     public float minHeight = 20f;
     public float maxHeight = 200f;
-    public float pitchAngle = 60f;
+    
+    [Header("Pitch Settings")]
+    [Tooltip("Pitch angle when fully zoomed in (looking more forward).")]
+    public float minPitchAngle = 30f;
+    [Tooltip("Pitch angle when fully zoomed out (looking more down).")]
+    public float maxPitchAngle = 75f;
+    
     public bool allowMouseDrag = true;
     public float mouseSensitivity = 0.2f;
+
+    [Header("Horizontal Wrap")]
+    [Tooltip("Enable horizontal wrap (Civ-style infinite scroll).")]
+    public bool wrapEnabled = true;
+    [Tooltip("Reference to the flat map renderer for map width (legacy).")]
+    public FlatMapTextureRenderer flatMap;
+    [Tooltip("Reference to chunk-based map manager (preferred).")]
+    public HexMapChunkManager chunkManager;
+    [Tooltip("Center X for wrap bounds. 0 means map centered at world X=0.")]
+    public float wrapCenterX = 0f;
 
     private Vector3 _focusPoint = Vector3.zero;
     private float _cameraHeight = 80f;
@@ -22,6 +38,13 @@ public class PlanetaryCameraManager : MonoBehaviour
     void Awake()
     {
         _cameraHeight = Mathf.Clamp(_cameraHeight, minHeight, maxHeight);
+    }
+
+    // Expose focus point for helpers like FlatMapWrapCamera
+    public Vector3 FocusPoint
+    {
+        get => _focusPoint;
+        set => _focusPoint = new Vector3(value.x, 0f, value.z);
     }
 
     void HandleInput()
@@ -73,6 +96,10 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void UpdateCameraPosition()
     {
+        // Interpolate pitch based on zoom level (zoomed in = lower pitch, zoomed out = higher pitch)
+        float zoomT = Mathf.InverseLerp(minHeight, maxHeight, _cameraHeight);
+        float pitchAngle = Mathf.Lerp(minPitchAngle, maxPitchAngle, zoomT);
+        
         float pitchRad = pitchAngle * Mathf.Deg2Rad;
         float horizontalDist = _cameraHeight / Mathf.Tan(pitchRad);
         Vector3 camPos = new Vector3(
@@ -87,7 +114,52 @@ public class PlanetaryCameraManager : MonoBehaviour
     void LateUpdate()
     {
         HandleInput();
+        ApplyWrap();
         UpdateCameraPosition();
+    }
+
+    void ApplyWrap()
+    {
+        if (!wrapEnabled) return;
+        
+        // Get map width from chunk manager (preferred) or flat map (fallback)
+        float mapWidth = 0f;
+        float mapHeight = 0f;
+        bool isBuilt = false;
+        
+        if (chunkManager != null && chunkManager.IsBuilt)
+        {
+            mapWidth = chunkManager.MapWidth;
+            mapHeight = chunkManager.MapHeight;
+            isBuilt = true;
+        }
+        else if (flatMap != null && flatMap.IsBuilt)
+        {
+            mapWidth = flatMap.MapWidth;
+            mapHeight = flatMap.MapHeight;
+            isBuilt = true;
+        }
+        
+        if (!isBuilt || mapWidth <= 0.0001f) return;
+
+        // Horizontal wrapping (X axis - infinite scroll)
+        float halfW = mapWidth * 0.5f;
+        float minX = wrapCenterX - halfW;
+        float maxX = wrapCenterX + halfW;
+
+        if (_focusPoint.x > maxX) _focusPoint.x -= mapWidth;
+        else if (_focusPoint.x < minX) _focusPoint.x += mapWidth;
+        
+        // Vertical clamping (Z axis - no wrap, just clamp to map bounds)
+        if (mapHeight > 0.0001f)
+        {
+            float halfH = mapHeight * 0.5f;
+            // Add padding based on zoom level to prevent seeing past edges
+            float viewPadding = _cameraHeight * 0.3f; // Adjust based on camera angle
+            float minZ = -halfH + viewPadding;
+            float maxZ = halfH - viewPadding;
+            _focusPoint.z = Mathf.Clamp(_focusPoint.z, minZ, maxZ);
+        }
     }
 
     // Globe/skybox features removed

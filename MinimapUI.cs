@@ -1048,8 +1048,25 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // OPTIMIZATION: Try to reuse flat map texture first (if enabled and available)
         if (reuseFlatMapTexture)
         {
+            // Prefer HexMapChunkManager (chunk-based) over FlatMapTextureRenderer (legacy)
+            var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
             var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-            if (flatMapRenderer != null && flatMapRenderer.IsBuilt && flatMapRenderer.MapTexture != null)
+            
+            Texture mapTexture = null;
+            System.Func<int, int, Texture> getDownscaled = null;
+            
+            if (chunkManager != null && chunkManager.IsBuilt && chunkManager.MapTexture != null)
+            {
+                mapTexture = chunkManager.MapTexture;
+                getDownscaled = (w, h) => chunkManager.GetDownscaledTexture(w, h);
+            }
+            else if (flatMapRenderer != null && flatMapRenderer.IsBuilt && flatMapRenderer.MapTexture != null)
+            {
+                mapTexture = flatMapRenderer.MapTexture;
+                getDownscaled = (w, h) => flatMapRenderer.GetDownscaledTexture(w, h);
+            }
+            
+            if (mapTexture != null)
             {
                 // Check if this is the current planet (flat map shows current planet)
                 var currentPlanet = _gameManager != null ? _gameManager.GetCurrentPlanetGenerator() : null;
@@ -1060,13 +1077,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 if (currentPlanet == targetPlanet)
                 {
                     // Reuse flat map texture - downscale if needed
-                    Texture minimapTex = flatMapRenderer.MapTexture;
+                    Texture minimapTex = mapTexture;
                     
                     // If minimap resolution is different, downscale
-                    if (minimapResolution.x != flatMapRenderer.MapTexture.width || 
-                        minimapResolution.y != flatMapRenderer.MapTexture.height)
+                    if (minimapResolution.x != mapTexture.width || 
+                        minimapResolution.y != mapTexture.height)
                     {
-                        var downscaled = flatMapRenderer.GetDownscaledTexture(minimapResolution.x, minimapResolution.y);
+                        var downscaled = getDownscaled?.Invoke(minimapResolution.x, minimapResolution.y);
                         if (downscaled != null)
                         {
                             minimapTex = downscaled;
@@ -1288,8 +1305,16 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         float worldX = (worldU - 0.5f) * grid.MapWidth;
         float worldZ = (worldV - 0.5f) * grid.MapHeight;
         float yPlane = currentPlanetGen != null ? currentPlanetGen.transform.position.y : 0f;
-        var flatRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-        if (flatRenderer != null) yPlane = flatRenderer.transform.position.y;
+        
+        // Prefer HexMapChunkManager Y position over FlatMapTextureRenderer
+        var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
+        if (chunkManager != null && chunkManager.IsBuilt)
+            yPlane = chunkManager.transform.position.y;
+        else
+        {
+            var flatRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
+            if (flatRenderer != null) yPlane = flatRenderer.transform.position.y;
+        }
         Vector3 worldTarget = new Vector3(worldX, yPlane, worldZ);
 
         // Use cached reference to avoid expensive FindAnyObjectByType call

@@ -429,8 +429,7 @@ public class Civilization : MonoBehaviour
             if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
             {
                 gold += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
-                Debug.Log($"[{civData.civName}] Interplanetary trade earned {tradeRoute.goldPerTurn} gold (Planet {tradeRoute.originPlanetIndex} → {tradeRoute.destinationPlanetIndex})");
-            }
+}
         }
 
         // 3.6) Per-unit yields (combat units). Applies after city yields, before research/culture processing.
@@ -649,8 +648,7 @@ public class Civilization : MonoBehaviour
         if (tech.additionalGovernorSlots > 0)
         {
             IncreaseGovernorCount(tech.additionalGovernorSlots);
-            Debug.Log($"{civData.civName} gained {tech.additionalGovernorSlots} governor slot(s) from {tech.techName}");
-        }
+}
 
         if (tech.unlockedGovernorTraits != null)
         {
@@ -659,8 +657,7 @@ public class Civilization : MonoBehaviour
                 if (!unlockedGovernorTraits.Contains(trait))
                 {
                     unlockedGovernorTraits.Add(trait);
-                    Debug.Log($"{civData.civName} unlocked governor trait: {trait.traitName}");
-                }
+}
             }
         }
         
@@ -722,8 +719,7 @@ public class Civilization : MonoBehaviour
         if (cult.additionalGovernorSlots > 0)
         {
             IncreaseGovernorCount(cult.additionalGovernorSlots);
-            Debug.Log($"{civData.civName} gained {cult.additionalGovernorSlots} governor slot(s) from {cult.cultureName}");
-        }
+}
 
         if (cult.unlockedGovernorTraits != null)
         {
@@ -732,8 +728,7 @@ public class Civilization : MonoBehaviour
                 if (!unlockedGovernorTraits.Contains(trait))
                 {
                     unlockedGovernorTraits.Add(trait);
-                    Debug.Log($"{civData.civName} unlocked governor trait: {trait.traitName}");
-                }
+}
             }
         }
     }
@@ -764,8 +759,7 @@ public class Civilization : MonoBehaviour
         if (!CanResearch(tech)) return;
         currentTech = tech;
         currentTechProgress = 0;
-        Debug.Log($"[Civilization] Started research on {tech.techName}");
-        OnTechStarted?.Invoke(tech); // Fire event for UI
+OnTechStarted?.Invoke(tech); // Fire event for UI
     }
 
     public bool CanCultivate(CultureData cult)
@@ -788,8 +782,7 @@ public class Civilization : MonoBehaviour
         if (!CanCultivate(cult)) return;
         currentCulture = cult;
         currentCultureProgress = 0;
-        Debug.Log($"[Civilization] Started culture adoption: {cult.cultureName}");
-        OnCultureStarted?.Invoke(cult); // Fire event for UI
+OnCultureStarted?.Invoke(cult); // Fire event for UI
     }
 
     // --- Policy & Government API ---
@@ -827,8 +820,7 @@ public class Civilization : MonoBehaviour
         if (policy.additionalGovernorSlots > 0)
         {
             IncreaseGovernorCount(policy.additionalGovernorSlots);
-            Debug.Log($"{civData.civName} gained {policy.additionalGovernorSlots} governor slot(s) from policy {policy.policyName}");
-        }
+}
         if (policy.unlockedGovernorTraits != null)
         {
             foreach (var trait in policy.unlockedGovernorTraits)
@@ -836,8 +828,7 @@ public class Civilization : MonoBehaviour
                 if (!unlockedGovernorTraits.Contains(trait))
                 {
                     unlockedGovernorTraits.Add(trait);
-                    Debug.Log($"{civData.civName} unlocked governor trait: {trait.traitName} from policy {policy.policyName}");
-                }
+}
             }
         }
     }
@@ -958,8 +949,7 @@ public class Civilization : MonoBehaviour
         if (!cities.Contains(city))
         {
             cities.Add(city);
-            Debug.Log($"{civData.civName} founded city: {city.cityName}");
-        }
+}
     }
     
     /// <summary>
@@ -1073,22 +1063,19 @@ public class Civilization : MonoBehaviour
 
         if (!hasPantheonPrereq)
         {
-            Debug.Log($"{civData.civName} cannot found a pantheon: missing required tech or culture unlock.");
-            return false;
+return false;
         }
         
         // Check pantheon cap
         if (!CanFoundMorePantheons())
         {
-            Debug.Log($"{civData.civName} cannot found a pantheon: pantheon cap reached ({CurrentPantheonCap}).");
-            return false;
+return false;
         }
         
         // Check if has enough faith
         if (faith < pantheon.faithCost)
         {
-            Debug.Log($"{civData.civName} doesn't have enough faith to found {pantheon.pantheonName}. Needs {pantheon.faithCost}, has {faith}.");
-            return false;
+return false;
         }
         
         // Check if the chosen belief is valid for this pantheon
@@ -1104,8 +1091,7 @@ public class Civilization : MonoBehaviour
         
         if (!validBelief)
         {
-            Debug.Log($"{civData.civName} chose an invalid belief for {pantheon.pantheonName}.");
-            return false;
+return false;
         }
         
     // Found the pantheon: add to list and store chosen belief
@@ -1117,9 +1103,7 @@ public class Civilization : MonoBehaviour
 
     // Apply any faith yield modifiers from beliefs (recompute across all)
     UpdateFaithYieldModifier();
-
-    Debug.Log($"{civData.civName} founded the {pantheon.pantheonName} pantheon (spirit/god) with the {founderBelief.beliefName} belief.");
-    return true;
+return true;
     }
     
     /// <summary>
@@ -1130,20 +1114,17 @@ public class Civilization : MonoBehaviour
         // Check prerequisites: civ must have founded the required pantheon
         if (foundedPantheons == null || !foundedPantheons.Contains(religion.requiredPantheon))
         {
-            Debug.Log($"{civData.civName} cannot found a religion: required pantheon not owned.");
-            return false;
+return false;
         }
         
         if (hasFoundedReligion || foundedReligion != null)
         {
-            Debug.Log($"{civData.civName} already has a religion.");
-            return false;
+return false;
         }
         
         if (faith < religion.faithCost)
         {
-            Debug.Log($"{civData.civName} doesn't have enough faith. Needs {religion.faithCost}, has {faith}.");
-            return false;
+return false;
         }
         
         // Check if the city has a Holy Site
@@ -1158,8 +1139,7 @@ public class Civilization : MonoBehaviour
         
         if (!hasHolySite)
         {
-            Debug.Log($"{civData.civName} cannot found a religion in {holySiteCity.cityName}: no Holy Site district.");
-            return false;
+return false;
         }
         
         // Found the religion
@@ -1178,9 +1158,7 @@ public class Civilization : MonoBehaviour
         {
             city.UpdateAvailableBuildings();
         }
-        
-        Debug.Log($"{civData.civName} founded {religion.religionName} in {holySiteCity.cityName}.");
-        return true;
+return true;
     }
 
     /// <summary>
@@ -1211,10 +1189,7 @@ public class Civilization : MonoBehaviour
                 chosenFounderBeliefs[god] = oldBelief;
             }
         }
-
-        Debug.Log($"{civData.civName} upgraded pantheon {spiritPantheon.pantheonName} -> {god.pantheonName}.");
-
-        // Recompute belief-based modifiers
+// Recompute belief-based modifiers
         UpdateFaithYieldModifier();
         return true;
     }
@@ -1278,14 +1253,12 @@ public class Civilization : MonoBehaviour
     {
         if (!hasFoundedReligion || foundedReligion == null)
         {
-            Debug.Log($"{civData.civName} cannot purchase a missionary: no founded religion.");
-            return false;
+return false;
         }
         
         if (faith < missionaryData.faithCost)
         {
-            Debug.Log($"{civData.civName} doesn't have enough faith. Needs {missionaryData.faithCost}, has {faith}.");
-            return false;
+return false;
         }
         
         // Check if the city has a Holy Site
@@ -1300,8 +1273,7 @@ public class Civilization : MonoBehaviour
         
         if (!hasHolySite)
         {
-            Debug.Log($"{civData.civName} cannot purchase a missionary in {city.cityName}: no Holy Site district.");
-            return false;
+return false;
         }
         
         // Deduct faith cost
@@ -1343,9 +1315,7 @@ public class Civilization : MonoBehaviour
             
             // The missionary unit should have the civilization's religion associated with it
             // This would be handled by a specialized ReligionUnit component or by adding properties to CombatUnit
-            
-            Debug.Log($"{civData.civName} purchased a missionary in {city.cityName}.");
-            return true;
+return true;
         }
         
         return false;
@@ -1587,9 +1557,7 @@ public class Civilization : MonoBehaviour
         
         // Notify listeners
         OnEquipmentChanged?.Invoke(equipment, equipmentInventory[equipment]);
-        
-        Debug.Log($"{civData.civName} added {count} {equipment.equipmentName} to inventory. Now have {equipmentInventory[equipment]}");
-    }
+}
 
     /// <summary>
     /// Produce equipment and add it to inventory (consumes production cost)
@@ -1619,8 +1587,7 @@ public class Civilization : MonoBehaviour
         if (totalCost > 0)
         {
             gold -= totalCost;
-            Debug.Log($"{civData.civName} spent {totalCost} gold to produce {count} {equipment.equipmentName}");
-        }
+}
         
         // Add equipment to inventory
         AddEquipment(equipment, count);
@@ -1645,9 +1612,7 @@ public class Civilization : MonoBehaviour
         
         // Notify listeners
         OnEquipmentChanged?.Invoke(equipment, equipmentInventory[equipment]);
-        
-        Debug.Log($"{civData.civName} consumed {count} {equipment.equipmentName} from inventory. {equipmentInventory[equipment]} remaining");
-        return true;
+return true;
     }
     
     /// <summary>
@@ -1686,8 +1651,7 @@ public class Civilization : MonoBehaviour
         
         if (isPlayerControlled)
         {
-            Debug.Log($"{civData.civName} produced {count}x {projectile.projectileName}. Total: {projectileInventory[projectile]}");
-        }
+}
     }
     
     /// <summary>
@@ -1847,9 +1811,7 @@ public class Civilization : MonoBehaviour
         
         // Equip the unit with the new item
         unit.EquipItem(equipment);
-        
-        Debug.Log($"Equipped {unit.data.unitName} with {equipment.equipmentName}");
-        return true;
+return true;
     }
     
     /// <summary>
@@ -1891,8 +1853,7 @@ public class Civilization : MonoBehaviour
         {
             AddEquipment(currentEquipment);
             unit.UnequipItem(equipmentType);
-            Debug.Log($"Unequipped {equipmentType} from {unit.data.unitName} and returned to {civData.civName} inventory");
-        }
+}
     }
     
     // REMOVED: AddUnlockedEquipment() method
@@ -1907,8 +1868,7 @@ public class Civilization : MonoBehaviour
     /// <param name="tileIndex">The tile where the city will be founded.</param>
     public void FoundNewCity(int tileIndex, SphericalHexGrid gridOverride = null, PlanetGenerator planetOverride = null)
     {
-        Debug.Log($"[FoundNewCity] Called for civ {civData?.civName ?? "NULL"} at tile {tileIndex}. cityPrefab={(cityPrefab != null ? cityPrefab.name : "NULL")}");
-        // City-cap gating
+// City-cap gating
         if (!CanFoundMoreCities())
         {
             Debug.LogWarning($"[{civData?.civName ?? "Civ"}] cannot found a new city: at city cap ({cities?.Count ?? 0}/{CurrentCityCap}).");
@@ -1924,8 +1884,7 @@ public class Civilization : MonoBehaviour
         GameObject cityGO = null;
         try {
             cityGO = Instantiate(cityPrefab);
-            Debug.Log($"[FoundNewCity] Instantiated city prefab: {cityGO?.name ?? "NULL"}");
-        } catch (System.Exception ex) {
+} catch (System.Exception ex) {
             Debug.LogError($"[FoundNewCity] Exception during Instantiate: {ex}");
             return;
         }
@@ -1942,9 +1901,7 @@ public class Civilization : MonoBehaviour
             Destroy(cityGO);
             return;
         }
-        Debug.Log($"[FoundNewCity] City component found on prefab: {newCity}");
-
-        // Set references for correct world context
+// Set references for correct world context
         SphericalHexGrid gridToUse = gridOverride ?? planetGrid;
         PlanetGenerator planetToUse = planetOverride ?? planetGenerator;
         if (gridToUse == null) {
@@ -1954,9 +1911,7 @@ public class Civilization : MonoBehaviour
         if (planetToUse == null)
             planetToUse = GameManager.Instance?.GetCurrentPlanetGenerator();
         // City class sets its own references now
-        Debug.Log($"[FoundNewCity] Grid={gridToUse}, Planet={planetToUse}");
-
-        // --- Position and orient the city on the correct tile ---
+// --- Position and orient the city on the correct tile ---
         if (gridToUse != null)
         {
             Vector3 tileCenter = gridToUse.tileCenters[tileIndex];

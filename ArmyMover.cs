@@ -46,8 +46,7 @@ public class ArmyMover : MonoBehaviour
             // Check if army can move to this tile (movement points check)
             if (!army.CanMoveTo(targetTile))
             {
-                Debug.Log($"[ArmyMover] {army.armyName} out of movement points. Stopped at tile {army.currentTileIndex}");
-                isMoving = false;
+isMoving = false;
                 yield break; // Stop movement if out of points
             }
             

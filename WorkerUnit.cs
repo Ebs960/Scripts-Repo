@@ -86,7 +86,24 @@ public class WorkerUnit : BaseUnit
         }
 
         CheckForHazardousBiomeDamage();
+        
+        // Auto-contribute to jobs at start of turn
+        AutoContributeToJobs();
+    }
 
+    /// <summary>
+    /// Deduct movement points after moving. Called by UnitMovementController.
+    /// </summary>
+    public void DeductMovePoints(int amount)
+    {
+        currentMovePoints = Mathf.Max(0, currentMovePoints - amount);
+    }
+
+    /// <summary>
+    /// Auto-contribute to jobs if assigned (called separately from ResetForNewTurn for flexibility)
+    /// </summary>
+    private void AutoContributeToJobs()
+    {
         // Auto-contribute to jobs
         if (currentWorkPoints > 0 && ImprovementManager.Instance != null)
         {

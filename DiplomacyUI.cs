@@ -56,15 +56,13 @@ public class DiplomacyUI : MonoBehaviour
     {
         if (closeButton != null)
         {
-            Debug.Log($"[DiplomacyUI] Close button found on: {closeButton.gameObject.name}");
-            Debug.Log($"[DiplomacyUI] Close button parent: {closeButton.transform.parent?.name}");
+Debug.Log($"[DiplomacyUI] Close button parent: {closeButton.transform.parent?.name}");
             
             // Check if close button is on the main Canvas
             Canvas parentCanvas = closeButton.GetComponentInParent<Canvas>();
             if (parentCanvas != null)
             {
-                Debug.Log($"[DiplomacyUI] Close button is on Canvas: {parentCanvas.name}");
-            }
+}
             else
             {
                 Debug.LogError("[DiplomacyUI] Close button is not on a Canvas! This will cause click issues.");
@@ -84,11 +82,9 @@ public class DiplomacyUI : MonoBehaviour
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(() => {
-                Debug.Log("[DiplomacyUI] Close button clicked!");
-                Hide();
+Hide();
             });
-            Debug.Log("[DiplomacyUI] Close button listener added");
-        }
+}
         
         if (declareWarButton != null)
         {
@@ -110,28 +106,18 @@ public class DiplomacyUI : MonoBehaviour
     
     private void ValidateUIReferences()
     {
-        Debug.Log("[DiplomacyUI] Validating UI references:");
-        
-        // Main Panel
-        Debug.Log($"  mainPanel: {(mainPanel != null ? "OK" : "NULL")}");
-        Debug.Log($"  closeButton: {(closeButton != null ? "OK" : "NULL")}");
+// Main Panel
+Debug.Log($"  closeButton: {(closeButton != null ? "OK" : "NULL")}");
         
         // Left Section
-        Debug.Log($"  civListContainer: {(civListContainer != null ? "OK" : "NULL")}");
-        Debug.Log($"  civListItemPrefab: {(civListItemPrefab != null ? "OK" : "NULL")}");
-        Debug.Log($"  civListScroll: {(civListScroll != null ? "OK" : "NULL")}");
-        
-        // Middle Section
-        Debug.Log($"  selectedCivIcon: {(selectedCivIcon != null ? "OK" : "NULL")}");
-        Debug.Log($"  selectedCivName: {(selectedCivName != null ? "OK" : "NULL")}");
-        Debug.Log($"  selectedCivLeader: {(selectedCivLeader != null ? "OK" : "NULL")}");
-        Debug.Log($"  relationshipStatus: {(relationshipStatus != null ? "OK" : "NULL")}");
+Debug.Log($"  civListItemPrefab: {(civListItemPrefab != null ? "OK" : "NULL")}");
+// Middle Section
+Debug.Log($"  selectedCivName: {(selectedCivName != null ? "OK" : "NULL")}");
+Debug.Log($"  relationshipStatus: {(relationshipStatus != null ? "OK" : "NULL")}");
         
         // Right Section
-        Debug.Log($"  declareWarButton: {(declareWarButton != null ? "OK" : "NULL")}");
-        Debug.Log($"  proposePeaceButton: {(proposePeaceButton != null ? "OK" : "NULL")}");
-        Debug.Log($"  proposeAllianceButton: {(proposeAllianceButton != null ? "OK" : "NULL")}");
-        Debug.Log($"  denounceButton: {(denounceButton != null ? "OK" : "NULL")}");
+Debug.Log($"  proposePeaceButton: {(proposePeaceButton != null ? "OK" : "NULL")}");
+Debug.Log($"  denounceButton: {(denounceButton != null ? "OK" : "NULL")}");
         
         // Count critical missing references
         int criticalMissing = 0;
@@ -147,20 +133,16 @@ public class DiplomacyUI : MonoBehaviour
         }
         else
         {
-            Debug.Log("[DiplomacyUI] All critical UI references are assigned correctly.");
-        }
+}
     }
 
     public void Show(Civilization playerCiv)
     {
-        Debug.Log("[DiplomacyUI] Show() called");
-        this.playerCiv = playerCiv;
+this.playerCiv = playerCiv;
         
         // Simply activate the entire GameObject - this activates everything at once
         gameObject.SetActive(true);
-        Debug.Log("[DiplomacyUI] Entire DiplomacyUI GameObject activated");
-        
-        UpdateCivilizationList();
+UpdateCivilizationList();
         ClearSelectedCiv();
     }
     
@@ -187,20 +169,14 @@ public class DiplomacyUI : MonoBehaviour
 
     public void Hide()
     {
-        Debug.Log("[DiplomacyUI] Hide() called");
-        
-        // Simply deactivate the entire GameObject - this hides everything at once
+// Simply deactivate the entire GameObject - this hides everything at once
         gameObject.SetActive(false);
-        Debug.Log("[DiplomacyUI] Entire DiplomacyUI GameObject deactivated");
-        
-        selectedCiv = null;
+selectedCiv = null;
     }
 
     private void UpdateCivilizationList()
     {
-        Debug.Log("[DiplomacyUI] UpdateCivilizationList called");
-        
-        // Clear existing list items
+// Clear existing list items
         foreach (var item in civListItems)
             Destroy(item);
         civListItems.Clear();
@@ -217,10 +193,7 @@ public class DiplomacyUI : MonoBehaviour
             Debug.LogError("[DiplomacyUI] GetAllCivs() returned null! Cannot populate civilization list.");
             return;
         }
-
-        Debug.Log($"[DiplomacyUI] Found {allCivs.Count} civilizations");
-
-        if (civListItemPrefab == null)
+if (civListItemPrefab == null)
         {
             Debug.LogError("[DiplomacyUI] civListItemPrefab is null! Cannot create civilization list items.");
             return;
@@ -236,10 +209,7 @@ public class DiplomacyUI : MonoBehaviour
         foreach (var civ in allCivs)
         {
             if (civ == playerCiv) continue;
-
-            Debug.Log($"[DiplomacyUI] Creating list item for {civ.civData.civName}");
-            
-            var listItem = Instantiate(civListItemPrefab, civListContainer);
+var listItem = Instantiate(civListItemPrefab, civListContainer);
             var button = listItem.GetComponent<Button>();
             var icon = listItem.GetComponentInChildren<Image>();
             var text = listItem.GetComponentInChildren<TextMeshProUGUI>();
@@ -253,10 +223,7 @@ public class DiplomacyUI : MonoBehaviour
             civListItems.Add(listItem);
             itemsCreated++;
         }
-        
-        Debug.Log($"[DiplomacyUI] Created {itemsCreated} civilization list items");
-        
-        if (itemsCreated == 0)
+if (itemsCreated == 0)
         {
             Debug.LogWarning("[DiplomacyUI] No civilization list items were created! This could mean no other civilizations exist or all are the player civilization.");
         }

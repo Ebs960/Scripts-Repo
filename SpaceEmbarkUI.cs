@@ -98,9 +98,7 @@ public class SpaceEmbarkUI : MonoBehaviour
         // Show the UI panel
         if (embarkPanel != null)
             embarkPanel.SetActive(true);
-
-        Debug.Log($"[SpaceEmbarkUI] Showing embark UI for {unit.name} from Planet {fromPlanetIndex}");
-    }
+}
 
     /// <summary>
     /// Hide the embark UI
@@ -295,8 +293,7 @@ public class SpaceEmbarkUI : MonoBehaviour
 
         if (success)
         {
-            Debug.Log($"[SpaceEmbarkUI] Successfully started space travel for {selectedUnit.name}");
-            HideEmbarkUI();
+HideEmbarkUI();
             
             // You might want to show a confirmation message or update the UI
             // ShowTravelConfirmation(selectedUnit.name, destinationIndex);

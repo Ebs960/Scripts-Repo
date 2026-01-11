@@ -83,9 +83,7 @@ public class TacticalScripts : MonoBehaviour
         activeScripts.Add(new ShieldWallScript(unit, ai));
         activeScripts.Add(new HitAndRunScript(unit, ai));
         activeScripts.Add(new OverwhelmingForceScript(unit, ai));
-        
-        Debug.Log($"[TacticalScripts] Initialized {activeScripts.Count} tactical scripts for {unit.data.unitName}");
-    }
+}
     
     /// <summary>
     /// Evaluate all scripts and execute applicable ones
@@ -225,9 +223,7 @@ public class DefensiveFormationScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Defensive Formation");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -274,9 +270,7 @@ public class FlankingManeuverScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Flanking Maneuver");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -322,9 +316,7 @@ public class RetreatToChokepointScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Retreat to Chokepoint");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -390,9 +382,7 @@ public class ArcherPriorityScript : TacticalScript
             
             isActive = true;
             lastActivationTime = Time.time;
-            
-            Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Archer Priority - targeting {archerTarget.data.unitName}");
-        }
+}
     }
     
     public override string GetScriptName()
@@ -430,9 +420,7 @@ public class CavalryChargeScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Cavalry Charge");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -487,9 +475,7 @@ public class ShieldWallScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Shield Wall");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -539,9 +525,7 @@ public class HitAndRunScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Hit and Run");
-    }
+}
     
     public override string GetScriptName()
     {
@@ -582,9 +566,7 @@ public class OverwhelmingForceScript : TacticalScript
         
         isActive = true;
         lastActivationTime = Time.time;
-        
-        Debug.Log($"[TacticalScripts] {unit.data.unitName} executing Overwhelming Force");
-    }
+}
     
     public override string GetScriptName()
     {

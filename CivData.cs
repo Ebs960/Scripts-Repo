@@ -65,6 +65,12 @@ public class CivData : ScriptableObject
     [Tooltip("City prefabs for different tech ages")]
     public CityPrefabByAge[] cityPrefabsByAge;
 
+    [Header("Army Models")]
+    [Tooltip("Army visual prefabs for different tech ages (shown on campaign map)")]
+    public ArmyPrefabByAge[] armyPrefabsByAge;
+    [Tooltip("Fallback army prefab if no age-specific prefab is found")]
+    public GameObject defaultArmyPrefab;
+
     // Additional fields for future expansion:
     // public RouteType[] allowedRoutes;
     // public EquipmentData[] uniqueEquipment;
@@ -78,4 +84,14 @@ public class CityPrefabByAge
 {
     public TechAge techAge;
     public GameObject cityPrefab;
+}
+
+/// <summary>
+/// Represents an army visual prefab for a specific tech age
+/// </summary>
+[System.Serializable]
+public class ArmyPrefabByAge
+{
+    public TechAge techAge;
+    public GameObject armyPrefab;
 }

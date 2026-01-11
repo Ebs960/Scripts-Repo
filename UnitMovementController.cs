@@ -50,9 +50,7 @@ public class UnitMovementController : MonoBehaviour
     {
         grid = icoGrid;
         planet = planetGen;
-        
-        Debug.Log($"[UnitMovementController] References set from GameManager - Grid: {grid != null}, Planet: {planet != null}");
-    }
+}
     
     /// <summary>
     /// Find all necessary references in the current scene (fallback method)
@@ -70,15 +68,11 @@ public class UnitMovementController : MonoBehaviour
         {
             grid = planet.Grid;
         }
-        
-        Debug.Log($"[UnitMovementController] Found references in scene - Grid: {grid != null}, Planet: {planet != null}");
-        
-        // If we still don't have grid but we have planet, try to get grid from planet
+// If we still don't have grid but we have planet, try to get grid from planet
         if (grid == null && planet != null)
         {
             grid = planet.Grid;
-            Debug.Log($"[UnitMovementController] Got SphericalHexGrid from PlanetGenerator: {grid != null}");
-        }
+}
     }
 
     /// <summary>
@@ -223,9 +217,21 @@ public class UnitMovementController : MonoBehaviour
             
             // Get movement cost for this step (tile-aware: improvements may alter cost)
             var tileData = TileSystem.Instance.GetTileData(targetTileIndex);
-            // Movement points removed - movement speed is now fatigue-based
-            // Calculate movement cost for event (not used for movement points, but needed for event signature)
-            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, null) : 1;
+            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, workerUnit) : 1;
+            
+            // Deduct movement points for workers (they still use turn-based movement)
+            if (workerUnit != null)
+            {
+                // Check if worker can afford this move
+                if (workerUnit.currentMovePoints < movementCost)
+                {
+unit.UpdateWalkingState(false);
+                    if (i > 0)
+                        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+                    yield break;
+                }
+                workerUnit.DeductMovePoints(movementCost);
+            }
             
             // Calculate planar positions on the flat map
             Vector3 startPosition = unitTransform.position;

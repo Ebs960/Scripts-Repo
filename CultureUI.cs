@@ -335,8 +335,7 @@ public class CultureUI : MonoBehaviour
         {
             string json = System.IO.File.ReadAllText(filePath);
             CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(json);
-            Debug.Log($"Loaded culture tree layout with {layout?.culturePositions?.Count ?? 0} culture positions");
-            return layout;
+return layout;
         }
         catch (System.Exception e)
         {

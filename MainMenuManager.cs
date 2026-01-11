@@ -640,9 +640,7 @@ public class MainMenuManager : MonoBehaviour
         // For now, just log that load was clicked
         // The actual load game functionality will be handled in the pause menu during gameplay
         // or we could create a separate load game scene/panel here
-        Debug.Log("Load Game clicked - implement load game scene/panel here");
-        
-        // TODO: Create a load game panel similar to the pause menu's save/load system
+// TODO: Create a load game panel similar to the pause menu's save/load system
         // This would show available save slots and allow loading before starting a new game
     }
     
@@ -1113,9 +1111,7 @@ public class MainMenuManager : MonoBehaviour
         
         if (optionsPanel != null)
             optionsPanel.SetActive(true);
-        
-        Debug.Log("Options menu opened");
-    }
+}
 
     void OnOptionsBackClicked()
     {
@@ -1124,9 +1120,7 @@ public class MainMenuManager : MonoBehaviour
         
         if (mainMenuPanel != null)
             mainMenuPanel.SetActive(true);
-        
-        Debug.Log("Options menu closed");
-    }
+}
 
     void OnMenuMusicVolumeChanged(float volume)
     {
@@ -1200,16 +1194,14 @@ public class MainMenuManager : MonoBehaviour
     void OnAutosaveEnabledChanged(bool enabled)
     {
         PlayerPrefs.SetInt("AutosaveEnabled", enabled ? 1 : 0);
-        Debug.Log($"Autosave {(enabled ? "enabled" : "disabled")}");
-    }
+}
 
     void OnAutosaveIntervalChanged(float interval)
     {
         int intervalInt = Mathf.RoundToInt(interval);
         UpdateAutosaveIntervalText(intervalInt);
         PlayerPrefs.SetInt("AutosaveInterval", intervalInt);
-        Debug.Log($"Autosave interval set to {intervalInt} turns");
-    }
+}
 
     private void UpdateAutosaveIntervalText(int interval)
     {
@@ -1232,8 +1224,7 @@ public class MainMenuManager : MonoBehaviour
         {
             mainMenuPanel.SetActive(false);
             optionsPanel.SetActive(true);
-            Debug.Log("[MainMenuManager] Options menu opened");
-        }
+}
     }
 
     /// <summary>
@@ -1243,9 +1234,7 @@ public class MainMenuManager : MonoBehaviour
     {
         // For now, just show a debug message
         // In the future, this should open a save/load UI panel
-        Debug.Log("[MainMenuManager] Save/Load panel requested - implement your save/load UI here");
-        
-        // You could instantiate a save/load panel prefab here or 
+// You could instantiate a save/load panel prefab here or 
         // transition to a save/load scene
     }
 
@@ -1258,8 +1247,7 @@ public class MainMenuManager : MonoBehaviour
         {
             optionsPanel.SetActive(false);
             mainMenuPanel.SetActive(true);
-            Debug.Log("[MainMenuManager] Returned to main menu");
-        }
+}
     }
 
     /// <summary>
@@ -1267,8 +1255,7 @@ public class MainMenuManager : MonoBehaviour
     /// </summary>
     public void QuitGame()
     {
-        Debug.Log("[MainMenuManager] Quitting game...");
-        Application.Quit();
+Application.Quit();
         
         // For editor testing
         #if UNITY_EDITOR

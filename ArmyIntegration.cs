@@ -23,8 +23,7 @@ public static class ArmyIntegration
         {
             // Add to existing army
             friendlyArmy.AddUnit(unit);
-            Debug.Log($"[ArmyIntegration] Added {unit.data.unitName} to existing army {friendlyArmy.armyName} at tile {tileIndex}");
-        }
+}
         else
         {
             // Check for nearby armies (within 1 tile)
@@ -40,8 +39,7 @@ public static class ArmyIntegration
                     Vector3 armyPos = TileSystem.Instance.GetTileCenterFlat(nearbyArmy.currentTileIndex);
                     unit.transform.position = armyPos;
                 }
-                Debug.Log($"[ArmyIntegration] Added {unit.data.unitName} to nearby army {nearbyArmy.armyName}");
-            }
+}
             else
             {
                 // Create new army with just this unit
@@ -49,8 +47,7 @@ public static class ArmyIntegration
                 if (newArmy != null)
                 {
                     newArmy.MoveToTile(tileIndex);
-                    Debug.Log($"[ArmyIntegration] Created new army {newArmy.armyName} with {unit.data.unitName}");
-                }
+}
             }
         }
     }

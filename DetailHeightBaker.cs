@@ -20,6 +20,5 @@ public class DetailHeightBaker : MonoBehaviour
         }
         tex.Apply();
         AssetDatabase.CreateAsset(tex, "Assets/Textures/detailHeight.exr");
-        Debug.Log("Detail height texture generated at Assets/Textures/detailHeight.exr");
-    }
+}
 }

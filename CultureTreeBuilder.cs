@@ -113,39 +113,34 @@ public class CultureTreeBuilder : MonoBehaviour
             GridLayoutGroup gridLayout = builderContent.GetComponent<GridLayoutGroup>();
             if (gridLayout != null)
             {
-                Debug.Log("Found GridLayoutGroup on builderContent - disabling it for manual positioning");
-                gridLayout.enabled = false;
+gridLayout.enabled = false;
             }
             
             // Also disable any other layout components that might interfere
             VerticalLayoutGroup vertLayout = builderContent.GetComponent<VerticalLayoutGroup>();
             if (vertLayout != null)
             {
-                Debug.Log("Found VerticalLayoutGroup on builderContent - disabling it for manual positioning");
-                vertLayout.enabled = false;
+vertLayout.enabled = false;
             }
             
             HorizontalLayoutGroup horizLayout = builderContent.GetComponent<HorizontalLayoutGroup>();
             if (horizLayout != null)
             {
-                Debug.Log("Found HorizontalLayoutGroup on builderContent - disabling it for manual positioning");
-                horizLayout.enabled = false;
+horizLayout.enabled = false;
             }
             
             // Disable Content Size Fitter that can resize elements automatically
             ContentSizeFitter sizeFitter = builderContent.GetComponent<ContentSizeFitter>();
             if (sizeFitter != null)
             {
-                Debug.Log("Found ContentSizeFitter on builderContent - disabling it for manual positioning");
-                sizeFitter.enabled = false;
+sizeFitter.enabled = false;
             }
             
             // Disable Layout Element that can override positioning
             LayoutElement layoutElement = builderContent.GetComponent<LayoutElement>();
             if (layoutElement != null)
             {
-                Debug.Log("Found LayoutElement on builderContent - disabling it for manual positioning");
-                layoutElement.enabled = false;
+layoutElement.enabled = false;
             }
             
             CreateBackgroundImages();
@@ -157,8 +152,7 @@ public class CultureTreeBuilder : MonoBehaviour
     {
         if (backgroundData == null)
         {
-            Debug.Log("No background data assigned to CultureTreeBuilder");
-            return;
+return;
         }
         
         // Get all backgrounds in age order
@@ -166,8 +160,7 @@ public class CultureTreeBuilder : MonoBehaviour
         
         if (backgroundImages.Length == 0)
         {
-            Debug.Log("No background images found in background data");
-            return;
+return;
         }
         
         // Calculate total background width using the ScriptableObject
@@ -231,9 +224,7 @@ public class CultureTreeBuilder : MonoBehaviour
             currentX += ageWidth + backgroundData.imageSpacing;
             imageIndex++;
         }
-        
-        Debug.Log($"Created {imageIndex} age-based background images with total width: {totalBackgroundWidth}px");
-    }
+}
     
     private void CreateGridCells()
     {
@@ -269,9 +260,7 @@ public class CultureTreeBuilder : MonoBehaviour
                 gridCells[x, y] = cellObj;
             }
         }
-        
-        Debug.Log($"Created {gridColumns}x{gridRows} grid with {cellSize.x}x{cellSize.y}px cells");
-    }
+}
     
     private Vector2 GetCellWorldPosition(int gridX, int gridY)
     {
@@ -493,9 +482,7 @@ public class CultureTreeBuilder : MonoBehaviour
         // Wire UI interactions for dynamic palette item (click sounds, focus, etc.)
         if (UIManager.Instance != null)
             UIManager.Instance.WireUIInteractions(paletteItem);
-
-        Debug.Log($"[CreateCulturePaletteItem] Created palette item for {culture.cultureName} with icon: {(culture.cultureIcon != null ? "YES" : "NO")}");
-    }
+}
     
     public void AddCultureToBuilder(CultureData culture, Vector2 position)
     {
@@ -517,13 +504,9 @@ public class CultureTreeBuilder : MonoBehaviour
             FindNearestEmptyCell(preferredGridPos) : preferredGridPos;
         
         // Debug logging for positioning
-        Debug.Log($"[AddCultureToBuilder] {culture.cultureName}: input position={position}, preferred grid=({preferredGridPos.x},{preferredGridPos.y}), final grid=({finalGridPos.x},{finalGridPos.y})");
-        
-        // Get the exact world position for this grid cell
+// Get the exact world position for this grid cell
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
-        Debug.Log($"[AddCultureToBuilder] {culture.cultureName}: snap position={snapPosition}");
-        
-        // Create the culture node completely in code - no prefab needed!
+// Create the culture node completely in code - no prefab needed!
         GameObject nodeObj = new GameObject($"CultureNode_{culture.cultureName}");
         nodeObj.transform.SetParent(builderContent, false);
 
@@ -742,8 +725,7 @@ public class CultureTreeBuilder : MonoBehaviour
         // Only handle Escape if we have an active state to clear
         if (Input.GetKeyDown(KeyCode.Escape) && (isConnecting || selectedNode != null))
         {
-            Debug.Log("[CultureTreeBuilder] Escape pressed - clearing selection/connection state");
-            isConnecting = false;
+isConnecting = false;
             if (selectedNode != null)
                 selectedNode.SetSelected(false);
             selectedNode = null;
@@ -973,11 +955,9 @@ public class CultureTreeBuilder : MonoBehaviour
         }
 
         // Debug output
-        Debug.Log($"Calculated culture levels in {iteration} iterations:");
-        foreach (var levelPair in levels.OrderBy(kvp => kvp.Value))
+foreach (var levelPair in levels.OrderBy(kvp => kvp.Value))
         {
-            Debug.Log($"  Level {levelPair.Value}: {levelPair.Key.cultureName}");
-        }
+}
 
         return levels;
     }
@@ -1016,9 +996,7 @@ public class CultureTreeBuilder : MonoBehaviour
     {
         if (statusText != null)
             statusText.text = message;
-        
-        Debug.Log($"[CultureTreeBuilder] {message}");
-    }
+}
     
     // Public methods for grid access
     public Vector2 GetCellWorldPositionPublic(int gridX, int gridY)

@@ -59,6 +59,11 @@ public class Army : MonoBehaviour
     public GameObject armyVisual;
     [Tooltip("Icon/sprite to represent this army")]
     public Sprite armyIcon;
+    [Tooltip("Custom prefab override (if set, uses this instead of civ's age-based prefab)")]
+    public GameObject customArmyPrefab;
+    
+    // Track current visual age to detect when we need to update the model
+    private TechAge currentVisualAge;
     
     // Events
     public System.Action<Army> OnArmyDestroyed;
@@ -125,9 +130,7 @@ public class Army : MonoBehaviour
         UpdateArmyMovePoints();
         
         OnUnitAdded?.Invoke(unit);
-        Debug.Log($"[Army] {armyName} added {unit.data.unitName} ({units.Count}/{maxUnits} units)");
-        
-        return true;
+return true;
     }
     
     /// <summary>
@@ -151,9 +154,7 @@ public class Army : MonoBehaviour
         UpdateArmyMovePoints();
         
         OnUnitRemoved?.Invoke(unit);
-        Debug.Log($"[Army] {armyName} removed {unit.data.unitName} ({units.Count}/{maxUnits} units)");
-        
-        return true;
+return true;
     }
     
     /// <summary>
@@ -501,9 +502,7 @@ public class Army : MonoBehaviour
         {
             ArmyManager.Instance.DestroyArmy(otherArmy);
         }
-        
-        Debug.Log($"[Army] {armyName} merged with {otherArmy.armyName}");
-    }
+}
     
     /// <summary>
     /// Split this army, creating a new army with specified units
@@ -535,10 +534,7 @@ public class Army : MonoBehaviour
         {
             ArmyManager.Instance.RegisterArmy(newArmy);
         }
-        
-        Debug.Log($"[Army] {armyName} split into {newArmy.armyName} ({newArmy.units.Count} units)");
-        
-        return newArmy;
+return newArmy;
     }
     
     /// <summary>
@@ -606,38 +602,123 @@ public class Army : MonoBehaviour
         }
         
         OnArmyDestroyed?.Invoke(this);
-        
-        Debug.Log($"[Army] {armyName} destroyed");
-    }
+}
     
     /// <summary>
     /// Create visual representation of army on campaign map
+    /// Uses prefabs from CivData based on tech age, or falls back to primitive shape
     /// </summary>
     private void CreateArmyVisual()
     {
         if (armyVisual != null) return; // Already created
         
-        // Create simple visual (can be replaced with better model later)
-        armyVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        armyVisual.name = $"{armyName}_Visual";
-        armyVisual.transform.SetParent(transform);
-        armyVisual.transform.localPosition = Vector3.zero;
-        armyVisual.transform.localScale = new Vector3(1.5f, 0.2f, 1.5f);
+        GameObject prefabToUse = null;
         
-        // Color based on owner
-        var renderer = armyVisual.GetComponent<Renderer>();
-        if (renderer != null && owner != null)
+        // Priority 1: Custom prefab override
+        if (customArmyPrefab != null)
         {
-            // Use civilization color if available
-            renderer.material.color = owner.civData != null ? GetCivColor(owner.civData.civName) : Color.gray;
+            prefabToUse = customArmyPrefab;
+        }
+        // Priority 2: Civ's age-based army prefab
+        else if (owner != null && owner.civData != null)
+        {
+            prefabToUse = GetArmyPrefabForAge(owner.civData, owner.GetCurrentAge());
+            currentVisualAge = owner.GetCurrentAge();
         }
         
-        // Add selection indicator
+        // Create visual from prefab or fallback to primitive
+        if (prefabToUse != null)
+        {
+            armyVisual = Instantiate(prefabToUse, transform);
+            armyVisual.name = $"{armyName}_Visual";
+            armyVisual.transform.localPosition = Vector3.zero;
+        }
+        else
+        {
+            // Fallback: Create simple cylinder visual
+            armyVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            armyVisual.name = $"{armyName}_Visual";
+            armyVisual.transform.SetParent(transform);
+            armyVisual.transform.localPosition = Vector3.zero;
+            armyVisual.transform.localScale = new Vector3(1.5f, 0.2f, 1.5f);
+            
+            // Remove collider from primitive
+            var collider = armyVisual.GetComponent<Collider>();
+            if (collider != null) Destroy(collider);
+            
+            // Color based on owner
+            var renderer = armyVisual.GetComponent<Renderer>();
+            if (renderer != null && owner != null)
+            {
+                renderer.material.color = owner.civData != null ? GetCivColor(owner.civData.civName) : Color.gray;
+            }
+            
+            // Add selection indicator for primitive
+            CreateSelectionIndicator();
+        }
+    }
+    
+    /// <summary>
+    /// Get army prefab for a specific tech age from CivData
+    /// </summary>
+    private GameObject GetArmyPrefabForAge(CivData civData, TechAge age)
+    {
+        if (civData == null) return null;
+        
+        // Try to find age-specific prefab
+        if (civData.armyPrefabsByAge != null)
+        {
+            foreach (var agePrefab in civData.armyPrefabsByAge)
+            {
+                if (agePrefab.techAge == age && agePrefab.armyPrefab != null)
+                {
+                    return agePrefab.armyPrefab;
+                }
+            }
+        }
+        
+        // Fallback to default army prefab
+        return civData.defaultArmyPrefab;
+    }
+    
+    /// <summary>
+    /// Update army visual when tech age changes
+    /// </summary>
+    public void UpdateArmyVisualForAge()
+    {
+        if (owner == null || customArmyPrefab != null) return;
+        
+        TechAge newAge = owner.GetCurrentAge();
+        if (newAge == currentVisualAge) return;
+        
+        // Destroy old visual
+        if (armyVisual != null)
+        {
+            Destroy(armyVisual);
+            armyVisual = null;
+        }
+        
+        // Create new visual for current age
+        CreateArmyVisual();
+}
+    
+    /// <summary>
+    /// Create selection indicator (used for primitive fallback)
+    /// </summary>
+    private void CreateSelectionIndicator()
+    {
+        if (armyVisual == null) return;
+        
         var selectionIndicator = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         selectionIndicator.name = "SelectionIndicator";
         selectionIndicator.transform.SetParent(armyVisual.transform);
         selectionIndicator.transform.localPosition = Vector3.up * 0.3f;
         selectionIndicator.transform.localScale = new Vector3(1.8f, 0.1f, 1.8f);
+        
+        // Remove collider
+        var collider = selectionIndicator.GetComponent<Collider>();
+        if (collider != null) Destroy(collider);
+        
         var selRenderer = selectionIndicator.GetComponent<Renderer>();
         if (selRenderer != null)
         {
@@ -682,5 +763,170 @@ public class Army : MonoBehaviour
             Destroy(armyVisual);
         }
     }
+    
+    #region Hunting System
+    
+    /// <summary>
+    /// Check if the army can hunt an animal at a given tile (must be adjacent or same tile)
+    /// </summary>
+    public bool CanHuntAnimal(CombatUnit animal)
+    {
+        if (animal == null || animal.data == null) return false;
+        if (animal.data.unitType != CombatCategory.Animal) return false;
+        if (units.Count == 0) return false;
+        
+        // Check if animal is adjacent or on same tile
+        if (TileSystem.Instance == null) return false;
+        
+        if (animal.currentTileIndex == currentTileIndex) return true;
+        
+        var neighbors = TileSystem.Instance.GetNeighbors(currentTileIndex);
+        foreach (int neighbor in neighbors)
+        {
+            if (neighbor == animal.currentTileIndex) return true;
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Hunt an animal - auto-resolve combat without entering battle scene
+    /// Returns a HuntResult with outcome information
+    /// </summary>
+    public HuntResult HuntAnimal(CombatUnit animal)
+    {
+        HuntResult result = new HuntResult();
+        result.animal = animal;
+        result.huntingArmy = this;
+        
+        if (!CanHuntAnimal(animal))
+        {
+            result.success = false;
+            result.message = "Cannot hunt this animal - too far away!";
+            return result;
+        }
+        
+        // Calculate army's hunting power (sum of attack from all units)
+        int armyAttackPower = 0;
+        int armyDefensePower = 0;
+        foreach (var unit in units)
+        {
+            if (unit != null)
+            {
+                armyAttackPower += unit.CurrentAttack;
+                armyDefensePower += unit.CurrentDefense;
+            }
+        }
+        
+        // Get animal stats
+        int animalAttack = animal.CurrentAttack;
+        int animalDefense = animal.CurrentDefense;
+        int animalHealth = animal.currentHealth;
+        
+        // Simple combat resolution:
+        // Army deals damage = armyAttackPower - animalDefense (min 1)
+        // Animal deals damage = animalAttack - armyDefensePower (min 0)
+        
+        int damageToAnimal = Mathf.Max(1, armyAttackPower - animalDefense);
+        int damageToArmy = Mathf.Max(0, animalAttack - (armyDefensePower / Mathf.Max(1, units.Count)));
+        
+        // Apply damage to animal (track health before to check death)
+        int animalHealthBefore = animal.currentHealth;
+        animal.ApplyDamage(damageToAnimal);
+        
+        // Distribute damage to army units (spread among units)
+        if (damageToArmy > 0 && units.Count > 0)
+        {
+            int damagePerUnit = Mathf.Max(1, damageToArmy / units.Count);
+            var unitsToCheck = new List<CombatUnit>(units);
+            foreach (var unit in unitsToCheck)
+            {
+                if (unit != null)
+                {
+                    unit.ApplyDamage(damagePerUnit);
+                    result.armyCasualties += damagePerUnit;
+                }
+            }
+        }
+        
+        // Check if animal is killed
+        if (animal.currentHealth <= 0)
+        {
+            result.success = true;
+            result.animalKilled = true;
+            result.message = $"{armyName} successfully hunted {animal.data.unitName}!";
+            
+            // Grant resources/rewards to owner
+            if (owner != null)
+            {
+                // Grant food based on animal stats
+                int foodReward = Mathf.Max(5, animal.data.baseHealth / 2);
+                owner.food += foodReward;
+                result.foodGained = foodReward;
+                result.message += $" Gained {foodReward} food.";
+}
+            
+            // Remove animal from AnimalManager and destroy
+            if (AnimalManager.Instance != null)
+            {
+                AnimalManager.Instance.RemoveAnimal(animal);
+            }
+            
+            // Destroy the animal GameObject
+            Destroy(animal.gameObject);
+        }
+        else
+        {
+            result.success = true;
+            result.animalKilled = false;
+            result.message = $"{armyName} wounded {animal.data.unitName} ({animal.currentHealth} HP remaining)";
+            
+            // Mark animal as attacked for prey behavior
+            if (AnimalManager.Instance != null)
+            {
+                AnimalManager.Instance.MarkAnimalAsAttacked(animal);
+            }
+}
+        
+        // Clean up dead units from army
+        CleanupDeadUnits();
+        
+        return result;
+    }
+    
+    /// <summary>
+    /// Remove dead units from the army
+    /// </summary>
+    private void CleanupDeadUnits()
+    {
+        var deadUnits = new List<CombatUnit>();
+        foreach (var unit in units)
+        {
+            if (unit == null || unit.currentHealth <= 0)
+            {
+                deadUnits.Add(unit);
+            }
+        }
+        
+        foreach (var dead in deadUnits)
+        {
+            RemoveUnit(dead);
+        }
+    }
+    
+    #endregion
 }
 
+/// <summary>
+/// Result of a hunting action
+/// </summary>
+public class HuntResult
+{
+    public bool success;
+    public bool animalKilled;
+    public string message;
+    public CombatUnit animal;
+    public Army huntingArmy;
+    public int foodGained;
+    public int armyCasualties;
+}

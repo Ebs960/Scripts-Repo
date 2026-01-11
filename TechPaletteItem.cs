@@ -42,12 +42,10 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             backgroundImage.color = normalColor;
 
         // Debug logs for diagnosis
-        Debug.Log($"[TechPaletteItem.Initialize] Tech: {tech?.techName ?? "<null>"} | Icon: {(tech?.techIcon != null ? "Y" : "N")} | Parent: {transform.parent?.name} | Active: {gameObject.activeSelf}");
-        var rect = GetComponent<RectTransform>();
+var rect = GetComponent<RectTransform>();
         if (rect != null)
         {
-            Debug.Log($"[TechPaletteItem.Initialize] RectTransform: anchoredPos={rect.anchoredPosition} sizeDelta={rect.sizeDelta} scale={rect.localScale}");
-        }
+}
     }
     
     public void OnBeginDrag(PointerEventData eventData)

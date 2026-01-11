@@ -181,8 +181,7 @@ public class ClimateManager : MonoBehaviour
 
     private void InitializeMultiPlanetClimate()
     {
-        Debug.Log("[ClimateManager] Initializing global climate management for multi-planet system");
-        planetSeasons.Clear();
+planetSeasons.Clear();
         planetSeasonStartTurns.Clear();
         
         // Climate data will be initialized per-planet as they become available
@@ -202,9 +201,7 @@ public class ClimateManager : MonoBehaviour
 
     private void ApplySeasonalEffects(Season season, int planetIndex = 0)
     {
-        Debug.Log($"[ClimateManager] Changing to {season} season on planet {planetIndex}");
-
-        OnSeasonChanged?.Invoke(season);
+OnSeasonChanged?.Invoke(season);
         OnPlanetSeasonChanged?.Invoke(planetIndex, season);
 
         if (season == Season.Winter)
@@ -371,8 +368,7 @@ public class ClimateManager : MonoBehaviour
 
     public void SimulateClimateChange(float temperatureChange, float timescale)
     {
-        Debug.Log($"Simulating climate change: {temperatureChange} degrees over {timescale} years...");
-        // Placeholder for future systems
+// Placeholder for future systems
     }
 
     private void BuildSeasonalTextureLookup()
@@ -394,8 +390,7 @@ public class ClimateManager : MonoBehaviour
         // It manages climate for all planets in the system
         if (GameManager.Instance?.enableMultiPlanetSystem == true)
         {
-            Debug.Log("[ClimateManager] Global climate management active for multi-planet system");
-        }
+}
         else
         {
             // Single planet mode - use current planet generator

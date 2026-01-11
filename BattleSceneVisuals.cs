@@ -121,9 +121,7 @@ public class BattleSceneVisuals : MonoBehaviour
         SetupPostProcessing();
         SetupFog();
         ConfigureQualitySettings();
-        
-        Debug.Log("[BattleSceneVisuals] AAA visuals configured successfully");
-    }
+}
     
     /// <summary>
     /// Set up the main directional light (sun) with proper settings
@@ -139,8 +137,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 GameObject sunGO = new GameObject("Sun_DirectionalLight");
                 directionalLight = sunGO.AddComponent<Light>();
                 directionalLight.type = LightType.Directional;
-                Debug.Log("[BattleSceneVisuals] Created new directional light");
-            }
+}
         }
         
         // Configure directional light for AAA quality
@@ -162,9 +159,7 @@ public class BattleSceneVisuals : MonoBehaviour
         
         // Set reflection intensity
         RenderSettings.reflectionIntensity = 0.8f;
-        
-        Debug.Log($"[BattleSceneVisuals] Lighting configured - Sun intensity: {sunIntensity}, Ambient: {ambientIntensity}");
-    }
+}
     
     /// <summary>
     /// Set up post-processing volume with AAA effects
@@ -181,8 +176,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 postProcessVolume = volumeGO.AddComponent<Volume>();
                 postProcessVolume.isGlobal = true;
                 postProcessVolume.priority = 1;
-                Debug.Log("[BattleSceneVisuals] Created new post-processing volume");
-            }
+}
         }
         
         // Create or get volume profile
@@ -321,9 +315,7 @@ public class BattleSceneVisuals : MonoBehaviour
             lensDistortion.intensity.Override(lensDistortionIntensity);
             lensDistortion.scale.Override(1f);
         }
-        
-        Debug.Log("[BattleSceneVisuals] Post-processing configured with AAA + cinematic effects");
-    }
+}
     
     /// <summary>
     /// Set up fog for atmospheric depth
@@ -338,9 +330,7 @@ public class BattleSceneVisuals : MonoBehaviour
             RenderSettings.fogStartDistance = fogStartDistance;
             RenderSettings.fogEndDistance = fogEndDistance;
         }
-        
-        Debug.Log($"[BattleSceneVisuals] Fog configured - Enabled: {enableFog}, Start: {fogStartDistance}, End: {fogEndDistance}");
-    }
+}
     
     /// <summary>
     /// Configure quality settings for best visuals
@@ -364,9 +354,7 @@ public class BattleSceneVisuals : MonoBehaviour
         
         // Anisotropic filtering
         QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
-        
-        Debug.Log($"[BattleSceneVisuals] Quality settings configured - Shadow distance: {shadowDistance}");
-    }
+}
     
     /// <summary>
     /// Apply biome-specific visual adjustments for ALL biomes from BiomeHelper
@@ -878,9 +866,7 @@ public class BattleSceneVisuals : MonoBehaviour
         
         // Apply the biome-specific settings
         SetupVisuals();
-        
-        Debug.Log($"[BattleSceneVisuals] Applied biome-specific visuals for: {biome}");
-    }
+}
     
     /// <summary>
     /// Reset all visual settings to defaults before applying biome-specific overrides
@@ -943,9 +929,7 @@ public class BattleSceneVisuals : MonoBehaviour
             directionalLight.intensity = sunIntensity;
             directionalLight.color = sunColor;
         }
-        
-        Debug.Log($"[BattleSceneVisuals] Time of day set to {hour}:00 - Sun angle: {sunAngle}°");
-    }
+}
     
     // Editor helper to preview changes
     void OnValidate()

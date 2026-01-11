@@ -67,8 +67,63 @@ public class TileSystem : MonoBehaviour
     {
         if (Instance == this)
         {
+            // MEMORY FIX: Clear all large arrays to help garbage collector
+// Clear tile data arrays
+            tiles = null;
+            ownerByTile = null;
+            tileCenters = null;
+            ownerColors = null;
+            
+            // Clear fog arrays
+            if (fogByCiv != null)
+            {
+                for (int i = 0; i < fogByCiv.Length; i++)
+                {
+                    fogByCiv[i] = null;
+                }
+                fogByCiv = null;
+            }
+            mergedFog = null;
+            
+            // Clear neighbor arrays
+            if (neighbors != null)
+            {
+                for (int i = 0; i < neighbors.Length; i++)
+                {
+                    neighbors[i] = null;
+                }
+                neighbors = null;
+            }
+            
+            // Clear religion data
+            if (religionPressures != null)
+            {
+                for (int i = 0; i < religionPressures.Length; i++)
+                {
+                    religionPressures[i]?.Clear();
+                    religionPressures[i] = null;
+                }
+                religionPressures = null;
+            }
+            holySiteFlags = null;
+            holySiteDistrict = null;
+            
+            // Clear dirty tracking
+            _dirtyOverlayTiles.Clear();
+            _fogChangedBuffer.Clear();
+            
+            // Clear events to prevent memory leaks from subscriptions
+            OnTileOwnerChanged = null;
+            OnFogChanged = null;
+            OnTileHovered = null;
+            OnTileHoverExited = null;
+            OnTileClicked = null;
+            
+            // Clear singleton reference
+            Instance = null;
+            
+            isReady = false;
         }
-        
     }
 
     void Update()
@@ -341,13 +396,27 @@ public class TileSystem : MonoBehaviour
         Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
         if (mainCamera == null) return (false, -1, Vector3.zero);
 
+        // Prefer HexMapChunkManager (chunk-based) over FlatMapTextureRenderer (legacy)
+        var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
+        if (chunkManager != null && chunkManager.IsBuilt)
+        {
+            var chunkCollider = chunkManager.PickingCollider;
+            if (chunkCollider != null && chunkCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
+            {
+                Vector2 uv = chunkManager.GetUVFromWorldPosition(hitInfo.point);
+                int tileIndex = chunkManager.GetTileIndexAtUV(uv.x, uv.y);
+                if (tileIndex >= 0)
+                    return (true, tileIndex, hitInfo.point);
+            }
+        }
+        
+        // Legacy fallback to FlatMapTextureRenderer
         var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-        if (flatMapRenderer != null)
+        if (flatMapRenderer != null && flatMapRenderer.IsBuilt)
         {
             var quadCollider = flatMapRenderer.GetComponent<Collider>();
             if (quadCollider != null && quadCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
             {
-                // Get UV from hit point and use LUT to find tile
                 Vector2 uv = flatMapRenderer.GetUVFromWorldPosition(hitInfo.point);
                 int tileIndex = flatMapRenderer.GetTileIndexAtUV(uv.x, uv.y);
                 if (tileIndex >= 0)

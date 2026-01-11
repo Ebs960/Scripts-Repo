@@ -79,10 +79,7 @@ public class BattleMapBiomeSetup : MonoBehaviour
         
         // Apply to battle map generator
         targetBattleMapGenerator.biomeSettings = battleBiomeSettings.ToArray();
-        
-        Debug.Log($"[BattleMapBiomeSetup] Copied {battleBiomeSettings.Count} biome settings to BattleMapGenerator");
-        
-        // Also sync textures from planet generator
+// Also sync textures from planet generator
         SyncBattleBiomeTextures();
     }
     
@@ -123,12 +120,9 @@ public class BattleMapBiomeSetup : MonoBehaviour
             {
                 // Copy decoration prefabs from planet to battle map
                 battleSetting.decorations = planetMatch.decorationPrefabs;
-                Debug.Log($"[BattleMapBiomeSetup] Synced decorations for {battleSetting.biome}: {planetMatch.decorationPrefabs.Length} prefabs");
-            }
+}
         }
-        
-        Debug.Log("[BattleMapBiomeSetup] Texture and decoration sync completed");
-    }
+}
     
     [ContextMenu("Set Default Biome Settings")]
     public void SetDefaultBiomeSettings()
@@ -155,9 +149,7 @@ public class BattleMapBiomeSetup : MonoBehaviour
         }
         
         targetBattleMapGenerator.biomeSettings = defaultSettings;
-        
-        Debug.Log($"[BattleMapBiomeSetup] Set default biome settings for {biomesToInclude.Length} biomes");
-    }
+}
     
     [ContextMenu("Test Battle Map Generation")]
     public void TestBattleMapGeneration()
@@ -167,8 +159,6 @@ public class BattleMapBiomeSetup : MonoBehaviour
             Debug.LogError("[BattleMapBiomeSetup] No target BattleMapGenerator assigned!");
             return;
         }
-        
-        Debug.Log("[BattleMapBiomeSetup] Testing battle map generation...");
-        targetBattleMapGenerator.GenerateBattleMap(50f, 9, 9);
+targetBattleMapGenerator.GenerateBattleMap(50f, 9, 9);
     }
 }

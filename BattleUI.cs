@@ -29,8 +29,7 @@ public class BattleUI : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[BattleUI] Panel assigned: {battleHUDPanel.name}");
-            // Deactivate panel initially - it will be activated when battle starts
+// Deactivate panel initially - it will be activated when battle starts
             battleHUDPanel.SetActive(false);
         }
     }
@@ -54,19 +53,15 @@ public class BattleUI : MonoBehaviour
     /// </summary>
     public void InitializeWithBattleTest(BattleTestSimple battleTest)
     {
-        Debug.Log("[BattleUI] InitializeWithBattleTest called");
-        battleTestSimple = battleTest;
+battleTestSimple = battleTest;
         
         // Ensure UI panel exists and activate it (battle is starting)
         SetupUI();
-        Debug.Log($"[BattleUI] SetupUI complete. Panel exists: {battleHUDPanel != null}");
-        
-        // Activate the panel when battle starts
+// Activate the panel when battle starts
         if (battleHUDPanel != null)
         {
             battleHUDPanel.SetActive(true);
-            Debug.Log("[BattleUI] Battle HUD Panel activated");
-        }
+}
         else
         {
             Debug.LogError("[BattleUI] battleHUDPanel is null after SetupUI!");
@@ -74,8 +69,7 @@ public class BattleUI : MonoBehaviour
         
         // Don't create buttons here - formations aren't created yet!
         // Buttons will be created by UpdateFormationsList() after formations are ready
-        Debug.Log("[BattleUI] Skipping CreateFormationButtonsFromBattleTest - formations not ready yet. Will be created by UpdateFormationsList().");
-    }
+}
 
     private void SetupUI()
     {
@@ -85,23 +79,18 @@ public class BattleUI : MonoBehaviour
             Debug.LogError("[BattleUI] battleHUDPanel is not assigned in Inspector! Please assign it manually in the scene.");
             return;
         }
-        
-        Debug.Log($"[BattleUI] Using manually assigned panel: {battleHUDPanel.name}");
-        
-        // Check if panel has ScrollRect (common UI pattern: Panel -> Viewport -> Content)
+// Check if panel has ScrollRect (common UI pattern: Panel -> Viewport -> Content)
         var scrollRect = battleHUDPanel.GetComponent<UnityEngine.UI.ScrollRect>();
         Transform targetParent = battleHUDPanel.transform;
         
         if (scrollRect != null)
         {
-            Debug.Log("[BattleUI] Panel has ScrollRect component, looking for Content child...");
-            // ScrollRect structure: Panel -> Viewport -> Content
+// ScrollRect structure: Panel -> Viewport -> Content
             // We need to find the Content GameObject (child of Viewport)
             if (scrollRect.content != null)
             {
                 targetParent = scrollRect.content.transform;
-                Debug.Log($"[BattleUI] Found ScrollRect content: {targetParent.name}");
-            }
+}
             else
             {
                 // Fallback: look for a child named "Content"
@@ -112,8 +101,7 @@ public class BattleUI : MonoBehaviour
                     if (content != null)
                     {
                         targetParent = content;
-                        Debug.Log($"[BattleUI] Found Content child: {content.name}");
-                    }
+}
                 }
             }
         }
@@ -126,8 +114,7 @@ public class BattleUI : MonoBehaviour
             formationButtonLayout = targetParent.GetComponentInChildren<HorizontalLayoutGroup>();
             if (formationButtonLayout != null)
             {
-                Debug.Log($"[BattleUI] Found existing HorizontalLayoutGroup: {formationButtonLayout.name}");
-            }
+}
         }
         
         // If still not found, create one as a child of the target parent
@@ -152,9 +139,7 @@ public class BattleUI : MonoBehaviour
             formationButtonLayout.childControlHeight = true;
             formationButtonLayout.spacing = 8f;
             formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
-            
-            Debug.Log($"[BattleUI] Created HorizontalLayoutGroup: {layoutGO.name} as child of {targetParent.name}");
-        }
+}
         else
         {
             // Ensure layout group is properly configured (but don't modify childForceExpand - let user set it)
@@ -166,8 +151,7 @@ public class BattleUI : MonoBehaviour
             {
                 formationButtonLayout.padding = new RectOffset(10, 10, 5, 5);
             }
-            Debug.Log($"[BattleUI] Using existing HorizontalLayoutGroup: {formationButtonLayout.name} (parent: {formationButtonLayout.transform.parent?.name ?? "null"})");
-        }
+}
     }
 
     // CreateBattleHUDPanel() removed - we use manually assigned panels from the Inspector only!
@@ -182,9 +166,7 @@ public class BattleUI : MonoBehaviour
         
         // Directly access public allFormations list
         trackedFormations = battleTestSimple.allFormations;
-        Debug.Log($"[BattleUI] Creating buttons for {trackedFormations?.Count ?? 0} formations");
-        
-        if (trackedFormations == null || trackedFormations.Count == 0)
+if (trackedFormations == null || trackedFormations.Count == 0)
         {
             Debug.LogWarning("[BattleUI] No formations found! Buttons will not be created yet.");
             return;
@@ -195,12 +177,9 @@ public class BattleUI : MonoBehaviour
             if (formation != null)
             {
                 CreateFormationButton(formation);
-                Debug.Log($"[BattleUI] Created button for formation: {formation.formationName}");
-            }
+}
         }
-        
-        Debug.Log($"[BattleUI] Formation buttons created: {formationButtons.Count}");
-    }
+}
 
     private void CreateFormationButton(FormationUnit formation)
     {
@@ -361,9 +340,7 @@ public class BattleUI : MonoBehaviour
     /// </summary>
     public void UpdateFormationsList(List<FormationUnit> formations)
     {
-        Debug.Log($"[BattleUI] UpdateFormationsList called with {formations?.Count ?? 0} formations");
-        
-        if (formations == null || formations.Count == 0)
+if (formations == null || formations.Count == 0)
         {
             Debug.LogWarning("[BattleUI] UpdateFormationsList received null or empty list!");
             return;
@@ -385,8 +362,7 @@ public class BattleUI : MonoBehaviour
         // Ensure panel is active
         if (battleHUDPanel != null && !battleHUDPanel.activeSelf)
         {
-            Debug.Log("[BattleUI] Activating battle HUD panel...");
-            battleHUDPanel.SetActive(true);
+battleHUDPanel.SetActive(true);
         }
         
         // CRITICAL FIX: Clear buttons BEFORE assigning formations list
@@ -397,9 +373,7 @@ public class BattleUI : MonoBehaviour
         trackedFormations = new List<FormationUnit>(formations);
         
         // Debug: Check formations list after clearing buttons
-        Debug.Log($"[BattleUI] After ClearFormationButtons: formations.Count={formations?.Count ?? -1}, trackedFormations.Count={trackedFormations?.Count ?? -1}");
-        
-        int buttonsCreated = 0;
+int buttonsCreated = 0;
         foreach (var formation in formations)
         {
             if (formation != null)

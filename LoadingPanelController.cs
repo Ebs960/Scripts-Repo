@@ -81,8 +81,7 @@ public class LoadingPanelController : MonoBehaviour
                 
                 // CRITICAL: Hide immediately after creation
                 spaceLoadingPanel.HideSpaceLoading();
-                Debug.Log("[LoadingPanel] Space loading panel instantiated and hidden");
-            }
+}
             else
             {
                 Debug.LogWarning("[LoadingPanel] Space loading prefab does not have SpaceLoadingPanelController component");
@@ -139,13 +138,11 @@ public class LoadingPanelController : MonoBehaviour
             var minimapUI = FindFirstObjectByType<MinimapUI>();
             if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
             {
-                Debug.Log("[LoadingPanel] Minimap generation not complete, deferring UI restoration...");
-                StartCoroutine(WaitForMinimapCompletionAndShowUI());
+StartCoroutine(WaitForMinimapCompletionAndShowUI());
             }
             else
             {
-                Debug.Log("[LoadingPanel] Minimap generation complete or no MinimapUI found, showing UI immediately");
-                ShowAllGameUI();
+ShowAllGameUI();
             }
         }
     }
@@ -311,8 +308,7 @@ public class LoadingPanelController : MonoBehaviour
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null)
         {
-            Debug.Log("[LoadingPanel] Found MinimapUI, but leaving GameObject active for coroutines");
-            // Don't call StoreAndHideUIElement(minimapUI.gameObject) - let MinimapUI handle its own hiding
+// Don't call StoreAndHideUIElement(minimapUI.gameObject) - let MinimapUI handle its own hiding
         }
         
         // Hide PlayerUI instances
@@ -352,9 +348,7 @@ public class LoadingPanelController : MonoBehaviour
             if (transportUI != null)
                 StoreAndHideUIElement(transportUI.gameObject);
         }
-        
-        Debug.Log($"[LoadingPanel] Hidden {hiddenUIElements.Count} UI elements during loading");
-    }
+}
     
     /// <summary>
     /// Show all previously hidden game UI elements
@@ -365,8 +359,7 @@ public class LoadingPanelController : MonoBehaviour
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
         {
-            Debug.Log("[LoadingPanel] Minimap generation still in progress, not showing UI yet");
-            return;
+return;
         }
         
         foreach (var uiElement in hiddenUIElements)
@@ -376,10 +369,7 @@ public class LoadingPanelController : MonoBehaviour
                 uiElement.SetActive(originalState);
             }
         }
-        
-        Debug.Log($"[LoadingPanel] Restored {hiddenUIElements.Count} UI elements after loading");
-        
-        hiddenUIElements.Clear();
+hiddenUIElements.Clear();
         originalUIStates.Clear();
         
         // Trigger any UI systems that were waiting for loading to complete
@@ -388,8 +378,7 @@ public class LoadingPanelController : MonoBehaviour
         // FIXED: Initialize music tracks when loading is complete and UI is shown
         if (MusicManager.Instance != null)
         {
-            Debug.Log("[LoadingPanel] Initializing music tracks now that loading is complete...");
-            MusicManager.Instance.InitializeMusicTracks();
+MusicManager.Instance.InitializeMusicTracks();
         }
         else
         {
@@ -407,8 +396,7 @@ public class LoadingPanelController : MonoBehaviour
         if (minimapUI != null)
         {
             minimapUI.TriggerDeferredInitialization();
-            Debug.Log("[LoadingPanel] Triggered deferred MinimapUI initialization");
-        }
+}
         
         // Ensure UIManager panels are properly restored
         if (UIManager.Instance != null)
@@ -430,16 +418,12 @@ public class LoadingPanelController : MonoBehaviour
         
         if (minimapUI != null)
         {
-            Debug.Log("[LoadingPanel] Waiting for minimap pre-generation to complete...");
-            
-            // Wait until minimap generation is done
+// Wait until minimap generation is done
             while (!minimapUI.MinimapsPreGenerated)
             {
                 yield return null;
             }
-            
-            Debug.Log("[LoadingPanel] Minimap pre-generation complete! Now showing UI...");
-        }
+}
         
         // Now show all the UI
         ShowAllGameUI();
@@ -453,8 +437,7 @@ public class LoadingPanelController : MonoBehaviour
     {
         if (hideAllUIWhileLoading && hiddenUIElements.Count > 0)
         {
-            Debug.Log("[LoadingPanel] Minimap generation complete signal received, showing UI...");
-            ShowAllGameUI();
+ShowAllGameUI();
         }
     }
     

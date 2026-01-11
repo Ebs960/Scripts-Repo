@@ -36,8 +36,7 @@ public class AddressableUnitLoader : MonoBehaviour
         {
             _instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("[AddressableUnitLoader] Instance created and initialized");
-        }
+}
         else if (_instance != this)
         {
             Destroy(gameObject);
@@ -56,8 +55,7 @@ public class AddressableUnitLoader : MonoBehaviour
         {
             if (op.Status == AsyncOperationStatus.Succeeded)
             {
-                Debug.Log("[AddressableUnitLoader] Addressables system initialized successfully");
-            }
+}
             else
             {
                 Debug.LogError($"[AddressableUnitLoader] Failed to initialize Addressables: {op.OperationException?.Message ?? "Unknown error"}");
@@ -182,8 +180,7 @@ public class AddressableUnitLoader : MonoBehaviour
         {
             loadedPrefabs.Remove(unitName);
             Addressables.Release(prefab);
-            Debug.Log($"[AddressableUnitLoader] Released unit: {unitName}");
-        }
+}
     }
 
     /// <summary>
@@ -204,9 +201,7 @@ public class AddressableUnitLoader : MonoBehaviour
         // Force cleanup
         Resources.UnloadUnusedAssets();
         System.GC.Collect();
-
-        Debug.Log($"[AddressableUnitLoader] Released {count} units and cleaned up memory");
-    }
+}
 
     /// <summary>
     /// Get count of currently loaded units (for debugging)

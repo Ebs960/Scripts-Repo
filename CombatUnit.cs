@@ -762,9 +762,7 @@ public class CombatUnit : BaseUnit
         if (data != null && data.isRangedUnit && !ConsumeAmmo())
         {
             // Out of ammo! Can't fire ranged attack
-            Debug.Log($"{gameObject.name} is out of ammo! {(data.canSwitchToMelee ? "Switching to melee." : "Cannot attack!")}");
-            
-            if (!data.canSwitchToMelee)
+if (!data.canSwitchToMelee)
             {
                 // Can't attack at all without ammo
                 return;
@@ -985,16 +983,13 @@ public class CombatUnit : BaseUnit
     /// <returns>True if the unit is destroyed by this damage</returns>
     public override bool ApplyDamage(int damageAmount)
     {
-        Debug.Log($"[CombatUnit] {gameObject.name} ApplyDamage called: damage={damageAmount}, currentHealth={currentHealth}, MaxHealth={MaxHealth}");
-        
-        // Play hit animation using trigger (one-shot, not continuous)
+// Play hit animation using trigger (one-shot, not continuous)
         if (animator != null && animator.runtimeAnimatorController != null)
         {
             if (HasParameter(animator, hitHash))
             {
                 animator.SetTrigger(hitHash);
-                Debug.Log($"[CombatUnit] {gameObject.name} triggered Hit animation");
-            }
+}
             else
             {
                 Debug.LogWarning($"[CombatUnit] {gameObject.name} - Hit trigger parameter not found in animator!");
@@ -1007,9 +1002,7 @@ public class CombatUnit : BaseUnit
         
         // currentHealth is protected set in BaseUnit, so we can set it directly
         currentHealth -= damageAmount;
-        Debug.Log($"[CombatUnit] {gameObject.name} after damage: currentHealth={currentHealth}");
-        
-        // Raise damage event
+// Raise damage event
         GameEventManager.Instance.RaiseDamageAppliedEvent(null, this, damageAmount);
         
         // Mark animal as recently attacked for predator/prey behavior system
@@ -1088,8 +1081,7 @@ public class CombatUnit : BaseUnit
         // Set battle state to Routing and start retreat
         battleState = BattleUnitState.Routing;
         StartRetreat();
-        Debug.Log($"{data.unitName} has been routed!");
-    }
+}
     
     /// <summary>
     /// Destroy this unit
@@ -1125,9 +1117,7 @@ public class CombatUnit : BaseUnit
         
         // Fire local death event for listeners (e.g., AnimalManager)
         OnDeath?.Invoke();
-        
-        Debug.Log($"{data.unitName} has been destroyed!");
-        if (data != null && owner != null) owner.food += data.foodOnKill;
+if (data != null && owner != null) owner.food += data.foodOnKill;
         
         if (owner != null) owner.combatUnits.Remove(this);
         
@@ -1451,8 +1441,7 @@ public class CombatUnit : BaseUnit
             {
                 animator.SetBool(isIdleHash, false);
             }
-            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - unit is moving");
-            return;
+return;
         }
         
         // If attacking, clear IsIdle
@@ -1462,8 +1451,7 @@ public class CombatUnit : BaseUnit
             {
                 animator.SetBool(isIdleHash, false);
             }
-            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - unit is attacking");
-            return;
+return;
         }
         
         // Don't set idle if we're in the middle of playing other animations (attack, hit, death, etc.)
@@ -1477,8 +1465,7 @@ public class CombatUnit : BaseUnit
             currentState.IsName("Rout") ||
             currentState.IsName("RangedAttack"))
         {
-            Debug.Log($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation skipped - currently playing {currentStateName}");
-            return;
+return;
         }
         
         // Use IsIdle bool parameter (required for single idle state)
@@ -1565,20 +1552,15 @@ public class CombatUnit : BaseUnit
             }
             paramLog.Append($"{param.name}={value}, ");
         }
-        
-        Debug.Log(paramLog.ToString());
-        
-        // Also log transition info
+// Also log transition info
         if (anim.IsInTransition(0))
         {
             AnimatorTransitionInfo transInfo = anim.GetAnimatorTransitionInfo(0);
-            Debug.Log($"[CombatUnit] {gameObject.name}: Currently transitioning! normalizedTime: {transInfo.normalizedTime:F2}, duration: {transInfo.duration:F2}");
-        }
+}
         else
         {
             AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
-            Debug.Log($"[CombatUnit] {gameObject.name}: NOT transitioning. State: {GetCurrentStateName(anim)}, normalizedTime: {stateInfo.normalizedTime:F2}, speed: {stateInfo.speed:F2}");
-        }
+}
     }
     
     // currentTileIndex, moveSpeed are inherited from BaseUnit
@@ -2394,8 +2376,7 @@ public class CombatUnit : BaseUnit
     {
         if (equippedProjectileWeapon == null)
         {
-            Debug.Log("No projectile weapon equipped.");
-            return;
+return;
         }
         if (!equippedProjectileWeapon.useEquipmentProjectileSpawn)
         {
@@ -2406,8 +2387,7 @@ public class CombatUnit : BaseUnit
         if (spawn == null)
             Debug.LogWarning($"Projectile spawn transform '{equippedProjectileWeapon.projectileSpawnName}' not found on equipped projectile weapon.");
         else
-            Debug.Log($"Found projectile spawn: {spawn.name}");
-    }
+}
 
     // SpawnProjectileFromEquipment, QueueProjectileForAnimation, FireQueuedProjectile, CancelQueuedProjectile
     // are overridden/inherited via BaseUnit
@@ -2527,8 +2507,7 @@ public class CombatUnit : BaseUnit
             if (triggerHash != -1 && HasParameter(animator, triggerHash))
             {
                 animator.SetTrigger(triggerHash);
-                Debug.Log($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - using hash, current state: {GetCurrentStateName(animator)}");
-            }
+}
             else if (triggerHash != -1)
             {
                 Debug.LogWarning($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - hash found but parameter doesn't exist in animator");
@@ -2539,8 +2518,7 @@ public class CombatUnit : BaseUnit
             {
                 // Fallback to string-based trigger for custom animations
                 animator.SetTrigger(animationName);
-                Debug.Log($"[CombatUnit] {gameObject.name}: TriggerAnimation({animationName}) - using string (custom animation), current state: {GetCurrentStateName(animator)}");
-            }
+}
             
             OnAnimationTrigger?.Invoke(animationName);
         }
@@ -3252,12 +3230,9 @@ public class CombatUnit : BaseUnit
             // Create a temporary civilization for the animal
             defenderCiv = CreateTemporaryAnimalCiv(target);
         }
-
-        Debug.Log($"[CombatUnit] Starting real-time battle: {attackerUnits.Count} vs {defenderUnits.Count} units");
-        if (target.owner == null)
+if (target.owner == null)
         {
-            Debug.Log($"[CombatUnit] Battle includes animal: {target.data.unitName}");
-        }
+}
         
         // Start the battle
             BattleTestSimple.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);

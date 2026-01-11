@@ -57,9 +57,7 @@ public class CultureTreeLayoutData : ScriptableObject
         
         EditorUtility.FocusProjectWindow();
         Selection.activeObject = asset;
-        
-        Debug.Log($"Created CultureTreeLayoutData asset at: {path}");
-    }
+}
 #endif
 
     // Public API for managing culture positions

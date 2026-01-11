@@ -194,8 +194,7 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (selectedUnit == null)
         {
-            Debug.Log("[UnitSelectionManager] No unit selected for movement command");
-            return;
+return;
         }
         // Prefer authoritative hovered tile info
         if (isHoveringTile && cachedHoveredTileIndex >= 0)
@@ -269,9 +268,7 @@ public class UnitSelectionManager : MonoBehaviour
         {
             UIManager.Instance.ShowUnitInfoPanelForUnit(unit);
         }
-        
-        Debug.Log($"[UnitSelectionManager] Selected unit: {GetUnitName(unit)}");
-    }
+}
     
     /// <summary>
     /// Deselect the current unit
@@ -280,10 +277,7 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (selectedUnit == null)
             return;
-        
-        Debug.Log($"[UnitSelectionManager] Deselected unit: {GetUnitName(selectedUnit)}");
-
-        selectedUnit = null;
+selectedUnit = null;
 
         // Remove visual indicator
         if (selectionIndicator != null)
@@ -317,8 +311,7 @@ public class UnitSelectionManager : MonoBehaviour
             if (canMove)
             {
                 combatUnit.MoveTo(targetTileIndex);
-                Debug.Log($"[UnitSelectionManager] Ordered {unitName} to move to tile {targetTileIndex}");
-            }
+}
         }
         else if (selectedUnit is WorkerUnit workerUnit)
         {
@@ -328,14 +321,12 @@ public class UnitSelectionManager : MonoBehaviour
             if (canMove)
             {
                 workerUnit.MoveTo(targetTileIndex);
-                Debug.Log($"[UnitSelectionManager] Ordered {unitName} to move to tile {targetTileIndex}");
-            }
+}
         }
         
         if (!canMove)
         {
-            Debug.Log($"[UnitSelectionManager] {unitName} cannot move to tile {targetTileIndex}");
-            if (UIManager.Instance != null)
+if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowNotification($"{unitName} cannot move there!");
             }
@@ -421,9 +412,7 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Show embark UI
         SpaceEmbarkUI.ShowEmbarkUIForUnit(selectedUnit.gameObject, currentPlanetIndex);
-        
-        Debug.Log($"[UnitSelectionManager] Showing space travel UI for {GetUnitName(selectedUnit)} on Planet {currentPlanetIndex}");
-    }
+}
 
     /// <summary>
     /// Handle M key press to show space map
@@ -433,8 +422,7 @@ public class UnitSelectionManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowSpaceMap();
-            Debug.Log("[UnitSelectionManager] Opening Space Map (M key pressed)");
-        }
+}
         else
         {
             Debug.LogWarning("[UnitSelectionManager] UIManager.Instance is null - cannot open space map");

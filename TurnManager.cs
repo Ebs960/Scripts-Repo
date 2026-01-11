@@ -109,10 +109,7 @@ public class TurnManager : MonoBehaviour
 
         var civ = civs[currentIndex];
         bool isPlayer = civ == playerCiv;
-
-        Debug.Log($"TurnManager: Turn {round}, Civ: {civ.civData.civName}, IsPlayer: {isPlayer}");
-
-        var gameManager = GameManager.Instance;
+var gameManager = GameManager.Instance;
         if (gameManager != null)
         {
             gameManager.currentTurn = round;

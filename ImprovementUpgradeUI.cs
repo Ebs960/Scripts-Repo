@@ -125,8 +125,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
         if (!upgrade.CanBuild(currentCiv))
         {
-            Debug.Log($"Cannot build {upgrade.upgradeName}: requirements not met");
-            return;
+return;
         }
 
         // Consume requirements
@@ -134,9 +133,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         {
             // Build the upgrade
             BuildUpgrade(upgrade);
-            Debug.Log($"Built {upgrade.upgradeName} on {currentImprovement.improvementName}");
-            
-            // Refresh the panel
+// Refresh the panel
             PopulateUpgradeOptions();
         }
     }
@@ -231,8 +228,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
             // Recompute aggregated defense modifiers and persist
             tileData.RecomputeImprovementDefenseAggregates();
             if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(currentTileIndex, tileData);
-            Debug.Log($"Upgrade {upgrade.upgradeName} built on tile {currentTileIndex}");
-        }
+}
 
         // Apply immediate yield bonuses to the civilization
         // Note: For per-turn yields, you'd want to track this in the tile data

@@ -74,8 +74,7 @@ public class CivilizationManager : MonoBehaviour
     public void OnTechResearched(Civilization civ, TechData tech)
     {
         // e.g. unlock new abilities, notify AI, UI update
-        Debug.Log($"{civ.civData.civName} researched {tech.techName}");
-    }
+}
 
     /// <summary>
     /// Returns a copy of all registered civilizations.
@@ -147,9 +146,7 @@ public class CivilizationManager : MonoBehaviour
         PerformTechnologicalDecisions(civ);
         PerformCulturalDecisions(civ);
         PerformReligiousDecisions(civ);
-        
-        Debug.Log($"AI turn completed for {civ.civData.civName}");
-    }
+}
     
     /// <summary>
     /// Make high-level strategic decisions based on leader agenda
@@ -520,8 +517,7 @@ public class CivilizationManager : MonoBehaviour
             if (bestUnit != null && city.QueueProduction(bestUnit))
             {
                 unitsQueued++;
-                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestUnit.unitName} in {city.cityName}");
-            }
+}
         }
     }
     
@@ -588,8 +584,7 @@ public class CivilizationManager : MonoBehaviour
                 if (DiplomacyManager.Instance != null)
                 {
                     DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.War);
-                    Debug.Log($"[CivilizationManager] {civ.civData.civName} declared war on {target.civData.civName}");
-                }
+}
                 break; // Only declare one war per turn
             }
         }
@@ -632,8 +627,7 @@ public class CivilizationManager : MonoBehaviour
             
             if (city.QueueProduction(pioneerData))
             {
-                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued pioneer in {city.cityName} for expansion");
-                break; // Only queue one pioneer per turn
+break; // Only queue one pioneer per turn
             }
         }
     }
@@ -679,8 +673,7 @@ public class CivilizationManager : MonoBehaviour
             if (bestBuilding != null && city.QueueProduction(bestBuilding))
             {
                 buildingsQueued++;
-                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
-            }
+}
         }
     }
     
@@ -717,8 +710,7 @@ public class CivilizationManager : MonoBehaviour
             if (reputation > 20f && trustLevel >= 6 && UnityEngine.Random.value < 0.3f)
             {
                 DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.Alliance);
-                Debug.Log($"[CivilizationManager] {civ.civData.civName} proposed alliance to {target.civData.civName}");
-                break; // Only propose one alliance per turn
+break; // Only propose one alliance per turn
             }
         }
     }
@@ -764,8 +756,7 @@ public class CivilizationManager : MonoBehaviour
             if (bestBuilding != null && city.QueueProduction(bestBuilding))
             {
                 buildingsQueued++;
-                Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
-            }
+}
         }
     }
     
@@ -794,8 +785,7 @@ public class CivilizationManager : MonoBehaviour
                             var belief = pantheon.possibleFounderBeliefs[0]; // Pick first belief
                             if (civ.FoundPantheon(pantheon, belief))
                             {
-                                Debug.Log($"[CivilizationManager] {civ.civData.civName} founded pantheon: {pantheon.pantheonName}");
-                            }
+}
                         }
                     }
                 }
@@ -819,8 +809,7 @@ public class CivilizationManager : MonoBehaviour
                         {
                             if (civ.FoundReligion(religion, holySiteCity))
                             {
-                                Debug.Log($"[CivilizationManager] {civ.civData.civName} founded religion: {religion.religionName}");
-                            }
+}
                         }
                     }
                 }
@@ -855,8 +844,7 @@ public class CivilizationManager : MonoBehaviour
                         var bestBuilding = religiousBuildings.FirstOrDefault();
                         if (bestBuilding != null && city.QueueProduction(bestBuilding))
                         {
-                            Debug.Log($"[CivilizationManager] {civ.civData.civName}: Queued {bestBuilding.buildingName} in {city.cityName}");
-                        }
+}
                     }
                 }
             }
@@ -1120,9 +1108,7 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     public void SpawnCivilizations(CivData playerCivData, int aiCount, int cityStateCount, int tribeCount)
     {
-        Debug.Log($"[CivilizationManager] SpawnCivilizations called: AI={aiCount}, CityStates={cityStateCount}, Tribes={tribeCount}");
-        
-        // Clear any existing civs
+// Clear any existing civs
         civs.Clear();
         currentCivIndex = -1;
         
@@ -1230,9 +1216,7 @@ public class CivilizationManager : MonoBehaviour
         {
             Debug.LogWarning("[CivilizationManager] Cannot position camera: No player pioneer found!");
         }
-        
-        Debug.Log($"[CivilizationManager] Civilization spawning complete. Total civs spawned: {civs.Count}");
-        Debug.Log($"[CivilizationManager] Total worker units spawned: {civs.Sum(c => c.workerUnits.Count)}");
+Debug.Log($"[CivilizationManager] Total worker units spawned: {civs.Sum(c => c.workerUnits.Count)}");
     }
 
     /// <summary>
@@ -1288,10 +1272,7 @@ public class CivilizationManager : MonoBehaviour
             Destroy(civGO);
             return;
         }
-        
-        Debug.Log($"[CivilizationManager] Civilization GameObject created successfully for {data.civName}");
-        
-        // --- Leader Selection ---
+// --- Leader Selection ---
         LeaderData chosenLeader = null;
         if (isPlayer)
         {
@@ -1341,15 +1322,10 @@ public class CivilizationManager : MonoBehaviour
             Debug.LogError("SpawnOneCivilization: pioneerData is not assigned in CivilizationManager!");
             return;
         }
-
-        Debug.Log($"[CivilizationManager] Creating pioneer for {data.civName} at tile {tile}...");
-        
-        // Instantiate pioneer (same as animals - no parenting to planet)
+// Instantiate pioneer (same as animals - no parenting to planet)
         // FIXED: Use Earth-specific positioning for pioneer
     Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tile) : Vector3.zero;
-        Debug.Log($"[CivilizationManager] Pioneer position calculated: {pos}");
-        
-        var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
+var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         if (wgo == null)
         {
             Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");
@@ -1375,9 +1351,7 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     int FindSpawnTile(CivData data, HashSet<int> occupied, bool enforceClimate)
     {
-        Debug.Log($"[CivilizationManager] FindSpawnTile for {data?.civName} (enforceClimate: {enforceClimate})");
-        
-        // COPIED FROM ANIMALMANAGER: Use exact same approach for reliability
+// COPIED FROM ANIMALMANAGER: Use exact same approach for reliability
         var candidates = new List<int>();
         // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
         var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
@@ -1456,8 +1430,7 @@ public class CivilizationManager : MonoBehaviour
         }
 
         int result = candidates[UnityEngine.Random.Range(0, candidates.Count)];
-        Debug.Log($"[CivilizationManager] FindSpawnTile result for {data.civName}: {result}");
-        return result;
+return result;
     }
 
     /// <summary>
@@ -1520,9 +1493,7 @@ public class CivilizationManager : MonoBehaviour
 
         // Focus the camera on the tile in flat space
         cameraManager.JumpToWorldPoint(tileWorldPosition);
-
-        Debug.Log($"Camera positioned to focus on player pioneer at tile {pioneerTileIndex}");
-    }
+}
 
     /// <summary>
     /// Fisher–Yates shuffle.
@@ -1559,8 +1530,7 @@ public class CivilizationManager : MonoBehaviour
         civ.Initialize(template, null, false, grid, planet);
 
         RegisterCiv(civ);
-        Debug.Log($"Created new rebel faction '{go.name}' from revolt in {revoltedCity.cityName}");
-        return civ;
+return civ;
     }
 
     void Update()

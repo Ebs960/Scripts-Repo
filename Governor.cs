@@ -86,8 +86,7 @@ public class Governor
             if (GetStat(trait.triggerType) >= trait.requiredValue)
             {
                 Traits.Add(trait);
-                Debug.Log($"Governor {Name} unlocked trait: {trait.traitName}");
-            }
+}
         }
     }
 
@@ -104,9 +103,7 @@ public class Governor
     private void LevelUp()
     {
         Level++;
-        Debug.Log($"Governor {Name} reached level {Level}!");
-        
-        // Notify any cities this governor is assigned to
+// Notify any cities this governor is assigned to
         foreach (var city in Cities)
         {
             // You might want to refresh city UI or apply new bonuses here

@@ -62,8 +62,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
 
         if (spaceships == null || spaceships.Length == 0)
         {
-            Debug.Log("[SpaceshipDisplay] No spaceships provided, showing default fleet");
-            DisplayDefaultFleet();
+DisplayDefaultFleet();
             return;
         }
 
@@ -83,9 +82,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
         {
             StartCoroutine(FloatingAnimationCoroutine());
         }
-
-        Debug.Log($"[SpaceshipDisplay] Displaying {displayedSpaceships.Count} spaceships");
-    }
+}
 
     /// <summary>
     /// Display a default fleet when no specific spaceships are provided
@@ -149,9 +146,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
         displayedSpaceships.Clear();
         isDisplayActive = false;
         StopAllCoroutines();
-
-        Debug.Log("[SpaceshipDisplay] Display cleared");
-    }
+}
 
     /// <summary>
     /// Create default spaceship display slots
@@ -179,8 +174,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
         }
 
         spaceshipSlots = slots.ToArray();
-        Debug.Log("[SpaceshipDisplay] Created 3 default spaceship slots");
-    }
+}
 
     /// <summary>
     /// Disable gameplay components on display spaceships
@@ -256,9 +250,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
     public void StartFormationFlying()
     {
         if (!enableFormationFlying) return;
-        
-        Debug.Log("[SpaceshipDisplay] STUB: Formation flying not yet implemented");
-        // TODO: Implement formation flying patterns
+// TODO: Implement formation flying patterns
         // - Line formation
         // - Delta formation  
         // - Diamond formation
@@ -271,9 +263,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
     public void EnableSpaceshipEffects(bool enable)
     {
         if (!enableSpaceshipEffects) return;
-        
-        Debug.Log("[SpaceshipDisplay] STUB: Spaceship effects not yet implemented");
-        // TODO: Implement spaceship effects
+// TODO: Implement spaceship effects
         // - Engine trails
         // - Shield effects
         // - Weapon glow
@@ -287,9 +277,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
     public void ShowShipInformation(GameObject spaceship)
     {
         if (!enableShipInfoDisplay) return;
-        
-        Debug.Log("[SpaceshipDisplay] STUB: Ship information display not yet implemented");
-        // TODO: Implement ship info display
+// TODO: Implement ship info display
         // - Ship name and class
         // - Crew count
         // - Weapon loadout
@@ -302,8 +290,7 @@ public class SpaceshipDisplayManager : MonoBehaviour
     /// </summary>
     public void OnSpaceshipClicked(GameObject spaceship)
     {
-        Debug.Log("[SpaceshipDisplay] STUB: Interactive spaceship selection not yet implemented");
-        // TODO: Implement spaceship interaction
+// TODO: Implement spaceship interaction
         // - Click to select ship
         // - Show detailed information
         // - Allow ship customization

@@ -129,8 +129,7 @@ public class ArmyManager : MonoBehaviour
             if (friendlyArmy != null)
             {
                 friendlyArmy.AddUnit(unit);
-                Debug.Log($"[ArmyManager] Auto-added orphaned unit {unit.data?.unitName ?? "Unknown"} to army {friendlyArmy.armyName}");
-            }
+}
             else
             {
                 // Create new army for this unit
@@ -138,8 +137,7 @@ public class ArmyManager : MonoBehaviour
                 if (newArmy != null)
                 {
                     newArmy.MoveToTile(unit.currentTileIndex);
-                    Debug.Log($"[ArmyManager] Created new army {newArmy.armyName} for orphaned unit {unit.data?.unitName ?? "Unknown"}");
-                }
+}
             }
         }
     }
@@ -190,10 +188,7 @@ public class ArmyManager : MonoBehaviour
         
         // Register army
         RegisterArmy(army);
-        
-        Debug.Log($"[ArmyManager] Created {army.armyName} with {army.units.Count} units");
-        
-        return army;
+return army;
     }
     
     /// <summary>
@@ -207,8 +202,7 @@ public class ArmyManager : MonoBehaviour
         {
             allArmies[army.armyId] = army;
             armiesList.Add(army);
-            Debug.Log($"[ArmyManager] Registered {army.armyName} (ID: {army.armyId})");
-        }
+}
     }
     
     /// <summary>
@@ -223,8 +217,7 @@ public class ArmyManager : MonoBehaviour
             allArmies.Remove(army.armyId);
             armiesList.Remove(army);
             selectedArmies.Remove(army);
-            Debug.Log($"[ArmyManager] Unregistered {army.armyName}");
-        }
+}
     }
     
     /// <summary>
@@ -389,9 +382,7 @@ public class ArmyManager : MonoBehaviour
         {
             var attackerCiv = attackerArmies[0].owner;
             var defenderCiv = defenderArmies[0].owner;
-            
-            Debug.Log($"[ArmyManager] Initiating battle: {attackerCiv.civData.civName} ({attackerUnits.Count} units) vs {defenderCiv.civData.civName} ({defenderUnits.Count} units)");
-            Debug.Log($"[ArmyManager] Loading battle scene and generating battle map...");
+Debug.Log($"[ArmyManager] Loading battle scene and generating battle map...");
             
             // Start battle - this will load the BattleScene and generate the battle map
             BattleTestSimple.Instance.StartBattle(attackerCiv, defenderCiv, attackerUnits, defenderUnits);
@@ -478,8 +469,7 @@ public class ArmyManager : MonoBehaviour
         }
         
         participatingArmies.Clear();
-        Debug.Log("[ArmyManager] Battle ended - units returned to armies, casualties applied");
-    }
+}
     
     /// <summary>
     /// Select an army (for player control)
@@ -540,8 +530,7 @@ public class ArmyManager : MonoBehaviour
             // Check if army has movement points
             if (army.currentMovePoints <= 0)
             {
-                Debug.Log($"[ArmyManager] {army.armyName} has no movement points remaining");
-                continue;
+continue;
             }
             
             // Find path to target tile
@@ -583,8 +572,7 @@ public class ArmyManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"[ArmyManager] {army.armyName} cannot reach target (insufficient movement points)");
-                    continue;
+continue;
                 }
                 
                 // Start movement coroutine
@@ -607,8 +595,7 @@ public class ArmyManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"[ArmyManager] {army.armyName} cannot move to tile {tileIndex} (insufficient movement points or impassable)");
-                }
+}
             }
         }
     }

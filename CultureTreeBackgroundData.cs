@@ -59,9 +59,7 @@ public class CultureTreeBackgroundData : ScriptableObject
 
         EditorUtility.FocusProjectWindow();
         Selection.activeObject = asset;
-
-        Debug.Log($"Created CultureTreeBackgroundData asset at: {path}");
-    }
+}
 #endif
 
     /// <summary>

@@ -227,10 +227,7 @@ public class RuinsConfigurationSetup : MonoBehaviour
         string path = $"Assets/{configFileName}.asset";
         UnityEditor.AssetDatabase.CreateAsset(config, path);
         UnityEditor.AssetDatabase.SaveAssets();
-        
-        Debug.Log($"[RuinsSetup] Created default ruins configuration at {path}");
-        #else
-        Debug.Log("[RuinsSetup] Ruins configuration creation is only available in the Unity Editor");
-        #endif
+#else
+#endif
     }
 }

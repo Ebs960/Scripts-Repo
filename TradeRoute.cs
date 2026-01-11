@@ -72,9 +72,7 @@ public class TradeRoute
             // No food/production for interplanetary - just pure gold profit
             foodPerTurn = 0; 
             productionPerTurn = 0;
-            
-            Debug.Log($"[TradeRoute] Interplanetary route: Planet {originPlanetIndex} → {destinationPlanetIndex} (distance: {planetDistance}) = {goldPerTurn} gold/turn");
-        }
+}
         else if (sourceCity != null && destinationCity != null)
         {
             // Original city trade calculation

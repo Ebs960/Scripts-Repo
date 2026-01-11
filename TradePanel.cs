@@ -350,16 +350,13 @@ public class TradePanel : MonoBehaviour
             
             if (originPlanet == destPlanet)
             {
-                Debug.Log("Cannot establish trade route to the same planet!");
-                return;
+return;
             }
             
             // Create interplanetary trade route
             TradeRoute newRoute = new TradeRoute(playerCiv, originPlanet, destPlanet);
             playerCiv.AddTradeRoute(newRoute);
-            
-            Debug.Log($"Established interplanetary trade route from planet {originPlanet} to planet {destPlanet} (+{newRoute.goldPerTurn} gold/turn)");
-            UpdateUIState();
+UpdateUIState();
         }
         else
         {

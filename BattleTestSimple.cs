@@ -253,14 +253,7 @@ public class BattleTestSimple : MonoBehaviour
         long unusedMemory = Profiler.GetTotalUnusedReservedMemoryLong();
         long monoHeap = Profiler.GetMonoHeapSizeLong();
         long monoUsed = Profiler.GetMonoUsedSizeLong();
-        
-        Debug.Log($"[MEMORY] {context}\n" +
-                  $"  Total Allocated: {totalMemory / (1024f * 1024f):F1} MB\n" +
-                  $"  Total Reserved:  {reservedMemory / (1024f * 1024f):F1} MB\n" +
-                  $"  Unused Reserved: {unusedMemory / (1024f * 1024f):F1} MB\n" +
-                  $"  Mono Heap:       {monoHeap / (1024f * 1024f):F1} MB\n" +
-                  $"  Mono Used:       {monoUsed / (1024f * 1024f):F1} MB");
-    }
+}
     
     /// <summary>
     /// Load resources asynchronously over multiple frames to prevent memory spikes
@@ -1259,8 +1252,7 @@ public class BattleTestSimple : MonoBehaviour
         
         if (battleUI != null)
         {
-            Debug.Log($"[BattleTestSimple] Updating BattleUI with {allFormations.Count} formations");
-            battleUI.UpdateFormationsList(allFormations);
+battleUI.UpdateFormationsList(allFormations);
         }
         else
         {
@@ -3444,10 +3436,7 @@ public class FormationUnit : MonoBehaviour
                 StartCoroutine(RetryNavMeshSetup());
                 return;
             }
-            
-            Debug.Log($"[FormationUnit] NavMesh found for {formationName} at {formationCenter} (sampled to {hit.position})");
-            
-            formationNavAgent = gameObject.GetComponent<NavMeshAgent>();
+formationNavAgent = gameObject.GetComponent<NavMeshAgent>();
             if (formationNavAgent == null)
             {
                 formationNavAgent = gameObject.AddComponent<NavMeshAgent>();
@@ -3469,9 +3458,7 @@ public class FormationUnit : MonoBehaviour
             formationNavAgent.avoidancePriority = 50; // Medium priority
             
             float currentSpacing = GetSpacingFromCombatUnitData();
-            Debug.Log($"[FormationUnit] {formationName} calculated radius: {actualRadius:F2} (soldiers: {soldiers?.Count ?? 0}, spacing: {currentSpacing:F2})");
-            
-            // Enable auto-braking for smooth stopping (prevents sliding)
+// Enable auto-braking for smooth stopping (prevents sliding)
             formationNavAgent.autoBraking = true;
             
             // Set initial position (warp to ensure it's on NavMesh)
@@ -3484,9 +3471,7 @@ public class FormationUnit : MonoBehaviour
                 formationNavAgent.Warp(formationCenter);
                 Debug.LogWarning($"[FormationUnit] Could not find NavMesh at {formationCenter} for {formationName}");
             }
-            
-            Debug.Log($"[FormationUnit] Set up NavMeshAgent for {formationName}");
-        }
+}
     }
     
     /// <summary>
@@ -3547,16 +3532,12 @@ public class FormationUnit : MonoBehaviour
         // Check if any NavMesh data exists
         var allNavMeshData = NavMesh.CalculateTriangulation();
         bool hasNavMeshData = allNavMeshData.vertices != null && allNavMeshData.vertices.Length > 0;
-        
-        Debug.Log($"[FormationUnit] NavMesh Diagnostics for {formationName}:");
-        Debug.Log($"  - Has NavMesh Data: {hasNavMeshData}");
+Debug.Log($"  - Has NavMesh Data: {hasNavMeshData}");
         
         if (hasNavMeshData)
         {
-            Debug.Log($"  - NavMesh Vertices: {allNavMeshData.vertices.Length}");
-            Debug.Log($"  - NavMesh Indices: {allNavMeshData.indices.Length}");
-            Debug.Log($"  - NavMesh Areas: {allNavMeshData.areas.Length}");
-        }
+Debug.Log($"  - NavMesh Indices: {allNavMeshData.indices.Length}");
+}
         else
         {
             Debug.LogWarning($"  - No NavMesh data found! NavMesh may not be baked yet.");
@@ -3564,30 +3545,24 @@ public class FormationUnit : MonoBehaviour
         
         // Check available NavMesh areas
         int areaMask = NavMesh.AllAreas;
-        Debug.Log($"  - NavMesh Area Mask: {areaMask} (AllAreas)");
-        
-        // Try sampling at different search radii
+// Try sampling at different search radii
         for (float radius = 1f; radius <= 10f; radius *= 2f)
         {
             if (NavMesh.SamplePosition(testPosition, out NavMeshHit sampleHit, radius, NavMesh.AllAreas))
             {
-                Debug.Log($"  - NavMesh found at radius {radius}: {sampleHit.position} (distance: {Vector3.Distance(testPosition, sampleHit.position):F2})");
-                break;
+break;
             }
             else
             {
-                Debug.Log($"  - NavMesh NOT found at radius {radius}");
-            }
+}
         }
         
         // Check if position is on terrain (raycast down)
         if (Physics.Raycast(testPosition + Vector3.up * 100f, Vector3.down, out RaycastHit terrainHit, 200f))
         {
-            Debug.Log($"  - Terrain found below position: {terrainHit.point} (collider: {terrainHit.collider?.name ?? "none"})");
-            if (terrainHit.collider != null)
+if (terrainHit.collider != null)
             {
-                Debug.Log($"  - Terrain collider type: {terrainHit.collider.GetType().Name}, isTrigger: {terrainHit.collider.isTrigger}");
-            }
+}
         }
         else
         {
@@ -3666,9 +3641,7 @@ public class FormationUnit : MonoBehaviour
                 soldierNavAgents[soldier] = navAgent;
             }
         }
-        
-        Debug.Log($"[FormationUnit] Set up {soldierNavAgents.Count} individual NavMeshAgents for {formationName}");
-    }
+}
     
     /// <summary>
     /// Retry NavMesh setup after a delay (in case NavMesh is still baking)
@@ -3689,9 +3662,7 @@ public class FormationUnit : MonoBehaviour
             // Check if NavMesh is ready by trying to sample a position
             if (NavMesh.SamplePosition(formationCenter, out NavMeshHit testHit, 10f, NavMesh.AllAreas))
             {
-                Debug.Log($"[FormationUnit] NavMesh is now ready for {formationName} after {attempt + 1} attempt(s)!");
-                
-                // NavMesh is ready! Try setup again
+// NavMesh is ready! Try setup again
                 if (formationNavAgent == null && useNavMesh)
                 {
                     SetupNavMeshAgent();
@@ -4384,14 +4355,11 @@ public class FormationUnit : MonoBehaviour
                 effectiveSpeed *= runSpeedMultiplier;
             }
             formationNavAgent.speed = effectiveSpeed;
-            
-            Debug.Log($"[FormationUnit] {formationName} moving to {targetPosition} via NavMesh (running: {isRunning})");
-        }
+}
         else
         {
             // Direct movement (fallback if NavMesh not available)
-            Debug.Log($"[FormationUnit] {formationName} moving to {targetPosition} via direct movement (NavMesh disabled)");
-        }
+}
         
         // Ensure formation center doesn't jump - soldiers will smoothly move toward new destination
         // The formation center will move smoothly in MoveFormation() via interpolation
