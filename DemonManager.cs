@@ -337,7 +337,7 @@ public class DemonManager : MonoBehaviour
         // Move visual
         if (army.armyVisual != null)
         {
-            Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(targetTile);
+            Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(targetTile);
             army.armyVisual.transform.position = worldPos;
         }
         
@@ -496,7 +496,7 @@ return;
         // Pick random spawn location
         var (spawnTileIndex, spawnPlanetIndex) = validTiles[Random.Range(0, validTiles.Count)];
         
-        Vector3 spawnPos = TileSystem.Instance.GetTileCenterFlat(spawnTileIndex);
+        Vector3 spawnPos = TileSystem.Instance.GetTileSurfacePosition(spawnTileIndex);
 
         // Create the demon army
         DemonArmy newArmy = new DemonArmy

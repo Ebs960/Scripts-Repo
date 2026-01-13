@@ -625,7 +625,7 @@ public class CombatUnit : BaseUnit
                 Debug.LogWarning("[CombatUnit] TileSystem not ready; skipping movement step.");
                 continue;
             }
-            Vector3 pos = TileSystem.Instance.GetTileCenterFlat(idx);
+            Vector3 pos = TileSystem.Instance.GetTileSurfacePosition(idx);
             transform.position = pos;
 
             // Update tile occupancy
@@ -1410,9 +1410,9 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
     /// </summary>
     public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
-        // Flat-only placement: ignore spherical grid, place on planar tile center
+        // Flat-only placement: place on terrain surface with proper height
         if (TileSystem.Instance == null) return;
-        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
         transform.position = flatCenter;
 
         Vector3 forward = transform.forward;
@@ -1799,7 +1799,7 @@ return;
         Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
         return false;
     }
-    unit.transform.position = TileSystem.Instance.GetTileCenterFlat(targetTileIndex);
+    unit.transform.position = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex);
         unit.currentTileIndex = targetTileIndex;
         
         // Update tile occupancy
@@ -2386,8 +2386,7 @@ return;
         var spawn = GetProjectileSpawnTransform(equippedProjectileWeapon);
         if (spawn == null)
             Debug.LogWarning($"Projectile spawn transform '{equippedProjectileWeapon.projectileSpawnName}' not found on equipped projectile weapon.");
-        else
-}
+    }
 
     // SpawnProjectileFromEquipment, QueueProjectileForAnimation, FireQueuedProjectile, CancelQueuedProjectile
     // are overridden/inherited via BaseUnit

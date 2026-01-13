@@ -24,7 +24,7 @@ public class HexMapChunk : MonoBehaviour
     // Reference to manager
     private HexMapChunkManager manager;
     
-    // Chunk bounds in world space (local coordinates)
+    // Chunk mesh bounds in local mesh space (the chunk transform places it in the map)
     private float localMinX, localMaxX, localMinZ, localMaxZ;
     
     // UV region this chunk samples from the baked texture
@@ -82,7 +82,8 @@ public class HexMapChunk : MonoBehaviour
     }
     
     /// <summary>
-    /// Set the world-space bounds this chunk covers (in local chunk coordinates).
+    /// Set the mesh-local bounds this chunk covers.
+    /// The chunk's transform controls where this mesh sits in the overall map.
     /// </summary>
     public void SetBounds(float minX, float maxX, float minZ, float maxZ)
     {

@@ -233,9 +233,9 @@ unit.UpdateWalkingState(false);
                 workerUnit.DeductMovePoints(movementCost);
             }
             
-            // Calculate planar positions on the flat map
+            // Calculate planar positions on the flat map (using surface position for terrain height)
             Vector3 startPosition = unitTransform.position;
-            Vector3 endPosition = TileSystem.Instance.GetTileCenterFlat(targetTileIndex);
+            Vector3 endPosition = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex);
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);
             if (journeyLength < 0.001f) continue;
@@ -324,8 +324,8 @@ unit.UpdateWalkingState(false);
         var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return;
 
-        // Place unit at planar tile center with upright orientation
-        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        // Place unit at terrain surface with proper height and upright orientation
+        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
         unitTransform.position = flatCenter;
 
         Vector3 forward = unitTransform.forward;

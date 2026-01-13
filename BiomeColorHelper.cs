@@ -113,6 +113,9 @@ public static class BiomeColorHelper
             // River (special case)
             Biome.River => new Color(0.2f, 0.5f, 0.7f, 1f),          // Blue
             
+            // Lake (inland freshwater)
+            Biome.Lake => new Color(0.25f, 0.55f, 0.75f, 1f),        // Lighter blue than river
+            
             // Glacier (special case)
             Biome.Glacier => new Color(0.85f, 0.9f, 0.95f, 1f),      // Light blue-white
             

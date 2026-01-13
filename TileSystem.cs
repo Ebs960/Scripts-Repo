@@ -396,7 +396,7 @@ public class TileSystem : MonoBehaviour
         Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
         if (mainCamera == null) return (false, -1, Vector3.zero);
 
-        // Prefer HexMapChunkManager (chunk-based) over FlatMapTextureRenderer (legacy)
+        // Use HexMapChunkManager (chunk-based map renderer)
         var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
         if (chunkManager != null && chunkManager.IsBuilt)
         {
@@ -405,20 +405,6 @@ public class TileSystem : MonoBehaviour
             {
                 Vector2 uv = chunkManager.GetUVFromWorldPosition(hitInfo.point);
                 int tileIndex = chunkManager.GetTileIndexAtUV(uv.x, uv.y);
-                if (tileIndex >= 0)
-                    return (true, tileIndex, hitInfo.point);
-            }
-        }
-        
-        // Legacy fallback to FlatMapTextureRenderer
-        var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-        if (flatMapRenderer != null && flatMapRenderer.IsBuilt)
-        {
-            var quadCollider = flatMapRenderer.GetComponent<Collider>();
-            if (quadCollider != null && quadCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
-            {
-                Vector2 uv = flatMapRenderer.GetUVFromWorldPosition(hitInfo.point);
-                int tileIndex = flatMapRenderer.GetTileIndexAtUV(uv.x, uv.y);
                 if (tileIndex >= 0)
                     return (true, tileIndex, hitInfo.point);
             }
@@ -734,9 +720,20 @@ public class TileSystem : MonoBehaviour
 		#region Surface / Accessibility / Occupancy
     public Vector3 GetTileSurfacePosition(int tile, float unitOffset = 0f)
     {
-        // Flat-only: return planar center with optional Y offset
+        // Get flat center position
         var c = GetTileCenterFlat(tile);
-        return new Vector3(c.x, c.y + unitOffset, c.z);
+        
+        // Get terrain elevation to calculate actual Y position
+        float terrainY = c.y;
+        var td = GetTileData(tile);
+        if (td != null && GameManager.Instance != null)
+        {
+            // Use renderElevation (0-1) * displacement strength to get actual world Y offset
+            float displacementStrength = GameManager.Instance.GetTerrainDisplacementStrength();
+            terrainY += td.renderElevation * displacementStrength;
+        }
+        
+        return new Vector3(c.x, terrainY + unitOffset, c.z);
     }
 
     public bool IsTileAccessible(int tile, bool mustBeLand, int unitId)

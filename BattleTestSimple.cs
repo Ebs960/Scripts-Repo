@@ -3540,16 +3540,20 @@ formationNavAgent = gameObject.GetComponent<NavMeshAgent>();
         
         // Check available NavMesh areas
         int areaMask = NavMesh.AllAreas;
-// Try sampling at different search radii
+        Debug.Log($"  - NavMesh area mask: {areaMask} (checking all areas)");
+        
+        // Try sampling at different search radii
         for (float radius = 1f; radius <= 10f; radius *= 2f)
         {
-            if (NavMesh.SamplePosition(testPosition, out NavMeshHit sampleHit, radius, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(testPosition, out NavMeshHit sampleHit, radius, areaMask))
             {
-break;
+                Debug.Log($"  - Found NavMesh position at radius {radius}: {sampleHit.position}, area mask: {sampleHit.mask}");
+                break;
             }
             else
             {
-}
+                Debug.Log($"  - No NavMesh found at radius {radius}");
+            }
         }
         
         // Check if position is on terrain (raycast down)

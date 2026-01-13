@@ -35,13 +35,33 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private int meshSubdivisionsPerChunk = 32;
     
     [Header("Displacement Settings")]
-    [SerializeField] private float displacementStrength = 0.1f;
+    [Tooltip("World units of vertical relief. Higher values = more visible terrain height.")]
+    [SerializeField] private float displacementStrength = 5.0f;
     [SerializeField] private float flatY = 0f;
     
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
     [Tooltip("Buffer zone before wrap triggers (fraction of column width).")]
     [SerializeField] private float wrapBuffer = 0.5f;
+
+    [Header("Debug")]
+    [Tooltip("Logs wrap teleport events and key positions. Enable only when diagnosing wrap issues.")]
+    [SerializeField] private bool debugWrap = false;
+    [Tooltip("Logs additional per-column state when wrapping. Can be noisy.")]
+    [SerializeField] private bool debugWrapVerbose = false;
+    [Tooltip("Minimum seconds between non-teleport debug logs.")]
+    [SerializeField] private float debugLogCooldownSeconds = 0.5f;
+    private float _lastDebugLogTime = -999f;
+    private int _wrapTeleportEvents = 0;
+
+    [Header("Diagnostics")]
+    [Tooltip("Logs the full transform parent chain when building chunks (helps find unexpected rotation/offset).")]
+    [SerializeField] private bool logTransformChainOnBuild = true;
+    [Tooltip("Logs whenever this manager's transform changes at runtime (position/rotation/scale).")]
+    [SerializeField] private bool debugTransformChanges = false;
+    private Vector3 _lastTransformPos;
+    private Quaternion _lastTransformRot;
+    private Vector3 _lastTransformScale;
     
     [Header("Hex Grid Outline")]
     [SerializeField] private bool showHexGrid = false;
@@ -71,7 +91,6 @@ public class HexMapChunkManager : MonoBehaviour
     private SphericalHexGrid grid;
     private PlanetGenerator planetGenerator;
     private Transform cameraTransform;
-    private FlatMapTextureRenderer oldRenderer;
     private TerrainOverlayGPU terrainOverlayGPU;
     
     // Tile to chunk mapping
@@ -127,10 +146,25 @@ public class HexMapChunkManager : MonoBehaviour
         }
         
         TrySubscribeToPlanetReady();
+
+        _lastTransformPos = transform.position;
+        _lastTransformRot = transform.rotation;
+        _lastTransformScale = transform.lossyScale;
     }
     
     private void LateUpdate()
     {
+        if (debugTransformChanges)
+        {
+            if (transform.position != _lastTransformPos || transform.rotation != _lastTransformRot || transform.lossyScale != _lastTransformScale)
+            {
+                Debug.LogWarning($"[HexMapChunkManager][TRANSFORM] Changed: path={GetTransformPath(transform)} pos={transform.position.ToString("F3")} rot={transform.rotation.eulerAngles.ToString("F1")} scale={transform.lossyScale.ToString("F3")}");
+                _lastTransformPos = transform.position;
+                _lastTransformRot = transform.rotation;
+                _lastTransformScale = transform.lossyScale;
+            }
+        }
+
         if (enableWrap && cameraTransform != null && chunks != null)
         {
             UpdateColumnWrapping();
@@ -260,6 +294,11 @@ TrySubscribeToSurfaceReady(gen);
         
         // Create shared material
         CreateSharedMaterial();
+
+        if (logTransformChainOnBuild)
+        {
+            LogTransformDiagnostics();
+        }
         
         // Create column parents for wrap teleportation
         CreateColumnParents();
@@ -453,12 +492,19 @@ TrySubscribeToSurfaceReady(gen);
     private void CreateColumnParents()
     {
         columnParents = new Transform[chunksX];
-        
+
+        // Columns are positioned across the map width in LOCAL SPACE.
+        // This ensures columnParents[x].localPosition.x truly represents the column's location,
+        // which makes wrapping/ghosting stable and debuggable.
         for (int x = 0; x < chunksX; x++)
         {
             GameObject columnObj = new GameObject($"Column_{x}");
-            columnObj.transform.SetParent(transform);
-            columnObj.transform.localPosition = Vector3.zero;
+            columnObj.transform.SetParent(transform, false);
+            columnObj.transform.localRotation = Quaternion.identity;
+            columnObj.transform.localScale = Vector3.one;
+
+            float colLocalX = (-mapWidth * 0.5f) + (x * columnWidth);
+            columnObj.transform.localPosition = new Vector3(colLocalX, flatY, 0f);
             columnParents[x] = columnObj.transform;
         }
     }
@@ -489,11 +535,16 @@ TrySubscribeToSurfaceReady(gen);
                 // Create chunk
                 GameObject chunkObj = new GameObject($"Chunk_{x}_{z}");
                 chunkObj.transform.SetParent(columnParents[x]);
-                chunkObj.transform.localPosition = Vector3.zero;
+                chunkObj.transform.localPosition = new Vector3(0f, 0f, (-mapHeight * 0.5f) + (z * chunkHeight));
+                chunkObj.transform.localRotation = Quaternion.identity;
+                chunkObj.transform.localScale = Vector3.one;
                 
                 HexMapChunk chunk = chunkObj.AddComponent<HexMapChunk>();
                 chunk.Initialize(this, x, z, x);
-                chunk.SetBounds(minX, maxX, minZ, maxZ);
+
+                // Bounds are in the CHUNK'S LOCAL MESH SPACE.
+                // The chunk transform handles placement in the map.
+                chunk.SetBounds(0f, chunkWidth, 0f, chunkHeight);
                 chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
                 chunk.SetMaterial(sharedMaterial);
                 
@@ -600,15 +651,8 @@ TrySubscribeToSurfaceReady(gen);
     
     private void DisableOldRenderer()
     {
-        if (oldRenderer == null)
-        {
-            oldRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-        }
-        
-        if (oldRenderer != null)
-        {
-            oldRenderer.gameObject.SetActive(false);
-}
+        // FlatMapTextureRenderer removed - this is now a no-op
+        // HexMapChunkManager is the sole map renderer
     }
     
     /// <summary>
@@ -626,22 +670,25 @@ TrySubscribeToSurfaceReady(gen);
         GameObject colliderObj = new GameObject("ChunkMapCollider");
         colliderObj.transform.SetParent(transform);
         colliderObj.transform.localPosition = new Vector3(0f, flatY, 0f);
-        colliderObj.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Face up like a quad
+        colliderObj.transform.localRotation = Quaternion.identity; // No rotation - mesh is on XZ plane
         
-        // Create simple quad mesh with proper UVs
+        // Create simple quad mesh with proper UVs on XZ plane (Y=0)
+        // This ensures hit.textureCoord works correctly for raycasting from above
         Mesh quadMesh = new Mesh();
         quadMesh.name = "PickingQuad";
         
         float halfW = mapWidth * 0.5f;
         float halfH = mapHeight * 0.5f;
         
+        // Vertices on XZ plane (Y=0), facing up
         quadMesh.vertices = new Vector3[]
         {
-            new Vector3(-halfW, -halfH, 0f),
-            new Vector3(halfW, -halfH, 0f),
-            new Vector3(-halfW, halfH, 0f),
-            new Vector3(halfW, halfH, 0f)
+            new Vector3(-halfW, 0f, -halfH), // bottom-left
+            new Vector3(halfW, 0f, -halfH),  // bottom-right
+            new Vector3(-halfW, 0f, halfH),  // top-left
+            new Vector3(halfW, 0f, halfH)    // top-right
         };
+        // UVs match the vertex layout
         quadMesh.uv = new Vector2[]
         {
             new Vector2(0f, 0f),
@@ -649,6 +696,7 @@ TrySubscribeToSurfaceReady(gen);
             new Vector2(0f, 1f),
             new Vector2(1f, 1f)
         };
+        // Triangles wound counter-clockwise when viewed from above (Y+)
         quadMesh.triangles = new int[] { 0, 2, 1, 2, 3, 1 };
         quadMesh.RecalculateNormals();
         
@@ -682,7 +730,14 @@ TrySubscribeToSurfaceReady(gen);
             worldPicker.lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
             worldPicker.lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
             worldPicker.flatMapCollider = pickingCollider;
-}
+            worldPicker.mapWidth = mapWidth;
+            worldPicker.mapHeight = mapHeight;
+            Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, collider={(pickingCollider != null ? "assigned" : "null")}, mapSize={mapWidth}x{mapHeight}");
+        }
+        else
+        {
+            Debug.LogWarning($"[HexMapChunkManager] Could not update WorldPicker: picker={(worldPicker != null ? "found" : "null")}, lut={(bakeResult.lut != null ? "exists" : "null")}");
+        }
     }
     
     #endregion
@@ -696,7 +751,7 @@ TrySubscribeToSurfaceReady(gen);
     {
         float x = (u - 0.5f) * mapWidth;
         float z = (v - 0.5f) * mapHeight;
-        return transform.TransformPoint(new Vector3(x, 0f, z));
+        return transform.TransformPoint(new Vector3(x, flatY, z));
     }
     
     /// <summary>
@@ -813,12 +868,26 @@ TrySubscribeToSurfaceReady(gen);
         }
         
         ghostColumnsCreated = true;
+
+        if (debugWrap)
+        {
+            Debug.Log($"[HexMapChunkManager][WRAP] Created ghost columns: mirror={columnsToMirror}, mapWidth={mapWidth:F3}, chunksX={chunksX}, columnWidth={columnWidth:F3}");
+        }
 }
     
     private Transform CreateGhostColumn(int sourceColumnIndex, float xOffset, string name)
     {
         GameObject ghostObj = new GameObject(name);
-        ghostObj.transform.SetParent(transform);
+        ghostObj.transform.SetParent(transform, false);
+        ghostObj.transform.localRotation = Quaternion.identity;
+        ghostObj.transform.localScale = Vector3.one;
+
+        // Position the entire ghost column relative to its source column.
+        // Use LOCAL SPACE so it remains correct even if the map hierarchy is rotated.
+        if (columnParents != null && sourceColumnIndex >= 0 && sourceColumnIndex < columnParents.Length)
+        {
+            ghostObj.transform.localPosition = columnParents[sourceColumnIndex].localPosition + new Vector3(xOffset, 0f, 0f);
+        }
         
         // Copy all chunks from source column
         for (int z = 0; z < chunksZ; z++)
@@ -828,7 +897,7 @@ TrySubscribeToSurfaceReady(gen);
             
             // Create ghost chunk as simple mesh copy
             GameObject ghostChunk = new GameObject($"{name}_Chunk_{z}");
-            ghostChunk.transform.SetParent(ghostObj.transform);
+            ghostChunk.transform.SetParent(ghostObj.transform, false);
             
             // Copy mesh filter
             MeshFilter sourceMF = sourceChunk.GetComponent<MeshFilter>();
@@ -847,10 +916,17 @@ TrySubscribeToSurfaceReady(gen);
                 ghostMR.shadowCastingMode = sourceMR.shadowCastingMode;
                 ghostMR.receiveShadows = sourceMR.receiveShadows;
             }
-            
-            // Position the ghost chunk
-            ghostChunk.transform.position = sourceChunk.transform.position + new Vector3(xOffset, 0f, 0f);
+
+            // Match the source chunk's LOCAL offset within the column (typically Z placement)
+            ghostChunk.transform.localPosition = sourceChunk.transform.localPosition;
+            ghostChunk.transform.localRotation = Quaternion.identity;
+            ghostChunk.transform.localScale = Vector3.one;
             ghostChunk.layer = sourceChunk.gameObject.layer;
+        }
+
+        if (debugWrapVerbose)
+        {
+            Debug.Log($"[HexMapChunkManager][WRAP] Created ghost column '{name}' from sourceCol={sourceColumnIndex} xOffset={xOffset:F3} ghostPos={ghostObj.transform.position}");
         }
         
         return ghostObj.transform;
@@ -870,8 +946,8 @@ TrySubscribeToSurfaceReady(gen);
             if (sourceColRight >= 0 && sourceColRight < columnParents.Length)
             {
                 // Position ghost left columns relative to their source
-                Vector3 sourcePos = columnParents[sourceColRight].position;
-                ghostColumnsLeft[i].position = new Vector3(sourcePos.x - mapWidth, sourcePos.y, sourcePos.z);
+                Vector3 sourceLocal = columnParents[sourceColRight].localPosition;
+                ghostColumnsLeft[i].localPosition = sourceLocal + new Vector3(-mapWidth, 0f, 0f);
             }
         }
         
@@ -881,9 +957,17 @@ TrySubscribeToSurfaceReady(gen);
             if (sourceColLeft >= 0 && sourceColLeft < columnParents.Length)
             {
                 // Position ghost right columns relative to their source
-                Vector3 sourcePos = columnParents[sourceColLeft].position;
-                ghostColumnsRight[i].position = new Vector3(sourcePos.x + mapWidth, sourcePos.y, sourcePos.z);
+                Vector3 sourceLocal = columnParents[sourceColLeft].localPosition;
+                ghostColumnsRight[i].localPosition = sourceLocal + new Vector3(mapWidth, 0f, 0f);
             }
+        }
+
+        if (debugWrapVerbose && Time.unscaledTime - _lastDebugLogTime >= debugLogCooldownSeconds)
+        {
+            _lastDebugLogTime = Time.unscaledTime;
+            string left0 = ghostColumnsLeft.Length > 0 && ghostColumnsLeft[0] != null ? ghostColumnsLeft[0].position.ToString("F3") : "(none)";
+            string right0 = ghostColumnsRight.Length > 0 && ghostColumnsRight[0] != null ? ghostColumnsRight[0].position.ToString("F3") : "(none)";
+            Debug.Log($"[HexMapChunkManager][WRAP] Ghost update: left0={left0}, right0={right0}");
         }
     }
     
@@ -901,31 +985,91 @@ TrySubscribeToSurfaceReady(gen);
             CreateGhostColumns();
         }
         
-        float cameraX = cameraTransform.position.x;
+        // Work in MAP-LOCAL space for stability even if the map is rotated/offset in the scene.
+        float cameraX = transform.InverseTransformPoint(cameraTransform.position).x;
         float halfMap = mapWidth * 0.5f;
         float leftEdge = cameraX - halfMap;
         float rightEdge = cameraX + halfMap;
         float buffer = columnWidth * wrapBuffer;
+
+        int teleportsThisFrame = 0;
         
         for (int i = 0; i < columnParents.Length; i++)
         {
             Transform col = columnParents[i];
-            float colX = col.position.x;
+            float colX = col.localPosition.x;
             
             // Column is too far left - teleport to right
             if (colX < leftEdge - buffer)
             {
-                col.position = new Vector3(colX + mapWidth, col.position.y, col.position.z);
+                float oldX = colX;
+                float newX = colX + mapWidth;
+                col.localPosition = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                teleportsThisFrame++;
+                _wrapTeleportEvents++;
+                if (debugWrap)
+                {
+                    Debug.Log($"[HexMapChunkManager][WRAP] Teleport col[{i}] LEFT->RIGHT oldX={oldX:F3} newX={newX:F3} camX={cameraX:F3} leftEdge={leftEdge:F3} rightEdge={rightEdge:F3} buffer={buffer:F3} mapW={mapWidth:F3} events={_wrapTeleportEvents}");
+                }
             }
             // Column is too far right - teleport to left
             else if (colX > rightEdge + buffer)
             {
-                col.position = new Vector3(colX - mapWidth, col.position.y, col.position.z);
+                float oldX = colX;
+                float newX = colX - mapWidth;
+                col.localPosition = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                teleportsThisFrame++;
+                _wrapTeleportEvents++;
+                if (debugWrap)
+                {
+                    Debug.Log($"[HexMapChunkManager][WRAP] Teleport col[{i}] RIGHT->LEFT oldX={oldX:F3} newX={newX:F3} camX={cameraX:F3} leftEdge={leftEdge:F3} rightEdge={rightEdge:F3} buffer={buffer:F3} mapW={mapWidth:F3} events={_wrapTeleportEvents}");
+                }
             }
+
+            if (debugWrapVerbose && Time.unscaledTime - _lastDebugLogTime >= debugLogCooldownSeconds)
+            {
+                _lastDebugLogTime = Time.unscaledTime;
+                Debug.Log($"[HexMapChunkManager][WRAP] State col[{i}] x={col.localPosition.x:F3} camX={cameraX:F3} edges=[{leftEdge:F3},{rightEdge:F3}] buffer={buffer:F3} mapW={mapWidth:F3} mgrPos={transform.position.ToString("F3")} mgrRot={transform.rotation.eulerAngles.ToString("F1")}");
+            }
+        }
+
+        if (debugWrap && teleportsThisFrame > 0)
+        {
+            Debug.Log($"[HexMapChunkManager][WRAP] Teleports this frame={teleportsThisFrame} camX={cameraX:F3} mapW={mapWidth:F3}");
         }
         
         // Update ghost columns to match
         UpdateGhostColumns();
+    }
+
+    private void LogTransformDiagnostics()
+    {
+        var t = transform;
+        Debug.LogWarning($"[HexMapChunkManager][TRANSFORM] BuildChunks: selfPath={GetTransformPath(t)} localPos={t.localPosition.ToString("F3")} localRot={t.localRotation.eulerAngles.ToString("F1")} localScale={t.localScale.ToString("F3")} worldPos={t.position.ToString("F3")} worldRot={t.rotation.eulerAngles.ToString("F1")} worldScale={t.lossyScale.ToString("F3")}");
+
+        Transform p = t.parent;
+        int depth = 0;
+        while (p != null && depth < 12)
+        {
+            Debug.LogWarning($"[HexMapChunkManager][TRANSFORM] Parent[{depth}]: path={GetTransformPath(p)} localPos={p.localPosition.ToString("F3")} localRot={p.localRotation.eulerAngles.ToString("F1")} localScale={p.localScale.ToString("F3")} worldPos={p.position.ToString("F3")} worldRot={p.rotation.eulerAngles.ToString("F1")} worldScale={p.lossyScale.ToString("F3")}");
+            p = p.parent;
+            depth++;
+        }
+    }
+
+    private static string GetTransformPath(Transform t)
+    {
+        if (t == null) return "(null)";
+        var names = new List<string>(16);
+        Transform cur = t;
+        int guard = 0;
+        while (cur != null && guard++ < 64)
+        {
+            names.Add(cur.name);
+            cur = cur.parent;
+        }
+        names.Reverse();
+        return string.Join("/", names);
     }
     
     /// <summary>

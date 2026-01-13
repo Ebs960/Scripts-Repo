@@ -36,9 +36,9 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private Color biomeTextColor = Color.white;
     [SerializeField] private Color featuresTextColor = Color.white;
     [SerializeField] private Color yieldsTextColor = Color.white;
-    [SerializeField] private int biomeFontSize = 20;
-    [SerializeField] private int featuresFontSize = 14;
-    [SerializeField] private int yieldsFontSize = 18;
+    [SerializeField] private int biomeFontSize = 2;
+    [SerializeField] private int featuresFontSize = 2;
+    [SerializeField] private int yieldsFontSize = 2;
     [SerializeField] private float borderWidth = 2f;
     [SerializeField] private float shadowOffset = 4f;
     
@@ -58,6 +58,10 @@ public class TileInfoWorldPanel : MonoBehaviour
     private bool pendingShow = false;
     private Vector3 targetPosition;
     private Camera mainCamera;
+
+    [Header("Hierarchy")]
+    [Tooltip("Optional root transform that gets moved/rotated for the panel. If null, one will be created as a child.")]
+    [SerializeField] private Transform panelRoot;
     
     private void Awake()
     {
@@ -73,6 +77,15 @@ public class TileInfoWorldPanel : MonoBehaviour
     private void Start()
     {
         mainCamera = Camera.main;
+
+        EnsurePanelRoot();
+
+        // If this component shares a GameObject with the map renderer, never move/rotate the root.
+        // (This is a common scene setup mistake and will tilt/offset the entire map.)
+        if (GetComponent<HexMapChunkManager>() != null)
+        {
+            Debug.LogWarning("[TileInfoWorldPanel] This component is on the same GameObject as HexMapChunkManager. The panel will use a child root for movement/rotation to avoid tilting the map.");
+        }
         
         if (worldCanvas == null)
             CreateUI();
@@ -124,23 +137,47 @@ public class TileInfoWorldPanel : MonoBehaviour
         // Position and rotation
         if (currentAlpha > 0.01f)
         {
-            transform.position = targetPosition + offset;
+            if (panelRoot != null)
+                panelRoot.position = targetPosition + offset;
             
             if (faceCamera && mainCamera != null)
             {
-                transform.rotation = Quaternion.LookRotation(transform.position - mainCamera.transform.position);
+                // Preserve legacy facing logic (forward = panelPos - cameraPos)
+                if (panelRoot != null)
+                    // Billboard: face the camera (forward = cameraPos - panelPos)
+                    panelRoot.rotation = Quaternion.LookRotation(mainCamera.transform.position - panelRoot.position);
             }
             
             // Hide if too far from camera
             if (mainCamera != null)
             {
-                float dist = Vector3.Distance(mainCamera.transform.position, transform.position);
+                float dist = Vector3.Distance(mainCamera.transform.position, panelRoot != null ? panelRoot.position : transform.position);
                 if (dist > maxDistance)
                 {
                     targetAlpha = 0f;
                 }
             }
         }
+    }
+
+    private void EnsurePanelRoot()
+    {
+        if (panelRoot != null) return;
+
+        // Reuse existing child if present
+        var existing = transform.Find("TileInfoPanelRoot");
+        if (existing != null)
+        {
+            panelRoot = existing;
+            return;
+        }
+
+        var rootObj = new GameObject("TileInfoPanelRoot");
+        rootObj.transform.SetParent(transform, false);
+        rootObj.transform.localPosition = Vector3.zero;
+        rootObj.transform.localRotation = Quaternion.identity;
+        rootObj.transform.localScale = Vector3.one;
+        panelRoot = rootObj.transform;
     }
     
     private void OnTileHoverEnter(int tileIndex, HexTileData tileData, Vector3 hitPoint)
@@ -170,16 +207,10 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (gen?.Grid?.tileCenters != null && tileIndex < gen.Grid.tileCenters.Length)
         {
             Vector3 center = gen.Grid.tileCenters[tileIndex];
-            // Adjust Y based on flat map renderer position
+            // Adjust Y based on chunk manager position
             var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
             if (chunkManager != null)
                 center.y = chunkManager.transform.position.y;
-            else
-            {
-                var flatMap = FindAnyObjectByType<FlatMapTextureRenderer>();
-                if (flatMap != null)
-                    center.y = flatMap.transform.position.y;
-            }
             return center;
         }
         return fallback;
@@ -289,7 +320,8 @@ public class TileInfoWorldPanel : MonoBehaviour
     {
         // Create world space canvas
         GameObject canvasObj = new GameObject("TileInfoCanvas");
-        canvasObj.transform.SetParent(transform);
+        EnsurePanelRoot();
+        canvasObj.transform.SetParent(panelRoot != null ? panelRoot : transform);
         canvasObj.transform.localPosition = Vector3.zero;
         
         worldCanvas = canvasObj.AddComponent<Canvas>();
@@ -298,14 +330,15 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         canvasGroup = canvasObj.AddComponent<CanvasGroup>();
         
-        // Set canvas size
+        // Set canvas size (smaller world-space footprint)
         RectTransform canvasRect = worldCanvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(240f, 140f);
-        canvasRect.localScale = Vector3.one * 0.012f; // Scale down for world space
+        canvasRect.sizeDelta = new Vector2(6f, 4f); // width x height in world units
+        canvasRect.localScale = Vector3.one * 0.002f; // reduce scale to shrink HUD in world space
         
         // Add CanvasScaler for consistent sizing
         var scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 100f;
+        // Increase dynamic pixels per unit so UI remains compact in world space
+        scaler.dynamicPixelsPerUnit = 200f;
         
         // === SHADOW (behind everything) ===
         GameObject shadowObj = new GameObject("Shadow");
@@ -355,8 +388,10 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         // Add content size fitter
         var fitter = panelObj.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        // Prevent the panel from expanding to the children's preferred pixel sizes
+        // (preferred size caused the canvas to grow very large in some setups)
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
         
         // === BIOME TEXT (Title) ===
         biomeText = CreateTextElement(panelObj.transform, "BiomeText", biomeFontSize, biomeTextColor, FontStyles.Bold);
@@ -399,8 +434,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         resourceIcon = iconObj.AddComponent<Image>();
         resourceIcon.preserveAspect = true;
         var iconLayout = iconObj.AddComponent<LayoutElement>();
-        iconLayout.preferredWidth = 28f;
-        iconLayout.preferredHeight = 28f;
+        iconLayout.preferredWidth = 2f;
+        iconLayout.preferredHeight = 2f;
         resourceIcon.gameObject.SetActive(false);
 }
     

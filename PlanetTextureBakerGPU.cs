@@ -122,7 +122,10 @@ public static class PlanetTextureBakerGPU
 }
             
             // Store elevation (0-1 range)
-            float elevation = td != null ? td.elevation : planetGen.GetTileElevation(i);
+            // Use renderElevation if available (normalized for full range), otherwise fall back to elevation
+            float elevation = td != null ? 
+                (td.renderElevation > 0.001f ? td.renderElevation : td.elevation) : 
+                planetGen.GetTileElevation(i);
             tileElevations[i] = Mathf.Clamp01(elevation);
         }
 res.tileColors = tileColors;

@@ -1163,8 +1163,7 @@ Destroy(oldTuple.instance);
                     if (production.produceImmediately)
                     {
                         bool ok = owner.ProduceEquipment(production.equipment, production.quantity);
-                        if (ok)
-else
+                        if (!ok)
                             Debug.LogWarning($"Building {b.buildingName} failed to immediately grant {production.quantity}x {production.equipment.equipmentName} to {owner.civData.civName}");
                     }
                     else

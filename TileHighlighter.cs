@@ -89,23 +89,11 @@ public class TileHighlighter : MonoBehaviour
     
     private void FindTerrainMaterial()
     {
-        // Try HexMapChunkManager first
+        // Get material from HexMapChunkManager
         var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
         if (chunkManager != null && chunkManager.SharedMaterial != null)
         {
             terrainMaterial = chunkManager.SharedMaterial;
-        }
-        
-        // Fallback to FlatMapTextureRenderer
-        if (terrainMaterial == null)
-        {
-            var flatMap = FindAnyObjectByType<FlatMapTextureRenderer>();
-            if (flatMap != null)
-            {
-                var renderer = flatMap.GetComponent<MeshRenderer>();
-                if (renderer != null)
-                    terrainMaterial = renderer.sharedMaterial;
-            }
         }
         
         if (terrainMaterial != null)

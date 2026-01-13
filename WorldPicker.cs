@@ -17,6 +17,13 @@ public class WorldPicker : MonoBehaviour
     public int lutHeight = 1024;
     [Tooltip("Pixel → Tile Index Lookup Table (from EquirectLUTBuilder)")]
     public int[] lut;
+    
+    [Header("Map Bounds (auto-set by HexMapChunkManager)")]
+    public float mapWidth = 360f;
+    public float mapHeight = 180f;
+    
+    [Header("Debug")]
+    public bool debugLog = false;
 
     /// <summary>
     /// Pick a tile index from screen position using UV-based LUT lookup.
@@ -33,17 +40,39 @@ public class WorldPicker : MonoBehaviour
 
         if (targetCamera == null) targetCamera = Camera.main;
         if (targetCamera == null) return false;
-        if (lut == null || lut.Length != lutWidth * lutHeight) return false;
+        if (lut == null || lut.Length == 0)
+        {
+            if (debugLog) Debug.LogWarning("[WorldPicker] LUT is null or empty");
+            return false;
+        }
 
         var ray = targetCamera.ScreenPointToRay(screenPos);
-        if (flatMapCollider == null) return false;
+        if (flatMapCollider == null) 
+        {
+            if (debugLog) Debug.LogWarning("[WorldPicker] flatMapCollider is null");
+            return false;
+        }
 
         // Raycast against the flat map collider
         if (!flatMapCollider.Raycast(ray, out var hit, 50000f))
             return false;
 
-        // Get UV coordinates from hit point
+        hitWorldPos = hit.point;
+        
+        // Get UV coordinates - try textureCoord first, fall back to world position calculation
         Vector2 uv = hit.textureCoord;
+        
+        // If textureCoord returns (0,0), it might not be working - use world position fallback
+        if (uv.sqrMagnitude < 0.0001f && mapWidth > 0 && mapHeight > 0)
+        {
+            // Calculate UV from world position (assuming map centered at origin)
+            // Transform hit point to collider's local space
+            Vector3 localHit = flatMapCollider.transform.InverseTransformPoint(hit.point);
+            uv.x = (localHit.x / mapWidth) + 0.5f;
+            uv.y = (localHit.z / mapHeight) + 0.5f;
+            
+            if (debugLog) Debug.Log($"[WorldPicker] Using world position fallback: localHit={localHit}, uv={uv}");
+        }
 
         // Wrap U for horizontal repeat; clamp V
         uv.x = Mathf.Repeat(uv.x, 1f);
@@ -55,11 +84,16 @@ public class WorldPicker : MonoBehaviour
         int pixelIndex = y * lutWidth + x;
 
         // Bounds check
-        if (pixelIndex < 0 || pixelIndex >= lut.Length) return false;
+        if (pixelIndex < 0 || pixelIndex >= lut.Length)
+        {
+            if (debugLog) Debug.LogWarning($"[WorldPicker] Pixel index {pixelIndex} out of bounds (lut.Length={lut.Length})");
+            return false;
+        }
 
         // Lookup tile index from LUT
         tileIndex = lut[pixelIndex];
-        hitWorldPos = hit.point;
+        
+        if (debugLog && tileIndex >= 0) Debug.Log($"[WorldPicker] Picked tile {tileIndex} at uv={uv}, pixel=({x},{y})");
 
         return tileIndex >= 0;
     }

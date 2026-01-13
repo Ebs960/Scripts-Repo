@@ -799,12 +799,12 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// Position unit on surface (flat-only). Places unit at planar tile center and keeps upright orientation.
+    /// Position unit on surface (flat-only). Places unit at terrain surface with proper height.
     /// </summary>
     protected virtual void PositionUnitOnSurface(int tileIndex)
     {
         if (TileSystem.Instance == null) return;
-        Vector3 flatCenter = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
         transform.position = flatCenter;
 
         Vector3 forward = transform.forward;

@@ -41,6 +41,14 @@ public static class GameSetupData
     public static bool enableRivers;
     public static int riverCount;
     
+    // Lake Settings (influenced by moisture preset)
+    public static bool enableLakes = true;
+    public static int numberOfLakes = 8;
+    public static int minLakeSize = 3;
+    public static int maxLakeSize = 12;
+    public static float lakeElevationThreshold = 0.25f;
+    public static bool connectRiversToLakes = true;
+    
     // Climate Thresholds
     public static float polarLatitudeThreshold;
     public static float subPolarLatitudeThreshold;
@@ -57,6 +65,40 @@ public static class GameSetupData
     // New fields
     public static float maxContinentWidthDegrees = 0f;
     public static float maxContinentHeightDegrees = 0f;
+    // Use tile-based continent sizing instead of degree-based sizes
+    public static bool useTileContinentSizing = false;
+    // Tile-based continent size ranges for Small/Standard/Large
+    public static int minContinentWidthTilesSmall;
+    public static int maxContinentWidthTilesSmall;
+    public static int minContinentHeightTilesSmall;
+    public static int maxContinentHeightTilesSmall;
+
+    public static int minContinentWidthTilesStandard;
+    public static int maxContinentWidthTilesStandard;
+    public static int minContinentHeightTilesStandard;
+    public static int maxContinentHeightTilesStandard;
+
+    public static int minContinentWidthTilesLarge;
+    public static int maxContinentWidthTilesLarge;
+    public static int minContinentHeightTilesLarge;
+    public static int maxContinentHeightTilesLarge;
+    // Advanced continent tuning (exposed so menus/presets can set them)
+    public static float continentDomainWarp = 0.25f;
+    public static float continentMacroAmplitude = 0.35f;
+    public static float coastlineWarpAmplitude = 0.12f;
+    public static float coastlineFineWarp = 0.08f;
+    public static float voronoiContinentInfluence = 0.0f;
+    public static float voronoiElevationInfluence = 0.12f;
+
+    // Island tuning
+    public static float islandNoiseFrequency = 1.8f;
+    public static float islandInnerRadius = 0.25f;
+    public static float islandOuterRadius = 0.9f;
+
+    // River tuning
+    public static int minRiverLength = 8;
+    public static int minRiversPerContinent = 1;
+    public static int maxRiversPerContinent = 2;
     
     /// <summary>
     /// Initialize GameSetupData with default values to prevent null/empty errors
@@ -98,6 +140,14 @@ public static class GameSetupData
         enableRivers = true;
         riverCount = 10;
         
+        // Set default lake settings (influenced by moisture in ApplyMoisturePreset)
+        enableLakes = true;
+        numberOfLakes = 8;
+        minLakeSize = 3;
+        maxLakeSize = 12;
+        lakeElevationThreshold = 0.25f;
+        connectRiversToLakes = true;
+        
         // Set default climate thresholds (temperate)
         polarLatitudeThreshold = 0.8f;
         subPolarLatitudeThreshold = 0.6f;
@@ -110,5 +160,34 @@ public static class GameSetupData
         // Set default land generation settings
         landThreshold = 0.45f; // More reasonable default for balanced land/water
         seedPositionVariance = 0.1f;
+
+        // Advanced continent defaults (match PlanetGenerator defaults)
+        continentDomainWarp = 0.25f;
+        continentMacroAmplitude = 0.35f;
+        coastlineWarpAmplitude = 0.12f;
+        coastlineFineWarp = 0.08f;
+        voronoiContinentInfluence = 0.0f;
+        voronoiElevationInfluence = 0.12f;
+
+        // Tile-based continent sizing defaults
+        useTileContinentSizing = false;
+        minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
+        minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
+
+        minContinentWidthTilesStandard = 200; maxContinentWidthTilesStandard = 400;
+        minContinentHeightTilesStandard = 100; maxContinentHeightTilesStandard = 200;
+
+        minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
+        minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
+
+        // Island defaults
+        islandNoiseFrequency = 1.8f;
+        islandInnerRadius = 0.25f;
+        islandOuterRadius = 0.9f;
+
+        // River defaults
+        minRiverLength = 8;
+        minRiversPerContinent = 1;
+        maxRiversPerContinent = 2;
     }
 } 

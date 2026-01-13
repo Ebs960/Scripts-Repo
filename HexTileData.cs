@@ -14,7 +14,8 @@ public class HexTileData
 {
     // --- Core Map Properties (existing) ---
     public Biome biome;
-    public float elevation;        // 0–1
+    public float elevation;        // 0–1, gameplay elevation (may have narrow range)
+    public float renderElevation;  // 0–1, normalized for heightmap/displacement (uses full 0-1 range for land)
     public ElevationTier elevationTier = ElevationTier.Flat;
     public bool isLand;
     public bool isPassable;

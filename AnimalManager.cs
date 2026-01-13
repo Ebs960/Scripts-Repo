@@ -380,13 +380,13 @@ return true;
         if (candidates.Count == 0) return;
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        // Flat-only positioning for animal spawning
+        // Flat-only positioning for animal spawning (use surface position for proper terrain height)
         if (TileSystem.Instance == null)
         {
             Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals in flat-only mode.");
             return;
         }
-        Vector3 pos = TileSystem.Instance.GetTileCenterFlat(chosenIndex);
+        Vector3 pos = TileSystem.Instance.GetTileSurfacePosition(chosenIndex);
 
         var animalPrefab = rule.unitData.GetPrefab();
         if (animalPrefab == null)

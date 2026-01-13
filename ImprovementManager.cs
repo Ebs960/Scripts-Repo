@@ -333,7 +333,7 @@ public class ImprovementManager : MonoBehaviour
 
     private void CompleteJob(BuildJob job)
     {
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(job.tileIndex) : Vector3.zero;
+    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
 
         if (job.data.completePrefab != null)
         {
@@ -408,7 +408,7 @@ public class ImprovementManager : MonoBehaviour
 
     // Find a valid spawn tile (prefer job tile if unoccupied)
     int spawnIndex = FindSpawnTile(job.tileIndex);
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(spawnIndex) : Vector3.zero;
+    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
     var go = Object.Instantiate(unitPrefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
@@ -443,7 +443,7 @@ public class ImprovementManager : MonoBehaviour
         }
 
         int spawnIndex = FindSpawnTile(job.tileIndex);
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(spawnIndex) : Vector3.zero;
+    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
         var go = Object.Instantiate(prefab, pos, Quaternion.identity);
         var unit = go.GetComponent<WorkerUnit>();
         if (unit == null)
@@ -656,7 +656,7 @@ public class ImprovementManager : MonoBehaviour
         // Optional destroyed prefab
         if (data.destroyedPrefab != null)
         {
-            Instantiate(data.destroyedPrefab, TileSystem.Instance.GetTileCenterFlat(tileIndex), Quaternion.identity);
+            Instantiate(data.destroyedPrefab, TileSystem.Instance.GetTileSurfacePosition(tileIndex), Quaternion.identity);
         }
 
         tileData.improvement = null;

@@ -1441,7 +1441,8 @@ return result;
                biome == Biome.Glacier ||
                biome == Biome.River ||
                biome == Biome.Seas ||
-               biome == Biome.Ocean;
+               biome == Biome.Ocean ||
+               biome == Biome.Lake;
     }
 
     /// <summary>

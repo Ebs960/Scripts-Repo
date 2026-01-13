@@ -91,7 +91,10 @@ public static class PlanetTextureBaker
             tileColors[i] = (Color32)c;
             
             // Store elevation (0-1 range, will be encoded in heightmap)
-            float elevation = td != null ? td.elevation : planetGen.GetTileElevation(i);
+            // Use renderElevation if available (normalized for full range), otherwise fall back to elevation
+            float elevation = td != null ? 
+                (td.renderElevation > 0.001f ? td.renderElevation : td.elevation) : 
+                planetGen.GetTileElevation(i);
             tileElevations[i] = Mathf.Clamp01(elevation);
             
             // Sample a few tiles to show what colors are being generated

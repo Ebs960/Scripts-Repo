@@ -8,6 +8,7 @@ public enum Biome {
     Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Snow, Glacier, Tundra, Grassland, Marsh, Taiga, Swamp, Seas, 
     Mountain,
     River,
+    Lake,       // Inland freshwater body
     MoonDunes,
     MoonCaves,
     Volcanic,  // Added new volcanic terrain
@@ -123,38 +124,13 @@ public static class BiomeHelper {
             else if (isGanymedeWorldType) planetType = "Ganymede";
             else if (isCallistoWorldType) planetType = "Callisto";
             else if (isLunaWorldType) planetType = "Luna";
-        }
-
-        // === EARTH-ONLY GUARANTEED POLAR OVERRIDE - FIRST PRIORITY ===
-        // This MUST execute before any other logic to guarantee polar regions
-        bool isEarthPlanet = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType && !isJupiterWorldType &&
-                            !isSaturnWorldType && !isUranusWorldType && !isNeptuneWorldType && !isPlutoWorldType &&
-                            !isTitanWorldType && !isEuropaWorldType && !isIoWorldType && !isGanymedeWorldType &&
-                            !isCallistoWorldType && !isLunaWorldType;
-        
-        if (isEarthPlanet)
-        {
-            float absLatitude = Mathf.Abs(northSouth);
             
-            // FORCE POLAR CAP: make the very top/bottom strictly Arctic for all tiles (no Glaciers).
-            // Using ~80° -> 0.80 in normalized [-1,1]. Adjust if you want a larger/smaller cap.
-            const float PolarArcticThreshold = 0.80f; // ~80°
-            if (absLatitude >= PolarArcticThreshold)
-            {
-                return Biome.Arctic;
-            }
-
-            // Sub-polar band (~60–80°): bias to Tundra/Taiga for land when cold enough.
-            if (absLatitude > 0.67f)
-            {
-                if (isLand && temperature <= 0.35f)
-                {
-                    return moisture > 0.6f ? Biome.Taiga : Biome.Tundra;
-                }
-                // Otherwise fall through to standard Earth logic
-            }
+            // Debug log for planet-specific biome processing (uncomment for detailed debugging)
+            // UnityEngine.Debug.Log($"[BiomeHelper] Processing {planetType} biome: isLand={isLand}, temp={temperature:F2}, moisture={moisture:F2}");
+            _ = planetType; // Suppress warning - planetType available for debugging when needed
         }
 
+    
         if (!isLand) {
             return Biome.Ocean;
         }
@@ -557,6 +533,7 @@ public static class BiomeHelper {
         Biome.Swamp => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
         Biome.Mountain => new YieldValues { food = 0, prod = 2, gold = 1, sci = 1, cult = 0 },
         Biome.River => new YieldValues { food = 1, prod = 0, gold = 1, sci = 1, cult = 1 },
+        Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },  // High food, culture from scenic lakes
         Biome.MoonDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 },
         Biome.MoonCaves => new YieldValues { food = 0, prod = 2, gold = 1, sci = 0, cult = 0 },
         Biome.Volcanic => new YieldValues { food = 0, prod = 3, gold = 2, sci = 0, cult = 0 }, // High production and gold, no food
@@ -682,6 +659,7 @@ public static class BiomeHelper {
         Biome.PlutoTholins => 0,      // Organic deposits, no cover
         
         Biome.TitanLakes => 0,        // Open liquid surfaces
+        Biome.Lake => 0,              // Open water, no cover
         Biome.TitanDunes => 1,        // Sand dune cover
         Biome.TitanIce => 0,          // Flat ice surfaces
         Biome.EuropaRidges => 2,      // Ice ridge formations
@@ -714,6 +692,7 @@ public static class BiomeHelper {
         
         Biome.Ocean => 1,  // For naval units
         Biome.Seas => 1,   // For naval units
+        Biome.Lake => 2,   // Inland water - navigable but slower
         
         Biome.Volcanic => 3,     // Very difficult to traverse
         Biome.Steam => 2,        // Moderately difficult due to hot steam vents
@@ -912,6 +891,7 @@ public static class BiomeHelper {
             case Biome.Ocean:
             case Biome.Seas:
             case Biome.Coast:
+            case Biome.Lake:
             case Biome.TitanLakes:
                 return BiomeTerrainSettings.CreateOcean();
 

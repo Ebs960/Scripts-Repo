@@ -164,7 +164,8 @@ public class MainMenuManager : MonoBehaviour
         new LandPresetData { name = "Islands", landThreshold = 0.40f, continents = 2, islands = 15, description = "A few large islands with smaller ones", minWidth = 25f, maxWidth = 70f, minHeight = 25f, maxHeight = 50f },
         new LandPresetData { name = "Standard", landThreshold = 0.35f, continents = 5, islands = 9, description = "Balanced continents and islands", minWidth = 100f, maxWidth = 180f, minHeight = 60f, maxHeight = 150f },
         new LandPresetData { name = "Large Continents", landThreshold = 0.30f, continents = 6, islands = 5, description = "Multiple large continents", minWidth = 180f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
-        new LandPresetData { name = "Pangaea", landThreshold = 0.20f, continents = 2, islands = 4, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
+        new LandPresetData { name = "Pangaea", landThreshold = 0.20f, continents = 1, islands = 5, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
+        // Pangaea should produce a single massive landmass - ensure continents=1, islands=0
     };
 
     // Moisture preset values
@@ -358,14 +359,20 @@ public class MainMenuManager : MonoBehaviour
 
 
         
-        // River Settings
+        // River Settings - now controlled by moisture preset
+        // Rivers are automatically set based on moisture: Desert=0, Arid=3, Standard=8, Moist=12, Wet=16, Oceanic=20
         if (riverCountSlider != null)
         {
+            // Disable slider interaction - rivers are now moisture-based
+            riverCountSlider.interactable = false;
             riverCountSlider.minValue = 0;
             riverCountSlider.maxValue = 20;
             riverCountSlider.wholeNumbers = true;
+            // Initialize river count from default moisture preset
+            int[] riverCounts = { 0, 3, 8, 12, 16, 20 };
+            riverCount = riverCounts[Mathf.Clamp(selectedMoisturePreset, 0, 5)];
+            enableRivers = riverCount > 0;
             riverCountSlider.value = riverCount;
-            riverCountSlider.onValueChanged.AddListener(OnRiverCountChanged);
             UpdateRiverCountText();
         }
         
@@ -463,13 +470,17 @@ public class MainMenuManager : MonoBehaviour
     {
         if (riverCountText != null)
         {
+            // River count is now controlled by moisture preset
+            string[] moistureNames = { "Desert", "Arid", "Standard", "Moist", "Wet", "Oceanic" };
+            string moistureName = moistureNames[Mathf.Clamp(selectedMoisturePreset, 0, 5)];
+            
             if (riverCount <= 0)
             {
-                riverCountText.text = "Rivers: Disabled";
+                riverCountText.text = $"Rivers: None ({moistureName})";
             }
             else
             {
-                riverCountText.text = $"Rivers: {riverCount}";
+                riverCountText.text = $"Rivers: {riverCount} ({moistureName})";
             }
         }
     }
@@ -497,6 +508,20 @@ public class MainMenuManager : MonoBehaviour
     private void OnMoisturePresetChanged(int value)
     {
         selectedMoisturePreset = value;
+        
+        // Update river count based on moisture (wetter = more rivers)
+        // moisturePresets: 0=Desert, 1=Arid, 2=Standard, 3=Moist, 4=Wet, 5=Oceanic
+        int[] riverCounts = { 0, 1, 4, 6, 8, 10 };  // Desert=none, Oceanic=many (halved)
+        riverCount = riverCounts[Mathf.Clamp(value, 0, 5)];
+        enableRivers = riverCount > 0;
+        
+        // Update slider visual (if it exists) to show current value
+        if (riverCountSlider != null)
+        {
+            riverCountSlider.value = riverCount;
+        }
+        
+        UpdateRiverCountText();
         
         // Update icons and map type when moisture changes
         UpdatePresetIcons();
@@ -872,6 +897,35 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.enableRivers = enableRivers;
         GameSetupData.riverCount = riverCount;
         
+        // Lake settings - influenced by moisture AND land type
+        // Lakes need inland area, so islands/archipelagos get fewer/no lakes
+        // moisturePresets: 0=Desert, 1=Arid, 2=Standard, 3=Moist, 4=Wet, 5=Oceanic
+        // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea
+        
+        // Base lake counts by moisture (halved)
+        int[] baseLakeCounts = { 0, 1, 2, 3, 4, 5 };      // Desert=none, Oceanic=moderate
+        int[] minLakeSizes = { 1, 1, 2, 2, 2, 2 };        // Halved min sizes
+        int[] maxLakeSizes = { 2, 3, 4, 5, 6, 8 };        // Halved max sizes
+        float[] lakeThresholds = { 0.15f, 0.18f, 0.22f, 0.26f, 0.30f, 0.35f }; // Wetter = more valid terrain
+        
+        // Land type multipliers for lake count (islands have less inland area)
+        // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
+        float[] landTypeMultipliers = { 0f, 0.25f, 1.0f, 1.5f, 2.0f };
+        
+        int moistIdx = Mathf.Clamp(selectedMoisturePreset, 0, 5);
+        int landIdx = Mathf.Clamp(selectedLandPreset, 0, 4);
+        
+        float landMultiplier = landTypeMultipliers[landIdx];
+        int adjustedLakeCount = Mathf.RoundToInt(baseLakeCounts[moistIdx] * landMultiplier);
+        
+        // Disable lakes entirely for archipelago or desert
+        GameSetupData.enableLakes = (moistIdx > 0 && landIdx > 0);
+        GameSetupData.numberOfLakes = adjustedLakeCount;
+        GameSetupData.minLakeSize = minLakeSizes[moistIdx];
+        GameSetupData.maxLakeSize = maxLakeSizes[moistIdx];
+        GameSetupData.lakeElevationThreshold = lakeThresholds[moistIdx];
+        GameSetupData.connectRiversToLakes = (adjustedLakeCount > 0);
+        
         // Get current climate thresholds from presets
         var climateThresholds = climatePresets[selectedClimatePreset];
         GameSetupData.polarLatitudeThreshold = climateThresholds.polar;
@@ -907,6 +961,48 @@ public class MainMenuManager : MonoBehaviour
         }
         GameSetupData.maxContinentWidthDegrees = width * scale;
         GameSetupData.maxContinentHeightDegrees = height * scale;
+
+        // ===== Tile-based continent sizing defaults derived from the selected land preset =====
+        int stdMinW = Mathf.RoundToInt(landPreset.minWidth);
+        int stdMaxW = Mathf.RoundToInt(landPreset.maxWidth);
+        int stdMinH = Mathf.RoundToInt(landPreset.minHeight);
+        int stdMaxH = Mathf.RoundToInt(landPreset.maxHeight);
+
+        // Use preset index for special cases. Pangaea preset is index 4 in landPresets.
+        if (selectedLandPreset == 4)
+        {
+            // Force large defaults for Pangaea (raw tiles)
+            stdMinW = stdMaxW = 400;
+            stdMinH = stdMaxH = 200;
+        }
+
+        GameSetupData.minContinentWidthTilesStandard = Mathf.Max(4, stdMinW);
+        GameSetupData.maxContinentWidthTilesStandard = Mathf.Max(4, stdMaxW);
+        GameSetupData.minContinentHeightTilesStandard = Mathf.Max(2, stdMinH);
+        GameSetupData.maxContinentHeightTilesStandard = Mathf.Max(2, stdMaxH);
+
+        GameSetupData.minContinentWidthTilesSmall = Mathf.Max(4, Mathf.RoundToInt(stdMinW * 0.5f));
+        GameSetupData.maxContinentWidthTilesSmall = Mathf.Max(4, Mathf.RoundToInt(stdMaxW * 0.5f));
+        GameSetupData.minContinentHeightTilesSmall = Mathf.Max(2, Mathf.RoundToInt(stdMinH * 0.5f));
+        GameSetupData.maxContinentHeightTilesSmall = Mathf.Max(2, Mathf.RoundToInt(stdMaxH * 0.5f));
+
+        GameSetupData.minContinentWidthTilesLarge = Mathf.Max(8, stdMinW * 2);
+        GameSetupData.maxContinentWidthTilesLarge = Mathf.Max(8, stdMaxW * 2);
+        GameSetupData.minContinentHeightTilesLarge = Mathf.Max(4, stdMinH * 2);
+        GameSetupData.maxContinentHeightTilesLarge = Mathf.Max(4, stdMaxH * 2);
+
+        // Prefer tile-based sizing by default for preset-driven generation
+        GameSetupData.useTileContinentSizing = true;
+
+        // Island shape tuning based on land preset (detail and falloff)
+        int landPresetIdx = Mathf.Clamp(selectedLandPreset, 0, 4);
+        float[] islandNoiseByPreset = { 2.5f, 2.0f, 1.8f, 1.2f, 0.8f };
+        float[] islandInnerByPreset = { 0.12f, 0.18f, 0.25f, 0.30f, 0.35f };
+        float[] islandOuterByPreset = { 0.60f, 0.70f, 0.90f, 1.00f, 1.20f };
+
+        GameSetupData.islandNoiseFrequency = islandNoiseByPreset[landPresetIdx];
+        GameSetupData.islandInnerRadius = islandInnerByPreset[landPresetIdx];
+        GameSetupData.islandOuterRadius = islandOuterByPreset[landPresetIdx];
 
         // Initialize game music with selected civilization
         if (MusicManager.Instance != null && selectedCivilization != null)

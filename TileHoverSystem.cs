@@ -68,12 +68,20 @@ public class TileHoverSystem : MonoBehaviour
         if (worldPicker == null) 
         {
             worldPicker = FindAnyObjectByType<WorldPicker>();
-            if (worldPicker == null) return;
+            if (worldPicker == null)
+            {
+                if (debugLog) Debug.LogWarning("[TileHoverSystem] WorldPicker not found");
+                return;
+            }
         }
         if (tileSystem == null)
         {
             tileSystem = TileSystem.Instance;
-            if (tileSystem == null) return;
+            if (tileSystem == null)
+            {
+                if (debugLog) Debug.LogWarning("[TileHoverSystem] TileSystem not found");
+                return;
+            }
         }
         
         // Check if mouse is over UI

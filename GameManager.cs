@@ -292,6 +292,10 @@ currentPlanetIndex = planetIndex;
     public float flatMapHeight = 256f;
     [Tooltip("Y height of the flat map plane (used for world placement)." )]
     public float flatPlaneY = 0f;
+    [Tooltip("Terrain displacement/height scale (how much renderElevation 0-1 translates to world Y offset). Should match HexMapChunkManager.displacementStrength.")]
+    public float terrainDisplacementStrength = 5.0f;
+
+    public float GetTerrainDisplacementStrength() => terrainDisplacementStrength;
 
     // Flat-map-only: tile resolution by size preset
     public static void GetFlatTileResolution(MapSize size, out int tilesX, out int tilesZ)
@@ -786,6 +790,70 @@ currentPlanetIndex = planetIndex;
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
 
+            // Lake generation settings (influenced by moisture preset)
+            planetGenerator.enableLakes = GameSetupData.enableLakes;
+            planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
+            planetGenerator.minLakeSize = GameSetupData.minLakeSize;
+            planetGenerator.maxLakeSize = GameSetupData.maxLakeSize;
+            planetGenerator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
+            planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
+
+            // DIAGNOSTIC: log what we applied to the generator
+            Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}, maxW={planetGenerator.maxContinentWidthDegrees}, maxH={planetGenerator.maxContinentHeightDegrees}, landCutoff={planetGenerator.landCutoff}");
+
+            // Ensure land cutoff and other newer generator settings honor GameSetupData / presets
+            planetGenerator.landCutoff = GameSetupData.landThreshold; // generator uses landCutoff for mask decision
+
+            // Map land preset -> generator tuning (reduce voronoi/warp for Pangaea)
+            int landPresetIdx = Mathf.Clamp(GameSetupData.selectedLandPreset, 0, 4);
+            float[] voronoiByPreset = { 0.25f, 0.20f, 0.15f, 0.12f, 0.0f };
+            float[] domainWarpByPreset = { 0.35f, 0.30f, 0.25f, 0.20f, 0.06f };
+            float[] macroAmpByPreset = { 0.40f, 0.35f, 0.30f, 0.28f, 0.18f };
+            float[] coastWarpByPreset = { 0.20f, 0.16f, 0.12f, 0.10f, 0.04f };
+            float[] coastFineByPreset = { 0.10f, 0.08f, 0.06f, 0.04f, 0.02f };
+
+            planetGenerator.voronoiContinentInfluence = voronoiByPreset[landPresetIdx];
+            planetGenerator.continentDomainWarp = domainWarpByPreset[landPresetIdx];
+            planetGenerator.continentMacroAmplitude = macroAmpByPreset[landPresetIdx];
+            planetGenerator.coastlineWarpAmplitude = coastWarpByPreset[landPresetIdx];
+            planetGenerator.coastlineFineWarp = coastFineByPreset[landPresetIdx];
+
+            // Climate preset -> latitude temperature tuning (stronger contrast for colder presets)
+            int climateIdx = Mathf.Clamp(GameSetupData.selectedClimatePreset, 0, 5);
+            float[] latInfluenceByClimate = { 0.95f, 0.90f, 0.85f, 0.80f, 0.75f, 0.70f };
+            float[] latExpByClimate = { 1.25f, 1.20f, 1.15f, 1.10f, 1.05f, 1.00f };
+            planetGenerator.latitudeInfluence = latInfluenceByClimate[climateIdx];
+            planetGenerator.latitudeExponent = latExpByClimate[climateIdx];
+
+            Debug.Log($"[GameManager][Diag] Generator tuning applied from presets: voronoi={planetGenerator.voronoiContinentInfluence}, domainWarp={planetGenerator.continentDomainWarp}, macroAmp={planetGenerator.continentMacroAmplitude}, coastWarp={planetGenerator.coastlineWarpAmplitude}, landCutoff={planetGenerator.landCutoff}");
+
+            // --- Apply any explicit GameSetupData overrides for generator tuning ---
+            planetGenerator.continentDomainWarp = GameSetupData.continentDomainWarp;
+            planetGenerator.continentMacroAmplitude = GameSetupData.continentMacroAmplitude;
+            planetGenerator.coastlineWarpAmplitude = GameSetupData.coastlineWarpAmplitude;
+            planetGenerator.coastlineFineWarp = GameSetupData.coastlineFineWarp;
+            planetGenerator.voronoiContinentInfluence = GameSetupData.voronoiContinentInfluence;
+            planetGenerator.voronoiElevationInfluence = GameSetupData.voronoiElevationInfluence;
+
+            // Island tuning
+            planetGenerator.islandNoiseFrequency = GameSetupData.islandNoiseFrequency;
+            planetGenerator.islandInnerRadius = GameSetupData.islandInnerRadius;
+            planetGenerator.islandOuterRadius = GameSetupData.islandOuterRadius;
+
+            // River tuning
+            planetGenerator.minRiverLength = GameSetupData.minRiverLength;
+            planetGenerator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
+            planetGenerator.maxRiversPerContinent = GameSetupData.maxRiversPerContinent;
+
+            // Ensure island/rivers/lakes flags and counts come from GameSetupData
+            planetGenerator.generateIslands = GameSetupData.generateIslands;
+            planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
+            planetGenerator.enableRivers = GameSetupData.enableRivers;
+            planetGenerator.enableLakes = GameSetupData.enableLakes;
+            planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
+            planetGenerator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
+            planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
+
 
 
             // TileSystem will be initialized after surface generation
@@ -991,21 +1059,17 @@ currentPlanetIndex = planetIndex;
         }
 
         // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
-        // Prefer HexMapChunkManager (chunk-based with seamless wrap) over FlatMapTextureRenderer (legacy single quad)
+        // Uses HexMapChunkManager (chunk-based with seamless wrap)
         UpdateLoadingProgress(0.75f, "Building surface map...");
         var chunkManagerSingle = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        var flatRendererSingle = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
         
         if (chunkManagerSingle != null && planetGenerator != null)
         {
             chunkManagerSingle.Rebuild(planetGenerator);
+            float oldFlatY = flatPlaneY;
             flatPlaneY = chunkManagerSingle.transform.position.y;
-}
-        else if (flatRendererSingle != null && planetGenerator != null)
-        {
-            flatRendererSingle.Rebuild(planetGenerator);
-            flatPlaneY = flatRendererSingle.transform.position.y;
-}
+            Debug.Log($"[GameManager] flatPlaneY updated from ChunkManager (single): old={oldFlatY:F3} new={flatPlaneY:F3} chunkMgr='{chunkManagerSingle.gameObject.name}' pos={chunkManagerSingle.transform.position.ToString("F3")} rot={chunkManagerSingle.transform.rotation.eulerAngles.ToString("F1")}");
+        }
 
         if (minimapUI != null)
         {
@@ -1280,22 +1344,18 @@ currentPlanetIndex = planetIndex;
         }
 
         // Flat equirectangular surface map (presentation-only) — build it during loading for the current planet.
-        // Prefer HexMapChunkManager (chunk-based with seamless wrap) over FlatMapTextureRenderer (legacy single quad)
+        // Uses HexMapChunkManager (chunk-based with seamless wrap)
         UpdateLoadingProgress(0.82f, "Building surface map...");
         var chunkManagerMulti = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        var flatRendererMulti = FindAnyObjectByType<FlatMapTextureRenderer>(FindObjectsInactive.Include);
         var genForFlat = GetCurrentPlanetGenerator();
         
         if (chunkManagerMulti != null && genForFlat != null)
         {
             chunkManagerMulti.Rebuild(genForFlat);
+            float oldFlatY = flatPlaneY;
             flatPlaneY = chunkManagerMulti.transform.position.y;
-}
-        else if (flatRendererMulti != null && genForFlat != null)
-        {
-            flatRendererMulti.Rebuild(genForFlat);
-            flatPlaneY = flatRendererMulti.transform.position.y;
-}
+            Debug.Log($"[GameManager] flatPlaneY updated from ChunkManager (multi): old={oldFlatY:F3} new={flatPlaneY:F3} chunkMgr='{chunkManagerMulti.gameObject.name}' pos={chunkManagerMulti.transform.position.ToString("F3")} rot={chunkManagerMulti.transform.rotation.eulerAngles.ToString("F1")}");
+        }
 
         // Update loading progress - UI setup
         UpdateLoadingProgress(0.85f, "Setting up interface systems...");
@@ -1839,13 +1899,57 @@ currentPlanetIndex = planetIndex;
     // Notify grid built
     OnPlanetGridBuilt?.Invoke(planetIndex);
 
-        if (body == "Earth")
-        {
-            generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
-            generator.moistureBias = GameSetupData.moistureBias;
-            generator.temperatureBias = GameSetupData.temperatureBias;
-            generator.landThreshold = GameSetupData.landThreshold;
-        }
+        // Always apply GameSetupData settings to every planet generator
+        generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
+        generator.moistureBias = GameSetupData.moistureBias;
+        generator.temperatureBias = GameSetupData.temperatureBias;
+        generator.landThreshold = GameSetupData.landThreshold;
+        generator.landCutoff = GameSetupData.landThreshold;
+        generator.numberOfContinents = GameSetupData.numberOfContinents;
+        generator.numberOfIslands = GameSetupData.numberOfIslands;
+        generator.generateIslands = GameSetupData.generateIslands;
+
+        generator.continentDomainWarp = GameSetupData.continentDomainWarp;
+        generator.continentMacroAmplitude = GameSetupData.continentMacroAmplitude;
+        generator.coastlineWarpAmplitude = GameSetupData.coastlineWarpAmplitude;
+        generator.coastlineFineWarp = GameSetupData.coastlineFineWarp;
+        generator.voronoiContinentInfluence = GameSetupData.voronoiContinentInfluence;
+        generator.voronoiElevationInfluence = GameSetupData.voronoiElevationInfluence;
+
+        // Island tuning
+        generator.islandNoiseFrequency = GameSetupData.islandNoiseFrequency;
+        generator.islandInnerRadius = GameSetupData.islandInnerRadius;
+        generator.islandOuterRadius = GameSetupData.islandOuterRadius;
+
+        // Tile-based continent sizing (if enabled in GameSetupData)
+        generator.useTileContinentSizing = GameSetupData.useTileContinentSizing;
+        generator.minContinentWidthTilesSmall = GameSetupData.minContinentWidthTilesSmall;
+        generator.maxContinentWidthTilesSmall = GameSetupData.maxContinentWidthTilesSmall;
+        generator.minContinentHeightTilesSmall = GameSetupData.minContinentHeightTilesSmall;
+        generator.maxContinentHeightTilesSmall = GameSetupData.maxContinentHeightTilesSmall;
+
+        generator.minContinentWidthTilesStandard = GameSetupData.minContinentWidthTilesStandard;
+        generator.maxContinentWidthTilesStandard = GameSetupData.maxContinentWidthTilesStandard;
+        generator.minContinentHeightTilesStandard = GameSetupData.minContinentHeightTilesStandard;
+        generator.maxContinentHeightTilesStandard = GameSetupData.maxContinentHeightTilesStandard;
+
+        generator.minContinentWidthTilesLarge = GameSetupData.minContinentWidthTilesLarge;
+        generator.maxContinentWidthTilesLarge = GameSetupData.maxContinentWidthTilesLarge;
+        generator.minContinentHeightTilesLarge = GameSetupData.minContinentHeightTilesLarge;
+        generator.maxContinentHeightTilesLarge = GameSetupData.maxContinentHeightTilesLarge;
+
+        // Rivers & lakes
+        generator.enableRivers = GameSetupData.enableRivers;
+        generator.minRiverLength = GameSetupData.minRiverLength;
+        generator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
+        generator.maxRiversPerContinent = GameSetupData.maxRiversPerContinent;
+
+        generator.enableLakes = GameSetupData.enableLakes;
+        generator.numberOfLakes = GameSetupData.numberOfLakes;
+        generator.minLakeSize = GameSetupData.minLakeSize;
+        generator.maxLakeSize = GameSetupData.maxLakeSize;
+        generator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
+        generator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
 
     
     yield return StartCoroutine(generator.GenerateSurface());

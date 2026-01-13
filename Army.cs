@@ -459,10 +459,10 @@ return true;
         
         currentTileIndex = tileIndex;
         
-        // Update visual position
+        // Update visual position (use surface position for proper terrain height)
         if (TileSystem.Instance != null)
         {
-            Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+            Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
             transform.position = worldPos;
         }
         
@@ -735,7 +735,7 @@ return newArmy;
         if (armyVisual == null) return;
         if (TileSystem.Instance == null) return;
         
-        Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(currentTileIndex);
+        Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(currentTileIndex);
         transform.position = worldPos;
     }
     

@@ -20,13 +20,13 @@ public class PlanetaryCameraManager : MonoBehaviour
     
     public bool allowMouseDrag = true;
     public float mouseSensitivity = 0.2f;
+    [Tooltip("Which mouse button to use for dragging: 0=Left, 1=Right, 2=Middle")]
+    public int dragMouseButton = 1; // Default to right mouse button
 
     [Header("Horizontal Wrap")]
     [Tooltip("Enable horizontal wrap (Civ-style infinite scroll).")]
     public bool wrapEnabled = true;
-    [Tooltip("Reference to the flat map renderer for map width (legacy).")]
-    public FlatMapTextureRenderer flatMap;
-    [Tooltip("Reference to chunk-based map manager (preferred).")]
+    [Tooltip("Reference to chunk-based map manager.")]
     public HexMapChunkManager chunkManager;
     [Tooltip("Center X for wrap bounds. 0 means map centered at world X=0.")]
     public float wrapCenterX = 0f;
@@ -76,15 +76,33 @@ public class PlanetaryCameraManager : MonoBehaviour
             }
             else
             {
-                if (Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame)
+                // Get the configured mouse button state
+                bool buttonPressed = false;
+                bool buttonHeld = false;
+                bool buttonReleased = false;
+                
+                if (Mouse.current != null)
+                {
+                    var button = dragMouseButton switch
+                    {
+                        0 => Mouse.current.leftButton,
+                        1 => Mouse.current.rightButton,
+                        _ => Mouse.current.middleButton
+                    };
+                    buttonPressed = button.wasPressedThisFrame;
+                    buttonHeld = button.isPressed;
+                    buttonReleased = button.wasReleasedThisFrame;
+                }
+                
+                if (buttonPressed)
                     _lastMousePos = Mouse.current.position.ReadValue();
-                else if (Mouse.current != null && Mouse.current.middleButton.isPressed && _lastMousePos.HasValue)
+                else if (buttonHeld && _lastMousePos.HasValue)
                 {
                     Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - _lastMousePos.Value;
                     _focusPoint += new Vector3(-delta.x, 0f, -delta.y) * mouseSensitivity;
                     _lastMousePos = Mouse.current.position.ReadValue();
                 }
-                else if (Mouse.current != null && Mouse.current.middleButton.wasReleasedThisFrame)
+                else if (buttonReleased)
                     _lastMousePos = null;
             }
         }
@@ -133,12 +151,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             mapHeight = chunkManager.MapHeight;
             isBuilt = true;
         }
-        else if (flatMap != null && flatMap.IsBuilt)
-        {
-            mapWidth = flatMap.MapWidth;
-            mapHeight = flatMap.MapHeight;
-            isBuilt = true;
-        }
+        // FlatMapTextureRenderer fallback removed - HexMapChunkManager is now the sole renderer
         
         if (!isBuilt || mapWidth <= 0.0001f) return;
 

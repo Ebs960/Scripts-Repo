@@ -64,11 +64,11 @@ isMoving = false;
             // Deduct movement points BEFORE moving
             army.DeductMovementPoints(movementCost);
             
-            // Get world position for target tile
+            // Get world position for target tile (use surface position for proper terrain height)
             Vector3 targetPos = Vector3.zero;
             if (TileSystem.Instance != null)
             {
-                targetPos = TileSystem.Instance.GetTileCenterFlat(targetTile);
+                targetPos = TileSystem.Instance.GetTileSurfacePosition(targetTile);
             }
             
             // Move towards target position

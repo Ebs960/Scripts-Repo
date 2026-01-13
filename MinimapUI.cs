@@ -1048,9 +1048,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // OPTIMIZATION: Try to reuse flat map texture first (if enabled and available)
         if (reuseFlatMapTexture)
         {
-            // Prefer HexMapChunkManager (chunk-based) over FlatMapTextureRenderer (legacy)
+            // Use HexMapChunkManager (chunk-based map renderer)
             var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-            var flatMapRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
             
             Texture mapTexture = null;
             System.Func<int, int, Texture> getDownscaled = null;
@@ -1059,11 +1058,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             {
                 mapTexture = chunkManager.MapTexture;
                 getDownscaled = (w, h) => chunkManager.GetDownscaledTexture(w, h);
-            }
-            else if (flatMapRenderer != null && flatMapRenderer.IsBuilt && flatMapRenderer.MapTexture != null)
-            {
-                mapTexture = flatMapRenderer.MapTexture;
-                getDownscaled = (w, h) => flatMapRenderer.GetDownscaledTexture(w, h);
             }
             
             if (mapTexture != null)
@@ -1306,15 +1300,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         float worldZ = (worldV - 0.5f) * grid.MapHeight;
         float yPlane = currentPlanetGen != null ? currentPlanetGen.transform.position.y : 0f;
         
-        // Prefer HexMapChunkManager Y position over FlatMapTextureRenderer
+        // Use HexMapChunkManager Y position
         var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
         if (chunkManager != null && chunkManager.IsBuilt)
             yPlane = chunkManager.transform.position.y;
-        else
-        {
-            var flatRenderer = FindAnyObjectByType<FlatMapTextureRenderer>();
-            if (flatRenderer != null) yPlane = flatRenderer.transform.position.y;
-        }
+        
         Vector3 worldTarget = new Vector3(worldX, yPlane, worldZ);
 
         // Use cached reference to avoid expensive FindAnyObjectByType call
