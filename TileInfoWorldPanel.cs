@@ -11,7 +11,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     public static TileInfoWorldPanel Instance { get; private set; }
     
     [Header("Panel Settings")]
-    [SerializeField] private Vector3 offset = new Vector3(0f, 2f, 0f);
+    [SerializeField] private Vector3 offset = new Vector3(0f, 5f, 0f);
     [SerializeField] private float fadeSpeed = 8f;
     [SerializeField] private float showDelay = 0.1f;
     [SerializeField] private bool faceCamera = true;
@@ -21,6 +21,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private Canvas worldCanvas;
     [SerializeField] private CanvasGroup canvasGroup;
     [SerializeField] private RectTransform panelRect;
+    [SerializeField] private TMP_FontAsset overrideFontAsset;
     [SerializeField] private TextMeshProUGUI biomeText;
     [SerializeField] private TextMeshProUGUI featuresText;
     [SerializeField] private TextMeshProUGUI yieldsText;
@@ -36,19 +37,20 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private Color biomeTextColor = Color.white;
     [SerializeField] private Color featuresTextColor = Color.white;
     [SerializeField] private Color yieldsTextColor = Color.white;
-    [SerializeField] private int biomeFontSize = 2;
-    [SerializeField] private int featuresFontSize = 2;
-    [SerializeField] private int yieldsFontSize = 2;
+    [SerializeField] private int biomeFontSize = 24;
+    [SerializeField] private int featuresFontSize = 18;
+    [SerializeField] private int yieldsFontSize = 18;
     [SerializeField] private float borderWidth = 2f;
     [SerializeField] private float shadowOffset = 4f;
     
-    [Header("Yield Icons (Unicode)")]
-    [SerializeField] private string foodIcon = "🌾";
-    [SerializeField] private string productionIcon = "⚙";
-    [SerializeField] private string goldIcon = "💰";
-    [SerializeField] private string scienceIcon = "🔬";
-    [SerializeField] private string cultureIcon = "🎭";
-    [SerializeField] private string faithIcon = "✨";
+    [Header("Yield Icons (ASCII fallbacks)")]
+    // Use ASCII/safe characters to avoid missing-glyph warnings in TMP font assets
+    [SerializeField] private string foodIcon = "F";
+    [SerializeField] private string productionIcon = "P";
+    [SerializeField] private string goldIcon = "G";
+    [SerializeField] private string scienceIcon = "S";
+    [SerializeField] private string cultureIcon = "C";
+    [SerializeField] private string faithIcon = "*";
     
     // State
     private int currentTileIndex = -1;
@@ -134,29 +136,11 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (canvasGroup != null)
             canvasGroup.alpha = currentAlpha;
         
-        // Position and rotation
+        // Position only (no rotation)
         if (currentAlpha > 0.01f)
         {
             if (panelRoot != null)
                 panelRoot.position = targetPosition + offset;
-            
-            if (faceCamera && mainCamera != null)
-            {
-                // Preserve legacy facing logic (forward = panelPos - cameraPos)
-                if (panelRoot != null)
-                    // Billboard: face the camera (forward = cameraPos - panelPos)
-                    panelRoot.rotation = Quaternion.LookRotation(mainCamera.transform.position - panelRoot.position);
-            }
-            
-            // Hide if too far from camera
-            if (mainCamera != null)
-            {
-                float dist = Vector3.Distance(mainCamera.transform.position, panelRoot != null ? panelRoot.position : transform.position);
-                if (dist > maxDistance)
-                {
-                    targetAlpha = 0f;
-                }
-            }
         }
     }
 
@@ -168,12 +152,15 @@ public class TileInfoWorldPanel : MonoBehaviour
         var existing = transform.Find("TileInfoPanelRoot");
         if (existing != null)
         {
+            // Ensure the panel root is not parented under the hexmap or chunk manager
+            existing.SetParent(null, false);
             panelRoot = existing;
             return;
         }
 
         var rootObj = new GameObject("TileInfoPanelRoot");
-        rootObj.transform.SetParent(transform, false);
+        // Parent at root level so it doesn't inherit map transforms
+        rootObj.transform.SetParent(null, false);
         rootObj.transform.localPosition = Vector3.zero;
         rootObj.transform.localRotation = Quaternion.identity;
         rootObj.transform.localScale = Vector3.one;
@@ -207,12 +194,34 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (gen?.Grid?.tileCenters != null && tileIndex < gen.Grid.tileCenters.Length)
         {
             Vector3 center = gen.Grid.tileCenters[tileIndex];
-            // Adjust Y based on chunk manager position
+
+            // If the tile center already contains a valid Y, use it.
+            if (Mathf.Abs(center.y) > 0.0001f)
+            {
+                return center;
+            }
+
+            // Otherwise try a physics raycast down from above the tile XZ to find terrain or mesh height
+            RaycastHit hit;
+            Vector3 rayStart = new Vector3(center.x, 1000f, center.z);
+            if (Physics.Raycast(rayStart, Vector3.down, out hit, 2000f))
+            {
+                center.y = hit.point.y;
+                return center;
+            }
+
+            // Fallback: try to use any chunk manager's Y plane
             var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
             if (chunkManager != null)
-                center.y = chunkManager.transform.position.y;
-            return center;
+            {
+                center.y = chunkManager.transform.position.y + 0.5f; // slight lift above chunk plane
+                return center;
+            }
+
+            // Last resort: use provided fallback position
+            return new Vector3(center.x, fallback.y, center.z);
         }
+
         return fallback;
     }
     
@@ -288,7 +297,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (!tileData.isPassable)
             features.Add("Impassable");
         
-        return string.Join(" • ", features);
+        // Use ASCII dash to avoid relying on special glyphs in the font asset
+        return string.Join(" - ", features);
     }
     
     private string FormatYields(HexTileData tileData)
@@ -378,8 +388,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         // Add vertical layout with better padding
         var layout = panelObj.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(14, 14, 12, 12);
-        layout.spacing = 6f;
+        layout.padding = new RectOffset(2, 2, 2, 3);
+        layout.spacing = 2f;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
@@ -446,6 +456,13 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         var tmp = textObj.AddComponent<TextMeshProUGUI>();
         tmp.fontSize = fontSize;
+        // Prefer an explicitly assigned override font asset (assign in Inspector).
+        // Fall back to the project's default TMP font asset when not provided.
+        if (overrideFontAsset != null)
+            tmp.font = overrideFontAsset;
+        else if (TMPro.TMP_Settings.defaultFontAsset != null)
+            tmp.font = TMPro.TMP_Settings.defaultFontAsset;
+        tmp.enableAutoSizing = false;
         tmp.color = color;
         tmp.fontStyle = style;
         tmp.alignment = TextAlignmentOptions.Left;

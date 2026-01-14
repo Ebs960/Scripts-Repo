@@ -776,21 +776,13 @@ currentPlanetIndex = planetIndex;
 
             // Land generation settings
             planetGenerator.landThreshold = GameSetupData.landThreshold;
-            planetGenerator.maxContinentWidthDegrees = GameSetupData.maxContinentWidthDegrees;
-            planetGenerator.maxContinentHeightDegrees = GameSetupData.maxContinentHeightDegrees;
             planetGenerator.seedPositionVariance = GameSetupData.seedPositionVariance;
             planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
-
-            // River settings
             planetGenerator.enableRivers = GameSetupData.enableRivers;
             planetGenerator.minRiversPerContinent = GameSetupData.riverCount;
             planetGenerator.maxRiversPerContinent = GameSetupData.riverCount + 1;
-
-            // Island generation settings
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
-
-            // Lake generation settings (influenced by moisture preset)
             planetGenerator.enableLakes = GameSetupData.enableLakes;
             planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
             planetGenerator.minLakeSize = GameSetupData.minLakeSize;
@@ -798,8 +790,8 @@ currentPlanetIndex = planetIndex;
             planetGenerator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
             planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
 
-            // DIAGNOSTIC: log what we applied to the generator
-            Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}, maxW={planetGenerator.maxContinentWidthDegrees}, maxH={planetGenerator.maxContinentHeightDegrees}, landCutoff={planetGenerator.landCutoff}");
+            // DIAGNOSTIC: log what we applied to the generator (tile-based ranges)
+            Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}, landCutoff={planetGenerator.landCutoff}");
 
             // Ensure land cutoff and other newer generator settings honor GameSetupData / presets
             planetGenerator.landCutoff = GameSetupData.landThreshold; // generator uses landCutoff for mask decision
@@ -1921,8 +1913,7 @@ currentPlanetIndex = planetIndex;
         generator.islandInnerRadius = GameSetupData.islandInnerRadius;
         generator.islandOuterRadius = GameSetupData.islandOuterRadius;
 
-        // Tile-based continent sizing (if enabled in GameSetupData)
-        generator.useTileContinentSizing = GameSetupData.useTileContinentSizing;
+        // Tile-based continent sizing: copy ranges
         generator.minContinentWidthTilesSmall = GameSetupData.minContinentWidthTilesSmall;
         generator.maxContinentWidthTilesSmall = GameSetupData.maxContinentWidthTilesSmall;
         generator.minContinentHeightTilesSmall = GameSetupData.minContinentHeightTilesSmall;
@@ -1937,6 +1928,22 @@ currentPlanetIndex = planetIndex;
         generator.maxContinentWidthTilesLarge = GameSetupData.maxContinentWidthTilesLarge;
         generator.minContinentHeightTilesLarge = GameSetupData.minContinentHeightTilesLarge;
         generator.maxContinentHeightTilesLarge = GameSetupData.maxContinentHeightTilesLarge;
+
+        // Island tile ranges (copy per-map-size values)
+        generator.minIslandWidthTilesSmall = GameSetupData.minIslandWidthTilesSmall;
+        generator.maxIslandWidthTilesSmall = GameSetupData.maxIslandWidthTilesSmall;
+        generator.minIslandHeightTilesSmall = GameSetupData.minIslandHeightTilesSmall;
+        generator.maxIslandHeightTilesSmall = GameSetupData.maxIslandHeightTilesSmall;
+
+        generator.minIslandWidthTilesStandard = GameSetupData.minIslandWidthTilesStandard;
+        generator.maxIslandWidthTilesStandard = GameSetupData.maxIslandWidthTilesStandard;
+        generator.minIslandHeightTilesStandard = GameSetupData.minIslandHeightTilesStandard;
+        generator.maxIslandHeightTilesStandard = GameSetupData.maxIslandHeightTilesStandard;
+
+        generator.minIslandWidthTilesLarge = GameSetupData.minIslandWidthTilesLarge;
+        generator.maxIslandWidthTilesLarge = GameSetupData.maxIslandWidthTilesLarge;
+        generator.minIslandHeightTilesLarge = GameSetupData.minIslandHeightTilesLarge;
+        generator.maxIslandHeightTilesLarge = GameSetupData.maxIslandHeightTilesLarge;
 
         // Rivers & lakes
         generator.enableRivers = GameSetupData.enableRivers;

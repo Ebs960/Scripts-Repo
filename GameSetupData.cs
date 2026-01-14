@@ -62,11 +62,6 @@ public static class GameSetupData
     public static float landThreshold;
     public static float seedPositionVariance;
     
-    // New fields
-    public static float maxContinentWidthDegrees = 0f;
-    public static float maxContinentHeightDegrees = 0f;
-    // Use tile-based continent sizing instead of degree-based sizes
-    public static bool useTileContinentSizing = false;
     // Tile-based continent size ranges for Small/Standard/Large
     public static int minContinentWidthTilesSmall;
     public static int maxContinentWidthTilesSmall;
@@ -82,6 +77,21 @@ public static class GameSetupData
     public static int maxContinentWidthTilesLarge;
     public static int minContinentHeightTilesLarge;
     public static int maxContinentHeightTilesLarge;
+    // Tile-based island size ranges for Small/Standard/Large
+    public static int minIslandWidthTilesSmall;
+    public static int maxIslandWidthTilesSmall;
+    public static int minIslandHeightTilesSmall;
+    public static int maxIslandHeightTilesSmall;
+
+    public static int minIslandWidthTilesStandard;
+    public static int maxIslandWidthTilesStandard;
+    public static int minIslandHeightTilesStandard;
+    public static int maxIslandHeightTilesStandard;
+
+    public static int minIslandWidthTilesLarge;
+    public static int maxIslandWidthTilesLarge;
+    public static int minIslandHeightTilesLarge;
+    public static int maxIslandHeightTilesLarge;
     // Advanced continent tuning (exposed so menus/presets can set them)
     public static float continentDomainWarp = 0.25f;
     public static float continentMacroAmplitude = 0.35f;
@@ -170,7 +180,6 @@ public static class GameSetupData
         voronoiElevationInfluence = 0.12f;
 
         // Tile-based continent sizing defaults
-        useTileContinentSizing = false;
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
@@ -180,7 +189,17 @@ public static class GameSetupData
         minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
         minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
 
-        // Island defaults
+        // Tile-based island sizing defaults (smaller than continents)
+        minIslandWidthTilesSmall = 8; maxIslandWidthTilesSmall = 24;
+        minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
+
+        minIslandWidthTilesStandard = 20; maxIslandWidthTilesStandard = 60;
+        minIslandHeightTilesStandard = 10; maxIslandHeightTilesStandard = 30;
+
+        minIslandWidthTilesLarge = 40; maxIslandWidthTilesLarge = 120;
+        minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
+
+        // Island defaults (noise/falloff)
         islandNoiseFrequency = 1.8f;
         islandInnerRadius = 0.25f;
         islandOuterRadius = 0.9f;

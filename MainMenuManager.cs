@@ -959,8 +959,7 @@ public class MainMenuManager : MonoBehaviour
             case GameManager.MapSize.Standard: scale = 1.0f; break;
             case GameManager.MapSize.Large: scale = 1.15f; break;
         }
-        GameSetupData.maxContinentWidthDegrees = width * scale;
-        GameSetupData.maxContinentHeightDegrees = height * scale;
+        // Degree-based fields removed; continent sizing now uses tile ranges (set below)
 
         // ===== Tile-based continent sizing defaults derived from the selected land preset =====
         int stdMinW = Mathf.RoundToInt(landPreset.minWidth);
@@ -991,8 +990,26 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.minContinentHeightTilesLarge = Mathf.Max(4, stdMinH * 2);
         GameSetupData.maxContinentHeightTilesLarge = Mathf.Max(4, stdMaxH * 2);
 
-        // Prefer tile-based sizing by default for preset-driven generation
-        GameSetupData.useTileContinentSizing = true;
+        // Island tile range defaults derived from continent tile defaults
+        int stdIslandMinW = Mathf.Max(1, Mathf.RoundToInt(stdMinW * 0.25f));
+        int stdIslandMaxW = Mathf.Max(1, Mathf.RoundToInt(stdMaxW * 0.5f));
+        int stdIslandMinH = Mathf.Max(1, Mathf.RoundToInt(stdMinH * 0.25f));
+        int stdIslandMaxH = Mathf.Max(1, Mathf.RoundToInt(stdMaxH * 0.5f));
+
+        GameSetupData.minIslandWidthTilesStandard = stdIslandMinW;
+        GameSetupData.maxIslandWidthTilesStandard = stdIslandMaxW;
+        GameSetupData.minIslandHeightTilesStandard = stdIslandMinH;
+        GameSetupData.maxIslandHeightTilesStandard = stdIslandMaxH;
+
+        GameSetupData.minIslandWidthTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMinW * 0.5f));
+        GameSetupData.maxIslandWidthTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMaxW * 0.5f));
+        GameSetupData.minIslandHeightTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMinH * 0.5f));
+        GameSetupData.maxIslandHeightTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMaxH * 0.5f));
+
+        GameSetupData.minIslandWidthTilesLarge = Mathf.Max(1, stdIslandMinW * 2);
+        GameSetupData.maxIslandWidthTilesLarge = Mathf.Max(1, stdIslandMaxW * 2);
+        GameSetupData.minIslandHeightTilesLarge = Mathf.Max(1, stdIslandMinH * 2);
+        GameSetupData.maxIslandHeightTilesLarge = Mathf.Max(1, stdIslandMaxH * 2);
 
         // Island shape tuning based on land preset (detail and falloff)
         int landPresetIdx = Mathf.Clamp(selectedLandPreset, 0, 4);

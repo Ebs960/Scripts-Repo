@@ -254,17 +254,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int numberOfContinents = 6;
 
 
-    [Tooltip("Maximum longitudinal extent (width) of a continent mask in degrees.")]
-    [Range(10f, 237.6f)]
-    public float maxContinentWidthDegrees = 70f; 
-
-    [Tooltip("Maximum latitudinal extent (height) of a continent mask in degrees.")]
-    [Range(10f, 237.6f)]
-    public float maxContinentHeightDegrees = 60f; 
-    
-    [Header("Continent Tile Sizing (Optional)")]
-    [Tooltip("When enabled, continent sizes are specified in raw tile counts (width x height) instead of degrees.")]
-    public bool useTileContinentSizing = false;
+    // Continent sizing now uses raw tile counts (configured per-map-size)
 
     [Tooltip("Small map: min continent width (tiles)")]
     public int minContinentWidthTilesSmall = 80;
@@ -441,12 +431,33 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int numberOfIslands = 8;
     [Tooltip("Whether to generate islands in addition to continents")]
     public bool generateIslands = true;
-    [Range(5f, 40f)]
-    [Tooltip("Maximum width of an island mask in degrees (smaller than continents)")]
-    public float maxIslandWidthDegrees = 18f;
-    [Range(5f, 40f)]
-    [Tooltip("Maximum height of an island mask in degrees (smaller than continents)")]
-    public float maxIslandHeightDegrees = 18f;
+    [Range(1, 4000)]
+    [Tooltip("Small map: min island width (tiles)")]
+    public int minIslandWidthTilesSmall = 1;
+    [Tooltip("Small map: max island width (tiles)")]
+    public int maxIslandWidthTilesSmall = 24;
+    [Tooltip("Small map: min island height (tiles)")]
+    public int minIslandHeightTilesSmall = 4;
+    [Tooltip("Small map: max island height (tiles)")]
+    public int maxIslandHeightTilesSmall = 12;
+
+    [Tooltip("Standard map: min island width (tiles)")]
+    public int minIslandWidthTilesStandard = 20;
+    [Tooltip("Standard map: max island width (tiles)")]
+    public int maxIslandWidthTilesStandard = 60;
+    [Tooltip("Standard map: min island height (tiles)")]
+    public int minIslandHeightTilesStandard = 10;
+    [Tooltip("Standard map: max island height (tiles)")]
+    public int maxIslandHeightTilesStandard = 30;
+
+    [Tooltip("Large map: min island width (tiles)")]
+    public int minIslandWidthTilesLarge = 40;
+    [Tooltip("Large map: max island width (tiles)")]
+    public int maxIslandWidthTilesLarge = 120;
+    [Tooltip("Large map: min island height (tiles)")]
+    public int minIslandHeightTilesLarge = 20;
+    [Tooltip("Large map: max island height (tiles)")]
+    public int maxIslandHeightTilesLarge = 60;
     [Range(0.3f, 0.7f)]
     [Tooltip("Land cutoff for islands (similar to landCutoff but for islands)")]
     public float islandThreshold = 0.45f;
@@ -670,7 +681,28 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (enableDiagnostics)
         {
             Debug.Log($"[PlanetGenerator][Diag] mapWidth={mapWidth:F1} mapHeight={mapHeight:F1} tiles={tileCount}");
-            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents={numberOfContinents} maxContinentWidthDegrees={maxContinentWidthDegrees} maxContinentHeightDegrees={maxContinentHeightDegrees} seedPositionVariance={seedPositionVariance}");
+            // Log continent/island sizing (tile-based system)
+            int cMinW = minContinentWidthTilesStandard, cMaxW = maxContinentWidthTilesStandard, cMinH = minContinentHeightTilesStandard, cMaxH = maxContinentHeightTilesStandard;
+            int iMinW = minIslandWidthTilesStandard, iMaxW = maxIslandWidthTilesStandard, iMinH = minIslandHeightTilesStandard, iMaxH = maxIslandHeightTilesStandard;
+            switch (GameSetupData.mapSize)
+            {
+                case GameManager.MapSize.Small:
+                    cMinW = minContinentWidthTilesSmall; cMaxW = maxContinentWidthTilesSmall; cMinH = minContinentHeightTilesSmall; cMaxH = maxContinentHeightTilesSmall;
+                    iMinW = minIslandWidthTilesSmall; iMaxW = maxIslandWidthTilesSmall; iMinH = minIslandHeightTilesSmall; iMaxH = maxIslandHeightTilesSmall;
+                    break;
+                case GameManager.MapSize.Large:
+                    cMinW = minContinentWidthTilesLarge; cMaxW = maxContinentWidthTilesLarge; cMinH = minContinentHeightTilesLarge; cMaxH = maxContinentHeightTilesLarge;
+                    iMinW = minIslandWidthTilesLarge; iMaxW = maxIslandWidthTilesLarge; iMinH = minIslandHeightTilesLarge; iMaxH = maxIslandHeightTilesLarge;
+                    break;
+            }
+            // OVERRIDE: Always use prefab values for islands
+            iMinW = minIslandWidthTilesSmall; iMaxW = maxIslandWidthTilesSmall; iMinH = minIslandHeightTilesSmall; iMaxH = maxIslandHeightTilesSmall;
+            if (GameSetupData.mapSize == GameManager.MapSize.Standard) {
+                iMinW = minIslandWidthTilesStandard; iMaxW = maxIslandWidthTilesStandard; iMinH = minIslandHeightTilesStandard; iMaxH = maxIslandHeightTilesStandard;
+            } else if (GameSetupData.mapSize == GameManager.MapSize.Large) {
+                iMinW = minIslandWidthTilesLarge; iMaxW = maxIslandWidthTilesLarge; iMinH = minIslandHeightTilesLarge; iMaxH = maxIslandHeightTilesLarge;
+            }
+            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents={numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} islandTiles(WxH) min={iMinW}x{iMinH} max={iMaxW}x{iMaxH} seedPositionVariance={seedPositionVariance}");
             Debug.Log($"[PlanetGenerator][Diag] landCutoff={landCutoff} continentMacroAmplitude={continentMacroAmplitude} continentDomainWarp={continentDomainWarp} voronoiContinentInfluence={voronoiContinentInfluence}");
             Debug.Log($"[PlanetGenerator][Diag] generateIslands={generateIslands} numberOfIslands={numberOfIslands} islandNoiseFrequency={islandNoiseFrequency} islandInnerRadius={islandInnerRadius} islandOuterRadius={islandOuterRadius}");
             Debug.Log($"[PlanetGenerator][Diag] latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureBias={temperatureBias} moistureBias={moistureBias}");
@@ -713,6 +745,29 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 for (int ci = 0; ci < continentDataList.Count; ci++) {
                     var c = continentDataList[ci];
                     Debug.Log($"[PlanetGenerator][Diag] Continent[{ci}] pos={c.position} width={c.widthWorld:F1} height={c.heightWorld:F1} rotDeg={(c.rotation*Mathf.Rad2Deg):F0} sizeScale={c.sizeScale:F2}");
+                }
+
+                // Additional per-continent noise/warp sampling to diagnose how noise affects effective size
+                for (int ci = 0; ci < continentDataList.Count; ci++) {
+                    var c = continentDataList[ci];
+                    float halfW = c.widthWorld * 0.5f;
+                    float halfH = c.heightWorld * 0.5f;
+                    Vector2 centerPos = c.position;
+                    // sample macro noise at center
+                    float centerMacro = (continentDomainWarp > 0.01f)
+                        ? noise.GetWarpedContinentPeriodic(centerPos, mapWidth, mapHeight, continentMacroFreq, continentDomainWarp * 0.5f)
+                        : noise.GetContinentPeriodic(centerPos, mapWidth, mapHeight, continentMacroFreq);
+                    // sample macro noise at edge along +X axis
+                    Vector2 edgePos = centerPos + new Vector2(halfW, 0f);
+                    if (edgePos.x > mapWidth * 0.5f) edgePos.x -= mapWidth;
+                    float edgeMacro = noise.GetContinentPeriodic(edgePos, mapWidth, mapHeight, continentMacroFreq);
+                    // sample a warped macro at the edge using coast warp
+                    float edgeWarpAmp = coastlineWarpAmplitude;
+                    Vector2 coastWarp = noise.GetCoastWarpPeriodic(edgePos, mapWidth, mapHeight, coastlineDetailFreq, edgeWarpAmp);
+                    Vector2 warpedSamplePos = edgePos + coastWarp * halfW;
+                    float warpedEdgeMacro = noise.GetContinentPeriodic(warpedSamplePos, mapWidth, mapHeight, continentMacroFreq);
+
+                    Debug.Log($"[PlanetGenerator][DiagSample] Continent[{ci}] centerMacro={centerMacro:F3} edgeMacro={edgeMacro:F3} warpedEdgeMacro={warpedEdgeMacro:F3} halfW={halfW:F1} halfH={halfH:F1}");
                 }
 
                 // find min/max Z tile indices for pole checking
@@ -770,7 +825,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             isLandTile[i] = false;
             tileLandValues[i] = 0f;
             Vector2 tilePos = tilePositions[i];
-            
+
+            // DEBUG: Log pre-noise/warp position for first tile of each continent (for clarity)
+            if (i < numberOfContinents) {
+                Debug.Log($"[ContinentGen][PreNoise] tile {i} pos={tilePos}");
+            }
+
             // Apply domain warping to the tile position for organic shapes
             Vector2 warpedTilePos = tilePos;
             if (continentDomainWarp > 0.01f) {
@@ -778,15 +838,20 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     continentDomainWarp * mapWidth * 0.15f,  // Large-scale warp
                     continentDomainWarp * mapWidth * 0.05f); // Fine-scale warp
             }
-            
+
+            // DEBUG: Log post-warp position for first tile of each continent
+            if (i < numberOfContinents) {
+                Debug.Log($"[ContinentGen][PostWarp] tile {i} warpedPos={warpedTilePos}");
+            }
+
             // Get Voronoi influence for this tile (creates natural continent clustering)
             float voronoiValue = 0f;
             if (voronoiContinentInfluence > 0.01f) {
                 voronoiValue = noise.GetVoronoiPeriodic(tilePos, mapWidth, mapHeight, voronoiFreq);
             }
-            
+
             float maxLandValue = 0f;
-            
+
             foreach (ContinentData continent in continentDataList) {
                 // Calculate wrapped distance to seed (using warped position)
                 float dx = warpedTilePos.x - continent.position.x;
@@ -795,26 +860,26 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     dx = dx > 0 ? dx - mapWidth : dx + mapWidth;
                 }
                 float dz = warpedTilePos.y - continent.position.y;
-                
+
                 // Apply per-continent rotation to create varied orientations
                 float cosR = Mathf.Cos(continent.rotation);
                 float sinR = Mathf.Sin(continent.rotation);
                 float rotatedDx = dx * cosR - dz * sinR;
                 float rotatedDz = dx * sinR + dz * cosR;
-                
+
                 // Use per-continent size (randomized width/height)
                 float halfWidth = continent.widthWorld * 0.5f;
                 float halfHeight = continent.heightWorld * 0.5f;
                 float xNorm = rotatedDx / Mathf.Max(0.001f, halfWidth);
                 float zNorm = rotatedDz / Mathf.Max(0.001f, halfHeight);
                 float normDist = Mathf.Sqrt(xNorm * xNorm + zNorm * zNorm);
-                
+
                 // Skip if clearly outside the mask
                 if (normDist > continentOuterRadius * 1.5f) continue;
-                
+
                 // (a) Continent falloff - guarantees solid core
                 float falloff = 1f - NoiseSampler.SmoothStep(continentInnerRadius, continentOuterRadius, normDist);
-                
+
                 // (b) Multi-scale domain-warped macro noise
                 float macroNoise;
                 if (continentDomainWarp > 0.01f) {
@@ -823,7 +888,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 } else {
                     macroNoise = noise.GetContinentPeriodic(tilePos, mapWidth, mapHeight, continentMacroFreq);
                 }
-                
+
                 // (c) Multi-octave cascaded coastline warping for fractal edges
                 float edgeFactor = NoiseSampler.SmoothStep(0.3f, 0.8f, normDist); // Only warp near edges
                 Vector2 warp;
@@ -838,32 +903,32 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     warp = noise.GetCoastWarpPeriodic(tilePos, mapWidth, mapHeight, 
                         coastlineDetailFreq, coastlineWarpAmplitude * edgeFactor);
                 }
-                
+
                 // Apply warp to sample position for the macro noise
                 Vector2 warpedPos = tilePos + warp * halfWidth;
                 float warpedMacro = noise.GetContinentPeriodic(warpedPos, mapWidth, mapHeight, continentMacroFreq);
-                
+
                 // Blend macro noise based on edge proximity
                 float finalMacro = Mathf.Lerp(macroNoise, warpedMacro, edgeFactor * 0.7f);
-                
+
                 // Combine: falloff + noise contribution
                 float landValue = falloff + (finalMacro - 0.5f) * continentMacroAmplitude;
-                
+
                 // Apply Voronoi modulation (creates natural gaps and clustering)
                 if (voronoiContinentInfluence > 0.01f) {
                     // Voronoi creates natural breaks between continents
                     float voronoiMod = Mathf.Lerp(1f, 0.5f + voronoiValue * 0.5f, voronoiContinentInfluence);
                     landValue *= voronoiMod;
                 }
-                
+
                 // Track the highest land value from any seed (for overlapping continents)
                 if (landValue > maxLandValue) {
                     maxLandValue = landValue;
                 }
             }
-            
+
             tileLandValues[i] = maxLandValue;
-            
+
             // Decision rule: land if value > cutoff
             if (maxLandValue > landCutoff) {
                 isLandTile[i] = true;
@@ -1809,9 +1874,25 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         IEnumerator GenerateIslands(Dictionary<int, bool> isLandTile, Dictionary<int, Vector2> tilePositions, 
                            Dictionary<int, float> tileLandValues, int tileCount) {
             
-            // Use serialized island parameters (no longer derived from continent params!)
-            float islandWidthWorld = (maxIslandWidthDegrees / 360f) * mapWidth;
-            float islandHeightWorld = (maxIslandHeightDegrees / 180f) * mapHeight;
+            // Use tile-based island parameters
+            GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesX, out int tilesZ);
+            int imaxW = maxIslandWidthTilesStandard, imaxH = maxIslandHeightTilesStandard;
+            switch (GameSetupData.mapSize)
+            {
+                case GameManager.MapSize.Small:
+                    imaxW = maxIslandWidthTilesSmall; imaxH = maxIslandHeightTilesSmall; break;
+                case GameManager.MapSize.Large:
+                    imaxW = maxIslandWidthTilesLarge; imaxH = maxIslandHeightTilesLarge; break;
+            }
+            // Clamp island tile maxima to tile resolution
+            int clampedImaxW = Mathf.Clamp(imaxW, 1, tilesX);
+            int clampedImaxH = Mathf.Clamp(imaxH, 1, tilesZ);
+            if (enableDiagnostics && (clampedImaxW != imaxW || clampedImaxH != imaxH)) {
+                Debug.Log($"[IslandSize] Clamped island max tiles from W={imaxW},H={imaxH} to W={clampedImaxW},H={clampedImaxH} based on tilesX={tilesX},tilesZ={tilesZ}");
+            }
+            float islandWidthWorld = (clampedImaxW / (float)Mathf.Max(1, tilesX)) * mapWidth;
+            float islandHeightWorld = (clampedImaxH / (float)Mathf.Max(1, tilesZ)) * mapHeight;
+            if (enableDiagnostics) Debug.Log($"[IslandSize] islandWidthWorld={islandWidthWorld:F1} islandHeightWorld={islandHeightWorld:F1} (tiles W={clampedImaxW},H={clampedImaxH})");
             float islandMacroFreq = 1f / (mapWidth * 0.6f) * islandNoiseFrequency; // Higher freq than continents
             float islandCoastFreq = islandMacroFreq * 3f;
             
@@ -1914,8 +1995,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             float mapHeight = grid.MapHeight;
             
             int numChains = Mathf.Max(1, totalCount / Mathf.Max(1, islandsPerChain));
-            float minDistanceBetweenChains = (40f / 360f) * mapWidth;
-            float islandSpacing = (maxIslandWidthDegrees * 1.2f / 360f) * mapWidth;
+            // Use tile-based spacing heuristics
+            GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesX2, out int tilesZ2);
+            int chainIslandMaxW = maxIslandWidthTilesStandard;
+            switch (GameSetupData.mapSize)
+            {
+                case GameManager.MapSize.Small: chainIslandMaxW = maxIslandWidthTilesSmall; break;
+                case GameManager.MapSize.Large: chainIslandMaxW = maxIslandWidthTilesLarge; break;
+            }
+            float minDistanceBetweenChains = (40f / 360f) * mapWidth; // keep a modest chain spacing
+            float islandSpacing = (chainIslandMaxW / (float)Mathf.Max(1, tilesX2) * 1.2f) * mapWidth;
             
             List<Vector2> chainStarts = new List<Vector2>();
             int attempts = 0;
@@ -1923,7 +2012,19 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             
             // First, place chain starting points away from continents
             List<Vector2> continentSeeds = GenerateDeterministicSeeds(numberOfContinents, seed ^ 0xD00D);
-            float maxContinentWidthWorld = (maxContinentWidthDegrees / 360f) * mapWidth;
+            // Compute a conservative continent width world estimate using configured continent tile maxima
+            GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesXC, out int tilesZC);
+            int cMaxW = maxContinentWidthTilesStandard;
+            switch (GameSetupData.mapSize)
+            {
+                case GameManager.MapSize.Small: cMaxW = maxContinentWidthTilesSmall; break;
+                case GameManager.MapSize.Large: cMaxW = maxContinentWidthTilesLarge; break;
+            }
+            // Clamp the configured continent tile max to the tile resolution to avoid absurd world sizes
+            int clampedCMaxW = Mathf.Clamp(cMaxW, 1, tilesXC);
+            if (enableDiagnostics && clampedCMaxW != cMaxW) Debug.Log($"[IslandSeeds] Clamped cMaxW from {cMaxW} to {clampedCMaxW} based on tilesXC={tilesXC}");
+            float maxContinentWidthWorld = (clampedCMaxW / (float)Mathf.Max(1, tilesXC)) * mapWidth;
+            if (enableDiagnostics) Debug.Log($"[IslandSeeds] maxContinentWidthWorld={maxContinentWidthWorld:F1} (clampedCMaxW={clampedCMaxW})");
             
             while (chainStarts.Count < numChains && attempts < maxAttempts) {
                 attempts++;
@@ -2237,68 +2338,68 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         float offsetRangeX = (seedPositionVariance / 360f) * mapWidthLocal;
         float offsetRangeZ = (seedPositionVariance / 180f) * mapHeightLocal;
         
-        // Base sizes from settings (these are maximums)
-        float baseWidthWorld;
-        float baseHeightWorld;
-        if (useTileContinentSizing)
+        // Determine tile resolution for the selected map size
+        GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesX, out int tilesZ);
+
+        int minW = minContinentWidthTilesStandard, maxW = maxContinentWidthTilesStandard;
+        int minH = minContinentHeightTilesStandard, maxH = maxContinentHeightTilesStandard;
+        switch (GameSetupData.mapSize)
         {
-            // Determine tile resolution for the selected map size
-            GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesX, out int tilesZ);
-
-            int minW = minContinentWidthTilesStandard, maxW = maxContinentWidthTilesStandard;
-            int minH = minContinentHeightTilesStandard, maxH = maxContinentHeightTilesStandard;
-            switch (GameSetupData.mapSize)
-            {
-                case GameManager.MapSize.Small:
-                    minW = minContinentWidthTilesSmall; maxW = maxContinentWidthTilesSmall;
-                    minH = minContinentHeightTilesSmall; maxH = maxContinentHeightTilesSmall;
-                    break;
-                case GameManager.MapSize.Large:
-                    minW = minContinentWidthTilesLarge; maxW = maxContinentWidthTilesLarge;
-                    minH = minContinentHeightTilesLarge; maxH = maxContinentHeightTilesLarge;
-                    break;
-                case GameManager.MapSize.Standard:
-                default:
-                    minW = minContinentWidthTilesStandard; maxW = maxContinentWidthTilesStandard;
-                    minH = minContinentHeightTilesStandard; maxH = maxContinentHeightTilesStandard;
-                    break;
-            }
-
-            // Pick a tile-based base size (will be scaled per-continent later)
-            int chosenWidthTiles = rand.Next(Mathf.Max(1, minW), Mathf.Max(1, maxW) + 1);
-            int chosenHeightTiles = rand.Next(Mathf.Max(1, minH), Mathf.Max(1, maxH) + 1);
-
-            // Convert tile counts to world units using map resolution
-            float tilesXF = Mathf.Max(1, tilesX);
-            float tilesZF = Mathf.Max(1, tilesZ);
-            baseWidthWorld = (chosenWidthTiles / tilesXF) * mapWidthLocal;
-            baseHeightWorld = (chosenHeightTiles / tilesZF) * mapHeightLocal;
-        }
-        else
-        {
-            baseWidthWorld = (maxContinentWidthDegrees / 360f) * mapWidthLocal;
-            baseHeightWorld = (maxContinentHeightDegrees / 180f) * mapHeightLocal;
+            case GameManager.MapSize.Small:
+                minW = minContinentWidthTilesSmall; maxW = maxContinentWidthTilesSmall;
+                minH = minContinentHeightTilesSmall; maxH = maxContinentHeightTilesSmall;
+                break;
+            case GameManager.MapSize.Large:
+                minW = minContinentWidthTilesLarge; maxW = maxContinentWidthTilesLarge;
+                minH = minContinentHeightTilesLarge; maxH = maxContinentHeightTilesLarge;
+                break;
+            case GameManager.MapSize.Standard:
+            default:
+                minW = minContinentWidthTilesStandard; maxW = maxContinentWidthTilesStandard;
+                minH = minContinentHeightTilesStandard; maxH = maxContinentHeightTilesStandard;
+                break;
         }
 
         System.Func<Vector2, ContinentData> createContinent = (Vector2 basePos) => {
             float offsetX = (float)(rand.NextDouble() * offsetRangeX * 2 - offsetRangeX);
             float offsetZ = (float)(rand.NextDouble() * offsetRangeZ * 2 - offsetRangeZ);
             
-            // Random size scale: 40% to 100% of max size (creates varied continent sizes)
-            float sizeScale = 0.4f + (float)rand.NextDouble() * 0.6f;
-            
-            // Random width/height ratio: 0.6 to 1.4 (creates elongated vs round continents)
-            float aspectRatio = 0.6f + (float)rand.NextDouble() * 0.8f;
-            
             // Random rotation: 0 to 2π (creates differently oriented continents)
             float rotation = (float)(rand.NextDouble() * Mathf.PI * 2f);
-            
+
+            // Select tile counts per-continent so each continent varies independently
+            int chosenWidthTiles = rand.Next(Mathf.Max(1, minW), Mathf.Max(1, maxW) + 1);
+            int chosenHeightTiles = rand.Next(Mathf.Max(1, minH), Mathf.Max(1, maxH) + 1);
+
+            // DEBUG: report chosen tile counts before clamping
+            if (enableDiagnostics) {
+                Debug.Log($"[ContinentSize] chosenTiles pre-clamp W={chosenWidthTiles} H={chosenHeightTiles} (minW={minW} maxW={maxW} minH={minH} maxH={maxH}) tilesX={tilesX} tilesZ={tilesZ}");
+            }
+
+            // Clamp chosen sizes to the available tile resolution to avoid producing world sizes > map dimensions
+            chosenWidthTiles = Mathf.Clamp(chosenWidthTiles, 1, tilesX);
+            chosenHeightTiles = Mathf.Clamp(chosenHeightTiles, 1, tilesZ);
+
+            // DEBUG: report chosen tile counts after clamping
+            if (enableDiagnostics) {
+                Debug.Log($"[ContinentSize] chosenTiles post-clamp W={chosenWidthTiles} H={chosenHeightTiles}");
+            }
+
+            float tilesXF = Mathf.Max(1, tilesX);
+            float tilesZF = Mathf.Max(1, tilesZ);
+            float widthWorld = (chosenWidthTiles / tilesXF) * mapWidthLocal;
+            float heightWorld = (chosenHeightTiles / tilesZF) * mapHeightLocal;
+
+            if (enableDiagnostics) {
+                Debug.Log($"[ContinentSize] widthWorld={widthWorld:F1} heightWorld={heightWorld:F1} (tiles W={chosenWidthTiles}, H={chosenHeightTiles})");
+            }
+
             return new ContinentData {
                 position = new Vector2(basePos.x + offsetX, basePos.y + offsetZ),
-                widthWorld = baseWidthWorld * sizeScale * aspectRatio,
-                heightWorld = baseHeightWorld * sizeScale / aspectRatio,
+                widthWorld = widthWorld,
+                heightWorld = heightWorld,
                 rotation = rotation,
-                sizeScale = sizeScale
+                sizeScale = 1f
             };
         };
 
