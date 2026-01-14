@@ -237,6 +237,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Header("Diagnostics")]
     [Tooltip("Enable verbose diagnostic logs for generation steps.")]
     public bool enableDiagnostics = false;
+    [SerializeField] private bool debugDrawContinents = true;
 
 
     [Header("Map Settings")] 
@@ -252,6 +253,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("The target number of continents. Placement is deterministic for common counts (1-8). Higher counts might revert to random spread.")]
     [Min(1)]
     public int numberOfContinents = 6;
+
+    private List<ContinentData> continents;
 
 
     // Continent sizing now uses raw tile counts (configured per-map-size)
@@ -698,6 +701,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         
         // ---------- 2. Generate Deterministic Continent Seeds with Per-Continent Sizes ------------------
         List<ContinentData> continentDataList = GenerateContinentData(numberOfContinents, seed ^ 0xD00D);
+        continents = continentDataList;
         
         // Log continent generation info
         Debug.Log($"[PlanetGenerator] Generated {continentDataList.Count} continents with varied sizes");
@@ -2394,6 +2398,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// Holds per-continent data for varied size/rotation per continent
     /// </summary>
     private struct ContinentData {
+        public string name;           // Debug name
         public Vector2 position;       // Seed position
         public float widthWorld;       // Width in world units (randomized)
         public float heightWorld;      // Height in world units (randomized)
@@ -2446,9 +2451,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 break;
         }
 
+        int continentIndex = 1;
         System.Func<Vector2, ContinentData> createContinent = (Vector2 basePos) => {
             float offsetX = (float)(rand.NextDouble() * offsetRangeX * 2 - offsetRangeX);
             float offsetZ = (float)(rand.NextDouble() * offsetRangeZ * 2 - offsetRangeZ);
+            string continentName = $"Continent {continentIndex++}";
             
             // Random rotation: 0 to 2π (creates differently oriented continents)
             float rotation = (float)(rand.NextDouble() * Mathf.PI * 2f);
@@ -2473,17 +2480,38 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             float tilesXF = Mathf.Max(1, tilesX);
             float tilesZF = Mathf.Max(1, tilesZ);
-            float widthWorld = (chosenWidthTiles / tilesXF) * mapWidthLocal;
-            float heightWorld = (chosenHeightTiles / tilesZF) * mapHeightLocal;
+            float tileWorldWidth = mapWidthLocal / tilesXF;
+            float tileWorldHeight = mapHeightLocal / tilesZF;
+            float continentWidthWorld = chosenWidthTiles * tileWorldWidth;
+            float continentHeightWorld = chosenHeightTiles * tileWorldHeight;
+            float halfW = continentWidthWorld * 0.5f;
+            float halfH = continentHeightWorld * 0.5f;
 
-            if (enableDiagnostics) {
-                Debug.Log($"[ContinentSize] widthWorld={widthWorld:F1} heightWorld={heightWorld:F1} (tiles W={chosenWidthTiles}, H={chosenHeightTiles})");
+            float planetHalfHeight = mapHeightLocal * 0.5f;
+            if (halfH >= planetHalfHeight * 0.95f)
+            {
+                Debug.LogError(
+                    $"[ContinentGen][FATAL] Continent spans planet vertically! " +
+                    $"halfH={halfH:F2}, planetHalfHeight={planetHalfHeight:F2}, " +
+                    $"tilesH={chosenHeightTiles}, tilesZ={tilesZ}"
+                );
             }
 
+            if (enableDiagnostics) {
+                Debug.Log($"[ContinentSize] widthWorld={continentWidthWorld:F1} heightWorld={continentHeightWorld:F1} (tiles W={chosenWidthTiles}, H={chosenHeightTiles})");
+            }
+
+            Debug.Log(
+                $"[ContinentGen][OK] {continentName} tiles={chosenWidthTiles}x{chosenHeightTiles} " +
+                $"world={continentWidthWorld:F1}x{continentHeightWorld:F1} " +
+                $"planetHeight={mapHeightLocal:F1}"
+            );
+
             return new ContinentData {
+                name = continentName,
                 position = new Vector2(basePos.x + offsetX, basePos.y + offsetZ),
-                widthWorld = widthWorld,
-                heightWorld = heightWorld,
+                widthWorld = continentWidthWorld,
+                heightWorld = continentHeightWorld,
                 widthTiles = chosenWidthTiles,
                 heightTiles = chosenHeightTiles,
                 rotation = rotation,
@@ -2543,7 +2571,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Log continent sizes for debugging
         for (int i = 0; i < continents.Count; i++) {
             var c = continents[i];
-            Debug.Log($"[PlanetGenerator] Continent {i}: pos={c.position}, tiles={c.widthTiles}x{c.heightTiles}, size={c.widthWorld:F1}x{c.heightWorld:F1}, rot={c.rotation * Mathf.Rad2Deg:F0}°, scale={c.sizeScale:F2}");
+            Debug.Log($"[PlanetGenerator] {c.name} {i}: pos={c.position}, tiles={c.widthTiles}x{c.heightTiles}, size={c.widthWorld:F1}x{c.heightWorld:F1}, rot={c.rotation * Mathf.Rad2Deg:F0}°, scale={c.sizeScale:F2}");
         }
         
         return continents;
@@ -2689,5 +2717,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - baseLandElevation: {baseLandElevation}, maxTotalElevation: {maxTotalElevation}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - hillThreshold: {hillThreshold}, mountainThreshold: {mountainThreshold}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!debugDrawContinents || continents == null)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.magenta;
+        foreach (var c in continents)
+        {
+            Vector3 center = new Vector3(c.position.x, 0f, c.position.y);
+            Vector3 size = new Vector3(c.widthWorld, 1f, c.heightWorld);
+            Gizmos.DrawWireCube(center, size);
+        }
     }
 }
