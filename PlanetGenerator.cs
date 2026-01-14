@@ -382,6 +382,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f, 0.5f)]
     [Tooltip("Voronoi influence on elevation. Adds natural cellular variation.")]
     public float voronoiElevationInfluence = 0.12f;
+
+    [Header("Experimental / Advanced")]
+    [Tooltip("Enable Voronoi-based continent/elevation features. Controlled per-prefab.")]
+    public bool useVoronoiContinents = false;
     
     [Range(0f, 0.5f)]
     [Tooltip("Billow noise weight for rolling hills. Higher = more rounded terrain.")]
@@ -784,7 +788,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // - Elliptical falloff with fractal edges
         
         // Pre-calculate Voronoi influence field (for continent clustering)
-        float voronoiFreq = 1f / (mapWidth * 0.25f);  // Low frequency for large cells
+        float voronoiFreq = 0f;
+        if (useVoronoiContinents)
+            voronoiFreq = 1f / (mapWidth * 0.25f);  // Low frequency for large cells
         
         // Diagnostic counters for contribution stages
         int diag_baseCount = 0;
@@ -823,7 +829,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             // Get Voronoi influence for this tile (creates natural continent clustering)
             float voronoiValue = 0f;
-            if (voronoiContinentInfluence > 0.01f) {
+            if (useVoronoiContinents && voronoiContinentInfluence > 0.01f) {
                 voronoiValue = noise.GetVoronoiPeriodic(tilePos, mapWidth, mapHeight, voronoiFreq);
             }
 
@@ -909,7 +915,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 // Apply Voronoi modulation (creates natural gaps and clustering)
                 float landValue_beforeVoronoi = landValue;
-                if (voronoiContinentInfluence > 0.01f) {
+                if (useVoronoiContinents && voronoiContinentInfluence > 0.01f) {
                     // Voronoi creates natural breaks between continents
                     float voronoiMod = Mathf.Lerp(1f, 0.5f + voronoiValue * 0.5f, voronoiContinentInfluence);
                     landValue = landValue * voronoiMod;
@@ -1039,11 +1045,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Calculate elevation using advanced multi-noise blending (seamless wrap)
             // Combines: FBm (base), Ridged (mountains), Billow (hills), Voronoi (variation)
             float noiseElevation;
-            if (billowHillWeight > 0.01f || voronoiElevationInfluence > 0.01f) {
-                // Use advanced elevation with all noise types
+            // Only enable the Voronoi path if the prefab flag is set. Billow hills may still trigger advanced elevation.
+            if (billowHillWeight > 0.01f || (useVoronoiContinents && voronoiElevationInfluence > 0.01f)) {
+                // Use advanced elevation with appropriate Voronoi contribution (zeroed if flag disabled)
+                float voronoiParam = (useVoronoiContinents ? voronoiElevationInfluence : 0f);
                 noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
                     elevBroadFreq, elevRidgedFreq, elevBillowFreq, elevVoronoiFreq,
-                    ridgedMountainWeight, billowHillWeight, voronoiElevationInfluence);
+                    ridgedMountainWeight, billowHillWeight, voronoiParam);
             } else {
                 // Fallback to simple elevation
                 noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, 
