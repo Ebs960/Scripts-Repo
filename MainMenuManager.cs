@@ -925,6 +925,8 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.maxLakeSize = maxLakeSizes[moistIdx];
         GameSetupData.lakeElevationThreshold = lakeThresholds[moistIdx];
         GameSetupData.connectRiversToLakes = (adjustedLakeCount > 0);
+        GameSetupData.lakeMinRadiusTiles = GameSetupData.minLakeSize;
+        GameSetupData.lakeMaxRadiusTiles = GameSetupData.maxLakeSize;
         
         // Get current climate thresholds from presets
         var climateThresholds = climatePresets[selectedClimatePreset];

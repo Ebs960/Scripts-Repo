@@ -18,6 +18,8 @@ public class HexTileData
     public float renderElevation;  // 0–1, normalized for heightmap/displacement (uses full 0-1 range for land)
     public ElevationTier elevationTier = ElevationTier.Flat;
     public bool isLand;
+    public bool isLake;
+    public bool isRiver;
     public bool isPassable;
     public int movementCost;
     public bool isHill; // Preserving existing property

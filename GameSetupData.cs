@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public static class GameSetupData
 {
     public enum SystemPreset { Random, RealSolarSystem }
@@ -92,6 +94,24 @@ public static class GameSetupData
     public static int maxIslandWidthTilesLarge;
     public static int minIslandHeightTilesLarge;
     public static int maxIslandHeightTilesLarge;
+
+    // Stamp-based continent sizing (resolved for the active map size)
+    public static int continentMinWidthTiles;
+    public static int continentMaxWidthTiles;
+    public static int continentMinHeightTiles;
+    public static int continentMaxHeightTiles;
+    public static int continentMinDistanceTiles;
+    public static float continentConnectionChance = 0.1f;
+
+    // Stamp-based island sizing (radius in tiles)
+    public static int islandMinRadiusTiles;
+    public static int islandMaxRadiusTiles;
+    public static int islandMinDistanceFromContinents = 6;
+
+    // Stamp-based lake sizing (radius in tiles)
+    public static int lakeMinRadiusTiles;
+    public static int lakeMaxRadiusTiles;
+    public static int lakeMinDistanceFromCoast = 2;
     // Advanced continent tuning (exposed so menus/presets can set them)
     public static float continentDomainWarp = 0.25f;
     public static float continentMacroAmplitude = 0.35f;
@@ -208,5 +228,21 @@ public static class GameSetupData
         minRiverLength = 8;
         minRiversPerContinent = 1;
         maxRiversPerContinent = 2;
+
+        // Stamp-based defaults (Standard map size)
+        continentMinWidthTiles = minContinentWidthTilesStandard;
+        continentMaxWidthTiles = maxContinentWidthTilesStandard;
+        continentMinHeightTiles = minContinentHeightTilesStandard;
+        continentMaxHeightTiles = maxContinentHeightTilesStandard;
+        continentMinDistanceTiles = 12;
+        continentConnectionChance = 0.1f;
+
+        islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
+        islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);
+        islandMinDistanceFromContinents = 6;
+
+        lakeMinRadiusTiles = minLakeSize;
+        lakeMaxRadiusTiles = maxLakeSize;
+        lakeMinDistanceFromCoast = 2;
     }
-} 
+}
