@@ -663,13 +663,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     iMinW = minIslandWidthTilesLarge; iMaxW = maxIslandWidthTilesLarge; iMinH = minIslandHeightTilesLarge; iMaxH = maxIslandHeightTilesLarge;
                     break;
             }
-            // OVERRIDE: Always use prefab values for islands
-            iMinW = minIslandWidthTilesSmall; iMaxW = maxIslandWidthTilesSmall; iMinH = minIslandHeightTilesSmall; iMaxH = maxIslandHeightTilesSmall;
-            if (GameSetupData.mapSize == GameManager.MapSize.Standard) {
-                iMinW = minIslandWidthTilesStandard; iMaxW = maxIslandWidthTilesStandard; iMinH = minIslandHeightTilesStandard; iMaxH = maxIslandHeightTilesStandard;
-            } else if (GameSetupData.mapSize == GameManager.MapSize.Large) {
-                iMinW = minIslandWidthTilesLarge; iMaxW = maxIslandWidthTilesLarge; iMinH = minIslandHeightTilesLarge; iMaxH = maxIslandHeightTilesLarge;
-            }
+            Debug.Log($"[PrefabTuning] mapSize={GameSetupData.mapSize} contTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} islandTiles(WxH) min={iMinW}x{iMinH} max={iMaxW}x{iMaxH}");
+            Debug.Log($"[PrefabTuning] landCutoff={landCutoff} continentNoiseFreq={continentNoiseFrequency} continentMacroAmplitude={continentMacroAmplitude} continentDomainWarp={continentDomainWarp} coastlineWarpAmplitude={coastlineWarpAmplitude} coastlineFineWarp={coastlineFineWarp} voronoiContinentInfluence={voronoiContinentInfluence} voronoiElevationInfluence={voronoiElevationInfluence}");
+            Debug.Log($"[PrefabTuning] islandNoiseFrequency={islandNoiseFrequency} islandInnerRadius={islandInnerRadius} islandOuterRadius={islandOuterRadius} islandThreshold={islandThreshold}");
+            Debug.Log($"[Setup] mapSize={GameSetupData.mapSize} contCount={GameSetupData.numberOfContinents} islandCount={GameSetupData.numberOfIslands} generateIslands={GameSetupData.generateIslands} landThreshold={GameSetupData.landThreshold} seedVariance={GameSetupData.seedPositionVariance}");
             Debug.Log($"[PlanetGenerator][Diag] numberOfContinents={numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} islandTiles(WxH) min={iMinW}x{iMinH} max={iMaxW}x{iMaxH} seedPositionVariance={seedPositionVariance}");
             Debug.Log($"[PlanetGenerator][Diag] landCutoff={landCutoff} continentMacroAmplitude={continentMacroAmplitude} continentDomainWarp={continentDomainWarp} voronoiContinentInfluence={voronoiContinentInfluence}");
             Debug.Log($"[PlanetGenerator][Diag] generateIslands={generateIslands} numberOfIslands={numberOfIslands} islandNoiseFrequency={islandNoiseFrequency} islandInnerRadius={islandInnerRadius} islandOuterRadius={islandOuterRadius}");
@@ -794,6 +791,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int diag_macroAdds = 0;
         int diag_warpAdds = 0;
         int diag_voronoiAdds = 0;
+        int continentCount = continentDataList.Count;
+        int[] continentAllowedCounts = new int[continentCount];
+        int[] continentLandInMaskCounts = new int[continentCount];
+        int[] continentLandOutsideMaskCounts = new int[continentCount];
+        int continentLandCount = 0;
+        int continentLandOutsideMaskCount = 0;
 
         for (int i = 0; i < tileCount; i++) {
             isLandTile[i] = false;
@@ -830,8 +833,19 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             float maxFinalMacro = 0f;               // falloff + (finalMacro - 0.5)*amp (after warp blend)
             float maxVoronoiApplied = 0f;           // final value after voronoi modulation
             float maxLandValue = 0f;
+            int winningContinentIndex = -1;
+            bool winningInsideMask = false;
+            bool tileInAnyContinentMask = false;
 
-            foreach (ContinentData continent in continentDataList) {
+            for (int ci = 0; ci < continentDataList.Count; ci++) {
+                ContinentData continent = continentDataList[ci];
+                bool insideMask = IsInsideContinentMask(tilePos, continent, mapWidth, continentOuterRadius);
+                if (insideMask) {
+                    tileInAnyContinentMask = true;
+                    continentAllowedCounts[ci]++;
+                } else {
+                    continue;
+                }
                 // Calculate wrapped distance to seed (using warped position)
                 float dx = warpedTilePos.x - continent.position.x;
                 // Wrap X distance
@@ -852,9 +866,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 float xNorm = rotatedDx / Mathf.Max(0.001f, halfWidth);
                 float zNorm = rotatedDz / Mathf.Max(0.001f, halfHeight);
                 float normDist = Mathf.Sqrt(xNorm * xNorm + zNorm * zNorm);
-
-                // Skip if clearly outside the mask
-                if (normDist > continentOuterRadius * 1.5f) continue;
 
                 // (a) Continent falloff - guarantees solid core
                 float falloff = 1f - NoiseSampler.SmoothStep(continentInnerRadius, continentOuterRadius, normDist);
@@ -914,17 +925,19 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 // Track the highest land value from any seed (for overlapping continents)
                 if (landValue > maxLandValue) {
                     maxLandValue = landValue;
+                    winningContinentIndex = ci;
+                    winningInsideMask = insideMask;
                 }
             }
 
             // Store continuous land value
-            tileLandValues[i] = maxLandValue;
+            tileLandValues[i] = tileInAnyContinentMask ? maxLandValue : 0f;
 
             // --- Diagnostic: evaluate per-stage land decisions for contribution counts
-            bool baseIsLand = maxBaseFalloff > landCutoff;
-            bool macroIsLand = maxMacroUnwarped > landCutoff;
-            bool finalMacroIsLand = maxFinalMacro > landCutoff;
-            bool voronoiIsLand = maxVoronoiApplied > landCutoff;
+            bool baseIsLand = tileInAnyContinentMask && maxBaseFalloff > landCutoff;
+            bool macroIsLand = tileInAnyContinentMask && maxMacroUnwarped > landCutoff;
+            bool finalMacroIsLand = tileInAnyContinentMask && maxFinalMacro > landCutoff;
+            bool voronoiIsLand = tileInAnyContinentMask && maxVoronoiApplied > landCutoff;
 
             if (baseIsLand) diag_baseCount++;
             if (macroIsLand && !baseIsLand) diag_macroAdds++;
@@ -934,6 +947,17 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (voronoiIsLand) {
                 isLandTile[i] = true;
                 landTilesGenerated++;
+                continentLandCount++;
+                if (winningContinentIndex >= 0) {
+                    if (winningInsideMask) {
+                        continentLandInMaskCounts[winningContinentIndex]++;
+                    } else {
+                        continentLandOutsideMaskCounts[winningContinentIndex]++;
+                        continentLandOutsideMaskCount++;
+                    }
+                } else {
+                    continentLandOutsideMaskCount++;
+                }
             } else {
                 isLandTile[i] = false;
             }
@@ -952,10 +976,27 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         // ---------- Diagnostic: per-stage contribution summary ----------
         Debug.Log($"[PlanetGenerator][DiagContrib] baseline={diag_baseCount} macroAdded={diag_macroAdds} warpAdded={diag_warpAdds} voronoiAdded={diag_voronoiAdds} totalLandAfterAllStages={landTilesGenerated}");
+        if (enableDiagnostics) {
+            for (int ci = 0; ci < continentDataList.Count; ci++) {
+                var c = continentDataList[ci];
+                float halfW = c.widthWorld * 0.5f;
+                float halfH = c.heightWorld * 0.5f;
+                Debug.Log($"[ContinentMask] c={ci} tiles={c.widthTiles}x{c.heightTiles} halfW={halfW:F1} halfH={halfH:F1} allowed={continentAllowedCounts[ci]} landInMask={continentLandInMaskCounts[ci]} landOutMask={continentLandOutsideMaskCounts[ci]}");
+            }
+            Debug.Log($"[ContinentMaskSummary] landOutsideMask={continentLandOutsideMaskCount}");
+        }
 
         // ---------- 4.5. Generate Islands (NEW) ---------
         if (allowIslands)
             yield return StartCoroutine(GenerateIslands(isLandTile, tilePositions, tileLandValues, tileCount));
+
+        int totalLand = 0;
+        for (int i = 0; i < tileCount; i++) {
+            if (isLandTile[i]) totalLand++;
+        }
+        int islandLand = Mathf.Max(0, totalLand - continentLandCount);
+        int totalOcean = tileCount - totalLand;
+        Debug.Log($"[LandSummary] totalLand={totalLand} landFromContinents={continentLandCount} landFromIslands={islandLand} totalOcean={totalOcean}");
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceans)
@@ -1882,23 +1923,27 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             
             // Use tile-based island parameters
             GameManager.GetFlatTileResolution(GameSetupData.mapSize, out int tilesX, out int tilesZ);
-            int imaxW = maxIslandWidthTilesStandard, imaxH = maxIslandHeightTilesStandard;
+            int iminW = minIslandWidthTilesStandard, imaxW = maxIslandWidthTilesStandard;
+            int iminH = minIslandHeightTilesStandard, imaxH = maxIslandHeightTilesStandard;
             switch (GameSetupData.mapSize)
             {
                 case GameManager.MapSize.Small:
-                    imaxW = maxIslandWidthTilesSmall; imaxH = maxIslandHeightTilesSmall; break;
+                    iminW = minIslandWidthTilesSmall; imaxW = maxIslandWidthTilesSmall;
+                    iminH = minIslandHeightTilesSmall; imaxH = maxIslandHeightTilesSmall;
+                    break;
                 case GameManager.MapSize.Large:
-                    imaxW = maxIslandWidthTilesLarge; imaxH = maxIslandHeightTilesLarge; break;
+                    iminW = minIslandWidthTilesLarge; imaxW = maxIslandWidthTilesLarge;
+                    iminH = minIslandHeightTilesLarge; imaxH = maxIslandHeightTilesLarge;
+                    break;
             }
             // Clamp island tile maxima to tile resolution
-            int clampedImaxW = Mathf.Clamp(imaxW, 1, tilesX);
-            int clampedImaxH = Mathf.Clamp(imaxH, 1, tilesZ);
-            if (enableDiagnostics && (clampedImaxW != imaxW || clampedImaxH != imaxH)) {
-                Debug.Log($"[IslandSize] Clamped island max tiles from W={imaxW},H={imaxH} to W={clampedImaxW},H={clampedImaxH} based on tilesX={tilesX},tilesZ={tilesZ}");
+            int clampedIminW = Mathf.Clamp(iminW, 1, tilesX);
+            int clampedImaxW = Mathf.Clamp(imaxW, clampedIminW, tilesX);
+            int clampedIminH = Mathf.Clamp(iminH, 1, tilesZ);
+            int clampedImaxH = Mathf.Clamp(imaxH, clampedIminH, tilesZ);
+            if (enableDiagnostics && (clampedImaxW != imaxW || clampedImaxH != imaxH || clampedIminW != iminW || clampedIminH != iminH)) {
+                Debug.Log($"[IslandSize] Clamped island tiles from W={iminW}-{imaxW},H={iminH}-{imaxH} to W={clampedIminW}-{clampedImaxW},H={clampedIminH}-{clampedImaxH} based on tilesX={tilesX},tilesZ={tilesZ}");
             }
-            float islandWidthWorld = (clampedImaxW / (float)Mathf.Max(1, tilesX)) * mapWidth;
-            float islandHeightWorld = (clampedImaxH / (float)Mathf.Max(1, tilesZ)) * mapHeight;
-            if (enableDiagnostics) Debug.Log($"[IslandSize] islandWidthWorld={islandWidthWorld:F1} islandHeightWorld={islandHeightWorld:F1} (tiles W={clampedImaxW},H={clampedImaxH})");
             float islandMacroFreq = 1f / (mapWidth * 0.6f) * islandNoiseFrequency; // Higher freq than continents
             float islandCoastFreq = islandMacroFreq * 3f;
             
@@ -1915,7 +1960,32 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 islandSeeds = GenerateIslandSeeds(numberOfIslands, seed ^ 0xF15);
             }
             
+            if (numberOfIslands > 0 && islandSeeds.Count == 0) {
+                // Fallback: guarantee at least one seed unless explicitly disabled
+                islandSeeds.Add(new Vector2(0f, 0f));
+                Debug.LogWarning("[PlanetGenerator] Island seed placement failed; falling back to a central island seed.");
+            }
             Debug.Log($"[PlanetGenerator] Generating {islandSeeds.Count} island seeds (chains={generateIslandChains})");
+
+            // Assign per-island sizes based on prefab tile ranges for active map size
+            var islandDataList = new List<IslandData>(islandSeeds.Count);
+            System.Random islandSizeRand = new System.Random(seed ^ 0x1A51);
+            foreach (var seedPos in islandSeeds) {
+                int chosenWidthTiles = islandSizeRand.Next(clampedIminW, clampedImaxW + 1);
+                int chosenHeightTiles = islandSizeRand.Next(clampedIminH, clampedImaxH + 1);
+                float widthWorld = (chosenWidthTiles / (float)Mathf.Max(1, tilesX)) * mapWidth;
+                float heightWorld = (chosenHeightTiles / (float)Mathf.Max(1, tilesZ)) * mapHeight;
+                islandDataList.Add(new IslandData {
+                    position = seedPos,
+                    widthWorld = widthWorld,
+                    heightWorld = heightWorld,
+                    widthTiles = chosenWidthTiles,
+                    heightTiles = chosenHeightTiles
+                });
+                if (enableDiagnostics) {
+                    Debug.Log($"[IslandSize] seed={seedPos} tiles={chosenWidthTiles}x{chosenHeightTiles} widthWorld={widthWorld:F1} heightWorld={heightWorld:F1}");
+                }
+            }
             
             if (loadingPanelController != null)
             {
@@ -1931,24 +2001,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 
                 Vector2 tilePos = tilePositions[i];
                 float maxIslandValue = 0f;
+                bool tileInAnyIslandMask = false;
                 
-                foreach (Vector2 seedPos in islandSeeds) {
+                foreach (var island in islandDataList) {
                     // Calculate wrapped distance to island seed
-                    float dx = tilePos.x - seedPos.x;
-                    if (Mathf.Abs(dx) > mapWidth * 0.5f) {
-                        dx = dx > 0 ? dx - mapWidth : dx + mapWidth;
+                    float normDist = GetNormalizedIslandDistance(tilePos, island, mapWidth);
+                    bool insideMask = normDist <= islandOuterRadius;
+                    if (!insideMask) {
+                        continue;
                     }
-                    float dz = tilePos.y - seedPos.y;
-                    
-                    // Normalized ellipse distance
-                    float halfWidth = islandWidthWorld * 0.5f;
-                    float halfHeight = islandHeightWorld * 0.5f;
-                    float xNorm = dx / Mathf.Max(0.001f, halfWidth);
-                    float zNorm = dz / Mathf.Max(0.001f, halfHeight);
-                    float normDist = Mathf.Sqrt(xNorm * xNorm + zNorm * zNorm);
-                    
-                    // Skip if clearly outside the island mask
-                    if (normDist > islandOuterRadius * 1.5f) continue;
+                    tileInAnyIslandMask = true;
                     
                     // Island falloff - same approach as continents but with island-specific radii
                     float falloff = 1f - NoiseSampler.SmoothStep(islandInnerRadius, islandOuterRadius, normDist);
@@ -1969,7 +2031,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
                 
                 // Decision rule: becomes island land if value exceeds island threshold
-                if (maxIslandValue > islandThreshold) {
+                if (tileInAnyIslandMask && maxIslandValue > islandThreshold) {
                     isLandTile[i] = true;
                     tileLandValues[i] = maxIslandValue; // Store for potential use
                     localIslandTilesGenerated++;
@@ -2327,8 +2389,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         public Vector2 position;       // Seed position
         public float widthWorld;       // Width in world units (randomized)
         public float heightWorld;      // Height in world units (randomized)
+        public int widthTiles;         // Width in tiles (randomized)
+        public int heightTiles;        // Height in tiles (randomized)
         public float rotation;         // Rotation angle in radians
         public float sizeScale;        // Overall size scale (0.4 to 1.0)
+    }
+
+    private struct IslandData {
+        public Vector2 position;
+        public float widthWorld;
+        public float heightWorld;
+        public int widthTiles;
+        public int heightTiles;
     }
 
     // --- Helper methods moved to class scope ---
@@ -2404,6 +2476,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 position = new Vector2(basePos.x + offsetX, basePos.y + offsetZ),
                 widthWorld = widthWorld,
                 heightWorld = heightWorld,
+                widthTiles = chosenWidthTiles,
+                heightTiles = chosenHeightTiles,
                 rotation = rotation,
                 sizeScale = 1f
             };
@@ -2461,7 +2535,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Log continent sizes for debugging
         for (int i = 0; i < continents.Count; i++) {
             var c = continents[i];
-            Debug.Log($"[PlanetGenerator] Continent {i}: pos={c.position}, size={c.widthWorld:F1}x{c.heightWorld:F1}, rot={c.rotation * Mathf.Rad2Deg:F0}°, scale={c.sizeScale:F2}");
+            Debug.Log($"[PlanetGenerator] Continent {i}: pos={c.position}, tiles={c.widthTiles}x{c.heightTiles}, size={c.widthWorld:F1}x{c.heightWorld:F1}, rot={c.rotation * Mathf.Rad2Deg:F0}°, scale={c.sizeScale:F2}");
         }
         
         return continents;
@@ -2477,6 +2551,46 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             seeds.Add(c.position);
         }
         return seeds;
+    }
+
+    private float GetNormalizedContinentDistance(Vector2 tilePos, ContinentData continent, float mapWidth) {
+        float dx = tilePos.x - continent.position.x;
+        if (Mathf.Abs(dx) > mapWidth * 0.5f) {
+            dx = dx > 0 ? dx - mapWidth : dx + mapWidth;
+        }
+        float dz = tilePos.y - continent.position.y;
+
+        float cosR = Mathf.Cos(continent.rotation);
+        float sinR = Mathf.Sin(continent.rotation);
+        float rotatedDx = dx * cosR - dz * sinR;
+        float rotatedDz = dx * sinR + dz * cosR;
+
+        float halfWidth = continent.widthWorld * 0.5f;
+        float halfHeight = continent.heightWorld * 0.5f;
+        float xNorm = rotatedDx / Mathf.Max(0.001f, halfWidth);
+        float zNorm = rotatedDz / Mathf.Max(0.001f, halfHeight);
+        return Mathf.Sqrt(xNorm * xNorm + zNorm * zNorm);
+    }
+
+    private bool IsInsideContinentMask(Vector2 tilePos, ContinentData continent, float mapWidth, float maskRadius) {
+        return GetNormalizedContinentDistance(tilePos, continent, mapWidth) <= maskRadius;
+    }
+
+    private float GetNormalizedIslandDistance(Vector2 tilePos, IslandData island, float mapWidth) {
+        float dx = tilePos.x - island.position.x;
+        if (Mathf.Abs(dx) > mapWidth * 0.5f) {
+            dx = dx > 0 ? dx - mapWidth : dx + mapWidth;
+        }
+        float dz = tilePos.y - island.position.y;
+        float halfWidth = island.widthWorld * 0.5f;
+        float halfHeight = island.heightWorld * 0.5f;
+        float xNorm = dx / Mathf.Max(0.001f, halfWidth);
+        float zNorm = dz / Mathf.Max(0.001f, halfHeight);
+        return Mathf.Sqrt(xNorm * xNorm + zNorm * zNorm);
+    }
+
+    private bool IsInsideIslandMask(Vector2 tilePos, IslandData island, float mapWidth, float maskRadius) {
+        return GetNormalizedIslandDistance(tilePos, island, mapWidth) <= maskRadius;
     }
 
     private bool IsTileInMask(Vector2 tilePos, Vector2 seedPos, float maxWidth, float maxHeight, float mapWidth) {
