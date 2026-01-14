@@ -64,13 +64,10 @@ public class ClimateManager : MonoBehaviour
 
         BuildSeasonalTextureLookup();
         
-        // Initialize climate data for all planets when in multi-planet mode
+        // Initialize climate data for all planets (multi-planet is always used)
         if (isGlobalClimateManager)
         {
-            if (GameManager.Instance?.enableMultiPlanetSystem == true)
-            {
-                InitializeMultiPlanetClimate();
-            }
+            InitializeMultiPlanetClimate();
         }
     }
 
@@ -125,16 +122,8 @@ public class ClimateManager : MonoBehaviour
     {
         if (turnsPerSeason <= 0) return;
 
-        if (GameManager.Instance?.enableMultiPlanetSystem == true)
-        {
-            // Check season changes for all planets
-            CheckMultiPlanetSeasonChanges();
-        }
-        else
-        {
-            // Single planet mode
-            CheckSinglePlanetSeasonChange();
-        }
+        // Always evaluate multi-planet season changes (single-planet is deprecated)
+        CheckMultiPlanetSeasonChanges();
     }
 
     private void CheckSinglePlanetSeasonChange()
@@ -302,14 +291,7 @@ OnSeasonChanged?.Invoke(season);
     /// </summary>
     public Season GetSeasonForPlanet(int planetIndex = 0)
     {
-        if (GameManager.Instance?.enableMultiPlanetSystem == true)
-        {
-            return planetSeasons.TryGetValue(planetIndex, out var season) ? season : Season.Spring;
-        }
-        else
-        {
-            return currentSeason;
-        }
+        return planetSeasons.TryGetValue(planetIndex, out var season) ? season : Season.Spring;
     }
 
     private void ApplyWinterMovementPenalty(int planetIndex = 0)
@@ -355,14 +337,9 @@ OnSeasonChanged?.Invoke(season);
     // Helper method to check if a unit is on a specific planet
     private bool IsUnitOnPlanet(object unit, int planetIndex)
     {
-        // For single planet mode, always return true
-        if (!GameManager.Instance.enableMultiPlanetSystem || planetIndex == 0)
-        {
-            return true;
-        }
-        
-        // TODO: Implement actual planet checking logic when units have planet tracking
-        // For now, assume all units are on the current planet
+        if (GameManager.Instance == null) return true;
+        // For now, assume units without explicit planet tracking are on the currently active planet
+        if (planetIndex == 0) return true;
         return GameManager.Instance.currentPlanetIndex == planetIndex;
     }
 
@@ -388,17 +365,11 @@ OnSeasonChanged?.Invoke(season);
     {
         // Global ClimateManager doesn't need a specific planet reference
         // It manages climate for all planets in the system
-        if (GameManager.Instance?.enableMultiPlanetSystem == true)
+        // Attempt to cache a reference to the current planet generator
+        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planet == null)
         {
-}
-        else
-        {
-            // Single planet mode - use current planet generator
-            planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-            if (planet == null)
-            {
-                Debug.LogError("[ClimateManager] Could not find PlanetGenerator in scene!");
-            }
+            Debug.LogWarning("[ClimateManager] Could not find PlanetGenerator (current). Some planet-specific ops may be deferred.");
         }
     }
 

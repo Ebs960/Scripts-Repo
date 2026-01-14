@@ -71,8 +71,9 @@ public class GameManager : MonoBehaviour
     public DiplomacyManager diplomacyManager;
 
     [Header("Multi-Planet System")]
-    [Tooltip("Enable multi-planet generation and management")]
-    public bool enableMultiPlanetSystem = false;
+    [Tooltip("Multi-planet generation is always enabled. This legacy flag is retained for save compatibility.")]
+    [HideInInspector]
+    public bool enableMultiPlanetSystem = true;
     [Tooltip("Maximum number of planets to generate")]
     public int maxPlanets = 8;
     [Tooltip("Generate real solar system instead of procedural planets")]
@@ -102,10 +103,8 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public PlanetGenerator GetCurrentPlanetGenerator()
     {
-        if (enableMultiPlanetSystem)
-        {
-            return planetGenerators.TryGetValue(currentPlanetIndex, out var generator) ? generator : null;
-        }
+        if (planetGenerators.TryGetValue(currentPlanetIndex, out var generator))
+            return generator;
         return planetGenerator;
     }
     
@@ -122,12 +121,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void SetCurrentPlanet(int planetIndex)
     {
-        if (!enableMultiPlanetSystem)
-        {
-            Debug.LogWarning("[GameManager] SetCurrentPlanet called but multi-planet system is disabled");
-            return;
-        }
-        
+        // Multi-planet is always enabled in runtime; directly set current planet.
         if (!planetGenerators.ContainsKey(planetIndex))
         {
             Debug.LogWarning($"[GameManager] Planet {planetIndex} does not exist");
@@ -796,46 +790,9 @@ currentPlanetIndex = planetIndex;
             // Ensure land cutoff and other newer generator settings honor GameSetupData / presets
             planetGenerator.landCutoff = GameSetupData.landThreshold; // generator uses landCutoff for mask decision
 
-            // Map land preset -> generator tuning (reduce voronoi/warp for Pangaea)
-            int landPresetIdx = Mathf.Clamp(GameSetupData.selectedLandPreset, 0, 4);
-            float[] voronoiByPreset = { 0.25f, 0.20f, 0.15f, 0.12f, 0.0f };
-            float[] domainWarpByPreset = { 0.35f, 0.30f, 0.25f, 0.20f, 0.06f };
-            float[] macroAmpByPreset = { 0.40f, 0.35f, 0.30f, 0.28f, 0.18f };
-            float[] coastWarpByPreset = { 0.20f, 0.16f, 0.12f, 0.10f, 0.04f };
-            float[] coastFineByPreset = { 0.10f, 0.08f, 0.06f, 0.04f, 0.02f };
-
-            planetGenerator.voronoiContinentInfluence = voronoiByPreset[landPresetIdx];
-            planetGenerator.continentDomainWarp = domainWarpByPreset[landPresetIdx];
-            planetGenerator.continentMacroAmplitude = macroAmpByPreset[landPresetIdx];
-            planetGenerator.coastlineWarpAmplitude = coastWarpByPreset[landPresetIdx];
-            planetGenerator.coastlineFineWarp = coastFineByPreset[landPresetIdx];
-
-            // Climate preset -> latitude temperature tuning (stronger contrast for colder presets)
-            int climateIdx = Mathf.Clamp(GameSetupData.selectedClimatePreset, 0, 5);
-            float[] latInfluenceByClimate = { 0.95f, 0.90f, 0.85f, 0.80f, 0.75f, 0.70f };
-            float[] latExpByClimate = { 1.25f, 1.20f, 1.15f, 1.10f, 1.05f, 1.00f };
-            planetGenerator.latitudeInfluence = latInfluenceByClimate[climateIdx];
-            planetGenerator.latitudeExponent = latExpByClimate[climateIdx];
-
-            Debug.Log($"[GameManager][Diag] Generator tuning applied from presets: voronoi={planetGenerator.voronoiContinentInfluence}, domainWarp={planetGenerator.continentDomainWarp}, macroAmp={planetGenerator.continentMacroAmplitude}, coastWarp={planetGenerator.coastlineWarpAmplitude}, landCutoff={planetGenerator.landCutoff}");
-
-            // --- Apply any explicit GameSetupData overrides for generator tuning ---
-            planetGenerator.continentDomainWarp = GameSetupData.continentDomainWarp;
-            planetGenerator.continentMacroAmplitude = GameSetupData.continentMacroAmplitude;
-            planetGenerator.coastlineWarpAmplitude = GameSetupData.coastlineWarpAmplitude;
-            planetGenerator.coastlineFineWarp = GameSetupData.coastlineFineWarp;
-            planetGenerator.voronoiContinentInfluence = GameSetupData.voronoiContinentInfluence;
-            planetGenerator.voronoiElevationInfluence = GameSetupData.voronoiElevationInfluence;
-
-            // Island tuning
-            planetGenerator.islandNoiseFrequency = GameSetupData.islandNoiseFrequency;
-            planetGenerator.islandInnerRadius = GameSetupData.islandInnerRadius;
-            planetGenerator.islandOuterRadius = GameSetupData.islandOuterRadius;
-
-            // River tuning
-            planetGenerator.minRiverLength = GameSetupData.minRiverLength;
-            planetGenerator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
-            planetGenerator.maxRiversPerContinent = GameSetupData.maxRiversPerContinent;
+            // Preserve tuning from the PlanetGenerator prefab. Do NOT overwrite warp/macro/coast/voronoi
+            // or island/rivers tuning here so the generator's inspector remains the source of truth.
+            Debug.Log("[GameManager][Diag] Preserving PlanetGenerator prefab tuning; preset tuning overrides skipped.");
 
             // Ensure island/rivers/lakes flags and counts come from GameSetupData
             planetGenerator.generateIslands = GameSetupData.generateIslands;
@@ -911,16 +868,8 @@ currentPlanetIndex = planetIndex;
 
         
         
-        if (enableMultiPlanetSystem)
-        {
-            
-            yield return StartCoroutine(StartMultiPlanetGame());
-        }
-        else
-        {
-            
-            yield return StartCoroutine(StartSinglePlanetGame());
-        }
+        // Multi-planet is always enabled; start multi-planet flow.
+        yield return StartCoroutine(StartMultiPlanetGame());
 
         yield return null;
     }
@@ -1027,28 +976,7 @@ currentPlanetIndex = planetIndex;
         var minimapUI = FindAnyObjectByType<MinimapUI>();
         
 
-        // Earth-only water mesh generation (single-planet mode)
-        if (!enableMultiPlanetSystem)
-        {
-            var earthGen = planetGenerator; // In single-planet mode this is Earth
-            if (earthGen != null && earthGen.HasGeneratedSurface)
-            {
-                var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
-                if (waterGen != null)
-                {
-                    waterGen.Generate(earthGen);
-                    
-                }
-                else
-                {
-                    
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] Earth surface not ready for water mesh generation (single-planet mode)");
-            }
-        }
+        // Single-planet water mesh generation removed; multi-planet flow handles water generation.
 
         // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
         // Uses HexMapChunkManager (chunk-based with seamless wrap)
@@ -1254,27 +1182,19 @@ currentPlanetIndex = planetIndex;
         // Try multiple ways to find MinimapUI
         var minimapUI = FindAnyObjectByType<MinimapUI>();
 
-        // Earth-only water mesh generation (multi-planet mode)
-        if (enableMultiPlanetSystem)
+        // Earth-only water mesh generation (multi-planet)
+        var earthGen = GetPlanetGenerator(0);
+        if (earthGen != null && earthGen.HasGeneratedSurface)
         {
-            var earthGen = GetPlanetGenerator(0);
-            if (earthGen != null && earthGen.HasGeneratedSurface)
+            var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
+            if (waterGen != null)
             {
-                var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
-                if (waterGen != null)
-                {
-                    waterGen.Generate(earthGen);
-                    
-                }
-                else
-                {
-                    
-                }
+                waterGen.Generate(earthGen);
             }
-            else
-            {
-                Debug.LogWarning("[GameManager] Earth surface not ready for water mesh generation (multi-planet mode)");
-            }
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Earth surface not ready for water mesh generation (multi-planet mode)");
         }
         
         
@@ -1891,61 +1811,23 @@ currentPlanetIndex = planetIndex;
     // Notify grid built
     OnPlanetGridBuilt?.Invoke(planetIndex);
 
-        // Always apply GameSetupData settings to every planet generator
+        // Only apply high-level GameSetupData overrides here. The `PlanetGenerator` prefab
+        // should remain authoritative for all noise/tuning parameters (domain warp, macro,
+        // coastline warp, voronoi, island noise, and tile-range presets).
         generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
+        // Biome logic (allowed to be influenced by presets)
         generator.moistureBias = GameSetupData.moistureBias;
         generator.temperatureBias = GameSetupData.temperatureBias;
+        // Land cutoff (preset-driven) and counts
         generator.landThreshold = GameSetupData.landThreshold;
         generator.landCutoff = GameSetupData.landThreshold;
         generator.numberOfContinents = GameSetupData.numberOfContinents;
         generator.numberOfIslands = GameSetupData.numberOfIslands;
         generator.generateIslands = GameSetupData.generateIslands;
 
-        generator.continentDomainWarp = GameSetupData.continentDomainWarp;
-        generator.continentMacroAmplitude = GameSetupData.continentMacroAmplitude;
-        generator.coastlineWarpAmplitude = GameSetupData.coastlineWarpAmplitude;
-        generator.coastlineFineWarp = GameSetupData.coastlineFineWarp;
-        generator.voronoiContinentInfluence = GameSetupData.voronoiContinentInfluence;
-        generator.voronoiElevationInfluence = GameSetupData.voronoiElevationInfluence;
+        Debug.Log($"[GameManager][Diag] Multi-planet apply: continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, landCutoff={generator.landCutoff} (preserving noise tuning on prefab)");
 
-        // Island tuning
-        generator.islandNoiseFrequency = GameSetupData.islandNoiseFrequency;
-        generator.islandInnerRadius = GameSetupData.islandInnerRadius;
-        generator.islandOuterRadius = GameSetupData.islandOuterRadius;
-
-        // Tile-based continent sizing: copy ranges
-        generator.minContinentWidthTilesSmall = GameSetupData.minContinentWidthTilesSmall;
-        generator.maxContinentWidthTilesSmall = GameSetupData.maxContinentWidthTilesSmall;
-        generator.minContinentHeightTilesSmall = GameSetupData.minContinentHeightTilesSmall;
-        generator.maxContinentHeightTilesSmall = GameSetupData.maxContinentHeightTilesSmall;
-
-        generator.minContinentWidthTilesStandard = GameSetupData.minContinentWidthTilesStandard;
-        generator.maxContinentWidthTilesStandard = GameSetupData.maxContinentWidthTilesStandard;
-        generator.minContinentHeightTilesStandard = GameSetupData.minContinentHeightTilesStandard;
-        generator.maxContinentHeightTilesStandard = GameSetupData.maxContinentHeightTilesStandard;
-
-        generator.minContinentWidthTilesLarge = GameSetupData.minContinentWidthTilesLarge;
-        generator.maxContinentWidthTilesLarge = GameSetupData.maxContinentWidthTilesLarge;
-        generator.minContinentHeightTilesLarge = GameSetupData.minContinentHeightTilesLarge;
-        generator.maxContinentHeightTilesLarge = GameSetupData.maxContinentHeightTilesLarge;
-
-        // Island tile ranges (copy per-map-size values)
-        generator.minIslandWidthTilesSmall = GameSetupData.minIslandWidthTilesSmall;
-        generator.maxIslandWidthTilesSmall = GameSetupData.maxIslandWidthTilesSmall;
-        generator.minIslandHeightTilesSmall = GameSetupData.minIslandHeightTilesSmall;
-        generator.maxIslandHeightTilesSmall = GameSetupData.maxIslandHeightTilesSmall;
-
-        generator.minIslandWidthTilesStandard = GameSetupData.minIslandWidthTilesStandard;
-        generator.maxIslandWidthTilesStandard = GameSetupData.maxIslandWidthTilesStandard;
-        generator.minIslandHeightTilesStandard = GameSetupData.minIslandHeightTilesStandard;
-        generator.maxIslandHeightTilesStandard = GameSetupData.maxIslandHeightTilesStandard;
-
-        generator.minIslandWidthTilesLarge = GameSetupData.minIslandWidthTilesLarge;
-        generator.maxIslandWidthTilesLarge = GameSetupData.maxIslandWidthTilesLarge;
-        generator.minIslandHeightTilesLarge = GameSetupData.minIslandHeightTilesLarge;
-        generator.maxIslandHeightTilesLarge = GameSetupData.maxIslandHeightTilesLarge;
-
-        // Rivers & lakes
+        // Rivers & lakes (allowed preset-driven settings)
         generator.enableRivers = GameSetupData.enableRivers;
         generator.minRiverLength = GameSetupData.minRiverLength;
         generator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
@@ -2008,11 +1890,7 @@ currentPlanetIndex = planetIndex;
     /// </summary>
     public IEnumerator SwitchToMultiPlanet(int planetIndex)
     {
-        if (!enableMultiPlanetSystem)
-        {
-            Debug.LogWarning("[GameManager] SwitchToMultiPlanet called but multi-planet system is disabled");
-            yield break;
-        }
+        // Multi-planet is always enabled; legacy guard removed.
 
         if (!planetGenerators.ContainsKey(planetIndex))
         {
@@ -2152,11 +2030,7 @@ currentPlanetIndex = planetIndex;
             Debug.LogWarning("[GameManager] Luna not found in planetData. Ensure the multi-planet system includes Luna.");
             return;
         }
-        if (!enableMultiPlanetSystem)
-                {
-            Debug.LogWarning("[GameManager] GoToEarthMoon requires multi-planet mode (moons are separate bodies).");
-            return;
-        }
+        // Multi-planet always enabled; no runtime guard required.
         SetCurrentPlanet(lunaIndex);
     }
 

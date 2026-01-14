@@ -160,11 +160,11 @@ public class MainMenuManager : MonoBehaviour
     
     // Land mass preset values - revised for proper continent/island distinction
     private readonly LandPresetData[] landPresets = new[] {
-        new LandPresetData { name = "Archipelago", landThreshold = 0.50f, continents = 0, islands = 25, description = "Many small scattered islands", minWidth = 10f, maxWidth = 50f, minHeight = 20f, maxHeight = 30f },
-        new LandPresetData { name = "Islands", landThreshold = 0.40f, continents = 2, islands = 15, description = "A few large islands with smaller ones", minWidth = 25f, maxWidth = 70f, minHeight = 25f, maxHeight = 50f },
-        new LandPresetData { name = "Standard", landThreshold = 0.35f, continents = 5, islands = 9, description = "Balanced continents and islands", minWidth = 100f, maxWidth = 180f, minHeight = 60f, maxHeight = 150f },
-        new LandPresetData { name = "Large Continents", landThreshold = 0.30f, continents = 6, islands = 5, description = "Multiple large continents", minWidth = 180f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
-        new LandPresetData { name = "Pangaea", landThreshold = 0.20f, continents = 1, islands = 5, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
+        new LandPresetData { name = "Archipelago", landThreshold = 0.57f, continents = 0, islands = 25, description = "Many small scattered islands", minWidth = 10f, maxWidth = 50f, minHeight = 20f, maxHeight = 30f },
+        new LandPresetData { name = "Islands", landThreshold = 0.5f, continents = 2, islands = 15, description = "A few large islands with smaller ones", minWidth = 25f, maxWidth = 70f, minHeight = 25f, maxHeight = 50f },
+        new LandPresetData { name = "Standard", landThreshold = 0.45f, continents = 4, islands = 9, description = "Balanced continents and islands", minWidth = 100f, maxWidth = 180f, minHeight = 60f, maxHeight = 150f },
+        new LandPresetData { name = "Large Continents", landThreshold = 0.4f, continents = 6, islands = 5, description = "Multiple large continents", minWidth = 180f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
+        new LandPresetData { name = "Pangaea", landThreshold = 0.25f, continents = 1, islands = 5, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
         // Pangaea should produce a single massive landmass - ensure continents=1, islands=0
     };
 

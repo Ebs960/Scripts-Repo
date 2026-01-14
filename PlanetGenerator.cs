@@ -540,36 +540,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     {
         
         
-        // Check if we're in multi-planet mode
-        bool isMultiPlanet = GameManager.Instance?.enableMultiPlanetSystem == true;
-        
-        if (!isMultiPlanet)
+        // Multi-planet-first: set the static Instance if unset, but do not destroy duplicates.
+        if (Instance == null)
         {
-            // Single planet mode: Use traditional singleton pattern
-            if (Instance == null)
-            {
-                Instance = this;
-                
-            }
-            else if (Instance != this)
-            {
-                Debug.LogWarning($"[PlanetGenerator] Duplicate PlanetGenerator in single planet mode! Destroying {gameObject.name}");
-                Destroy(gameObject);
-                return;
-            }
-        }
-        else
-        {
-            // Multi-planet mode: Only set instance if it's null, but don't destroy others
-            if (Instance == null)
-            {
-                Instance = this;
-                
-            }
-            else
-            {
-                
-            }
+            Instance = this;
         }
         
 
@@ -603,10 +577,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         ClimateManager mgr = null;
         if (GameManager.Instance != null)
         {
-            if (GameManager.Instance.enableMultiPlanetSystem)
-                mgr = GameManager.Instance.GetClimateManager(planetIndex);
-            else
-                mgr = GameManager.Instance.GetClimateManager(0);
+            mgr = GameManager.Instance.GetClimateManager(planetIndex);
         }
         else
         {
@@ -624,10 +595,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         ClimateManager mgr = null;
         if (GameManager.Instance != null)
         {
-            if (GameManager.Instance.enableMultiPlanetSystem)
-                mgr = GameManager.Instance.GetClimateManager(planetIndex);
-            else
-                mgr = GameManager.Instance.GetClimateManager(0);
+            mgr = GameManager.Instance.GetClimateManager(planetIndex);
         }
         else
         {
@@ -821,6 +789,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Pre-calculate Voronoi influence field (for continent clustering)
         float voronoiFreq = 1f / (mapWidth * 0.25f);  // Low frequency for large cells
         
+        // Diagnostic counters for contribution stages
+        int diag_baseCount = 0;
+        int diag_macroAdds = 0;
+        int diag_warpAdds = 0;
+        int diag_voronoiAdds = 0;
+
         for (int i = 0; i < tileCount; i++) {
             isLandTile[i] = false;
             tileLandValues[i] = 0f;
@@ -850,6 +824,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 voronoiValue = noise.GetVoronoiPeriodic(tilePos, mapWidth, mapHeight, voronoiFreq);
             }
 
+            // Track max land values for each stage so we can compute per-stage contribution diagnostics
+            float maxBaseFalloff = 0f;              // falloff only
+            float maxMacroUnwarped = 0f;            // falloff + (macroNoise - 0.5)*amp (unwarped sample)
+            float maxFinalMacro = 0f;               // falloff + (finalMacro - 0.5)*amp (after warp blend)
+            float maxVoronoiApplied = 0f;           // final value after voronoi modulation
             float maxLandValue = 0f;
 
             foreach (ContinentData continent in continentDataList) {
@@ -904,6 +883,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         coastlineDetailFreq, coastlineWarpAmplitude * edgeFactor);
                 }
 
+
                 // Apply warp to sample position for the macro noise
                 Vector2 warpedPos = tilePos + warp * halfWidth;
                 float warpedMacro = noise.GetContinentPeriodic(warpedPos, mapWidth, mapHeight, continentMacroFreq);
@@ -912,14 +892,24 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 float finalMacro = Mathf.Lerp(macroNoise, warpedMacro, edgeFactor * 0.7f);
 
                 // Combine: falloff + noise contribution
+                float landValue_unwarpedMacro = falloff + (macroNoise - 0.5f) * continentMacroAmplitude;
+                float landValue_warpedMacro = falloff + (warpedMacro - 0.5f) * continentMacroAmplitude;
                 float landValue = falloff + (finalMacro - 0.5f) * continentMacroAmplitude;
 
                 // Apply Voronoi modulation (creates natural gaps and clustering)
+                float landValue_beforeVoronoi = landValue;
                 if (voronoiContinentInfluence > 0.01f) {
                     // Voronoi creates natural breaks between continents
                     float voronoiMod = Mathf.Lerp(1f, 0.5f + voronoiValue * 0.5f, voronoiContinentInfluence);
-                    landValue *= voronoiMod;
+                    landValue = landValue * voronoiMod;
                 }
+
+                // Track stage maxes (we want the maximum influence any continent seed gives for each stage)
+                if (falloff > maxBaseFalloff) maxBaseFalloff = falloff;
+                if (landValue_unwarpedMacro > maxMacroUnwarped) maxMacroUnwarped = landValue_unwarpedMacro;
+                if (landValue_warpedMacro > maxFinalMacro) maxFinalMacro = landValue_warpedMacro;
+                if (landValue_beforeVoronoi > maxFinalMacro) maxFinalMacro = landValue_beforeVoronoi; // ensure blended value considered
+                if (landValue > maxVoronoiApplied) maxVoronoiApplied = landValue;
 
                 // Track the highest land value from any seed (for overlapping continents)
                 if (landValue > maxLandValue) {
@@ -927,12 +917,25 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
             }
 
+            // Store continuous land value
             tileLandValues[i] = maxLandValue;
 
-            // Decision rule: land if value > cutoff
-            if (maxLandValue > landCutoff) {
+            // --- Diagnostic: evaluate per-stage land decisions for contribution counts
+            bool baseIsLand = maxBaseFalloff > landCutoff;
+            bool macroIsLand = maxMacroUnwarped > landCutoff;
+            bool finalMacroIsLand = maxFinalMacro > landCutoff;
+            bool voronoiIsLand = maxVoronoiApplied > landCutoff;
+
+            if (baseIsLand) diag_baseCount++;
+            if (macroIsLand && !baseIsLand) diag_macroAdds++;
+            if (finalMacroIsLand && !macroIsLand) diag_warpAdds++;
+            if (voronoiIsLand && !finalMacroIsLand) diag_voronoiAdds++;
+
+            if (voronoiIsLand) {
                 isLandTile[i] = true;
                 landTilesGenerated++;
+            } else {
+                isLandTile[i] = false;
             }
 
             // BATCH YIELD
@@ -946,6 +949,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 yield return null;
             }
         }
+
+        // ---------- Diagnostic: per-stage contribution summary ----------
+        Debug.Log($"[PlanetGenerator][DiagContrib] baseline={diag_baseCount} macroAdded={diag_macroAdds} warpAdded={diag_warpAdds} voronoiAdded={diag_voronoiAdds} totalLandAfterAllStages={landTilesGenerated}");
 
         // ---------- 4.5. Generate Islands (NEW) ---------
         if (allowIslands)

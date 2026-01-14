@@ -164,36 +164,31 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        // MULTI-PLANET FIX: Spawn resources on all planets, not just current one
-        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        // Spawn resources on all known planets (multi-planet is the default)
+        if (GameManager.Instance != null)
         {
-            // Multi-planet mode: iterate through all planets
             var planetData = GameManager.Instance.GetPlanetData();
             foreach (var kvp in planetData)
             {
                 int planetIndex = kvp.Key;
                 var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
-                
-                if (planetGen == null || planetGen.Grid == null) 
+                if (planetGen == null || planetGen.Grid == null)
                 {
                     Debug.LogWarning($"[ResourceManager] Planet {planetIndex} generator or grid is null, skipping");
                     continue;
                 }
-                
                 SpawnResourcesOnPlanet(planetGen, planetIndex);
             }
+            return;
         }
-        else
+
+        // Fallback: single/legacy planet
+        if (grid == null || planetGenerator == null)
         {
-            // Single planet mode: use current planet
-            if (grid == null || planetGenerator == null)
-            {
-                Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
-                return;
-            }
-            
-            SpawnResourcesOnPlanet(planetGenerator, 0);
+            Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
+            return;
         }
+        SpawnResourcesOnPlanet(planetGenerator, 0);
         
     }
     

@@ -456,9 +456,9 @@ InitiateBattleWithArmy(army, civArmy);
             return;
         }
         
-        if (GameManager.Instance == null || !GameManager.Instance.enableMultiPlanetSystem)
+        if (GameManager.Instance == null)
         {
-            Debug.LogError("[DemonManager] GameManager or multi-planet system not available");
+            Debug.LogError("[DemonManager] GameManager not available");
             return;
         }
         

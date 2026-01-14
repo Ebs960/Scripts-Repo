@@ -103,7 +103,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         string key = $"P{planetIndex}_M0_W{width}_H{height}";
         if (_bodyIndexLUT.TryGetValue(key, out var lut)) return lut;
         // Attempt to build if planet exists
-        var planetGenRef = _gameManager != null ? (_gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator) : null;
+            var planetGenRef = _gameManager != null ? _gameManager.GetPlanetGenerator(planetIndex) : null;
         var grid = planetGenRef?.Grid;
         if (grid == null) return null;
         return EnsureIndexLUTForBody(planetIndex, false, grid, width, height);
@@ -114,9 +114,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         string key = $"P{planetIndex}_M{(isMoon?1:0)}";
         if (_tileAtlasCache.TryGetValue(key, out var atlas)) return atlas;
         // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
-            PlanetGenerator planetGen = null;
-            if (_gameManager != null)
-                planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            PlanetGenerator planetGen = _gameManager != null ? _gameManager.GetPlanetGenerator(planetIndex) : null;
         SphericalHexGrid grid = planetGen?.Grid;
         if (grid == null) return null;
         return EnsureTileColorAtlas(planetIndex, isMoon, grid);
@@ -273,8 +271,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             // Pre-fetch all tile data in one pass
             tileDataArray = new HexTileData[tileCount];
-            // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
-            PlanetGenerator planetGen = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            // Moons are treated as separate planets now; prefer per-index generator and fall back to legacy single generator.
+                PlanetGenerator planetGen = _gameManager != null ? (_gameManager.GetPlanetGenerator(planetIndex) ?? _gameManager.planetGenerator) : null;
 
         for (int i = 0; i < tileCount; i++)
                 {
@@ -608,10 +606,41 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         RefreshMirrorFlags();
 
         // Subscribe to game completion event instead of individual planet events
+        _gameManager = GameManager.Instance ?? _gameManager;
         if (_gameManager != null)
         {
+            _gameManager.OnGameStarted -= HandleGameStarted;
             _gameManager.OnGameStarted += HandleGameStarted;
         }
+    }
+
+    private void OnDisable()
+    {
+        if (_gameManager != null)
+        {
+            _gameManager.OnGameStarted -= HandleGameStarted;
+        }
+    }
+
+    /// <summary>
+    /// Called when the game has finished startup. Initializes minimap UI and starts pre-generation if needed.
+    /// </summary>
+    private void HandleGameStarted()
+    {
+        _gameManager = GameManager.Instance ?? _gameManager;
+        _loadingPanel = LoadingPanelController.Instance ?? _loadingPanel;
+
+        // If minimaps were already generated, just show UI and populate dropdown
+        if (_minimapsPreGenerated)
+        {
+            ShowUIElements();
+            BuildPlanetDropdown();
+            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
+            return;
+        }
+
+        // Otherwise start pre-generation
+        StartCoroutine(PreGenerateAllMinimaps());
     }
 
     void Start()
@@ -653,12 +682,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         
 
-        int totalPlanets;
-        if (_gameManager.enableMultiPlanetSystem)
+        int totalPlanets = 0;
+        if (_gameManager != null)
         {
             var planetData = _gameManager.GetPlanetData();
             totalPlanets = planetData?.Count ?? 0;
-            
             if (totalPlanets == 0)
             {
                 int generatorCount = 0;
@@ -672,10 +700,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 }
                 totalPlanets = generatorCount;
             }
-        }
-        else
-        {
-            totalPlanets = _gameManager.planetGenerator != null ? 1 : 0;
+            if (totalPlanets == 0 && _gameManager.planetGenerator != null) totalPlanets = 1;
         }
 
         if (totalPlanets == 0)
@@ -728,21 +753,15 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private string GetPlanetName(int planetIndex)
     {
-        if (_gameManager.enableMultiPlanetSystem)
+        var planetData = _gameManager?.GetPlanetData();
+        if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
         {
-            var planetData = _gameManager.GetPlanetData();
-            if (planetData != null && planetData.TryGetValue(planetIndex, out var pd))
-            {
-                return pd.planetName;
-            }
-            else
-            {
-                var planetGen = _gameManager.GetPlanetGenerator(planetIndex);
-                if (planetGen != null)
-                {
-                    return planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
-                }
-            }
+            return pd.planetName;
+        }
+        var planetGen = _gameManager?.GetPlanetGenerator(planetIndex);
+        if (planetGen != null)
+        {
+            return planetGen.name.Replace("_Generator", "").Replace("Planet_", "");
         }
         return "Planet";
     }
@@ -753,7 +772,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         PlanetGenerator planetGenRef = null;
         // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
-            planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+            planetGenRef = _gameManager != null ? (_gameManager.GetPlanetGenerator(planetIndex) ?? _gameManager.planetGenerator) : null;
 
         var grid = planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) yield break;
@@ -809,7 +828,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // PERFORMANCE: Uses synchronous LUT generation for immediate use
     private Texture GenerateBodyMinimapImmediate(int planetIndex, bool isMoon)
     {
-        PlanetGenerator planetGenRef = _gameManager.enableMultiPlanetSystem ? _gameManager.GetPlanetGenerator(planetIndex) : _gameManager.planetGenerator;
+        PlanetGenerator planetGenRef = _gameManager != null ? (_gameManager.GetPlanetGenerator(planetIndex) ?? _gameManager.planetGenerator) : null;
         var grid = planetGenRef?.Grid;
         if (grid == null || grid.TileCount == 0) return null;
         int width = minimapResolution.x; int height = minimapResolution.y;
@@ -879,36 +898,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _gpuAtlasTextureCache.Clear();
     }
 
-    private void OnDisable()
-    {
-        if (_gameManager != null)
-        {
-            _gameManager.OnGameStarted -= HandleGameStarted;
-        }
-    }
-
-    private void OnDestroy()
-    {
-        // CRITICAL: Release all GPU resources when MinimapUI is destroyed
-        // This prevents GPU memory leaks when switching scenes or reloading
-        ClearMinimapCache();
-    }
-
-    // New method to handle complete game setup
-    private void HandleGameStarted()
-    {
-        // Check if minimaps are ready and UI setup is needed
-        if (_minimapsPreGenerated)
-        {
-            // Initialize UI elements that were deferred from Start()
-            BuildPlanetDropdown();
-            ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
-        }
-        else
-        {
-            // UI setup will happen automatically when PreGenerateAllMinimaps() completes
-        }
-    }
+    // ...existing code...
     
     /// <summary>
     /// Check if any loading panel is currently active
@@ -987,34 +977,30 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         var pd = _gameManager.GetPlanetData();
         var indices = new List<int>();
 
-        if (_gameManager.enableMultiPlanetSystem)
+        // Prefer planet data count if available
+        if (pd != null && pd.Count > 0)
         {
-            // Prefer planet data count if available
-            if (pd != null && pd.Count > 0)
+            foreach (var kv in pd)
             {
-                foreach (var kv in pd)
-                {
-                    // Only include indices that have a generator or at least data
-                    if (_gameManager.GetPlanetGenerator(kv.Key) != null)
-                        indices.Add(kv.Key);
-                }
+                // Only include indices that have a generator
+                if (_gameManager.GetPlanetGenerator(kv.Key) != null)
+                    indices.Add(kv.Key);
             }
+        }
 
-            // Fallback: probe generators up to maxPlanets
-            if (indices.Count == 0)
+        // Fallback: probe generators up to maxPlanets
+        if (indices.Count == 0 && _gameManager != null)
+        {
+            for (int i = 0; i < _gameManager.maxPlanets; i++)
             {
-                for (int i = 0; i < _gameManager.maxPlanets; i++)
-                {
-                    if (_gameManager.GetPlanetGenerator(i) != null)
-                        indices.Add(i);
-                }
+                if (_gameManager.GetPlanetGenerator(i) != null)
+                    indices.Add(i);
             }
         }
-        else
-        {
-            if (_gameManager.planetGenerator != null)
-                indices.Add(0);
-        }
+
+        // Final fallback: if there is a legacy single planet generator, include index 0
+        if (indices.Count == 0 && _gameManager != null && _gameManager.planetGenerator != null)
+            indices.Add(0);
 
         foreach (var i in indices)
         {
@@ -1037,7 +1023,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void OnPlanetDropdownChanged(int planetIndex)
     {
-        if (_gameManager != null && _gameManager.enableMultiPlanetSystem)
+        if (_gameManager != null)
             _gameManager.SetCurrentPlanet(planetIndex);
 
         ShowMinimapForPlanet(planetIndex);
@@ -1064,9 +1050,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             {
                 // Check if this is the current planet (flat map shows current planet)
                 var currentPlanet = _gameManager != null ? _gameManager.GetCurrentPlanetGenerator() : null;
-                var targetPlanet = _gameManager != null && _gameManager.enableMultiPlanetSystem 
-                    ? _gameManager.GetPlanetGenerator(planetIndex) 
-                    : _gameManager?.planetGenerator;
+                var targetPlanet = _gameManager != null ? (_gameManager.GetPlanetGenerator(planetIndex) ?? _gameManager.planetGenerator) : null;
                 
                 if (currentPlanet == targetPlanet)
                 {
@@ -1402,8 +1386,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             return;
         }
 
-        if (_gameManager == null || !_gameManager.enableMultiPlanetSystem)
-            return;
+        // Multi-planet is always enabled at runtime; proceed if GameManager present.
 
         // Moons are separate planets now. Switch to Luna (if present).
         _gameManager.GoToEarthMoon();
@@ -1424,10 +1407,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
         int targetIndex = Mathf.Clamp(mainPlanetIndex, 0, Mathf.Max(0, _gameManager.maxPlanets - 1));
-        if (_gameManager.enableMultiPlanetSystem)
-        {
-            _gameManager.SetCurrentPlanet(targetIndex);
-        }
+        // Multi-planet always enabled; set current planet directly
+        _gameManager.SetCurrentPlanet(targetIndex);
         // Reflect in UI
         if (planetDropdown != null)
         {

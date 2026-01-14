@@ -467,13 +467,7 @@ public class TileSystem : MonoBehaviour
         // If querying current planet, use the cached array for performance
         if (planetRef != null && isReady)
         {
-            int currentPlanetIndex = -1;
-            if (GameManager.Instance != null)
-            {
-                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
-                    ? GameManager.Instance.currentPlanetIndex 
-                    : 0;
-            }
+            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
             
             if (planetIndex == currentPlanetIndex)
             {
@@ -503,13 +497,7 @@ public class TileSystem : MonoBehaviour
         // If updating current planet, use the cached array and mark dirty
         if (planetRef != null && isReady)
         {
-            int currentPlanetIndex = -1;
-            if (GameManager.Instance != null)
-            {
-                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
-                    ? GameManager.Instance.currentPlanetIndex 
-                    : 0;
-            }
+            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
             
             if (planetIndex == currentPlanetIndex)
             {
@@ -540,13 +528,7 @@ public class TileSystem : MonoBehaviour
         // If querying current planet, reuse flat center
         if (planetRef != null && isReady)
         {
-            int currentPlanetIndex = -1;
-            if (GameManager.Instance != null)
-            {
-                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
-                    ? GameManager.Instance.currentPlanetIndex 
-                    : 0;
-            }
+            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
             
             if (planetIndex == currentPlanetIndex)
             {
@@ -607,20 +589,10 @@ public class TileSystem : MonoBehaviour
     private PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
     {
         if (GameManager.Instance == null) return null;
-        
-        if (GameManager.Instance.enableMultiPlanetSystem)
-        {
-            return GameManager.Instance.GetPlanetGenerator(planetIndex);
-        }
-        else
-        {
-            // Single planet mode: only index 0 is valid
-            if (planetIndex == 0)
-            {
-                return GameManager.Instance.GetCurrentPlanetGenerator();
-            }
-        }
-        
+        var gen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+        if (gen != null) return gen;
+        // Fallback: return current generator for index 0
+        if (planetIndex == 0) return GameManager.Instance.GetCurrentPlanetGenerator();
         return null;
     }
     #endregion

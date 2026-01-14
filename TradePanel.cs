@@ -414,8 +414,8 @@ UpdateUIState();
         
         List<string> planetNames = new List<string>();
         
-        // Get planets from GameManager multi-planet system
-        if (GameManager.Instance != null && GameManager.Instance.enableMultiPlanetSystem)
+        // Populate planet list from GameManager (multi-planet is the default)
+        if (GameManager.Instance != null)
         {
             var planetData = GameManager.Instance.GetPlanetData();
             if (planetData != null)
