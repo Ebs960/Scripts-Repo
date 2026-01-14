@@ -315,6 +315,63 @@ currentPlanetIndex = planetIndex;
         }
     }
 
+    private static void ApplyStampSettingsForMapSize(MapSize size)
+    {
+        int continentMinW = GameSetupData.minContinentWidthTilesStandard;
+        int continentMaxW = GameSetupData.maxContinentWidthTilesStandard;
+        int continentMinH = GameSetupData.minContinentHeightTilesStandard;
+        int continentMaxH = GameSetupData.maxContinentHeightTilesStandard;
+        int islandMinW = GameSetupData.minIslandWidthTilesStandard;
+        int islandMaxW = GameSetupData.maxIslandWidthTilesStandard;
+        int islandMinH = GameSetupData.minIslandHeightTilesStandard;
+        int islandMaxH = GameSetupData.maxIslandHeightTilesStandard;
+
+        switch (size)
+        {
+            case MapSize.Small:
+                continentMinW = GameSetupData.minContinentWidthTilesSmall;
+                continentMaxW = GameSetupData.maxContinentWidthTilesSmall;
+                continentMinH = GameSetupData.minContinentHeightTilesSmall;
+                continentMaxH = GameSetupData.maxContinentHeightTilesSmall;
+                islandMinW = GameSetupData.minIslandWidthTilesSmall;
+                islandMaxW = GameSetupData.maxIslandWidthTilesSmall;
+                islandMinH = GameSetupData.minIslandHeightTilesSmall;
+                islandMaxH = GameSetupData.maxIslandHeightTilesSmall;
+                break;
+            case MapSize.Large:
+                continentMinW = GameSetupData.minContinentWidthTilesLarge;
+                continentMaxW = GameSetupData.maxContinentWidthTilesLarge;
+                continentMinH = GameSetupData.minContinentHeightTilesLarge;
+                continentMaxH = GameSetupData.maxContinentHeightTilesLarge;
+                islandMinW = GameSetupData.minIslandWidthTilesLarge;
+                islandMaxW = GameSetupData.maxIslandWidthTilesLarge;
+                islandMinH = GameSetupData.minIslandHeightTilesLarge;
+                islandMaxH = GameSetupData.maxIslandHeightTilesLarge;
+                break;
+        }
+
+        GameSetupData.continentMinWidthTiles = continentMinW;
+        GameSetupData.continentMaxWidthTiles = continentMaxW;
+        GameSetupData.continentMinHeightTiles = continentMinH;
+        GameSetupData.continentMaxHeightTiles = continentMaxH;
+        GameSetupData.continentMinDistanceTiles = Mathf.Max(1, continentMinW / 2);
+
+        int minIslandDim = Mathf.Min(islandMinW, islandMinH);
+        int maxIslandDim = Mathf.Max(islandMaxW, islandMaxH);
+        GameSetupData.islandMinRadiusTiles = Mathf.Max(1, minIslandDim / 2);
+        GameSetupData.islandMaxRadiusTiles = Mathf.Max(GameSetupData.islandMinRadiusTiles, maxIslandDim / 2);
+        GameSetupData.islandMinDistanceFromContinents = Mathf.Max(2, GameSetupData.islandMinRadiusTiles);
+
+        if (GameSetupData.lakeMinRadiusTiles <= 0)
+        {
+            GameSetupData.lakeMinRadiusTiles = GameSetupData.minLakeSize;
+        }
+        if (GameSetupData.lakeMaxRadiusTiles <= 0)
+        {
+            GameSetupData.lakeMaxRadiusTiles = GameSetupData.maxLakeSize;
+        }
+    }
+
     public void SetFlatMapDimensionsFromSize(MapSize size)
     {
         GetFlatMapSizeParams(size, out flatMapWidth, out flatMapHeight);
@@ -763,6 +820,8 @@ currentPlanetIndex = planetIndex;
 
             // Configure planet generator with GameSetupData settings
             planetGenerator.SetMapTypeName(GameSetupData.mapTypeName);
+
+            ApplyStampSettingsForMapSize(GameSetupData.mapSize);
 
             // Moisture and temperature settings
             planetGenerator.moistureBias = GameSetupData.moistureBias;
@@ -1802,6 +1861,7 @@ currentPlanetIndex = planetIndex;
         MapSize sizePreset = (body == "Earth") ? GameSetupData.mapSize : MapSize.Standard;
         GetFlatMapSizeParams(sizePreset, out float width, out float height);
         GetFlatTileResolution(sizePreset, out int tilesX, out int tilesZ);
+        ApplyStampSettingsForMapSize(sizePreset);
         generator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height);
     // Notify grid built
     OnPlanetGridBuilt?.Invoke(planetIndex);
