@@ -768,9 +768,7 @@ currentPlanetIndex = planetIndex;
             planetGenerator.moistureBias = GameSetupData.moistureBias;
             planetGenerator.temperatureBias = GameSetupData.temperatureBias;
 
-            // Land generation settings
-            planetGenerator.landThreshold = GameSetupData.landThreshold;
-            planetGenerator.seedPositionVariance = GameSetupData.seedPositionVariance;
+            // Land generation settings (allowed overrides only)
             planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
             planetGenerator.enableRivers = GameSetupData.enableRivers;
             planetGenerator.minRiversPerContinent = GameSetupData.riverCount;
@@ -785,10 +783,7 @@ currentPlanetIndex = planetIndex;
             planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
 
             // DIAGNOSTIC: log what we applied to the generator (tile-based ranges)
-            Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}, landCutoff={planetGenerator.landCutoff}");
-
-            // Ensure land cutoff and other newer generator settings honor GameSetupData / presets
-            planetGenerator.landCutoff = GameSetupData.landThreshold; // generator uses landCutoff for mask decision
+            Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}");
 
             // Preserve tuning from the PlanetGenerator prefab. Do NOT overwrite warp/macro/coast/voronoi
             // or island/rivers tuning here so the generator's inspector remains the source of truth.
@@ -1818,14 +1813,12 @@ currentPlanetIndex = planetIndex;
         // Biome logic (allowed to be influenced by presets)
         generator.moistureBias = GameSetupData.moistureBias;
         generator.temperatureBias = GameSetupData.temperatureBias;
-        // Land cutoff (preset-driven) and counts
-        generator.landThreshold = GameSetupData.landThreshold;
-        generator.landCutoff = GameSetupData.landThreshold;
+        // Land counts (preset-driven)
         generator.numberOfContinents = GameSetupData.numberOfContinents;
         generator.numberOfIslands = GameSetupData.numberOfIslands;
         generator.generateIslands = GameSetupData.generateIslands;
 
-        Debug.Log($"[GameManager][Diag] Multi-planet apply: continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, landCutoff={generator.landCutoff} (preserving noise tuning on prefab)");
+        Debug.Log($"[GameManager][Diag] Multi-planet apply: continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, generateIslands={generator.generateIslands} (preserving noise tuning on prefab)");
 
         // Rivers & lakes (allowed preset-driven settings)
         generator.enableRivers = GameSetupData.enableRivers;

@@ -942,84 +942,11 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.temperatureBias = tempBiases[Mathf.Clamp(selectedClimatePreset, 0, tempBiases.Length-1)];
         GameSetupData.moistureBias += moistBiases[Mathf.Clamp(selectedMoisturePreset, 0, moistBiases.Length-1)];
         
-        // Land generation settings
+        // Land generation settings (counts/toggles only; prefab owns tuning and size ranges)
         var landPreset = landPresets[selectedLandPreset];
-        GameSetupData.landThreshold = landPreset.landThreshold;
         GameSetupData.numberOfContinents = landPreset.continents;
         GameSetupData.numberOfIslands = landPreset.islands;
         GameSetupData.generateIslands = landPreset.islands > 0;
-        GameSetupData.seedPositionVariance = 0.85f;
-        float width = UnityEngine.Random.Range(landPreset.minWidth, landPreset.maxWidth);
-        float height = UnityEngine.Random.Range(landPreset.minHeight, landPreset.maxHeight);
-        // --- Map size scaling ---
-        float scale = 1.0f;
-        switch (GameSetupData.mapSize)
-        {
-            case GameManager.MapSize.Small: scale = 0.9f; break;
-            case GameManager.MapSize.Standard: scale = 1.0f; break;
-            case GameManager.MapSize.Large: scale = 1.15f; break;
-        }
-        // Degree-based fields removed; continent sizing now uses tile ranges (set below)
-
-        // ===== Tile-based continent sizing defaults derived from the selected land preset =====
-        int stdMinW = Mathf.RoundToInt(landPreset.minWidth);
-        int stdMaxW = Mathf.RoundToInt(landPreset.maxWidth);
-        int stdMinH = Mathf.RoundToInt(landPreset.minHeight);
-        int stdMaxH = Mathf.RoundToInt(landPreset.maxHeight);
-
-        // Use preset index for special cases. Pangaea preset is index 4 in landPresets.
-        if (selectedLandPreset == 4)
-        {
-            // Force large defaults for Pangaea (raw tiles)
-            stdMinW = stdMaxW = 400;
-            stdMinH = stdMaxH = 200;
-        }
-
-        GameSetupData.minContinentWidthTilesStandard = Mathf.Max(4, stdMinW);
-        GameSetupData.maxContinentWidthTilesStandard = Mathf.Max(4, stdMaxW);
-        GameSetupData.minContinentHeightTilesStandard = Mathf.Max(2, stdMinH);
-        GameSetupData.maxContinentHeightTilesStandard = Mathf.Max(2, stdMaxH);
-
-        GameSetupData.minContinentWidthTilesSmall = Mathf.Max(4, Mathf.RoundToInt(stdMinW * 0.5f));
-        GameSetupData.maxContinentWidthTilesSmall = Mathf.Max(4, Mathf.RoundToInt(stdMaxW * 0.5f));
-        GameSetupData.minContinentHeightTilesSmall = Mathf.Max(2, Mathf.RoundToInt(stdMinH * 0.5f));
-        GameSetupData.maxContinentHeightTilesSmall = Mathf.Max(2, Mathf.RoundToInt(stdMaxH * 0.5f));
-
-        GameSetupData.minContinentWidthTilesLarge = Mathf.Max(8, stdMinW * 2);
-        GameSetupData.maxContinentWidthTilesLarge = Mathf.Max(8, stdMaxW * 2);
-        GameSetupData.minContinentHeightTilesLarge = Mathf.Max(4, stdMinH * 2);
-        GameSetupData.maxContinentHeightTilesLarge = Mathf.Max(4, stdMaxH * 2);
-
-        // Island tile range defaults derived from continent tile defaults
-        int stdIslandMinW = Mathf.Max(1, Mathf.RoundToInt(stdMinW * 0.25f));
-        int stdIslandMaxW = Mathf.Max(1, Mathf.RoundToInt(stdMaxW * 0.5f));
-        int stdIslandMinH = Mathf.Max(1, Mathf.RoundToInt(stdMinH * 0.25f));
-        int stdIslandMaxH = Mathf.Max(1, Mathf.RoundToInt(stdMaxH * 0.5f));
-
-        GameSetupData.minIslandWidthTilesStandard = stdIslandMinW;
-        GameSetupData.maxIslandWidthTilesStandard = stdIslandMaxW;
-        GameSetupData.minIslandHeightTilesStandard = stdIslandMinH;
-        GameSetupData.maxIslandHeightTilesStandard = stdIslandMaxH;
-
-        GameSetupData.minIslandWidthTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMinW * 0.5f));
-        GameSetupData.maxIslandWidthTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMaxW * 0.5f));
-        GameSetupData.minIslandHeightTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMinH * 0.5f));
-        GameSetupData.maxIslandHeightTilesSmall = Mathf.Max(1, Mathf.RoundToInt(stdIslandMaxH * 0.5f));
-
-        GameSetupData.minIslandWidthTilesLarge = Mathf.Max(1, stdIslandMinW * 2);
-        GameSetupData.maxIslandWidthTilesLarge = Mathf.Max(1, stdIslandMaxW * 2);
-        GameSetupData.minIslandHeightTilesLarge = Mathf.Max(1, stdIslandMinH * 2);
-        GameSetupData.maxIslandHeightTilesLarge = Mathf.Max(1, stdIslandMaxH * 2);
-
-        // Island shape tuning based on land preset (detail and falloff)
-        int landPresetIdx = Mathf.Clamp(selectedLandPreset, 0, 4);
-        float[] islandNoiseByPreset = { 2.5f, 2.0f, 1.8f, 1.2f, 0.8f };
-        float[] islandInnerByPreset = { 0.12f, 0.18f, 0.25f, 0.30f, 0.35f };
-        float[] islandOuterByPreset = { 0.60f, 0.70f, 0.90f, 1.00f, 1.20f };
-
-        GameSetupData.islandNoiseFrequency = islandNoiseByPreset[landPresetIdx];
-        GameSetupData.islandInnerRadius = islandInnerByPreset[landPresetIdx];
-        GameSetupData.islandOuterRadius = islandOuterByPreset[landPresetIdx];
 
         // Initialize game music with selected civilization
         if (MusicManager.Instance != null && selectedCivilization != null)
