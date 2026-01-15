@@ -340,15 +340,15 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         canvasGroup = canvasObj.AddComponent<CanvasGroup>();
         
-        // Set canvas size (smaller world-space footprint)
+        // Set canvas size (pixels) and use neutral scale for predictable sizing
         RectTransform canvasRect = worldCanvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(6f, 4f); // width x height in world units
-        canvasRect.localScale = Vector3.one * 0.002f; // reduce scale to shrink HUD in world space
+        canvasRect.sizeDelta = new Vector2(300f, 160f); // width x height in pixels for the HUD
+        canvasRect.localScale = Vector3.one; // keep scale 1 for consistent CanvasScaler behavior
         
         // Add CanvasScaler for consistent sizing
         var scaler = canvasObj.AddComponent<CanvasScaler>();
-        // Increase dynamic pixels per unit so UI remains compact in world space
-        scaler.dynamicPixelsPerUnit = 200f;
+        // Use sensible DPI scaling so fonts and icons are consistent across machines
+        scaler.dynamicPixelsPerUnit = 100f;
         
         // === SHADOW (behind everything) ===
         GameObject shadowObj = new GameObject("Shadow");
@@ -356,8 +356,9 @@ public class TileInfoWorldPanel : MonoBehaviour
         var shadowRect = shadowObj.AddComponent<RectTransform>();
         shadowRect.anchorMin = Vector2.zero;
         shadowRect.anchorMax = Vector2.one;
-        shadowRect.offsetMin = new Vector2(shadowOffset, -shadowOffset);
-        shadowRect.offsetMax = new Vector2(shadowOffset, -shadowOffset);
+        // Symmetric inset/outset so shadow offsets behave predictably
+        shadowRect.offsetMin = new Vector2(-shadowOffset, -shadowOffset);
+        shadowRect.offsetMax = new Vector2(shadowOffset, shadowOffset);
         
         shadowImage = shadowObj.AddComponent<Image>();
         shadowImage.color = shadowColor;
@@ -388,20 +389,19 @@ public class TileInfoWorldPanel : MonoBehaviour
         
         // Add vertical layout with better padding
         var layout = panelObj.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(2, 2, 2, 3);
-        layout.spacing = 2f;
+        layout.padding = new RectOffset(6, 6, 6, 6);
+        layout.spacing = 6f;
         layout.childAlignment = TextAnchor.UpperLeft;
         layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = false;
         
         // Add content size fitter
         var fitter = panelObj.AddComponent<ContentSizeFitter>();
-        // Prevent the panel from expanding to the children's preferred pixel sizes
-        // (preferred size caused the canvas to grow very large in some setups)
+        // Let the fitter size vertically to preferred size; keep horizontal fixed to canvas width
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         
         // === BIOME TEXT (Title) ===
         biomeText = CreateTextElement(panelObj.transform, "BiomeText", biomeFontSize, biomeTextColor, FontStyles.Bold);
@@ -436,7 +436,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         // Create yields text
         yieldsText = CreateTextElement(yieldsRow.transform, "YieldsText", yieldsFontSize, yieldsTextColor, FontStyles.Normal);
         var yieldsLayoutElem = yieldsText.gameObject.AddComponent<LayoutElement>();
-        yieldsLayoutElem.flexibleWidth = 1f;
+        yieldsLayoutElem.flexibleWidth = 0f;
+        yieldsLayoutElem.preferredWidth = 200f;
         
         // Create resource icon
         GameObject iconObj = new GameObject("ResourceIcon");
@@ -444,8 +445,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         resourceIcon = iconObj.AddComponent<Image>();
         resourceIcon.preserveAspect = true;
         var iconLayout = iconObj.AddComponent<LayoutElement>();
-        iconLayout.preferredWidth = 2f;
-        iconLayout.preferredHeight = 2f;
+        iconLayout.preferredWidth = 24f;
+        iconLayout.preferredHeight = 24f;
         resourceIcon.gameObject.SetActive(false);
 }
     
@@ -466,14 +467,19 @@ public class TileInfoWorldPanel : MonoBehaviour
         tmp.color = color;
         tmp.fontStyle = style;
         tmp.alignment = TextAlignmentOptions.Left;
-        tmp.textWrappingMode = TextWrappingModes.NoWrap;
-        tmp.overflowMode = TextOverflowModes.Overflow;
-        
-        // Add slight shadow/outline for readability
-        tmp.fontMaterial.EnableKeyword("UNDERLAY_ON");
-        tmp.fontMaterial.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.8f));
-        tmp.fontMaterial.SetFloat("_UnderlayOffsetX", 0.5f);
-        tmp.fontMaterial.SetFloat("_UnderlayOffsetY", -0.5f);
+        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Wrap;
+        tmp.overflowMode = TextOverflowModes.Ellipsis;
+
+        // Add slight shadow/outline for readability — operate on an instance of the shared material
+        if (tmp.fontSharedMaterial != null)
+        {
+            tmp.fontSharedMaterial = Instantiate(tmp.fontSharedMaterial);
+            tmp.fontSharedMaterial.EnableKeyword("UNDERLAY_ON");
+            tmp.fontSharedMaterial.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.8f));
+            tmp.fontSharedMaterial.SetFloat("_UnderlayOffsetX", 0.5f);
+            tmp.fontSharedMaterial.SetFloat("_UnderlayOffsetY", -0.5f);
+        }
         
         return tmp;
     }
