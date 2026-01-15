@@ -547,44 +547,47 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     void Start()
     {
-        ClimateManager mgr = null;
-        if (GameManager.Instance != null)
-        {
-            mgr = GameManager.Instance.GetClimateManager(planetIndex);
-        }
-        else
-        {
-            mgr = ClimateManager.Instance;
-        }
+        ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
 
+        var mgr = GameManager.Instance != null
+            ? GameManager.Instance.GetClimateManager(planetIndex)
+            : ClimateManager.Instance;
         if (mgr != null)
         {
-            mgr.OnSeasonChanged += HandleSeasonChange;
+            ApplySeasonToTiles(mgr.GetSeasonForPlanet(planetIndex));
         }
     }
 
     void OnDestroy()
     {
-        ClimateManager mgr = null;
-        if (GameManager.Instance != null)
-        {
-            mgr = GameManager.Instance.GetClimateManager(planetIndex);
-        }
-        else
-        {
-            mgr = ClimateManager.Instance;
-        }
-
-        if (mgr != null)
-        {
-            mgr.OnSeasonChanged -= HandleSeasonChange;
-        }
+        ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
 
     }
 
-    private void HandleSeasonChange(Season newSeason)
+    private void HandlePlanetSeasonChanged(int planet, Season newSeason)
     {
-        
+        if (planet != planetIndex) return;
+
+        ApplySeasonToTiles(newSeason);
+    }
+
+    private void ApplySeasonToTiles(Season newSeason)
+    {
+        if (data == null || data.Count == 0) return;
+
+        var mgr = GameManager.Instance != null
+            ? GameManager.Instance.GetClimateManager(planetIndex)
+            : ClimateManager.Instance;
+        if (mgr == null) return;
+
+        foreach (var tile in data.Values)
+        {
+            var response = mgr.GetSeasonResponse(tile.biome, newSeason);
+            tile.season = newSeason;
+            tile.seasonalYieldModifier = response.yieldMultiplier;
+            tile.hasSnow = response.snow > 0f && tile.isLand;
+            tile.isFrozen = tile.hasSnow && (tile.isLake || tile.isRiver);
+        }
     }
     
 

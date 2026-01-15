@@ -95,11 +95,16 @@ public class HexMapChunkManager : MonoBehaviour
     
     // Tile to chunk mapping
     private Dictionary<int, HexMapChunk> tileToChunk = new Dictionary<int, HexMapChunk>();
+
+    // Seasonal mask sizing
+    private int seasonMaskWidth;
+    private int seasonMaskHeight;
     
     // Event subscriptions
     private bool _subscribedToPlanetReady;
     private bool _subscribedToSurfaceReady;
     private PlanetGenerator _surfaceEventSource;
+    private bool _subscribedToSeasonChanges;
     
     // Public accessors (API compatible with FlatMapTextureRenderer)
     public SphericalHexGrid Grid => grid;
@@ -129,12 +134,14 @@ public class HexMapChunkManager : MonoBehaviour
     private void OnEnable()
     {
         TrySubscribeToPlanetReady();
+        TrySubscribeToSeasonChanges();
     }
     
     private void OnDisable()
     {
         TryUnsubscribeFromPlanetReady();
         TryUnsubscribeFromSurfaceReady();
+        TryUnsubscribeFromSeasonChanges();
     }
     
     private void Start()
@@ -241,6 +248,20 @@ TrySubscribeToSurfaceReady(gen);
         
         BuildChunks(gen);
     }
+
+    private void TrySubscribeToSeasonChanges()
+    {
+        if (_subscribedToSeasonChanges) return;
+        ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
+        _subscribedToSeasonChanges = true;
+    }
+
+    private void TryUnsubscribeFromSeasonChanges()
+    {
+        if (!_subscribedToSeasonChanges) return;
+        ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
+        _subscribedToSeasonChanges = false;
+    }
     
     #endregion
     
@@ -285,6 +306,11 @@ TrySubscribeToSurfaceReady(gen);
         
         // Bake texture using PlanetTextureBaker (same as FlatMapTextureRenderer)
         BakeTexture();
+
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        seasonMaskWidth = Mathf.Max(1, lutWidth / chunksX);
+        seasonMaskHeight = Mathf.Max(1, lutHeight / chunksZ);
         
         if (bakeResult.texture == null)
         {
@@ -308,6 +334,9 @@ TrySubscribeToSurfaceReady(gen);
         
         // Assign tiles to chunks
         AssignTilesToChunks();
+
+        // Initialize per-chunk season masks
+        UpdateSeasonMasksForCurrentSeason();
         
         // Build all chunk meshes
         RefreshAllChunks();
@@ -839,6 +868,8 @@ TrySubscribeToSurfaceReady(gen);
     // Ghost columns for seamless edge rendering
     private Transform[] ghostColumnsLeft;
     private Transform[] ghostColumnsRight;
+    private int[] ghostColumnsLeftSourceIndices;
+    private int[] ghostColumnsRightSourceIndices;
     private bool ghostColumnsCreated = false;
     
     /// <summary>
@@ -855,19 +886,25 @@ TrySubscribeToSurfaceReady(gen);
         
         ghostColumnsLeft = new Transform[columnsToMirror];
         ghostColumnsRight = new Transform[columnsToMirror];
+        ghostColumnsLeftSourceIndices = new int[columnsToMirror];
+        ghostColumnsRightSourceIndices = new int[columnsToMirror];
         
         for (int i = 0; i < columnsToMirror; i++)
         {
             // Left ghost: mirror rightmost columns, place them to the left
             int sourceColRight = chunksX - 1 - i;
             ghostColumnsLeft[i] = CreateGhostColumn(sourceColRight, -mapWidth, $"GhostLeft_{i}");
+            ghostColumnsLeftSourceIndices[i] = sourceColRight;
             
             // Right ghost: mirror leftmost columns, place them to the right
             int sourceColLeft = i;
             ghostColumnsRight[i] = CreateGhostColumn(sourceColLeft, mapWidth, $"GhostRight_{i}");
+            ghostColumnsRightSourceIndices[i] = sourceColLeft;
         }
         
         ghostColumnsCreated = true;
+
+        UpdateGhostSeasonMasks();
 
         if (debugWrap)
         {
@@ -1097,6 +1134,56 @@ TrySubscribeToSurfaceReady(gen);
         
         ghostColumnsCreated = false;
     }
+
+    private void UpdateGhostSeasonMasks()
+    {
+        if (!ghostColumnsCreated || chunks == null) return;
+
+        if (ghostColumnsLeft != null)
+        {
+            for (int i = 0; i < ghostColumnsLeft.Length; i++)
+            {
+                int sourceCol = ghostColumnsLeftSourceIndices != null && i < ghostColumnsLeftSourceIndices.Length
+                    ? ghostColumnsLeftSourceIndices[i]
+                    : -1;
+                CopySeasonMaskToGhostColumn(ghostColumnsLeft[i], sourceCol);
+            }
+        }
+
+        if (ghostColumnsRight != null)
+        {
+            for (int i = 0; i < ghostColumnsRight.Length; i++)
+            {
+                int sourceCol = ghostColumnsRightSourceIndices != null && i < ghostColumnsRightSourceIndices.Length
+                    ? ghostColumnsRightSourceIndices[i]
+                    : -1;
+                CopySeasonMaskToGhostColumn(ghostColumnsRight[i], sourceCol);
+            }
+        }
+    }
+
+    private void CopySeasonMaskToGhostColumn(Transform ghostColumn, int sourceColumnIndex)
+    {
+        if (ghostColumn == null || sourceColumnIndex < 0 || sourceColumnIndex >= chunksX) return;
+
+        for (int z = 0; z < chunksZ; z++)
+        {
+            var sourceChunk = chunks[sourceColumnIndex, z];
+            if (sourceChunk == null) continue;
+
+            var sourceRenderer = sourceChunk.GetComponent<MeshRenderer>();
+            if (sourceRenderer == null) continue;
+
+            if (z >= ghostColumn.childCount) continue;
+            var ghostChunk = ghostColumn.GetChild(z);
+            var ghostRenderer = ghostChunk.GetComponent<MeshRenderer>();
+            if (ghostRenderer == null) continue;
+
+            var block = new MaterialPropertyBlock();
+            sourceRenderer.GetPropertyBlock(block);
+            ghostRenderer.SetPropertyBlock(block);
+        }
+    }
     
     #endregion
     
@@ -1138,6 +1225,58 @@ TrySubscribeToSurfaceReady(gen);
                 }
             }
         }
+    }
+
+    private void HandlePlanetSeasonChanged(int planetIndex, Season season)
+    {
+        if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
+        UpdateSeasonMasksForSeason(season);
+    }
+
+    private void UpdateSeasonMasksForCurrentSeason()
+    {
+        if (planetGenerator == null) return;
+        var climateManager = GameManager.Instance != null
+            ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+            : ClimateManager.Instance;
+        if (climateManager == null) return;
+
+        UpdateSeasonMasksForSeason(climateManager.GetSeasonForPlanet(planetGenerator.planetIndex));
+    }
+
+    private void UpdateSeasonMasksForSeason(Season season)
+    {
+        if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
+        if (seasonMaskWidth <= 0 || seasonMaskHeight <= 0) return;
+
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
+        var climateManager = GameManager.Instance != null
+            ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+            : ClimateManager.Instance;
+        if (climateManager == null) return;
+
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                var chunk = chunks[x, z];
+                if (chunk == null) continue;
+
+                chunk.UpdateSeasonMask(
+                    lutWidth,
+                    lutHeight,
+                    seasonMaskWidth,
+                    seasonMaskHeight,
+                    bakeResult.lut,
+                    planetGenerator,
+                    climateManager,
+                    season);
+            }
+        }
+
+        UpdateGhostSeasonMasks();
     }
     
     /// <summary>

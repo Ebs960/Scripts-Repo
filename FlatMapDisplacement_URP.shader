@@ -7,6 +7,8 @@ Shader "Custom/FlatMapDisplacement_URP"
         _FogMask ("Fog Mask", 2D) = "white" {}
         _OwnershipOverlay ("Ownership Overlay", 2D) = "black" {}
         _LUT ("Tile Index LUT", 2D) = "black" {}
+        _TileSeasonMask ("Tile Season Mask", 2D) = "black" {}
+        _TileSeasonMask_TexSize ("Tile Season Mask Tex Size", Vector) = (1,1,0,0)
         _Color ("Tint", Color) = (0.5,0.5,0.5,1)
         _FlatHeightScale ("Flat Height Scale", Float) = 0.1
         _MapHeight ("Map Height", Float) = 180.0
@@ -24,6 +26,11 @@ Shader "Custom/FlatMapDisplacement_URP"
         _HighlightTileIndex ("Highlight Tile Index", Int) = -1
         _HighlightColor ("Highlight Color", Color) = (1, 1, 1, 0.3)
         _HighlightWidth ("Highlight Edge Width", Range(0.001, 0.02)) = 0.005
+
+        [Header(Seasonal Overlay)]
+        _SeasonSnowColor ("Snow Color", Color) = (0.9, 0.95, 1.0, 1.0)
+        _SeasonWetDarken ("Wet Darken", Range(0, 0.5)) = 0.15
+        _SeasonDryDesaturate ("Dry Desaturate", Range(0, 1)) = 0.5
     }
 
     SubShader
@@ -56,6 +63,11 @@ Shader "Custom/FlatMapDisplacement_URP"
                 int _HighlightTileIndex;
                 float4 _HighlightColor;
                 float _HighlightWidth;
+                float2 _TileSeasonMask_TexSize;
+                float4 _TileSeasonMask_ST;
+                float4 _SeasonSnowColor;
+                float _SeasonWetDarken;
+                float _SeasonDryDesaturate;
             CBUFFER_END
 
             TEXTURE2D(_MainTex);
@@ -68,6 +80,8 @@ Shader "Custom/FlatMapDisplacement_URP"
             SAMPLER(sampler_OwnershipOverlay);
             TEXTURE2D(_LUT);
             SAMPLER(sampler_LUT);
+            TEXTURE2D(_TileSeasonMask);
+            SAMPLER(sampler_TileSeasonMask);
 
             struct Attributes
             {
@@ -141,6 +155,20 @@ Shader "Custom/FlatMapDisplacement_URP"
                 {
                     half4 ownership = SAMPLE_TEXTURE2D(_OwnershipOverlay, sampler_OwnershipOverlay, i.uv);
                     c.rgb = lerp(c.rgb, ownership.rgb, ownership.a);
+                }
+
+                // Seasonal overlay
+                {
+                    float2 seasonUV = TRANSFORM_TEX(i.uv, _TileSeasonMask);
+                    float4 season = SAMPLE_TEXTURE2D(_TileSeasonMask, sampler_TileSeasonMask, seasonUV);
+                    float snow = saturate(season.r);
+                    float wet = saturate(season.g);
+                    float dry = saturate(season.b);
+
+                    c.rgb = lerp(c.rgb, _SeasonSnowColor.rgb, snow);
+                    c.rgb *= lerp(1.0, 1.0 - _SeasonWetDarken, wet);
+                    float gray = dot(c.rgb, float3(0.299, 0.587, 0.114));
+                    c.rgb = lerp(c.rgb, gray.xxx, dry * _SeasonDryDesaturate);
                 }
 
                 // Fog of war
