@@ -60,10 +60,6 @@ public static class GameSetupData
     public static float moistureBias;
     public static float temperatureBias = 0f;
     
-    // Land Generation
-    public static float landThreshold;
-    public static float seedPositionVariance;
-    
     // Tile-based continent size ranges for Small/Standard/Large
     public static int minContinentWidthTilesSmall;
     public static int maxContinentWidthTilesSmall;
@@ -112,19 +108,6 @@ public static class GameSetupData
     public static int lakeMinRadiusTiles;
     public static int lakeMaxRadiusTiles;
     public static int lakeMinDistanceFromCoast = 2;
-    // Advanced continent tuning (exposed so menus/presets can set them)
-    public static float continentDomainWarp = 0.25f;
-    public static float continentMacroAmplitude = 0.35f;
-    public static float coastlineWarpAmplitude = 0.12f;
-    public static float coastlineFineWarp = 0.08f;
-    public static float voronoiContinentInfluence = 0.0f;
-    public static float voronoiElevationInfluence = 0.12f;
-
-    // Island tuning
-    public static float islandNoiseFrequency = 1.8f;
-    public static float islandInnerRadius = 0.25f;
-    public static float islandOuterRadius = 0.9f;
-
     // River tuning
     public static int minRiverLength = 8;
     public static int minRiversPerContinent = 1;
@@ -187,18 +170,6 @@ public static class GameSetupData
         moistureBias = 0f;
         temperatureBias = 0f;
         
-        // Set default land generation settings
-        landThreshold = 0.45f; // More reasonable default for balanced land/water
-        seedPositionVariance = 0.1f;
-
-        // Advanced continent defaults (match PlanetGenerator defaults)
-        continentDomainWarp = 0.25f;
-        continentMacroAmplitude = 0.35f;
-        coastlineWarpAmplitude = 0.12f;
-        coastlineFineWarp = 0.08f;
-        voronoiContinentInfluence = 0.0f;
-        voronoiElevationInfluence = 0.12f;
-
         // Tile-based continent sizing defaults
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
@@ -218,11 +189,6 @@ public static class GameSetupData
 
         minIslandWidthTilesLarge = 40; maxIslandWidthTilesLarge = 120;
         minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
-
-        // Island defaults (noise/falloff)
-        islandNoiseFrequency = 1.8f;
-        islandInnerRadius = 0.25f;
-        islandOuterRadius = 0.9f;
 
         // River defaults
         minRiverLength = 8;
