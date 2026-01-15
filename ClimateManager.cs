@@ -11,6 +11,22 @@ public class SeasonalTextureEntry
     public Texture2D seasonalNormal;
 }
 
+[System.Serializable]
+public class BiomeSeasonResponse
+{
+    public Biome biome;
+    public Season season;
+
+    // Gameplay
+    public float yieldMultiplier = 1f;
+
+    // Visual mask values (0–1)
+    public float snow;
+    public float wet;
+    public float dry;
+    public Color tint = Color.white;
+}
+
 public class ClimateManager : MonoBehaviour
 {
     public static ClimateManager Instance { get; private set; }
@@ -27,6 +43,10 @@ public class ClimateManager : MonoBehaviour
     [Header("Seasonal Textures")]
     public List<SeasonalTextureEntry> seasonalTextures = new List<SeasonalTextureEntry>();
     private Dictionary<Biome, Dictionary<Season, (Texture2D albedo, Texture2D normal)>> seasonalTextureLookup = new();
+
+    [Header("Biome Seasonal Responses")]
+    public List<BiomeSeasonResponse> biomeSeasonResponses = new List<BiomeSeasonResponse>();
+    private Dictionary<(Biome, Season), BiomeSeasonResponse> seasonResponseLookup = new();
 
     [Header("Multi-Planet Support")]
     [Tooltip("This global ClimateManager handles climate for all planets in the solar system")]
@@ -63,12 +83,19 @@ public class ClimateManager : MonoBehaviour
         }
 
         BuildSeasonalTextureLookup();
+        BuildSeasonResponseLookup();
         
         // Initialize climate data for all planets (multi-planet is always used)
         if (isGlobalClimateManager)
         {
             InitializeMultiPlanetClimate();
         }
+    }
+
+    private void OnValidate()
+    {
+        BuildSeasonalTextureLookup();
+        BuildSeasonResponseLookup();
     }
 
     void Start()
@@ -286,6 +313,20 @@ OnSeasonChanged?.Invoke(season);
         return (null, null);
     }
 
+    public BiomeSeasonResponse GetSeasonResponse(Biome biome, Season season)
+    {
+        if (seasonResponseLookup.TryGetValue((biome, season), out var response) && response != null)
+        {
+            return response;
+        }
+
+        return new BiomeSeasonResponse
+        {
+            biome = biome,
+            season = season
+        };
+    }
+
     /// <summary>
     /// Get the current season for a specific planet
     /// </summary>
@@ -358,6 +399,16 @@ OnSeasonChanged?.Invoke(season);
                 seasonalTextureLookup[entry.biome] = new Dictionary<Season, (Texture2D, Texture2D)>();
             }
             seasonalTextureLookup[entry.biome][entry.season] = (entry.seasonalAlbedo, entry.seasonalNormal);
+        }
+    }
+
+    private void BuildSeasonResponseLookup()
+    {
+        seasonResponseLookup.Clear();
+        foreach (var response in biomeSeasonResponses)
+        {
+            if (response == null) continue;
+            seasonResponseLookup[(response.biome, response.season)] = response;
         }
     }
 

@@ -20,6 +20,10 @@ public class HexMapChunk : MonoBehaviour
     private MeshCollider meshCollider;
     private Mesh mesh;
     private Material material;
+    private Texture2D seasonMaskTexture;
+    private MaterialPropertyBlock propertyBlock;
+    private int seasonMaskWidth;
+    private int seasonMaskHeight;
     
     // Reference to manager
     private HexMapChunkManager manager;
@@ -102,6 +106,88 @@ public class HexMapChunk : MonoBehaviour
         this.uvMin = uvMin;
         this.uvMax = uvMax;
         isDirty = true;
+    }
+
+    public void UpdateSeasonMask(
+        int lutWidth,
+        int lutHeight,
+        int chunkPixelWidth,
+        int chunkPixelHeight,
+        int[] lut,
+        PlanetGenerator planetGenerator,
+        ClimateManager climateManager,
+        Season season)
+    {
+        if (meshRenderer == null || lut == null || planetGenerator == null || climateManager == null)
+        {
+            return;
+        }
+
+        if (chunkPixelWidth <= 0 || chunkPixelHeight <= 0 || lutWidth <= 0 || lutHeight <= 0)
+        {
+            return;
+        }
+
+        if (seasonMaskTexture == null || seasonMaskWidth != chunkPixelWidth || seasonMaskHeight != chunkPixelHeight)
+        {
+            seasonMaskTexture = new Texture2D(chunkPixelWidth, chunkPixelHeight, TextureFormat.RGBA32, false);
+            seasonMaskTexture.filterMode = FilterMode.Point;
+            seasonMaskTexture.wrapMode = TextureWrapMode.Clamp;
+            seasonMaskTexture.name = $"SeasonMask_{chunkX}_{chunkZ}";
+            seasonMaskWidth = chunkPixelWidth;
+            seasonMaskHeight = chunkPixelHeight;
+        }
+
+        var pixels = new Color[chunkPixelWidth * chunkPixelHeight];
+
+        int chunkOffsetX = chunkX * chunkPixelWidth;
+        int chunkOffsetY = chunkZ * chunkPixelHeight;
+
+        for (int y = 0; y < chunkPixelHeight; y++)
+        {
+            int globalY = chunkOffsetY + y;
+            if (globalY < 0 || globalY >= lutHeight) continue;
+
+            int rowBase = y * chunkPixelWidth;
+            int lutRowBase = globalY * lutWidth;
+            for (int x = 0; x < chunkPixelWidth; x++)
+            {
+                int globalX = chunkOffsetX + x;
+                if (globalX < 0 || globalX >= lutWidth) continue;
+
+                int lutIndex = lutRowBase + globalX;
+                if (lutIndex < 0 || lutIndex >= lut.Length) continue;
+
+                int tileIndex = lut[lutIndex];
+                if (tileIndex < 0) continue;
+
+                if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                {
+                    continue;
+                }
+
+                var response = climateManager.GetSeasonResponse(tile.biome, season);
+                pixels[rowBase + x] = new Color(response.snow, response.wet, response.dry, 0f);
+            }
+        }
+
+        seasonMaskTexture.SetPixels(pixels);
+        seasonMaskTexture.Apply();
+
+        if (propertyBlock == null)
+        {
+            propertyBlock = new MaterialPropertyBlock();
+        }
+
+        Vector2 uvScale = new Vector2(
+            1f / Mathf.Max(uvMax.x - uvMin.x, 0.0001f),
+            1f / Mathf.Max(uvMax.y - uvMin.y, 0.0001f));
+        Vector2 uvOffset = new Vector2(-uvMin.x * uvScale.x, -uvMin.y * uvScale.y);
+
+        propertyBlock.SetTexture("_TileSeasonMask", seasonMaskTexture);
+        propertyBlock.SetVector("_TileSeasonMask_TexSize", new Vector2(chunkPixelWidth, chunkPixelHeight));
+        propertyBlock.SetVector("_TileSeasonMask_ST", new Vector4(uvScale.x, uvScale.y, uvOffset.x, uvOffset.y));
+        meshRenderer.SetPropertyBlock(propertyBlock);
     }
     
     /// <summary>

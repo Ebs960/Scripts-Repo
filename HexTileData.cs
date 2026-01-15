@@ -71,6 +71,10 @@ public class HexTileData
     public Season season;
     [Tooltip("Additional yield modifier this season (e.g. +20% in summer on farms)")]
     public float seasonalYieldModifier;
+    [Tooltip("True if seasonal snow should appear on this tile")]
+    public bool hasSnow;
+    [Tooltip("True if this tile's water surface is frozen by seasonal effects")]
+    public bool isFrozen;
 
     // --- Special Space Flags ---
     [Header("Space Tile Flags")]
