@@ -64,6 +64,14 @@ public class GameManager : MonoBehaviour
     public MapSize mapSize = MapSize.Standard;
     public bool generateMoon = true;
 
+    [Header("Continent Placement (Stamping)")]
+    [SerializeField]
+    private bool overrideContinentMinDistance = false;
+
+    [SerializeField]
+    [Tooltip("Used only if overrideContinentMinDistance is true")]
+    private int continentMinDistanceOverrideTiles = 6;
+
     [Header("References")]
     public PlanetGenerator planetGenerator;
     public CivilizationManager civilizationManager;
@@ -354,7 +362,23 @@ currentPlanetIndex = planetIndex;
         GameSetupData.continentMaxWidthTiles = continentMaxW;
         GameSetupData.continentMinHeightTiles = continentMinH;
         GameSetupData.continentMaxHeightTiles = continentMaxH;
-        GameSetupData.continentMinDistanceTiles = Mathf.Max(1, continentMinW / 2);
+        int autoMinDistance =
+            Mathf.Max(
+                2,
+                Mathf.RoundToInt(
+                    Mathf.Min(continentMinW, continentMinH) * 0.35f
+                )
+            );
+
+        if (overrideContinentMinDistance)
+        {
+            GameSetupData.continentMinDistanceTiles =
+                Mathf.Max(1, continentMinDistanceOverrideTiles);
+        }
+        else
+        {
+            GameSetupData.continentMinDistanceTiles = autoMinDistance;
+        }
 
         int minIslandDim = Mathf.Min(islandMinW, islandMinH);
         int maxIslandDim = Mathf.Max(islandMaxW, islandMaxH);
