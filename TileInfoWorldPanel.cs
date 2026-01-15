@@ -468,7 +468,6 @@ public class TileInfoWorldPanel : MonoBehaviour
         tmp.fontStyle = style;
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.enableWordWrapping = true;
-        tmp.textWrappingMode = TextWrappingModes.Wrap;
         tmp.overflowMode = TextOverflowModes.Ellipsis;
 
         // Add slight shadow/outline for readability — operate on an instance of the shared material
