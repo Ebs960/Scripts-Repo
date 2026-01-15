@@ -388,11 +388,11 @@ currentPlanetIndex = planetIndex;
 
         if (GameSetupData.lakeMinRadiusTiles <= 0)
         {
-            GameSetupData.lakeMinRadiusTiles = GameSetupData.minLakeSize;
+            GameSetupData.lakeMinRadiusTiles = 3;
         }
         if (GameSetupData.lakeMaxRadiusTiles <= 0)
         {
-            GameSetupData.lakeMaxRadiusTiles = GameSetupData.maxLakeSize;
+            GameSetupData.lakeMaxRadiusTiles = Mathf.Max(3, 12);
         }
     }
 
@@ -860,10 +860,9 @@ currentPlanetIndex = planetIndex;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
             planetGenerator.enableLakes = GameSetupData.enableLakes;
             planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
-            planetGenerator.minLakeSize = GameSetupData.minLakeSize;
-            planetGenerator.maxLakeSize = GameSetupData.maxLakeSize;
-            planetGenerator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
-            planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
+            planetGenerator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
+            planetGenerator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
+            planetGenerator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
 
             // DIAGNOSTIC: log what we applied to the generator (tile-based ranges)
             Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}");
@@ -877,8 +876,9 @@ currentPlanetIndex = planetIndex;
             planetGenerator.enableRivers = GameSetupData.enableRivers;
             planetGenerator.enableLakes = GameSetupData.enableLakes;
             planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
-            planetGenerator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
-            planetGenerator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
+            planetGenerator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
+            planetGenerator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
+            planetGenerator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
 
 
 
@@ -1910,10 +1910,9 @@ currentPlanetIndex = planetIndex;
 
         generator.enableLakes = GameSetupData.enableLakes;
         generator.numberOfLakes = GameSetupData.numberOfLakes;
-        generator.minLakeSize = GameSetupData.minLakeSize;
-        generator.maxLakeSize = GameSetupData.maxLakeSize;
-        generator.lakeElevationThreshold = GameSetupData.lakeElevationThreshold;
-        generator.connectRiversToLakes = GameSetupData.connectRiversToLakes;
+        generator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
+        generator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
+        generator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
 
     
     yield return StartCoroutine(generator.GenerateSurface());

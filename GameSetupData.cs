@@ -46,10 +46,8 @@ public static class GameSetupData
     // Lake Settings (influenced by moisture preset)
     public static bool enableLakes = true;
     public static int numberOfLakes = 8;
-    public static int minLakeSize = 3;
-    public static int maxLakeSize = 12;
-    public static float lakeElevationThreshold = 0.25f;
-    public static bool connectRiversToLakes = true;
+    // Lake stamping (tile radius) - authoritative representation
+    // radius in tiles
     
     // Climate Thresholds
     public static float polarLatitudeThreshold;
@@ -153,13 +151,9 @@ public static class GameSetupData
         enableRivers = true;
         riverCount = 10;
         
-        // Set default lake settings (influenced by moisture in ApplyMoisturePreset)
+        // Set default lake settings (radius-based)
         enableLakes = true;
         numberOfLakes = 8;
-        minLakeSize = 3;
-        maxLakeSize = 12;
-        lakeElevationThreshold = 0.25f;
-        connectRiversToLakes = true;
         
         // Set default climate thresholds (temperate)
         polarLatitudeThreshold = 0.8f;
@@ -207,8 +201,8 @@ public static class GameSetupData
         islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);
         islandMinDistanceFromContinents = 6;
 
-        lakeMinRadiusTiles = minLakeSize;
-        lakeMaxRadiusTiles = maxLakeSize;
+        lakeMinRadiusTiles = 3;
+        lakeMaxRadiusTiles = 12;
         lakeMinDistanceFromCoast = 2;
     }
 }

@@ -379,11 +379,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Target number of lakes to generate")]
     public int numberOfLakes = 8;
     [Range(1, 15)]
-    [Tooltip("Minimum size of a lake in tiles")]
-    public int minLakeSize = 3;
+    [Tooltip("Minimum lake radius (tiles)")]
+    public int lakeMinRadiusTiles = 3;
     [Range(3, 30)]
-    [Tooltip("Maximum size of a lake in tiles")]
-    public int maxLakeSize = 12;
+    [Tooltip("Maximum lake radius (tiles)")]
+    public int lakeMaxRadiusTiles = 12;
+    [Tooltip("Minimum distance (tiles) a lake center must be from coast")]
+    public int lakeMinDistanceFromCoast = 2;
     [Range(0f, 0.5f)]
     [Tooltip("Elevation threshold - lakes form in depressions below this relative elevation")]
     public float lakeElevationThreshold = 0.25f;
@@ -624,7 +626,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
             Debug.Log($"[StampGen][Diag] mapSize={GameSetupData.mapSize} contTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} minDistance={GameSetupData.continentMinDistanceTiles}");
             Debug.Log($"[StampGen][Diag] islandRadius min={GameSetupData.islandMinRadiusTiles} max={GameSetupData.islandMaxRadiusTiles} minDistanceFromContinents={GameSetupData.islandMinDistanceFromContinents}");
-            Debug.Log($"[StampGen][Diag] lakeRadius min={GameSetupData.lakeMinRadiusTiles} max={GameSetupData.lakeMaxRadiusTiles} minDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
+            Debug.Log($"[StampGen][Diag] lakeRadius min={lakeMinRadiusTiles} max={lakeMaxRadiusTiles} minDistanceFromCoast={lakeMinDistanceFromCoast}");
             Debug.Log($"[Setup] mapSize={GameSetupData.mapSize} contCount={GameSetupData.numberOfContinents} islandCount={GameSetupData.numberOfIslands} generateIslands={GameSetupData.generateIslands}");
             Debug.Log($"[PlanetGenerator][Diag] numberOfContinents={numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH}");
             Debug.Log($"[PlanetGenerator][Diag] generateIslands={generateIslands} numberOfIslands={numberOfIslands}");
@@ -760,9 +762,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         List<Vector2Int> lakeCenters = new List<Vector2Int>();
         if (enableLakes && isEarthPlanet && numberOfLakes > 0)
         {
-            int lakeMinRadius = Mathf.Max(1, GameSetupData.lakeMinRadiusTiles);
-            int lakeMaxRadius = Mathf.Max(lakeMinRadius, GameSetupData.lakeMaxRadiusTiles);
-            int lakeMinDistanceFromCoast = Mathf.Max(0, GameSetupData.lakeMinDistanceFromCoast);
+            int lakeMinRadius = Mathf.Max(1, lakeMinRadiusTiles);
+            int lakeMaxRadius = Mathf.Max(lakeMinRadius, lakeMaxRadiusTiles);
+            int lakeMinDistance = Mathf.Max(0, lakeMinDistanceFromCoast);
 
             List<int> lakeCoastTiles = new List<int>();
             for (int i = 0; i < tileCount; i++) {
@@ -786,7 +788,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 int[] distanceFromCoast = BuildDistanceMap(lakeCoastTiles);
                 for (int i = 0; i < tileCount; i++) {
                     if (!isLandTile[i]) continue;
-                    if (distanceFromCoast[i] >= lakeMinDistanceFromCoast) {
+                    if (distanceFromCoast[i] >= lakeMinDistance) {
                         candidateCenters.Add(i);
                     }
                 }
@@ -862,7 +864,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         if (enableRivers && GameSetupData.riverCount > 0 && enableLakes && isEarthPlanet && lakeCenters.Count == 0)
         {
-            int fallbackRadius = Mathf.Max(1, GameSetupData.lakeMinRadiusTiles);
+            int fallbackRadius = Mathf.Max(1, lakeMinRadiusTiles);
             for (int i = 0; i < tileCount; i++)
             {
                 if (!isLandTile[i]) continue;
@@ -1337,9 +1339,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 attempts++;
 
                 List<int> path = FindRiverPath(lakeIndex, coastTiles, tileData, riverRand);
-                if (path == null || path.Count < minRiverLength || path.Count > maxRiverPathLength) {
-                    continue;
-                }
+                if (path == null) continue;
 
                 riversGenerated++;
                 foreach (int tileIdx in path) {
@@ -1395,7 +1395,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
 
                 int currentSteps = steps[current];
-                if (currentSteps >= maxRiverPathLength) continue;
 
                 foreach (int neighbor in grid.neighbors[current])
                 {
