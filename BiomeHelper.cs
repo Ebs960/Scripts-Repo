@@ -132,6 +132,9 @@ public static class BiomeHelper {
 
     
         if (!isLand) {
+            // Water tiles: freeze into glaciers when sufficiently cold.
+            // Glacier is now a water biome determined solely by low temperature.
+            if (temperature <= 0.15f) return Biome.Glacier;
             return Biome.Ocean;
         }
         

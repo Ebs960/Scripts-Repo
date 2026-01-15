@@ -332,7 +332,6 @@ public class MainMenuManager : MonoBehaviour
             aiCountDropdown.value = Mathf.Clamp(aiCount, 0, 8);
             aiCountDropdown.onValueChanged.AddListener(OnAICountChanged);
         }
-        UpdateAICountText();
 
         // Initialize city-state count dropdown (0-6)
         if (cityStateCountDropdown != null)
@@ -376,7 +375,7 @@ public class MainMenuManager : MonoBehaviour
     private void OnAICountChanged(int value)
     {
         aiCount = value;
-        UpdateAICountText();
+
         UpdateMapTypeName(); // Update description with new civ count
     }
     

@@ -146,7 +146,7 @@ public static class GameSetupData
         
         // Set default continent and island settings (Standard preset)
         numberOfContinents = 4;
-        numberOfIslands = 8;
+        numberOfIslands = 2;
         generateIslands = true;
         
         // Set default river settings
@@ -174,8 +174,8 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 200; maxContinentWidthTilesStandard = 400;
-        minContinentHeightTilesStandard = 100; maxContinentHeightTilesStandard = 200;
+        minContinentWidthTilesStandard = 19; maxContinentWidthTilesStandard = 39;
+        minContinentHeightTilesStandard = 20; maxContinentHeightTilesStandard = 25;
 
         minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
         minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
@@ -184,8 +184,8 @@ public static class GameSetupData
         minIslandWidthTilesSmall = 8; maxIslandWidthTilesSmall = 24;
         minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
 
-        minIslandWidthTilesStandard = 20; maxIslandWidthTilesStandard = 60;
-        minIslandHeightTilesStandard = 10; maxIslandHeightTilesStandard = 30;
+        minIslandWidthTilesStandard = 7; maxIslandWidthTilesStandard = 9;
+        minIslandHeightTilesStandard = 5; maxIslandHeightTilesStandard = 9;
 
         minIslandWidthTilesLarge = 40; maxIslandWidthTilesLarge = 120;
         minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
@@ -200,7 +200,7 @@ public static class GameSetupData
         continentMaxWidthTiles = maxContinentWidthTilesStandard;
         continentMinHeightTiles = minContinentHeightTilesStandard;
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
-        continentMinDistanceTiles = 12;
+        continentMinDistanceTiles = 10;
         continentConnectionChance = 0.1f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);

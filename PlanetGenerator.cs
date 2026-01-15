@@ -634,7 +634,17 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         int tilesX = grid.Width;
         int tilesZ = grid.Height;
         // ---------- 2. Generate Deterministic Continent Seeds with Per-Continent Sizes ------------------
-        List<ContinentData> continentDataList = GenerateContinentData(numberOfContinents, seed ^ 0xD00D, tilesX, tilesZ);
+        List<ContinentData> continentDataList = GenerateContinentData(
+            numberOfContinents,
+            seed ^ 0xD00D,
+            tilesX,
+            tilesZ,
+            GameSetupData.continentMinWidthTiles,
+            GameSetupData.continentMaxWidthTiles,
+            GameSetupData.continentMinHeightTiles,
+            GameSetupData.continentMaxHeightTiles,
+            GameSetupData.continentMinDistanceTiles
+        );
         continents = continentDataList;
 
         if (loadingPanelController != null)
@@ -1580,16 +1590,26 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// Generate continent seeds with per-continent randomized sizes and rotations.
     /// Returns both positions and per-continent size data.
     /// </summary>
-    private List<ContinentData> GenerateContinentData(int count, int rndSeed, int mapWidthTiles, int mapHeightTiles) {
+    private List<ContinentData> GenerateContinentData(
+        int count,
+        int rndSeed,
+        int mapWidthTiles,
+        int mapHeightTiles,
+        int minContinentWidth,
+        int maxContinentWidth,
+        int minContinentHeight,
+        int maxContinentHeight,
+        int minDistanceTiles
+    ) {
         var continents = new List<ContinentData>();
         if (count <= 0) return continents;
 
         System.Random rand = new System.Random(rndSeed);
-        int minW = Mathf.Max(1, GameSetupData.continentMinWidthTiles);
-        int maxW = Mathf.Max(minW, GameSetupData.continentMaxWidthTiles);
-        int minH = Mathf.Max(1, GameSetupData.continentMinHeightTiles);
-        int maxH = Mathf.Max(minH, GameSetupData.continentMaxHeightTiles);
-        int minDistance = Mathf.Max(0, GameSetupData.continentMinDistanceTiles);
+        int minW = Mathf.Max(1, minContinentWidth);
+        int maxW = Mathf.Max(minW, maxContinentWidth);
+        int minH = Mathf.Max(1, minContinentHeight);
+        int maxH = Mathf.Max(minH, maxContinentHeight);
+        int minDistance = Mathf.Max(0, minDistanceTiles);
         float connectionChance = Mathf.Clamp01(GameSetupData.continentConnectionChance);
         int maxAttemptsPerContinent = 50;
 
@@ -1624,6 +1644,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             int chosenWidthTiles = rand.Next(minW, maxW + 1);
             int chosenHeightTiles = rand.Next(minH, maxH + 1);
+
+            Debug.Assert(
+                chosenWidthTiles < mapWidthTiles && chosenHeightTiles < mapHeightTiles,
+                $"[StampGen][ERROR] Continent size {chosenWidthTiles}x{chosenHeightTiles} >= map size {mapWidthTiles}x{mapHeightTiles}"
+            );
 
             continents.Add(new ContinentData {
                 name = $"Continent {continentIndex++}",

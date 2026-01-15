@@ -323,7 +323,7 @@ currentPlanetIndex = planetIndex;
         }
     }
 
-    private static void ApplyStampSettingsForMapSize(MapSize size)
+    private void ApplyStampSettingsForMapSize(MapSize size)
     {
         int continentMinW = GameSetupData.minContinentWidthTilesStandard;
         int continentMaxW = GameSetupData.maxContinentWidthTilesStandard;
