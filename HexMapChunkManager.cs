@@ -1288,6 +1288,28 @@ TrySubscribeToSurfaceReady(gen);
         if (tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk))
         {
             chunk.MarkTileDirty(tileIndex);
+            // Also update the chunk's season mask so seasonal visuals stay in sync
+            try
+            {
+                if (planetGenerator != null && bakeResult.lut != null && seasonMaskWidth > 0 && seasonMaskHeight > 0)
+                {
+                    var climateManager = GameManager.Instance != null
+                        ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+                        : ClimateManager.Instance;
+                    if (climateManager != null)
+                    {
+                        Season s = climateManager.GetSeasonForPlanet(planetGenerator.planetIndex);
+                        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+                        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+                        chunk.UpdateSeasonMask(lutWidth, lutHeight, seasonMaskWidth, seasonMaskHeight, bakeResult.lut, planetGenerator, climateManager, s);
+                        UpdateGhostSeasonMasks();
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Failed to update season mask for chunk after tile dirty: {ex.Message}");
+            }
         }
     }
     
@@ -1309,6 +1331,33 @@ TrySubscribeToSurfaceReady(gen);
         foreach (var chunk in affectedChunks)
         {
             chunk.MarkDirty();
+        }
+
+        // Update season masks for affected chunks so seasonal overlays reflect tile changes
+        try
+        {
+            if (planetGenerator != null && bakeResult.lut != null && seasonMaskWidth > 0 && seasonMaskHeight > 0)
+            {
+                var climateManager = GameManager.Instance != null
+                    ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+                    : ClimateManager.Instance;
+                if (climateManager != null)
+                {
+                    Season s = climateManager.GetSeasonForPlanet(planetGenerator.planetIndex);
+                    int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+                    int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+                    foreach (var chunk in affectedChunks)
+                    {
+                        if (chunk == null) continue;
+                        chunk.UpdateSeasonMask(lutWidth, lutHeight, seasonMaskWidth, seasonMaskHeight, bakeResult.lut, planetGenerator, climateManager, s);
+                    }
+                    UpdateGhostSeasonMasks();
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[HexMapChunkManager] Failed to update season masks for affected chunks: {ex.Message}");
         }
     }
     

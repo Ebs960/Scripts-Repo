@@ -168,8 +168,8 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 19; maxContinentWidthTilesStandard = 39;
-        minContinentHeightTilesStandard = 20; maxContinentHeightTilesStandard = 25;
+        minContinentWidthTilesStandard = 27; maxContinentWidthTilesStandard = 39;
+        minContinentHeightTilesStandard = 20; maxContinentHeightTilesStandard = 35;
 
         minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
         minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
@@ -194,7 +194,7 @@ public static class GameSetupData
         continentMaxWidthTiles = maxContinentWidthTilesStandard;
         continentMinHeightTiles = minContinentHeightTilesStandard;
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
-        continentMinDistanceTiles = 10;
+        continentMinDistanceTiles = 8;
         continentConnectionChance = 0.1f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
@@ -202,7 +202,7 @@ public static class GameSetupData
         islandMinDistanceFromContinents = 6;
 
         lakeMinRadiusTiles = 3;
-        lakeMaxRadiusTiles = 12;
+        lakeMaxRadiusTiles = 9;
         lakeMinDistanceFromCoast = 2;
     }
 }
