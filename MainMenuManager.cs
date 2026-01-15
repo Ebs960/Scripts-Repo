@@ -849,7 +849,6 @@ public class MainMenuManager : MonoBehaviour
         int[] baseLakeCounts = { 0, 1, 2, 3, 4, 5 };      // Desert=none, Oceanic=moderate
         int[] minLakeSizes = { 1, 1, 2, 2, 2, 2 };        // Halved min sizes
         int[] maxLakeSizes = { 2, 3, 4, 5, 6, 8 };        // Halved max sizes
-        float[] lakeThresholds = { 0.15f, 0.18f, 0.22f, 0.26f, 0.30f, 0.35f }; // Wetter = more valid terrain
         
         // Land type multipliers for lake count (islands have less inland area)
         // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
@@ -864,12 +863,10 @@ public class MainMenuManager : MonoBehaviour
         // Disable lakes entirely for archipelago or desert
         GameSetupData.enableLakes = (moistIdx > 0 && landIdx > 0);
         GameSetupData.numberOfLakes = adjustedLakeCount;
-        GameSetupData.minLakeSize = minLakeSizes[moistIdx];
-        GameSetupData.maxLakeSize = maxLakeSizes[moistIdx];
-        GameSetupData.lakeElevationThreshold = lakeThresholds[moistIdx];
-        GameSetupData.connectRiversToLakes = (adjustedLakeCount > 0);
-        GameSetupData.lakeMinRadiusTiles = GameSetupData.minLakeSize;
-        GameSetupData.lakeMaxRadiusTiles = GameSetupData.maxLakeSize;
+        GameSetupData.lakeMinRadiusTiles = minLakeSizes[moistIdx];
+        GameSetupData.lakeMaxRadiusTiles = maxLakeSizes[moistIdx];
+        // lakeElevationThreshold and connectRiversToLakes were removed from GameSetupData;
+        // keep lake count and radius-only configuration here.
         
         // Get current climate thresholds from presets
         var climateThresholds = climatePresets[selectedClimatePreset];

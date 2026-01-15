@@ -386,17 +386,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int lakeMaxRadiusTiles = 12;
     [Tooltip("Minimum distance (tiles) a lake center must be from coast")]
     public int lakeMinDistanceFromCoast = 2;
-    [Range(0f, 0.5f)]
-    [Tooltip("Elevation threshold - lakes form in depressions below this relative elevation")]
-    public float lakeElevationThreshold = 0.25f;
     [Range(0f, 0.2f)]
     [Tooltip("Fixed elevation for lake tiles")]
     public float lakeElevation = 0.02f;
     [Range(0f, 0.2f)]
     [Tooltip("Render elevation for lake tiles")]
     public float lakeRenderElevation = 0.05f;
-    [Tooltip("Whether rivers should connect to lakes (flow into or out of them)")]
-    public bool connectRiversToLakes = true;
 
     // --- Island Generation ---
     [Header("Island Generation")]
