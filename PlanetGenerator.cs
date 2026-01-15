@@ -248,8 +248,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     // Public property to access the seed
     public int Seed => seed;
 
-    // --- New Continent Parameters (Method 2: Masked Noise + Guaranteed Core) ---
-    [Header("Continent Generation (Deterministic Masked Noise)")]
+    // --- Continent Parameters (Stamping) ---
+    [Header("Continent Generation (Stamping)")]
     [Tooltip("The target number of continents. Placement is deterministic for common counts (1-8). Higher counts might revert to random spread.")]
     [Min(1)]
     public int numberOfContinents = 6;
@@ -293,12 +293,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
     public float elevationFreq = 2f, moistureFreq = 4f;
-    [Range(0.2f, 0.8f)]
-    [Tooltip("Noise threshold for filling land *around* the guaranteed core within masks. Lower = more land.")]
-    public float landThreshold = 0.4f;
-
-    [Tooltip("Frequency multiplier for the continent noise function.")]
-    public float continentNoiseFrequency = 20f;
 
     [Range(-0.3f, 0.3f)]
     [Tooltip("Bias for moisture levels. Positive values make the planet wetter, negative values make it drier.")]
@@ -350,46 +344,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("The absolute maximum elevation any tile can reach (after noise). Set near 1.0 for full range.")]
     public float maxTotalElevation = 1.0f;
     
-    // --- NEW: Continent Shape Parameters ---
-    [Header("Continent Shape (Fractal)")]
-    [Range(0.1f, 0.5f)]
-    [Tooltip("Inner radius (normalized) where land is guaranteed.")]
-    public float continentInnerRadius = 0.35f;
-    [Range(0.6f, 1.2f)]
-    [Tooltip("Outer radius (normalized) where land fades to ocean.")]
-    public float continentOuterRadius = 1.0f;
-    [Range(0f, 0.6f)]
-    [Tooltip("Amplitude of macro noise that shapes continent edges.")]
-    public float continentMacroAmplitude = 0.35f;
-    [Range(0f, 0.3f)]
-    [Tooltip("Amplitude of coastline warp for fractal edges.")]
-    public float coastlineWarpAmplitude = 0.12f;
-    [Range(0.3f, 0.7f)]
-    [Tooltip("Land cutoff threshold after combining falloff and noise.")]
-    public float landCutoff = 0.5f;
-    
-    // --- NEW: Advanced Fractal Settings ---
-    [Header("Advanced Fractal Settings")]
-    [Range(0f, 0.5f)]
-    [Tooltip("Domain warp amplitude for organic continent shapes. Higher = more flowing, less blobby.")]
-    public float continentDomainWarp = 0.25f;
-    
-    [Range(0f, 0.4f)]
-    [Tooltip("Fine-scale coastline warp amplitude. Adds small inlets and detail.")]
-    public float coastlineFineWarp = 0.08f;
-    
-    [Range(0f, 0.5f)]
-    [Tooltip("Voronoi influence on continents. Creates natural clustering/separation.")]
-    public float voronoiContinentInfluence = 0.0f; // disabled by default - Voronoi removed per request
-    
-    [Range(0f, 0.5f)]
-    [Tooltip("Voronoi influence on elevation. Adds natural cellular variation.")]
-    public float voronoiElevationInfluence = 0.12f;
-
     [Header("Experimental / Advanced")]
-    [Tooltip("Enable Voronoi-based continent/elevation features. Controlled per-prefab.")]
-    public bool useVoronoiContinents = false;
-    
     [Range(0f, 0.5f)]
     [Tooltip("Billow noise weight for rolling hills. Higher = more rounded terrain.")]
     public float billowHillWeight = 0.2f;
@@ -474,18 +429,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int minIslandHeightTilesLarge = 20;
     [Tooltip("Large map: max island height (tiles)")]
     public int maxIslandHeightTilesLarge = 60;
-    [Range(0.3f, 0.7f)]
-    [Tooltip("Land cutoff for islands (similar to landCutoff but for islands)")]
-    public float islandThreshold = 0.45f;
-    [Range(0.1f, 1.0f)]
-    [Tooltip("Noise frequency multiplier for islands (relative to continent frequency)")]
-    public float islandNoiseFrequency = 1.8f;
-    [Range(0.1f, 0.5f)]
-    [Tooltip("Inner radius for island falloff (guaranteed land core).")]
-    public float islandInnerRadius = 0.25f;
-    [Range(0.5f, 1.2f)]
-    [Tooltip("Outer radius for island falloff.")]
-    public float islandOuterRadius = 0.9f;
     [Tooltip("Generate islands as chains/clusters instead of random scatter.")]
     public bool generateIslandChains = true;
     [Range(2, 6)]
@@ -634,8 +577,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
     // --------------------------- Surface Generation --------------------------
     /// <summary>
-    /// Generates the planet's surface with continents, oceans, and biomes.
-    /// Uses continuous land field with fractal coastlines (not threshold noise).
+    /// Generates the planet's surface with stamped continents, oceans, and biomes.
+    /// Landmask is stamp-only; noise is used solely for elevation and climate variation.
     /// </summary>
     public System.Collections.IEnumerator GenerateSurface()
     {
@@ -968,8 +911,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Only enable the Voronoi path if the prefab flag is set. Billow hills may still trigger advanced elevation.
             if (billowHillWeight > 0.01f) {
                 noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
-                    elevBroadFreq, elevRidgedFreq, elevBillowFreq, 0f,
-                    ridgedMountainWeight, billowHillWeight, 0f);
+                    elevBroadFreq, elevRidgedFreq, elevBillowFreq,
+                    ridgedMountainWeight, billowHillWeight);
             } else {
                 noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight,
                     elevBroadFreq, elevRidgedFreq, ridgedMountainWeight);

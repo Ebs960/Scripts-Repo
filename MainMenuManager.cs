@@ -160,11 +160,11 @@ public class MainMenuManager : MonoBehaviour
     
     // Land mass preset values - revised for proper continent/island distinction
     private readonly LandPresetData[] landPresets = new[] {
-        new LandPresetData { name = "Archipelago", landThreshold = 0.57f, continents = 0, islands = 25, description = "Many small scattered islands", minWidth = 10f, maxWidth = 50f, minHeight = 20f, maxHeight = 30f },
-        new LandPresetData { name = "Islands", landThreshold = 0.5f, continents = 2, islands = 15, description = "A few large islands with smaller ones", minWidth = 25f, maxWidth = 70f, minHeight = 25f, maxHeight = 50f },
-        new LandPresetData { name = "Standard", landThreshold = 0.45f, continents = 4, islands = 9, description = "Balanced continents and islands", minWidth = 100f, maxWidth = 180f, minHeight = 60f, maxHeight = 150f },
-        new LandPresetData { name = "Large Continents", landThreshold = 0.4f, continents = 6, islands = 5, description = "Multiple large continents", minWidth = 180f, maxWidth = 200f, minHeight = 150f, maxHeight = 160f },
-        new LandPresetData { name = "Pangaea", landThreshold = 0.25f, continents = 1, islands = 5, description = "One massive supercontinent", minWidth = 200f, maxWidth = 250f, minHeight = 250f, maxHeight = 300f }
+        new LandPresetData { name = "Archipelago", continents = 0, islands = 25, description = "Many small scattered islands" },
+        new LandPresetData { name = "Islands", continents = 2, islands = 15, description = "A few large islands with smaller ones" },
+        new LandPresetData { name = "Standard", continents = 4, islands = 9, description = "Balanced continents and islands" },
+        new LandPresetData { name = "Large Continents", continents = 6, islands = 5, description = "Multiple large continents" },
+        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, description = "One massive supercontinent" }
         // Pangaea should produce a single massive landmass - ensure continents=1, islands=0
     };
 
@@ -196,12 +196,9 @@ public class MainMenuManager : MonoBehaviour
     public struct LandPresetData
     {
         public string name;
-        public float landThreshold;
         public int continents;
         public int islands;
         public string description;
-        public float minWidth, maxWidth;
-        public float minHeight, maxHeight;
     }
 
 

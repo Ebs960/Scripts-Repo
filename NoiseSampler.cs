@@ -2,43 +2,19 @@ using UnityEngine;
 
 public class NoiseSampler
 {
-    FastNoiseLite continentNoise;
     FastNoiseLite elevationNoise;
     FastNoiseLite elevationBroadNoise;  // New: broad FBm for rolling terrain
     FastNoiseLite elevationRidgedNoise; // New: ridged noise for mountains/spines
     FastNoiseLite elevationBillowNoise; // New: billow noise for rolling hills
     FastNoiseLite moistNoise;
-    FastNoiseLite coastlineNoise;
-    FastNoiseLite coastlineWarpNoise;   // New: for domain warping coastlines
-    FastNoiseLite coastlineWarpFine;    // New: fine-scale coastline warp
     FastNoiseLite temperatureNoise;
-    FastNoiseLite islandNoise;          // New: dedicated island noise
-    FastNoiseLite voronoiNoise;         // New: Voronoi/cellular noise for natural patterns
-    FastNoiseLite domainWarpNoise;      // New: large-scale domain warping for organic shapes
-    FastNoiseLite domainWarpFine;       // New: fine-scale domain warping
     
     // Configurable parameters for campaign maps
-    public float continentFrequency = 0.008f;      // Derived from map size
-    public float coastlineFrequency = 0.024f;      // 3x continent frequency
-    public float coastlineWarpAmplitude = 0.15f;   // Controls coastline jaggedness
     public float elevationBroadFrequency = 0.012f; // Broad terrain frequency
     public float elevationRidgedFrequency = 0.02f; // Mountain ridge frequency
-    public float ridgeWeight = 0.35f;              // Blend weight for ridged noise
-    public float billowWeight = 0.25f;             // Blend weight for billow (rolling hills)
-    public float voronoiInfluence = 0.15f;         // How much Voronoi affects terrain
 
     public NoiseSampler(int seed)
     {
-        // ---------- Continents (Macro) ----------
-        continentNoise = new FastNoiseLite(seed + 1);
-        continentNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        continentNoise.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        continentNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        continentNoise.SetFractalOctaves(5);        // 5 octaves for macro shapes
-        continentNoise.SetFractalLacunarity(2.0f);  // Standard lacunarity
-        continentNoise.SetFractalGain(0.5f);        // Standard gain
-        continentNoise.SetFrequency(0.15f);         // Will be overridden by periodic methods
-
         // ---------- Elevation (Broad FBm - rolling terrain) ----------
         elevationBroadNoise = new FastNoiseLite(seed + 2);
         elevationBroadNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
@@ -74,26 +50,6 @@ public class NoiseSampler
         moistNoise.SetFractalOctaves(4);
         moistNoise.SetFrequency(0.852f);
         
-        // ---------- Coastline Detail ----------
-        coastlineNoise = new FastNoiseLite(seed + 4);
-        coastlineNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        coastlineNoise.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        coastlineNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        coastlineNoise.SetFractalOctaves(3);        // 3 octaves for coastline
-        coastlineNoise.SetFractalLacunarity(2.2f);  // Slightly higher for more detail
-        coastlineNoise.SetFractalGain(0.5f);
-        coastlineNoise.SetFrequency(2.5f);
-        
-        // ---------- Coastline Warp (for domain warping) ----------
-        coastlineWarpNoise = new FastNoiseLite(seed + 40);
-        coastlineWarpNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        coastlineWarpNoise.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        coastlineWarpNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        coastlineWarpNoise.SetFractalOctaves(2);
-        coastlineWarpNoise.SetFractalLacunarity(2.0f);
-        coastlineWarpNoise.SetFractalGain(0.5f);
-        coastlineWarpNoise.SetFrequency(4.0f);
-        
         // ---------- Temperature ----------
         temperatureNoise = new FastNoiseLite(seed + 5);
         temperatureNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
@@ -103,16 +59,6 @@ public class NoiseSampler
         temperatureNoise.SetFractalLacunarity(2.0f);
         temperatureNoise.SetFractalGain(0.5f);
         temperatureNoise.SetFrequency(1.0f);
-        
-        // ---------- Island Noise (higher frequency) ----------
-        islandNoise = new FastNoiseLite(seed + 6);
-        islandNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        islandNoise.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        islandNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        islandNoise.SetFractalOctaves(4);
-        islandNoise.SetFractalLacunarity(2.0f);
-        islandNoise.SetFractalGain(0.5f);
-        islandNoise.SetFrequency(0.25f);  // Higher than continents for smaller features
         
         // ---------- Billow Noise (rolling hills - inverse of ridged) ----------
         elevationBillowNoise = new FastNoiseLite(seed + 21);
@@ -124,43 +70,6 @@ public class NoiseSampler
         elevationBillowNoise.SetFractalGain(0.45f);
         elevationBillowNoise.SetFrequency(0.8f);
         
-        // ---------- Fine-Scale Coastline Warp ----------
-        coastlineWarpFine = new FastNoiseLite(seed + 41);
-        coastlineWarpFine.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        coastlineWarpFine.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        coastlineWarpFine.SetFractalType(FastNoiseLite.FractalType.FBm);
-        coastlineWarpFine.SetFractalOctaves(3);
-        coastlineWarpFine.SetFractalLacunarity(2.5f);
-        coastlineWarpFine.SetFractalGain(0.4f);
-        coastlineWarpFine.SetFrequency(8.0f);  // Much higher frequency for fine detail
-        
-        // ---------- Voronoi/Cellular Noise (natural patterns) ----------
-        voronoiNoise = new FastNoiseLite(seed + 7);
-        voronoiNoise.SetNoiseType(FastNoiseLite.NoiseType.Cellular);
-        voronoiNoise.SetCellularDistanceFunction(FastNoiseLite.CellularDistanceFunction.EuclideanSq);
-        voronoiNoise.SetCellularReturnType(FastNoiseLite.CellularReturnType.Distance2Sub); // Creates natural cracks/cell patterns
-        voronoiNoise.SetCellularJitter(0.85f);  // Some randomness in cell positions
-        voronoiNoise.SetFrequency(0.05f);
-        
-        // ---------- Large-Scale Domain Warp (organic continent shapes) ----------
-        domainWarpNoise = new FastNoiseLite(seed + 8);
-        domainWarpNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        domainWarpNoise.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        domainWarpNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        domainWarpNoise.SetFractalOctaves(3);
-        domainWarpNoise.SetFractalLacunarity(2.0f);
-        domainWarpNoise.SetFractalGain(0.5f);
-        domainWarpNoise.SetFrequency(0.5f);  // Low frequency for large-scale warping
-        
-        // ---------- Fine-Scale Domain Warp ----------
-        domainWarpFine = new FastNoiseLite(seed + 9);
-        domainWarpFine.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2S);
-        domainWarpFine.SetRotationType3D(FastNoiseLite.RotationType3D.ImproveXYPlanes);
-        domainWarpFine.SetFractalType(FastNoiseLite.FractalType.FBm);
-        domainWarpFine.SetFractalOctaves(2);
-        domainWarpFine.SetFractalLacunarity(2.0f);
-        domainWarpFine.SetFractalGain(0.5f);
-        domainWarpFine.SetFrequency(2.0f);  // Higher frequency for detail
     }
     
     /// <summary>
@@ -169,23 +78,13 @@ public class NoiseSampler
     /// </summary>
     public void ConfigureForMapSize(float mapWidth, float mapHeight)
     {
-        // Continent frequency: roughly 1 full wave per 0.75 of map width
-        continentFrequency = 1f / (mapWidth * 0.75f);
-        // Coastline: 3-6x continent frequency for detail
-        coastlineFrequency = continentFrequency * 4f;
         // Elevation frequencies
-        elevationBroadFrequency = continentFrequency * 1.5f;
-        elevationRidgedFrequency = continentFrequency * 2.5f;
+        float baseFrequency = 1f / (mapWidth * 0.75f);
+        elevationBroadFrequency = baseFrequency * 1.5f;
+        elevationRidgedFrequency = baseFrequency * 2.5f;
     }
 
     // ------------ Public helpers (legacy non-periodic) -------------
-    public float GetContinent(Vector3 p)
-    {
-        float n = continentNoise.GetNoise(p.x, p.y, p.z);
-        n = Mathf.Sign(n) * Mathf.Pow(Mathf.Abs(n), 0.95f);   // sharpen edges
-        return (n + 1f) * 0.5f;                              // map to 0‒1
-    }
-
     public float GetElevation(Vector3 p) =>
         Mathf.InverseLerp(-1.2f, 1.2f, elevationNoise.GetNoise(p.x, p.y, p.z));
 
@@ -194,10 +93,6 @@ public class NoiseSampler
 
     public float GetMoisture(Vector3 p) =>
         Mathf.InverseLerp(-1f, 1f, moistNoise.GetNoise(p.x, p.y, p.z));
-        
-    // New method for coastline noise (0-1 range)
-    public float GetCoastlineNoise(Vector3 p) =>
-        Mathf.InverseLerp(-1f, 1f, coastlineNoise.GetNoise(p.x, p.y, p.z));
 
     // Get temperature from spatial noise (0-1 range) - for non-polar areas
     public float GetTemperatureFromNoise(Vector3 p) =>
@@ -247,42 +142,6 @@ public class NoiseSampler
     }
     
     /// <summary>
-    /// Get continent noise with seamless horizontal wrap (periodic in X).
-    /// Returns value in 0..1 range.
-    /// </summary>
-    public float GetContinentPeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        float n = continentNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        n = Mathf.Sign(n) * Mathf.Pow(Mathf.Abs(n), 0.95f);  // Sharpen edges
-        return (n + 1f) * 0.5f;  // Map to 0..1
-    }
-    
-    /// <summary>
-    /// Get coastline detail noise with seamless horizontal wrap.
-    /// Returns value in 0..1 range.
-    /// </summary>
-    public float GetCoastPeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        float n = coastlineNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        return (n + 1f) * 0.5f;
-    }
-    
-    /// <summary>
-    /// Get coastline warp offset with seamless horizontal wrap.
-    /// Returns value centered around 0 (positive or negative offset).
-    /// </summary>
-    public Vector2 GetCoastWarpPeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq, float amplitude)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        // Sample two different positions for X and Y warp
-        float warpX = coastlineWarpNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        float warpY = coastlineWarpNoise.GetNoise(periodic.x * freq + 100f, periodic.y * freq + 100f, periodic.z * freq + 100f);
-        return new Vector2(warpX * amplitude, warpY * amplitude);
-    }
-    
-    /// <summary>
     /// Get blended elevation with seamless horizontal wrap.
     /// Blends broad FBm (rolling terrain) with ridged noise (mountains).
     /// Returns value in 0..1 range.
@@ -305,17 +164,6 @@ public class NoiseSampler
     }
     
     /// <summary>
-    /// Get island noise with seamless horizontal wrap.
-    /// Higher frequency than continents for smaller, more detailed features.
-    /// </summary>
-    public float GetIslandNoisePeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        float n = islandNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        return (n + 1f) * 0.5f;
-    }
-    
-    /// <summary>
     /// Get moisture with seamless horizontal wrap.
     /// </summary>
     public float GetMoisturePeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
@@ -335,37 +183,6 @@ public class NoiseSampler
         return (n + 1f) * 0.5f;
     }
     
-    // ============================================================================
-    // ADVANCED FRACTAL METHODS - Voronoi, Domain Warping, Billow
-    // ============================================================================
-    
-    /// <summary>
-    /// Get Voronoi/cellular noise with seamless horizontal wrap.
-    /// Returns value in 0..1 range. Creates natural cell-like patterns.
-    /// </summary>
-    public float GetVoronoiPeriodic(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        float n = voronoiNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        // Cellular noise returns -1 to 1, map to 0..1
-        return (n + 1f) * 0.5f;
-    }
-    
-    /// <summary>
-    /// Get Voronoi distance field - useful for continent clustering and archipelago generation.
-    /// Returns raw distance value (higher = further from cell center).
-    /// </summary>
-    public float GetVoronoiDistance(Vector2 tilePos, float mapWidth, float mapHeight, float freq)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        // Temporarily switch to distance return type
-        voronoiNoise.SetCellularReturnType(FastNoiseLite.CellularReturnType.Distance);
-        float dist = voronoiNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        // Reset to default pattern
-        voronoiNoise.SetCellularReturnType(FastNoiseLite.CellularReturnType.Distance2Sub);
-        return (dist + 1f) * 0.5f;
-    }
-    
     /// <summary>
     /// Get billow noise with seamless horizontal wrap.
     /// Billow = abs(noise), creates rounded, puffy, cloud-like shapes.
@@ -380,68 +197,12 @@ public class NoiseSampler
     }
     
     /// <summary>
-    /// Multi-octave cascaded coastline warping for highly fractal coastlines.
-    /// Combines coarse and fine warping for natural fjord/peninsula shapes.
-    /// </summary>
-    public Vector2 GetCascadedCoastWarp(Vector2 tilePos, float mapWidth, float mapHeight, 
-        float coarseFreq, float fineFreq, float coarseAmp, float fineAmp)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        
-        // Coarse-scale warp (large bays, peninsulas)
-        float coarseX = coastlineWarpNoise.GetNoise(periodic.x * coarseFreq, periodic.y * coarseFreq, periodic.z * coarseFreq);
-        float coarseY = coastlineWarpNoise.GetNoise(periodic.x * coarseFreq + 100f, periodic.y * coarseFreq + 100f, periodic.z * coarseFreq + 100f);
-        
-        // Apply coarse warp to get intermediate position
-        Vector2 warpedPos = tilePos + new Vector2(coarseX * coarseAmp, coarseY * coarseAmp);
-        Vector3 warpedPeriodic = ToPeriodicCoords(warpedPos, mapWidth, mapHeight);
-        
-        // Fine-scale warp (small inlets, detail)
-        float fineX = coastlineWarpFine.GetNoise(warpedPeriodic.x * fineFreq, warpedPeriodic.y * fineFreq, warpedPeriodic.z * fineFreq);
-        float fineY = coastlineWarpFine.GetNoise(warpedPeriodic.x * fineFreq + 50f, warpedPeriodic.y * fineFreq + 50f, warpedPeriodic.z * fineFreq + 50f);
-        
-        // Combine both scales
-        return new Vector2(
-            coarseX * coarseAmp + fineX * fineAmp,
-            coarseY * coarseAmp + fineY * fineAmp
-        );
-    }
-    
-    /// <summary>
-    /// Domain warp a position using cascaded multi-scale warping.
-    /// Creates highly organic, flowing continent shapes.
-    /// Returns the warped position.
-    /// </summary>
-    public Vector2 GetDomainWarpedPosition(Vector2 tilePos, float mapWidth, float mapHeight, 
-        float largeAmp, float smallAmp)
-    {
-        Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
-        float freqLarge = 1f / (mapWidth * 0.4f);  // Very low frequency for large-scale warp
-        float freqSmall = 1f / (mapWidth * 0.15f); // Medium frequency for detail
-        
-        // Large-scale organic flow
-        float warpX1 = domainWarpNoise.GetNoise(periodic.x * freqLarge, periodic.y * freqLarge, periodic.z * freqLarge);
-        float warpY1 = domainWarpNoise.GetNoise(periodic.x * freqLarge + 200f, periodic.y * freqLarge + 200f, periodic.z * freqLarge + 200f);
-        
-        // Apply first warp
-        Vector2 warped1 = tilePos + new Vector2(warpX1 * largeAmp, warpY1 * largeAmp);
-        Vector3 warpedPeriodic = ToPeriodicCoords(warped1, mapWidth, mapHeight);
-        
-        // Smaller-scale detail warp
-        float warpX2 = domainWarpFine.GetNoise(warpedPeriodic.x * freqSmall, warpedPeriodic.y * freqSmall, warpedPeriodic.z * freqSmall);
-        float warpY2 = domainWarpFine.GetNoise(warpedPeriodic.x * freqSmall + 150f, warpedPeriodic.y * freqSmall + 150f, warpedPeriodic.z * freqSmall + 150f);
-        
-        // Final warped position
-        return warped1 + new Vector2(warpX2 * smallAmp, warpY2 * smallAmp);
-    }
-    
-    /// <summary>
     /// Get elevation using advanced multi-noise blending.
-    /// Combines: FBm (base), Ridged (mountains), Billow (hills), Voronoi (variation).
+    /// Combines: FBm (base), Ridged (mountains), Billow (hills).
     /// </summary>
     public float GetAdvancedElevationPeriodic(Vector2 tilePos, float mapWidth, float mapHeight,
-        float broadFreq, float ridgedFreq, float billowFreq, float voronoiFreq,
-        float ridgeBlend = 0.35f, float billowBlend = 0.25f, float voronoiBlend = 0.15f)
+        float broadFreq, float ridgedFreq, float billowFreq,
+        float ridgeBlend = 0.35f, float billowBlend = 0.25f)
     {
         Vector3 periodic = ToPeriodicCoords(tilePos, mapWidth, mapHeight);
         
@@ -457,38 +218,12 @@ public class NoiseSampler
         float billow = elevationBillowNoise.GetNoise(periodic.x * billowFreq, periodic.y * billowFreq, periodic.z * billowFreq);
         billow = Mathf.Abs(billow);  // Creates rounded "pillowy" shapes
         
-        // Voronoi for natural variation/cells
-        float voronoi = voronoiNoise.GetNoise(periodic.x * voronoiFreq, periodic.y * voronoiFreq, periodic.z * voronoiFreq);
-        voronoi = (voronoi + 1f) * 0.5f;
-        
         // Multi-blend: Start with broad, add others based on weights
         // The weights should sum to ~1.0 for the additive parts
         float baseWeight = 1f - ridgeBlend - billowBlend;
         float blended = broad * baseWeight + ridged * ridgeBlend + billow * billowBlend;
-        
-        // Voronoi modulates the result (adds subtle cellular variation)
-        blended = Mathf.Lerp(blended, blended * (0.7f + voronoi * 0.6f), voronoiBlend);
-        
+
         return Mathf.Clamp01(blended);
-    }
-    
-    /// <summary>
-    /// Get continent noise with domain warping for organic shapes.
-    /// Much more natural-looking than raw noise.
-    /// </summary>
-    public float GetWarpedContinentPeriodic(Vector2 tilePos, float mapWidth, float mapHeight, 
-        float freq, float warpAmplitude)
-    {
-        // First apply domain warping to the position
-        Vector2 warpedPos = GetDomainWarpedPosition(tilePos, mapWidth, mapHeight, 
-            warpAmplitude * mapWidth * 0.15f,  // Large-scale warp
-            warpAmplitude * mapWidth * 0.05f); // Fine-scale warp
-        
-        // Now sample continent noise at warped position
-        Vector3 periodic = ToPeriodicCoords(warpedPos, mapWidth, mapHeight);
-        float n = continentNoise.GetNoise(periodic.x * freq, periodic.y * freq, periodic.z * freq);
-        n = Mathf.Sign(n) * Mathf.Pow(Mathf.Abs(n), 0.95f);  // Sharpen edges
-        return (n + 1f) * 0.5f;
     }
     
     // ============================================================================

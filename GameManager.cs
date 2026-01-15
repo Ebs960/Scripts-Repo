@@ -844,8 +844,7 @@ currentPlanetIndex = planetIndex;
             // DIAGNOSTIC: log what we applied to the generator (tile-based ranges)
             Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}");
 
-            // Preserve tuning from the PlanetGenerator prefab. Do NOT overwrite warp/macro/coast/voronoi
-            // or island/rivers tuning here so the generator's inspector remains the source of truth.
+            // Preserve tuning from the PlanetGenerator prefab so the generator's inspector remains the source of truth.
             Debug.Log("[GameManager][Diag] Preserving PlanetGenerator prefab tuning; preset tuning overrides skipped.");
 
             // Ensure island/rivers/lakes flags and counts come from GameSetupData
@@ -1867,8 +1866,7 @@ currentPlanetIndex = planetIndex;
     OnPlanetGridBuilt?.Invoke(planetIndex);
 
         // Only apply high-level GameSetupData overrides here. The `PlanetGenerator` prefab
-        // should remain authoritative for all noise/tuning parameters (domain warp, macro,
-        // coastline warp, voronoi, island noise, and tile-range presets).
+        // should remain authoritative for tuning parameters and tile-range presets.
         generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
         // Biome logic (allowed to be influenced by presets)
         generator.moistureBias = GameSetupData.moistureBias;
