@@ -386,6 +386,23 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int lakeMaxRadiusTiles = 12;
     [Tooltip("Minimum distance (tiles) a lake center must be from coast")]
     public int lakeMinDistanceFromCoast = 2;
+    [Header("Coast Irregularity")]
+    [Tooltip("Number of random coastal 'bites' (water) to stamp per map)")]
+    public int coastBiteCount = 3;
+    [Tooltip("Min radius (tiles) for coastal bite stamps")]
+    public int coastBiteRadiusMin = 2;
+    [Tooltip("Max radius (tiles) for coastal bite stamps")]
+    public int coastBiteRadiusMax = 5;
+
+    [Tooltip("Number of random coastal 'spurs' (land peninsulas) to stamp per map)")]
+    public int coastSpurCount = 2;
+    [Tooltip("Min radius (tiles) for coastal spur stamps")]
+    public int coastSpurRadiusMin = 1;
+    [Tooltip("Max radius (tiles) for coastal spur stamps")]
+    public int coastSpurRadiusMax = 3;
+
+    [Tooltip("Minimum total land tiles required to allow coast stamping")]
+    public int minLandTilesForCoastStamps = 120;
     [Range(0f, 0.2f)]
     [Tooltip("Fixed elevation for lake tiles")]
     public float lakeElevation = 0.02f;
@@ -746,6 +763,107 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         Debug.Log($"[StampGen] Islands stamped: {islandsStamped}");
+
+        // ---------- 2.75. Coastal irregularity passes (bays & peninsulas) ----------
+        // compute current land count (islands/stamps applied so far)
+        int _currentLandCount = 0;
+        for (int _i = 0; _i < tileCount; _i++) if (isLandTile[_i]) _currentLandCount++;
+        if (_currentLandCount >= minLandTilesForCoastStamps)
+        {
+            System.Random coastRand = new System.Random(unchecked((int)(seed ^ 0xBEEF)));
+
+            // Build coast candidate lists
+            List<int> coastLandCandidates = new List<int>();
+            List<int> coastWaterCandidates = new List<int>();
+            for (int i = 0; i < tileCount; i++) {
+                bool anyWaterNeighbor = false;
+                foreach (int n in grid.neighbors[i]) {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!isLandTile[n]) { anyWaterNeighbor = true; break; }
+                }
+                if (isLandTile[i] && anyWaterNeighbor) coastLandCandidates.Add(i);
+                if (!isLandTile[i] && anyWaterNeighbor) coastWaterCandidates.Add(i);
+            }
+
+            int ApplyWalkInland(int startIdx, int steps) {
+                int cur = startIdx;
+                for (int s = 0; s < steps; s++) {
+                    int best = -1; int bestCount = -1;
+                    foreach (int n in grid.neighbors[cur]) {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!isLandTile[n]) continue;
+                        int cnt = 0;
+                        foreach (int nn in grid.neighbors[n]) { if (nn >= 0 && nn < tileCount && isLandTile[nn]) cnt++; }
+                        if (cnt > bestCount) { bestCount = cnt; best = n; }
+                    }
+                    if (best == -1) break;
+                    cur = best;
+                }
+                return cur;
+            }
+
+            int ApplyWalkOffshore(int startIdx, int steps) {
+                int cur = startIdx;
+                for (int s = 0; s < steps; s++) {
+                    int best = -1; int bestCount = -1;
+                    foreach (int n in grid.neighbors[cur]) {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (isLandTile[n]) continue;
+                        int cnt = 0;
+                        foreach (int nn in grid.neighbors[n]) { if (nn >= 0 && nn < tileCount && !isLandTile[nn]) cnt++; }
+                        if (cnt > bestCount) { bestCount = cnt; best = n; }
+                    }
+                    if (best == -1) break;
+                    cur = best;
+                }
+                return cur;
+            }
+
+            // Apply bites (carve water into land)
+            for (int b = 0; b < coastBiteCount && coastLandCandidates.Count > 0; b++) {
+                int pick = coastRand.Next(coastLandCandidates.Count);
+                int startIdx = coastLandCandidates[pick];
+                int r = coastRand.Next(Mathf.Max(1, coastBiteRadiusMin), Mathf.Max(coastBiteRadiusMin, coastBiteRadiusMax) + 1);
+                int walkSteps = Mathf.Max(1, r / 2);
+                int centerIdx = ApplyWalkInland(startIdx, walkSteps);
+
+                // Simulate removal size and skip if too aggressive
+                int removed = 0;
+                for (int t = 0; t < tileCount; t++) {
+                    int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
+                    if (dist <= r && isLandTile[t]) removed++;
+                }
+                if (removed == 0) continue;
+                if ((float)removed / Mathf.Max(1, _currentLandCount) > 0.15f) continue; // don't remove >15% of land
+
+                StampCircle(tileCoords[centerIdx], r, false, false);
+            }
+
+            // Apply spurs (add small land peninsulas)
+            for (int s = 0; s < coastSpurCount && coastWaterCandidates.Count > 0; s++) {
+                int pick = coastRand.Next(coastWaterCandidates.Count);
+                int startIdx = coastWaterCandidates[pick];
+                int r = coastRand.Next(Mathf.Max(1, coastSpurRadiusMin), Mathf.Max(coastSpurRadiusMin, coastSpurRadiusMax) + 1);
+                int walkSteps = Mathf.Max(1, r / 3);
+                int centerIdx = ApplyWalkOffshore(startIdx, walkSteps);
+
+                // Simulate added tiles and ensure at least one connects to existing land
+                List<int> added = new List<int>();
+                for (int t = 0; t < tileCount; t++) {
+                    int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
+                    if (dist <= r && !isLandTile[t]) added.Add(t);
+                }
+                if (added.Count == 0) continue;
+                bool connects = false;
+                foreach (int at in added) {
+                    foreach (int n in grid.neighbors[at]) { if (n >= 0 && n < tileCount && isLandTile[n]) { connects = true; break; } }
+                    if (connects) break;
+                }
+                if (!connects) continue;
+
+                StampCircle(tileCoords[centerIdx], r, true, false);
+            }
+        }
 
         // ---------- 3. Generate Lakes (Stamping) ----------
         bool isEarthPlanet = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType && !isJupiterWorldType &&
