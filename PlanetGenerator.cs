@@ -690,6 +690,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
         }
 
+        Debug.Log(
+            $"[StampGen][Diag] continentMinDistanceTiles = " +
+            $"{GameSetupData.continentMinDistanceTiles}"
+        );
+
         foreach (var continent in continentDataList) {
             StampEllipse(continent);
         }
