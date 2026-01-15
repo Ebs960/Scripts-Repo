@@ -749,7 +749,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             int lakeMaxRadius = Mathf.Max(lakeMinRadius, GameSetupData.lakeMaxRadiusTiles);
             int lakeMinDistanceFromCoast = Mathf.Max(0, GameSetupData.lakeMinDistanceFromCoast);
 
-            List<int> coastTiles = new List<int>();
+            List<int> lakeCoastTiles = new List<int>();
             for (int i = 0; i < tileCount; i++) {
                 if (!isLandTile[i]) continue;
                 bool adjacentToOcean = false;
@@ -759,16 +759,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                         break;
                     }
                 }
-                if (adjacentToOcean) coastTiles.Add(i);
+                if (adjacentToOcean) lakeCoastTiles.Add(i);
             }
 
             List<int> candidateCenters = new List<int>();
-            if (coastTiles.Count == 0) {
+            if (lakeCoastTiles.Count == 0) {
                 for (int i = 0; i < tileCount; i++) {
                     if (isLandTile[i]) candidateCenters.Add(i);
                 }
             } else {
-                int[] distanceFromCoast = BuildDistanceMap(coastTiles);
+                int[] distanceFromCoast = BuildDistanceMap(lakeCoastTiles);
                 for (int i = 0; i < tileCount; i++) {
                     if (!isLandTile[i]) continue;
                     if (distanceFromCoast[i] >= lakeMinDistanceFromCoast) {
@@ -1558,11 +1558,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
     public LoadingPanelController GetLoadingPanel() => loadingPanelController;
 
-
-
-    /// <summary>
-    /// Generates optimized biome mask textures with improved quality and performance
-    /// </summary>
 
     // --- Per-Continent Data Structure ---
     /// <summary>

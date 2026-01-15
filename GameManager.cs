@@ -296,10 +296,10 @@ currentPlanetIndex = planetIndex;
     {
         switch (size)
         {
-            case MapSize.Small: tilesX = 64; tilesZ = 32; break;
-            case MapSize.Standard: tilesX = 96; tilesZ = 48; break;
-            case MapSize.Large: tilesX = 128; tilesZ = 64; break;
-            default: tilesX = 96; tilesZ = 48; break;
+            case MapSize.Small: tilesX = 96; tilesZ = 48; break;
+            case MapSize.Standard: tilesX = 148; tilesZ = 74; break;
+            case MapSize.Large: tilesX = 256; tilesZ = 128; break;
+            default: tilesX = 148; tilesZ = 74; break;
         }
     }
 
@@ -309,9 +309,9 @@ currentPlanetIndex = planetIndex;
         switch (size)
         {
             case MapSize.Small: width = 384f; height = 192f; break;
-            case MapSize.Standard: width = 512f; height = 256f; break;
-            case MapSize.Large: width = 768f; height = 384f; break;
-            default: width = 512f; height = 256f; break;
+            case MapSize.Standard: width = 592f; height = 296f; break;
+            case MapSize.Large: width = 1024f; height = 514f; break;
+            default: width = 592f; height = 296f; break;
         }
     }
 

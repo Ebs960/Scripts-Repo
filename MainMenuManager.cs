@@ -53,28 +53,21 @@ public class MainMenuManager : MonoBehaviour
     public Button quitGameButton;          // Quit game (new)
 
     [Header("Game Setup Controls")]
-    // Civilization counts
-    public Slider aiCountSlider;
-    public TextMeshProUGUI aiCountText;
-    public Slider cityStateCountSlider;
-    public TextMeshProUGUI cityStateCountText;
-    public Slider tribeCountSlider;
-    public TextMeshProUGUI tribeCountText;
+    // Civilization counts (now dropdowns using TextMeshPro)
+    public TMP_Dropdown aiCountDropdown;
+    public TMP_Dropdown cityStateCountDropdown;
+    public TMP_Dropdown tribeCountDropdown;
 
     // Map settings
     [Header("Map Settings")]
     [Tooltip("Controls the flat grid resolution. Higher values increase the number of tiles and map size.")]
-    public TextMeshProUGUI planetSizeText;
     public TMP_Dropdown mapSizeDropdown; // Dropdown for map size
     
     // Land Mass settings
     [Header("Land Mass Settings")]
     public TMP_Dropdown landPresetDropdown;
 
-    // River settings
-    // Note: riverCountSlider min value should be set to 0 in the Inspector
-    public Slider riverCountSlider;
-    public TextMeshProUGUI riverCountText;
+    // River settings (deprecated - removed slider/text)
 
     // Climate settings
     [Header("Climate Settings")]
@@ -286,7 +279,7 @@ public class MainMenuManager : MonoBehaviour
         if (terrainRoughnessDropdown != null)
         {
             terrainRoughnessDropdown.ClearOptions();
-            terrainRoughnessDropdown.AddOptions(new List<string> { "Flat", "Smooth", "Rocky", "Mountainous", "Alpine" });
+            terrainRoughnessDropdown.AddOptions(new List<string> { "Flat", "Smooth", "Standard", "Mountainous", "Alpine" });
             terrainRoughnessDropdown.value = selectedTerrainPreset;
             terrainRoughnessDropdown.onValueChanged.AddListener(OnTerrainPresetChanged);
         }
@@ -329,49 +322,46 @@ public class MainMenuManager : MonoBehaviour
     
     private void InitializeControls()
     {
-        // Initialize AI count slider
-        aiCountSlider.minValue = 0;
-        aiCountSlider.maxValue = 8;
-        aiCountSlider.wholeNumbers = true;
-        aiCountSlider.value = aiCount;
-        aiCountSlider.onValueChanged.AddListener(OnAICountChanged);
+        // Initialize AI count dropdown (0-8)
+        if (aiCountDropdown != null)
+        {
+            var opts = new List<string>();
+            for (int i = 0; i <= 8; i++) opts.Add(i.ToString());
+            aiCountDropdown.ClearOptions();
+            aiCountDropdown.AddOptions(opts);
+            aiCountDropdown.value = Mathf.Clamp(aiCount, 0, 8);
+            aiCountDropdown.onValueChanged.AddListener(OnAICountChanged);
+        }
         UpdateAICountText();
 
-        // Initialize city-state count slider
-        cityStateCountSlider.minValue = 0;
-        cityStateCountSlider.maxValue = 6;
-        cityStateCountSlider.wholeNumbers = true;
-        cityStateCountSlider.value = cityStateCount;
-        cityStateCountSlider.onValueChanged.AddListener(OnCityStateCountChanged);
+        // Initialize city-state count dropdown (0-6)
+        if (cityStateCountDropdown != null)
+        {
+            var opts = new List<string>();
+            for (int i = 0; i <= 6; i++) opts.Add(i.ToString());
+            cityStateCountDropdown.ClearOptions();
+            cityStateCountDropdown.AddOptions(opts);
+            cityStateCountDropdown.value = Mathf.Clamp(cityStateCount, 0, 6);
+            cityStateCountDropdown.onValueChanged.AddListener(OnCityStateCountChanged);
+        }
         UpdateCityStateCountText();
 
-        // Initialize tribe count slider
-        tribeCountSlider.minValue = 0;
-        tribeCountSlider.maxValue = 6;
-        tribeCountSlider.wholeNumbers = true;
-        tribeCountSlider.value = tribeCount;
-        tribeCountSlider.onValueChanged.AddListener(OnTribeCountChanged);
+        // Initialize tribe count dropdown (0-6)
+        if (tribeCountDropdown != null)
+        {
+            var opts = new List<string>();
+            for (int i = 0; i <= 6; i++) opts.Add(i.ToString());
+            tribeCountDropdown.ClearOptions();
+            tribeCountDropdown.AddOptions(opts);
+            tribeCountDropdown.value = Mathf.Clamp(tribeCount, 0, 6);
+            tribeCountDropdown.onValueChanged.AddListener(OnTribeCountChanged);
+        }
         UpdateTribeCountText();
 
 
 
         
-        // River Settings - now controlled by moisture preset
-        // Rivers are automatically set based on moisture: Desert=0, Arid=3, Standard=8, Moist=12, Wet=16, Oceanic=20
-        if (riverCountSlider != null)
-        {
-            // Disable slider interaction - rivers are now moisture-based
-            riverCountSlider.interactable = false;
-            riverCountSlider.minValue = 0;
-            riverCountSlider.maxValue = 20;
-            riverCountSlider.wholeNumbers = true;
-            // Initialize river count from default moisture preset
-            int[] riverCounts = { 0, 3, 8, 12, 16, 20 };
-            riverCount = riverCounts[Mathf.Clamp(selectedMoisturePreset, 0, 5)];
-            enableRivers = riverCount > 0;
-            riverCountSlider.value = riverCount;
-            UpdateRiverCountText();
-        }
+        // River UI removed (deprecated). River count still determined by moisture preset.
         
         // Update the map type display
         UpdateMapTypeName();
@@ -383,43 +373,35 @@ public class MainMenuManager : MonoBehaviour
     #region Value Change Handlers and Text Updates
     
     // Civilization Counts
-    private void OnAICountChanged(float value)
+    private void OnAICountChanged(int value)
     {
-        aiCount = Mathf.RoundToInt(value);
+        aiCount = value;
         UpdateAICountText();
         UpdateMapTypeName(); // Update description with new civ count
     }
     
-    private void UpdateAICountText()
+    private void OnCityStateCountChanged(int value)
     {
-        if (aiCountText != null)
-            aiCountText.text = $"AI Civilizations: {aiCount}";
-    }
-    
-    private void OnCityStateCountChanged(float value)
-    {
-        cityStateCount = Mathf.RoundToInt(value);
+        cityStateCount = value;
         UpdateCityStateCountText();
         UpdateMapTypeName(); // Update description with new city-state count
     }
     
     private void UpdateCityStateCountText()
     {
-        if (cityStateCountText != null)
-            cityStateCountText.text = $"City States: {cityStateCount}";
+        // UI text removed; nothing to update here.
     }
     
-    private void OnTribeCountChanged(float value)
+    private void OnTribeCountChanged(int value)
     {
-        tribeCount = Mathf.RoundToInt(value);
+        tribeCount = value;
         UpdateTribeCountText();
         UpdateMapTypeName(); // Update description with new tribe count
     }
     
     private void UpdateTribeCountText()
     {
-        if (tribeCountText != null)
-            tribeCountText.text = $"Tribes: {tribeCount}";
+        // UI text removed; nothing to update here.
     }
     
     // Map Settings
@@ -436,8 +418,7 @@ public class MainMenuManager : MonoBehaviour
         // Flat-only: show width x height based on size preset
         GameManager.GetFlatMapSizeParams(size, out float width, out float height);
         string displayName = GetMapSizeDisplayName(size);
-        if (planetSizeText != null)
-            planetSizeText.text = $"Map Size: {displayName} ({width}x{height})";
+        // Planet size UI text removed; nothing to update here.
     }
     
     private string GetMapSizeDisplayName(GameManager.MapSize size)
@@ -453,34 +434,7 @@ public class MainMenuManager : MonoBehaviour
     
     
     
-    // River Settings
-    private void OnRiverCountChanged(float value)
-    {
-        riverCount = Mathf.RoundToInt(value);
-        // Set enableRivers based on river count
-        enableRivers = riverCount > 0;
-        UpdateRiverCountText();
-        UpdateMapTypeName(); // Update description when river count changes
-    }
-    
-    private void UpdateRiverCountText()
-    {
-        if (riverCountText != null)
-        {
-            // River count is now controlled by moisture preset
-            string[] moistureNames = { "Desert", "Arid", "Standard", "Moist", "Wet", "Oceanic" };
-            string moistureName = moistureNames[Mathf.Clamp(selectedMoisturePreset, 0, 5)];
-            
-            if (riverCount <= 0)
-            {
-                riverCountText.text = $"Rivers: None ({moistureName})";
-            }
-            else
-            {
-                riverCountText.text = $"Rivers: {riverCount} ({moistureName})";
-            }
-        }
-    }
+    // River UI deprecated (river count still tracked internally via moisture preset)
     
     // Climate Settings
     private void OnClimatePresetChanged(int value)
@@ -511,14 +465,7 @@ public class MainMenuManager : MonoBehaviour
         int[] riverCounts = { 0, 1, 4, 6, 8, 10 };  // Desert=none, Oceanic=many (halved)
         riverCount = riverCounts[Mathf.Clamp(value, 0, 5)];
         enableRivers = riverCount > 0;
-        
-        // Update slider visual (if it exists) to show current value
-        if (riverCountSlider != null)
-        {
-            riverCountSlider.value = riverCount;
-        }
-        
-        UpdateRiverCountText();
+        // River UI removed; value kept internally for generation logic
         
         // Update icons and map type when moisture changes
         UpdatePresetIcons();
