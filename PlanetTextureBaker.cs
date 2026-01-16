@@ -16,6 +16,7 @@ public static class PlanetTextureBaker
     {
         public RenderTexture texture;  // GPU RenderTexture - use directly in materials, no CPU readback
         public RenderTexture heightmap; // GPU RenderTexture - heightmap for elevation displacement
+        public RenderTexture normalmap; // normal map generated from heightmap
         public int[] lut;
         public int width;
         public int height;
@@ -208,6 +209,69 @@ res.tileColors = tileColors;
         // Upload CPU textures to RTs
         Graphics.Blit(tex, biomeRT);
         Graphics.Blit(heightmapTex, heightRT);
+
+        // Generate a normal map from the heightmap (simple central-difference method)
+        try
+        {
+            var normalTex = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: true, linear: false)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear,
+                name = $"PlanetNormal_CPU_{planetGen.gameObject.name}_{width}x{height}"
+            };
+
+            Color32[] heightPixels = heightmapTex.GetPixels32();
+            Color32[] normalPixels = new Color32[width * height];
+
+            float strength = 1.0f; // normal strength; tweak later if desired
+            for (int y = 0; y < height; y++)
+            {
+                int yUp = (y + 1) % height;
+                int yDown = (y - 1 + height) % height;
+                for (int x = 0; x < width; x++)
+                {
+                    int xL = (x - 1 + width) % width;
+                    int xR = (x + 1) % width;
+
+                    float hL = heightPixels[y * width + xL].r / 255.0f;
+                    float hR = heightPixels[y * width + xR].r / 255.0f;
+                    float hD = heightPixels[yDown * width + x].r / 255.0f;
+                    float hU = heightPixels[yUp * width + x].r / 255.0f;
+
+                    // derivatives
+                    float dx = (hR - hL) * strength;
+                    float dy = (hU - hD) * strength;
+
+                    // normal: assume height is along Y; use [-dx, 1, -dy]
+                    Vector3 n = new Vector3(-dx, 2.0f, -dy);
+                    n.Normalize();
+
+                    byte nx = (byte)(Mathf.Clamp01(n.x * 0.5f + 0.5f) * 255);
+                    byte ny = (byte)(Mathf.Clamp01(n.y * 0.5f + 0.5f) * 255);
+                    byte nz = (byte)(Mathf.Clamp01(n.z * 0.5f + 0.5f) * 255);
+                    normalPixels[y * width + x] = new Color32(nx, ny, nz, 255);
+                }
+            }
+
+            normalTex.SetPixels32(normalPixels);
+            normalTex.Apply(updateMipmaps: true, makeNoLongerReadable: false);
+
+            var normalRT = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear,
+                name = $"PlanetNormal_{planetGen.gameObject.name}_{width}x{height}"
+            };
+            normalRT.Create();
+            Graphics.Blit(normalTex, normalRT);
+
+            res.normalmap = normalRT;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PlanetTextureBaker] Normal map generation failed: {ex.Message}");
+            res.normalmap = null;
+        }
 
         res.texture = biomeRT;
         res.heightmap = heightRT;

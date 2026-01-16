@@ -12,6 +12,8 @@ Shader "Custom/FlatMapDisplacement_URP"
         _Color ("Tint", Color) = (0.5,0.5,0.5,1)
         _FlatHeightScale ("Flat Height Scale", Float) = 0.1
         _MapHeight ("Map Height", Float) = 180.0
+        _NormalMap ("Normal Map", 2D) = "bump" {}
+        _BumpScale ("Normal Strength", Float) = 1.0
         [Toggle] _EnableFog ("Enable Fog", Float) = 1.0
         [Toggle] _EnableOwnership ("Enable Ownership", Float) = 1.0
         
@@ -74,6 +76,8 @@ Shader "Custom/FlatMapDisplacement_URP"
             SAMPLER(sampler_MainTex);
             TEXTURE2D(_Heightmap);
             SAMPLER(sampler_Heightmap);
+            TEXTURE2D(_NormalMap);
+            SAMPLER(sampler_NormalMap);
             TEXTURE2D(_FogMask);
             SAMPLER(sampler_FogMask);
             TEXTURE2D(_OwnershipOverlay);
@@ -149,6 +153,27 @@ Shader "Custom/FlatMapDisplacement_URP"
                 half missing = magentaR * magentaB * magentaG;
                 c = lerp(c, half4(0.0h, 1.0h, 1.0h, 1.0h), step(0.5h, missing));
                 c *= _Color;
+
+                // Apply normal-based lighting (simple directional + specular)
+                {
+                    half3 n = half3(0,1,0);
+                    #if defined(UNITY_LIGHT_AUTOMATIC)
+                    // sample normal map if present
+                    n = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, i.uv).rgb * 2.0 - 1.0;
+                    #else
+                    n = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, i.uv).rgb * 2.0 - 1.0;
+                    #endif
+                    n = normalize(n);
+
+                    // simple main light approximation
+                    half3 lightDir = normalize(half3(0.5, 0.7, 0.3));
+                    half NdotL = saturate(dot(n, lightDir));
+                    half3 viewDir = normalize(_WorldSpaceCameraPos - i.positionWS);
+                    half3 halfVec = normalize(lightDir + viewDir);
+                    half spec = pow(saturate(dot(n, halfVec)), 16.0) * 0.2;
+                    half3 lit = c.rgb * (0.2 + 0.8 * NdotL) + spec;
+                    c.rgb = lit;
+                }
 
                 // Ownership overlay
                 if (_EnableOwnership > 0.5)

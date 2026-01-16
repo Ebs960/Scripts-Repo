@@ -290,6 +290,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f, 0.8f)]
     public float seedPositionVariance = 0.1f; // Controls randomness in seed placement
     
+    [Range(0f, 2.5f)]
+    [Tooltip("Additional elevation boost for mountain tiles (added to their base elevation). Similar to `hillElevationBoost`.")]
+    public float mountainElevationBoost = 0.25f;
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
     public float elevationFreq = 2f, moistureFreq = 4f;
@@ -356,7 +359,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Elevation for coast tiles.")]
     public float coastElevation = 0.05f;
     
-    [Range(0f, 0.5f)]
+    [Range(0f, 2.5f)]
     [Tooltip("Additional elevation boost for hill tiles (added to their base elevation).")]
     public float hillElevationBoost = 0.1f;
     
@@ -421,8 +424,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Fixed elevation for lake tiles")]
     public float lakeElevation = 0.02f;
     [Range(0f, 0.2f)]
-    [Tooltip("Render elevation for lake tiles")]
+    [Tooltip("Render elevation for lake tiles (baseline). This value is reduced by `lakeDepth` to produce the final render elevation.")]
     public float lakeRenderElevation = 0.05f;
+    [Header("Lake/River Render Depth")]
+    [Range(0f, 0.2f)]
+    [Tooltip("Depth reduction applied to lake render elevation (subtracts from lakeRenderElevation). Similar to how `riverDepth` lowers river tiles.")]
+    public float lakeDepth = 0.05f;
 
     // --- Island Generation ---
     [Header("Island Generation")]
@@ -1280,13 +1287,23 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     if (biome != Biome.Glacier && biome != Biome.Arctic && biome != Biome.Frozen)
                     {
                         biome = Biome.Mountain;
+                        // Apply mountain boost so mountains sit noticeably above surrounding land
+                        finalElevation += mountainElevationBoost;
                     }
                 }
                 else if (finalElevation > hillThreshold)
                 {
-                    isHill = true;
-                    finalElevation += hillElevationBoost;
+                    // Prevent water/coast tiles from being hills. Only allow hills on true land biomes.
+                    bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.River);
+                    if (!biomeIsWater)
+                    {
+                        isHill = true;
+                        finalElevation += hillElevationBoost;
+                    }
                 }
+
+                // Ensure elevation stays within configured maximum after applying boosts
+                finalElevation = Mathf.Min(finalElevation, maxTotalElevation);
                 // Track land elevation range for later normalization
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
@@ -1413,7 +1430,35 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
             else if (td.biome == Biome.Lake)
             {
-                td.renderElevation = lakeRenderElevation;
+                // Compute lake render elevation relative to surrounding land so lakes sit below neighboring terrain.
+                // Find neighboring land tiles' normalized elevation and average them to decide lake level, then
+                // subtract `lakeDepth` so the lake sits lower than surrounding land (more realistic).
+                float sumNorm = 0f;
+                int normCount = 0;
+                foreach (int n in grid.neighbors[i])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!data.ContainsKey(n)) continue;
+                    var nd = data[n];
+                    if (nd.isLand && nd.biome != Biome.Lake)
+                    {
+                        float neighborNorm = Mathf.InverseLerp(landElevMin, landElevMax, nd.elevation);
+                        sumNorm += neighborNorm;
+                        normCount++;
+                    }
+                }
+
+                if (normCount > 0)
+                {
+                    float avgNorm = sumNorm / normCount;
+                    float baseRender = 0.1f + avgNorm * 0.85f; // same normalization used for land
+                    td.renderElevation = Mathf.Clamp01(Mathf.Max(0f, baseRender - lakeDepth));
+                }
+                else
+                {
+                    // No neighboring land found (edge case): fallback to the inspector baseline reduced by lakeDepth
+                    td.renderElevation = Mathf.Max(0f, lakeRenderElevation - lakeDepth);
+                }
             }
             else if (td.biome == Biome.Seas)
             {

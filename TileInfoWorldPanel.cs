@@ -17,6 +17,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private RectTransform panelRect;
     [SerializeField] private TextMeshProUGUI biomeText;
     [SerializeField] private TextMeshProUGUI yieldsText;
+    [SerializeField] private TextMeshProUGUI elevationText;
 
     [Header("Styling")]
     [SerializeField] private TMP_FontAsset overrideFontAsset;
@@ -80,6 +81,18 @@ public class TileInfoWorldPanel : MonoBehaviour
     {
         if (biomeText != null) biomeText.text = FormatBiomeName(tileData.biome);
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
+
+        // Elevation & hill status display. If a dedicated `elevationText` field
+        // is assigned in the inspector, write there. Otherwise append to yieldsText.
+        string elevInfo = $"Elev: {tileData.elevation:F3} (render {tileData.renderElevation:F3})\nHill: {(tileData.isHill ? "Yes" : "No")}";
+        if (elevationText != null)
+        {
+            elevationText.text = elevInfo;
+        }
+        else if (yieldsText != null)
+        {
+            yieldsText.text += "\n" + elevInfo;
+        }
     }
 
     private string FormatBiomeName(Biome biome)

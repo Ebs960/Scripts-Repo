@@ -422,6 +422,12 @@ TrySubscribeToSurfaceReady(gen);
         
         sharedMaterial.SetFloat("_Metallic", 0.0f);
         sharedMaterial.SetFloat("_Smoothness", 0.3f);
+        if (bakeResult.normalmap != null)
+        {
+            sharedMaterial.SetTexture("_NormalMap", bakeResult.normalmap);
+            sharedMaterial.SetFloat("_BumpScale", 1.0f);
+            try { sharedMaterial.EnableKeyword("_NORMALMAP"); } catch {};
+        }
         
         // Apply hex grid settings
         ApplyHexGridSettings();
