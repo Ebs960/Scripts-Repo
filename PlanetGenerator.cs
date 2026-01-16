@@ -658,12 +658,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     break;
             }
             Debug.Log($"[StampGen][Diag] mapSize={GameSetupData.mapSize} contTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} minDistance={GameSetupData.continentMinDistanceTiles}");
-            Debug.Log($"[StampGen][Diag] islandRadius min={GameSetupData.islandMinRadiusTiles} max={GameSetupData.islandMaxRadiusTiles} minDistanceFromContinents={GameSetupData.islandMinDistanceFromContinents}");
-            Debug.Log($"[StampGen][Diag] lakeRadius min={lakeMinRadiusTiles} max={lakeMaxRadiusTiles} minDistanceFromCoast={lakeMinDistanceFromCoast}");
+            Debug.Log($"[StampGen][Diag] islandRadius (effective) min={GameSetupData.islandMinRadiusTiles} max={GameSetupData.islandMaxRadiusTiles} minDistanceFromContinents={GameSetupData.islandMinDistanceFromContinents}");
+            Debug.Log($"[StampGen][Diag] lakeRadius (effective) min={GameSetupData.lakeMinRadiusTiles} max={GameSetupData.lakeMaxRadiusTiles} minDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
             Debug.Log($"[Setup] mapSize={GameSetupData.mapSize} contCount={GameSetupData.numberOfContinents} islandCount={GameSetupData.numberOfIslands} generateIslands={GameSetupData.generateIslands}");
-            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents={numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH}");
-            Debug.Log($"[PlanetGenerator][Diag] generateIslands={generateIslands} numberOfIslands={numberOfIslands}");
+            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents (effective)={GameSetupData.numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH}");
+            Debug.Log($"[PlanetGenerator][Diag] generateIslands (effective)={GameSetupData.generateIslands} numberOfIslands (effective)={GameSetupData.numberOfIslands}");
             Debug.Log($"[PlanetGenerator][Diag] latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureBias={temperatureBias} moistureBias={moistureBias}");
+
+            // Additional comprehensive diagnostic summary (include GameSetupData vs generator-resolved values)
+            int[] riverPresetMap = { 0, 1, 4, 6, 8, 10 };
+            int expectedRiverFromMoisture = riverPresetMap[Mathf.Clamp(GameSetupData.selectedMoisturePreset, 0, riverPresetMap.Length - 1)];
+            Debug.Log($"[StampGen][Summary] seed={seed} randomSeed={randomSeed} mapSize={GameSetupData.mapSize} climatePreset={GameSetupData.selectedClimatePreset} moisturePreset={GameSetupData.selectedMoisturePreset} landPreset={GameSetupData.selectedLandPreset} terrainPreset={GameSetupData.selectedTerrainPreset}");
+            Debug.Log($"[StampGen][Summary] GameSetupData -> riversEnabled={GameSetupData.enableRivers} riverCount={GameSetupData.riverCount} (expected from moisture preset={expectedRiverFromMoisture}) lakesEnabled={GameSetupData.enableLakes} lakeCount={GameSetupData.numberOfLakes} lakeMinRadius={GameSetupData.lakeMinRadiusTiles} lakeMaxRadius={GameSetupData.lakeMaxRadiusTiles} lakeMinDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
+            Debug.Log($"[StampGen][Summary] PlanetGenerator -> enableRivers={enableRivers} minRiversPerContinent={minRiversPerContinent} maxRiversPerContinent={maxRiversPerContinent} lakeMinRadiusTiles={lakeMinRadiusTiles} lakeMaxRadiusTiles={lakeMaxRadiusTiles} lakeMinDistanceFromCoast={lakeMinDistanceFromCoast}");
+            Debug.Log($"[StampGen][Summary] continents={numberOfContinents} islands={numberOfIslands} generateIslands={generateIslands} continentMinDistanceTiles={GameSetupData.continentMinDistanceTiles}");
+            Debug.Log($"[StampGen][Summary] temperatureBias={temperatureBias} moistureBias={moistureBias} latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureNoiseFreq={temperatureNoiseFrequency} tempDetailMultiplier={temperatureDetailMultiplier} tempDetailStrength={temperatureDetailStrength}");
         }
         
         int tilesX = grid.Width;
@@ -1674,58 +1683,149 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (riverSources.Count == 0)
             {
                 Debug.LogWarning("[StampGen] No valid river sources found.");
+                // Dump a few samples from original source set (if any lake sources existed)
+                int sampleCount = Math.Min(10, sourceToLakeId.Count);
+                int i = 0;
+                foreach (var kvp in sourceToLakeId)
+                {
+                    if (i++ >= sampleCount) break;
+                    if (!tileData.TryGetValue(kvp.Key, out var sTile)) continue;
+                    Debug.Log($"[StampGen][Debug] lakeSource sample idx={kvp.Key} lakeId={kvp.Value} isLand={sTile.isLand} isLake={sTile.isLake} isRiver={sTile.isRiver} biome={sTile.biome} elev={sTile.elevation}");
+                }
+                // Also log a few random inland samples
+                i = 0;
+                foreach (var kvp in tileData)
+                {
+                    if (i++ >= 10) break;
+                    var td = kvp.Value;
+                    Debug.Log($"[StampGen][Debug] tile sample idx={kvp.Key} isLand={td.isLand} isLake={td.isLake} isRiver={td.isRiver} biome={td.biome} elev={td.elevation}");
+                }
                 yield break;
             }
 
-            // If we have lake sources, make sure we don't request more rivers than unused lakes
-            if (sourceToLakeId.Count > 0)
-            {
-                targetRiverCount = Mathf.Min(targetRiverCount, sourceToLakeId.Count);
-            }
+            // NOTE: previously we clamped targetRiverCount to lake count (one river per lake).
+            // For stricter coast-reaching behavior we do NOT clamp here; targetRiverCount stays as requested.
 
             int riversGenerated = 0;
             int attempts = 0;
 
-            Debug.Log($"[StampGen][River] sources={riverSources.Count} targetRiverCount={targetRiverCount}");
+            Debug.Log($"[StampGen][River] sources={riverSources.Count} lakeSources={sourceToLakeId.Count} targetRiverCount={targetRiverCount}");
+
+            // Group lake-edge sources by lake id to enforce one river per lake
+            Dictionary<int, List<int>> lakeSourcesDict = new Dictionary<int, List<int>>();
+            foreach (var kvp in sourceToLakeId)
+            {
+                if (!lakeSourcesDict.TryGetValue(kvp.Value, out var list)) { list = new List<int>(); lakeSourcesDict[kvp.Value] = list; }
+                list.Add(kvp.Key);
+            }
+            List<int> unusedLakeIds = lakeSourcesDict.Keys.ToList();
+
+            // Helper: quick BFS to check if there exists any path from `start` to a coast tile
+            bool HasCoastPath(int startIdx)
+            {
+                var q = new Queue<int>();
+                var seen = new HashSet<int>();
+                q.Enqueue(startIdx);
+                seen.Add(startIdx);
+                while (q.Count > 0)
+                {
+                    int idx = q.Dequeue();
+                    if (!tileData.TryGetValue(idx, out var t)) continue;
+                    foreach (int n in grid.neighbors[idx])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!tileData.TryGetValue(n, out var nt)) continue;
+                        if (nt.biome == Biome.Coast) return true;
+                        if (seen.Contains(n)) continue;
+                        // Walkable for reachability: any land tile that is not a lake
+                        if (!nt.isLand) continue;
+                        if (nt.isLake) continue;
+                        seen.Add(n);
+                        q.Enqueue(n);
+                    }
+                }
+                return false;
+            }
 
             while (riversGenerated < targetRiverCount)
             {
-                int sourceIndex = riverSources[attempts % riverSources.Count];
-                attempts++;
-
-                // If this source maps to a lake that's already been used, skip it
-                if (sourceToLakeId.TryGetValue(sourceIndex, out var mappedLakeId))
-                {
-                    if (usedLakeIds.Contains(mappedLakeId)) continue;
-                }
-
-                if (attempts > 70000)
+                if (attempts++ > 70000)
                 {
                     Debug.LogWarning("[StampGen][River] excessive attempts (70000) without reaching target; aborting to avoid hang.");
                     break;
                 }
 
-                if (!tileData.TryGetValue(sourceIndex, out var sourceTile)) continue;
-                if (!sourceTile.isLand || sourceTile.isLake || sourceTile.isRiver) continue;
+                int sourceIndex = -1;
+                bool sourceFromLake = false;
 
-                // Do not accept trivial 1-tile rivers: require at least 2 tiles in the path
-                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles, false);
-                if (path == null || path.Count == 0)
+                // Prefer one river per lake when lake sources exist
+                if (lakeSourcesDict.Count > 0 && unusedLakeIds.Count > 0)
                 {
+                    // Pick a random unused lake
+                    int pickLakeIdx = riverRand.Next(unusedLakeIds.Count);
+                    int lakeId = unusedLakeIds[pickLakeIdx];
+                    var sourcesForLake = lakeSourcesDict[lakeId];
+
+                    // Try a few random sources from this lake before giving up on the lake
+                    bool foundValidSource = false;
+                    int triesForLake = 0;
+                    int maxTriesForLake = Math.Max(3, sourcesForLake.Count * 2);
+                    while (triesForLake++ < maxTriesForLake)
+                    {
+                        int candidate = sourcesForLake[riverRand.Next(sourcesForLake.Count)];
+                        if (!tileData.TryGetValue(candidate, out var candTile)) continue;
+                        if (!candTile.isLand || candTile.isLake || candTile.isRiver) continue;
+                        sourceIndex = candidate;
+                        sourceFromLake = true;
+                        foundValidSource = true;
+                        break;
+                    }
+
+                    if (!foundValidSource)
+                    {
+                        // Give up on this lake for now
+                        unusedLakeIds.RemoveAt(pickLakeIdx);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // No lakes - pick a random inland source
+                    if (riverSources.Count == 0)
+                    {
+                        Debug.LogWarning("[StampGen] No valid river sources found (after filtering).");
+                        break;
+                    }
+                    int pick = riverRand.Next(riverSources.Count);
+                    sourceIndex = riverSources[pick];
+                    // Remove it to avoid trying the same failing source repeatedly
+                    riverSources.RemoveAt(pick);
+                }
+
+                if (sourceIndex == -1) continue;
+
+                // Skip sources that cannot reach a coast tile to reduce dead-ends
+                if (!HasCoastPath(sourceIndex))
+                {
+                    // If this was a lake-sourced attempt, mark this lake as unusable to avoid repeated attempts
+                    if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out var badLake))
+                    {
+                        unusedLakeIds.Remove(badLake);
+                    }
+                    continue;
+                }
+                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles);
+                if (path == null || path.Count <= 1)
+                {
+                    // Failed to build a usable path; if from lake, try other sources from same lake next loop
                     continue;
                 }
 
-                if (path.Count <= 1)
-                {
-                    // Too short, ignore
-                    continue;
-                }
-
+                // Apply river tiles (do NOT include termination tiles - BuildRiverWalk guarantees that)
                 riversGenerated++;
                 foreach (int tileIdx in path)
                 {
                     if (!tileData.TryGetValue(tileIdx, out var td)) continue;
-
                     if (td.isLake || td.isRiver) continue;
                     if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
 
@@ -1744,10 +1844,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     isRiverTile[tileIdx] = true;
                 }
 
-                // Mark the lake as used if this source came from a lake perimeter
-                if (sourceToLakeId.TryGetValue(sourceIndex, out var usedLake))
+                if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out var usedLake))
                 {
+                    // Mark lake used and remove from unused list
                     usedLakeIds.Add(usedLake);
+                    unusedLakeIds.Remove(usedLake);
                 }
 
                 if (loadingPanelController != null && riversGenerated % 5 == 0)
@@ -1761,14 +1862,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Debug.Log($"[StampGen] Rivers generated: {riversGenerated}");
         }
 
-        List<int> BuildRiverWalk(int start, Dictionary<int, HexTileData> tileData, System.Random rand, HashSet<int> riverTiles, bool ignoreLakeAdjacencyAtStart)
+        List<int> BuildRiverWalk(int start, Dictionary<int, HexTileData> tileData, System.Random rand, HashSet<int> riverTiles)
         {
             if (!tileData.ContainsKey(start)) return null;
 
             List<int> path = new List<int>();
             HashSet<int> visited = new HashSet<int>();
             int current = start;
-            bool firstStep = true;
 
             while (true)
             {
@@ -1782,29 +1882,37 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     visited.Add(current);
                 }
 
-                // Check for termination neighbors (coast, ocean, lake, or existing river).
-                // If found, move into that neighbor as the final river tile and finish.
-                List<int> terminationNeighbors = new List<int>();
+                // STRICT TERMINATION: prefer Coast or existing river only.
+                // If any neighbor is `Biome.Coast` or an existing river, terminate here (do NOT append termination tile).
+                bool shouldTerminate = false;
+                // Coast has highest priority
                 foreach (int neighbor in grid.neighbors[current])
                 {
                     if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
-                    if (neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas || neighborTile.biome == Biome.Coast || neighborTile.isRiver || neighborTile.isLake)
+                    if (neighborTile.biome == Biome.Coast)
                     {
-                        terminationNeighbors.Add(neighbor);
+                        shouldTerminate = true;
+                        break;
                     }
                 }
 
-                if (terminationNeighbors.Count > 0)
+                if (!shouldTerminate)
                 {
-                    // Prefer the lowest-elevation termination neighbor if possible
-                    int pick = terminationNeighbors[0];
-                    float bestElev = float.MaxValue;
-                    foreach (int tn in terminationNeighbors)
+                    // If no coast neighbor, terminate if any neighbor is already a river (joins river network)
+                    foreach (int neighbor in grid.neighbors[current])
                     {
-                        if (!tileData.TryGetValue(tn, out var ttn)) continue;
-                        if (ttn.elevation < bestElev) { bestElev = ttn.elevation; pick = tn; }
+                        if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
+                        if (neighborTile.isRiver)
+                        {
+                            shouldTerminate = true;
+                            break;
+                        }
                     }
-                    if (!visited.Contains(pick)) path.Add(pick);
+                }
+
+                if (shouldTerminate)
+                {
+                    // Terminate without appending the termination tile
                     break;
                 }
 
@@ -1819,8 +1927,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     if (neighborTile.biome == Biome.Mountain || neighborTile.biome == Biome.Glacier || neighborTile.biome == Biome.Snow) continue;
 
                     float elevationDelta = neighborTile.elevation - currentTile.elevation;
-                    float weight = 1f + Mathf.Clamp(-elevationDelta * 5f, 0f, 3f);
+                    // STRONGER DOWNHILL BIAS + small stochastic jitter to create meanders
+                    float downhillBias = Mathf.Clamp(-elevationDelta * 6f, 0f, 5f);
+                    float randomJitter = (float)(rand.NextDouble() * 0.5 - 0.25); // +/-0.25
+                    float weight = 1f + downhillBias + randomJitter;
+                    // Slightly discourage paths that would immediately join an existing river to encourage length
                     if (riverTiles.Contains(neighbor)) weight *= 0.5f;
+                    // Ensure weight is never non-positive
+                    weight = Mathf.Max(0.01f, weight);
                     candidates.Add((neighbor, weight));
                 }
 
@@ -1837,7 +1951,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     break;
                 }
                 current = next;
-                firstStep = false; 
             }
 
             return path;

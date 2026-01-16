@@ -105,7 +105,7 @@ public static class GameSetupData
     // Stamp-based lake sizing (radius in tiles)
     public static int lakeMinRadiusTiles;
     public static int lakeMaxRadiusTiles;
-    public static int lakeMinDistanceFromCoast = 6;
+    public static int lakeMinDistanceFromCoast = 3;
     // River tuning
     public static int minRiversPerContinent = 1;
     public static int maxRiversPerContinent = 2;
@@ -192,12 +192,12 @@ public static class GameSetupData
         continentMaxWidthTiles = maxContinentWidthTilesStandard;
         continentMinHeightTiles = minContinentHeightTilesStandard;
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
-        continentMinDistanceTiles = 8;
+        continentMinDistanceTiles = 3;
         continentConnectionChance = 0.1f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
         islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);
-        islandMinDistanceFromContinents = 6;
+        islandMinDistanceFromContinents = 4;
 
         lakeMinRadiusTiles = 2;
         lakeMaxRadiusTiles = 5;
