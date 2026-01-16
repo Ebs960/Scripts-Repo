@@ -1826,11 +1826,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 if (candidates.Count == 0)
                 {
+                    // Dead end reached — terminate river cleanly
                     break;
                 }
 
-                current = PickWeightedNeighbor(candidates, rand);
-                firstStep = false;
+                int next = PickWeightedNeighbor(candidates, rand);
+                if (next == -1)
+                {
+                    // Defensive: helper reported no valid neighbor, terminate river
+                    break;
+                }
+                current = next;
+                firstStep = false; 
             }
 
             return path;
@@ -1838,6 +1845,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         int PickWeightedNeighbor(List<(int idx, float weight)> candidates, System.Random rand)
         {
+            // Defensive guard: return -1 when there are no candidates
+            if (candidates == null || candidates.Count == 0)
+                return -1;
+
             float totalWeight = 0f;
             foreach (var candidate in candidates)
             {
