@@ -356,7 +356,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     // --- River Generation (Placeholder) ---
     [Header("River Generation")]
     public bool enableRivers = true;
-    [Range(5, 100)]
+    [Range(1, 100)]
     [Tooltip("Minimum length a river must be to be included")]
     public int minRiverLength = 2;
     [Range(0, 20)]
