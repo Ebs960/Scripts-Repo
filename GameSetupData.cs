@@ -168,7 +168,7 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 27; maxContinentWidthTilesStandard = 39;
+        minContinentWidthTilesStandard = 21; maxContinentWidthTilesStandard = 39;
         minContinentHeightTilesStandard = 20; maxContinentHeightTilesStandard = 35;
 
         minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
@@ -179,13 +179,12 @@ public static class GameSetupData
         minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
 
         minIslandWidthTilesStandard = 7; maxIslandWidthTilesStandard = 9;
-        minIslandHeightTilesStandard = 5; maxIslandHeightTilesStandard = 9;
+        minIslandHeightTilesStandard = 7; maxIslandHeightTilesStandard = 11;
 
         minIslandWidthTilesLarge = 40; maxIslandWidthTilesLarge = 120;
         minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
 
         // River defaults
-        minRiverLength = 8;
         minRiversPerContinent = 1;
         maxRiversPerContinent = 2;
 

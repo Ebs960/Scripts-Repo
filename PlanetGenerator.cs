@@ -1056,19 +1056,23 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Apply moisture bias - clamp to ensure it stays in 0-1 range
             moisture = Mathf.Clamp01(moisture + moistureBias);
             
-            float northness = mapHeight > 1f
-                ? Mathf.Lerp(-1f, 1f, coord.y / Mathf.Max(1f, mapHeight - 1f))
-                : 0f;
-            float absNorthness = Mathf.Abs(northness);
-            
-            // Generate temperature from noise and north/south position
-            // Latitude-derived temperature: use exponent to control steepness and a blend weight
-            float northTemp = 1f - Mathf.Pow(absNorthness, latitudeExponent);
+            // Symmetric latitude: 0 at equator, 1 at both poles
+            float normalizedY = mapHeight > 1f ? (coord.y / (mapHeight - 1f)) : 0f; // 0 -> 1
+            float latitude = Mathf.Abs(normalizedY * 2f - 1f); // 0 at equator, 1 at poles
+
+            // Generate temperature from noise
             float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
 
-            // Blend latitude vs noise using configurable weight
-            float temperature = (northTemp * latitudeInfluence) + (noiseTemp * (1f - latitudeInfluence));
+            // Apply latitude influence: stronger effect moves poles colder
+            float latEffect = Mathf.Pow(latitude, latitudeExponent);
+            float temperature = noiseTemp - (latEffect * latitudeInfluence);
             temperature = Mathf.Clamp01(temperature + temperatureBias);
+            
+            // Latitude debug: log equator and poles (and near-equator sample)
+            if (coord.y == 0 || coord.y == mapHeight - 1 || Mathf.Abs(latitude) < 0.01f)
+            {
+                Debug.Log($"[LatDiag] y={coord.y} lat={latitude:F3} temp={temperature:F3}");
+            }
             // Track ranges
             if (temperature < temperatureMin) temperatureMin = temperature;
             if (temperature > temperatureMax) temperatureMax = temperature;
@@ -1428,6 +1432,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 yield break;
             }
 
+            // Diagnostic: report coast tile count for river debugging
+            Debug.Log($"[RiverDiag] Coast tiles available: {coastTiles.Count}");
+
             int targetRiverCount = Mathf.Clamp(GameSetupData.riverCount, 0, 200);
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
             HashSet<int> riverTiles = new HashSet<int>();
@@ -1436,6 +1443,41 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             foreach (var center in lakeCenters) {
                 int idx = center.y * grid.Width + center.x;
                 if (idx >= 0 && idx < tileData.Count) lakeIndices.Add(idx);
+            }
+
+            // Diagnostic: log lake outlet candidates (lowest non-water neighbor)
+            Debug.Log("[RiverDiag] Checking lake outlets...");
+            int diagLakeIdx = 0;
+            foreach (var center in lakeCenters)
+            {
+                int centerIdx = center.y * grid.Width + center.x;
+                if (!tileData.TryGetValue(centerIdx, out var lakeTile))
+                {
+                    Debug.Log($"[RiverDiag][Lake {diagLakeIdx}] Missing tile data for center {center} (idx={centerIdx})");
+                    diagLakeIdx++;
+                    continue;
+                }
+
+                float lakeElev = lakeTile.elevation;
+                float lowestNeighbor = float.MaxValue;
+                HexTileData lowestTile = null;
+
+                foreach (int nIdx in grid.neighbors[centerIdx])
+                {
+                    if (!tileData.TryGetValue(nIdx, out var nTile)) continue;
+                    // treat non-land (and non-coast) as water
+                    bool isWater = !nTile.isLand && nTile.biome != Biome.Coast;
+                    if (isWater) continue;
+
+                    if (nTile.elevation < lowestNeighbor)
+                    {
+                        lowestNeighbor = nTile.elevation;
+                        lowestTile = nTile;
+                    }
+                }
+
+                Debug.Log($"[RiverDiag][Lake {diagLakeIdx}] elev={lakeElev:F3} lowestNeighbor={(lowestNeighbor==float.MaxValue?float.NaN:lowestNeighbor):F3} delta={(lowestNeighbor==float.MaxValue?float.NaN:(lowestNeighbor - lakeElev)):F3} neighborBiome={(lowestTile!=null?lowestTile.biome.ToString():"NONE")}");
+                diagLakeIdx++;
             }
 
             if (lakeIndices.Count == 0) {
@@ -1454,8 +1496,20 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 int lakeIndex = lakeIndices[attempts % lakeIndices.Count];
                 attempts++;
 
+                // Attempt-level diagnostic
+                int attemptNum = attempts;
+                int lx = lakeIndex % grid.Width;
+                int lz = lakeIndex / grid.Width;
+                Debug.Log($"[RiverDiag] Attempt {attemptNum}: trying lake at ({lx},{lz}) idx={lakeIndex}");
+
                 List<int> path = FindRiverPath(lakeIndex, coastTiles, tileData, riverRand);
-                if (path == null) continue;
+                if (path == null)
+                {
+                    Debug.Log($"[RiverDiag] ❌ No path found from this lake (attempt {attemptNum}, idx={lakeIndex})");
+                    continue;
+                }
+
+                Debug.Log($"[RiverDiag] ✅ River path found! Length={path.Count} (attempt {attemptNum}, idx={lakeIndex})");
 
                 riversGenerated++;
                 foreach (int tileIdx in path) {
@@ -1534,6 +1588,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     }
                 }
             }
+            Debug.Log($"[RiverDiag][BFS] Queue exhausted — no valid expansion possible from start idx={start}", this);
             return null;
         }
 
