@@ -37,11 +37,11 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private Color biomeTextColor = Color.white;
     [SerializeField] private Color featuresTextColor = Color.white;
     [SerializeField] private Color yieldsTextColor = Color.white;
-    [SerializeField] private int biomeFontSize = 24;
-    [SerializeField] private int featuresFontSize = 18;
-    [SerializeField] private int yieldsFontSize = 18;
+    [SerializeField] private int biomeFontSize = 2;
+    [SerializeField] private int featuresFontSize = 2;
+    [SerializeField] private int yieldsFontSize = 2;
     [SerializeField] private float borderWidth = 2f;
-    [SerializeField] private float shadowOffset = 4f;
+    [SerializeField] private float shadowOffset = 1f;
     
     [Header("Yield Icons (ASCII fallbacks)")]
     // Use ASCII/safe characters to avoid missing-glyph warnings in TMP font assets
@@ -437,7 +437,7 @@ public class TileInfoWorldPanel : MonoBehaviour
         yieldsText = CreateTextElement(yieldsRow.transform, "YieldsText", yieldsFontSize, yieldsTextColor, FontStyles.Normal);
         var yieldsLayoutElem = yieldsText.gameObject.AddComponent<LayoutElement>();
         yieldsLayoutElem.flexibleWidth = 0f;
-        yieldsLayoutElem.preferredWidth = 200f;
+        yieldsLayoutElem.preferredWidth = 5f;
         
         // Create resource icon
         GameObject iconObj = new GameObject("ResourceIcon");
@@ -445,8 +445,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         resourceIcon = iconObj.AddComponent<Image>();
         resourceIcon.preserveAspect = true;
         var iconLayout = iconObj.AddComponent<LayoutElement>();
-        iconLayout.preferredWidth = 24f;
-        iconLayout.preferredHeight = 24f;
+        iconLayout.preferredWidth = 6f;
+        iconLayout.preferredHeight = 6f;
         resourceIcon.gameObject.SetActive(false);
 }
     
