@@ -1488,148 +1488,90 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(bool[] isLandTile, Dictionary<int, HexTileData> tileData, List<Vector2Int> lakeCenters)
         {
-            if (lakeCenters == null || lakeCenters.Count == 0) {
-                Debug.LogWarning("[StampGen] No lakes available for river sources.");
-                yield break;
-            }
-
-            HashSet<int> coastTiles = new HashSet<int>();
-            foreach (var kvp in tileData) {
-                var td = kvp.Value;
-                if (!td.isLand || td.isLake || td.isRiver) continue;
-                bool adjacentToWater = false;
-                foreach (int neighbor in grid.neighbors[kvp.Key])
-                {
-                    if (!tileData.ContainsKey(neighbor)) continue;
-                    var neighborTile = tileData[neighbor];
-                    if (neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas)
-                    {
-                        adjacentToWater = true;
-                        break;
-                    }
-                }
-                if (adjacentToWater) coastTiles.Add(kvp.Key);
-            }
-
-            if (coastTiles.Count == 0) {
-                Debug.LogWarning("[StampGen] No coast tiles found for river endpoints.");
-                yield break;
-            }
-
-            // Diagnostic: report coast tile count for river debugging
-            Debug.Log($"[RiverDiag] Coast tiles available: {coastTiles.Count}");
-
             int targetRiverCount = Mathf.Clamp(GameSetupData.riverCount, 0, 200);
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
             HashSet<int> riverTiles = new HashSet<int>();
 
-            List<(int lakeId, int tileIndex)> lakeSources = new List<(int lakeId, int tileIndex)>();
-            for (int i = 0; i < lakeCenters.Count; i++) {
-                var center = lakeCenters[i];
-                int idx = center.y * grid.Width + center.x;
-                if (idx >= 0 && idx < tileData.Count)
-                {
-                    lakeSources.Add((i, idx));
-                }
-            }
-
-            // Diagnostic: log lake outlet candidates (lowest non-water neighbor)
-            Debug.Log("[RiverDiag] Checking lake outlets...");
-            int diagLakeIdx = 0;
-            foreach (var center in lakeCenters)
+            HashSet<int> lakeEdgeSources = new HashSet<int>();
+            if (lakeCenters != null && lakeCenters.Count > 0)
             {
-                int centerIdx = center.y * grid.Width + center.x;
-                if (!tileData.TryGetValue(centerIdx, out var lakeTile))
+                for (int i = 0; i < lakeCenters.Count; i++)
                 {
-                    Debug.Log($"[RiverDiag][Lake {diagLakeIdx}] Missing tile data for center {center} (idx={centerIdx})");
-                    diagLakeIdx++;
-                    continue;
-                }
+                    var center = lakeCenters[i];
+                    int centerIdx = center.y * grid.Width + center.x;
+                    if (!tileData.ContainsKey(centerIdx)) continue;
 
-                float lakeElev = lakeTile.elevation;
-                float lowestNeighbor = float.MaxValue;
-                HexTileData lowestTile = null;
-
-                foreach (int nIdx in grid.neighbors[centerIdx])
-                {
-                    if (!tileData.TryGetValue(nIdx, out var nTile)) continue;
-                    // treat non-land (and non-coast) as water
-                    bool isWater = !nTile.isLand && nTile.biome != Biome.Coast;
-                    if (isWater) continue;
-
-                    if (nTile.elevation < lowestNeighbor)
+                    foreach (int neighbor in grid.neighbors[centerIdx])
                     {
-                        lowestNeighbor = nTile.elevation;
-                        lowestTile = nTile;
+                        if (!tileData.TryGetValue(neighbor, out var nTile)) continue;
+                        if (!nTile.isLand || nTile.isLake || nTile.isRiver) continue;
+                        if (nTile.biome == Biome.Coast || nTile.biome == Biome.Ocean || nTile.biome == Biome.Seas) continue;
+                        lakeEdgeSources.Add(neighbor);
                     }
                 }
-
-                Debug.Log($"[RiverDiag][Lake {diagLakeIdx}] elev={lakeElev:F3} lowestNeighbor={(lowestNeighbor==float.MaxValue?float.NaN:lowestNeighbor):F3} delta={(lowestNeighbor==float.MaxValue?float.NaN:(lowestNeighbor - lakeElev)):F3} neighborBiome={(lowestTile!=null?lowestTile.biome.ToString():"NONE")}");
-                diagLakeIdx++;
             }
 
-            if (lakeSources.Count == 0) {
-                Debug.LogWarning("[StampGen] Lake centers were invalid for river generation.");
+            List<int> riverSources = lakeEdgeSources.ToList();
+            if (riverSources.Count == 0)
+            {
+                Debug.LogWarning("[StampGen] No lake-edge river sources found; falling back to inland land tiles.");
+                foreach (var kvp in tileData)
+                {
+                    var td = kvp.Value;
+                    if (!td.isLand || td.isLake || td.isRiver) continue;
+                    if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
+
+                    bool adjacentToOcean = false;
+                    foreach (int neighbor in grid.neighbors[kvp.Key])
+                    {
+                        if (!tileData.TryGetValue(neighbor, out var nTile)) continue;
+                        if (nTile.biome == Biome.Ocean || nTile.biome == Biome.Seas || nTile.biome == Biome.Coast)
+                        {
+                            adjacentToOcean = true;
+                            break;
+                        }
+                    }
+
+                    if (!adjacentToOcean)
+                    {
+                        riverSources.Add(kvp.Key);
+                    }
+                }
+            }
+
+            if (riverSources.Count == 0)
+            {
+                Debug.LogWarning("[StampGen] No valid river sources found.");
                 yield break;
             }
-
-            lakeSources = lakeSources.OrderBy(_ => riverRand.Next()).ToList();
 
             int riversGenerated = 0;
             int attempts = 0;
             int maxAttempts = Mathf.Max(targetRiverCount * 5, 20);
-            int effectiveMinRiverLength = Mathf.Max(1, minRiverLength);
-            int effectiveMaxRiverLength = Mathf.Max(effectiveMinRiverLength, maxRiverPathLength);
 
-            Debug.Log($"[StampGen][River] coastTiles={coastTiles.Count} lakeSources={lakeSources.Count} targetRiverCount={targetRiverCount} maxAttempts={maxAttempts}");
+            Debug.Log($"[StampGen][River] sources={riverSources.Count} targetRiverCount={targetRiverCount} maxAttempts={maxAttempts}");
 
             while (riversGenerated < targetRiverCount && attempts < maxAttempts)
             {
-                int listIndex = attempts % lakeSources.Count;
-                int lakeIndex = lakeSources[listIndex].tileIndex;
-                int lakeId = lakeSources[listIndex].lakeId;
+                int sourceIndex = riverSources[attempts % riverSources.Count];
                 attempts++;
 
-                // Attempt-level diagnostic
-                int attemptNum = attempts;
-                int lx = lakeIndex % grid.Width;
-                int lz = lakeIndex / grid.Width;
-                Debug.Log($"[RiverDiag] Attempt {attemptNum}: trying lake at ({lx},{lz}) idx={lakeIndex}");
+                if (!tileData.TryGetValue(sourceIndex, out var sourceTile)) continue;
+                if (!sourceTile.isLand || sourceTile.isLake || sourceTile.isRiver) continue;
 
-                List<int> path = FindRiverPath(lakeIndex, coastTiles, tileData, riverRand, out int visitedCount, true, 0.03f);
-                if (path == null)
+                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles, lakeEdgeSources.Contains(sourceIndex));
+                if (path == null || path.Count == 0)
                 {
-                    Debug.Log($"[StampGen][River] Rejected (pathfinding failed) lakeId={lakeId} visited={visitedCount}");
                     continue;
                 }
 
-                int pathLength = path.Count;
-                if (pathLength < effectiveMinRiverLength)
-                {
-                    if (riversGenerated < 1)
-                    {
-                        Debug.Log($"[StampGen][River] Accepting short river lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
-                    }
-                    else
-                    {
-                        Debug.Log($"[StampGen][River] Rejected (too short) lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
-                        continue;
-                    }
-                }
-                else if (pathLength > effectiveMaxRiverLength)
-                {
-                    Debug.Log($"[StampGen][River] Rejected (too long) lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
-                    continue;
-                }
-
-                Debug.Log($"[StampGen][River] Success lakeId={lakeId} length={pathLength} visited={visitedCount}");
                 riversGenerated++;
-                foreach (int tileIdx in path) {
-                    if (!tileData.ContainsKey(tileIdx)) continue;
-                    var td = tileData[tileIdx];
+                foreach (int tileIdx in path)
+                {
+                    if (!tileData.TryGetValue(tileIdx, out var td)) continue;
 
-                    if (td.isLake) continue;
-                    if (coastTiles.Contains(tileIdx)) continue;
+                    if (td.isLake || td.isRiver) continue;
+                    if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
 
                     td.biome = Biome.River;
                     td.isLand = true;
@@ -1657,100 +1599,101 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Debug.Log($"[StampGen] Rivers generated: {riversGenerated}");
         }
 
-        List<int> FindRiverPath(int start, HashSet<int> coastTiles, Dictionary<int, HexTileData> tileData, System.Random rand, out int visitedCount, bool allowLakeEscapeUphill = true, float lakeEscapeMaxUp = 0.03f)
+        List<int> BuildRiverWalk(int start, Dictionary<int, HexTileData> tileData, System.Random rand, HashSet<int> riverTiles, bool ignoreLakeAdjacencyAtStart)
         {
-            var openSet = new SortedDictionary<float, Queue<int>>();
-            var cameFrom = new Dictionary<int, int>();
-            var costSoFar = new Dictionary<int, float>();
-            var steps = new Dictionary<int, int>();
-            visitedCount = 0;
+            if (!tileData.ContainsKey(start)) return null;
 
-            costSoFar[start] = 0f;
-            steps[start] = 0;
-            AddToOpenSet(openSet, 0f, start);
+            List<int> path = new List<int>();
+            HashSet<int> visited = new HashSet<int>();
+            int current = start;
+            bool firstStep = true;
 
-            while (openSet.Count > 0)
+            while (true)
             {
-                int current = PopFromOpenSet(openSet);
-                visitedCount++;
-                if (coastTiles.Contains(current))
+                if (!tileData.TryGetValue(current, out var currentTile)) break;
+                if (currentTile.isLake || currentTile.isRiver) break;
+                if (currentTile.biome == Biome.Coast || currentTile.biome == Biome.Ocean || currentTile.biome == Biome.Seas) break;
+
+                if (!visited.Contains(current))
                 {
-                    return ReconstructPath(cameFrom, current);
+                    path.Add(current);
+                    visited.Add(current);
                 }
 
-                int currentSteps = steps[current];
-                var currentTile = tileData[current];
-                float currentElevation = currentTile.elevation;
-                bool currentIsLake = currentTile.isLake;
-
+                bool shouldTerminate = false;
                 foreach (int neighbor in grid.neighbors[current])
                 {
-                    if (!tileData.ContainsKey(neighbor)) continue;
-                    var td = tileData[neighbor];
+                    if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
 
-                    if (td.biome == Biome.Ocean || td.biome == Biome.Seas || td.biome == Biome.Lake) continue;
-                    if (td.biome == Biome.Mountain || td.biome == Biome.Glacier || td.biome == Biome.Snow) continue;
-                    if (!td.isLand && td.biome != Biome.Coast) continue;
+                    bool isTermination = neighborTile.biome == Biome.Ocean
+                        || neighborTile.biome == Biome.Seas
+                        || neighborTile.biome == Biome.Coast
+                        || neighborTile.isRiver
+                        || neighborTile.isLake;
 
-                    float neighborElevation = td.elevation;
-                    if (currentIsLake && allowLakeEscapeUphill && !td.isLake)
+                    if (isTermination)
                     {
-                        if (neighborElevation > currentElevation + lakeEscapeMaxUp) continue;
-                    }
-
-                    float stepCost = 1f + (float)rand.NextDouble() * 0.35f;
-                    if (td.isRiver) stepCost *= 0.7f;
-                    if (!currentIsLake)
-                    {
-                        float elevationDelta = neighborElevation - currentElevation;
-                        if (elevationDelta > 0f)
+                        if (firstStep && ignoreLakeAdjacencyAtStart && neighborTile.isLake)
                         {
-                            stepCost *= 1f + (elevationDelta * 10f);
+                            continue;
                         }
-                    }
-
-                    float newCost = costSoFar[current] + stepCost;
-                    if (!costSoFar.ContainsKey(neighbor) || newCost < costSoFar[neighbor])
-                    {
-                        costSoFar[neighbor] = newCost;
-                        cameFrom[neighbor] = current;
-                        steps[neighbor] = currentSteps + 1;
-                        AddToOpenSet(openSet, newCost, neighbor);
+                        shouldTerminate = true;
+                        break;
                     }
                 }
-            }
-            Debug.Log($"[RiverDiag][BFS] Queue exhausted — no valid expansion possible from start idx={start}", this);
-            return null;
-        }
 
-        void AddToOpenSet(SortedDictionary<float, Queue<int>> openSet, float priority, int node)
-        {
-            if (!openSet.TryGetValue(priority, out var queue))
-            {
-                queue = new Queue<int>();
-                openSet[priority] = queue;
-            }
-            queue.Enqueue(node);
-        }
+                if (shouldTerminate)
+                {
+                    break;
+                }
 
-        int PopFromOpenSet(SortedDictionary<float, Queue<int>> openSet)
-        {
-            var first = openSet.First();
-            int node = first.Value.Dequeue();
-            if (first.Value.Count == 0) openSet.Remove(first.Key);
-            return node;
-        }
+                List<(int idx, float weight)> candidates = new List<(int idx, float weight)>();
+                foreach (int neighbor in grid.neighbors[current])
+                {
+                    if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
+                    if (visited.Contains(neighbor)) continue;
+                    if (!neighborTile.isLand) continue;
+                    if (neighborTile.isLake || neighborTile.isRiver) continue;
+                    if (neighborTile.biome == Biome.Coast || neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas) continue;
+                    if (neighborTile.biome == Biome.Mountain || neighborTile.biome == Biome.Glacier || neighborTile.biome == Biome.Snow) continue;
 
-        List<int> ReconstructPath(Dictionary<int, int> cameFrom, int current)
-        {
-            List<int> path = new List<int>();
-            while (cameFrom.TryGetValue(current, out int prev))
-            {
-                path.Add(current);
-                current = prev;
+                    float elevationDelta = neighborTile.elevation - currentTile.elevation;
+                    float weight = 1f + Mathf.Clamp(-elevationDelta * 5f, 0f, 3f);
+                    if (riverTiles.Contains(neighbor)) weight *= 0.5f;
+                    candidates.Add((neighbor, weight));
+                }
+
+                if (candidates.Count == 0)
+                {
+                    break;
+                }
+
+                current = PickWeightedNeighbor(candidates, rand);
+                firstStep = false;
             }
-            path.Reverse();
+
             return path;
+        }
+
+        int PickWeightedNeighbor(List<(int idx, float weight)> candidates, System.Random rand)
+        {
+            float totalWeight = 0f;
+            foreach (var candidate in candidates)
+            {
+                totalWeight += Mathf.Max(0.01f, candidate.weight);
+            }
+
+            float roll = (float)(rand.NextDouble() * totalWeight);
+            foreach (var candidate in candidates)
+            {
+                roll -= Mathf.Max(0.01f, candidate.weight);
+                if (roll <= 0f)
+                {
+                    return candidate.idx;
+                }
+            }
+
+            return candidates[candidates.Count - 1].idx;
         }
 
         // --------------------------- Helper Functions ----------------------------
