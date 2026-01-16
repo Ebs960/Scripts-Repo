@@ -200,7 +200,7 @@ public static class GameSetupData
         islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);
         islandMinDistanceFromContinents = 6;
 
-        lakeMinRadiusTiles = 3;
+        lakeMinRadiusTiles = 4;
         lakeMaxRadiusTiles = 9;
         lakeMinDistanceFromCoast = 2;
     }
