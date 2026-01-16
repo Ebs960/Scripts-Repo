@@ -107,7 +107,7 @@ public static class GameSetupData
     public static int lakeMaxRadiusTiles;
     public static int lakeMinDistanceFromCoast = 2;
     // River tuning
-    public static int minRiverLength = 8;
+    public static int minRiverLength = 2;
     public static int minRiversPerContinent = 1;
     public static int maxRiversPerContinent = 2;
     
@@ -185,6 +185,10 @@ public static class GameSetupData
         minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
 
         // River defaults
+<<<<<<< HEAD
+=======
+        minRiverLength = 2;
+>>>>>>> a43f1bc1c934ec82a850e61a8e49620a6f883d87
         minRiversPerContinent = 1;
         maxRiversPerContinent = 2;
 

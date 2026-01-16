@@ -100,10 +100,10 @@ public class ClimateManager : MonoBehaviour
 
     void Start()
     {
+        GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGenerated;
+
         if (isGlobalClimateManager)
         {
-            UpdateReferences();
-
             if (TurnManager.Instance != null)
             {
                 TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
@@ -126,6 +126,8 @@ public class ClimateManager : MonoBehaviour
 
     void OnDestroy()
     {
+        GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGenerated;
+
         if (isGlobalClimateManager)
         {
             if (TurnManager.Instance != null)
@@ -422,6 +424,21 @@ OnSeasonChanged?.Invoke(season);
         {
             Debug.LogWarning("[ClimateManager] Could not find PlanetGenerator (current). Some planet-specific ops may be deferred.");
         }
+    }
+
+    private void HandlePlanetFullyGenerated(PlanetGenerator generator)
+    {
+        if (generator == null) return;
+        if (!isGlobalClimateManager && generator.planetIndex != planetIndex) return;
+
+        planet = generator;
+        if (isGlobalClimateManager && !planetSeasons.ContainsKey(generator.planetIndex))
+        {
+            planetSeasons[generator.planetIndex] = Season.Spring;
+            planetSeasonStartTurns[generator.planetIndex] = currentTurn;
+        }
+
+        ApplySeasonalEffects(GetSeasonForPlanet(generator.planetIndex), generator.planetIndex);
     }
 
     private void HandlePlanetSeasonChanged(int idx, Season season)
