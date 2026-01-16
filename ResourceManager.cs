@@ -1,4 +1,5 @@
 // Assets/Scripts/Managers/ResourceManager.cs
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -19,6 +20,7 @@ public class ResourceManager : MonoBehaviour
     // Prevent multiple initialization
     private bool _isInitialized = false;
     private bool _subscribedToPlanetReady = false;
+    private readonly HashSet<int> spawnedPlanetIndices = new HashSet<int>();
 
     void Awake()
     {
@@ -46,38 +48,62 @@ public class ResourceManager : MonoBehaviour
     void Start()
     {
         TrySubscribeToPlanetReady();
-        
-        // If TileSystem is already ready, initialize immediately
-        if (TileSystem.Instance != null && TileSystem.Instance.IsReady())
-        {
-            InitializeResourceManager();
-        }
     }
 
     private void TrySubscribeToPlanetReady()
     {
         if (_subscribedToPlanetReady) return;
-        if (GameManager.Instance == null) return;
         
-        GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGenerated;
         _subscribedToPlanetReady = true;
     }
 
     private void TryUnsubscribeFromPlanetReady()
     {
         if (!_subscribedToPlanetReady) return;
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGenerated;
         _subscribedToPlanetReady = false;
     }
 
-    private void HandlePlanetReady(int planetIndex)
+    private void HandlePlanetFullyGenerated(PlanetGenerator generator)
     {
-        // Initialize when planet is ready (TileSystem will be ready by then)
-        if (TileSystem.Instance != null && TileSystem.Instance.IsReady())
+        if (generator == null) return;
+        int planetIndex = generator.planetIndex;
+        if (spawnedPlanetIndices.Contains(planetIndex)) return;
+
+        if (TileSystem.Instance == null || !TileSystem.Instance.IsReady())
+        {
+            Debug.LogWarning("[ResourceManager] TileSystem is not ready; deferring resource spawn.");
+            StartCoroutine(WaitForTileSystemAndSpawn(generator));
+            return;
+        }
+
+        if (!_isInitialized)
         {
             InitializeResourceManager();
         }
+
+        SpawnResourcesOnPlanet(generator, planetIndex);
+        spawnedPlanetIndices.Add(planetIndex);
+    }
+
+    private IEnumerator WaitForTileSystemAndSpawn(PlanetGenerator generator)
+    {
+        int planetIndex = generator != null ? generator.planetIndex : 0;
+        while (TileSystem.Instance == null || !TileSystem.Instance.IsReady())
+        {
+            yield return null;
+        }
+
+        if (generator == null || spawnedPlanetIndices.Contains(planetIndex)) yield break;
+
+        if (!_isInitialized)
+        {
+            InitializeResourceManager();
+        }
+
+        SpawnResourcesOnPlanet(generator, planetIndex);
+        spawnedPlanetIndices.Add(planetIndex);
     }
     
     private void InitializeResourceManager()
@@ -144,6 +170,7 @@ public class ResourceManager : MonoBehaviour
         
         // Reset initialization flag
         _isInitialized = false;
+        spawnedPlanetIndices.Clear();
     }
 
     /// <summary>
@@ -152,12 +179,6 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     private void SpawnResources()
     {
-        // SAFETY: Don't spawn if already spawned (prevents memory leak)
-        if (spawnedResources.Count > 0)
-        {
-            return;
-        }
-        
         if (TileSystem.Instance == null || !TileSystem.Instance.IsReady())
         {
             Debug.LogError("[ResourceManager] TileSystem.Instance is not ready! Cannot spawn resources.");
@@ -177,7 +198,12 @@ public class ResourceManager : MonoBehaviour
                     Debug.LogWarning($"[ResourceManager] Planet {planetIndex} generator or grid is null, skipping");
                     continue;
                 }
+                if (spawnedPlanetIndices.Contains(planetIndex))
+                {
+                    continue;
+                }
                 SpawnResourcesOnPlanet(planetGen, planetIndex);
+                spawnedPlanetIndices.Add(planetIndex);
             }
             return;
         }
@@ -188,7 +214,11 @@ public class ResourceManager : MonoBehaviour
             Debug.LogWarning("[ResourceManager] Missing grid or planetGenerator, cannot spawn resources");
             return;
         }
-        SpawnResourcesOnPlanet(planetGenerator, 0);
+        if (!spawnedPlanetIndices.Contains(0))
+        {
+            SpawnResourcesOnPlanet(planetGenerator, 0);
+            spawnedPlanetIndices.Add(0);
+        }
         
     }
     

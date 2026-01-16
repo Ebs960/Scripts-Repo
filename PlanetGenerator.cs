@@ -358,7 +358,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public bool enableRivers = true;
     [Range(5, 100)]
     [Tooltip("Minimum length a river must be to be included")]
-    public int minRiverLength = 8;
+    public int minRiverLength = 2;
     [Range(0, 20)]
     [Tooltip("Minimum rivers per continent")]
     public int minRiversPerContinent = 1;
@@ -367,7 +367,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int maxRiversPerContinent = 2;
     [Range(5, 50)]
     [Tooltip("Maximum length (in tiles) for a single river path")]
-    public int maxRiverPathLength = 15;
+    public int maxRiverPathLength = 80;
     [Range(0.01f, 0.2f)]
     [Tooltip("Elevation drop applied along river tiles")]
     public float riverDepth = 0.05f;
@@ -620,6 +620,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         float mapWidth = grid.Width;
         float mapHeight = grid.Height;
         noise.ConfigureForMapSize(mapWidth, mapHeight);
+        // Calculate noise frequencies for elevation
+        float elevBroadFreq = 1f / (mapWidth * 0.5f);
+        float elevRidgedFreq = 1f / (mapWidth * 0.3f);
+        float elevBillowFreq = 1f / (mapWidth * 0.4f);
 
         // DIAGNOSTICS: report key settings and grid stats
         if (enableDiagnostics)
@@ -993,6 +997,67 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
 
         Debug.Log($"[StampGen] Lakes stamped: {lakesStamped}");
+        float ComputeLandElevationForIndex(int index)
+        {
+            Vector2Int coord = tileCoords[index];
+            Vector2 tilePos = new Vector2(coord.x, coord.y);
+            Vector3 noisePoint = new Vector3(coord.x, 0f, coord.y) + noiseOffset;
+            float noiseElevation;
+            if (billowHillWeight > 0.01f) {
+                noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
+                    elevBroadFreq, elevRidgedFreq, elevBillowFreq,
+                    ridgedMountainWeight, billowHillWeight);
+            } else {
+                noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight,
+                    elevBroadFreq, elevRidgedFreq, ridgedMountainWeight);
+            }
+            float elevationRange = maxTotalElevation - baseLandElevation;
+            return baseLandElevation + (noiseElevation * elevationRange);
+        }
+
+        for (int lakeId = 0; lakeId < lakeCenters.Count; lakeId++)
+        {
+            Vector2Int center = lakeCenters[lakeId];
+            int centerIdx = center.y * tilesX + center.x;
+            if (centerIdx < 0 || centerIdx >= tileCount) continue;
+
+            int representativeIdx = centerIdx;
+            if (!isLakeTile[representativeIdx])
+            {
+                int fallbackIdx = -1;
+                foreach (int neighbor in grid.neighbors[centerIdx])
+                {
+                    if (neighbor >= 0 && neighbor < tileCount && isLakeTile[neighbor])
+                    {
+                        fallbackIdx = neighbor;
+                        break;
+                    }
+                }
+                if (fallbackIdx == -1) continue;
+                representativeIdx = fallbackIdx;
+            }
+
+            float minNeighborElevation = float.MaxValue;
+            int validNeighborCount = 0;
+            foreach (int neighbor in grid.neighbors[representativeIdx])
+            {
+                if (neighbor < 0 || neighbor >= tileCount) continue;
+                if (!isLandTile[neighbor]) continue;
+                validNeighborCount++;
+                float neighborElevation = ComputeLandElevationForIndex(neighbor);
+                if (neighborElevation < minNeighborElevation) minNeighborElevation = neighborElevation;
+            }
+
+            if (validNeighborCount == 0)
+            {
+                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor=none delta=NA validNeighbors=0");
+            }
+            else
+            {
+                float delta = minNeighborElevation - lakeElevation;
+                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor={minNeighborElevation:F4} delta={delta:F4} validNeighbors={validNeighborCount}");
+            }
+        }
 
         landTilesGenerated = 0;
         for (int i = 0; i < tileCount; i++) {
@@ -1025,12 +1090,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (tileCount > 2) climateSampleIndices.Add(tileCount / 2);
         if (tileCount > 4) climateSampleIndices.Add((3 * tileCount) / 4);
         if (tileCount > 1) climateSampleIndices.Add(tileCount - 1);
-        
-        // Calculate noise frequencies for elevation
-        float elevBroadFreq = 1f / (mapWidth * 0.5f);
-        float elevRidgedFreq = 1f / (mapWidth * 0.3f);
-        float elevBillowFreq = 1f / (mapWidth * 0.4f);
 
+        int northPoleY = 0;
+        int southPoleY = Mathf.Max(0, tilesZ - 1);
+        int equatorY = Mathf.Clamp(tilesZ / 2, 0, southPoleY);
+        float? northPoleTemp = null;
+        float? southPoleTemp = null;
+        float? equatorTemp = null;
+        
         for (int i = 0; i < tileCount; i++)
         {
             Vector2Int coord = tileCoords[i];
@@ -1056,19 +1123,21 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             // Apply moisture bias - clamp to ensure it stays in 0-1 range
             moisture = Mathf.Clamp01(moisture + moistureBias);
             
-            float northness = mapHeight > 1f
-                ? Mathf.Lerp(-1f, 1f, coord.y / Mathf.Max(1f, mapHeight - 1f))
-                : 0f;
-            float absNorthness = Mathf.Abs(northness);
-            
-            // Generate temperature from noise and north/south position
-            // Latitude-derived temperature: use exponent to control steepness and a blend weight
-            float northTemp = 1f - Mathf.Pow(absNorthness, latitudeExponent);
             float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
-
-            // Blend latitude vs noise using configurable weight
-            float temperature = (northTemp * latitudeInfluence) + (noiseTemp * (1f - latitudeInfluence));
+            float normalizedY = mapHeight > 1f
+                ? coord.y / Mathf.Max(1f, mapHeight - 1f)
+                : 0f;
+            float latitude = Mathf.Abs(normalizedY * 2f - 1f);
+            float latEffect = Mathf.Pow(latitude, latitudeExponent);
+            float temperature = noiseTemp - (latEffect * latitudeInfluence);
             temperature = Mathf.Clamp01(temperature + temperatureBias);
+
+            if (coord.x == 0)
+            {
+                if (coord.y == northPoleY) northPoleTemp = temperature;
+                if (coord.y == southPoleY) southPoleTemp = temperature;
+                if (coord.y == equatorY) equatorTemp = temperature;
+            }
             // Track ranges
             if (temperature < temperatureMin) temperatureMin = temperature;
             if (temperature > temperatureMax) temperatureMax = temperature;
@@ -1174,6 +1243,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 }
                 yield return null;
             }
+        }
+
+        if (enableDiagnostics)
+        {
+            string northLabel = northPoleTemp.HasValue ? northPoleTemp.Value.ToString("F3") : "n/a";
+            string southLabel = southPoleTemp.HasValue ? southPoleTemp.Value.ToString("F3") : "n/a";
+            string equatorLabel = equatorTemp.HasValue ? equatorTemp.Value.ToString("F3") : "n/a";
+            Debug.Log($"[PlanetGenerator][Diag] temperature y=0: {northLabel} y=max: {southLabel} y=mid: {equatorLabel}");
         }
 
         bool noiseDidNotChangeLand = true;
@@ -1418,9 +1495,20 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             HashSet<int> coastTiles = new HashSet<int>();
             foreach (var kvp in tileData) {
-                if (kvp.Value.biome == Biome.Coast) {
-                    coastTiles.Add(kvp.Key);
+                var td = kvp.Value;
+                if (!td.isLand || td.isLake || td.isRiver) continue;
+                bool adjacentToWater = false;
+                foreach (int neighbor in grid.neighbors[kvp.Key])
+                {
+                    if (!tileData.ContainsKey(neighbor)) continue;
+                    var neighborTile = tileData[neighbor];
+                    if (neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas)
+                    {
+                        adjacentToWater = true;
+                        break;
+                    }
                 }
+                if (adjacentToWater) coastTiles.Add(kvp.Key);
             }
 
             if (coastTiles.Count == 0) {
@@ -1432,31 +1520,67 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
             HashSet<int> riverTiles = new HashSet<int>();
 
-            List<int> lakeIndices = new List<int>();
-            foreach (var center in lakeCenters) {
+            List<(int lakeId, int tileIndex)> lakeSources = new List<(int lakeId, int tileIndex)>();
+            for (int i = 0; i < lakeCenters.Count; i++) {
+                var center = lakeCenters[i];
                 int idx = center.y * grid.Width + center.x;
-                if (idx >= 0 && idx < tileData.Count) lakeIndices.Add(idx);
+                if (idx >= 0 && idx < tileData.Count)
+                {
+                    lakeSources.Add((i, idx));
+                }
             }
 
-            if (lakeIndices.Count == 0) {
+            if (lakeSources.Count == 0) {
                 Debug.LogWarning("[StampGen] Lake centers were invalid for river generation.");
                 yield break;
             }
 
-            lakeIndices = lakeIndices.OrderBy(_ => riverRand.Next()).ToList();
+            lakeSources = lakeSources.OrderBy(_ => riverRand.Next()).ToList();
 
             int riversGenerated = 0;
             int attempts = 0;
             int maxAttempts = Mathf.Max(targetRiverCount * 5, 20);
+            int effectiveMinRiverLength = Mathf.Max(1, minRiverLength);
+            int effectiveMaxRiverLength = Mathf.Max(effectiveMinRiverLength, maxRiverPathLength);
+
+            Debug.Log($"[StampGen][River] coastTiles={coastTiles.Count} lakeSources={lakeSources.Count} targetRiverCount={targetRiverCount} maxAttempts={maxAttempts}");
 
             while (riversGenerated < targetRiverCount && attempts < maxAttempts)
             {
-                int lakeIndex = lakeIndices[attempts % lakeIndices.Count];
+                int listIndex = attempts % lakeSources.Count;
+                int lakeIndex = lakeSources[listIndex].tileIndex;
+                int lakeId = lakeSources[listIndex].lakeId;
                 attempts++;
 
-                List<int> path = FindRiverPath(lakeIndex, coastTiles, tileData, riverRand);
-                if (path == null) continue;
+                Debug.Log($"[StampGen][River] Attempt {attempts}/{maxAttempts} lakeId={lakeId} startIndex={lakeIndex}");
 
+                List<int> path = FindRiverPath(lakeIndex, coastTiles, tileData, riverRand, out int visitedCount, true, 0.03f);
+                if (path == null)
+                {
+                    Debug.Log($"[StampGen][River] Rejected (pathfinding failed) lakeId={lakeId} visited={visitedCount}");
+                    continue;
+                }
+
+                int pathLength = path.Count;
+                if (pathLength < effectiveMinRiverLength)
+                {
+                    if (riversGenerated < 1)
+                    {
+                        Debug.Log($"[StampGen][River] Accepting short river lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[StampGen][River] Rejected (too short) lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
+                        continue;
+                    }
+                }
+                else if (pathLength > effectiveMaxRiverLength)
+                {
+                    Debug.Log($"[StampGen][River] Rejected (too long) lakeId={lakeId} length={pathLength} min={effectiveMinRiverLength} max={effectiveMaxRiverLength} visited={visitedCount}");
+                    continue;
+                }
+
+                Debug.Log($"[StampGen][River] Success lakeId={lakeId} length={pathLength} visited={visitedCount}");
                 riversGenerated++;
                 foreach (int tileIdx in path) {
                     if (!tileData.ContainsKey(tileIdx)) continue;
@@ -1491,12 +1615,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Debug.Log($"[StampGen] Rivers generated: {riversGenerated}");
         }
 
-        List<int> FindRiverPath(int start, HashSet<int> coastTiles, Dictionary<int, HexTileData> tileData, System.Random rand)
+        List<int> FindRiverPath(int start, HashSet<int> coastTiles, Dictionary<int, HexTileData> tileData, System.Random rand, out int visitedCount, bool allowLakeEscapeUphill = true, float lakeEscapeMaxUp = 0.03f)
         {
             var openSet = new SortedDictionary<float, Queue<int>>();
             var cameFrom = new Dictionary<int, int>();
             var costSoFar = new Dictionary<int, float>();
             var steps = new Dictionary<int, int>();
+            visitedCount = 0;
 
             costSoFar[start] = 0f;
             steps[start] = 0;
@@ -1505,12 +1630,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             while (openSet.Count > 0)
             {
                 int current = PopFromOpenSet(openSet);
+                visitedCount++;
                 if (coastTiles.Contains(current))
                 {
                     return ReconstructPath(cameFrom, current);
                 }
 
                 int currentSteps = steps[current];
+                var currentTile = tileData[current];
+                float currentElevation = currentTile.elevation;
+                bool currentIsLake = currentTile.isLake;
 
                 foreach (int neighbor in grid.neighbors[current])
                 {
@@ -1521,8 +1650,22 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     if (td.biome == Biome.Mountain || td.biome == Biome.Glacier || td.biome == Biome.Snow) continue;
                     if (!td.isLand && td.biome != Biome.Coast) continue;
 
+                    float neighborElevation = td.elevation;
+                    if (currentIsLake && allowLakeEscapeUphill && !td.isLake)
+                    {
+                        if (neighborElevation > currentElevation + lakeEscapeMaxUp) continue;
+                    }
+
                     float stepCost = 1f + (float)rand.NextDouble() * 0.35f;
                     if (td.isRiver) stepCost *= 0.7f;
+                    if (!currentIsLake)
+                    {
+                        float elevationDelta = neighborElevation - currentElevation;
+                        if (elevationDelta > 0f)
+                        {
+                            stepCost *= 1f + (elevationDelta * 10f);
+                        }
+                    }
 
                     float newCost = costSoFar[current] + stepCost;
                     if (!costSoFar.ContainsKey(neighbor) || newCost < costSoFar[neighbor])

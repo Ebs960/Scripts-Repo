@@ -98,6 +98,7 @@ public class GameManager : MonoBehaviour
     public event Action<int> OnPlanetSurfaceGenerated;
     public event Action<int> OnPlanetManagersAttached;
     public event Action<int> OnPlanetReady;
+    public static event Action<PlanetGenerator> OnPlanetFullyGenerated;
     private List<string> realBodies;
     private int totalPlanets;
 
@@ -1952,6 +1953,9 @@ currentPlanetIndex = planetIndex;
         yield return new WaitForEndOfFrame();
         yield return null;
 
+    // Planet fully generated (surface, biomes, rivers, and managers)
+    OnPlanetFullyGenerated?.Invoke(generator);
+
     // Planet fully ready
     OnPlanetReady?.Invoke(planetIndex);
     
@@ -1989,6 +1993,7 @@ currentPlanetIndex = planetIndex;
             
             yield return StartCoroutine(generator.GenerateSurface());
             // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
+            OnPlanetFullyGenerated?.Invoke(generator);
         }
 
         // Update references in other systems
@@ -2019,6 +2024,7 @@ currentPlanetIndex = planetIndex;
             TileSystem.Instance.InitializeFromPlanet(planetGenerator);
         }
 
+        OnPlanetFullyGenerated?.Invoke(planetGenerator);
     
 
 
