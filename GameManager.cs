@@ -855,8 +855,6 @@ currentPlanetIndex = planetIndex;
             // Land generation settings (allowed overrides only)
             planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
             planetGenerator.enableRivers = GameSetupData.enableRivers;
-            planetGenerator.minRiversPerContinent = GameSetupData.riverCount;
-            planetGenerator.maxRiversPerContinent = GameSetupData.riverCount + 1;
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
             planetGenerator.enableLakes = GameSetupData.enableLakes;
@@ -1905,8 +1903,6 @@ currentPlanetIndex = planetIndex;
 
         // Rivers & lakes (allowed preset-driven settings)
         generator.enableRivers = GameSetupData.enableRivers;
-        generator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
-        generator.maxRiversPerContinent = GameSetupData.maxRiversPerContinent;
 
         generator.enableLakes = GameSetupData.enableLakes;
         generator.numberOfLakes = GameSetupData.numberOfLakes;

@@ -643,25 +643,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (enableDiagnostics)
         {
             Debug.Log($"[PlanetGenerator][Diag] mapWidth={mapWidth:F1} mapHeight={mapHeight:F1} tiles={tileCount}");
-            // Log continent/island sizing (tile-based system)
-            int cMinW = minContinentWidthTilesStandard, cMaxW = maxContinentWidthTilesStandard, cMinH = minContinentHeightTilesStandard, cMaxH = maxContinentHeightTilesStandard;
-            int iMinW = minIslandWidthTilesStandard, iMaxW = maxIslandWidthTilesStandard, iMinH = minIslandHeightTilesStandard, iMaxH = maxIslandHeightTilesStandard;
-            switch (GameSetupData.mapSize)
-            {
-                case GameManager.MapSize.Small:
-                    cMinW = minContinentWidthTilesSmall; cMaxW = maxContinentWidthTilesSmall; cMinH = minContinentHeightTilesSmall; cMaxH = maxContinentHeightTilesSmall;
-                    iMinW = minIslandWidthTilesSmall; iMaxW = maxIslandWidthTilesSmall; iMinH = minIslandHeightTilesSmall; iMaxH = maxIslandHeightTilesSmall;
-                    break;
-                case GameManager.MapSize.Large:
-                    cMinW = minContinentWidthTilesLarge; cMaxW = maxContinentWidthTilesLarge; cMinH = minContinentHeightTilesLarge; cMaxH = maxContinentHeightTilesLarge;
-                    iMinW = minIslandWidthTilesLarge; iMaxW = maxIslandWidthTilesLarge; iMinH = minIslandHeightTilesLarge; iMaxH = maxIslandHeightTilesLarge;
-                    break;
-            }
-            Debug.Log($"[StampGen][Diag] mapSize={GameSetupData.mapSize} contTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH} minDistance={GameSetupData.continentMinDistanceTiles}");
+            // Log continent/island sizing (use GameSetupData as authoritative source)
+            Debug.Log($"[StampGen][Diag] mapSize={GameSetupData.mapSize} contTiles(WxH) min={GameSetupData.continentMinWidthTiles}x{GameSetupData.continentMinHeightTiles} max={GameSetupData.continentMaxWidthTiles}x{GameSetupData.continentMaxHeightTiles} minDistance={GameSetupData.continentMinDistanceTiles}");
             Debug.Log($"[StampGen][Diag] islandRadius (effective) min={GameSetupData.islandMinRadiusTiles} max={GameSetupData.islandMaxRadiusTiles} minDistanceFromContinents={GameSetupData.islandMinDistanceFromContinents}");
             Debug.Log($"[StampGen][Diag] lakeRadius (effective) min={GameSetupData.lakeMinRadiusTiles} max={GameSetupData.lakeMaxRadiusTiles} minDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
             Debug.Log($"[Setup] mapSize={GameSetupData.mapSize} contCount={GameSetupData.numberOfContinents} islandCount={GameSetupData.numberOfIslands} generateIslands={GameSetupData.generateIslands}");
-            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents (effective)={GameSetupData.numberOfContinents} continentTiles(WxH) min={cMinW}x{cMinH} max={cMaxW}x{cMaxH}");
+            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents (effective)={GameSetupData.numberOfContinents} continentTiles(WxH) min={GameSetupData.continentMinWidthTiles}x{GameSetupData.continentMinHeightTiles} max={GameSetupData.continentMaxWidthTiles}x{GameSetupData.continentMaxHeightTiles}");
             Debug.Log($"[PlanetGenerator][Diag] generateIslands (effective)={GameSetupData.generateIslands} numberOfIslands (effective)={GameSetupData.numberOfIslands}");
             Debug.Log($"[PlanetGenerator][Diag] latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureBias={temperatureBias} moistureBias={moistureBias}");
 
@@ -670,7 +657,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             int expectedRiverFromMoisture = riverPresetMap[Mathf.Clamp(GameSetupData.selectedMoisturePreset, 0, riverPresetMap.Length - 1)];
             Debug.Log($"[StampGen][Summary] seed={seed} randomSeed={randomSeed} mapSize={GameSetupData.mapSize} climatePreset={GameSetupData.selectedClimatePreset} moisturePreset={GameSetupData.selectedMoisturePreset} landPreset={GameSetupData.selectedLandPreset} terrainPreset={GameSetupData.selectedTerrainPreset}");
             Debug.Log($"[StampGen][Summary] GameSetupData -> riversEnabled={GameSetupData.enableRivers} riverCount={GameSetupData.riverCount} (expected from moisture preset={expectedRiverFromMoisture}) lakesEnabled={GameSetupData.enableLakes} lakeCount={GameSetupData.numberOfLakes} lakeMinRadius={GameSetupData.lakeMinRadiusTiles} lakeMaxRadius={GameSetupData.lakeMaxRadiusTiles} lakeMinDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
-            Debug.Log($"[StampGen][Summary] PlanetGenerator -> enableRivers={enableRivers} minRiversPerContinent={minRiversPerContinent} maxRiversPerContinent={maxRiversPerContinent} lakeMinRadiusTiles={lakeMinRadiusTiles} lakeMaxRadiusTiles={lakeMaxRadiusTiles} lakeMinDistanceFromCoast={lakeMinDistanceFromCoast}");
+            Debug.Log($"[StampGen][Summary] GameSetupData -> enableRivers={GameSetupData.enableRivers} minRiversPerContinent={GameSetupData.minRiversPerContinent} maxRiversPerContinent={GameSetupData.maxRiversPerContinent} lakeMinRadiusTiles={GameSetupData.lakeMinRadiusTiles} lakeMaxRadiusTiles={GameSetupData.lakeMaxRadiusTiles} lakeMinDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
             Debug.Log($"[StampGen][Summary] continents={numberOfContinents} islands={numberOfIslands} generateIslands={generateIslands} continentMinDistanceTiles={GameSetupData.continentMinDistanceTiles}");
             Debug.Log($"[StampGen][Summary] temperatureBias={temperatureBias} moistureBias={moistureBias} latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureNoiseFreq={temperatureNoiseFrequency} tempDetailMultiplier={temperatureDetailMultiplier} tempDetailStrength={temperatureDetailStrength}");
         }
@@ -1181,9 +1168,15 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             moisture = Mathf.Clamp01(moisture + moistureBias);
             float normalizedY = mapHeight > 1f ? coord.y / Mathf.Max(1f, mapHeight - 1f) : 0f;
-            float latitude = Mathf.Abs(normalizedY * 2f - 1f);
-            float latEffect = Mathf.Pow(latitude, latitudeExponent);
-            float temperature = noiseTemp - (latEffect * latitudeInfluence) + temperatureBias;
+            // Step 1: latitude as distance from equator (0 at equator, 1 at poles)
+            float lat = Mathf.Abs(normalizedY - 0.5f) * 2f;
+            // Step 2: convert to heat curve: equator => +1, poles => -1
+            float latCurve = 1f - lat;
+            latCurve = latCurve * 2f - 1f;
+            // Step 3: apply exponent symmetrically and scale by influence
+            float latEffect = Mathf.Sign(latCurve) * Mathf.Pow(Mathf.Abs(latCurve), latitudeExponent) * latitudeInfluence;
+            // Step 4: combine with base temperature
+            float temperature = noiseTemp + latEffect + temperatureBias;
             temperature = Mathf.Clamp01(temperature);
 
             // Compute final elevation for this tile now (independent of biome assignment)
@@ -1603,9 +1596,15 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // --------------------------- River Generation ----------------------------
         IEnumerator GenerateRivers(bool[] isLandTile, Dictionary<int, HexTileData> tileData, List<Vector2Int> lakeCenters)
         {
-            int targetRiverCount = Mathf.Clamp(GameSetupData.riverCount, 0, 200);
+            int targetRiverCount = 0; // will be set based on discovered lakes (one river per lake)
             System.Random riverRand = new System.Random(unchecked((int)(seed ^ 0xBADF00D)));
             HashSet<int> riverTiles = new HashSet<int>();
+            // Timing counters for diagnostics
+            int aStarCalls = 0;
+            double aStarMs = 0.0;
+            int bfsCalls = 0;
+            double bfsMs = 0.0;
+            float riverGenerationStart = Time.realtimeSinceStartup;
 
             HashSet<int> lakeEdgeSources = new HashSet<int>();
             // Map each lake-edge source tile to its lake id (index into lakeCenters)
@@ -1709,7 +1708,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             int riversGenerated = 0;
             int attempts = 0;
 
-            Debug.Log($"[StampGen][River] sources={riverSources.Count} lakeSources={sourceToLakeId.Count} targetRiverCount={targetRiverCount}");
+            // Determine target river count strictly from lakes (one river per lake maximum)
+            // Debug: report sources and lake-edge counts; targetRiverCount will be derived from lake groups below
+            Debug.Log($"[StampGen][River] sources={riverSources.Count} lakeSources={sourceToLakeId.Count}");
 
             // Group lake-edge sources by lake id to enforce one river per lake
             Dictionary<int, List<int>> lakeSourcesDict = new Dictionary<int, List<int>>();
@@ -1720,9 +1721,68 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
             List<int> unusedLakeIds = lakeSourcesDict.Keys.ToList();
 
-            // Helper: quick BFS to check if there exists any path from `start` to a coast tile
+            // Caches for performance (declared before use)
+            int[] tileContinent = null;
+            bool[] reachesCoast = null;
+
+            // Precompute caches: continent index per tile, coast lists per continent, and reachability to any coast
+            tileContinent = new int[tileCount];
+            for (int ti = 0; ti < tileCount; ti++) tileContinent[ti] = GetContinentIndexForTile(ti);
+
+            var coastByContinent = new Dictionary<int, List<int>>();
+            foreach (int ct in coastTiles)
+            {
+                int cidx = (ct >= 0 && ct < tileCount) ? tileContinent[ct] : -1;
+                if (!coastByContinent.TryGetValue(cidx, out var lst)) { lst = new List<int>(); coastByContinent[cidx] = lst; }
+                lst.Add(ct);
+            }
+
+            // Multi-source BFS from all coast tiles to mark tiles that can reach a coast via land (not through lakes)
+            reachesCoast = new bool[tileCount];
+            var q2 = new Queue<int>();
+            var seen2 = new bool[tileCount];
+            foreach (int ct in coastTiles)
+            {
+                if (ct < 0 || ct >= tileCount) continue;
+                if (!tileData.TryGetValue(ct, out var ctTile)) continue;
+                q2.Enqueue(ct);
+                seen2[ct] = true;
+                reachesCoast[ct] = true;
+            }
+            while (q2.Count > 0)
+            {
+                int idx = q2.Dequeue();
+                if (!tileData.TryGetValue(idx, out var t)) continue;
+                foreach (int n in grid.neighbors[idx])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (seen2[n]) continue;
+                    if (!tileData.TryGetValue(n, out var nt)) continue;
+                    if (!nt.isLand) continue;
+                    if (nt.isLake) continue;
+                    seen2[n] = true;
+                    reachesCoast[n] = true;
+                    q2.Enqueue(n);
+                }
+            }
+
+            // Determine target river count: one river per lake-group when lakes exist, otherwise fall back to preset
+            targetRiverCount = (lakeSourcesDict.Count > 0) ? lakeSourcesDict.Count : Mathf.Clamp(GameSetupData.riverCount, 0, 200);
+            Debug.Log($"[StampGen][River] targetRiverCount={targetRiverCount} lakeGroups={lakeSourcesDict.Count} coastTiles={coastTiles.Count}");
+
+            // Helper: quick reachability check. If `reachesCoast` is precomputed, use it; otherwise fallback to BFS.
+
+            // Helper: quick reachability check. If `reachesCoast` is precomputed, use it; otherwise fallback to BFS.
             bool HasCoastPath(int startIdx)
             {
+                if (reachesCoast != null)
+                {
+                    if (startIdx >= 0 && startIdx < reachesCoast.Length) return reachesCoast[startIdx];
+                    return false;
+                }
+
+                var swb = System.Diagnostics.Stopwatch.StartNew();
+                try {
                 var q = new Queue<int>();
                 var seen = new HashSet<int>();
                 q.Enqueue(startIdx);
@@ -1745,6 +1805,112 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     }
                 }
                 return false;
+                } finally { swb.Stop(); bfsCalls++; bfsMs += swb.Elapsed.TotalMilliseconds; }
+            }
+
+            // Helper: determine which continent a tile belongs to (returns -1 when none)
+            int GetContinentIndexForTile(int idx)
+            {
+                if (continents == null) return -1;
+                Vector2Int coord = tileCoords[idx];
+                int width = tilesX;
+                int height = tilesZ;
+                for (int ci = 0; ci < continents.Count; ci++)
+                {
+                    var c = continents[ci];
+                    float halfW = Mathf.Max(0.5f, c.widthTiles * 0.5f);
+                    float halfH = Mathf.Max(0.5f, c.heightTiles * 0.5f);
+                    float dx = WrappedDelta(coord.x, c.center.x, width) / halfW;
+                    float dy = (coord.y - c.center.y) / halfH;
+                    if ((dx * dx + dy * dy) <= 1f) return ci;
+                }
+                return -1;
+            }
+
+            // A* pathfinder between land tiles (allows Coast as goal). Returns null on failure.
+            List<int> FindPathAStar(int startIdx, int goalIdx, System.Random rand, int maxSteps = 2000)
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                try {
+                if (!tileData.ContainsKey(startIdx) || !tileData.ContainsKey(goalIdx)) return null;
+
+                var openSet = new HashSet<int>();
+                var gScore = new Dictionary<int, float>();
+                var fScore = new Dictionary<int, float>();
+                var cameFrom = new Dictionary<int, int>();
+
+                float Heuristic(int a, int b)
+                {
+                    return HexDistanceWrapped(tileCoords[a], tileCoords[b], tilesX);
+                }
+
+                openSet.Add(startIdx);
+                gScore[startIdx] = 0f;
+                fScore[startIdx] = Heuristic(startIdx, goalIdx);
+
+                int steps = 0;
+                while (openSet.Count > 0 && steps++ < maxSteps)
+                {
+                    // pick node with lowest fScore
+                    int current = -1; float bestF = float.MaxValue;
+                    foreach (var n in openSet)
+                    {
+                        float v = fScore.ContainsKey(n) ? fScore[n] : float.MaxValue;
+                        if (v < bestF) { bestF = v; current = n; }
+                    }
+                    if (current == -1) break;
+
+                    if (current == goalIdx)
+                    {
+                        var path = new List<int>();
+                        int cur = current;
+                        while (cameFrom.ContainsKey(cur))
+                        {
+                            path.Add(cur);
+                            cur = cameFrom[cur];
+                        }
+                        path.Add(startIdx);
+                        path.Reverse();
+                        return path;
+                    }
+
+                    openSet.Remove(current);
+
+                    if (!tileData.TryGetValue(current, out var curTile)) continue;
+                    foreach (int n in grid.neighbors[current])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!tileData.TryGetValue(n, out var nt)) continue;
+                        // Allow stepping into coast (goal) but otherwise require land and not lake/ocean
+                        if (n != goalIdx)
+                        {
+                            if (!nt.isLand) continue;
+                            if (nt.isLake) continue;
+                            if (nt.biome == Biome.Ocean || nt.biome == Biome.Seas) continue;
+                        }
+
+                        float tentativeG = gScore.ContainsKey(current) ? gScore[current] + 1f : float.MaxValue;
+                        float elevCur = tileElevation.ContainsKey(current) ? tileElevation[current] : curTile.elevation;
+                        float elevN = tileElevation.ContainsKey(n) ? tileElevation[n] : nt.elevation;
+                        float uphill = Mathf.Clamp((elevN - elevCur) * 6f, 0f, 5f);
+                        tentativeG += uphill;
+                        tentativeG += (float)(rand.NextDouble() * 0.2 - 0.1);
+
+                        if (!gScore.ContainsKey(n) || tentativeG < gScore[n])
+                        {
+                            cameFrom[n] = current;
+                            gScore[n] = tentativeG;
+                            float f = tentativeG + Heuristic(n, goalIdx);
+                            fScore[n] = f;
+                            if (!openSet.Contains(n)) openSet.Add(n);
+                        }
+                    }
+                }
+
+                return null;
+                } finally {
+                    sw.Stop(); aStarCalls++; aStarMs += sw.Elapsed.TotalMilliseconds;
+                }
             }
 
             while (riversGenerated < targetRiverCount)
@@ -1814,14 +1980,100 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     }
                     continue;
                 }
-                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles);
+                // STEP 2: choose a coast target on the same continent (exclude closest ~30%)
+                List<int> chosenPath = null;
+                int targetAttempts = 0; // record how many A* target attempts were made for diagnostics
+                int sourceContinent = (tileContinent != null && sourceIndex >= 0 && sourceIndex < tileContinent.Length) ? tileContinent[sourceIndex] : GetContinentIndexForTile(sourceIndex);
+                List<int> coastCandidates;
+                if (tileContinent != null && coastByContinent != null)
+                {
+                    if (!coastByContinent.TryGetValue(sourceContinent, out coastCandidates)) coastCandidates = new List<int>();
+                    else coastCandidates = new List<int>(coastCandidates);
+                }
+                else
+                {
+                    coastCandidates = new List<int>();
+                    foreach (int ct in coastTiles)
+                    {
+                        if (sourceContinent >= 0)
+                        {
+                            int cidx = GetContinentIndexForTile(ct);
+                            if (cidx != sourceContinent) continue;
+                        }
+                        coastCandidates.Add(ct);
+                    }
+                }
+
+                if (coastCandidates.Count == 0)
+                {
+                    // No coast on same continent — mark lake unusable and skip
+                    if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out var badLake)) unusedLakeIds.Remove(badLake);
+                    continue;
+                }
+                else
+                {
+                    var dlist = new List<(int idx, int dist)>();
+                    foreach (int ct in coastCandidates) dlist.Add((ct, HexDistanceWrapped(tileCoords[sourceIndex], tileCoords[ct], tilesX)));
+                    dlist.Sort((a,b) => a.dist.CompareTo(b.dist));
+                    int discard = Mathf.FloorToInt(dlist.Count * 0.30f);
+                    int startIdx = Mathf.Clamp(discard, 0, dlist.Count - 1);
+                    var selectable = dlist.Skip(startIdx).ToList();
+
+                    float totalW = 0f;
+                    var weights = new List<float>();
+                    foreach (var p in selectable)
+                    {
+                        float w = Mathf.Pow(Mathf.Max(1, p.dist), 1.5f);
+                        weights.Add(w); totalW += w;
+                    }
+
+                    int triesTarget = 0;
+                    int maxTargetTries = Mathf.Max(3, selectable.Count);
+                    while (triesTarget++ < maxTargetTries && chosenPath == null && weights.Count > 0)
+                    {
+                        float roll = (float)(riverRand.NextDouble() * totalW);
+                        int pickIdx = 0;
+                        for (int i = 0; i < weights.Count; i++) { roll -= weights[i]; if (roll <= 0f) { pickIdx = i; break; } }
+                        int targetIdx = selectable[pickIdx].idx;
+
+                        var pathFound = FindPathAStar(sourceIndex, targetIdx, riverRand);
+                        if (pathFound != null && pathFound.Count >= 3)
+                        {
+                            chosenPath = pathFound;
+                            targetAttempts = triesTarget;
+                            break;
+                        }
+                        else
+                        {
+                            totalW -= weights[pickIdx];
+                            weights.RemoveAt(pickIdx);
+                            selectable.RemoveAt(pickIdx);
+                            if (weights.Count == 0) break;
+                        }
+                    }
+
+                    if (chosenPath == null)
+                    {
+                        // A* failed for all targets — give up on this source (do not fallback to greedy)
+                        if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out var badLake)) unusedLakeIds.Remove(badLake);
+                        continue;
+                    }
+                }
+
+                List<int> path = chosenPath;
                 if (path == null || path.Count <= 1)
                 {
                     // Failed to build a usable path; if from lake, try other sources from same lake next loop
                     continue;
                 }
 
-                // Apply river tiles (do NOT include termination tiles - BuildRiverWalk guarantees that)
+                // Per-river diagnostics: source, lakeId (if any), target, hexDistance, path length, A* attempts
+                int pathTargetIdx = path[path.Count - 1];
+                int chosenLakeId = sourceToLakeId.TryGetValue(sourceIndex, out var lid) ? lid : -1;
+                int hexDist = HexDistanceWrapped(tileCoords[sourceIndex], tileCoords[pathTargetIdx], tilesX);
+                Debug.Log($"[StampGen][River] src={sourceIndex} lake={chosenLakeId} tgt={pathTargetIdx} hexDist={hexDist} pathLen={path.Count} aStarAttempts={targetAttempts} result=SUCCESS");
+
+                // Apply river tiles (do NOT include termination tiles)
                 riversGenerated++;
                 foreach (int tileIdx in path)
                 {
@@ -1860,126 +2112,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
 
             Debug.Log($"[StampGen] Rivers generated: {riversGenerated}");
+            float riverGenerationElapsed = Time.realtimeSinceStartup - riverGenerationStart;
+            Debug.Log($"[StampGen][Timing] rivers={riversGenerated} totalMs={riverGenerationElapsed * 1000f:F1} aStarCalls={aStarCalls} aStarTotalMs={aStarMs:F1} aStarAvgMs={(aStarCalls>0? aStarMs / aStarCalls:0):F2} bfsCalls={bfsCalls} bfsTotalMs={bfsMs:F1}");
         }
 
-        List<int> BuildRiverWalk(int start, Dictionary<int, HexTileData> tileData, System.Random rand, HashSet<int> riverTiles)
-        {
-            if (!tileData.ContainsKey(start)) return null;
+        // Old greedy river walk removed — A* pathfinder is now authoritative. Do not use BuildRiverWalk.
 
-            List<int> path = new List<int>();
-            HashSet<int> visited = new HashSet<int>();
-            int current = start;
-
-            while (true)
-            {
-                if (!tileData.TryGetValue(current, out var currentTile)) break;
-                if (currentTile.isLake || currentTile.isRiver) break;
-                if (currentTile.biome == Biome.Coast || currentTile.biome == Biome.Ocean || currentTile.biome == Biome.Seas) break;
-
-                if (!visited.Contains(current))
-                {
-                    path.Add(current);
-                    visited.Add(current);
-                }
-
-                // STRICT TERMINATION: prefer Coast or existing river only.
-                // If any neighbor is `Biome.Coast` or an existing river, terminate here (do NOT append termination tile).
-                bool shouldTerminate = false;
-                // Coast has highest priority
-                foreach (int neighbor in grid.neighbors[current])
-                {
-                    if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
-                    if (neighborTile.biome == Biome.Coast)
-                    {
-                        shouldTerminate = true;
-                        break;
-                    }
-                }
-
-                if (!shouldTerminate)
-                {
-                    // If no coast neighbor, terminate if any neighbor is already a river (joins river network)
-                    foreach (int neighbor in grid.neighbors[current])
-                    {
-                        if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
-                        if (neighborTile.isRiver)
-                        {
-                            shouldTerminate = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (shouldTerminate)
-                {
-                    // Terminate without appending the termination tile
-                    break;
-                }
-
-                List<(int idx, float weight)> candidates = new List<(int idx, float weight)>();
-                foreach (int neighbor in grid.neighbors[current])
-                {
-                    if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
-                    if (visited.Contains(neighbor)) continue;
-                    if (!neighborTile.isLand) continue;
-                    if (neighborTile.isLake || neighborTile.isRiver) continue;
-                    if (neighborTile.biome == Biome.Coast || neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas) continue;
-                    if (neighborTile.biome == Biome.Mountain || neighborTile.biome == Biome.Glacier || neighborTile.biome == Biome.Snow) continue;
-
-                    float elevationDelta = neighborTile.elevation - currentTile.elevation;
-                    // STRONGER DOWNHILL BIAS + small stochastic jitter to create meanders
-                    float downhillBias = Mathf.Clamp(-elevationDelta * 6f, 0f, 5f);
-                    float randomJitter = (float)(rand.NextDouble() * 0.5 - 0.25); // +/-0.25
-                    float weight = 1f + downhillBias + randomJitter;
-                    // Slightly discourage paths that would immediately join an existing river to encourage length
-                    if (riverTiles.Contains(neighbor)) weight *= 0.5f;
-                    // Ensure weight is never non-positive
-                    weight = Mathf.Max(0.01f, weight);
-                    candidates.Add((neighbor, weight));
-                }
-
-                if (candidates.Count == 0)
-                {
-                    // Dead end reached — terminate river cleanly
-                    break;
-                }
-
-                int next = PickWeightedNeighbor(candidates, rand);
-                if (next == -1)
-                {
-                    // Defensive: helper reported no valid neighbor, terminate river
-                    break;
-                }
-                current = next;
-            }
-
-            return path;
-        }
-
-        int PickWeightedNeighbor(List<(int idx, float weight)> candidates, System.Random rand)
-        {
-            // Defensive guard: return -1 when there are no candidates
-            if (candidates == null || candidates.Count == 0)
-                return -1;
-
-            float totalWeight = 0f;
-            foreach (var candidate in candidates)
-            {
-                totalWeight += Mathf.Max(0.01f, candidate.weight);
-            }
-
-            float roll = (float)(rand.NextDouble() * totalWeight);
-            foreach (var candidate in candidates)
-            {
-                roll -= Mathf.Max(0.01f, candidate.weight);
-                if (roll <= 0f)
-                {
-                    return candidate.idx;
-                }
-            }
-
-            return candidates[candidates.Count - 1].idx;
-        }
+        // PickWeightedNeighbor removed — A* is now the only river routing method.
 
         // --------------------------- Helper Functions ----------------------------
 

@@ -12,6 +12,20 @@ public class HexMapPostProcessing : MonoBehaviour
 {
     public static HexMapPostProcessing Instance { get; private set; }
     
+    [Header("Lighting")]
+    [Tooltip("Directional sun light for the campaign map. If null, one will be created.")]
+    public Light directionalLight;
+    [Tooltip("Intensity of the main directional light (sun)")]
+    public float sunIntensity = 1.2f;
+    [Tooltip("Sun color - warm for day maps")]
+    public Color sunColor = new Color(1f, 0.96f, 0.88f);
+    [Tooltip("Ambient light intensity")]
+    [Range(0f, 2f)] public float ambientIntensity = 1.0f;
+    [Tooltip("Sky color for ambient lighting")]
+    public Color skyColor = new Color(0.5f, 0.7f, 1f);
+    [Tooltip("Ground color for ambient lighting")]
+    public Color groundColor = new Color(0.3f, 0.25f, 0.2f);
+    
     [Header("Volume Settings")]
     [SerializeField] private bool createVolumeOnStart = true;
     [SerializeField] private float blendDistance = 0f; // 0 = global
@@ -53,6 +67,16 @@ public class HexMapPostProcessing : MonoBehaviour
     [Header("Tonemapping")]
     [SerializeField] private bool enableTonemapping = true;
     [SerializeField] private TonemappingMode tonemappingMode = TonemappingMode.ACES;
+
+    [Header("Cinematic Extras")]
+    [SerializeField] private bool enableSplitToning = true;
+    [SerializeField] private Color splitShadowsTint = new Color(0.2f, 0.3f, 0.4f);
+    [SerializeField] private Color splitHighlightsTint = new Color(1f, 0.95f, 0.85f);
+    [SerializeField, Range(-100f, 100f)] private float splitToningBalance = 0f;
+    [SerializeField] private bool enableMotionBlur = false;
+    [SerializeField, Range(0f, 1f)] private float motionBlurIntensity = 0.3f;
+    [SerializeField] private bool enableLensDistortion = false;
+    [SerializeField, Range(-1f, 1f)] private float lensDistortionIntensity = -0.1f;
     
     [Header("White Balance")]
     [SerializeField] private bool enableWhiteBalance = false;
@@ -70,6 +94,9 @@ public class HexMapPostProcessing : MonoBehaviour
     private ChromaticAberration chromaticAberration;
     private Tonemapping tonemapping;
     private WhiteBalance whiteBalance;
+    private SplitToning splitToning;
+    private MotionBlur motionBlur;
+    private LensDistortion lensDistortion;
     
     private void Awake()
     {
@@ -88,6 +115,7 @@ public class HexMapPostProcessing : MonoBehaviour
         {
             SetupVolume();
             ApplyAllSettings();
+            SetupLighting();
         }
     }
     
@@ -97,6 +125,83 @@ public class HexMapPostProcessing : MonoBehaviour
         if (profile != null)
         {
             ApplyAllSettings();
+            SetupLighting();
+        }
+    }
+
+    /// <summary>
+    /// Configure directional light and ambient settings to match battlefield visuals.
+    /// Creates a directional light if none is present and applies ambient colors.
+    /// </summary>
+    public void SetupLighting()
+    {
+        // Find or create a directional light
+        if (directionalLight == null)
+        {
+            var existing = FindObjectOfType<Light>();
+            if (existing != null && existing.type == LightType.Directional)
+            {
+                directionalLight = existing;
+            }
+            else
+            {
+                GameObject sunGO = new GameObject("HexMap_Sun_DirectionalLight");
+                directionalLight = sunGO.AddComponent<Light>();
+                directionalLight.type = LightType.Directional;
+            }
+        }
+
+        if (directionalLight != null)
+        {
+            directionalLight.color = sunColor;
+            directionalLight.intensity = sunIntensity;
+            directionalLight.shadows = LightShadows.Soft;
+            directionalLight.shadowStrength = 1f;
+            directionalLight.shadowBias = 0.05f;
+            directionalLight.shadowNormalBias = 0.4f;
+            directionalLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+        }
+
+        // Ambient lighting (Trilight for nicer results)
+        RenderSettings.ambientMode = AmbientMode.Trilight;
+        RenderSettings.ambientSkyColor = skyColor * ambientIntensity;
+        RenderSettings.ambientEquatorColor = Color.Lerp(skyColor, groundColor, 0.5f) * ambientIntensity;
+        RenderSettings.ambientGroundColor = groundColor * ambientIntensity;
+        RenderSettings.reflectionIntensity = 0.8f;
+
+        // Also attempt to tint the map and atmosphere materials so post-processing/toning
+        // visually affects the flat map and the atmosphere shader as well.
+        ApplyMapAndAtmosphereToning();
+    }
+
+    private void ApplyMapAndAtmosphereToning()
+    {
+        // Tint the chunk manager shared material (map texture shader uses _Color)
+        var chunkManager = FindObjectOfType<HexMapChunkManager>();
+        if (chunkManager != null)
+        {
+            var mat = chunkManager.SharedMaterial;
+            if (mat != null)
+            {
+                // Apply a tint derived from our color filter and slight exposure
+                float exposureMul = 1f + postExposure * 0.15f;
+                Color tint = colorFilter * exposureMul;
+                mat.SetColor("_Color", tint);
+            }
+        }
+
+        // Find any atmosphere materials (shader: Custom/PlanetAtmosphereURP) and tint them
+        var allMats = Resources.FindObjectsOfTypeAll<Material>();
+        foreach (var m in allMats)
+        {
+            if (m == null || m.shader == null) continue;
+            if (m.shader.name == "Custom/PlanetAtmosphereURP")
+            {
+                // Use skyColor as base atmosphere tint, influenced by exposure
+                float exposureMul = 1f + postExposure * 0.15f;
+                Color atm = skyColor * exposureMul;
+                m.SetColor("_AtmosphereColor", atm);
+            }
         }
     }
     
@@ -137,6 +242,9 @@ public class HexMapPostProcessing : MonoBehaviour
         filmGrain = GetOrAddOverride<FilmGrain>();
         depthOfField = GetOrAddOverride<DepthOfField>();
         chromaticAberration = GetOrAddOverride<ChromaticAberration>();
+        splitToning = GetOrAddOverride<SplitToning>();
+        motionBlur = GetOrAddOverride<MotionBlur>();
+        lensDistortion = GetOrAddOverride<LensDistortion>();
         tonemapping = GetOrAddOverride<Tonemapping>();
         whiteBalance = GetOrAddOverride<WhiteBalance>();
 }
@@ -161,8 +269,43 @@ public class HexMapPostProcessing : MonoBehaviour
         ApplyFilmGrain();
         ApplyDepthOfField();
         ApplyChromaticAberration();
+        ApplySplitToning();
+        ApplyMotionBlur();
+        ApplyLensDistortion();
         ApplyTonemapping();
         ApplyWhiteBalance();
+    }
+
+    private void ApplySplitToning()
+    {
+        if (splitToning == null) return;
+        splitToning.active = enableSplitToning;
+        splitToning.shadows.overrideState = true;
+        splitToning.shadows.value = splitShadowsTint;
+        splitToning.highlights.overrideState = true;
+        splitToning.highlights.value = splitHighlightsTint;
+        splitToning.balance.overrideState = true;
+        splitToning.balance.value = splitToningBalance;
+    }
+
+    private void ApplyMotionBlur()
+    {
+        if (motionBlur == null) return;
+        motionBlur.active = enableMotionBlur;
+        motionBlur.intensity.overrideState = true;
+        motionBlur.intensity.value = motionBlurIntensity;
+        // Quality may not exist on all MotionBlur variants; guard if present
+        try { motionBlur.quality.overrideState = true; motionBlur.quality.value = MotionBlurQuality.High; } catch { }
+    }
+
+    private void ApplyLensDistortion()
+    {
+        if (lensDistortion == null) return;
+        lensDistortion.active = enableLensDistortion;
+        lensDistortion.intensity.overrideState = true;
+        lensDistortion.intensity.value = lensDistortionIntensity;
+        lensDistortion.scale.overrideState = true;
+        lensDistortion.scale.value = 1f;
     }
     
     private void ApplyBloom()

@@ -40,6 +40,8 @@ public class UIManager : MonoBehaviour
     [Header("Notification Settings")]
     public float notificationDuration = 3f;
     private Coroutine notificationCoroutine;
+    private System.Collections.Generic.Queue<string> _pendingNotifications = new System.Collections.Generic.Queue<string>();
+    private bool _wasLoadingLastFrame = false;
 
     private Dictionary<string, GameObject> panelDict;
 
@@ -208,7 +210,20 @@ public class UIManager : MonoBehaviour
             Debug.LogWarning("UIManager: notificationPanel is not assigned!");
             return;
         }
-        // Try to find a TextMeshProUGUI or Text component on the panel
+
+        // If loading is active, enqueue the notification to be displayed later
+        if (IsLoadingActive())
+        {
+            _pendingNotifications.Enqueue(message);
+            return;
+        }
+
+        // Display immediately
+        DisplayNotification(message);
+    }
+
+    private void DisplayNotification(string message)
+    {
         var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>();
         if (tmpText != null)
             tmpText.text = message;
@@ -229,6 +244,35 @@ public class UIManager : MonoBehaviour
         yield return new WaitForSeconds(notificationDuration);
         if (notificationPanel != null)
             notificationPanel.SetActive(false);
+        notificationCoroutine = null;
+    }
+
+    void Update()
+    {
+        bool loadingNow = IsLoadingActive();
+        // If we transitioned from loading->not loading, try to flush queued notifications
+        if (_wasLoadingLastFrame && !loadingNow)
+        {
+            TryFlushPendingNotifications();
+        }
+        _wasLoadingLastFrame = loadingNow;
+
+        // If not loading and no current notification displayed, and pending queue exists, show next
+        if (!loadingNow && notificationCoroutine == null && _pendingNotifications.Count > 0)
+        {
+            var next = _pendingNotifications.Dequeue();
+            DisplayNotification(next);
+        }
+    }
+
+    private void TryFlushPendingNotifications()
+    {
+        if (_pendingNotifications.Count == 0) return;
+        if (notificationCoroutine == null)
+        {
+            var next = _pendingNotifications.Dequeue();
+            DisplayNotification(next);
+        }
     }
 
     // --- Additional helper methods previously handled by GameManager ---
