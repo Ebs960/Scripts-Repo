@@ -185,10 +185,6 @@ public static class GameSetupData
         minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
 
         // River defaults
-<<<<<<< HEAD
-=======
-        minRiverLength = 2;
->>>>>>> a43f1bc1c934ec82a850e61a8e49620a6f883d87
         minRiversPerContinent = 1;
         maxRiversPerContinent = 2;
 
