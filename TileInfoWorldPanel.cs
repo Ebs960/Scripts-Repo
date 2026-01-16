@@ -3,112 +3,54 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// World-space UI panel that displays tile information when hovering.
-/// Shows biome, terrain features, yields, and resource icon.
+/// Developer-authored UI panel showing biome name and yields.
+/// NOTE: This script no longer creates UI at runtime — assign all
+/// UI references in the inspector (Canvas, panel Rect, Text fields,
+/// and a CanvasGroup on the panel) just like a MainMenu-style UI.
 /// </summary>
 public class TileInfoWorldPanel : MonoBehaviour
 {
     public static TileInfoWorldPanel Instance { get; private set; }
-    
-    [Header("Panel Settings")]
-    [SerializeField] private Vector3 offset = new Vector3(0f, 5f, 0f);
-    [SerializeField] private float fadeSpeed = 8f;
-    [SerializeField] private float showDelay = 0.1f;
-    [SerializeField] private bool faceCamera = true;
-    [SerializeField] private float maxDistance = 100f; // Hide if camera too far
-    
-    [Header("UI References (Auto-created if null)")]
-    [SerializeField] private Canvas worldCanvas;
-    [SerializeField] private CanvasGroup canvasGroup;
-    [SerializeField] private RectTransform panelRect;
-    [SerializeField] private TMP_FontAsset overrideFontAsset;
-    [SerializeField] private TextMeshProUGUI biomeText;
-    [SerializeField] private TextMeshProUGUI featuresText;
-    [SerializeField] private TextMeshProUGUI yieldsText;
-    [SerializeField] private Image resourceIcon;
-    [SerializeField] private Image backgroundImage;
-    [SerializeField] private Image borderImage;
-    [SerializeField] private Image shadowImage;
-    
-    [Header("Styling")]
-    [SerializeField] private Color backgroundColor = new Color(0.08f, 0.08f, 0.12f, 0.95f);
-    [SerializeField] private Color borderColor = new Color(0.4f, 0.4f, 0.5f, 0.8f);
-    [SerializeField] private Color shadowColor = new Color(0f, 0f, 0f, 0.5f);
-    [SerializeField] private Color biomeTextColor = Color.white;
-    [SerializeField] private Color featuresTextColor = Color.white;
-    [SerializeField] private Color yieldsTextColor = Color.white;
-    [SerializeField] private int biomeFontSize = 2;
-    [SerializeField] private int featuresFontSize = 2;
-    [SerializeField] private int yieldsFontSize = 2;
-    [SerializeField] private float borderWidth = 2f;
-    [SerializeField] private float shadowOffset = 1f;
-    
-    [Header("Yield Icons (ASCII fallbacks)")]
-    // Use ASCII/safe characters to avoid missing-glyph warnings in TMP font assets
-    [SerializeField] private string foodIcon = "F";
-    [SerializeField] private string productionIcon = "P";
-    [SerializeField] private string goldIcon = "G";
-    [SerializeField] private string scienceIcon = "S";
-    [SerializeField] private string cultureIcon = "C";
-    [SerializeField] private string faithIcon = "*";
-    
-    // State
-    private int currentTileIndex = -1;
-    private float targetAlpha = 0f;
-    private float currentAlpha = 0f;
-    private float showTimer = 0f;
-    private bool pendingShow = false;
-    private Vector3 targetPosition;
-    private Camera mainCamera;
 
-    [Header("Hierarchy")]
-    [Tooltip("Optional root transform that gets moved/rotated for the panel. If null, one will be created as a child.")]
-    [SerializeField] private Transform panelRoot;
-    
+    [Header("UI References (optional)")]
+    [SerializeField] private Canvas uiCanvas;
+    [SerializeField] private RectTransform panelRect;
+    [SerializeField] private TextMeshProUGUI biomeText;
+    [SerializeField] private TextMeshProUGUI yieldsText;
+
+    [Header("Styling")]
+    [SerializeField] private TMP_FontAsset overrideFontAsset;
+    [SerializeField] private Color backgroundColor = new Color(0.08f, 0.08f, 0.12f, 0.95f);
+    [SerializeField] private Color textColor = Color.white;
+
+    // No CanvasGroup/fade: panel visibility is handled by activating/deactivating the panel GameObject.
+
     private void Awake()
     {
-        if (Instance == null)
-            Instance = this;
-        else if (Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance == null) Instance = this; else if (Instance != this) Destroy(gameObject);
     }
-    
+
     private void Start()
     {
-        mainCamera = Camera.main;
-
-        EnsurePanelRoot();
-
-        // If this component shares a GameObject with the map renderer, never move/rotate the root.
-        // (This is a common scene setup mistake and will tilt/offset the entire map.)
-        if (GetComponent<HexMapChunkManager>() != null)
+        if (uiCanvas == null || panelRect == null || biomeText == null || yieldsText == null)
         {
-            Debug.LogWarning("[TileInfoWorldPanel] This component is on the same GameObject as HexMapChunkManager. The panel will use a child root for movement/rotation to avoid tilting the map.");
+            Debug.LogWarning("TileInfoWorldPanel: UI references are not fully assigned. Please create the UI in the scene or a prefab and assign `uiCanvas`, `panelRect`, `biomeText` and `yieldsText` in the inspector. Disabling the component.");
+            enabled = false;
+            return;
         }
-        
-        if (worldCanvas == null)
-            CreateUI();
-        
+
         // Start hidden
-        if (canvasGroup != null)
-            canvasGroup.alpha = 0f;
-        
-        // Subscribe to hover events
+        panelRect.gameObject.SetActive(false);
         StartCoroutine(SubscribeWhenReady());
     }
-    
+
     private System.Collections.IEnumerator SubscribeWhenReady()
     {
-        while (TileHoverSystem.Instance == null)
-            yield return null;
-        
+        while (TileHoverSystem.Instance == null) yield return null;
         TileHoverSystem.Instance.OnTileHoverEnter += OnTileHoverEnter;
         TileHoverSystem.Instance.OnTileHoverExit += OnTileHoverExit;
-}
-    
+    }
+
     private void OnDestroy()
     {
         if (TileHoverSystem.Instance != null)
@@ -117,407 +59,67 @@ public class TileInfoWorldPanel : MonoBehaviour
             TileHoverSystem.Instance.OnTileHoverExit -= OnTileHoverExit;
         }
     }
-    
-    private void Update()
-    {
-        // Handle show delay
-        if (pendingShow)
-        {
-            showTimer += Time.deltaTime;
-            if (showTimer >= showDelay)
-            {
-                targetAlpha = 1f;
-                pendingShow = false;
-            }
-        }
-        
-        // Fade animation
-        currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
-        if (canvasGroup != null)
-            canvasGroup.alpha = currentAlpha;
-        
-        // Position only (no rotation)
-        if (currentAlpha > 0.01f)
-        {
-            if (panelRoot != null)
-                panelRoot.position = targetPosition + offset;
-        }
-    }
 
-    private void EnsurePanelRoot()
-    {
-        if (panelRoot != null) return;
+    // No Update required — visibility is toggled immediately by SetActive
 
-        // Reuse existing child if present
-        var existing = transform.Find("TileInfoPanelRoot");
-        if (existing != null)
-        {
-            // Ensure the panel root is not parented under the hexmap or chunk manager
-            existing.SetParent(null, false);
-            panelRoot = existing;
-            return;
-        }
+    // Runtime UI creation removed. UI should be authored by the developer (scene or prefab).
 
-        var rootObj = new GameObject("TileInfoPanelRoot");
-        // Parent at root level so it doesn't inherit map transforms
-        rootObj.transform.SetParent(null, false);
-        rootObj.transform.localPosition = Vector3.zero;
-        rootObj.transform.localRotation = Quaternion.identity;
-        rootObj.transform.localScale = Vector3.one;
-        panelRoot = rootObj.transform;
-    }
-    
-    private void OnTileHoverEnter(int tileIndex, HexTileData tileData, Vector3 hitPoint)
+    private void OnTileHoverEnter(int tileIndex, HexTileData tileData, Vector3 _)
     {
         if (tileData == null) return;
-        
-        currentTileIndex = tileIndex;
-        targetPosition = GetTileCenter(tileIndex, hitPoint);
-        
         UpdateContent(tileData);
-        
-        // Start show delay
-        pendingShow = true;
-        showTimer = 0f;
+        Show();
     }
-    
+
     private void OnTileHoverExit(int tileIndex)
     {
-        targetAlpha = 0f;
-        pendingShow = false;
-        currentTileIndex = -1;
+        Hide();
     }
-    
-    private Vector3 GetTileCenter(int tileIndex, Vector3 fallback)
-    {
-        var gen = GameManager.Instance?.GetCurrentPlanetGenerator();
-        if (gen?.Grid?.tileCenters != null && tileIndex < gen.Grid.tileCenters.Length)
-        {
-            Vector3 center = gen.Grid.tileCenters[tileIndex];
 
-            // If the tile center already contains a valid Y, use it.
-            if (Mathf.Abs(center.y) > 0.0001f)
-            {
-                return center;
-            }
-
-            // Otherwise try a physics raycast down from above the tile XZ to find terrain or mesh height
-            RaycastHit hit;
-            Vector3 rayStart = new Vector3(center.x, 1000f, center.z);
-            if (Physics.Raycast(rayStart, Vector3.down, out hit, 2000f))
-            {
-                center.y = hit.point.y;
-                return center;
-            }
-
-            // Fallback: try to use any chunk manager's Y plane
-            var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-            if (chunkManager != null)
-            {
-                center.y = chunkManager.transform.position.y + 0.5f; // slight lift above chunk plane
-                return center;
-            }
-
-            // Last resort: use provided fallback position
-            return new Vector3(center.x, fallback.y, center.z);
-        }
-
-        return fallback;
-    }
-    
     private void UpdateContent(HexTileData tileData)
     {
-        // Biome name
-        if (biomeText != null)
-        {
-            string biomeName = FormatBiomeName(tileData.biome);
-            biomeText.text = biomeName;
-        }
-        
-        // Terrain features
-        if (featuresText != null)
-        {
-            string features = GetTerrainFeatures(tileData);
-            featuresText.text = features;
-            featuresText.gameObject.SetActive(!string.IsNullOrEmpty(features));
-        }
-        
-        // Yields
-        if (yieldsText != null)
-        {
-            yieldsText.text = FormatYields(tileData);
-        }
-        
-        // Resource icon
-        if (resourceIcon != null)
-        {
-            if (tileData.HasResource && tileData.resource.icon != null)
-            {
-                resourceIcon.sprite = tileData.resource.icon;
-                resourceIcon.gameObject.SetActive(true);
-            }
-            else
-            {
-                resourceIcon.gameObject.SetActive(false);
-            }
-        }
+        if (biomeText != null) biomeText.text = FormatBiomeName(tileData.biome);
+        if (yieldsText != null) yieldsText.text = FormatYields(tileData);
     }
-    
+
     private string FormatBiomeName(Biome biome)
     {
-        // Convert enum to readable name (e.g., "PineForest" -> "Pine Forest")
         string name = biome.ToString();
-        
-        // Insert spaces before capitals
         var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < name.Length; i++)
-        {
-            if (i > 0 && char.IsUpper(name[i]))
-                sb.Append(' ');
-            sb.Append(name[i]);
-        }
-        
+        for (int i = 0; i < name.Length; i++) { if (i > 0 && char.IsUpper(name[i])) sb.Append(' '); sb.Append(name[i]); }
         return sb.ToString();
     }
-    
-    private string GetTerrainFeatures(HexTileData tileData)
-    {
-        var features = new System.Collections.Generic.List<string>();
-        
-        // Elevation tier
-        if (tileData.elevationTier == ElevationTier.Hill || tileData.isHill)
-            features.Add("Hills");
-        else if (tileData.elevationTier == ElevationTier.Mountain)
-            features.Add("Mountain");
-        
-        // Other features
-        if (!tileData.isLand && tileData.biome != Biome.Ocean && tileData.biome != Biome.Coast)
-            features.Add("Water");
-        
-        if (!tileData.isPassable)
-            features.Add("Impassable");
-        
-        // Use ASCII dash to avoid relying on special glyphs in the font asset
-        return string.Join(" - ", features);
-    }
-    
+
     private string FormatYields(HexTileData tileData)
     {
         var yields = new System.Collections.Generic.List<string>();
-        
-        if (tileData.food > 0)
-            yields.Add($"{foodIcon}{tileData.food}");
-        if (tileData.production > 0)
-            yields.Add($"{productionIcon}{tileData.production}");
-        if (tileData.gold > 0)
-            yields.Add($"{goldIcon}{tileData.gold}");
-        if (tileData.science > 0)
-            yields.Add($"{scienceIcon}{tileData.science}");
-        if (tileData.culture > 0)
-            yields.Add($"{cultureIcon}{tileData.culture}");
-        if (tileData.faithYield > 0)
-            yields.Add($"{faithIcon}{tileData.faithYield}");
-        
-        if (yields.Count == 0)
-            return "No yields";
-        
+        if (tileData.food > 0) yields.Add($"F{tileData.food}");
+        if (tileData.production > 0) yields.Add($"P{tileData.production}");
+        if (tileData.gold > 0) yields.Add($"G{tileData.gold}");
+        if (tileData.science > 0) yields.Add($"S{tileData.science}");
+        if (tileData.culture > 0) yields.Add($"C{tileData.culture}");
+        if (tileData.faithYield > 0) yields.Add($"*{tileData.faithYield}");
+        if (yields.Count == 0) return "No yields";
         return string.Join("  ", yields);
     }
-    
-    #region UI Creation
-    
-    private void CreateUI()
-    {
-        // Create world space canvas
-        GameObject canvasObj = new GameObject("TileInfoCanvas");
-        EnsurePanelRoot();
-        canvasObj.transform.SetParent(panelRoot != null ? panelRoot : transform);
-        canvasObj.transform.localPosition = Vector3.zero;
-        
-        worldCanvas = canvasObj.AddComponent<Canvas>();
-        worldCanvas.renderMode = RenderMode.WorldSpace;
-        worldCanvas.sortingOrder = 100;
-        
-        canvasGroup = canvasObj.AddComponent<CanvasGroup>();
-        
-        // Set canvas size (pixels) and use neutral scale for predictable sizing
-        RectTransform canvasRect = worldCanvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(300f, 160f); // width x height in pixels for the HUD
-        canvasRect.localScale = Vector3.one; // keep scale 1 for consistent CanvasScaler behavior
-        
-        // Add CanvasScaler for consistent sizing
-        var scaler = canvasObj.AddComponent<CanvasScaler>();
-        // Use sensible DPI scaling so fonts and icons are consistent across machines
-        scaler.dynamicPixelsPerUnit = 100f;
-        
-        // === SHADOW (behind everything) ===
-        GameObject shadowObj = new GameObject("Shadow");
-        shadowObj.transform.SetParent(canvasObj.transform);
-        var shadowRect = shadowObj.AddComponent<RectTransform>();
-        shadowRect.anchorMin = Vector2.zero;
-        shadowRect.anchorMax = Vector2.one;
-        // Symmetric inset/outset so shadow offsets behave predictably
-        shadowRect.offsetMin = new Vector2(-shadowOffset, -shadowOffset);
-        shadowRect.offsetMax = new Vector2(shadowOffset, shadowOffset);
-        
-        shadowImage = shadowObj.AddComponent<Image>();
-        shadowImage.color = shadowColor;
-        
-        // === BORDER (behind panel) ===
-        GameObject borderObj = new GameObject("Border");
-        borderObj.transform.SetParent(canvasObj.transform);
-        var borderRect = borderObj.AddComponent<RectTransform>();
-        borderRect.anchorMin = Vector2.zero;
-        borderRect.anchorMax = Vector2.one;
-        borderRect.offsetMin = new Vector2(-borderWidth, -borderWidth);
-        borderRect.offsetMax = new Vector2(borderWidth, borderWidth);
-        
-        borderImage = borderObj.AddComponent<Image>();
-        borderImage.color = borderColor;
-        
-        // === MAIN PANEL ===
-        GameObject panelObj = new GameObject("Panel");
-        panelObj.transform.SetParent(canvasObj.transform);
-        panelRect = panelObj.AddComponent<RectTransform>();
-        panelRect.anchorMin = Vector2.zero;
-        panelRect.anchorMax = Vector2.one;
-        panelRect.offsetMin = Vector2.zero;
-        panelRect.offsetMax = Vector2.zero;
-        
-        backgroundImage = panelObj.AddComponent<Image>();
-        backgroundImage.color = backgroundColor;
-        
-        // Add vertical layout with better padding
-        var layout = panelObj.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(6, 6, 6, 6);
-        layout.spacing = 6f;
-        layout.childAlignment = TextAnchor.UpperLeft;
-        layout.childControlWidth = true;
-        layout.childControlHeight = false;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = false;
-        
-        // Add content size fitter
-        var fitter = panelObj.AddComponent<ContentSizeFitter>();
-        // Let the fitter size vertically to preferred size; keep horizontal fixed to canvas width
-        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        
-        // === BIOME TEXT (Title) ===
-        biomeText = CreateTextElement(panelObj.transform, "BiomeText", biomeFontSize, biomeTextColor, FontStyles.Bold);
-        
-        // === SEPARATOR LINE ===
-        GameObject separator = new GameObject("Separator");
-        separator.transform.SetParent(panelObj.transform);
-        var sepRect = separator.AddComponent<RectTransform>();
-        var sepLayout = separator.AddComponent<LayoutElement>();
-        sepLayout.preferredHeight = 1f;
-        sepLayout.flexibleWidth = 1f;
-        var sepImage = separator.AddComponent<Image>();
-        sepImage.color = new Color(1f, 1f, 1f, 0.2f);
-        
-        // === FEATURES TEXT ===
-        featuresText = CreateTextElement(panelObj.transform, "FeaturesText", featuresFontSize, featuresTextColor, FontStyles.Italic);
-        
-        // === YIELDS ROW ===
-        GameObject yieldsRow = new GameObject("YieldsRow");
-        yieldsRow.transform.SetParent(panelObj.transform);
-        var yieldsRowRect = yieldsRow.AddComponent<RectTransform>();
-        
-        var rowLayout = yieldsRow.AddComponent<HorizontalLayoutGroup>();
-        rowLayout.spacing = 10f;
-        rowLayout.childAlignment = TextAnchor.MiddleLeft;
-        rowLayout.childControlWidth = false;
-        rowLayout.childControlHeight = true;
-        rowLayout.childForceExpandWidth = false;
-        rowLayout.childForceExpandHeight = false;
-        rowLayout.padding = new RectOffset(0, 0, 4, 0);
-        
-        // Create yields text
-        yieldsText = CreateTextElement(yieldsRow.transform, "YieldsText", yieldsFontSize, yieldsTextColor, FontStyles.Normal);
-        var yieldsLayoutElem = yieldsText.gameObject.AddComponent<LayoutElement>();
-        yieldsLayoutElem.flexibleWidth = 0f;
-        yieldsLayoutElem.preferredWidth = 5f;
-        
-        // Create resource icon
-        GameObject iconObj = new GameObject("ResourceIcon");
-        iconObj.transform.SetParent(yieldsRow.transform);
-        resourceIcon = iconObj.AddComponent<Image>();
-        resourceIcon.preserveAspect = true;
-        var iconLayout = iconObj.AddComponent<LayoutElement>();
-        iconLayout.preferredWidth = 6f;
-        iconLayout.preferredHeight = 6f;
-        resourceIcon.gameObject.SetActive(false);
-}
-    
-    private TextMeshProUGUI CreateTextElement(Transform parent, string name, int fontSize, Color color, FontStyles style)
-    {
-        GameObject textObj = new GameObject(name);
-        textObj.transform.SetParent(parent);
-        
-        var tmp = textObj.AddComponent<TextMeshProUGUI>();
-        tmp.fontSize = fontSize;
-        // Prefer an explicitly assigned override font asset (assign in Inspector).
-        // Fall back to the project's default TMP font asset when not provided.
-        if (overrideFontAsset != null)
-            tmp.font = overrideFontAsset;
-        else if (TMPro.TMP_Settings.defaultFontAsset != null)
-            tmp.font = TMPro.TMP_Settings.defaultFontAsset;
-        tmp.enableAutoSizing = false;
-        tmp.color = color;
-        tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Left;
-        tmp.enableWordWrapping = true;
-        tmp.overflowMode = TextOverflowModes.Ellipsis;
 
-        // Add slight shadow/outline for readability — operate on an instance of the shared material
-        if (tmp.fontSharedMaterial != null)
-        {
-            tmp.fontSharedMaterial = Instantiate(tmp.fontSharedMaterial);
-            tmp.fontSharedMaterial.EnableKeyword("UNDERLAY_ON");
-            tmp.fontSharedMaterial.SetColor("_UnderlayColor", new Color(0f, 0f, 0f, 0.8f));
-            tmp.fontSharedMaterial.SetFloat("_UnderlayOffsetX", 0.5f);
-            tmp.fontSharedMaterial.SetFloat("_UnderlayOffsetY", -0.5f);
-        }
-        
-        return tmp;
-    }
-    
-    #endregion
-    
     #region Public API
-    
-    /// <summary>
-    /// Force show info for a specific tile (useful for selection, not just hover).
-    /// </summary>
     public void ShowForTile(int tileIndex)
     {
         var tileData = TileSystem.Instance?.GetTileData(tileIndex);
         if (tileData == null) return;
-        
-        currentTileIndex = tileIndex;
-        targetPosition = GetTileCenter(tileIndex, Vector3.zero);
         UpdateContent(tileData);
-        targetAlpha = 1f;
-        pendingShow = false;
+        Show();
     }
-    
-    /// <summary>
-    /// Force hide the panel.
-    /// </summary>
+
     public void Hide()
     {
-        targetAlpha = 0f;
-        pendingShow = false;
+        if (panelRect != null) panelRect.gameObject.SetActive(false);
     }
-    
-    /// <summary>
-    /// Set the offset from tile center.
-    /// </summary>
-    public void SetOffset(Vector3 newOffset)
+
+    public void Show()
     {
-        offset = newOffset;
+        if (panelRect != null) panelRect.gameObject.SetActive(true);
     }
-    
     #endregion
 }

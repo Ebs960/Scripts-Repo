@@ -1905,7 +1905,6 @@ currentPlanetIndex = planetIndex;
 
         // Rivers & lakes (allowed preset-driven settings)
         generator.enableRivers = GameSetupData.enableRivers;
-        generator.minRiverLength = GameSetupData.minRiverLength;
         generator.minRiversPerContinent = GameSetupData.minRiversPerContinent;
         generator.maxRiversPerContinent = GameSetupData.maxRiversPerContinent;
 

@@ -305,11 +305,31 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Header("Latitude / Temperature Blending")]
     [Range(0f, 1f)]
     [Tooltip("Weight of latitude (north/south) influence when computing temperature. Higher = poles/equator dominate over noise.")]
-    public float latitudeInfluence = 0.85f;
+    public float latitudeInfluence = 0.45f;
 
     [Range(0.2f, 2f)]
     [Tooltip("Exponent applied to absolute latitude when computing latitude temperature. >1 makes poles colder (steeper gradient).")]
-    public float latitudeExponent = 1.15f;
+    public float latitudeExponent = 2.0f;
+
+    [Header("Temperature Noise")]
+    [Tooltip("Base frequency for low-frequency, region-scale temperature noise (periodic/wrap-safe)")]
+    [SerializeField] public float temperatureNoiseFrequency = 0.012f;
+    [Tooltip("Multiplier applied to create a detail octave for temperature (blended) - higher = more local variation")]
+    [SerializeField] public float temperatureDetailMultiplier = 4f;
+    [Tooltip("Blend factor between base and detail temperature noise (0 = base only, 1 = detail only)")]
+    [Range(0f,1f)]
+    [SerializeField] public float temperatureDetailStrength = 0.15f;
+
+    [Header("Climate Noise Options")]
+    [Tooltip("When enabled, use periodic/wrap-safe climate noise sampling (recommended)")]
+    [SerializeField] public bool usePeriodicClimateNoise = true;
+
+    [Header("Climate Smoothing")]
+    [Tooltip("Number of smoothing passes to run over temperature and moisture to reduce speckling")]
+    [SerializeField] public int climateSmoothingPasses = 2;
+    [Tooltip("Strength of each smoothing pass (0=no smoothing, 1=replace with neighbor average)")]
+    [Range(0f,1f)]
+    [SerializeField] public float climateSmoothingStrength = 0.45f;
 
     // --- NEW: Elevation Features ---
     [Header("Elevation Features")]
@@ -356,18 +376,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     // --- River Generation (Placeholder) ---
     [Header("River Generation")]
     public bool enableRivers = true;
-    [Range(1, 100)]
-    [Tooltip("Minimum length a river must be to be included")]
-    public int minRiverLength = 2;
     [Range(0, 20)]
     [Tooltip("Minimum rivers per continent")]
     public int minRiversPerContinent = 1;
     [Range(1, 20)]
     [Tooltip("Maximum rivers per continent")]
     public int maxRiversPerContinent = 2;
-    [Range(5, 50)]
-    [Tooltip("Maximum length (in tiles) for a single river path")]
-    public int maxRiverPathLength = 80;
     [Range(0.01f, 0.2f)]
     [Tooltip("Elevation drop applied along river tiles")]
     public float riverDepth = 0.05f;
@@ -385,7 +399,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Maximum lake radius (tiles)")]
     public int lakeMaxRadiusTiles = 12;
     [Tooltip("Minimum distance (tiles) a lake center must be from coast")]
-    public int lakeMinDistanceFromCoast = 2;
+    public int lakeMinDistanceFromCoast = 3;
     [Header("Coast Irregularity")]
     [Tooltip("Number of random coastal 'bites' (water) to stamp per map)")]
     public int coastBiteCount = 3;
@@ -1020,29 +1034,42 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Vector2Int center = lakeCenters[lakeId];
             int centerIdx = center.y * tilesX + center.x;
             if (centerIdx < 0 || centerIdx >= tileCount) continue;
-
-            int representativeIdx = centerIdx;
-            if (!isLakeTile[representativeIdx])
+            // Flood-fill to collect the full connected lake tile set, then examine perimeter
+            var lakeQueue = new Queue<int>();
+            var lakeSet = new HashSet<int>();
+            if (isLakeTile[centerIdx]) lakeQueue.Enqueue(centerIdx);
+            else
             {
-                int fallbackIdx = -1;
-                foreach (int neighbor in grid.neighbors[centerIdx])
-                {
-                    if (neighbor >= 0 && neighbor < tileCount && isLakeTile[neighbor])
-                    {
-                        fallbackIdx = neighbor;
-                        break;
-                    }
-                }
-                if (fallbackIdx == -1) continue;
-                representativeIdx = fallbackIdx;
+                // if center isn't a lake tile, try to find any adjacent lake tile
+                foreach (int n in grid.neighbors[centerIdx]) if (n >= 0 && n < tileCount && isLakeTile[n]) { lakeQueue.Enqueue(n); break; }
+            }
+
+            while (lakeQueue.Count > 0)
+            {
+                int idx = lakeQueue.Dequeue();
+                if (lakeSet.Contains(idx)) continue;
+                if (!isLakeTile[idx]) continue;
+                lakeSet.Add(idx);
+                foreach (int n in grid.neighbors[idx]) if (n >= 0 && n < tileCount && isLakeTile[n] && !lakeSet.Contains(n)) lakeQueue.Enqueue(n);
             }
 
             float minNeighborElevation = float.MaxValue;
             int validNeighborCount = 0;
-            foreach (int neighbor in grid.neighbors[representativeIdx])
+            var perimeterNeighbors = new HashSet<int>();
+
+            foreach (int lakeTile in lakeSet)
             {
-                if (neighbor < 0 || neighbor >= tileCount) continue;
-                if (!isLandTile[neighbor]) continue;
+                foreach (int neighbor in grid.neighbors[lakeTile])
+                {
+                    if (neighbor < 0 || neighbor >= tileCount) continue;
+                    if (!isLandTile[neighbor]) continue; // only consider land neighbors as potential outlets
+                    if (isLakeTile[neighbor]) continue; // skip other lake tiles
+                    perimeterNeighbors.Add(neighbor);
+                }
+            }
+
+            foreach (int neighbor in perimeterNeighbors)
+            {
                 validNeighborCount++;
                 float neighborElevation = ComputeLandElevationForIndex(neighbor);
                 if (neighborElevation < minNeighborElevation) minNeighborElevation = neighborElevation;
@@ -1050,12 +1077,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             if (validNeighborCount == 0)
             {
-                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor=none delta=NA validNeighbors=0");
+                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor=none delta=NA validNeighbors=0 perimeterSize={lakeSet.Count}");
             }
             else
             {
                 float delta = minNeighborElevation - lakeElevation;
-                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor={minNeighborElevation:F4} delta={delta:F4} validNeighbors={validNeighborCount}");
+                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor={minNeighborElevation:F4} delta={delta:F4} validNeighbors={validNeighborCount} perimeterSize={lakeSet.Count}");
             }
         }
 
@@ -1098,109 +1125,192 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         float? southPoleTemp = null;
         float? equatorTemp = null;
         
+        // Two-pass climate/elevation processing:
+        // 1) Sample elevation, temperature, moisture into arrays (periodic sampling available)
+        // 2) Smooth climate arrays (passes)
+        // 3) Assign biomes using smoothed climate values and already-computed elevation
+
+        float[] sampledTemp = new float[tileCount];
+        float[] sampledMoist = new float[tileCount];
+        float[] sampledElev = new float[tileCount];
+
         for (int i = 0; i < tileCount; i++)
         {
             Vector2Int coord = tileCoords[i];
             bool isLand = isLandTile[i];
             Vector2 tilePos = new Vector2(coord.x, coord.y);
             Vector3 noisePoint = new Vector3(coord.x, 0f, coord.y) + noiseOffset;
-            
-            // Calculate elevation using advanced multi-noise blending (seamless wrap)
-            // Combines: FBm (base), Ridged (mountains), Billow (hills), Voronoi (variation)
+
             float noiseElevation;
-            // Only enable the Voronoi path if the prefab flag is set. Billow hills may still trigger advanced elevation.
-            if (billowHillWeight > 0.01f) {
+            if (billowHillWeight > 0.01f)
+            {
                 noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
                     elevBroadFreq, elevRidgedFreq, elevBillowFreq,
                     ridgedMountainWeight, billowHillWeight);
-            } else {
+            }
+            else
+            {
                 noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight,
                     elevBroadFreq, elevRidgedFreq, ridgedMountainWeight);
             }
 
-            // Calculate Moisture & Temperature (needed for biome determination)
-            float moisture = noise.GetMoisture(noisePoint * moistureFreq);
-            // Apply moisture bias - clamp to ensure it stays in 0-1 range
+            // Sample climate
+            float moisture;
+            float noiseTemp;
+            if (usePeriodicClimateNoise)
+            {
+                moisture = noise.GetMoisturePeriodic(tilePos, mapWidth, mapHeight, moistureFreq);
+                float baseTemp = noise.GetTemperaturePeriodic(tilePos, mapWidth, mapHeight, temperatureNoiseFrequency);
+                float detailTemp = noise.GetTemperaturePeriodic(tilePos, mapWidth, mapHeight, temperatureNoiseFrequency * temperatureDetailMultiplier);
+                noiseTemp = Mathf.Lerp(baseTemp, detailTemp, temperatureDetailStrength);
+            }
+            else
+            {
+                moisture = noise.GetMoisture(noisePoint * moistureFreq);
+                noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
+            }
+
             moisture = Mathf.Clamp01(moisture + moistureBias);
-            
-            float noiseTemp = noise.GetTemperatureFromNoise(noisePoint);
-            float normalizedY = mapHeight > 1f
-                ? coord.y / Mathf.Max(1f, mapHeight - 1f)
-                : 0f;
+            float normalizedY = mapHeight > 1f ? coord.y / Mathf.Max(1f, mapHeight - 1f) : 0f;
             float latitude = Mathf.Abs(normalizedY * 2f - 1f);
             float latEffect = Mathf.Pow(latitude, latitudeExponent);
-            float temperature = noiseTemp - (latEffect * latitudeInfluence);
-            temperature = Mathf.Clamp01(temperature + temperatureBias);
+            float temperature = noiseTemp - (latEffect * latitudeInfluence) + temperatureBias;
+            temperature = Mathf.Clamp01(temperature);
 
-            if (coord.x == 0)
+            // Compute final elevation for this tile now (independent of biome assignment)
+            float finalElevation;
+            if (isLakeTile[i])
             {
-                if (coord.y == northPoleY) northPoleTemp = temperature;
-                if (coord.y == southPoleY) southPoleTemp = temperature;
-                if (coord.y == equatorY) equatorTemp = temperature;
+                finalElevation = lakeElevation;
             }
-            // Track ranges
-            if (temperature < temperatureMin) temperatureMin = temperature;
-            if (temperature > temperatureMax) temperatureMax = temperature;
-            if (moisture < moistureMin) moistureMin = moisture;
-            if (moisture > moistureMax) moistureMax = moisture;
-
-            // Detailed sample logs for a handful of tiles
-            if (climateSampleIndices.Contains(i))
+            else if (isLand)
             {
-}
+                float elevationRange = maxTotalElevation - baseLandElevation;
+                finalElevation = baseLandElevation + (noiseElevation * elevationRange);
+            }
+            else
+            {
+                finalElevation = 0f;
+            }
+
+            finalElevation = Mathf.Min(finalElevation, maxTotalElevation);
+
+            sampledTemp[i] = temperature;
+            sampledMoist[i] = moisture;
+            sampledElev[i] = finalElevation;
+            tileElevation[i] = finalElevation;
+
+            if (i > 0 && i % 500 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.3f + (float)i / tileCount * 0.05f);
+                    loadingPanelController.SetStatus("Sampling climate and elevation...");
+                }
+                yield return null;
+            }
+        }
+
+        // Smooth climate arrays to reduce speckling
+        for (int pass = 0; pass < Mathf.Max(0, climateSmoothingPasses); pass++)
+        {
+            float[] newTemp = new float[tileCount];
+            float[] newMoist = new float[tileCount];
+            for (int i = 0; i < tileCount; i++)
+            {
+                float sumT = 0f; int cntT = 0;
+                float sumM = 0f; int cntM = 0;
+                foreach (int n in grid.neighbors[i])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    sumT += sampledTemp[n]; cntT++;
+                    sumM += sampledMoist[n]; cntM++;
+                }
+                if (cntT > 0)
+                {
+                    float avgT = sumT / cntT;
+                    newTemp[i] = Mathf.Lerp(sampledTemp[i], avgT, climateSmoothingStrength);
+                }
+                else newTemp[i] = sampledTemp[i];
+
+                if (cntM > 0)
+                {
+                    float avgM = sumM / cntM;
+                    newMoist[i] = Mathf.Lerp(sampledMoist[i], avgM, climateSmoothingStrength);
+                }
+                else newMoist[i] = sampledMoist[i];
+            }
+
+            sampledTemp = newTemp;
+            sampledMoist = newMoist;
+
+            if (loadingPanelController != null)
+            {
+                loadingPanelController.SetProgress(0.35f + (float)pass / Mathf.Max(1, climateSmoothingPasses) * 0.05f);
+                loadingPanelController.SetStatus($"Smoothing climate (pass {pass+1}/{climateSmoothingPasses})...");
+            }
+            yield return null;
+        }
+
+        // Second pass: assign biomes and build HexTileData using smoothed climate
+        for (int i = 0; i < tileCount; i++)
+        {
+            Vector2Int coord = tileCoords[i];
+            bool isLand = isLandTile[i];
+            bool isLake = isLakeTile[i];
+            float temperature = sampledTemp[i];
+            float moisture = sampledMoist[i];
+            float finalElevation = sampledElev[i];
 
             Biome biome;
             bool isHill = false;
-            float finalElevation; // Variable to store the final elevation
-            bool isLake = isLakeTile[i];
 
-            if (isLake) {
-                finalElevation = lakeElevation;
+            if (isLake)
+            {
                 biome = Biome.Lake;
-            } else if (isLand) {
-                // Calculate land elevation: base + scaled noise
-                // Now uses full range since maxTotalElevation defaults to 1.0
-                float elevationRange = maxTotalElevation - baseLandElevation;
-                finalElevation = baseLandElevation + (noiseElevation * elevationRange);
-                
-                // Track land elevation range for later normalization
-                if (finalElevation < landElevMin) landElevMin = finalElevation;
-                if (finalElevation > landElevMax) landElevMax = finalElevation;
-                landTileIndices.Add(i);
-
+            }
+            else if (isLand)
+            {
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                // Mountain/Hill check, but protect polar biomes from being overridden
-                if (finalElevation > mountainThreshold) {
+                if (finalElevation > mountainThreshold)
+                {
                     if (biome != Biome.Glacier && biome != Biome.Arctic && biome != Biome.Frozen)
                     {
                         biome = Biome.Mountain;
                     }
-                } else if (finalElevation > hillThreshold) { 
+                }
+                else if (finalElevation > hillThreshold)
+                {
                     isHill = true;
-                    // Add hill elevation boost
                     finalElevation += hillElevationBoost;
                 }
-            } else { // Water Biomes
-                 finalElevation = 0f; // Water elevation is 0
-                 biome = GetBiomeForTile(i, false, temperature, moisture);
+                // Track land elevation range for later normalization
+                if (finalElevation < landElevMin) landElevMin = finalElevation;
+                if (finalElevation > landElevMax) landElevMax = finalElevation;
+                landTileIndices.Add(i);
+            }
+            else
+            {
+                biome = GetBiomeForTile(i, false, temperature, moisture);
             }
 
-            // *** Override for Glaciers: Treat them like land for elevation ***
-            if (biome == Biome.Glacier) {
+            if (biome == Biome.Glacier)
+            {
                 float elevationRange = maxTotalElevation - baseLandElevation;
-                finalElevation = baseLandElevation + (noiseElevation * elevationRange);
-                // Track glacier elevation too
+                finalElevation = baseLandElevation + (noise.GetElevationPeriodic(new Vector2(coord.x, coord.y), mapWidth, mapHeight, elevBroadFreq, elevRidgedFreq, ridgedMountainWeight) * elevationRange);
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
                 if (!landTileIndices.Contains(i)) landTileIndices.Add(i);
             }
 
-            // Cap as safety net
-            finalElevation = Mathf.Min(finalElevation, maxTotalElevation);
+            tileElevation[i] = finalElevation;
 
-            // Store the final calculated elevation
-            tileElevation[i] = finalElevation; 
+            // Track climate min/max for diagnostics
+            if (temperature < temperatureMin) temperatureMin = temperature;
+            if (temperature > temperatureMax) temperatureMax = temperature;
+            if (moisture < moistureMin) moistureMin = moisture;
+            if (moisture > moistureMax) moistureMax = moisture;
 
             // Create HexTileData
             var y = BiomeHelper.Yields(biome);
@@ -1209,7 +1319,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (finalElevation > mountainThreshold) elevTier = ElevationTier.Mountain;
             else if (finalElevation > hillThreshold) elevTier = ElevationTier.Hill;
 
-            var td = new HexTileData {
+            var td = new HexTileData
+            {
                 biome = biome,
                 food = y.food, production = y.prod, gold = y.gold, science = y.sci, culture = y.cult,
                 occupantId = 0,
@@ -1218,7 +1329,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 isRiver = isRiverTile[i],
                 isHill = isHill,
                 elevation = finalElevation,
-                renderElevation = 0f, // Will be computed after all tiles are processed
+                renderElevation = 0f,
                 elevationTier = elevTier,
                 temperature = temperature,
                 moisture = moisture,
@@ -1229,16 +1340,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             data[i] = td;
             baseData[i] = td;
 
-            if (climateSampleIndices.Contains(i))
-            {
-}
-
-            // BATCH YIELD
             if (i > 0 && i % 250 == 0)
             {
                 if (loadingPanelController != null)
                 {
-                    loadingPanelController.SetProgress(0.3f + (float)i / tileCount * 0.2f); // Progress 30% to 50%
+                    loadingPanelController.SetProgress(0.3f + (float)i / tileCount * 0.2f);
                     loadingPanelController.SetStatus("Defining biomes and elevation...");
                 }
                 yield return null;
@@ -1493,25 +1599,51 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             HashSet<int> riverTiles = new HashSet<int>();
 
             HashSet<int> lakeEdgeSources = new HashSet<int>();
+            // Map each lake-edge source tile to its lake id (index into lakeCenters)
+            Dictionary<int, int> sourceToLakeId = new Dictionary<int, int>();
             if (lakeCenters != null && lakeCenters.Count > 0)
             {
+                // For each stamped lake, flood-fill the connected lake tiles and collect perimeter land neighbors
                 for (int i = 0; i < lakeCenters.Count; i++)
                 {
                     var center = lakeCenters[i];
                     int centerIdx = center.y * grid.Width + center.x;
                     if (!tileData.ContainsKey(centerIdx)) continue;
 
-                    foreach (int neighbor in grid.neighbors[centerIdx])
+                    var queue = new Queue<int>();
+                    var lakeSet = new HashSet<int>();
+                    if (tileData[centerIdx].isLake) queue.Enqueue(centerIdx);
+                    else
                     {
-                        if (!tileData.TryGetValue(neighbor, out var nTile)) continue;
-                        if (!nTile.isLand || nTile.isLake || nTile.isRiver) continue;
-                        if (nTile.biome == Biome.Coast || nTile.biome == Biome.Ocean || nTile.biome == Biome.Seas) continue;
-                        lakeEdgeSources.Add(neighbor);
+                        foreach (int n in grid.neighbors[centerIdx]) if (n >= 0 && n < tileCount && tileData.ContainsKey(n) && tileData[n].isLake) { queue.Enqueue(n); break; }
+                    }
+
+                    while (queue.Count > 0)
+                    {
+                        int idx = queue.Dequeue();
+                        if (lakeSet.Contains(idx)) continue;
+                        if (!tileData.ContainsKey(idx) || !tileData[idx].isLake) continue;
+                        lakeSet.Add(idx);
+                        foreach (int n in grid.neighbors[idx]) if (n >= 0 && n < tileCount && !lakeSet.Contains(n) && tileData.ContainsKey(n) && tileData[n].isLake) queue.Enqueue(n);
+                    }
+
+                    foreach (int lakeTile in lakeSet)
+                    {
+                        foreach (int neighbor in grid.neighbors[lakeTile])
+                        {
+                            if (neighbor < 0 || neighbor >= tileCount) continue;
+                            if (!tileData.TryGetValue(neighbor, out var nTile)) continue;
+                            if (!nTile.isLand || nTile.isLake || nTile.isRiver) continue;
+                            if (nTile.biome == Biome.Coast || nTile.biome == Biome.Ocean || nTile.biome == Biome.Seas) continue;
+                            lakeEdgeSources.Add(neighbor);
+                            if (!sourceToLakeId.ContainsKey(neighbor)) sourceToLakeId[neighbor] = i;
+                        }
                     }
                 }
             }
 
             List<int> riverSources = lakeEdgeSources.ToList();
+            HashSet<int> usedLakeIds = new HashSet<int>();
             if (riverSources.Count == 0)
             {
                 Debug.LogWarning("[StampGen] No lake-edge river sources found; falling back to inland land tiles.");
@@ -1545,23 +1677,47 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 yield break;
             }
 
+            // If we have lake sources, make sure we don't request more rivers than unused lakes
+            if (sourceToLakeId.Count > 0)
+            {
+                targetRiverCount = Mathf.Min(targetRiverCount, sourceToLakeId.Count);
+            }
+
             int riversGenerated = 0;
             int attempts = 0;
-            int maxAttempts = Mathf.Max(targetRiverCount * 5, 20);
 
-            Debug.Log($"[StampGen][River] sources={riverSources.Count} targetRiverCount={targetRiverCount} maxAttempts={maxAttempts}");
+            Debug.Log($"[StampGen][River] sources={riverSources.Count} targetRiverCount={targetRiverCount}");
 
-            while (riversGenerated < targetRiverCount && attempts < maxAttempts)
+            while (riversGenerated < targetRiverCount)
             {
                 int sourceIndex = riverSources[attempts % riverSources.Count];
                 attempts++;
 
+                // If this source maps to a lake that's already been used, skip it
+                if (sourceToLakeId.TryGetValue(sourceIndex, out var mappedLakeId))
+                {
+                    if (usedLakeIds.Contains(mappedLakeId)) continue;
+                }
+
+                if (attempts > 70000)
+                {
+                    Debug.LogWarning("[StampGen][River] excessive attempts (70000) without reaching target; aborting to avoid hang.");
+                    break;
+                }
+
                 if (!tileData.TryGetValue(sourceIndex, out var sourceTile)) continue;
                 if (!sourceTile.isLand || sourceTile.isLake || sourceTile.isRiver) continue;
 
-                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles, lakeEdgeSources.Contains(sourceIndex));
+                // Do not accept trivial 1-tile rivers: require at least 2 tiles in the path
+                List<int> path = BuildRiverWalk(sourceIndex, tileData, riverRand, riverTiles, false);
                 if (path == null || path.Count == 0)
                 {
+                    continue;
+                }
+
+                if (path.Count <= 1)
+                {
+                    // Too short, ignore
                     continue;
                 }
 
@@ -1586,6 +1742,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     riverTiles.Add(tileIdx);
                     isLandTile[tileIdx] = true;
                     isRiverTile[tileIdx] = true;
+                }
+
+                // Mark the lake as used if this source came from a lake perimeter
+                if (sourceToLakeId.TryGetValue(sourceIndex, out var usedLake))
+                {
+                    usedLakeIds.Add(usedLake);
                 }
 
                 if (loadingPanelController != null && riversGenerated % 5 == 0)
@@ -1620,30 +1782,29 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     visited.Add(current);
                 }
 
-                bool shouldTerminate = false;
+                // Check for termination neighbors (coast, ocean, lake, or existing river).
+                // If found, move into that neighbor as the final river tile and finish.
+                List<int> terminationNeighbors = new List<int>();
                 foreach (int neighbor in grid.neighbors[current])
                 {
                     if (!tileData.TryGetValue(neighbor, out var neighborTile)) continue;
-
-                    bool isTermination = neighborTile.biome == Biome.Ocean
-                        || neighborTile.biome == Biome.Seas
-                        || neighborTile.biome == Biome.Coast
-                        || neighborTile.isRiver
-                        || neighborTile.isLake;
-
-                    if (isTermination)
+                    if (neighborTile.biome == Biome.Ocean || neighborTile.biome == Biome.Seas || neighborTile.biome == Biome.Coast || neighborTile.isRiver || neighborTile.isLake)
                     {
-                        if (firstStep && ignoreLakeAdjacencyAtStart && neighborTile.isLake)
-                        {
-                            continue;
-                        }
-                        shouldTerminate = true;
-                        break;
+                        terminationNeighbors.Add(neighbor);
                     }
                 }
 
-                if (shouldTerminate)
+                if (terminationNeighbors.Count > 0)
                 {
+                    // Prefer the lowest-elevation termination neighbor if possible
+                    int pick = terminationNeighbors[0];
+                    float bestElev = float.MaxValue;
+                    foreach (int tn in terminationNeighbors)
+                    {
+                        if (!tileData.TryGetValue(tn, out var ttn)) continue;
+                        if (ttn.elevation < bestElev) { bestElev = ttn.elevation; pick = tn; }
+                    }
+                    if (!visited.Contains(pick)) path.Add(pick);
                     break;
                 }
 

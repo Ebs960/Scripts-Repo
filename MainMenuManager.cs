@@ -846,9 +846,9 @@ public class MainMenuManager : MonoBehaviour
         // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea
         
         // Base lake counts by moisture (halved)
-        int[] baseLakeCounts = { 0, 1, 2, 3, 4, 5 };      // Desert=none, Oceanic=moderate
-        int[] minLakeSizes = { 1, 1, 2, 2, 2, 2 };        // Halved min sizes
-        int[] maxLakeSizes = { 2, 3, 4, 5, 6, 8 };        // Halved max sizes
+        int[] baseLakeCounts = { 1, 2, 5, 7, 8, 9 };      // Desert=none, Oceanic=moderate
+        int[] minLakeSizes = { 1, 2, 3, 3, 3, 3 };        // Halved min sizes
+        int[] maxLakeSizes = { 2, 4, 4, 5, 6, 8 };        // Halved max sizes
         
         // Land type multipliers for lake count (islands have less inland area)
         // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
