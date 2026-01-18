@@ -7,12 +7,12 @@ using System.Linq;
 /// Replaces FlatMapTextureRenderer with a chunk-based approach that enables:
 /// - Seamless horizontal wrap via column teleportation (Civ 5 style)
 /// - Per-chunk dirty marking for dynamic tile updates
-/// - Same visual quality using PlanetTextureBaker and FlatMapDisplacement_URP shader
+/// - Same visual quality using PlanetTextureBaker for minimap and HDRP terrain shading
 /// 
 /// This integrates with the existing pipeline:
-/// - Uses PlanetTextureBaker.Bake() or BakeGPU() for texture generation
-/// - Uses MinimapColorProvider for biome textures/colors
-/// - Uses FlatMapDisplacement_URP shader for heightmap displacement and overlays
+/// - Uses PlanetTextureBaker.Bake() or BakeGPU() for minimap textures
+/// - Uses BiomeVisualDatabase for terrain textures
+/// - Uses HDRP terrain shader for heightmap displacement and overlays
 /// - Subscribes to OnSurfaceGenerated to wait for proper map generation
 /// </summary>
 public class HexMapChunkManager : MonoBehaviour
@@ -21,6 +21,8 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private MinimapColorProvider colorProvider;
     [SerializeField] private ComputeShader textureBakerComputeShader;
     [SerializeField] private Shader flatMapDisplacementShader;
+    [SerializeField] private Shader hdrpTerrainShader;
+    [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     
     [Header("Texture Settings")]
     [SerializeField] private int textureWidth = 2048;
@@ -38,6 +40,12 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("World units of vertical relief. Higher values = more visible terrain height.")]
     [SerializeField] private float displacementStrength = 5.0f;
     [SerializeField] private float flatY = 0f;
+
+    [Header("Biome Visual Modifiers")]
+    [Range(0f, 1f)]
+    [SerializeField] private float globalSnowAmount = 0f;
+    [Range(0f, 1f)]
+    [SerializeField] private float globalWetness = 0f;
     
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
@@ -73,6 +81,9 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
     [SerializeField] private bool disableOldRenderer = true;
+
+    [Header("Season Masks")]
+    [SerializeField] private bool enableSeasonMasks = false;
     
     // Chunk storage
     private HexMapChunk[,] chunks;
@@ -81,6 +92,14 @@ public class HexMapChunkManager : MonoBehaviour
     // Baked texture data (shared across all chunks)
     private PlanetTextureBaker.BakeResult bakeResult;
     private Material sharedMaterial;
+    private Texture2D biomeIndexMap;
+    private Texture2D heightmapTexture;
+    private Texture2DArray biomeAlbedoArray;
+    private Texture2DArray biomeNormalArray;
+    private Texture2DArray biomeMaskArray;
+    private Vector4[] biomeTintArray;
+    private Vector4[] biomeParamsArray;
+    private Dictionary<Biome, int> biomeIndexLookup;
     
     // Map dimensions
     private float mapWidth;
@@ -304,8 +323,9 @@ TrySubscribeToSurfaceReady(gen);
         
         columnWidth = mapWidth / chunksX;
         
-        // Bake texture using PlanetTextureBaker (same as FlatMapTextureRenderer)
+        // Bake texture using PlanetTextureBaker (shared with minimap)
         BakeTexture();
+        BuildBiomeVisualMaps();
 
         int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
@@ -358,7 +378,7 @@ TrySubscribeToSurfaceReady(gen);
         
         // DIAGNOSTIC: Log heightmap and displacement settings
         Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {bakeResult.heightmap != null}");
+        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {heightmapTexture != null}");
         Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Displacement Strength: {displacementStrength} (Inspector value)");
         Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Shader Assigned: {flatMapDisplacementShader != null}");
         Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Material _FlatHeightScale: {(sharedMaterial != null ? sharedMaterial.GetFloat("_FlatHeightScale").ToString("F4") : "N/A")}");
@@ -380,54 +400,272 @@ TrySubscribeToSurfaceReady(gen);
             bakeResult = PlanetTextureBaker.Bake(planetGenerator, colorProvider, textureWidth, textureHeight);
 }
     }
+
+    private void BuildBiomeVisualMaps()
+    {
+        if (planetGenerator == null || grid == null || !grid.IsBuilt)
+        {
+            Debug.LogWarning("[HexMapChunkManager] Cannot build biome visuals: missing grid.");
+            return;
+        }
+
+        if (biomeVisualDatabase == null || biomeVisualDatabase.biomes == null || biomeVisualDatabase.biomes.Count == 0)
+        {
+            Debug.LogWarning("[HexMapChunkManager] Missing biome visual database. Terrain visuals will be incomplete.");
+            return;
+        }
+
+        int width = textureWidth;
+        int height = textureHeight;
+
+        bakeResult.lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
+        bakeResult.width = width;
+        bakeResult.height = height;
+
+        BuildBiomeLookup();
+        BuildBiomeTextureArrays();
+        BuildBiomeIndexMap(width, height);
+        BuildHeightmap(width, height);
+    }
+
+    private void BuildBiomeLookup()
+    {
+        biomeIndexLookup = new Dictionary<Biome, int>();
+        int index = 0;
+        foreach (var entry in biomeVisualDatabase.biomes)
+        {
+            if (entry == null) continue;
+            biomeIndexLookup[entry.biome] = index++;
+        }
+    }
+
+    private void BuildBiomeTextureArrays()
+    {
+        var visuals = biomeVisualDatabase.biomes;
+        int count = visuals.Count;
+        if (count == 0) return;
+
+        Texture2D fallbackAlbedo = Texture2D.whiteTexture;
+        Texture2D fallbackNormal = CreateFlatNormal();
+        Texture2D fallbackMask = CreateDefaultMask();
+
+        Texture2D sizeSource = null;
+        foreach (var entry in visuals)
+        {
+            if (entry != null && entry.albedo != null)
+            {
+                sizeSource = entry.albedo;
+                break;
+            }
+        }
+
+        if (sizeSource == null)
+        {
+            sizeSource = fallbackAlbedo;
+        }
+
+        int width = sizeSource.width;
+        int height = sizeSource.height;
+
+        biomeAlbedoArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, false);
+        biomeNormalArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
+        biomeMaskArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
+
+        biomeTintArray = new Vector4[count];
+        biomeParamsArray = new Vector4[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            var entry = visuals[i];
+            Texture2D albedo = entry != null && entry.albedo != null ? entry.albedo : fallbackAlbedo;
+            Texture2D normal = entry != null && entry.normal != null ? entry.normal : fallbackNormal;
+            Texture2D mask = entry != null && entry.maskMap != null ? entry.maskMap : fallbackMask;
+
+            if (albedo.width != width || albedo.height != height)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Biome albedo size mismatch for {entry?.biome}. Expected {width}x{height}.");
+                albedo = fallbackAlbedo;
+            }
+            if (normal.width != width || normal.height != height)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Biome normal size mismatch for {entry?.biome}. Expected {width}x{height}.");
+                normal = fallbackNormal;
+            }
+            if (mask.width != width || mask.height != height)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Biome mask size mismatch for {entry?.biome}. Expected {width}x{height}.");
+                mask = fallbackMask;
+            }
+
+            Graphics.CopyTexture(albedo, 0, 0, biomeAlbedoArray, i, 0);
+            Graphics.CopyTexture(normal, 0, 0, biomeNormalArray, i, 0);
+            Graphics.CopyTexture(mask, 0, 0, biomeMaskArray, i, 0);
+
+            if (entry != null)
+            {
+                biomeTintArray[i] = entry.tint;
+                biomeParamsArray[i] = new Vector4(entry.tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
+            }
+            else
+            {
+                biomeTintArray[i] = Color.white;
+                biomeParamsArray[i] = new Vector4(1f, 0f, 0f, 0f);
+            }
+        }
+
+        biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
+        biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
+        biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
+    }
+
+    private void BuildBiomeIndexMap(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
+
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        {
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.R8, false, true)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "BiomeIndexMap"
+            };
+        }
+
+        var pixels = new Color32[width * height];
+        for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
+        {
+            int tileIndex = bakeResult.lut[i];
+            if (tileIndex < 0)
+            {
+                pixels[i] = new Color32(0, 0, 0, 255);
+                continue;
+            }
+
+            if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
+            {
+                pixels[i] = new Color32(0, 0, 0, 255);
+                continue;
+            }
+
+            var visual = biomeVisualDatabase.Get(tile.biome);
+            int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+            pixels[i] = new Color32((byte)biomeIndex, 0, 0, 255);
+        }
+
+        biomeIndexMap.SetPixels32(pixels);
+        biomeIndexMap.Apply(false, false);
+    }
+
+    private void BuildHeightmap(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
+
+        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
+        {
+            heightmapTexture = new Texture2D(width, height, TextureFormat.R8, true, true)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "TerrainHeightmap"
+            };
+        }
+
+        var pixels = new Color32[width * height];
+        for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
+        {
+            int tileIndex = bakeResult.lut[i];
+            float elevation = 0f;
+            if (tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile))
+            {
+                elevation = Mathf.Clamp01(tile.renderElevation);
+            }
+
+            byte value = (byte)(elevation * 255);
+            pixels[i] = new Color32(value, value, value, 255);
+        }
+
+        heightmapTexture.SetPixels32(pixels);
+        heightmapTexture.Apply(true, false);
+    }
+
+    private static Texture2D CreateFlatNormal()
+    {
+        var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+        tex.SetPixel(0, 0, new Color(0.5f, 0.5f, 1f, 1f));
+        tex.Apply();
+        return tex;
+    }
+
+    private static Texture2D CreateDefaultMask()
+    {
+        var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+        tex.SetPixel(0, 0, new Color(0f, 1f, 0f, 0.5f));
+        tex.Apply();
+        return tex;
+    }
+
+    private void ApplyBiomeMaterialSettings()
+    {
+        if (sharedMaterial == null) return;
+
+        if (biomeIndexMap != null)
+        {
+            sharedMaterial.SetTexture("_BiomeIndexMap", biomeIndexMap);
+        }
+
+        if (heightmapTexture != null)
+        {
+            sharedMaterial.SetTexture("_Heightmap", heightmapTexture);
+            sharedMaterial.SetFloat("_ElevationScale", displacementStrength);
+        }
+
+        if (biomeAlbedoArray != null)
+        {
+            sharedMaterial.SetTexture("_BiomeAlbedoArray", biomeAlbedoArray);
+        }
+        if (biomeNormalArray != null)
+        {
+            sharedMaterial.SetTexture("_BiomeNormalArray", biomeNormalArray);
+        }
+        if (biomeMaskArray != null)
+        {
+            sharedMaterial.SetTexture("_BiomeMaskArray", biomeMaskArray);
+        }
+
+        if (biomeTintArray != null)
+        {
+            sharedMaterial.SetVectorArray("_BiomeTints", biomeTintArray);
+        }
+
+        if (biomeParamsArray != null)
+        {
+            sharedMaterial.SetVectorArray("_BiomeParams", biomeParamsArray);
+        }
+
+        sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
+        sharedMaterial.SetFloat("_GlobalWetness", globalWetness);
+        sharedMaterial.SetFloat("_MapWidth", mapWidth);
+        sharedMaterial.SetFloat("_MapHeight", mapHeight);
+    }
     
     private void CreateSharedMaterial()
     {
-        // Use same shader as FlatMapTextureRenderer
-        Shader shader = flatMapDisplacementShader;
+        Shader shader = hdrpTerrainShader;
         if (shader == null)
         {
-            shader = Shader.Find("Custom/FlatMapDisplacement_URP");
+            shader = Shader.Find("HDRP/BiomeTerrain");
         }
         if (shader == null)
         {
-            Debug.LogError("[HexMapChunkManager] FlatMapDisplacement_URP shader not found!");
-            shader = Shader.Find("Universal Render Pipeline/Lit");
+            Debug.LogError("[HexMapChunkManager] HDRP terrain shader not found!");
+            shader = Shader.Find("HDRP/Lit");
         }
         
         sharedMaterial = new Material(shader);
         sharedMaterial.name = "ChunkTerrainMaterial";
-        
-        // Apply baked texture
-        sharedMaterial.mainTexture = bakeResult.texture;
-        sharedMaterial.SetTexture("_MainTex", bakeResult.texture);
-        
-        // Apply heightmap
-        if (bakeResult.heightmap != null)
-        {
-            sharedMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
-            sharedMaterial.SetFloat("_FlatHeightScale", displacementStrength);
-            sharedMaterial.SetFloat("_MapHeight", mapHeight);
-        }
-        
-        // Set texture wrapping for seamless wrap
-        if (bakeResult.texture != null)
-        {
-            bakeResult.texture.wrapMode = TextureWrapMode.Repeat;
-        }
-        if (bakeResult.heightmap != null)
-        {
-            bakeResult.heightmap.wrapMode = TextureWrapMode.Repeat;
-        }
-        
-        sharedMaterial.SetFloat("_Metallic", 0.0f);
-        sharedMaterial.SetFloat("_Smoothness", 0.3f);
-        if (bakeResult.normalmap != null)
-        {
-            sharedMaterial.SetTexture("_NormalMap", bakeResult.normalmap);
-            sharedMaterial.SetFloat("_BumpScale", 1.0f);
-            try { sharedMaterial.EnableKeyword("_NORMALMAP"); } catch {};
-        }
+
+        ApplyBiomeMaterialSettings();
         
         // Apply hex grid settings
         ApplyHexGridSettings();
@@ -1143,6 +1381,7 @@ TrySubscribeToSurfaceReady(gen);
 
     private void UpdateGhostSeasonMasks()
     {
+        if (!enableSeasonMasks) return;
         if (!ghostColumnsCreated || chunks == null) return;
 
         if (ghostColumnsLeft != null)
@@ -1241,6 +1480,7 @@ TrySubscribeToSurfaceReady(gen);
 
     private void UpdateSeasonMasksForCurrentSeason()
     {
+        if (!enableSeasonMasks) return;
         if (planetGenerator == null) return;
         var climateManager = GameManager.Instance != null
             ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
@@ -1252,6 +1492,7 @@ TrySubscribeToSurfaceReady(gen);
 
     private void UpdateSeasonMasksForSeason(Season season)
     {
+        if (!enableSeasonMasks) return;
         if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
         if (seasonMaskWidth <= 0 || seasonMaskHeight <= 0) return;
 
@@ -1339,31 +1580,34 @@ TrySubscribeToSurfaceReady(gen);
             chunk.MarkDirty();
         }
 
-        // Update season masks for affected chunks so seasonal overlays reflect tile changes
-        try
+        if (enableSeasonMasks)
         {
-            if (planetGenerator != null && bakeResult.lut != null && seasonMaskWidth > 0 && seasonMaskHeight > 0)
+            // Update season masks for affected chunks so seasonal overlays reflect tile changes
+            try
             {
-                var climateManager = GameManager.Instance != null
-                    ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
-                    : ClimateManager.Instance;
-                if (climateManager != null)
+                if (planetGenerator != null && bakeResult.lut != null && seasonMaskWidth > 0 && seasonMaskHeight > 0)
                 {
-                    Season s = climateManager.GetSeasonForPlanet(planetGenerator.planetIndex);
-                    int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-                    int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-                    foreach (var chunk in affectedChunks)
+                    var climateManager = GameManager.Instance != null
+                        ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+                        : ClimateManager.Instance;
+                    if (climateManager != null)
                     {
-                        if (chunk == null) continue;
-                        chunk.UpdateSeasonMask(lutWidth, lutHeight, seasonMaskWidth, seasonMaskHeight, bakeResult.lut, planetGenerator, climateManager, s);
+                        Season s = climateManager.GetSeasonForPlanet(planetGenerator.planetIndex);
+                        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+                        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+                        foreach (var chunk in affectedChunks)
+                        {
+                            if (chunk == null) continue;
+                            chunk.UpdateSeasonMask(lutWidth, lutHeight, seasonMaskWidth, seasonMaskHeight, bakeResult.lut, planetGenerator, climateManager, s);
+                        }
+                        UpdateGhostSeasonMasks();
                     }
-                    UpdateGhostSeasonMasks();
                 }
             }
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"[HexMapChunkManager] Failed to update season masks for affected chunks: {ex.Message}");
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Failed to update season masks for affected chunks: {ex.Message}");
+            }
         }
     }
     
@@ -1375,15 +1619,9 @@ TrySubscribeToSurfaceReady(gen);
         if (planetGenerator == null) return;
         
         BakeTexture();
+        BuildBiomeVisualMaps();
         
-        if (sharedMaterial != null && bakeResult.texture != null)
-        {
-            sharedMaterial.SetTexture("_MainTex", bakeResult.texture);
-            if (bakeResult.heightmap != null)
-            {
-                sharedMaterial.SetTexture("_Heightmap", bakeResult.heightmap);
-            }
-        }
+        ApplyBiomeMaterialSettings();
     }
     
     /// <summary>

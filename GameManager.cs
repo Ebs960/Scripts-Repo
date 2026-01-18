@@ -1258,11 +1258,11 @@ currentPlanetIndex = planetIndex;
         // Try multiple ways to find MinimapUI
         var minimapUI = FindAnyObjectByType<MinimapUI>();
 
-        // Earth-only water mesh generation (multi-planet)
+        // Earth-only water surface generation (multi-planet)
         var earthGen = GetPlanetGenerator(0);
         if (earthGen != null && earthGen.HasGeneratedSurface)
         {
-            var waterGen = earthGen.GetComponentInChildren<WaterMeshGenerator>();
+            var waterGen = earthGen.GetComponentInChildren<WaterSurfaceGenerator>();
             if (waterGen != null)
             {
                 waterGen.Generate(earthGen);
@@ -1270,7 +1270,7 @@ currentPlanetIndex = planetIndex;
         }
         else
         {
-            Debug.LogWarning("[GameManager] Earth surface not ready for water mesh generation (multi-planet mode)");
+            Debug.LogWarning("[GameManager] Earth surface not ready for water surface generation (multi-planet mode)");
         }
         
         
