@@ -257,6 +257,7 @@ public class HexMapChunk : MonoBehaviour
         var vertices = new Vector3[vertCount];
         var uvs = new Vector2[vertCount];
         var normals = new Vector3[vertCount];
+        var tangents = new Vector4[vertCount];
         
         float width = localMaxX - localMinX;
         float height = localMaxZ - localMinZ;
@@ -285,6 +286,7 @@ public class HexMapChunk : MonoBehaviour
                 );
                 
                 normals[idx] = Vector3.up;
+                tangents[idx] = new Vector4(1f, 0f, 0f, 1f);
             }
         }
         
@@ -319,6 +321,7 @@ public class HexMapChunk : MonoBehaviour
         mesh.vertices = vertices;
         mesh.uv = uvs;
         mesh.normals = normals;
+        mesh.tangents = tangents;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
         
