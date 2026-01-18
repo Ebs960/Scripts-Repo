@@ -394,16 +394,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.12f;
                 break;
                 
-            case Biome.Steppe:
-                // Dry, windswept steppes
-                sunColor = new Color(1f, 0.95f, 0.85f);
-                sunIntensity = 1.3f;
-                skyColor = new Color(0.5f, 0.65f, 0.9f);
-                groundColor = new Color(0.45f, 0.4f, 0.3f);
-                fogColor = new Color(0.8f, 0.75f, 0.65f);
-                saturation = 0.0f;
-                contrast = 0.1f;
-                break;
                 
             // === PLAINS/GRASSLAND BIOMES ===
             case Biome.Plains:
@@ -420,7 +410,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // === FOREST/JUNGLE BIOMES ===
             case Biome.Forest:
-            case Biome.PineForest:
                 // Dappled forest lighting
                 sunColor = new Color(1f, 0.98f, 0.9f);
                 sunIntensity = 1.1f;
@@ -478,7 +467,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             // === ICE/SNOW BIOMES ===
-            case Biome.Snow:
+            case Biome.Arctic:
             case Biome.Glacier:
                 // Bright, cold snow lighting
                 sunColor = new Color(0.95f, 0.98f, 1f);
@@ -494,7 +483,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             case Biome.Tundra:
-            case Biome.Frozen:
                 // Cold, barren tundra lighting
                 sunColor = new Color(0.9f, 0.95f, 1f);
                 sunIntensity = 1.0f;
@@ -505,19 +493,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.08f;
                 break;
                 
-            case Biome.Arctic:
-                // Extreme cold, blue-white lighting
-                sunColor = new Color(0.85f, 0.92f, 1f);
-                sunIntensity = 0.9f;
-                skyColor = new Color(0.6f, 0.8f, 1f);
-                groundColor = new Color(0.5f, 0.55f, 0.65f);
-                fogColor = new Color(0.85f, 0.92f, 1f);
-                fogStartDistance = 100f;
-                fogEndDistance = 400f;
-                saturation = -0.2f;
-                contrast = 0.03f;
-                bloomIntensity = 0.35f;
-                break;
                 
             case Biome.IcicleField:
             case Biome.CryoForest:
@@ -622,7 +597,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // === MOON BIOMES ===
             case Biome.MoonDunes:
-            case Biome.MoonCaves:
+            case Biome.MoonCraters:
                 // Stark lunar lighting
                 sunColor = new Color(1f, 1f, 1f);
                 sunIntensity = 1.5f;
@@ -704,7 +679,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             // ==================== MERCURY BIOMES ====================
-            case Biome.MercuryCraters:
+            case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
             case Biome.MercuryScarp:
                 // Stark Mercury dayside
@@ -793,7 +768,6 @@ public class BattleSceneVisuals : MonoBehaviour
             // ==================== DWARF PLANET/MOON BIOMES ====================
             case Biome.PlutoCryo:
             case Biome.PlutoTholins:
-            case Biome.PlutoMountains:
                 // Pluto's frozen twilight
                 sunColor = new Color(0.9f, 0.92f, 1f);
                 sunIntensity = 0.3f; // Very distant sun

@@ -924,13 +924,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 maxHeight = 1.2f; // Tall savannah grass
                 break;
                 
-            case Biome.Steppe:
-                grassColorBase = new Color(0.65f, 0.55f, 0.4f);
-                grassColorTip = new Color(0.75f, 0.65f, 0.5f);
-                grassColorDry = new Color(0.8f, 0.7f, 0.55f);
-                densityMultiplier = 1.0f;
-                maxHeight = 0.7f;
-                break;
                 
             case Biome.Swamp:
             case Biome.Marsh:
@@ -942,7 +935,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 break;
                 
             case Biome.Taiga:
-            case Biome.PineForest:
                 grassColorBase = new Color(0.4f, 0.55f, 0.4f);
                 grassColorTip = new Color(0.5f, 0.65f, 0.5f);
                 grassColorDry = new Color(0.55f, 0.55f, 0.45f);
@@ -957,8 +949,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 maxHeight = 0.3f;
                 break;
                 
-            case Biome.Snow:
-            case Biome.Frozen:
             case Biome.Arctic:
                 grassColorBase = new Color(0.6f, 0.65f, 0.55f);
                 grassColorTip = new Color(0.7f, 0.75f, 0.65f);
@@ -985,11 +975,11 @@ public class GPUInstancedGrass : MonoBehaviour
             case Biome.MartianCanyon:
             case Biome.MartianPolarIce:
             case Biome.MercuryBasalt:
-            case Biome.MercuryCraters:
+            case Biome.MercuryPlains:
             case Biome.MercuryScarp:
             case Biome.MercurianIce:
             case Biome.MoonDunes:
-            case Biome.MoonCaves:
+            case Biome.MoonCraters:
                 densityMultiplier = 0f;
                 break;
                 

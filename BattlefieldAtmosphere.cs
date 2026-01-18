@@ -563,7 +563,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Desert - heat haze, golden light
             case Biome.Desert:
-            case Biome.Steppe:
                 enableHeightFog = false;
                 enableHeatDistortion = true;
                 heatDistortionIntensity = 0.4f;
@@ -574,10 +573,8 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 dustParticleCount = 250;
                 break;
                 
-            // Snow/Arctic - cold blue fog
-            case Biome.Snow:
+            // Arctic - cold blue fog
             case Biome.Arctic:
-            case Biome.Frozen:
             case Biome.Glacier:
             case Biome.Tundra:
             case Biome.IcicleField:
@@ -607,9 +604,8 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 dustParticleCount = 100;
                 break;
                 
-            // Taiga/Pine - misty morning
+            // Taiga - misty morning
             case Biome.Taiga:
-            case Biome.PineForest:
                 enableHeightFog = true;
                 groundFogDensity = 0.35f;
                 groundFogColor = new Color(0.75f, 0.8f, 0.85f, 1f);
@@ -657,8 +653,8 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Airless moons - no atmosphere
             case Biome.MoonDunes:
-            case Biome.MoonCaves:
-            case Biome.MercuryCraters:
+            case Biome.MoonCraters:
+            case Biome.MercuryPlains:
             case Biome.EuropaIce:
             case Biome.PlutoCryo:
                 enableHeightFog = false;

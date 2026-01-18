@@ -717,17 +717,14 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.Grassland:
             case Biome.Plains:
             case Biome.Taiga:
-            case Biome.PineForest:
                 cloudDensity = 0.5f;
                 cloudColor = new Color(1f, 1f, 1f, 0.6f);
                 scrollSpeed = 0.5f;
                 break;
                 
             // Cold biomes - heavy, grey clouds
-            case Biome.Snow:
-            case Biome.Tundra:
-            case Biome.Frozen:
             case Biome.Arctic:
+            case Biome.Tundra:
             case Biome.Glacier:
             case Biome.IcicleField:
             case Biome.CryoForest:
@@ -740,7 +737,6 @@ public class BattlefieldClouds : MonoBehaviour
             // Desert biomes - sparse clouds
             case Biome.Desert:
             case Biome.Savannah:
-            case Biome.Steppe:
                 cloudDensity = 0.2f;
                 cloudColor = new Color(1f, 0.98f, 0.95f, 0.4f);
                 scrollSpeed = 0.6f;
@@ -840,8 +836,8 @@ public class BattlefieldClouds : MonoBehaviour
                 
             // Moons - minimal or no atmosphere
             case Biome.MoonDunes:
-            case Biome.MoonCaves:
-            case Biome.MercuryCraters:
+            case Biome.MoonCraters:
+            case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
             case Biome.MercuryScarp:
             case Biome.MercurianIce:
@@ -851,7 +847,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.IoSulfur:
             case Biome.PlutoCryo:
             case Biome.PlutoTholins:
-            case Biome.PlutoMountains:
                 cloudDensity = 0f; // No atmosphere
                 break;
                 

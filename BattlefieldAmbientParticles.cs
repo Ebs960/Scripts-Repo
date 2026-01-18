@@ -199,10 +199,9 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         bool needsFireflies = biome == Biome.Forest || biome == Biome.Swamp || 
                              biome == Biome.Marsh || biome == Biome.Jungle;
         
-        bool needsSnowflakes = biome == Biome.Snow || biome == Biome.Arctic || 
-                              biome == Biome.Frozen || biome == Biome.Glacier ||
-                              biome == Biome.IcicleField || biome == Biome.CryoForest ||
-                              biome == Biome.Tundra;
+        bool needsSnowflakes = biome == Biome.Arctic || biome == Biome.Glacier ||
+                      biome == Biome.IcicleField || biome == Biome.CryoForest ||
+                      biome == Biome.Tundra;
         
         if (needsEmbers)
         {
@@ -535,9 +534,8 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         switch (biome)
         {
             // Forest biomes - pollen/spores
-            case Biome.Forest:
-            case Biome.Taiga:
-            case Biome.PineForest:
+                case Biome.Forest:
+                case Biome.Taiga:
                 particleCount = 300;
                 particleColor = new Color(1f, 1f, 0.8f, 0.4f);
                 particleSize = 0.03f;
@@ -565,9 +563,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 break;
                 
             // Desert - dust
-            case Biome.Desert:
-            case Biome.Savannah:
-            case Biome.Steppe:
+                case Biome.Desert:
                 particleCount = 200;
                 particleColor = new Color(0.9f, 0.85f, 0.7f, 0.35f);
                 particleSize = 0.04f;
@@ -599,6 +595,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
             // Plains/grassland - light dust
             case Biome.Plains:
             case Biome.Grassland:
+            case Biome.Savannah:
                 particleCount = 150;
                 particleColor = new Color(1f, 1f, 0.9f, 0.25f);
                 particleSize = 0.03f;
@@ -606,13 +603,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 break;
                 
             // Snow/ice - handled by secondary snow system
-            case Biome.Snow:
-            case Biome.Arctic:
-            case Biome.Frozen:
-            case Biome.Glacier:
-            case Biome.Tundra:
-            case Biome.IcicleField:
-            case Biome.CryoForest:
+                case Biome.Arctic:
+                case Biome.Glacier:
+                case Biome.Tundra:
+                case Biome.IcicleField:
+                case Biome.CryoForest:
                 particleCount = 100; // Just some ice crystals
                 particleColor = new Color(0.9f, 0.95f, 1f, 0.3f);
                 particleSize = 0.02f;
@@ -667,9 +662,9 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 break;
                 
             // Airless moons - no particles
-            case Biome.MoonDunes:
-            case Biome.MoonCaves:
-            case Biome.MercuryCraters:
+                case Biome.MoonDunes:
+                case Biome.MoonCraters:
+                case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
             case Biome.EuropaIce:
             case Biome.IoVolcanic:

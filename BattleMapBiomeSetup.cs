@@ -16,13 +16,13 @@ public class BattleMapBiomeSetup : MonoBehaviour
     
     [Header("Biome Selection")]
     [Tooltip("Which biomes to include in the battle map")]
-    public Biome[] biomesToInclude = { 
+        public Biome[] biomesToInclude = { 
         Biome.Plains, 
         Biome.Forest, 
         Biome.Mountain, 
         Biome.Desert, 
         Biome.Swamp,
-        Biome.Snow,
+            Biome.Arctic,
         Biome.Grassland,
         Biome.Jungle,
         Biome.Taiga

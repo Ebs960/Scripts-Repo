@@ -1130,7 +1130,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.Desert => new Color(0.8f, 0.7f, 0.3f, 1f),
             Biome.Mountain => new Color(0.6f, 0.5f, 0.4f, 1f),
             Biome.Plains => new Color(0.4f, 0.7f, 0.3f, 1f),
-            Biome.Snow => new Color(0.9f, 0.9f, 0.9f, 1f),
+            Biome.Arctic => new Color(0.9f, 0.9f, 0.9f, 1f),
             Biome.Tundra => new Color(0.6f, 0.7f, 0.8f, 1f),
             Biome.Jungle => new Color(0.1f, 0.5f, 0.1f, 1f),
             Biome.Grassland => new Color(0.5f, 0.8f, 0.3f, 1f),
@@ -1141,8 +1141,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.Coast => new Color(0.4f, 0.6f, 0.8f, 1f),
             Biome.Volcanic => new Color(0.8f, 0.3f, 0.2f, 1f),
             Biome.Steam => new Color(0.7f, 0.7f, 0.8f, 1f),
-            Biome.Frozen => new Color(0.8f, 0.8f, 0.9f, 1f),
-            Biome.Arctic => new Color(0.9f, 0.9f, 1.0f, 1f),
             
             // Real Solar System Planet Biomes
             Biome.MartianRegolith => new Color(0.6f, 0.3f, 0.2f, 1f),
@@ -1154,7 +1152,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.VenusianPlains => new Color(0.7f, 0.5f, 0.3f, 1f),
             Biome.VenusHighlands => new Color(0.6f, 0.4f, 0.3f, 1f),
             
-            Biome.MercuryCraters => new Color(0.5f, 0.5f, 0.5f, 1f),
+            Biome.MercuryPlains => new Color(0.5f, 0.5f, 0.5f, 1f),
             Biome.MercuryBasalt => new Color(0.4f, 0.4f, 0.4f, 1f),
             Biome.MercuryScarp => new Color(0.6f, 0.6f, 0.6f, 1f),
             Biome.MercurianIce => new Color(0.7f, 0.7f, 0.8f, 1f),
@@ -1172,7 +1170,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             
             Biome.PlutoCryo => new Color(0.8f, 0.8f, 0.9f, 1f),
             Biome.PlutoTholins => new Color(0.7f, 0.6f, 0.5f, 1f),
-            Biome.PlutoMountains => new Color(0.6f, 0.7f, 0.8f, 1f),
             
             Biome.TitanLakes => new Color(0.3f, 0.4f, 0.6f, 1f),
             Biome.TitanDunes => new Color(0.6f, 0.5f, 0.4f, 1f),
@@ -1185,7 +1182,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.IoSulfur => new Color(0.9f, 0.8f, 0.2f, 1f),
             
             Biome.MoonDunes => new Color(0.7f, 0.7f, 0.7f, 1f),
-            Biome.MoonCaves => new Color(0.5f, 0.5f, 0.5f, 1f),
+            Biome.MoonCraters => new Color(0.5f, 0.5f, 0.5f, 1f),
             
             _ => new Color(0.5f, 0.5f, 0.5f, 1f)
         };

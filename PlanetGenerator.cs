@@ -85,12 +85,12 @@ public struct BiomeDecorationEntry
             Biome.Grassland or Biome.Plains or Biome.Savannah => 0.8f,
             
             // Moderate decoration biomes
-            Biome.Taiga or Biome.PineForest => 0.7f,
+            Biome.Taiga or Biome.Taiga => 0.7f,
             Biome.Marsh or Biome.Swamp => 0.6f,
             
             // Sparse decoration biomes
             Biome.Desert or Biome.Tundra => 0.4f,
-            Biome.Mountain or Biome.Snow => 0.3f,
+            Biome.Mountain or Biome.Arctic => 0.3f,
             
             // Hostile biomes - minimal decorations
             Biome.Volcanic or Biome.Steam => 0.2f,
@@ -98,7 +98,7 @@ public struct BiomeDecorationEntry
             
             // Moon biomes
             Biome.MoonDunes => 0.5f,
-            Biome.MoonCaves => 0.3f,
+            Biome.MoonCraters => 0.3f,
             
             // Default
             _ => 0.5f
@@ -133,7 +133,7 @@ public struct BiomeDecorationEntry
             Biome.Grassland or Biome.Plains or Biome.Savannah => 4,
             
             // Moderate biomes
-            Biome.Taiga or Biome.PineForest => 3,
+            Biome.Taiga or Biome.Taiga => 3,
             Biome.Marsh or Biome.Swamp => 3,
             
             // Sparse biomes
@@ -1284,7 +1284,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
                 if (finalElevation > mountainThreshold)
                 {
-                    if (biome != Biome.Glacier && biome != Biome.Arctic && biome != Biome.Frozen)
+                    if (biome != Biome.Glacier && biome != Biome.Arctic)
                     {
                         biome = Biome.Mountain;
                         // Apply mountain boost so mountains sit noticeably above surrounding land
@@ -1484,8 +1484,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
-            // Protect Snow and Glacier tiles from ever becoming a coast or sea
-            if (data[i].biome == Biome.Snow || data[i].biome == Biome.Glacier) {
+            // Protect Arctic and Glacier tiles from ever becoming a coast or sea
+            if (data[i].biome == Biome.Arctic || data[i].biome == Biome.Glacier) {
                 postProcessProtectedTiles.Add(i);
                 continue;
             }
