@@ -746,7 +746,6 @@ public class BattlefieldClouds : MonoBehaviour
             // Volcanic/hellish - dark, ominous clouds
             case Biome.Volcanic:
             case Biome.Hellscape:
-            case Biome.Brimstone:
             case Biome.Ashlands:
             case Biome.CharredForest:
             case Biome.Scorched:

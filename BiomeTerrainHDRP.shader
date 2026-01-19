@@ -1,3 +1,5 @@
+// TEMPORARY: This hand-written shader is kept as a compatibility fallback.
+// Replace this file with a Shader Graph asset named `BiomeTerrain_HDRP`.
 Shader "HDRP/BiomeTerrain"
 {
     Properties

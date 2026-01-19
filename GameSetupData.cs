@@ -26,7 +26,7 @@ public static class GameSetupData
     // Special World Types
     public static string mapTypeName;            // Full name of the map type (e.g., "Infernal Highlands")
     public static bool isInfernalWorld;          // For Steam/Volcanic biomes
-    public static bool isDemonicWorld;           // For Hellscape/Brimstone biomes
+    public static bool isDemonicWorld;           // For Hellscape biomes
     public static bool isScorchedWorld;          // For Ashlands/CharredForest biomes
     public static bool isRainforestWorld;        // For enhanced rainforest generation
     public static bool isMonsoonWorld;           // For Floodlands biome

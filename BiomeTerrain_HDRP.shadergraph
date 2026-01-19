@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: BiomeTerrain_HDRP.shadergraph
+  m_EditorClassIdentifier: 
+
+# NOTE: This is a placeholder that documents the required Shader Graph.
+# Unity's .shadergraph format is editor-generated and not practical to author
+# reliably by hand. Create a Shader Graph in Unity with the exact filename
+# `BiomeTerrain_HDRP` and the following configuration and properties:
+
+# Shader Graph Settings:
+# - Target: HDRP
+# - Master Node: Lit
+# - Surface Type: Opaque
+# - Double-sided: OFF
+# - Alpha Clipping: OFF
+
+# Properties (exact names):
+# Textures:
+# _BiomeIndexMap (Texture2D)
+# _Heightmap (Texture2D)
+# _BiomeAlbedoArray (Texture2DArray)
+# _BiomeNormalArray (Texture2DArray)
+# _BiomeMaskArray (Texture2DArray)
+# Scalars:
+# _ElevationScale (Float)
+# _GlobalSnowAmount (Float, 0-1)
+# _GlobalWetness (Float, 0-1)
+# Arrays (exposed as Vector4[] via material):
+# _BiomeTints (Vector4[])
+# _BiomeParams (Vector4[])
+#   x = tiling
+#   y = snowRetention
+#   z = wetnessResponse
+#   w = isWater (0 or 1)
+
+# Vertex Displacement (Vertex stage):
+# - Sample _Heightmap using UV0
+# - Multiply by _ElevationScale
+# - Add to Position (Object) Y
+# - Do NOT use world noise, tessellation, or bake heights into mesh
+
+# Fragment (Fragment stage):
+# - Sample _BiomeIndexMap (UV0). Read R channel, *255, round, clamp -> biomeIndex
+# - Use biomeIndex to sample each Texture2DArray (albedo, normal, mask)
+# - Use tiling from _BiomeParams[biomeIndex].x
+# - Apply tint, snow (land only), wetness (land only), and water overrides as specified
+# - Hook outputs to HDRP Lit Master:
+#     Base Color -> modified albedo
+#     Normal -> unpacked normal
+#     Metallic -> mask.r
+#     Ambient Occlusion -> mask.g
+#     Smoothness -> mask.a (modified by wetness)
+#     Alpha -> 1
+
+# After creating the Shader Graph in Unity, assign the generated graph asset to the
+# `hdrpTerrainShader` field on the `HexMapChunkManager` component or place it under
+# a folder such that `Shader.Find("Shader Graphs/BiomeTerrain_HDRP")` resolves to it.
+
+# End of placeholder.

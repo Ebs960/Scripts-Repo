@@ -28,7 +28,6 @@ public static class BiomeColorHelper
             Biome.Scorched => new Color(0.5f,0.25f,0.05f,1f),
             Biome.Floodlands => new Color(0.4f,0.5f,0.35f,1f),
             Biome.Hellscape => new Color(0.5f,0.05f,0.05f,1f),
-            Biome.Brimstone => new Color(0.6f,0.2f,0.05f,1f),
             Biome.MoonDunes => new Color(0.6f,0.6f,0.6f,1f),
             Biome.MoonCraters => new Color(0.5f,0.5f,0.5f,1f),
             Biome.MercuryPlains => new Color(0.45f,0.45f,0.45f,1f),

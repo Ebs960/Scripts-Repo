@@ -591,7 +591,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
             // Volcanic - smoky, orange glow
             case Biome.Volcanic:
             case Biome.Hellscape:
-            case Biome.Brimstone:
             case Biome.Ashlands:
                 enableHeightFog = true;
                 groundFogDensity = 0.5f;

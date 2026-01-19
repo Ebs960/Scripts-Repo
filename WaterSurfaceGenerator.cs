@@ -127,11 +127,11 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         foreach (var index in region)
         {
-            Vector3 center = grid.tileCenters[index];
-            min.x = Mathf.Min(min.x, center.x);
-            min.z = Mathf.Min(min.z, center.z);
-            max.x = Mathf.Max(max.x, center.x);
-            max.z = Mathf.Max(max.z, center.z);
+            Vector3 tileCenter = grid.tileCenters[index];
+            min.x = Mathf.Min(min.x, tileCenter.x);
+            min.z = Mathf.Min(min.z, tileCenter.z);
+            max.x = Mathf.Max(max.x, tileCenter.x);
+            max.z = Mathf.Max(max.z, tileCenter.z);
         }
 
         min.x -= padX;

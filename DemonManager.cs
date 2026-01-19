@@ -26,7 +26,7 @@ public class DemonManager : MonoBehaviour
 
     [Header("Spawn Requirements")]
     [Tooltip("Biomes where demons can spawn")]
-    [SerializeField] private Biome[] spawnableBiomes = { Biome.Hellscape, Biome.Brimstone };
+    [SerializeField] private Biome[] spawnableBiomes = { Biome.Hellscape };
 
     [Header("AI Behavior")]
     [Tooltip("Chance to move towards nearest civilization each turn")]
@@ -311,7 +311,7 @@ public class DemonManager : MonoBehaviour
         if (!tileData.isPassable) return false;
         
         // Demons can cross lava/hellscape
-        if (tileData.biome == Biome.Hellscape || tileData.biome == Biome.Brimstone)
+        if (tileData.biome == Biome.Hellscape)
             return true;
         
         // Can enter land tiles

@@ -94,7 +94,7 @@ public struct BiomeDecorationEntry
             
             // Hostile biomes - minimal decorations
             Biome.Volcanic or Biome.Steam => 0.2f,
-            Biome.Hellscape or Biome.Brimstone => 0.1f,
+            Biome.Hellscape => 0.1f,
             
             // Moon biomes
             Biome.MoonDunes => 0.5f,

@@ -19,7 +19,6 @@ public enum Biome {
     Scorched,   // New biome for extremely hot and dry conditions in scorched maps
     Floodlands,  // New biome unique to monsoon map types
     Hellscape,   // New biome for demonic worlds - extremely hostile terrain
-    Brimstone,    // New biome for demonic worlds - sulfurous wastelands
     Arctic,       // New biome - the coldest of all polar biomes
     IcicleField,  // Ice World exclusive biome
     CryoForest,   // Ice World exclusive biome
@@ -362,8 +361,8 @@ public static class BiomeHelper {
         // DEMONIC WORLD: Coherent, characteristic-based logic
         if (isDemonicMapType && temperature > 0.7f) {
             if (temperature > 0.85f) {
-                if (moisture < 0.3f) return Biome.Brimstone; // Extremely hot and dry
-                return Biome.Hellscape; // Extremely hot and wet
+                // Brimstone removed: fallback to Hellscape for extremely hot regions
+                return Biome.Hellscape; // Extremely hot region
             }
             if (temperature > 0.7f) {
                 if (moisture < 0.2f) return Biome.Scorched; // Very hot, very dry
@@ -531,7 +530,6 @@ public static class BiomeHelper {
         Biome.Scorched => new YieldValues { food = 0, prod = 1, gold = 2, sci = 2, cult = 0 }, // Harsh but resource-rich
         Biome.Floodlands => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 }, // Unique yields for Floodlands
         Biome.Hellscape => new YieldValues { food = 1, prod = 5, gold = 2, sci = 3, cult = 0 }, // 
-        Biome.Brimstone => new YieldValues { food = 0, prod = 7, gold = 2, sci = 4, cult = 0 }, // 
         Biome.Arctic => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
         Biome.IcicleField => new YieldValues { food = 0, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice World exclusive - high science
         Biome.CryoForest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 2, cult = 1 }, // Ice World exclusive - balanced
@@ -606,7 +604,6 @@ public static class BiomeHelper {
         Biome.Scorched => 0,     // No defense bonus - too harsh for cover
         Biome.Floodlands => 1,   // Minor defense bonus from floodlands
         Biome.Hellscape => 0,    // No defense bonus - extremely hostile terrain
-        Biome.Brimstone => 0,    // No defense bonus - sulfurous wastelands
         Biome.Arctic => 0,        // No defense bonus - polar land areas
         Biome.IcicleField => 1,   // Minor defense from ice formations
         Biome.CryoForest => 2,    // Good defense from frozen trees
@@ -683,7 +680,6 @@ public static class BiomeHelper {
         Biome.Scorched => 3,     // Very difficult to traverse due to extreme heat
         Biome.Floodlands => 2,   // Difficult due to floodwaters
         Biome.Hellscape => 2,    // No movement cost - extremely hostile terrain
-        Biome.Brimstone => 2,    // No movement cost - sulfurous wastelands
         Biome.Arctic => 2,        // Higher movement cost - extremely harsh conditions
         Biome.IcicleField => 3,   // Difficult traversal through ice spikes
         Biome.CryoForest => 2,    // Frozen trees slow movement
@@ -767,7 +763,6 @@ public static class BiomeHelper {
             Biome.Scorched => true,
             Biome.Floodlands => true,
             Biome.Hellscape => true,
-            Biome.Brimstone => true,
             Biome.Arctic => true,
             Biome.IcicleField => true,      // Extreme cold damage
             
@@ -801,7 +796,6 @@ public static class BiomeHelper {
             Biome.Scorched => 0.20f,  // Highest damage - extremely hostile environment
             Biome.Floodlands => 0.10f, // Minor damage from floodwaters
             Biome.Hellscape => 0.30f,   // extreme damage - extremely hostile terrain
-            Biome.Brimstone => 0.45f,   // extreme damage - sulfurous wastelands
             Biome.Arctic => 0.05f,      // Minor damage from polar land areas   
             Biome.IcicleField => 0.15f, // Piercing ice damage
             

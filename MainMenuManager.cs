@@ -828,8 +828,7 @@ public class MainMenuManager : MonoBehaviour
         string mapTypeLower = mapTypeNameStr.ToLower();
         GameSetupData.isInfernalWorld = mapTypeLower.Contains("infernal");
         GameSetupData.isDemonicWorld = mapTypeLower.Contains("demonic") || 
-                                      mapTypeLower.Contains("hellscape") || 
-                                      mapTypeLower.Contains("brimstone");
+                          mapTypeLower.Contains("hellscape");
         GameSetupData.isScorchedWorld = mapTypeLower.Contains("scorched") || 
                                        mapTypeLower.Contains("ashlands") || 
                                        mapTypeLower.Contains("charred");

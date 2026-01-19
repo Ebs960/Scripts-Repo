@@ -565,7 +565,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             case Biome.Hellscape:
-            case Biome.Brimstone:
                 // Demonic hellfire lighting
                 sunColor = new Color(1f, 0.5f, 0.3f);
                 sunIntensity = 1.1f;

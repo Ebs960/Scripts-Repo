@@ -193,7 +193,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
     {
         // Determine if we need secondary particles
         bool needsEmbers = biome == Biome.Volcanic || biome == Biome.Hellscape || 
-                          biome == Biome.Brimstone || biome == Biome.Ashlands ||
+                  biome == Biome.Ashlands ||
                           biome == Biome.IoVolcanic;
         
         bool needsFireflies = biome == Biome.Forest || biome == Biome.Swamp || 
@@ -585,7 +585,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 
             // Hellscape - thick ash + embers handled separately
             case Biome.Hellscape:
-            case Biome.Brimstone:
                 particleCount = 500;
                 particleColor = new Color(0.2f, 0.15f, 0.1f, 0.6f);
                 particleSize = 0.06f;

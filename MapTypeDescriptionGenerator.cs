@@ -307,10 +307,10 @@ public static class MapTypeDescriptionGenerator
                 desc.Append("\n\nThe world itself breathes with life—towering canopies hide secrets in their green depths, and the very air hums with the chorus of a million creatures. Here, the rainforest claims dominion, its fertile embrace nurturing civilizations that learn to thrive within its verdant embrace.");
             }
             
-            // Demonic map type - Brimstone, Hellscape, and other hellish biomes
+            // Demonic map type - Hellscape and other hellish biomes
             if (mapTypeName.IndexOf("Demonic", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. The land itself rebels—sulfurous wastelands poison the air, hellscapes burn with infernal fire, and the very ground cracks to reveal the abyss beneath. Those who would survive must be prepared to face horrors beyond mortal comprehension, where the earth bleeds brimstone and charred forests stand as monuments to forgotten battles.");
+                desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. The land itself rebels—hellscapes burn with infernal fire, and the very ground cracks to reveal the abyss beneath. Those who would survive must be prepared to face horrors beyond mortal comprehension, where charred forests stand as monuments to forgotten battles.");
             }
             
             // Infernal map type - Volcanic, Steam, CharredForest biomes

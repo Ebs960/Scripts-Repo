@@ -97,6 +97,11 @@ public class HexMapChunkManager : MonoBehaviour
     private Texture2DArray biomeAlbedoArray;
     private Texture2DArray biomeNormalArray;
     private Texture2DArray biomeMaskArray;
+    private Texture2DArray biomeEmissiveArray;
+    // Mapping from biome -> surface start/variant counts: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
+    private Vector4[] biomeSurfaceMapArray;
+    private Texture2D biomeSurfaceMapTexture;
+    private Texture2D biomeEmissiveMapTexture;
     private Vector4[] biomeTintArray;
     private Vector4[] biomeParamsArray;
     private Dictionary<Biome, int> biomeIndexLookup;
@@ -441,10 +446,112 @@ TrySubscribeToSurfaceReady(gen);
 
     private void BuildBiomeTextureArrays()
     {
+        // Build flattened surface library (families + variants) via BiomeVisualDatabase
         var visuals = biomeVisualDatabase.biomes;
         int count = visuals.Count;
         if (count == 0) return;
 
+        var lib = biomeVisualDatabase.BuildSurfaceLibrary();
+        if (lib != null)
+        {
+            // Use flattened arrays as the texture sources
+            biomeAlbedoArray = lib.albedoArray;
+            biomeNormalArray = lib.normalArray;
+            biomeMaskArray = lib.maskArray;
+                biomeEmissiveArray = lib.emissiveArray;
+
+            // Build per-biome mapping vector: x = startSlice, y = variantCount, z = surfaceIndex, w = forcedVariant
+            biomeSurfaceMapArray = new Vector4[count];
+            for (int i = 0; i < count; i++)
+            {
+                int surfaceIndex = (lib.biomeToSurfaceIndex != null && i < lib.biomeToSurfaceIndex.Length) ? lib.biomeToSurfaceIndex[i] : -1;
+                if (surfaceIndex >= 0 && surfaceIndex < lib.surfaceStartSlice.Length)
+                {
+                    int start = lib.surfaceStartSlice[surfaceIndex];
+                    int variants = lib.surfaceVariantCounts[surfaceIndex];
+                    int forced = (lib.biomeForcedVariant != null && i < lib.biomeForcedVariant.Length) ? lib.biomeForcedVariant[i] : -1;
+                    biomeSurfaceMapArray[i] = new Vector4(start, variants, surfaceIndex, forced);
+                }
+                else
+                {
+                    biomeSurfaceMapArray[i] = new Vector4(0, 1, 0, -1);
+                }
+            }
+
+            // Build a 1D RGBAFloat texture for shader lookup (width = biome count)
+            try
+            {
+                biomeSurfaceMapTexture = new Texture2D(count, 1, TextureFormat.RGBAFloat, false, true);
+                biomeSurfaceMapTexture.wrapMode = TextureWrapMode.Repeat;
+                biomeSurfaceMapTexture.filterMode = FilterMode.Point;
+                var cols = new Color[count];
+                for (int i = 0; i < count; i++)
+                {
+                    var v = biomeSurfaceMapArray[i];
+                    cols[i] = new Color(v.x, v.y, v.z, v.w);
+                }
+                biomeSurfaceMapTexture.SetPixels(cols);
+                biomeSurfaceMapTexture.Apply(false, false);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Failed to create biome surface map texture: {ex.Message}");
+                biomeSurfaceMapTexture = null;
+            }
+
+            // Build per-biome emissive param texture (RGB = tint, A = intensity)
+            try
+            {
+                biomeEmissiveMapTexture = new Texture2D(count, 1, TextureFormat.RGBAFloat, false, true);
+                biomeEmissiveMapTexture.wrapMode = TextureWrapMode.Repeat;
+                biomeEmissiveMapTexture.filterMode = FilterMode.Point;
+                var ecols = new Color[count];
+                for (int i = 0; i < count; i++)
+                {
+                    var entry = visuals[i];
+                    if (entry != null)
+                    {
+                        ecols[i] = new Color(entry.emissiveTint.r, entry.emissiveTint.g, entry.emissiveTint.b, entry.emissiveIntensity);
+                    }
+                    else
+                    {
+                        ecols[i] = new Color(0f, 0f, 0f, 0f);
+                    }
+                }
+                biomeEmissiveMapTexture.SetPixels(ecols);
+                biomeEmissiveMapTexture.Apply(false, false);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[HexMapChunkManager] Failed to create biome emissive map texture: {ex.Message}");
+                biomeEmissiveMapTexture = null;
+            }
+
+            // Populate tint and params arrays from biome visuals
+            biomeTintArray = new Vector4[count];
+            biomeParamsArray = new Vector4[count];
+            for (int i = 0; i < count; i++)
+            {
+                var entry = visuals[i];
+                if (entry != null)
+                {
+                    biomeTintArray[i] = entry.tint;
+                    biomeParamsArray[i] = new Vector4(entry.tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
+                }
+                else
+                {
+                    biomeTintArray[i] = Color.white;
+                    biomeParamsArray[i] = new Vector4(1f, 0f, 0f, 0f);
+                }
+            }
+
+            biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
+            biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
+            biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
+            return;
+        }
+
+        // Fallback: original per-biome arrays (kept for compatibility)
         Texture2D fallbackAlbedo = Texture2D.whiteTexture;
         Texture2D fallbackNormal = CreateFlatNormal();
         Texture2D fallbackMask = CreateDefaultMask();
@@ -470,6 +577,7 @@ TrySubscribeToSurfaceReady(gen);
         biomeAlbedoArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, false);
         biomeNormalArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
         biomeMaskArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
+        biomeEmissiveArray = new Texture2DArray(width, height, count, TextureFormat.RGBAHalf, true, true);
 
         biomeTintArray = new Vector4[count];
         biomeParamsArray = new Vector4[count];
@@ -500,6 +608,8 @@ TrySubscribeToSurfaceReady(gen);
             Graphics.CopyTexture(albedo, 0, 0, biomeAlbedoArray, i, 0);
             Graphics.CopyTexture(normal, 0, 0, biomeNormalArray, i, 0);
             Graphics.CopyTexture(mask, 0, 0, biomeMaskArray, i, 0);
+            // fallback emissive = black
+            Graphics.CopyTexture(Texture2D.blackTexture, 0, 0, biomeEmissiveArray, i, 0);
 
             if (entry != null)
             {
@@ -516,6 +626,7 @@ TrySubscribeToSurfaceReady(gen);
         biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
         biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
         biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
+        biomeEmissiveArray.wrapMode = TextureWrapMode.Repeat;
     }
 
     private void BuildBiomeIndexMap(int width, int height)
@@ -643,10 +754,34 @@ TrySubscribeToSurfaceReady(gen);
             sharedMaterial.SetVectorArray("_BiomeParams", biomeParamsArray);
         }
 
+        if (biomeSurfaceMapArray != null)
+        {
+            sharedMaterial.SetVectorArray("_BiomeSurfaceMap", biomeSurfaceMapArray);
+        }
+        
+        if (biomeSurfaceMapTexture != null)
+        {
+            sharedMaterial.SetTexture("_BiomeSurfaceMapTex", biomeSurfaceMapTexture);
+        }
+
+        if (biomeEmissiveArray != null)
+        {
+            sharedMaterial.SetTexture("_SurfaceEmissiveArray", biomeEmissiveArray);
+        }
+
+        if (biomeEmissiveMapTexture != null)
+        {
+            sharedMaterial.SetTexture("_BiomeEmissiveMapTex", biomeEmissiveMapTexture);
+        }
+
         sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
         sharedMaterial.SetFloat("_GlobalWetness", globalWetness);
         sharedMaterial.SetFloat("_MapWidth", mapWidth);
         sharedMaterial.SetFloat("_MapHeight", mapHeight);
+
+        // Provide biome count for shader UV-based lookups (if Shader Graph cannot texelFetch)
+        int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
+        sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
     }
     
     private void CreateSharedMaterial()
@@ -654,11 +789,18 @@ TrySubscribeToSurfaceReady(gen);
         Shader shader = hdrpTerrainShader;
         if (shader == null)
         {
+            // Prefer the Shader Graph-based shader. Ensure a Shader Graph named `BiomeTerrain_HDRP` exists
+            // under a Shader Graphs folder (common import path). The field can also be set in inspector.
+            shader = Shader.Find("Shader Graphs/BiomeTerrain_HDRP");
+        }
+        if (shader == null)
+        {
+            // Try legacy built-in shader name used previously
             shader = Shader.Find("HDRP/BiomeTerrain");
         }
         if (shader == null)
         {
-            Debug.LogError("[HexMapChunkManager] HDRP terrain shader not found!");
+            Debug.LogWarning("[HexMapChunkManager] HDRP terrain shader not found! Falling back to HDRP/Lit.");
             shader = Shader.Find("HDRP/Lit");
         }
         
