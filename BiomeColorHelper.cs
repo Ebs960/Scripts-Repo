@@ -22,7 +22,7 @@ public static class BiomeColorHelper
             Biome.IcicleField => new Color(0.9f,0.92f,0.98f,1f),
             Biome.CryoForest => new Color(0.7f,0.85f,0.9f,1f),
             Biome.Volcanic => new Color(0.45f,0.1f,0.05f,1f),
-            Biome.Steam => new Color(0.6f,0.3f,0.2f,1f),
+            Biome.Steamlands => new Color(0.6f,0.3f,0.2f,1f),
             Biome.Ashlands => new Color(0.45f,0.4f,0.38f,1f),
             Biome.CharredForest => new Color(0.15f,0.12f,0.1f,1f),
             Biome.Scorched => new Color(0.5f,0.25f,0.05f,1f),

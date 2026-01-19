@@ -8,7 +8,7 @@ public static class MapTypeNameGenerator
         new[] { "Northern", "Boreal", "Taiga", "Tundra", "Pine", "Snow" },
         new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald" },
         new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon" },
-        new[] { "Desert", "Arid", "Sweltering", "Oasis", "Jungle", "Steam" },
+        new[] { "Desert", "Arid", "Sweltering", "Oasis", "Jungle", "Steamlands" },
         new[] { "Scorched", "Barren", "Burning", "Mirage", "Infernal", "Demonic" }
     };
 

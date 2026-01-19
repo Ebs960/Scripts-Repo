@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: RiverLake Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: RiverLake Family
+  albedoArray: {fileID: 18700000, guid: b6a0f2af5ab793c4c9b05c33616a0e78, type: 2}
+  normalArray: {fileID: 18700000, guid: dac0173ede5b7c640849592f285baf8b, type: 2}
+  maskArray: {fileID: 18700000, guid: ecb8d896df5da264e92e44cdebbe6b0f, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

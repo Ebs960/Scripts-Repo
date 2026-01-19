@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
+  m_Name: Io Sulfur
+  m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
+  biome: 58
+  surfaceFamily: {fileID: 11400000, guid: 066006052f78952488b9e723d872b48b, type: 2}
+  forcedVariant: -1
+  albedo: {fileID: 0}
+  normal: {fileID: 0}
+  maskMap: {fileID: 0}
+  tiling: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
+  emissiveTint: {r: 1, g: 1, b: 1, a: 1}
+  emissiveIntensity: 0
+  snowRetention: 0
+  wetnessResponse: 0
+  isWaterBiome: 0

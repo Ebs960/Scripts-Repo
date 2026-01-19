@@ -1140,7 +1140,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.Savannah => new Color(0.7f, 0.6f, 0.3f, 1f),
             Biome.Coast => new Color(0.4f, 0.6f, 0.8f, 1f),
             Biome.Volcanic => new Color(0.8f, 0.3f, 0.2f, 1f),
-            Biome.Steam => new Color(0.7f, 0.7f, 0.8f, 1f),
+            Biome.Steamlands => new Color(0.7f, 0.7f, 0.8f, 1f),
             
             // Real Solar System Planet Biomes
             Biome.MartianRegolith => new Color(0.6f, 0.3f, 0.2f, 1f),

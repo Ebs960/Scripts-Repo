@@ -756,8 +756,8 @@ public class BattlefieldClouds : MonoBehaviour
                 cloudHeight = 80f; // Lower, more oppressive
                 break;
                 
-            // Steam/geothermal - wispy clouds
-            case Biome.Steam:
+            // Steamlands/geothermal - wispy clouds
+            case Biome.Steamlands:
                 cloudDensity = 0.4f;
                 cloudColor = new Color(0.95f, 0.95f, 1f, 0.5f);
                 scrollSpeed = 1.0f;

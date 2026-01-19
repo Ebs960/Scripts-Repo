@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Tundra Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: Tundra Family
+  albedoArray: {fileID: 18700000, guid: 77cab8ad54d8b084abe849a67ec5492a, type: 2}
+  normalArray: {fileID: 18700000, guid: 4f9e35a31d584c64b84a3caf9c46885c, type: 2}
+  maskArray: {fileID: 18700000, guid: 55953cb37218b31429659cae2c98b0a0, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

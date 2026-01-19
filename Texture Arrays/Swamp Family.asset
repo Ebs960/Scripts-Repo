@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Swamp Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: Swamp Family
+  albedoArray: {fileID: 18700000, guid: 18406d9d95eb5894e9776bb41c35dbe4, type: 2}
+  normalArray: {fileID: 18700000, guid: 2a367ff25cefeb24ea39879be89721fc, type: 2}
+  maskArray: {fileID: 18700000, guid: 73ad638c5a393ee419e43d95a50907c7, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Volcanic Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
-  emissiveArray: {fileID: 0}
-  supportsEmission: 0
+  familyName: Volcanic Family
+  albedoArray: {fileID: 18700000, guid: 22c8c9c8fe54f2247af2db1195ff37f5, type: 2}
+  normalArray: {fileID: 18700000, guid: 2e4668288c2e58a4bacf1fc3a34a8e72, type: 2}
+  maskArray: {fileID: 18700000, guid: c8f978de5891566489b4af6436df8de3, type: 2}
+  emissiveArray: {fileID: 18700000, guid: 1c53bccb621edc1419fe018c4592cf07, type: 2}
+  supportsEmission: 1
   defaultTiling: 1
   defaultTint: {r: 1, g: 1, b: 1, a: 1}
   normalStrength: 1

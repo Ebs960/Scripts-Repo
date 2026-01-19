@@ -550,7 +550,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // === VOLCANIC/HELLISH BIOMES ===
             case Biome.Volcanic:
-            case Biome.Steam:
+            case Biome.Steamlands:
                 // Hot volcanic lighting with glow
                 sunColor = new Color(1f, 0.7f, 0.5f);
                 sunIntensity = 1.2f;

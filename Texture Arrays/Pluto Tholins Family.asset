@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Pluto Tholins Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: Pluto Tholins Family
+  albedoArray: {fileID: 18700000, guid: 08c7f99e42eb52c4281aa0ad21bc1f59, type: 2}
+  normalArray: {fileID: 18700000, guid: a7488762362082846b52b86c723599ea, type: 2}
+  maskArray: {fileID: 18700000, guid: 3266a529f73d78b41a15553383b1d3ee, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

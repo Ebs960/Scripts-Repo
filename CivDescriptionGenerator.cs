@@ -156,7 +156,7 @@ public static class CivDescriptionGenerator
         { TechAge.ReformationAge, "They question and reform in the Reformation Age, faith and reason in conflict." },
         { TechAge.EnlightenmentAge, "They shine in the Enlightenment Age, where knowledge is power." },
         { TechAge.RevolutionAge, "They rise in the Revolution Age, toppling old orders for new dreams." },
-        { TechAge.SteamAge, "They roar into the Steam Age, engines churning and cities rising." },
+        { TechAge.SteamAge, "They roar into the Steamlands Age, engines churning and cities rising." },
         { TechAge.RailroadAge, "They connect the world in the Railroad Age, iron rails binding continents." },
         { TechAge.ImperialAge, "They dominate in the Imperial Age, their banners flying over distant lands." },
         { TechAge.ModernAge, "They innovate in the Modern Age, where progress is relentless." },

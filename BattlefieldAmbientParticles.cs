@@ -612,8 +612,8 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 particleSize = 0.02f;
                 break;
                 
-            // Steam
-            case Biome.Steam:
+            // Steamlands
+            case Biome.Steamlands:
                 particleCount = 300;
                 particleColor = new Color(1f, 1f, 1f, 0.4f);
                 particleSize = 0.15f;

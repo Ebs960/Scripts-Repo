@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Steamlands Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: Steamlands Family
+  albedoArray: {fileID: 18700000, guid: 91b429aec89e00c45bedd3350ac0e27b, type: 2}
+  normalArray: {fileID: 18700000, guid: 657d3b54b11dbd44e85b13f11a67b6a5, type: 2}
+  maskArray: {fileID: 18700000, guid: 77169ad9b0278b24fa7a3bfaa0bf1c06, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

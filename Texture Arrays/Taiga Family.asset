@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
   m_Name: Taiga Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: 
-  albedoArray: {fileID: 0}
-  normalArray: {fileID: 0}
-  maskArray: {fileID: 0}
+  familyName: Taiga Family
+  albedoArray: {fileID: 18700000, guid: ce75de35c9474e7469edd065eb4f8440, type: 2}
+  normalArray: {fileID: 18700000, guid: a6e6d686d3ac4b74e9224279c0d42415, type: 2}
+  maskArray: {fileID: 18700000, guid: 2f6eef72894a8ac43b84f981ecdef194, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

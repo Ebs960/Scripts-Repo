@@ -12,7 +12,7 @@ public enum Biome {
     MoonDunes,
     MoonCraters,
     Volcanic,  // Added new volcanic terrain
-    Steam,     // Added new steam terrain
+    Steamlands,     // Added new steam terrain
     Rainforest, // Added new rainforest biome - even wetter than jungle
     Ashlands,  // New biome for scorched map types
     CharredForest, // New biome for scorched map types
@@ -368,21 +368,21 @@ public static class BiomeHelper {
                 if (moisture < 0.2f) return Biome.Scorched; // Very hot, very dry
                 if (moisture < 0.4f) return Biome.Ashlands; // Very hot, dry
                 if (moisture < 0.7f) return Biome.CharredForest; // Very hot, medium-wet
-                return Biome.Steam; // Very hot, wet
+                return Biome.Steamlands; // Very hot, wet
             }
         }
 
         // For extremely high temperatures in infernal maps
         if (isInfernalMapType && temperature > 0.85f) {
-            if (moisture > 0.75f) return Biome.Steam;
-            if (moisture > 0.5f) return Biome.CharredForest; // Hot + Very Wet = Steam vents
+            if (moisture > 0.75f) return Biome.Steamlands;
+            if (moisture > 0.5f) return Biome.CharredForest; // Hot + Very Wet = Steamlands vents
             return Biome.Volcanic;                          // Very hot = Volcanic terrain
         }
 
         // For extremely high temperatures in scorched maps
         if (isScorchedMapType && temperature > 0.85f) {
             if (temperature > 0.90f && moisture < 0.2f) return Biome.Scorched;  // Extremely hot + Very Dry = Scorched wastes
-            if (moisture > 0.75f) return Biome.Steam;                         // Extremely hot + Very Wet = Steam vents
+            if (moisture > 0.75f) return Biome.Steamlands;                         // Extremely hot + Very Wet = Steamlands vents
             if (moisture > 0.5f) return Biome.CharredForest; // Hot + Medium Wet = Charred remains of forest
             return Biome.Ashlands;                          // Hot + Dry = Ashlands
         }
@@ -524,7 +524,7 @@ public static class BiomeHelper {
         Biome.MoonDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 },
         Biome.MoonCraters => new YieldValues { food = 0, prod = 2, gold = 1, sci = 0, cult = 0 },
         Biome.Volcanic => new YieldValues { food = 0, prod = 3, gold = 2, sci = 0, cult = 0 }, // High production and gold, no food
-        Biome.Steam => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 }, // High gold and good production, no food
+        Biome.Steamlands => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 }, // High gold and good production, no food
         Biome.Ashlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 1, cult = 0 }, // Unique yields for Ashlands
         Biome.CharredForest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 }, // Unique yields for Charred Forest
         Biome.Scorched => new YieldValues { food = 0, prod = 1, gold = 2, sci = 2, cult = 0 }, // Harsh but resource-rich
@@ -598,7 +598,7 @@ public static class BiomeHelper {
         Biome.Rainforest => 2, // Same defense bonus as jungle
         Biome.Mountain => 3,
         Biome.Volcanic => 4,     // Significant defense bonus due to difficult terrain
-        Biome.Steam => 2,        // Some defense bonus due to obscured visibility
+        Biome.Steamlands => 2,        // Some defense bonus due to obscured visibility
         Biome.Ashlands => 1,     // Minor defense bonus from ash dunes
         Biome.CharredForest => 3, // Good defense bonus from burned tree remains
         Biome.Scorched => 0,     // No defense bonus - too harsh for cover
@@ -674,7 +674,7 @@ public static class BiomeHelper {
         Biome.Lake => 2,   // Inland water - navigable but slower
         
         Biome.Volcanic => 3,     // Very difficult to traverse
-        Biome.Steam => 2,        // Moderately difficult due to hot steam vents
+        Biome.Steamlands => 2,        // Moderately difficult due to hot steam vents
         Biome.Ashlands => 2,     // Difficult due to ash drifts
         Biome.CharredForest => 2, // Difficult due to fallen burned trees
         Biome.Scorched => 3,     // Very difficult to traverse due to extreme heat
@@ -758,7 +758,7 @@ public static class BiomeHelper {
     {
         return biome switch {
             Biome.Volcanic => true,
-            Biome.Steam => true,
+            Biome.Steamlands => true,
             Biome.Ashlands => true,
             Biome.Scorched => true,
             Biome.Floodlands => true,
@@ -791,7 +791,7 @@ public static class BiomeHelper {
     {
         return biome switch {
             Biome.Volcanic => 0.15f,  // Significant damage from lava
-            Biome.Steam => 0.10f,     // Moderate damage from scalding steam
+            Biome.Steamlands => 0.10f,     // Moderate damage from scalding steam
             Biome.Ashlands => 0.05f,  // Minor damage from toxic ash
             Biome.Scorched => 0.20f,  // Highest damage - extremely hostile environment
             Biome.Floodlands => 0.10f, // Minor damage from floodwaters

@@ -171,7 +171,7 @@ public static class MapTypeDescriptionGenerator
         { "A scorching desert where dunes of golden sand shift with each hot wind, revealing and concealing ruins of civilizations that dared to build here. Oases are fiercely guarded prizes.", 
           "Arid scrublands bake beneath an unforgiving sun, where thorny plants and venomous creatures have evolved to survive on almost nothing. Water is worth more than gold.", 
           "Hot seasonal forests have adapted to cycles of growth and dormancy, their deciduous trees shedding leaves to conserve water during scorching dry seasons.", 
-          "Steamy jungles where the heat and humidity combine to create a greenhouse of explosive growth. Sweat is constant, comfort is rare, but life flourishes in overwhelming abundance.", 
+          "Steamlands jungles where the heat and humidity combine to create a greenhouse of explosive growth. Sweat is constant, comfort is rare, but life flourishes in overwhelming abundance.", 
           "Dense rainforests swelter beneath perpetual clouds, their canopies so thick that the forest floor exists in permanent twilight. The heat is oppressive, but the life is spectacular.", 
           "Oppressive heat combines with constant moisture to create conditions that test the endurance of all but the most adapted creatures. Fungi and insects thrive while others suffer.",
           "A hothouse realm where extreme heat and torrential rainfall create vegetation of almost alarming vigor. Plants grow visibly day by day, and the jungle reclaims any clearing within weeks." },
@@ -180,7 +180,7 @@ public static class MapTypeDescriptionGenerator
           "A hellish landscape of bare rock and shifting sand, where temperatures can kill an unprepared traveler within hours. Life here is sparse, specialized, and remarkably tenacious.", 
           "Against all odds, scattered vegetation clings to existence in this scorching realm, finding purchase in sheltered crevices and drawing water from sources unknown.", 
           "The impossible combination of extreme heat and abundant moisture creates a pressure-cooker environment where life grows at a feverish pace, competing frantically for every resource.", 
-          "Extreme heat meets constant rainfall in a steamy nightmare where visibility is measured in feet and the air itself seems to sweat. The jungles here are alien, primal, and utterly unforgiving.", 
+          "Extreme heat meets constant rainfall in a Steamlands nightmare where visibility is measured in feet and the air itself seems to sweat. The jungles here are alien, primal, and utterly unforgiving.", 
           "A perpetual sauna where the heat and humidity combine to create conditions nearly intolerable to normal life. Strange creatures adapted to this inferno lurk in the scalding mists.",
           "Where extreme heat meets maximum rainfall, a lush but terrifying environment emerges. Toxic plants, venomous creatures, and diseases unknown elsewhere make this a deadly paradise." }
     };
@@ -313,16 +313,16 @@ public static class MapTypeDescriptionGenerator
                 desc.Append("\n\nDark whispers speak of portals to the nether realms, and the boundary between this world and the next grows thin. The land itself rebels—hellscapes burn with infernal fire, and the very ground cracks to reveal the abyss beneath. Those who would survive must be prepared to face horrors beyond mortal comprehension, where charred forests stand as monuments to forgotten battles.");
             }
             
-            // Infernal map type - Volcanic, Steam, CharredForest biomes
+            // Infernal map type - Volcanic, Steamlands, CharredForest biomes
             if (mapTypeName.IndexOf("Infernal", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                desc.Append("\n\nThe earth's inner fire breaks through the surface in a symphony of destruction and renewal. Volcanic peaks belch smoke and ash, scalding steam vents carve paths through the rock, and forests stand charred yet defiant—testaments to life's persistence even in the face of infernal heat. Here, the planet's molten heart beats close to the surface, reshaping the land with each eruption.");
+                desc.Append("\n\nThe earth's inner fire breaks through the surface in a symphony of destruction and renewal. Volcanic peaks belch smoke and ash, scalding Steamlands vents carve paths through the rock, and forests stand charred yet defiant—testaments to life's persistence even in the face of infernal heat. Here, the planet's molten heart beats close to the surface, reshaping the land with each eruption.");
             }
             
             // Scorched map type - Scorched, Ashlands, CharredForest biomes
             if (mapTypeName.IndexOf("Scorched", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                desc.Append("\n\nThe sun's fury has baked this world into submission. Vast scorched wastes stretch beneath an unforgiving sky, while ash drifts like grey snow across lands where fire has claimed all. Charred forests stand as skeletal reminders of what once was, and steam vents hiss warnings to those who dare the deepest reaches. Survival here is an art taught by the harsh sun itself.");
+                desc.Append("\n\nThe sun's fury has baked this world into submission. Vast scorched wastes stretch beneath an unforgiving sky, while ash drifts like grey snow across lands where fire has claimed all. Charred forests stand as skeletal reminders of what once was, and Steamlands vents hiss warnings to those who dare the deepest reaches. Survival here is an art taught by the harsh sun itself.");
             }
             
             // Ice World map type - CryoForest and IcicleField biomes
