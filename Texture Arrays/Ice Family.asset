@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
+  m_Name: Ice Family
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
+  familyName: Ice Family
+  albedoArray: {fileID: 18700000, guid: 0c570fdc54d7a3742b8e6c8408d878e8, type: 2}
+  normalArray: {fileID: 18700000, guid: 0466f91cbea7446478897e9d3930eba0, type: 2}
+  maskArray: {fileID: 18700000, guid: 2009f333b71640c41bbbc992d75590c2, type: 2}
+  emissiveArray: {fileID: 0}
+  supportsEmission: 0
+  defaultTiling: 1
+  defaultTint: {r: 1, g: 1, b: 1, a: 1}
+  normalStrength: 1
+  roughnessOffset: 0

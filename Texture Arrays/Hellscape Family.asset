@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
+  m_Name: Hellscape Family
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
+  familyName: Hellscape Family
+  albedoArray: {fileID: 18700000, guid: 6bb261dc7b3ceed40a7a4f46df0be7b5, type: 2}
+  normalArray: {fileID: 18700000, guid: e375938dda1b37142ab2bf03c4129943, type: 2}
+  maskArray: {fileID: 18700000, guid: 4e8ac26e65df42e428556b80c057ccbd, type: 2}
+  emissiveArray: {fileID: 18700000, guid: 58a396098941369479b09ea3c8ab34d8, type: 2}
+  supportsEmission: 1
+  defaultTiling: 1
+  defaultTint: {r: 1, g: 1, b: 1, a: 1}
+  normalStrength: 1
+  roughnessOffset: 0
