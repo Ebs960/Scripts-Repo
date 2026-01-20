@@ -11,8 +11,7 @@ public class CreateTexture2DArrayFromFolder : EditorWindow
 {
     private string folderPath = "Assets/Textures";
     private string outputPath = "Assets/TextureArrays";
-    private int maxSize = 2048;
-    private TextureFormat textureFormat = TextureFormat.RGBA32;
+    private int maxTextureSize = 2048;
     private bool generateMips = true;
     private bool useHDR = false; // uses RGBAHalf when true
 
@@ -27,13 +26,13 @@ public class CreateTexture2DArrayFromFolder : EditorWindow
         GUILayout.Label("Texture2DArray Builder", EditorStyles.boldLabel);
         folderPath = EditorGUILayout.TextField("Source Folder", folderPath);
         outputPath = EditorGUILayout.TextField("Output Folder", outputPath);
-        maxSize = EditorGUILayout.IntField("Max Size", maxSize);
+        maxTextureSize = EditorGUILayout.IntField("Max Size", maxTextureSize);
         generateMips = EditorGUILayout.Toggle("Generate Mips", generateMips);
         useHDR = EditorGUILayout.Toggle("Use HDR (RGBAHalf)", useHDR);
 
         if (GUILayout.Button("Create Texture2DArray from Folder"))
         {
-            CreateArrayFromFolder(folderPath, outputPath, maxSize, generateMips, useHDR);
+            CreateArrayFromFolder(folderPath, outputPath, maxTextureSize, generateMips, useHDR);
         }
     }
 

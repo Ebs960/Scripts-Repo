@@ -12,4 +12,54 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cb90e2678fc05a4da5b1f858bcc82c2, type: 3}
   m_Name: Biome Visual Database
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualDatabase
-  biomes: []
+  biomes:
+  - {fileID: 11400000, guid: 13898928231c96842a4ac18dc8231a48, type: 2}
+  - {fileID: 11400000, guid: a7690ea085359e6478e4ad59e9d31f72, type: 2}
+  - {fileID: 11400000, guid: 224cfde78968c054a81d060609f761e1, type: 2}
+  - {fileID: 11400000, guid: 815d0967eef809b4bb5d2ec927f45173, type: 2}
+  - {fileID: 11400000, guid: b0dc4243d3e9dd0469caadc76d3c6666, type: 2}
+  - {fileID: 11400000, guid: 04f258f1e247b364398f6a0baaab8bf3, type: 2}
+  - {fileID: 11400000, guid: 4271307bc2a292341be81cb089369f5c, type: 2}
+  - {fileID: 11400000, guid: 5a2cad7442160144391ba0a1a4bd05b4, type: 2}
+  - {fileID: 11400000, guid: 932525f9450607b4685bc90c32c9b14b, type: 2}
+  - {fileID: 11400000, guid: e43e11fca63c5a343a24c6a2a4d757a0, type: 2}
+  - {fileID: 11400000, guid: b0eb6400d3f892f4fb1ef8e07dc85ea1, type: 2}
+  - {fileID: 11400000, guid: bae8f22af0c27d448aa1ae6f55ccb804, type: 2}
+  - {fileID: 11400000, guid: 3139b4c99b6bec64a972ff4e2a47a007, type: 2}
+  - {fileID: 11400000, guid: cc4c4767fae4df94788191da18110e85, type: 2}
+  - {fileID: 11400000, guid: 39eed3696db294d4e9280fd11e0ee340, type: 2}
+  - {fileID: 11400000, guid: 0dcfcaaf0a336a144aacca065efe298e, type: 2}
+  - {fileID: 11400000, guid: 739b571f89c0679458f61d8dcf729227, type: 2}
+  - {fileID: 11400000, guid: 39d838c164832b54791fcf7f66fdfdab, type: 2}
+  - {fileID: 11400000, guid: 0e86c1b9e22f46745abb76d8658229ad, type: 2}
+  - {fileID: 11400000, guid: d15ca8d2c042ab84a8d73eada4dfccb5, type: 2}
+  - {fileID: 11400000, guid: 8b3139657f13e0e41811e002f46bb39c, type: 2}
+  - {fileID: 11400000, guid: c08e6c51158786441a048a8fed972a77, type: 2}
+  - {fileID: 11400000, guid: 895f75d9bed6dfe40b1255a05189ddcc, type: 2}
+  - {fileID: 11400000, guid: 44829a5e740d97f439784dbffe2bf9eb, type: 2}
+  - {fileID: 11400000, guid: 6e79c535cf2914f42a4893181d2ddc95, type: 2}
+  - {fileID: 11400000, guid: 6f5aa9ff25531d3458c85c3454e954c2, type: 2}
+  - {fileID: 11400000, guid: ac1ffeb4e59436344b8dbd43e90438ea, type: 2}
+  - {fileID: 11400000, guid: 217218497ad39cd4ea5c240a56f54cc1, type: 2}
+  - {fileID: 11400000, guid: 5d265a3a3f6902141800032830848778, type: 2}
+  - {fileID: 11400000, guid: c70d4e975712f6e448dba099b4372f0e, type: 2}
+  - {fileID: 11400000, guid: 8a854fe8f3123f5478f364fab7438560, type: 2}
+  - {fileID: 11400000, guid: d3813f4ee2d169f4fb0710f3a71d772c, type: 2}
+  - {fileID: 11400000, guid: f053324f3b8dcb34c95154b8ce2a48fd, type: 2}
+  - {fileID: 11400000, guid: 490441459956d8e46bda100e0cf17919, type: 2}
+  - {fileID: 11400000, guid: c5bc6493cf2dcad4cbefca0a4a97075c, type: 2}
+  - {fileID: 11400000, guid: b5d8d8e044f814c4fb73a7f0040ca15a, type: 2}
+  - {fileID: 11400000, guid: 28c179fe8c015a24b82bfd63510bbadc, type: 2}
+  - {fileID: 11400000, guid: e039528979e653e40b082ce5ead1983d, type: 2}
+  - {fileID: 11400000, guid: 897c74ca45576e747b9074073eff5c7a, type: 2}
+  - {fileID: 11400000, guid: 6f9a69fbea755724fbb536b563f31837, type: 2}
+  - {fileID: 11400000, guid: 5db8824c13a8b024ab7da785e87ddf96, type: 2}
+  - {fileID: 11400000, guid: a58e1fd4e0f834d4c9161e1836d79303, type: 2}
+  - {fileID: 11400000, guid: 4a10c18928558a84ab153b797c6cfe79, type: 2}
+  - {fileID: 11400000, guid: e8698f224f0c30e45a4d21452811633a, type: 2}
+  - {fileID: 11400000, guid: 58a7e85bca8d00c46b3478662969500b, type: 2}
+  - {fileID: 11400000, guid: d596190f3c8fd4e4ca179a484eb6131b, type: 2}
+  - {fileID: 11400000, guid: 13ca25d74a7520b42a20bfe93deab760, type: 2}
+  - {fileID: 11400000, guid: a2b5ae55e1d513c409e61422c0d41bc6, type: 2}
+  - {fileID: 11400000, guid: 1d68d2ea91edcec4b8a9b2c132974c83, type: 2}
+  - {fileID: 11400000, guid: 859b1ae47325842409366233b4c86987, type: 2}

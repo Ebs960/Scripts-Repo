@@ -234,6 +234,39 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
 
+    [Header("Layer Integration")]
+    [Tooltip("Optional GasGiantRenderer for planetoid visuals (enabled/disabled via layer config)")]
+    public GasGiantRenderer gasGiantRenderer;
+
+    [Tooltip("Optional reference to the HexMapChunkManager terrain renderer on this planet prefab.")]
+    public HexMapChunkManager terrainRenderer;
+
+    /// <summary>
+    /// Apply planet layer configuration in a data-driven way.
+    /// Enables the GasGiantRenderer only when the planet has an Atmosphere layer and no Surface layer.
+    /// This method does not rely on planet type conditionals and does not modify tile generation.
+    /// </summary>
+    public void ApplyPlanetLayers(GameManager.PlanetData data)
+    {
+        if (data == null) return;
+
+        bool hasAtmosphereLayer = data.supportedLayers != null && data.supportedLayers.Exists(l => l.layerType == GameManager.PlanetLayerType.Atmosphere);
+        bool hasSurfaceLayer = data.supportedLayers != null && data.supportedLayers.Exists(l => l.layerType == GameManager.PlanetLayerType.Surface);
+
+        bool enableGasGiantVisuals = hasAtmosphereLayer && !hasSurfaceLayer;
+
+        if (gasGiantRenderer != null)
+        {
+            gasGiantRenderer.SetEnabledForPlanet(enableGasGiantVisuals);
+        }
+
+        if (terrainRenderer != null)
+        {
+            // terrainRenderer should be disabled for gas-giant visuals and enabled otherwise
+            terrainRenderer.enabled = !enableGasGiantVisuals;
+        }
+    }
+
     [Header("Diagnostics")]
     [Tooltip("Enable verbose diagnostic logs for generation steps.")]
     public bool enableDiagnostics = false;
@@ -1121,7 +1154,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (tileCount > 4) climateSampleIndices.Add((3 * tileCount) / 4);
         if (tileCount > 1) climateSampleIndices.Add(tileCount - 1);
 
-        int northPoleY = 0;
+        // northPoleY was unused previously; remove to avoid warning
         int southPoleY = Mathf.Max(0, tilesZ - 1);
         int equatorY = Mathf.Clamp(tilesZ / 2, 0, southPoleY);
         float? northPoleTemp = null;

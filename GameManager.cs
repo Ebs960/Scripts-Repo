@@ -184,6 +184,16 @@ currentPlanetIndex = planetIndex;
         Tundra
     }
 
+    // Explicit planet layer types used for gameplay and generation
+    public enum PlanetLayerType
+    {
+        Surface,
+        Underwater,
+        Mantle,
+        Atmosphere,
+        Orbit
+    }
+
     public enum CelestialBodyType
     {
         Planet,
@@ -220,6 +230,8 @@ currentPlanetIndex = planetIndex;
         // Atmosphere properties (determined by planet type)
         public bool hasAtmosphere; // Whether planet has atmosphere
         public string atmosphereComposition; // Atmosphere composition description
+        // Explicit per-planet supported layers (controls generation and gameplay systems)
+        public List<PlanetLayerConfig> supportedLayers = new List<PlanetLayerConfig>();
         
         // Civilization data (populated when civs actually settle the planet)
         public List<CivData> civilizations = new List<CivData>(); // Real civilizations that have settled here
@@ -237,7 +249,17 @@ currentPlanetIndex = planetIndex;
             isGenerated = false;
             hasAtmosphere = false; // Will be set based on planet type
             atmosphereComposition = ""; // Will be set based on planet type
+            supportedLayers = new List<PlanetLayerConfig>();
         }
+    }
+
+    // Per-layer configuration describing which layers exist and which are playable
+    [System.Serializable]
+    public class PlanetLayerConfig
+    {
+        public PlanetLayerType layerType;
+        public bool hasTiles = false; // whether this layer has a tile grid
+        public bool isPlayable = false; // whether players/units can occupy this layer
     }
 
     // Events
@@ -1917,6 +1939,19 @@ currentPlanetIndex = planetIndex;
     // CRITICAL FIX: Register the planet generator BEFORE firing events
     // This ensures the generator is available when spawn events fire
     planetGenerators[planetIndex] = generator;
+
+    // Apply data-driven layer setup (do not use planet type conditionals)
+    if (planetData.ContainsKey(planetIndex) && planetData[planetIndex] != null)
+    {
+        try
+        {
+            generator.ApplyPlanetLayers(planetData[planetIndex]);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[GameManager] Failed to apply planet layers for planet {planetIndex}: {ex.Message}");
+        }
+    }
 
     if (climateManagerPrefab != null)
     {

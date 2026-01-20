@@ -138,7 +138,7 @@ public class HexMapPostProcessing : MonoBehaviour
         // Find or create a directional light
         if (directionalLight == null)
         {
-            var existing = FindObjectOfType<Light>();
+            var existing = UnityEngine.Object.FindAnyObjectByType<Light>();
             if (existing != null && existing.type == LightType.Directional)
             {
                 directionalLight = existing;
@@ -177,7 +177,7 @@ public class HexMapPostProcessing : MonoBehaviour
     private void ApplyMapAndAtmosphereToning()
     {
         // Tint the chunk manager shared material (map texture shader uses _Color)
-        var chunkManager = FindObjectOfType<HexMapChunkManager>();
+        var chunkManager = UnityEngine.Object.FindAnyObjectByType<HexMapChunkManager>();
         if (chunkManager != null)
         {
             var mat = chunkManager.SharedMaterial;
