@@ -555,6 +555,13 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// </summary>
     public List<HexTileData> Tiles { get; private set; } = new List<HexTileData>();
     public bool HasGeneratedSurface { get; private set; } = false;
+    /// <summary>
+    /// World-space Y of the flat sea plane for this planet. This is the single
+    /// source-of-truth for sea/lake surface placement — water generators must
+    /// use this value and must NOT hardcode or compute their own Y offsets.
+    /// Assigned during render elevation / finalization pass.
+    /// </summary>
+    public float SeaLevelWorldY { get; private set; } = 0f;
     // Raised when surface generation fully completes
     public event System.Action OnSurfaceGenerated;
     private LoadingPanelController loadingPanelController;
@@ -1507,6 +1514,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         }
         
         Debug.Log($"[PlanetGenerator] Render elevation range: ocean=0, seas=0.03, coast=0.08, land=0.1-0.95");
+        // Set authoritative sea level world Y for this planet. The flat plane Y
+        // is used as the baseline for any water surfaces (HDRP Water Surfaces
+        // should be positioned exactly at this Y). This ensures no system
+        // computes its own sea-level offset independently.
+        if (GameManager.Instance != null)
+        {
+            SeaLevelWorldY = GameManager.Instance.GetFlatPlaneY();
+        }
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
         // Create coast tiles first where land meets water (excluding glaciers and rivers)

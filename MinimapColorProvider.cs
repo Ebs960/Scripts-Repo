@@ -158,4 +158,15 @@ public class MinimapColorProvider : ScriptableObject
     {
         return BiomeColorHelper.GetMinimapColor(biome);
     }
+
+    /// <summary>
+    /// Convenience: get a color directly from the provider for a Biome value.
+    /// Returns a sensible fallback when the provider has no entry for the biome.
+    /// </summary>
+    public Color ColorForBiome(Biome biome)
+    {
+        if (_colorLookup != null && _colorLookup.TryGetValue(biome, out var c))
+            return c;
+        return GetDefaultBiomeColor(biome);
+    }
 }

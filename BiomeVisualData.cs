@@ -5,6 +5,14 @@ public class BiomeVisualData : ScriptableObject
 {
     public Biome biome;
 
+    // Classify water behavior per-biome. This drives whether HDRP Water Surfaces
+    // should be created for areas of this biome. Rivers are intentionally
+    // distinguished so they can be rendered with decals/meshes later instead
+    // of full Water Surface objects.
+    public enum WaterType { None, Ocean, Lake, River }
+    [Header("Water Behavior")]
+    public WaterType waterType = WaterType.None;
+
     [Header("Surface Family (new)")]
     public SurfaceFamilyData surfaceFamily;
     [Tooltip("Optional: force a specific variant index for this biome (0-based). -1 = automatic selection")]

@@ -1283,19 +1283,20 @@ currentPlanetIndex = planetIndex;
         // Try multiple ways to find MinimapUI
         var minimapUI = FindAnyObjectByType<MinimapUI>();
 
-        // Earth-only water surface generation (multi-planet)
-        var earthGen = GetPlanetGenerator(0);
-        if (earthGen != null && earthGen.HasGeneratedSurface)
+        // Initialize water generators for all existing planet generators.
+        // WaterSurfaceGenerator.Initialize will subscribe to the planet's
+        // OnSurfaceGenerated event and will generate water when the surface
+        // becomes ready (or immediately if already ready). Do NOT call
+        // Generate() directly from GameManager (avoids ordering/race issues).
+        for (int pi = 0; pi < maxPlanets; pi++)
         {
-            var waterGen = earthGen.GetComponentInChildren<WaterSurfaceGenerator>();
+            var pgen = GetPlanetGenerator(pi);
+            if (pgen == null) continue;
+            var waterGen = pgen.GetComponentInChildren<WaterSurfaceGenerator>();
             if (waterGen != null)
             {
-                waterGen.Generate(earthGen);
+                waterGen.Initialize(pgen);
             }
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] Earth surface not ready for water surface generation (multi-planet mode)");
         }
         
         

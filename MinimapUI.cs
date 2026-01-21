@@ -1116,7 +1116,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private Color GetDefaultBiomeColour(Biome biome)
     {
-        // Use centralized BiomeColorHelper for consistency
+        // Prefer the MinimapColorProvider instance if assigned, otherwise fall back
+        if (colorProvider != null)
+            return colorProvider.ColorForBiome(biome);
+
         return BiomeColorHelper.GetMinimapColor(biome);
     }
     

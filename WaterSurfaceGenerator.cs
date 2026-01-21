@@ -9,15 +9,61 @@ public class WaterSurfaceGenerator : MonoBehaviour
     [SerializeField] private WaterSurface oceanSurfacePrefab;
     [SerializeField] private WaterSurface lakeSurfacePrefab;
 
-    [Header("Water Levels")]
-    [Tooltip("Surface height for ocean/sea regions.")]
-    [SerializeField] private float seaLevel = 0.12f;
-    [Tooltip("Surface height for inland lakes/rivers.")]
-    [SerializeField] private float lakeLevel = 0.12f;
+    // Note: Sea level is authoritative from PlanetGenerator.SeaLevelWorldY.
+    // This component must not compute or hardcode a Y value.
 
     private readonly List<GameObject> spawnedSurfaces = new List<GameObject>();
 
-    public void Generate(PlanetGenerator planetGen)
+    // Planet we're attached to (set via Initialize)
+    private PlanetGenerator attachedPlanet;
+
+    /// <summary>
+    /// Initialize the water generator for a specific planet generator.
+    /// Subscribes to the planet's OnSurfaceGenerated event and will create
+    /// HDRP water surfaces when that callback occurs. If the surface is already
+    /// generated, the callback is invoked immediately to produce water.
+    /// </summary>
+    public void Initialize(PlanetGenerator planet)
+    {
+        if (planet == null) return;
+        // Unsubscribe from previous if any
+        if (attachedPlanet != null)
+        {
+            attachedPlanet.OnSurfaceGenerated -= HandleSurfaceGenerated;
+        }
+
+        attachedPlanet = planet;
+        attachedPlanet.OnSurfaceGenerated += HandleSurfaceGenerated;
+
+        // If the planet is already ready, run generation now via the same handler
+        if (attachedPlanet.HasGeneratedSurface)
+        {
+            HandleSurfaceGenerated();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (attachedPlanet != null)
+        {
+            attachedPlanet.OnSurfaceGenerated -= HandleSurfaceGenerated;
+            attachedPlanet = null;
+        }
+        ClearSurfaces();
+    }
+
+    private void HandleSurfaceGenerated()
+    {
+        var gen = attachedPlanet;
+        if (gen == null) return;
+
+        // Clear any stale surfaces and generate fresh ones
+        ClearSurfaces();
+        GenerateInternal(gen);
+    }
+
+    // Internal generate method used only from the event handler above
+    private void GenerateInternal(PlanetGenerator planetGen)
     {
         if (planetGen == null || planetGen.Grid == null || !planetGen.Grid.IsBuilt)
         {
@@ -30,8 +76,6 @@ public class WaterSurfaceGenerator : MonoBehaviour
             Debug.LogWarning("[WaterSurfaceGenerator] Missing biome visual database.");
             return;
         }
-
-        ClearSurfaces();
 
         var grid = planetGen.Grid;
         int tileCount = grid.TileCount;
@@ -58,38 +102,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
             var bounds = CalculateRegionBounds(grid, region, padX, padZ);
             bool regionIsLake = RegionIsLake(planetGen, region);
 
-            float height;
-            if (regionIsLake)
-            {
-                // Compute average renderElevation for the lake region and convert
-                // to world Y using GameManager's flat plane Y + displacement strength.
-                float sumRender = 0f;
-                int renderCount = 0;
-                foreach (var ti in region)
-                {
-                    var td = planetGen.GetHexTileData(ti);
-                    if (td != null)
-                    {
-                        sumRender += td.renderElevation;
-                        renderCount++;
-                    }
-                }
-                float avgRender = (renderCount > 0) ? (sumRender / renderCount) : 0f;
-
-                float flatY = 0f;
-                float disp = 0f;
-                if (GameManager.Instance != null)
-                {
-                    flatY = GameManager.Instance.GetFlatPlaneY();
-                    disp = GameManager.Instance.GetTerrainDisplacementStrength();
-                }
-
-                height = flatY + avgRender * disp;
-            }
-            else
-            {
-                height = seaLevel;
-            }
+            // Position all HDRP Water Surfaces at the planet's authoritative sea level.
+            float height = planetGen.SeaLevelWorldY;
 
             CreateWaterSurface(regionIsLake, bounds, height, spawnedSurfaces.Count);
         }
@@ -114,7 +128,9 @@ public class WaterSurfaceGenerator : MonoBehaviour
         if (tile == null) return false;
 
         var visual = biomeVisualDatabase.Get(tile.biome);
-        return visual != null && visual.isWaterBiome;
+        if (visual == null) return false;
+        // Only treat Ocean and Lake as HDRP Water Surface candidates.
+        return visual.waterType == BiomeVisualData.WaterType.Ocean || visual.waterType == BiomeVisualData.WaterType.Lake;
     }
 
     private List<int> FloodFillRegion(PlanetGenerator planetGen, SphericalHexGrid grid, int startIndex, bool[] visited)
@@ -182,7 +198,9 @@ public class WaterSurfaceGenerator : MonoBehaviour
         {
             var tile = planetGen.GetHexTileData(index);
             if (tile == null) continue;
-            if (tile.isLake || tile.isRiver)
+            // Only consider a region a lake if tiles are marked as lake. Rivers
+            // must not be treated as flat HDRP water surfaces.
+            if (tile.isLake)
             {
                 return true;
             }
