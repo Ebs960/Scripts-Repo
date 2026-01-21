@@ -57,7 +57,39 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
             var bounds = CalculateRegionBounds(grid, region, padX, padZ);
             bool regionIsLake = RegionIsLake(planetGen, region);
-            float height = regionIsLake ? lakeLevel : seaLevel;
+
+            float height;
+            if (regionIsLake)
+            {
+                // Compute average renderElevation for the lake region and convert
+                // to world Y using GameManager's flat plane Y + displacement strength.
+                float sumRender = 0f;
+                int renderCount = 0;
+                foreach (var ti in region)
+                {
+                    var td = planetGen.GetHexTileData(ti);
+                    if (td != null)
+                    {
+                        sumRender += td.renderElevation;
+                        renderCount++;
+                    }
+                }
+                float avgRender = (renderCount > 0) ? (sumRender / renderCount) : 0f;
+
+                float flatY = 0f;
+                float disp = 0f;
+                if (GameManager.Instance != null)
+                {
+                    flatY = GameManager.Instance.GetFlatPlaneY();
+                    disp = GameManager.Instance.GetTerrainDisplacementStrength();
+                }
+
+                height = flatY + avgRender * disp;
+            }
+            else
+            {
+                height = seaLevel;
+            }
 
             CreateWaterSurface(regionIsLake, bounds, height, spawnedSurfaces.Count);
         }

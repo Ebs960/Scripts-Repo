@@ -269,6 +269,9 @@ currentPlanetIndex = planetIndex;
 
     // Manager references
     public TurnManager turnManager;
+    [Header("Planet Configs")]
+    [Tooltip("Optional per-planet ScriptableObject configs. If provided, the matching config's supportedLayers will be copied into runtime PlanetData by name.")]
+    public PlanetConfig[] planetConfigs = new PlanetConfig[0];
 
     [Header("UI Prefabs")]
     public GameObject playerUIPrefab;
@@ -1534,6 +1537,25 @@ currentPlanetIndex = planetIndex;
 
             if (name == "Earth")
                 planet.moonNames.Add("Luna");
+
+            // If a matching PlanetConfig ScriptableObject exists (by name), copy its supported layers
+            if (planetConfigs != null && planetConfigs.Length > 0)
+            {
+                try
+                {
+                    var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == planet.planetName);
+                    if (cfg != null)
+                    {
+                        planet.supportedLayers = new List<PlanetLayerConfig>(cfg.supportedLayers ?? new List<PlanetLayerConfig>());
+                        // Optional convenience: set hasAtmosphere flag from layers
+                        planet.hasAtmosphere = planet.supportedLayers.Exists(l => l.layerType == PlanetLayerType.Atmosphere);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[GameManager] Failed to apply PlanetConfig for {planet.planetName}: {ex.Message}");
+                }
+            }
 
             planet.isGenerated = planet.isExplored;
             planetData[i] = planet;
