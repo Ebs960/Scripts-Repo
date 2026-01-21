@@ -240,6 +240,55 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Tooltip("Optional reference to the HexMapChunkManager terrain renderer on this planet prefab.")]
     public HexMapChunkManager terrainRenderer;
+    
+    [Header("Layer Roots (assign on prefab)")]
+    [Tooltip("Root GameObject containing all Surface visuals (terrain meshes, chunk manager children)")]
+    public GameObject surfaceRoot;
+    [Tooltip("Root GameObject containing underwater/water visuals (water meshes, shore decals)")]
+    public GameObject underwaterRoot;
+    [Tooltip("Root GameObject containing atmosphere visuals (clouds, banded gas giant renderer)")]
+    public GameObject atmosphereRoot;
+
+    [Header("Per-layer vertical offsets")]
+    [Tooltip("Local Y offset applied to the Surface root when it is enabled (meters). Useful for small visual tweaks).")]
+    public float surfaceYOffset = 0f;
+    [Tooltip("Local Y offset applied to the Underwater root when it is enabled. Use negative values to sink the underwater root below sea level.")]
+    public float underwaterYOffset = 0f;
+    [Tooltip("Local Y offset applied to the Atmosphere root when it is enabled. Use positive values to expand atmosphere shells.")]
+    public float atmosphereYOffset = 0f;
+    
+    [Tooltip("Optional authoritative PlanetConfig ScriptableObject for this planet.")]
+    public PlanetConfig planetConfig;
+    
+    /// <summary>
+    /// Query whether this planet supports a specific gameplay/visual layer.
+    /// This checks the assigned `planetConfig` first (authoritative). If no config
+    /// is assigned, it falls back to runtime `GameManager` planet data when available.
+    /// </summary>
+    public bool HasLayer(GameManager.PlanetLayerType layer)
+    {
+        if (planetConfig != null && planetConfig.supportedLayers != null)
+        {
+            return planetConfig.supportedLayers.Contains(layer);
+        }
+
+        // Fallback: if GameManager has planet data for this index, check that
+        if (GameManager.Instance != null)
+        {
+            int idx = Mathf.Clamp(planetIndex, 0, int.MaxValue);
+            var allPd = GameManager.Instance.GetPlanetData();
+            if (allPd != null && allPd.ContainsKey(idx))
+            {
+                var pd = allPd[idx];
+                if (pd != null && pd.supportedLayers != null)
+                {
+                    return pd.supportedLayers.Exists(p => p.layerType == layer);
+                }
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Apply planet layer configuration in a data-driven way.
@@ -258,6 +307,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (gasGiantRenderer != null)
         {
             gasGiantRenderer.SetEnabledForPlanet(enableGasGiantVisuals);
+        }
+
+        // Activate/deactivate visual roots according to authoritative layers
+        bool hasSurfaceLayer = HasLayer(GameManager.PlanetLayerType.Surface);
+        bool hasUnderwaterLayer = HasLayer(GameManager.PlanetLayerType.Underwater);
+        bool hasAtmosphereLayer = HasLayer(GameManager.PlanetLayerType.Atmosphere);
+
+        if (surfaceRoot != null)
+        {
+            surfaceRoot.SetActive(hasSurfaceLayer);
+            var lp = surfaceRoot.transform.localPosition;
+            surfaceRoot.transform.localPosition = new Vector3(lp.x, surfaceYOffset, lp.z);
+        }
+
+        if (underwaterRoot != null)
+        {
+            underwaterRoot.SetActive(hasUnderwaterLayer);
+            var lp = underwaterRoot.transform.localPosition;
+            underwaterRoot.transform.localPosition = new Vector3(lp.x, underwaterYOffset, lp.z);
+        }
+
+        if (atmosphereRoot != null)
+        {
+            atmosphereRoot.SetActive(hasAtmosphereLayer);
+            var lp = atmosphereRoot.transform.localPosition;
+            atmosphereRoot.transform.localPosition = new Vector3(lp.x, atmosphereYOffset, lp.z);
         }
 
         if (terrainRenderer != null)

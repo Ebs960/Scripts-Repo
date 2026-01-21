@@ -302,6 +302,13 @@ TrySubscribeToSurfaceReady(gen);
             Debug.LogWarning("[HexMapChunkManager] Cannot build: missing planet generator or grid.");
             return;
         }
+
+        // Enforce layer gate: do not build chunks if planet has no Surface layer
+        if (!planetGen.HasLayer(GameManager.PlanetLayerType.Surface))
+        {
+            Debug.Log("[HexMapChunkManager] Surface layer not present on planet; skipping chunk build.");
+            return;
+        }
         
         // Clean up existing chunks
         DestroyAllChunks();

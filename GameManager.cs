@@ -849,6 +849,21 @@ currentPlanetIndex = planetIndex;
             GameObject planetGO = Instantiate(planetGeneratorPrefab);
             planetGenerator = planetGO.GetComponent<PlanetGenerator>();
 
+            // If we have a config for Earth, assign it to the editor/preview generator
+            if (planetGenerator != null && planetConfigs != null && planetConfigs.Length > 0)
+            {
+                try
+                {
+                    var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == "Earth");
+                    if (cfg != null)
+                        planetGenerator.planetConfig = cfg;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[GameManager] Could not assign Earth PlanetConfig to preview generator: {ex.Message}");
+                }
+            }
+
 
             // Assign the loading panel controller if present (use cached reference)
             if (cachedLoadingPanel == null)
@@ -1547,7 +1562,22 @@ currentPlanetIndex = planetIndex;
                     var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == planet.planetName);
                     if (cfg != null)
                     {
-                        planet.supportedLayers = new List<PlanetLayerConfig>(cfg.supportedLayers ?? new List<PlanetLayerConfig>());
+                        // Map authoritative cfg.supportedLayers (enum list) into runtime PlanetLayerConfig entries
+                        planet.supportedLayers = new List<PlanetLayerConfig>();
+                        if (cfg.supportedLayers != null)
+                        {
+                            foreach (var layer in cfg.supportedLayers)
+                            {
+                                var plc = new PlanetLayerConfig
+                                {
+                                    layerType = layer,
+                                    hasTiles = (layer == PlanetLayerType.Surface || layer == PlanetLayerType.Underwater),
+                                    isPlayable = (layer == PlanetLayerType.Surface)
+                                };
+                                planet.supportedLayers.Add(plc);
+                            }
+                        }
+
                         // Optional convenience: set hasAtmosphere flag from layers
                         planet.hasAtmosphere = planet.supportedLayers.Exists(l => l.layerType == PlanetLayerType.Atmosphere);
                     }
@@ -1909,6 +1939,23 @@ currentPlanetIndex = planetIndex;
             yield break;
         }
         generator.planetIndex = planetIndex;
+
+        // Assign authoritative PlanetConfig (if available) to the generated PlanetGenerator
+        if (planetConfigs != null && planetConfigs.Length > 0)
+        {
+            try
+            {
+                var cfg = planetConfigs.FirstOrDefault(c => c != null && c.planetName == body);
+                if (cfg != null)
+                {
+                    generator.planetConfig = cfg;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[GameManager] Failed to assign PlanetConfig for {body}: {ex.Message}");
+            }
+        }
 
         if (planetData.ContainsKey(planetIndex))
             planetData[planetIndex].planetName = body;
