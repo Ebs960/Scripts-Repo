@@ -13,10 +13,5 @@ MonoBehaviour:
   m_Name: Io
   m_EditorClassIdentifier: Assembly-CSharp::PlanetConfig
   planetName: Io
-  supportedLayers:
-  - layerType: 0
-    hasTiles: 1
-    isPlayable: 1
-  - layerType: 4
-    hasTiles: 0
-    isPlayable: 1
+  supportedLayers: 0000000004000000
+  gasGiantVisualData: {fileID: 0}

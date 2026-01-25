@@ -8,9 +8,14 @@ public static class CreateGasGiantAssets
     [MenuItem("Tools/Create Sample Gas Giant Assets")]
     public static void CreateAssets()
     {
-        // Create folder
-        string folder = "Assets/Planets/Samples";
-        if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets/Planets", "Samples");
+        // Create folder (ensure nested folders exist and use filesystem path for writes)
+        string assetFolder = "Assets/Planets/Samples";
+        string fullFolder = System.IO.Path.Combine(Application.dataPath, "Planets", "Samples");
+        if (!System.IO.Directory.Exists(fullFolder))
+        {
+            System.IO.Directory.CreateDirectory(fullFolder);
+            AssetDatabase.Refresh();
+        }
 
         // Create a banded gradient texture
         Texture2D grad = CreateBandedGradientTexture(1024, 32, new Color[] {
@@ -19,10 +24,12 @@ public static class CreateGasGiantAssets
             new Color(0.8f,0.6f,0.4f),
             new Color(0.95f,0.9f,0.8f)
         });
-        string texPath = Path.Combine(folder, "GasGiant_Gradient.png");
-        File.WriteAllBytes(texPath, grad.EncodeToPNG());
-        AssetDatabase.ImportAsset(texPath);
-        TextureImporter ti = AssetImporter.GetAtPath(texPath) as TextureImporter;
+        string texFileName = "GasGiant_Gradient.png";
+        string texPath = System.IO.Path.Combine(fullFolder, texFileName);
+        System.IO.File.WriteAllBytes(texPath, grad.EncodeToPNG());
+        string assetTexPath = assetFolder + "/" + texFileName;
+        AssetDatabase.ImportAsset(assetTexPath);
+        TextureImporter ti = AssetImporter.GetAtPath(assetTexPath) as TextureImporter;
         if (ti != null)
         {
             ti.textureType = TextureImporterType.Default;
@@ -30,25 +37,14 @@ public static class CreateGasGiantAssets
             ti.mipmapEnabled = true;
             ti.SaveAndReimport();
         }
-        Texture2D importedGrad = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+        Texture2D importedGrad = AssetDatabase.LoadAssetAtPath<Texture2D>(assetTexPath);
 
-        // Create a simple noise texture
-        Texture2D noise = CreatePerlinNoiseTexture(512,512);
-        string noisePath = Path.Combine(folder, "GasGiant_Noise.png");
-        File.WriteAllBytes(noisePath, noise.EncodeToPNG());
-        AssetDatabase.ImportAsset(noisePath);
-        TextureImporter nti = AssetImporter.GetAtPath(noisePath) as TextureImporter;
-        if (nti != null)
-        {
-            nti.textureType = TextureImporterType.Default;
-            nti.wrapMode = TextureWrapMode.Repeat;
-            nti.mipmapEnabled = true;
-            nti.SaveAndReimport();
-        }
-        Texture2D importedNoise = AssetDatabase.LoadAssetAtPath<Texture2D>(noisePath);
+        // NOTE: Texture3D noise is preferred for volumetrics; use the Noise3D Generator (Tools->Generate->Noise3D Generator)
+        Texture2D importedNoise = null;
 
         // Create material
-        Shader shader = Shader.Find("HDRP/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
+        // Prefer HDRP Lit; fall back to Standard if HDRP not present
+        Shader shader = Shader.Find("HDRP/Lit") ?? Shader.Find("Standard");
         Material mat = new Material(shader);
         mat.name = "Mat_GasGiant_Sample";
         // Try common property names for base texture
@@ -56,10 +52,9 @@ public static class CreateGasGiantAssets
         if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", importedGrad);
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
         if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", Color.white);
-        // Assign noise to a property if present
-        if (mat.HasProperty("_NoiseTex")) mat.SetTexture("_NoiseTex", importedNoise);
+        // (2D noise not used for volumetrics anymore)
 
-        string matPath = Path.Combine(folder, mat.name + ".mat");
+        string matPath = assetFolder + "/" + mat.name + ".mat";
         AssetDatabase.CreateAsset(mat, matPath);
 
         // Create GasGiantVisualData asset if type exists
@@ -75,7 +70,7 @@ public static class CreateGasGiantAssets
         if (ggType != null)
         {
             ScriptableObject gg = ScriptableObject.CreateInstance(ggType);
-            var soPath = Path.Combine(folder, "GasGiantVisualData_Sample.asset");
+            var soPath = assetFolder + "/GasGiantVisualData_Sample.asset";
             // try to set fields via reflection
             var baseGradField = ggType.GetField("baseGradient");
             var noiseField = ggType.GetField("noiseTexture");
@@ -96,7 +91,7 @@ public static class CreateGasGiantAssets
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        EditorUtility.DisplayDialog("Gas Giant Assets", $"Created sample material and textures in {folder}", "OK");
+        EditorUtility.DisplayDialog("Gas Giant Assets", $"Created sample material and textures in {assetFolder}", "OK");
     }
 
     private static Texture2D CreateBandedGradientTexture(int width, int height, Color[] bandColors)

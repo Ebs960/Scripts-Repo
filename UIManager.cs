@@ -20,6 +20,7 @@ public class UIManager : MonoBehaviour
     public GameObject diplomacyPanel;
     public GameObject equipmentPanel;
     public GameObject unitInfoPanel;
+    public GameObject armyPanel;
     public GameObject pauseMenuPanel;
     public GameObject playerUI;
     public SpaceMapUI spaceMapUI;
@@ -74,6 +75,8 @@ public class UIManager : MonoBehaviour
             { "equipmentPanel", equipmentPanel },
             { "UnitInfoPanel", unitInfoPanel },
             { "unitInfoPanel", unitInfoPanel },
+            { "ArmyPanel", armyPanel },
+            { "armyPanel", armyPanel },
             { "GovernmentPanel", governmentPanel },
             { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
@@ -94,6 +97,12 @@ public class UIManager : MonoBehaviour
         {
             unitInfoPanel.SetActive(true);
             WireUIInteractions(unitInfoPanel);
+        }
+
+        // Ensure the Army panel is hidden by default; it should only appear when an army is selected
+        if (armyPanel != null)
+        {
+            armyPanel.SetActive(false);
         }
 
         // Ensure we have an AudioSource for UI sounds
@@ -541,6 +550,24 @@ public class UIManager : MonoBehaviour
         if (infoUI != null)
             infoUI.HidePanel();
         HidePanel("UnitInfoPanel");
+    }
+
+    public void ShowArmyPanelForArmy(Army army)
+    {
+        if (armyPanel == null || army == null) return;
+        var infoUI = armyPanel.GetComponent<ArmyInfoPanel>();
+        if (infoUI != null)
+            infoUI.ShowPanel(army);
+        ShowPanel("ArmyPanel");
+    }
+
+    public void HideArmyPanel()
+    {
+        if (armyPanel == null) return;
+        var infoUI = armyPanel.GetComponent<ArmyInfoPanel>();
+        if (infoUI != null)
+            infoUI.HidePanel();
+        HidePanel("ArmyPanel");
     }
 
     /// <summary>

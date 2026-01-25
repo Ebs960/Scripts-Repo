@@ -403,6 +403,13 @@ public class ResourceManager : MonoBehaviour
         {
             tileData.resource = resource;
             TileSystem.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+            // Register resource occupancy: surface or underwater
+            try
+            {
+                var layer = tileData.isLand ? TileLayer.Surface : TileLayer.Underwater;
+                TileOccupancyManager.Instance?.SetOccupant(tileIndex, go, layer);
+            }
+            catch { }
         }
     }
 }

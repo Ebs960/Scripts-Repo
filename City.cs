@@ -717,9 +717,9 @@ if (UIManager.Instance != null)
         // Check if tile is owned by this city's civilization
         if (tileData.owner != owner) return false;
         
-        // Check if tile is already occupied
-        if (tileData.HasDistrict || tileData.HasImprovement || tileData.occupantId != 0)
-            return false;
+        // Check if tile is already occupied (layer-aware)
+        var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
+        if (tileData.HasDistrict || tileData.HasImprovement || occObj != null) return false;
             
         // Check if tile is not land
         if (!tileData.isLand)

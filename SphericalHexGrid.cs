@@ -119,7 +119,11 @@ public class SphericalHexGrid
 
     public int GetTileAtPosition(Vector3 position)
     {
-        if (Width <= 0 || Height <= 0 || tileCenters == null) return -1;
+        if (Width <= 0 || Height <= 0 || tileCenters == null)
+        {
+            Debug.LogWarning("[SphericalHexGrid] GetTileAtPosition called but grid is not built.");
+            return -1;
+        }
 
         // Use axial conversion for pointy-top hexes
         float sX = MapWidth / (Width * Mathf.Sqrt(3f));
@@ -175,7 +179,9 @@ public class SphericalHexGrid
         col = ((col % Width) + Width) % Width;
         row = Mathf.Clamp(row, 0, Height - 1);
         int idx = row * Width + col;
-        return (idx >= 0 && idx < tileCenters.Length) ? idx : -1;
+        if (idx >= 0 && idx < tileCenters.Length) return idx;
+        Debug.LogWarning($"[SphericalHexGrid] Computed tile out of range. q={q} r={r} col={col} row={row} idx={idx} Width={Width} Height={Height} TileCount={tileCenters.Length}");
+        return -1;
     }
 
     // Corner helper APIs were removed as part of spherical-era cleanup; reintroduce if needed by mesh/UI systems.

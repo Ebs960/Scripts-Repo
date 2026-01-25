@@ -595,8 +595,13 @@ public class CombatUnit : BaseUnit
 
     // Movement points removed - units can always move (movement speed is now fatigue-based)
 
-        if (tileData.occupantId != 0 && tileData.occupantId != gameObject.GetInstanceID())
-            return false;
+        // Layer-aware occupancy check: use occupancy manager with legacy fallback
+        try
+        {
+            var occObj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+        }
+        catch { /* ignore and fallback */ }
 
         return true;
     }
@@ -628,9 +633,9 @@ public class CombatUnit : BaseUnit
             Vector3 pos = TileSystem.Instance.GetTileSurfacePosition(idx);
             transform.position = pos;
 
-            // Update tile occupancy
-            if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(idx, gameObject);
-            
+            // Update tile occupancy using layered occupancy manager
+            try { TileOccupancyManager.Instance?.SetOccupant(idx, gameObject, currentLayer); } catch { }
+
             currentTileIndex = idx;
         }
 
@@ -1802,8 +1807,8 @@ return;
     unit.transform.position = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex);
         unit.currentTileIndex = targetTileIndex;
         
-        // Update tile occupancy
-    if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(targetTileIndex, unit.gameObject);
+        // Update tile occupancy using layered occupancy manager
+    try { TileOccupancyManager.Instance?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
 
     // Trigger trap if unloading onto a trapped tile
     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
@@ -2059,10 +2064,8 @@ return;
 
         foreach (int idx in tilesToCheck)
         {
-            var tdata = TileSystem.Instance.GetTileData(idx);
-            if (tdata == null) continue;
-            if (tdata.occupantId == 0) continue;
-            var obj = UnitRegistry.GetObject(tdata.occupantId);
+            GameObject obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(idx, TileLayer.Surface);
+            if (obj == null) continue;
             if (obj == null) continue;
             var unit = obj.GetComponent<CombatUnit>();
             if (unit == null) continue;

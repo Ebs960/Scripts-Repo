@@ -481,8 +481,9 @@ InitiateBattleWithArmy(army, civArmy);
                 // Check if tile is a valid demon spawn biome
                 if (!spawnableBiomes.Contains(tileData.biome)) continue;
 
-                // Check if tile is unoccupied
-                if (tileData.occupantId != 0) continue;
+                // Check if tile is unoccupied (multi-planet aware)
+                bool occupied = TileOccupancyManager.GetOccupantObjectForTileWithFallback(i, TileLayer.Surface, planetIndex) != null;
+                if (occupied) continue;
 
                 validTiles.Add((i, planetIndex));
             }

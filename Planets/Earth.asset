@@ -13,16 +13,5 @@ MonoBehaviour:
   m_Name: Earth
   m_EditorClassIdentifier: Assembly-CSharp::PlanetConfig
   planetName: Earth
-  supportedLayers:
-  - layerType: 0
-    hasTiles: 1
-    isPlayable: 1
-  - layerType: 1
-    hasTiles: 1
-    isPlayable: 1
-  - layerType: 4
-    hasTiles: 0
-    isPlayable: 1
-  - layerType: 2
-    hasTiles: 1
-    isPlayable: 1
+  supportedLayers: 00000000010000000200000004000000
+  gasGiantVisualData: {fileID: 0}

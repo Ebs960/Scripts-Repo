@@ -269,7 +269,7 @@ unit.UpdateWalkingState(false);
             
             // Update current tile and occupancy using BaseUnit properties
             unit.currentTileIndex = targetTileIndex;
-            TileSystem.Instance.SetTileOccupant(targetTileIndex, unit.gameObject);
+            try { TileOccupancyManager.Instance?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
             
             // Check for traps on arrival (ImprovementManager accepts either type)
             if (combatUnit != null)

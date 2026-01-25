@@ -48,6 +48,34 @@ public class UnitInfoPanel : MonoBehaviour
 
         // On start, clear the panel to show a "no unit selected" state.
         ClearPanelInfo();
+
+        // Validate serialized fields at startup so missing inspector wiring is obvious in Console
+        ValidateSerializedFields();
+    }
+
+    private void ValidateSerializedFields()
+    {
+        // Common section
+        if (unitInfoPanel == null) Debug.LogWarning("[UnitInfoPanel] unitInfoPanel is not assigned in the Inspector.");
+        if (unitNameText == null) Debug.LogWarning("[UnitInfoPanel] unitNameText is not assigned in the Inspector.");
+        if (unitTypeText == null) Debug.LogWarning("[UnitInfoPanel] unitTypeText is not assigned in the Inspector.");
+        if (levelText == null) Debug.LogWarning("[UnitInfoPanel] levelText is not assigned in the Inspector.");
+        if (experienceText == null) Debug.LogWarning("[UnitInfoPanel] experienceText is not assigned in the Inspector.");
+
+        // Stats
+        if (attackText == null) Debug.LogWarning("[UnitInfoPanel] attackText is not assigned in the Inspector.");
+        if (defenseText == null) Debug.LogWarning("[UnitInfoPanel] defenseText is not assigned in the Inspector.");
+        if (healthText == null) Debug.LogWarning("[UnitInfoPanel] healthText is not assigned in the Inspector.");
+        if (movePointsText == null) Debug.LogWarning("[UnitInfoPanel] movePointsText is not assigned in the Inspector.");
+        if (rangeText == null) Debug.LogWarning("[UnitInfoPanel] rangeText is not assigned in the Inspector.");
+        if (moraleText == null) Debug.LogWarning("[UnitInfoPanel] moraleText is not assigned in the Inspector.");
+
+        // Actions / Construction
+        if (settleCityButton == null) Debug.LogWarning("[UnitInfoPanel] settleCityButton is not assigned in the Inspector.");
+        if (forageButton == null) Debug.LogWarning("[UnitInfoPanel] forageButton is not assigned in the Inspector.");
+        if (buildUnitsContainer == null) Debug.LogWarning("[UnitInfoPanel] buildUnitsContainer is not assigned in the Inspector (Worker Build UI).");
+        if (buildUnitButtonPrefab == null) Debug.LogWarning("[UnitInfoPanel] buildUnitButtonPrefab is not assigned in the Inspector (Worker Build UI).");
+        if (contributeWorkButton == null) Debug.LogWarning("[UnitInfoPanel] contributeWorkButton is not assigned in the Inspector.");
     }
 
     public void ShowPanel(object unitObject)

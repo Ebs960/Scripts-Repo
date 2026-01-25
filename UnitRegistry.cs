@@ -20,6 +20,20 @@ public static class UnitRegistry
             combatUnits.Add(cu);
         if (obj.TryGetComponent<WorkerUnit>(out var wu))
             workerUnits.Add(wu);
+
+        // If this is a unit with tile state, register occupancy in the occupancy manager
+        if (obj.TryGetComponent<BaseUnit>(out var bu))
+        {
+            try
+            {
+                var occ = TileOccupancyManager.Instance;
+                if (occ != null && bu.currentTileIndex >= 0)
+                {
+                    occ.SetOccupant(bu.currentTileIndex, obj, bu.currentLayer);
+                }
+            }
+            catch { /* defensive: avoid throwing during registration */ }
+        }
     }
 
     public static void Unregister(GameObject obj)
@@ -37,6 +51,19 @@ public static class UnitRegistry
             {
                 persistentIdLookup.Remove(w2.PersistentId);
             }
+        }
+        // Clear occupancy for units
+        if (obj.TryGetComponent<BaseUnit>(out var bu2))
+        {
+            try
+            {
+                var occ = TileOccupancyManager.Instance;
+                if (occ != null && bu2.currentTileIndex >= 0)
+                {
+                    occ.ClearOccupant(bu2.currentTileIndex, bu2.currentLayer);
+                }
+            }
+            catch { }
         }
     }
 

@@ -227,6 +227,18 @@ public class TileSystem : MonoBehaviour
         {
             Debug.LogWarning($"[TileSystem] {fallbackCreated} tiles had no generator data; created fallback entries.");
         }
+        // Initialize occupancy manager and migrate legacy occupant ids
+        var occMgrObj = FindObjectOfType<TileOccupancyManager>();
+        if (occMgrObj == null)
+        {
+            var go = new GameObject("_TileOccupancyManager");
+            occMgrObj = go.AddComponent<TileOccupancyManager>();
+        }
+        if (occMgrObj != null)
+        {
+            occMgrObj.Initialize(tileCount);
+            occMgrObj.MigrateLegacyOccupants(tiles);
+        }
         AllocateOwnerColors();
         AllocateFog(tileCount);
     AllocateReligion(tileCount);
@@ -713,20 +725,30 @@ public class TileSystem : MonoBehaviour
         var td = GetTileData(tile); if (td == null) return false;
         if (mustBeLand && !td.isLand) return false;
         // Movement points removed - tiles are always accessible (movement speed is fatigue-based)
-        return td.occupantId == 0 || td.occupantId == unitId;
+        int occ = td.occupantId;
+        if (TileOccupancyManager.Instance != null)
+            occ = TileOccupancyManager.Instance.GetOccupantId(tile, TileLayer.Surface);
+        return occ == 0 || occ == unitId;
     }
 
     public void SetTileOccupant(int tile, GameObject occupant)
     {
         var td = GetTileData(tile); if (td == null) return;
         if (occupant == null)
-        { td.occupantId = 0; SetTileData(tile, td); return; }
+        {
+            // Clear surface occupant via occupancy manager
+            TileOccupancyManager.Instance?.ClearOccupant(tile, TileLayer.Surface);
+            return;
+        }
+
         Civilization unitOwner = null;
         var cu = occupant.GetComponent<CombatUnit>(); if (cu != null) unitOwner = cu.owner;
         if (unitOwner == null) { var wu = occupant.GetComponent<WorkerUnit>(); if (wu != null) unitOwner = wu.owner; }
         if (td.improvementOwner != null && unitOwner != null && unitOwner != td.improvementOwner)
         { Debug.LogWarning($"[TileSystem] Prevented {occupant.name} from occupying tile {tile} owned by {td.improvementOwner.civData?.civName}."); return; }
-        td.occupantId = occupant.GetInstanceID(); SetTileData(tile, td);
+
+        // Set as surface occupant (legacy compatibility)
+        TileOccupancyManager.Instance?.SetOccupant(tile, occupant, TileLayer.Surface);
     }
 
     public void ClearTileOccupant(int tile) => SetTileOccupant(tile, null);

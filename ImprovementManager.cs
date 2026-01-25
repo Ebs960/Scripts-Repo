@@ -423,7 +423,12 @@ public class ImprovementManager : MonoBehaviour
         unit.InitializeAndReturn(job.data, job.owner, spawnIndex);
         job.owner.combatUnits.Add(unit);
         LimitManager.Instance.AddCombatUnit(job.owner, job.data);
-    if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(spawnIndex, unit.gameObject);
+        // Determine layer based on tile (surface vs underwater)
+        var tdata = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(spawnIndex) : null;
+        unit.currentLayer = (tdata != null && !tdata.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        unit.currentTileIndex = spawnIndex;
+        // Register occupancy in occupancy manager (defensive)
+        try { TileOccupancyManager.Instance?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         // Add unit to army system
         ArmyIntegration.OnUnitCreated(unit, spawnIndex);
@@ -457,7 +462,10 @@ public class ImprovementManager : MonoBehaviour
         unit.Initialize(job.data, job.owner, spawnIndex);
         job.owner.workerUnits.Add(unit);
         LimitManager.Instance.AddWorkerUnit(job.owner, job.data);
-    if (TileSystem.Instance != null) TileSystem.Instance.SetTileOccupant(spawnIndex, unit.gameObject);
+        var tdataW = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(spawnIndex) : null;
+        unit.currentLayer = (tdataW != null && !tdataW.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        unit.currentTileIndex = spawnIndex;
+        try { TileOccupancyManager.Instance?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         workerJobs.Remove(job);
     }
@@ -466,15 +474,20 @@ public class ImprovementManager : MonoBehaviour
     {
         // If center tile is free, use it
     var tileData = TileSystem.Instance.GetTileData(centerIndex);
-        if (tileData != null && tileData.occupantId == 0)
-            return centerIndex;
+        // Prefer occupancy manager when checking for free surface occupant
+        var occCenter = TileOccupancyManager.GetOccupantObjectForTileWithFallback(centerIndex, TileLayer.Surface);
+        if (occCenter == null) return centerIndex;
 
         // Otherwise try neighbors
         var neighbors = TileSystem.Instance.GetNeighbors(centerIndex);
         foreach (int n in neighbors)
         {
             var td = TileSystem.Instance.GetTileData(n);
-            if (td != null && td.isLand && td.occupantId == 0)
+            bool free = false;
+            var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(n, TileLayer.Surface);
+            free = occObj == null;
+
+            if (td != null && td.isLand && free)
                 return n;
         }
 

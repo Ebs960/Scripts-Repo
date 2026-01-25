@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Coast
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   biome: 1
+  waterType: 1
   surfaceFamily: {fileID: 11400000, guid: 585db334d6051de4498e3edb2c65a586, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}

@@ -367,11 +367,23 @@ return true;
         for (int i = 0; i < tileCount; i++)
         {
             var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(i) : null;
-            if (tile == null || !tile.isLand) continue;
+            if (tile == null) continue;
 
+            // If allowedBiomes specified, require match
             if (rule.allowedBiomes != null && rule.allowedBiomes.Length > 0)
             {
                 if (!rule.allowedBiomes.Contains(tile.biome)) continue;
+            }
+
+            // Preserve previous behavior: skip tiles that are not land unless the allowedBiomes includes water biomes
+            bool isWaterTile = !tile.isLand;
+            if (isWaterTile)
+            {
+                // Only allow water tiles if rule explicitly permits water biomes
+                bool allowsWater = rule.allowedBiomes != null && (
+                    System.Array.Exists(rule.allowedBiomes, b => b == Biome.Ocean || b == Biome.Seas || b == Biome.Lake || b == Biome.River)
+                );
+                if (!allowsWater) continue;
             }
 
             candidates.Add(i);
@@ -405,9 +417,14 @@ return true;
         }
         unit.Initialize(rule.unitData, null);
         unit.currentTileIndex = chosenIndex;
-        
+        // Determine layer (land vs water)
+        var chosenTile = TileSystem.Instance.GetTileData(chosenIndex);
+        unit.currentLayer = (chosenTile != null && !chosenTile.isLand) ? TileLayer.Underwater : TileLayer.Surface;
         // Ensure upright orientation on flat map
         unit.PositionUnitOnSurface(null, chosenIndex);
+
+        // Register occupancy explicitly
+        try { TileOccupancyManager.Instance?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         activeAnimals.Add(unit);
         unit.OnDeath += () =>

@@ -307,18 +307,22 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (gasGiantRenderer != null)
         {
             gasGiantRenderer.SetEnabledForPlanet(enableGasGiantVisuals);
+            Debug.Log($"[PlanetGenerator] ApplyPlanetLayers: gasGiantRenderer set to {enableGasGiantVisuals} (hasAtmosphere={hasAtmosphereLayer} hasSurface={hasSurfaceLayer})");
+        }
+        else
+        {
+            Debug.Log($"[PlanetGenerator] ApplyPlanetLayers: no GasGiantRenderer assigned. enableGasGiantVisuals={enableGasGiantVisuals}");
         }
 
         // Activate/deactivate visual roots according to authoritative layers
-        bool hasSurfaceLayer = HasLayer(GameManager.PlanetLayerType.Surface);
         bool hasUnderwaterLayer = HasLayer(GameManager.PlanetLayerType.Underwater);
-        bool hasAtmosphereLayer = HasLayer(GameManager.PlanetLayerType.Atmosphere);
 
         if (surfaceRoot != null)
         {
             surfaceRoot.SetActive(hasSurfaceLayer);
             var lp = surfaceRoot.transform.localPosition;
             surfaceRoot.transform.localPosition = new Vector3(lp.x, surfaceYOffset, lp.z);
+            Debug.Log($"[PlanetGenerator] Surface root active={hasSurfaceLayer} yOffset={surfaceYOffset}");
         }
 
         if (underwaterRoot != null)
@@ -326,6 +330,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             underwaterRoot.SetActive(hasUnderwaterLayer);
             var lp = underwaterRoot.transform.localPosition;
             underwaterRoot.transform.localPosition = new Vector3(lp.x, underwaterYOffset, lp.z);
+            Debug.Log($"[PlanetGenerator] Underwater root active={hasUnderwaterLayer} yOffset={underwaterYOffset}");
         }
 
         if (atmosphereRoot != null)
@@ -333,6 +338,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             atmosphereRoot.SetActive(hasAtmosphereLayer);
             var lp = atmosphereRoot.transform.localPosition;
             atmosphereRoot.transform.localPosition = new Vector3(lp.x, atmosphereYOffset, lp.z);
+            Debug.Log($"[PlanetGenerator] Atmosphere root active={hasAtmosphereLayer} yOffset={atmosphereYOffset}");
         }
 
         if (terrainRenderer != null)
@@ -735,6 +741,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     /// </summary>
     public System.Collections.IEnumerator GenerateSurface()
     {
+        Debug.Log($"[PlanetGenerator] GenerateSurface START for '{gameObject.name}' seed={seed} tileCount={grid?.TileCount}");
         // Clear previous data
         data.Clear();
         baseData.Clear();
@@ -1596,6 +1603,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (GameManager.Instance != null)
         {
             SeaLevelWorldY = GameManager.Instance.GetFlatPlaneY();
+            Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
         }
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
@@ -1753,10 +1761,12 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // Finalize
         HasGeneratedSurface = true;
         Tiles = data.Values.ToList();
-        
+
+        Debug.Log($"[PlanetGenerator] GenerateSurface COMPLETE for '{gameObject.name}' HasGeneratedSurface={HasGeneratedSurface} totalTiles={Tiles.Count} SeaLevelWorldY={SeaLevelWorldY}");
+
         // DIAGNOSTIC: Log elevation statistics
         LogElevationDiagnostics(data);
-        
+
         // Notify listeners that surface is ready for rendering
         try { OnSurfaceGenerated?.Invoke(); } catch (System.Exception ex) { Debug.LogError($"[PlanetGenerator] OnSurfaceGenerated invocation error: {ex.Message}"); }
         
@@ -2321,6 +2331,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     public void SetTileOccupant(int tileIndex, GameObject occupant) {
         if (!data.ContainsKey(tileIndex)) return;
         HexTileData td = data[tileIndex]; td.occupantId = occupant ? occupant.GetInstanceID() : 0; data[tileIndex] = td;
+        // Keep TileOccupancyManager in sync for Surface layer (compatibility)
+        try
+        {
+            var occ = TileOccupancyManager.Instance;
+            if (occ != null)
+            {
+                occ.SetOccupant(tileIndex, occupant, TileLayer.Surface);
+            }
+        }
+        catch { }
         // baseData may also want updating if you allow undoing.
         baseData[tileIndex] = td;
     }

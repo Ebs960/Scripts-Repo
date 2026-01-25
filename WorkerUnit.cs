@@ -307,7 +307,8 @@ public class WorkerUnit : BaseUnit
         int cost = BiomeHelper.GetMovementCost(td, this);
         if (currentMovePoints < cost) return false;
 
-        if (td.occupantId != 0 && td.occupantId != gameObject.GetInstanceID()) return false;
+        var occObj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+        if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
         return true;
     }
 

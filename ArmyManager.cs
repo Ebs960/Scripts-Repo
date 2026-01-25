@@ -484,7 +484,7 @@ return army;
         // Show army info in UI
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowUnitInfoPanelForUnit(army);
+            UIManager.Instance.ShowArmyPanelForArmy(army);
         }
     }
     
@@ -495,6 +495,11 @@ return army;
     {
         if (army == null) return;
         selectedArmies.Remove(army);
+        // Hide army UI if nothing is selected
+        if (UIManager.Instance != null && selectedArmies.Count == 0)
+        {
+            UIManager.Instance.HideArmyPanel();
+        }
     }
     
     /// <summary>
@@ -503,6 +508,10 @@ return army;
     public void ClearSelection()
     {
         selectedArmies.Clear();
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HideArmyPanel();
+        }
     }
     
     /// <summary>

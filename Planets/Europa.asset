@@ -13,13 +13,5 @@ MonoBehaviour:
   m_Name: Europa
   m_EditorClassIdentifier: Assembly-CSharp::PlanetConfig
   planetName: Europa
-  supportedLayers:
-  - layerType: 0
-    hasTiles: 1
-    isPlayable: 1
-  - layerType: 2
-    hasTiles: 1
-    isPlayable: 1
-  - layerType: 4
-    hasTiles: 0
-    isPlayable: 1
+  supportedLayers: 000000000400000001000000
+  gasGiantVisualData: {fileID: 0}

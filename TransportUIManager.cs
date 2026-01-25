@@ -158,11 +158,8 @@ public class TransportUIManager : MonoBehaviour
         // Find unit on this tile
         GameObject unitObj = null;
         
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
-        if (tileData != null && tileData.occupantId != 0)
-        {
-            unitObj = UnitRegistry.GetObject(tileData.occupantId);
-        }
+        // Centralized lookup (multi-planet-aware)
+        unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
         
         if (unitObj != null)
         {
@@ -299,11 +296,8 @@ public class TransportUIManager : MonoBehaviour
         foreach (int tileIndex in tilesToCheck)
         {
             GameObject unitObj = null;
-            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
-            if (tileData != null && tileData.occupantId != 0)
-            {
-                unitObj = UnitRegistry.GetObject(tileData.occupantId);
-            }
+            // Layer-aware lookup (centralized)
+            unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
             
             if (unitObj != null)
             {

@@ -81,7 +81,8 @@ public abstract class BaseUnit : MonoBehaviour
     // Runtime state
     public Civilization owner { get; protected set; }
     public int currentHealth { get; protected set; }
-    public int currentTileIndex;
+    public int currentTileIndex = -1;
+    public TileLayer currentLayer = TileLayer.Surface;
     public float moveSpeed = 2f;
     public bool isMoving { get; set; }
 
@@ -736,10 +737,21 @@ public abstract class BaseUnit : MonoBehaviour
         if (animator != null && HasParameter(animator, deathHash))
             animator.SetTrigger(deathHash);
 
-        // Clear tile occupancy
-        if (currentTileIndex >= 0 && TileSystem.Instance != null)
+        // Clear tile occupancy (layer-aware)
+        if (currentTileIndex >= 0)
         {
-            TileSystem.Instance.ClearTileOccupant(currentTileIndex);
+            try
+            {
+                if (TileOccupancyManager.Instance != null)
+                {
+                    TileOccupancyManager.Instance.ClearOccupant(currentTileIndex, currentLayer);
+                }
+                else if (TileSystem.Instance != null)
+                {
+                    TileSystem.Instance.ClearTileOccupant(currentTileIndex);
+                }
+            }
+            catch { }
         }
 
         // Destroy label
@@ -783,7 +795,13 @@ public abstract class BaseUnit : MonoBehaviour
     {
         var td = TileSystem.Instance?.GetTileData(tileIndex);
         if (td == null || !td.isPassable) return false;
-        if (td.occupantId != 0 && td.occupantId != gameObject.GetInstanceID()) return false;
+        // Layer-aware occupancy check: use occupancy manager with fallback
+        try
+        {
+            var obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, currentLayer);
+            if (obj != null && obj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+        }
+        catch { }
         return true;
     }
 
@@ -900,12 +918,10 @@ public abstract class BaseUnit : MonoBehaviour
 
         foreach (int idx in neighbours)
         {
-            var tdata = TileSystem.Instance?.GetTileData(idx);
-            if (tdata == null || tdata.occupantId == 0) continue;
-
-            var obj = UnitRegistry.GetObject(tdata.occupantId);
+            GameObject obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(idx, TileLayer.Surface);
             if (obj == null) continue;
 
+            if (obj == null) continue;
             var unit = obj.GetComponent<BaseUnit>();
             if (unit != null && unit.owner == this.owner)
                 count++;

@@ -78,26 +78,9 @@ public class DistrictPlacementController : MonoBehaviour
             // Check if pointer is over UI before processing input
             if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
                 return;
-                
             CancelDistrictPlacement();
-        }
-    }
-    
-    /// <summary>
-    /// Check if placement is currently active (used by InputManager)
-    /// </summary>
-    public bool IsPlacementActive()
-    {
-        return isPlacingDistrict;
-    }
-    
-    /// <summary>
-    /// Public method to cancel placement (used by InputManager)
-    /// </summary>
-    public void CancelPlacement()
-    {
-        CancelDistrictPlacement();
-    }
+            }
+            }
     
     /// <summary>
     /// Begin district placement mode for a given city and district type
@@ -151,9 +134,9 @@ public class DistrictPlacementController : MonoBehaviour
     var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
         
-        // Check if tile is already occupied by a district, unit, or improvement
-        if (tileData.district != null || tileData.occupantId != 0 || tileData.improvement != null)
-            return false;
+        // Check if tile is already occupied by a district, unit, or improvement (layer-aware)
+        var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
+        if (tileData.district != null || occObj != null || tileData.improvement != null) return false;
         
         // Check biome requirements
         bool biomeValid = false;

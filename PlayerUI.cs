@@ -14,8 +14,7 @@ public class PlayerUI : MonoBehaviour
     [Header("Player Panel - Top Info")]
     [SerializeField] private TextMeshProUGUI civNameText;
     [SerializeField] private TextMeshProUGUI roundText;
-    [SerializeField] private TextMeshProUGUI ageText;
-    [SerializeField] private Image ageIconImage;
+    
     [SerializeField] private Button endTurnButton;
     [SerializeField] private Button techButton;
     [SerializeField] private Button cultureButton;
@@ -34,11 +33,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private Transform resourceListContainer;
     [SerializeField] private GameObject resourceEntryPrefab; // icon + amount
     
-    [Header("Player Panel - Research/Culture Progress")]
-    [SerializeField] private TextMeshProUGUI techNameText;
-    [SerializeField] private TextMeshProUGUI techTurnsLeftText;
-    [SerializeField] private TextMeshProUGUI cultureNameText;
-    [SerializeField] private TextMeshProUGUI cultureTurnsLeftText;
+    // Research/Culture textual displays removed — buttons remain
 
     [Header("Turn Change Panel")]
     [SerializeField] private TextMeshProUGUI upcomingCivText;
@@ -54,6 +49,8 @@ public class PlayerUI : MonoBehaviour
         if (turnChangePanel != null) turnChangePanel.SetActive(false); // Keep turn change panel hidden initially
 
         SetupButtonListeners();
+
+        // Removed age/tech/culture text fields — nothing to hide at runtime
     }
 
     private void SetupButtonListeners()
@@ -364,20 +361,7 @@ currentCiv = civ;
         // Ensure round is at least 1
         int displayRound = (round <= 0) ? 1 : round;
         if (roundText != null) roundText.text = $"Round {displayRound}";
-        if (ageText != null)
-        {
-            var age = civ.GetCurrentAge();
-            ageText.text = age.ToString().Replace("Age", " Age");
-            if (ageIconImage != null)
-            {
-                string iconName = age.ToString(); // e.g., "PaleolithicAge"
-                Sprite icon = Resources.Load<Sprite>($"Icons/Ages/{iconName}");
-                if (icon != null)
-                    ageIconImage.sprite = icon;
-                else
-                    Debug.LogWarning($"PlayerUI: Could not find age icon for {iconName} in Icons/Ages/");
-            }
-        }
+        // Age display removed
 
         // Yields - Calculate from cities
         int totalFood = SumCityYield(civ, city => city.GetFoodPerTurn());
@@ -395,39 +379,7 @@ currentCiv = civ;
         // Inventory - Use the existing ResourceManager to get the civilization's resource inventory
         PopulateResourceList(civ);
         
-        // Research progress
-        if (techNameText != null && techTurnsLeftText != null)
-        {
-            if (civ.currentTech != null)
-            {
-                techNameText.text = civ.currentTech.techName;
-                int turnsLeft = Mathf.CeilToInt((civ.currentTech.scienceCost - civ.currentTechProgress) 
-                                  / Mathf.Max(1, totalScience));
-                techTurnsLeftText.text = $"{turnsLeft} turns";
-            }
-            else
-            {
-                techNameText.text = "No Research";
-                techTurnsLeftText.text = "";
-            }
-        }
-
-        // Culture progress
-        if (cultureNameText != null && cultureTurnsLeftText != null)
-        {
-            if (civ.currentCulture != null)
-            {
-                cultureNameText.text = civ.currentCulture.cultureName;
-                int turnsLeft = Mathf.CeilToInt((civ.currentCulture.cultureCost - civ.currentCultureProgress) 
-                                  / Mathf.Max(1, totalCulture));
-                cultureTurnsLeftText.text = $"{turnsLeft} turns";
-            }
-            else
-            {
-                cultureNameText.text = "No Culture";
-                cultureTurnsLeftText.text = "";
-            }
-        }
+        // (Tech and culture text displays removed; buttons remain)
     }
 
     private int SumCityYield(Civilization civ, System.Func<City, int> selector)

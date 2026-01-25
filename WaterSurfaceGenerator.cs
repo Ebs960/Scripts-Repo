@@ -35,9 +35,12 @@ public class WaterSurfaceGenerator : MonoBehaviour
         attachedPlanet = planet;
         attachedPlanet.OnSurfaceGenerated += HandleSurfaceGenerated;
 
+        Debug.Log($"[WaterSurfaceGenerator] Initialized for planet '{planet.name}' SeaLevel={planet.SeaLevelWorldY} HasGeneratedSurface={attachedPlanet.HasGeneratedSurface}");
+
         // If the planet is already ready, run generation now via the same handler
         if (attachedPlanet.HasGeneratedSurface)
         {
+            Debug.Log("[WaterSurfaceGenerator] Planet already generated - running HandleSurfaceGenerated immediately.");
             HandleSurfaceGenerated();
         }
     }
@@ -56,6 +59,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
     {
         var gen = attachedPlanet;
         if (gen == null) return;
+
+        Debug.Log($"[WaterSurfaceGenerator] HandleSurfaceGenerated invoked for planet '{gen.name}' (SeaLevel={gen.SeaLevelWorldY})");
 
         // Clear any stale surfaces and generate fresh ones
         ClearSurfaces();
@@ -86,6 +91,9 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         var grid = planetGen.Grid;
         int tileCount = grid.TileCount;
+        Debug.Log($"[WaterSurfaceGenerator] Generating water surfaces: TileCount={tileCount} Resolution={grid.Width}x{grid.Height} SeaLevel={planetGen.SeaLevelWorldY}");
+
+        int createdRegions = 0;
         bool[] visited = new bool[tileCount];
 
         float tileWidth = grid.MapWidth / Mathf.Max(1, grid.Width);
@@ -113,7 +121,10 @@ public class WaterSurfaceGenerator : MonoBehaviour
             float height = planetGen.SeaLevelWorldY;
 
             CreateWaterSurface(regionIsLake, bounds, height, spawnedSurfaces.Count);
+            createdRegions++;
         }
+
+        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Regions created={createdRegions} TotalSurfaces={spawnedSurfaces.Count}");
     }
 
     private void ClearSurfaces()
@@ -228,6 +239,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
         var instance = Instantiate(prefab.gameObject, transform, false);
         instance.name = $"WaterSurface_{regionIndex}";
         instance.transform.localPosition = new Vector3(0f, height, 0f);
+
+        Debug.Log($"[WaterSurfaceGenerator] Created WaterSurface idx={regionIndex} isLake={isLake} bounds={bounds.size} height={height}");
 
         var meshFilter = instance.GetComponent<MeshFilter>();
         if (meshFilter == null)

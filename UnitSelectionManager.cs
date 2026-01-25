@@ -41,19 +41,18 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         }
     }
-    
+
     void Start()
     {
         // Find references
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
-            // Use cached reference to avoid expensive FindAnyObjectByType call
             if (cachedMainCamera == null)
                 cachedMainCamera = FindAnyObjectByType<Camera>();
             mainCamera = cachedMainCamera;
         }
-        
+
         // Cache selection material once
         if (s_selectionIndicatorMaterial == null)
         {
@@ -72,7 +71,6 @@ public class UnitSelectionManager : MonoBehaviour
             }
             s_selectionMPB = new UnityEngine.MaterialPropertyBlock();
         }
-            
     }
     
     void Update()
@@ -136,15 +134,14 @@ public class UnitSelectionManager : MonoBehaviour
     private BaseUnit GetUnitOnTile(int tileIndex)
     {
         if (TileSystem.Instance == null) return null;
-        var td = TileSystem.Instance.GetTileData(tileIndex);
-        if (td == null || td.occupantId == 0) return null;
-
-        var obj = UnitRegistry.GetObject(td.occupantId);
-        if (obj == null) return null;
-
-        // Try to get as BaseUnit (covers both CombatUnit and WorkerUnit)
-        var baseUnit = obj.GetComponent<BaseUnit>();
-        return baseUnit;
+        // Prefer occupancy manager for layer-aware lookup (surface for legacy selection)
+        try
+        {
+            var obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+            if (obj != null) return obj.GetComponent<BaseUnit>();
+        }
+        catch { }
+        return null;
     }
     
     /// <summary>
