@@ -60,8 +60,9 @@ public static class PlanetTextureBaker
             // Fallback biome if generator doesn't have data (should be rare)
             Biome biome = td != null ? td.biome : planetGen.GetBaseBiome(i);
 
-            // Compute equirect UV from tile center direction so BiomeTextures mode can sample consistently.
-            Vector3 center = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(i) : Vector3.zero;
+            // Compute equirect UV from the planet's own grid so baking is independent of TileSystem timing
+            // and works correctly for non-current planets in multi-planet mode.
+            Vector3 center = (grid.tileCenters != null && i >= 0 && i < grid.tileCenters.Length) ? grid.tileCenters[i] : Vector3.zero;
             float u = (center.x + grid.MapWidth * 0.5f) / grid.MapWidth;
             float v = (center.z + grid.MapHeight * 0.5f) / grid.MapHeight;
             u = Mathf.Repeat(u, 1f);

@@ -2081,6 +2081,7 @@ currentPlanetIndex = planetIndex;
 
         // Ensure grid is built and surface generated if needed
         var generator = planetGenerators[planetIndex];
+        bool surfaceJustGenerated = false;
         if (generator != null && !generator.Grid.IsBuilt)
         {
             var sizePreset = planetData[planetIndex].planetSize;
@@ -2093,7 +2094,7 @@ currentPlanetIndex = planetIndex;
             
             yield return StartCoroutine(generator.GenerateSurface());
             // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
-            OnPlanetFullyGenerated?.Invoke(generator);
+            surfaceJustGenerated = true;
         }
 
         // Update references in other systems
@@ -2103,6 +2104,15 @@ currentPlanetIndex = planetIndex;
             TileSystem.Instance.InitializeFromPlanet(generator);
         }
 
+        // Match initial generation ordering: TileSystem binds first, then notify.
+        if (surfaceJustGenerated)
+        {
+            OnPlanetFullyGenerated?.Invoke(generator);
+        }
+
+        // Ensure planet-ready listeners rebuild on planet switch.
+        OnPlanetReady?.Invoke(planetIndex);
+        
         
     }
 

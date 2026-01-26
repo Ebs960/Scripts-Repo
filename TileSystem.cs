@@ -43,6 +43,10 @@ public class TileSystem : MonoBehaviour
     [Tooltip("Layer mask used for tile raycasts")] public LayerMask tileRaycastMask = -1;
     private int lastHoveredTileIndex = -1;
 
+    // Cached references for picking (avoid per-frame FindAnyObjectByType in hot path)
+    private WorldPicker cachedWorldPicker;
+    private HexMapChunkManager cachedChunkManager;
+
     // Dirty tracking
     private readonly HashSet<int> _dirtyOverlayTiles = new();
 
@@ -395,10 +399,13 @@ public class TileSystem : MonoBehaviour
     public (bool hit, int tileIndex, Vector3 worldPosition) GetMouseHitInfo()
     {
         // NEW SYSTEM: Use WorldPicker for texture-based picking (flat map)
-        var worldPicker = FindAnyObjectByType<WorldPicker>();
-        if (worldPicker != null)
+        if (cachedWorldPicker == null)
         {
-            if (worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
+            cachedWorldPicker = FindAnyObjectByType<WorldPicker>();
+        }
+        if (cachedWorldPicker != null)
+        {
+            if (cachedWorldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
             {
                 return (true, tileIndex, worldPos);
             }
@@ -409,14 +416,17 @@ public class TileSystem : MonoBehaviour
         if (mainCamera == null) return (false, -1, Vector3.zero);
 
         // Use HexMapChunkManager (chunk-based map renderer)
-        var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-        if (chunkManager != null && chunkManager.IsBuilt)
+        if (cachedChunkManager == null)
         {
-            var chunkCollider = chunkManager.PickingCollider;
+            cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
+        }
+        if (cachedChunkManager != null && cachedChunkManager.IsBuilt)
+        {
+            var chunkCollider = cachedChunkManager.PickingCollider;
             if (chunkCollider != null && chunkCollider.Raycast(ray, out RaycastHit hitInfo, maxRaycastDistance))
             {
-                Vector2 uv = chunkManager.GetUVFromWorldPosition(hitInfo.point);
-                int tileIndex = chunkManager.GetTileIndexAtUV(uv.x, uv.y);
+                Vector2 uv = cachedChunkManager.GetUVFromWorldPosition(hitInfo.point);
+                int tileIndex = cachedChunkManager.GetTileIndexAtUV(uv.x, uv.y);
                 if (tileIndex >= 0)
                     return (true, tileIndex, hitInfo.point);
             }

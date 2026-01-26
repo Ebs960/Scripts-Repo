@@ -16,6 +16,10 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI roundText;
     
     [SerializeField] private Button endTurnButton;
+    [Header("Layer Toggles")]
+    [SerializeField] private Button surfaceToggleButton;
+    [SerializeField] private Button underwaterToggleButton;
+    [SerializeField] private Button atmosphereToggleButton;
     [SerializeField] private Button techButton;
     [SerializeField] private Button cultureButton;
     [SerializeField] private Button policyButton;
@@ -185,6 +189,25 @@ Civilization civToUse = currentCiv;
                     Debug.LogError($"PlayerUI: Cannot show diplomacy panel - UIManager: {(UIManager.Instance != null ? "OK" : "NULL")}, Civilization: {(civToUse != null ? "OK" : "NULL")}");
                 }
             });
+        }
+
+        // Layer toggle buttons (Surface / Underwater / Atmosphere)
+        if (surfaceToggleButton != null)
+        {
+            surfaceToggleButton.onClick.RemoveAllListeners();
+            surfaceToggleButton.onClick.AddListener(() => ToggleSurfaceLayer());
+        }
+
+        if (underwaterToggleButton != null)
+        {
+            underwaterToggleButton.onClick.RemoveAllListeners();
+            underwaterToggleButton.onClick.AddListener(() => ToggleUnderwaterLayer());
+        }
+
+        if (atmosphereToggleButton != null)
+        {
+            atmosphereToggleButton.onClick.RemoveAllListeners();
+            atmosphereToggleButton.onClick.AddListener(() => ToggleAtmosphereLayer());
         }
 }
 
@@ -448,6 +471,88 @@ currentCiv = civ;
                 upcomingCivIcon.sprite = civ.civData.icon;
             else
                 upcomingCivIcon.sprite = null; // Or assign a default icon if you have one
+        }
+    }
+
+    // ---------------- Layer Toggle Handlers ----------------
+    private PlanetGenerator GetActivePlanetGenerator()
+    {
+        if (PlanetGenerator.Instance != null) return PlanetGenerator.Instance;
+        if (GameManager.Instance != null) return GameManager.Instance.GetCurrentPlanetGenerator();
+        return null;
+    }
+
+    private void ToggleSurfaceLayer()
+    {
+        var gen = GetActivePlanetGenerator();
+        if (gen == null)
+        {
+            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Surface layer.");
+            return;
+        }
+
+        if (gen.surfaceRoot == null)
+        {
+            Debug.LogWarning("PlayerUI: PlanetGenerator.surfaceRoot is not assigned.");
+            return;
+        }
+
+        bool enabled = !gen.surfaceRoot.activeSelf;
+        gen.surfaceRoot.SetActive(enabled);
+        Debug.Log($"PlayerUI: Surface layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+
+        // If gas giant visuals are configured, follow the rule: enable gas giant only when atmosphere exists and surface is disabled
+        if (gen.gasGiantRenderer != null && gen.atmosphereRoot != null)
+        {
+            bool shouldShowGasGiant = gen.atmosphereRoot.activeSelf && !gen.surfaceRoot.activeSelf;
+            try { gen.gasGiantRenderer.gameObject.SetActive(shouldShowGasGiant); } catch { }
+        }
+    }
+
+    private void ToggleUnderwaterLayer()
+    {
+        var gen = GetActivePlanetGenerator();
+        if (gen == null)
+        {
+            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Underwater layer.");
+            return;
+        }
+
+        if (gen.underwaterRoot == null)
+        {
+            Debug.LogWarning("PlayerUI: PlanetGenerator.underwaterRoot is not assigned.");
+            return;
+        }
+
+        bool enabled = !gen.underwaterRoot.activeSelf;
+        gen.underwaterRoot.SetActive(enabled);
+        Debug.Log($"PlayerUI: Underwater layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+    }
+
+    private void ToggleAtmosphereLayer()
+    {
+        var gen = GetActivePlanetGenerator();
+        if (gen == null)
+        {
+            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Atmosphere layer.");
+            return;
+        }
+
+        if (gen.atmosphereRoot == null)
+        {
+            Debug.LogWarning("PlayerUI: PlanetGenerator.atmosphereRoot is not assigned.");
+            return;
+        }
+
+        bool enabled = !gen.atmosphereRoot.activeSelf;
+        gen.atmosphereRoot.SetActive(enabled);
+        Debug.Log($"PlayerUI: Atmosphere layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+
+        // Follow gas giant rule: only show gas giant when atmosphere on and surface off
+        if (gen.gasGiantRenderer != null && gen.surfaceRoot != null)
+        {
+            bool shouldShowGasGiant = gen.atmosphereRoot.activeSelf && !gen.surfaceRoot.activeSelf;
+            try { gen.gasGiantRenderer.gameObject.SetActive(shouldShowGasGiant); } catch { }
         }
     }
 

@@ -299,8 +299,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     {
         if (data == null) return;
 
-        bool hasAtmosphereLayer = data.supportedLayers != null && data.supportedLayers.Exists(l => l.layerType == GameManager.PlanetLayerType.Atmosphere);
-        bool hasSurfaceLayer = data.supportedLayers != null && data.supportedLayers.Exists(l => l.layerType == GameManager.PlanetLayerType.Surface);
+        // IMPORTANT: Use a single source-of-truth for ALL layer checks.
+        // `HasLayer()` is authoritative (PlanetConfig first, then GameManager planet data),
+        // which avoids mismatches where Surface/Atmosphere come from PlanetData but Underwater
+        // comes from PlanetConfig (or vice versa).
+        bool hasAtmosphereLayer = HasLayer(GameManager.PlanetLayerType.Atmosphere);
+        bool hasSurfaceLayer = HasLayer(GameManager.PlanetLayerType.Surface);
 
         bool enableGasGiantVisuals = hasAtmosphereLayer && !hasSurfaceLayer;
 

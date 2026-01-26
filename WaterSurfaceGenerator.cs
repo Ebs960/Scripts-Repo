@@ -238,7 +238,10 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         var instance = Instantiate(prefab.gameObject, transform, false);
         instance.name = $"WaterSurface_{regionIndex}";
-        instance.transform.localPosition = new Vector3(0f, height, 0f);
+        // `height` is world-space (PlanetGenerator.SeaLevelWorldY). Convert to this transform's local space
+        // so we don't accidentally treat a world Y as a local Y when the map/planet hierarchy is offset/rotated.
+        float localY = transform.InverseTransformPoint(new Vector3(transform.position.x, height, transform.position.z)).y;
+        instance.transform.localPosition = new Vector3(0f, localY, 0f);
 
         Debug.Log($"[WaterSurfaceGenerator] Created WaterSurface idx={regionIndex} isLake={isLake} bounds={bounds.size} height={height}");
 

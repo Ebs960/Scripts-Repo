@@ -81,7 +81,10 @@ public class HexMapChunk : MonoBehaviour
         material = mat;
         if (meshRenderer != null)
         {
-            meshRenderer.material = material;
+            // IMPORTANT: Use sharedMaterial so all chunks truly share the same instance.
+            // Using .material would silently instantiate a per-renderer copy, which breaks
+            // later runtime updates and causes main vs ghost columns to diverge.
+            meshRenderer.sharedMaterial = material;
         }
     }
     

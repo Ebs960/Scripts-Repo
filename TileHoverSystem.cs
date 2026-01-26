@@ -2,8 +2,10 @@ using UnityEngine;
 using System;
 
 /// <summary>
-/// Detects when the mouse hovers over tiles using WorldPicker.
-/// Fires events for other systems (highlighter, info panel) to respond to.
+/// Hover event adapter.
+/// IMPORTANT: This system does NOT perform tile picking/raycasting.
+/// Tile picking is centralized in TileSystem; this script translates TileSystem hover events
+/// into richer Enter/Exit/Stay signals (with optional delay) for legacy consumers.
 /// </summary>
 public class TileHoverSystem : MonoBehaviour
 {
@@ -29,7 +31,6 @@ public class TileHoverSystem : MonoBehaviour
     private Vector3 lastHitPoint;
     
     // Cached references
-    private WorldPicker worldPicker;
     private TileSystem tileSystem;
     
     // Public accessors
@@ -58,76 +59,79 @@ public class TileHoverSystem : MonoBehaviour
     
     private void Start()
     {
-        worldPicker = FindAnyObjectByType<WorldPicker>();
         tileSystem = TileSystem.Instance;
     }
     
     private void Update()
     {
         if (!enableHover) return;
-        if (worldPicker == null) 
-        {
-            worldPicker = FindAnyObjectByType<WorldPicker>();
-            if (worldPicker == null)
-            {
-                if (debugLog) Debug.LogWarning("[TileHoverSystem] WorldPicker not found");
-                return;
-            }
-        }
+
         if (tileSystem == null)
         {
             tileSystem = TileSystem.Instance;
-            if (tileSystem == null)
-            {
-                if (debugLog) Debug.LogWarning("[TileHoverSystem] TileSystem not found");
-                return;
-            }
         }
-        
-        // Check if mouse is over UI
-        if (UnityEngine.EventSystems.EventSystem.current != null &&
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+
+        // Drive "stay" events without re-picking (TileSystem is authoritative for picking).
+        if (tileSystem != null && currentHoveredTile >= 0)
         {
-            ClearHover();
-            return;
+            var tileData = tileSystem.GetTileData(currentHoveredTile);
+            OnTileHoverStay?.Invoke(currentHoveredTile, tileData, lastHitPoint);
         }
-        
-        // Try to pick tile under mouse
-        if (worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 hitPoint))
+
+        // If a tile is pending (due to hoverDelay), count up and promote it when ready.
+        if (pendingTile >= 0)
         {
-            lastHitPoint = hitPoint;
-            
-            // Same tile as before
-            if (tileIndex == currentHoveredTile)
+            hoverTimer += Time.deltaTime;
+            if (hoverTimer >= hoverDelay)
             {
-                // Fire stay event
-                var tileData = tileSystem.GetTileData(tileIndex);
-                OnTileHoverStay?.Invoke(tileIndex, tileData, hitPoint);
-                return;
+                SetHoveredTile(pendingTile, lastHitPoint);
             }
-            
-            // New tile - use delay to avoid flicker
-            if (tileIndex != pendingTile)
-            {
-                pendingTile = tileIndex;
-                hoverTimer = 0f;
-            }
-            else
-            {
-                hoverTimer += Time.deltaTime;
-                if (hoverTimer >= hoverDelay)
-                {
-                    SetHoveredTile(tileIndex, hitPoint);
-                }
-            }
-        }
-        else
-        {
-            // No tile under mouse
-            ClearHover();
         }
     }
     
+    private void OnEnable()
+    {
+        tileSystem = TileSystem.Instance;
+        if (tileSystem != null)
+        {
+            tileSystem.OnTileHovered += HandleTileHovered;
+            tileSystem.OnTileHoverExited += HandleTileHoverExited;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (tileSystem != null)
+        {
+            tileSystem.OnTileHovered -= HandleTileHovered;
+            tileSystem.OnTileHoverExited -= HandleTileHoverExited;
+        }
+        ClearHover();
+    }
+
+    private void HandleTileHovered(int tileIndex, Vector3 worldPos)
+    {
+        if (!enableHover) return;
+
+        lastHitPoint = worldPos;
+
+        // Same tile: no enter/exit, stay is handled in Update.
+        if (tileIndex == currentHoveredTile) return;
+
+        // New tile - use delay to avoid flicker.
+        if (tileIndex != pendingTile)
+        {
+            pendingTile = tileIndex;
+            hoverTimer = 0f;
+        }
+    }
+
+    private void HandleTileHoverExited()
+    {
+        if (!enableHover) return;
+        ClearHover();
+    }
+
     private void SetHoveredTile(int tileIndex, Vector3 hitPoint)
     {
         // Exit previous tile
@@ -177,8 +181,5 @@ public class TileHoverSystem : MonoBehaviour
         return lastHitPoint;
     }
     
-    private void OnDisable()
-    {
-        ClearHover();
-    }
+    // OnDisable handled above (unsubscribe + ClearHover)
 }
