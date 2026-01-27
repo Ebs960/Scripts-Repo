@@ -21,7 +21,7 @@ public static class BiomeColorHelper
         if (provider == null)
         {
             // Fallback: any instance in scene (editor/runtime)
-            provider = Object.FindObjectOfType<MinimapColorProvider>();
+            provider = UnityEngine.Object.FindFirstObjectByType<MinimapColorProvider>();
         }
 
         if (provider != null && provider.biomeColors != null)

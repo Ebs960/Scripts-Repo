@@ -144,6 +144,22 @@ currentPlanetIndex = planetIndex;
         if (TileSystem.Instance != null && gen != null)
         {
             TileSystem.Instance.InitializeFromPlanet(gen);
+            // FIX: ensure occupancy manager is initialized and legacy occupantIds are migrated
+            if (TileOccupancyManager.Instance != null && gen.Grid != null)
+            {
+                int count = gen.Grid.TileCount;
+                if (count > 0)
+                {
+                    TileOccupancyManager.Instance.Initialize(count);
+                    var tiles = new global::HexTileData[count];
+                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
+                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for planet '{(gen!=null?gen.name:"<null>")}'. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
+            }
         }
     }
 
@@ -1647,6 +1663,22 @@ currentPlanetIndex = planetIndex;
             if (TileSystem.Instance != null)
             {
                 TileSystem.Instance.InitializeFromPlanet(earthPlanetGen);
+                // FIX: initialize occupancy manager and migrate legacy occupantIds
+                if (TileOccupancyManager.Instance != null && earthPlanetGen.Grid != null)
+                {
+                    int count = earthPlanetGen.Grid.TileCount;
+                    if (count > 0)
+                    {
+                        TileOccupancyManager.Instance.Initialize(count);
+                        var tiles = new global::HexTileData[count];
+                        for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
+                        TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for Earth. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
+                }
             }
             
             // Spawn civilizations on Earth
@@ -2102,6 +2134,22 @@ currentPlanetIndex = planetIndex;
         if (TileSystem.Instance != null)
         {
             TileSystem.Instance.InitializeFromPlanet(generator);
+            // FIX: initialize occupancy manager and migrate legacy occupantIds
+            if (TileOccupancyManager.Instance != null && generator != null && generator.Grid != null)
+            {
+                int count = generator.Grid.TileCount;
+                if (count > 0)
+                {
+                    TileOccupancyManager.Instance.Initialize(count);
+                    var tiles = new global::HexTileData[count];
+                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
+                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for planet '{(generator!=null?generator.name:"<null>")}'. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
+            }
         }
 
         // Match initial generation ordering: TileSystem binds first, then notify.
@@ -2132,6 +2180,22 @@ currentPlanetIndex = planetIndex;
         if (TileSystem.Instance != null && planetGenerator != null)
         {
             TileSystem.Instance.InitializeFromPlanet(planetGenerator);
+            // FIX: initialize occupancy manager and migrate any legacy occupantIds into the manager
+            if (TileOccupancyManager.Instance != null && planetGenerator.Grid != null)
+            {
+                int count = planetGenerator.Grid.TileCount;
+                if (count > 0)
+                {
+                    TileOccupancyManager.Instance.Initialize(count);
+                    var tiles = new global::HexTileData[count];
+                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
+                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] TileOccupancyManager not present; skipped occupancy init/migration after planet generation. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
+            }
         }
 
         OnPlanetFullyGenerated?.Invoke(planetGenerator);

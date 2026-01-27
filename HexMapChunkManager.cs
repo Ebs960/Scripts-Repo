@@ -22,6 +22,9 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private ComputeShader textureBakerComputeShader;
     [SerializeField] private Shader flatMapDisplacementShader;
     [SerializeField] private Shader hdrpTerrainShader;
+    [SerializeField]
+    [Tooltip("The terrain shader used to render biome chunks. Must support _BiomeIndexMap and _AlbedoArray.")]
+    private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     
     [Header("Texture Settings")]
@@ -793,22 +796,11 @@ TrySubscribeToSurfaceReady(gen);
     
     private void CreateSharedMaterial()
     {
-        Shader shader = hdrpTerrainShader;
+        Shader shader = terrainShader;
         if (shader == null)
         {
-            // Prefer the Shader Graph-based shader. Ensure a Shader Graph named `BiomeTerrain_HDRP` exists
-            // under a Shader Graphs folder (common import path). The field can also be set in inspector.
-            shader = Shader.Find("Shader Graphs/BiomeTerrain_HDRP");
-        }
-        if (shader == null)
-        {
-            // Try legacy built-in shader name used previously
-            shader = Shader.Find("HDRP/BiomeTerrain");
-        }
-        if (shader == null)
-        {
-            Debug.LogWarning("[HexMapChunkManager] HDRP terrain shader not found! Falling back to HDRP/Lit.");
-            shader = Shader.Find("HDRP/Lit");
+            Debug.LogError("[HexMapChunkManager] Terrain shader not assigned. Please assign it in the Inspector.");
+            return;
         }
         
         sharedMaterial = new Material(shader);

@@ -18,6 +18,8 @@ public class TileOccupancyManager : MonoBehaviour
     private int tileCount;
     // occupants[tile][layer] => instance id (0 = none)
     private int[,] occupants;
+    // One-time warning flags to avoid log spam
+    private bool warnedNotInitialized = false;
 
     void Awake()
     {
@@ -193,6 +195,19 @@ public class TileOccupancyManager : MonoBehaviour
 
     private bool ValidIndex(int tile)
     {
-        return occupants != null && tile >= 0 && tile < tileCount;
+        if (occupants == null)
+        {
+            if (!warnedNotInitialized)
+            {
+                Debug.LogWarning("[TileOccupancyManager] Occupancy manager not initialized. Call TileOccupancyManager.Instance.Initialize(tileCount) after planet/grid generation so occupancy lookups don't fall back to legacy HexTileData.occupantId.");
+                warnedNotInitialized = true;
+            }
+            return false;
+        }
+        if (tile < 0 || tile >= tileCount)
+        {
+            return false;
+        }
+        return true;
     }
 }

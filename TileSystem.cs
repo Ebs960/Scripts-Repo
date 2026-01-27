@@ -232,7 +232,7 @@ public class TileSystem : MonoBehaviour
             Debug.LogWarning($"[TileSystem] {fallbackCreated} tiles had no generator data; created fallback entries.");
         }
         // Initialize occupancy manager and migrate legacy occupant ids
-        var occMgrObj = FindObjectOfType<TileOccupancyManager>();
+        var occMgrObj = UnityEngine.Object.FindFirstObjectByType<TileOccupancyManager>();
         if (occMgrObj == null)
         {
             var go = new GameObject("_TileOccupancyManager");
