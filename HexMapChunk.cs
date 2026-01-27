@@ -4,7 +4,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Represents a single chunk of the hex map.
 /// Each chunk is a subdivided plane that samples from the shared baked texture.
-/// Chunks use the same FlatMapDisplacement_URP shader as FlatMapTextureRenderer.
+/// Chunks use the shared terrain shader provided by `HexMapChunkManager`.
 /// Chunks can be teleported for seamless world wrapping.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -74,7 +74,7 @@ public class HexMapChunk : MonoBehaviour
     }
     
     /// <summary>
-    /// Set the material for this chunk. Should be an instance of FlatMapDisplacement_URP.
+    /// Set the material for this chunk. Should be the shared terrain material created by `HexMapChunkManager`.
     /// </summary>
     public void SetMaterial(Material mat)
     {

@@ -20,7 +20,6 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private MinimapColorProvider colorProvider;
     [SerializeField] private ComputeShader textureBakerComputeShader;
-    [SerializeField] private Shader flatMapDisplacementShader;
     [SerializeField] private Shader hdrpTerrainShader;
     [SerializeField]
     [Tooltip("The terrain shader used to render biome chunks. Must support _BiomeIndexMap and _AlbedoArray.")]
@@ -119,6 +118,13 @@ public class HexMapChunkManager : MonoBehaviour
     private PlanetGenerator planetGenerator;
     private Transform cameraTransform;
     private TerrainOverlayGPU terrainOverlayGPU;
+
+    private bool ShouldRunDiagnostics()
+    {
+        if (GameManager.Instance == null) return true;
+        if (!GameManager.Instance.restrictDiagnosticsToFirstPlanet) return true;
+        return planetGenerator != null && planetGenerator.planetIndex == 0;
+    }
     
     // Tile to chunk mapping
     private Dictionary<int, HexMapChunk> tileToChunk = new Dictionary<int, HexMapChunk>();
@@ -192,7 +198,10 @@ public class HexMapChunkManager : MonoBehaviour
         {
             if (transform.position != _lastTransformPos || transform.rotation != _lastTransformRot || transform.lossyScale != _lastTransformScale)
             {
-                Debug.LogWarning($"[HexMapChunkManager][TRANSFORM] Changed: path={GetTransformPath(transform)} pos={transform.position.ToString("F3")} rot={transform.rotation.eulerAngles.ToString("F1")} scale={transform.lossyScale.ToString("F3")}");
+                if (ShouldRunDiagnostics())
+                {
+                    Debug.LogWarning($"[HexMapChunkManager][TRANSFORM] Changed: path={GetTransformPath(transform)} pos={transform.position.ToString("F3")} rot={transform.rotation.eulerAngles.ToString("F1")} scale={transform.lossyScale.ToString("F3")}");
+                }
                 _lastTransformPos = transform.position;
                 _lastTransformRot = transform.rotation;
                 _lastTransformScale = transform.lossyScale;
@@ -356,7 +365,7 @@ TrySubscribeToSurfaceReady(gen);
         // Create shared material
         CreateSharedMaterial();
 
-        if (logTransformChainOnBuild)
+        if (logTransformChainOnBuild && ShouldRunDiagnostics())
         {
             LogTransformDiagnostics();
         }
@@ -391,13 +400,19 @@ TrySubscribeToSurfaceReady(gen);
             DisableOldRenderer();
         }
         
-        // DIAGNOSTIC: Log heightmap and displacement settings
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {heightmapTexture != null}");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Displacement Strength: {displacementStrength} (Inspector value)");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Shader Assigned: {flatMapDisplacementShader != null}");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Material _FlatHeightScale: {(sharedMaterial != null ? sharedMaterial.GetFloat("_FlatHeightScale").ToString("F4") : "N/A")}");
-        Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
+        // DIAGNOSTIC: Log heightmap and displacement settings (respect GameManager toggle)
+        if (ShouldRunDiagnostics())
+        {
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {heightmapTexture != null}");
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Displacement Strength: {displacementStrength} (Inspector value)");
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Material _ElevationScale: {(sharedMaterial != null && sharedMaterial.HasProperty("_ElevationScale") ? sharedMaterial.GetFloat("_ElevationScale").ToString("F4") : "N/A")} ");
+            if (sharedMaterial != null && !sharedMaterial.HasProperty("_ElevationScale"))
+            {
+                Debug.LogWarning("Material is missing _ElevationScale property.");
+            }
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
+        }
     }
     
     private void BakeTexture()
@@ -589,6 +604,18 @@ TrySubscribeToSurfaceReady(gen);
         biomeMaskArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
         biomeEmissiveArray = new Texture2DArray(width, height, count, TextureFormat.RGBAHalf, true, true);
 
+        // Create a fallback black emissive texture that matches the emissive array format/size
+        Texture2D fallbackEmissive = new Texture2D(width, height, TextureFormat.RGBAHalf, true, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = "BiomeEmissiveFallback"
+        };
+        var blackPixels = new Color[width * height];
+        for (int p = 0; p < blackPixels.Length; p++) blackPixels[p] = Color.black;
+        fallbackEmissive.SetPixels(blackPixels);
+        fallbackEmissive.Apply(true, false);
+
         biomeTintArray = new Vector4[count];
         biomeParamsArray = new Vector4[count];
 
@@ -618,8 +645,8 @@ TrySubscribeToSurfaceReady(gen);
             Graphics.CopyTexture(albedo, 0, 0, biomeAlbedoArray, i, 0);
             Graphics.CopyTexture(normal, 0, 0, biomeNormalArray, i, 0);
             Graphics.CopyTexture(mask, 0, 0, biomeMaskArray, i, 0);
-            // fallback emissive = black
-            Graphics.CopyTexture(Texture2D.blackTexture, 0, 0, biomeEmissiveArray, i, 0);
+            // fallback emissive = black (use matching format/size texture)
+            Graphics.CopyTexture(fallbackEmissive, 0, 0, biomeEmissiveArray, i, 0);
 
             if (entry != null)
             {
@@ -796,13 +823,30 @@ TrySubscribeToSurfaceReady(gen);
     
     private void CreateSharedMaterial()
     {
-        Shader shader = terrainShader;
+        // Prefer an HDRP-specific shader when running under HDRP and an HDRP shader was assigned.
+        Shader shader = null;
+        try
+        {
+            var rp = UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset;
+            bool isHDRP = (rp != null && (rp.GetType().Name.Contains("HDRenderPipeline") || rp.GetType().Name.Contains("HighDefinition")));
+            if (isHDRP && hdrpTerrainShader != null)
+            {
+                shader = hdrpTerrainShader;
+            }
+        }
+        catch
+        {
+            // If any reflection/lookup fails, fall back to the generic shader below.
+        }
+
+        if (shader == null) shader = terrainShader;
+
         if (shader == null)
         {
-            Debug.LogError("[HexMapChunkManager] Terrain shader not assigned. Please assign it in the Inspector.");
+            Debug.LogError("[HexMapChunkManager] Terrain shader not assigned. Please assign either the HDRP shader or the fallback terrain shader in the Inspector.");
             return;
         }
-        
+
         sharedMaterial = new Material(shader);
         sharedMaterial.name = "ChunkTerrainMaterial";
 

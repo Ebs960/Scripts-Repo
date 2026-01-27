@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Highlights the currently hovered tile via shader uniform.
-/// Works with FlatMapDisplacement_URP shader.
+/// Works with the shared terrain shader (uses the `HexMapChunkManager` shared material).
 /// </summary>
 public class TileHighlighter : MonoBehaviour
 {

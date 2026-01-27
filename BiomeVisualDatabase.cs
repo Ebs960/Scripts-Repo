@@ -165,6 +165,18 @@ public class BiomeVisualDatabase : ScriptableObject
 
         var emissiveArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBAHalf, true, true);
 
+        // Create a fallback black emissive texture matching the emissive array format/size
+        Texture2D fallbackEmissive = new Texture2D(targetW, targetH, TextureFormat.RGBAHalf, true, true)
+        {
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear,
+            name = "SurfaceEmissiveFallback"
+        };
+        var blackPixels = new Color[targetW * targetH];
+        for (int i = 0; i < blackPixels.Length; i++) blackPixels[i] = Color.black;
+        fallbackEmissive.SetPixels(blackPixels);
+        fallbackEmissive.Apply(true, false);
+
         albedoArray.wrapMode = TextureWrapMode.Repeat;
         normalArray.wrapMode = TextureWrapMode.Repeat;
         maskArray.wrapMode = TextureWrapMode.Repeat;
@@ -224,8 +236,7 @@ public class BiomeVisualDatabase : ScriptableObject
                     }
                     else
                     {
-                        var black = Texture2D.blackTexture;
-                        Graphics.CopyTexture(black, 0, 0, emissiveArray, writeSlice, 0);
+                        Graphics.CopyTexture(fallbackEmissive, 0, 0, emissiveArray, writeSlice, 0);
                     }
 
                     writeSlice++;
@@ -268,8 +279,8 @@ public class BiomeVisualDatabase : ScriptableObject
                     Graphics.CopyTexture(def, 0, 0, maskArray, writeSlice, 0);
                 }
 
-                    // emissive: legacy per-biome BV has no emissive texture, fill black
-                    Graphics.CopyTexture(Texture2D.blackTexture, 0, 0, emissiveArray, writeSlice, 0);
+                    // emissive: legacy per-biome BV has no emissive texture, fill black (use matching fallback)
+                    Graphics.CopyTexture(fallbackEmissive, 0, 0, emissiveArray, writeSlice, 0);
 
                 writeSlice++;
             }

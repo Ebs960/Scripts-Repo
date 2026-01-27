@@ -99,6 +99,9 @@ public class GameManager : MonoBehaviour
     public event Action<int> OnPlanetManagersAttached;
     public event Action<int> OnPlanetReady;
     public static event Action<PlanetGenerator> OnPlanetFullyGenerated;
+    [Header("Diagnostics")]
+    [Tooltip("When enabled, diagnostics from systems will only run for the first created planet (planet index 0). Disable to allow diagnostics on all planets.")]
+    public bool restrictDiagnosticsToFirstPlanet = true;
     private List<string> realBodies;
     private int totalPlanets;
 

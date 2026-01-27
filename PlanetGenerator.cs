@@ -345,9 +345,21 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             Debug.Log($"[PlanetGenerator] Atmosphere root active={hasAtmosphereLayer} yOffset={atmosphereYOffset}");
         }
 
+        if (terrainRenderer == null)
+        {
+            terrainRenderer = UnityEngine.Object.FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
+            if (terrainRenderer == null)
+            {
+                Debug.Log("[PlanetGenerator] ApplyPlanetLayers: no HexMapChunkManager assigned or found in scene.");
+            }
+            else if (enableDiagnostics)
+            {
+                Debug.Log($"[PlanetGenerator] ApplyPlanetLayers: auto-found HexMapChunkManager ({terrainRenderer.name}).");
+            }
+        }
+
         if (terrainRenderer != null)
         {
-            // terrainRenderer should be disabled for gas-giant visuals and enabled otherwise
             terrainRenderer.enabled = !enableGasGiantVisuals;
         }
     }
