@@ -62,7 +62,10 @@ public class TerrainOverlayGPU : MonoBehaviour
     private void Awake()
     {
         if (tileSystem == null)
-            tileSystem = FindAnyObjectByType<TileSystem>();
+        {
+            int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+            tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        }
     }
     
     private void Update()
@@ -135,6 +138,11 @@ public class TerrainOverlayGPU : MonoBehaviour
     /// </summary>
     public void UpdateOverlays()
     {
+        // Ensure we are bound to the current planet's TileSystem (multi-planet gameplay)
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (tileSystem == null || tileSystem.planetIndex != pIndex)
+            tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+
         if (tileSystem == null || !tileSystem.IsReady())
             return;
         

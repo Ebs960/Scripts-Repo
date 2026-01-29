@@ -119,7 +119,9 @@ public class TileInfoWorldPanel : MonoBehaviour
     #region Public API
     public void ShowForTile(int tileIndex)
     {
-        var tileData = TileSystem.Instance?.GetTileData(tileIndex);
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return;
         UpdateContent(tileData);
         Show();

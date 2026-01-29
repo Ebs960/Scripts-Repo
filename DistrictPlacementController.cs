@@ -15,7 +15,8 @@ public class DistrictPlacementController : MonoBehaviour
     private City sourceCity;
     private DistrictData districtData;
     private List<int> validTileIndices = new List<int>();
-    private Dictionary<int, GameObject> tileHighlights = new();
+    // Keyed by (planetIndex,tileIndex) to avoid cross-planet collisions
+    private Dictionary<long, GameObject> tileHighlights = new();
     // Shared material and property block for highlights to avoid allocations
     private static Material s_highlightMaterial;
     private static UnityEngine.MaterialPropertyBlock s_highlightMPB;
@@ -24,6 +25,10 @@ public class DistrictPlacementController : MonoBehaviour
     // Components references
     private SphericalHexGrid grid;
     private PlanetGenerator planet;
+
+    // Multi-planet: subscribe to the active planet's TileSystem events (resubscribe on planet switches).
+    private TileSystem eventTileSystem;
+    private int eventPlanetIndex = int.MinValue;
     
     void Awake()
     {
@@ -49,26 +54,46 @@ public class DistrictPlacementController : MonoBehaviour
     }
     private void OnEnable()
     {
-        if (TileSystem.Instance != null)
-        {
-            TileSystem.Instance.OnTileHovered += HandleTileHovered;
-            TileSystem.Instance.OnTileHoverExited += HandleTileExited;
-            TileSystem.Instance.OnTileClicked += HandleTileClicked;
-        }
+        eventTileSystem = null;
+        eventPlanetIndex = int.MinValue;
     }
 
     private void OnDisable()
     {
-        if (TileSystem.Instance != null)
+        if (eventTileSystem != null)
         {
-            TileSystem.Instance.OnTileHovered -= HandleTileHovered;
-            TileSystem.Instance.OnTileHoverExited -= HandleTileExited;
-            TileSystem.Instance.OnTileClicked -= HandleTileClicked;
+            eventTileSystem.OnTileHovered -= HandleTileHovered;
+            eventTileSystem.OnTileHoverExited -= HandleTileExited;
+            eventTileSystem.OnTileClicked -= HandleTileClicked;
         }
+        eventTileSystem = null;
     }
     
     void Update()
     {
+        // Keep event subscription aligned with the planet being interacted with.
+        int desiredPlanet =
+            (isPlacingDistrict && sourceCity != null) ? sourceCity.planetIndex :
+            (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+
+        if (eventTileSystem == null || eventPlanetIndex != desiredPlanet)
+        {
+            if (eventTileSystem != null)
+            {
+                eventTileSystem.OnTileHovered -= HandleTileHovered;
+                eventTileSystem.OnTileHoverExited -= HandleTileExited;
+                eventTileSystem.OnTileClicked -= HandleTileClicked;
+            }
+            eventPlanetIndex = desiredPlanet;
+            eventTileSystem = TileSystem.GetForPlanet(desiredPlanet) ?? TileSystem.Instance;
+            if (eventTileSystem != null)
+            {
+                eventTileSystem.OnTileHovered += HandleTileHovered;
+                eventTileSystem.OnTileHoverExited += HandleTileExited;
+                eventTileSystem.OnTileClicked += HandleTileClicked;
+            }
+        }
+
         if (!isPlacingDistrict) return;
 
         // Clicking is now handled via OnTileClicked subscription (HandleTileClicked)
@@ -112,8 +137,10 @@ public class DistrictPlacementController : MonoBehaviour
         // Get tiles within city territory radius
         int centerTileIndex = sourceCity.centerTileIndex;
         int radius = sourceCity.TerritoryRadius;
-        
-    var tilesInRange = (TileSystem.Instance != null && TileSystem.Instance.IsReady()) ? TileSystem.Instance.GetTilesWithinSteps(centerTileIndex, radius) : null;
+
+        int pIndex = sourceCity != null ? sourceCity.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        var tilesInRange = (ts != null && ts.IsReady()) ? ts.GetTilesWithinSteps(centerTileIndex, radius) : null;
         if (tilesInRange == null) return;
         
         foreach (int tileIndex in tilesInRange)
@@ -130,12 +157,16 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private bool IsValidTileForDistrict(int tileIndex, DistrictData district)
     {
+        int pIndex = sourceCity != null ? sourceCity.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
+
         // Check if tile is owned by the city's civilization
-    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        var tileData = ts.GetTileData(tileIndex);
         if (tileData == null) return false;
         
         // Check if tile is already occupied by a district, unit, or improvement (layer-aware)
-        var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
+        var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface, pIndex);
         if (tileData.district != null || occObj != null || tileData.improvement != null) return false;
         
         // Check biome requirements
@@ -162,9 +193,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresRiver)
         {
             bool adjacentToRiver = false;
-            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
+            foreach (int neighborIndex in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
+                var neighborData = ts.GetTileData(neighborIndex);
                 if (neighborData != null && neighborData.biome == Biome.River)
                 {
                     adjacentToRiver = true;
@@ -177,9 +208,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresCoastal)
         {
             bool adjacentToWater = false;
-            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
+            foreach (int neighborIndex in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
+                var neighborData = ts.GetTileData(neighborIndex);
                 if (neighborData != null && 
                     (neighborData.biome == Biome.Ocean || 
                      neighborData.biome == Biome.Seas || 
@@ -195,9 +226,9 @@ public class DistrictPlacementController : MonoBehaviour
         if (district.requiresMountainAdjacent)
         {
             bool adjacentToMountain = false;
-            foreach (int neighborIndex in (TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(tileIndex) : System.Array.Empty<int>()))
+            foreach (int neighborIndex in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(neighborIndex) : null;
+                var neighborData = ts.GetTileData(neighborIndex);
                 if (neighborData != null && neighborData.biome == Biome.Mountain)
                 {
                     adjacentToMountain = true;
@@ -262,7 +293,9 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void HighlightHoveredTile(int tileIndex)
     {
-        if (tileHighlights.TryGetValue(tileIndex, out var obj))
+        int pIndex = sourceCity != null ? sourceCity.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        long key = ((long)pIndex << 32) ^ (uint)tileIndex;
+        if (tileHighlights.TryGetValue(key, out var obj))
         {
             var mr = obj.GetComponent<MeshRenderer>();
             if (mr != null) mr.material.color = Color.yellow;
@@ -274,7 +307,9 @@ public class DistrictPlacementController : MonoBehaviour
     /// </summary>
     private void ResetTileHighlight(int tileIndex)
     {
-        if (tileHighlights.TryGetValue(tileIndex, out var obj))
+        int pIndex = sourceCity != null ? sourceCity.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        long key = ((long)pIndex << 32) ^ (uint)tileIndex;
+        if (tileHighlights.TryGetValue(key, out var obj))
         {
             var mr = obj.GetComponent<MeshRenderer>();
             if (mr != null)
@@ -284,12 +319,15 @@ public class DistrictPlacementController : MonoBehaviour
 
     private void HighlightTile(int tileIndex, Color color)
     {
-        if (TileSystem.Instance == null || !TileSystem.Instance.IsReady()) return;
+        int pIndex = sourceCity != null ? sourceCity.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return;
 
-        if (!tileHighlights.ContainsKey(tileIndex))
+        long key = ((long)pIndex << 32) ^ (uint)tileIndex;
+        if (!tileHighlights.ContainsKey(key))
         {
             GameObject highlightObj;
-            if (tileHighlights.TryGetValue(tileIndex, out var existing))
+            if (tileHighlights.TryGetValue(key, out var existing))
             {
                 highlightObj = existing;
             }
@@ -297,10 +335,10 @@ public class DistrictPlacementController : MonoBehaviour
             {
                 highlightObj = highlightPrefab != null ? Instantiate(highlightPrefab) : GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 highlightObj.name = $"TileHighlight_{tileIndex}";
-                tileHighlights[tileIndex] = highlightObj;
+                tileHighlights[key] = highlightObj;
             }
 
-            Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(tileIndex);
+            Vector3 worldPos = ts.GetTileCenterFlat(tileIndex);
             highlightObj.transform.position = worldPos + Vector3.up * 0.05f;
             float tileSize = 0.2f;
             highlightObj.transform.localScale = new Vector3(tileSize, tileSize, tileSize);
@@ -316,7 +354,7 @@ public class DistrictPlacementController : MonoBehaviour
         }
         else
         {
-            var rend = tileHighlights[tileIndex].GetComponent<MeshRenderer>();
+            var rend = tileHighlights[key].GetComponent<MeshRenderer>();
             if (rend != null)
             {
                 s_highlightMPB.SetColor("_Color", color);

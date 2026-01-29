@@ -32,6 +32,7 @@ public class TileHoverSystem : MonoBehaviour
     
     // Cached references
     private TileSystem tileSystem;
+    private int boundPlanetIndex = int.MinValue;
     
     // Public accessors
     public int CurrentHoveredTile => currentHoveredTile;
@@ -59,16 +60,31 @@ public class TileHoverSystem : MonoBehaviour
     
     private void Start()
     {
-        tileSystem = TileSystem.Instance;
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        boundPlanetIndex = pIndex;
+        tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
     }
     
     private void Update()
     {
         if (!enableHover) return;
 
-        if (tileSystem == null)
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (tileSystem == null || boundPlanetIndex != pIndex)
         {
-            tileSystem = TileSystem.Instance;
+            // Rebind on planet switch
+            if (tileSystem != null)
+            {
+                tileSystem.OnTileHovered -= HandleTileHovered;
+                tileSystem.OnTileHoverExited -= HandleTileHoverExited;
+            }
+            boundPlanetIndex = pIndex;
+            tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            if (tileSystem != null)
+            {
+                tileSystem.OnTileHovered += HandleTileHovered;
+                tileSystem.OnTileHoverExited += HandleTileHoverExited;
+            }
         }
 
         // Drive "stay" events without re-picking (TileSystem is authoritative for picking).
@@ -91,7 +107,9 @@ public class TileHoverSystem : MonoBehaviour
     
     private void OnEnable()
     {
-        tileSystem = TileSystem.Instance;
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        boundPlanetIndex = pIndex;
+        tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (tileSystem != null)
         {
             tileSystem.OnTileHovered += HandleTileHovered;

@@ -14,9 +14,11 @@ public static class ArmyIntegration
     public static void OnUnitCreated(CombatUnit unit, int tileIndex)
     {
         if (unit == null || ArmyManager.Instance == null) return;
+        int pIndex = unit.planetIndex;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         
         // Find existing army at this tile
-        var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(tileIndex);
+        var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(tileIndex, pIndex);
         var friendlyArmy = armiesAtTile.FirstOrDefault(a => a != null && a.owner == unit.owner);
         
         if (friendlyArmy != null)
@@ -34,9 +36,9 @@ public static class ArmyIntegration
                 nearbyArmy.AddUnit(unit);
                 // Move unit to army's tile
                 unit.currentTileIndex = nearbyArmy.currentTileIndex;
-                if (TileSystem.Instance != null)
+                if (ts != null && ts.IsReady())
                 {
-                    Vector3 armyPos = TileSystem.Instance.GetTileCenterFlat(nearbyArmy.currentTileIndex);
+                    Vector3 armyPos = ts.GetTileCenterFlat(nearbyArmy.currentTileIndex);
                     unit.transform.position = armyPos;
                 }
 }
@@ -57,15 +59,18 @@ public static class ArmyIntegration
     /// </summary>
     private static Army FindNearbyArmy(Civilization owner, int tileIndex)
     {
-        if (TileSystem.Instance == null) return null;
+        // Multi-planet: infer from any army at tileIndex? Caller should already know planet; default to current planet.
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return null;
         
         // Check current tile and neighbors
         var tilesToCheck = new List<int> { tileIndex };
-        tilesToCheck.AddRange(TileSystem.Instance.GetNeighbors(tileIndex));
+        tilesToCheck.AddRange(ts.GetNeighbors(tileIndex));
         
         foreach (int tile in tilesToCheck)
         {
-            var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(tile);
+            var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(tile, pIndex);
             var friendlyArmy = armiesAtTile.FirstOrDefault(a => 
                 a != null && 
                 a.owner == owner && 

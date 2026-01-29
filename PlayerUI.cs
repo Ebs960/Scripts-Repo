@@ -477,9 +477,9 @@ currentCiv = civ;
     // ---------------- Layer Toggle Handlers ----------------
     private PlanetGenerator GetActivePlanetGenerator()
     {
-        if (PlanetGenerator.Instance != null) return PlanetGenerator.Instance;
         if (GameManager.Instance != null) return GameManager.Instance.GetCurrentPlanetGenerator();
-        return null;
+        // Fallback for legacy/special scenes
+        return FindAnyObjectByType<PlanetGenerator>();
     }
 
     private void ToggleSurfaceLayer()

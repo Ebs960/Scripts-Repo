@@ -34,8 +34,8 @@ public class ImprovementManager : MonoBehaviour
     // Planet generator reference
     private PlanetGenerator planetGenerator;
 
-    // Active traps by tile index
-    private readonly Dictionary<int, TrapRuntime> traps = new Dictionary<int, TrapRuntime>();
+    // Active traps by (planet,tile) key to avoid cross-planet index collisions
+    private readonly Dictionary<long, TrapRuntime> traps = new Dictionary<long, TrapRuntime>();
 
     [System.Serializable]
     public class JobAssignmentSaveData
@@ -46,6 +46,7 @@ public class ImprovementManager : MonoBehaviour
 
     private struct TrapRuntime
     {
+        public int planetIndex;
         public int tileIndex;
         public Civilization owner;
         public ImprovementData data;
@@ -66,8 +67,10 @@ public class ImprovementManager : MonoBehaviour
     /// </summary>
     private HexTileData GetTileDataAcrossAllPlanets(int tileIndex)
     {
-        // Single-planet scope currently; stub for future multi-planet expansion
-        return (TileSystem.Instance != null) ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        // Multi-planet: without an explicit planet, default to the current planet.
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        return (ts != null) ? ts.GetTileData(tileIndex) : null;
     }
 
     void Awake()
@@ -118,8 +121,9 @@ public class ImprovementManager : MonoBehaviour
     /// </summary>
     public bool CreateBuildJob(ImprovementData data, int tileIndex, Civilization owner)
     {
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         // No duplicate jobs on same tile
-        if (jobs.Exists(j => j.tileIndex == tileIndex)) return false;
+        if (jobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
 
         // Check tile requirements across all planets
         var td = GetTileDataAcrossAllPlanets(tileIndex);
@@ -143,7 +147,7 @@ public class ImprovementManager : MonoBehaviour
         if (isNeutral && !data.canBuildInNeutralTerritory) return false;
         if (isEnemyTerritory && !data.canBuildInEnemyTerritory) return false;
 
-        var job = new BuildJob(tileIndex, owner, data);
+        var job = new BuildJob(tileIndex, planetIndex, owner, data);
         jobs.Add(job);
         return true;
     }
@@ -160,17 +164,19 @@ public class ImprovementManager : MonoBehaviour
         if (!LimitManager.Instance.CanCreateCombatUnit(owner, unit)) return false;
 
         // No duplicate jobs per tile
-        if (unitJobs.Exists(j => j.tileIndex == tileIndex)) return false;
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (unitJobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
 
         // Tile must be valid and free
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
     // Allow job even if a worker is occupying the tile; we'll spawn the unit on a free neighbor if needed
     if (!tileData.isLand) return false; // basic restriction for now
 
         // Optional: validate adjacent friendly city or territory rules if desired later
 
-        unitJobs.Add(new UnitJob(tileIndex, owner, unit));
+        unitJobs.Add(new UnitJob(tileIndex, planetIndex, owner, unit));
         return true;
     }
 
@@ -184,13 +190,15 @@ public class ImprovementManager : MonoBehaviour
         if (!unit.AreRequirementsMet(owner)) return false;
         if (!LimitManager.Instance.CanCreateWorkerUnit(owner, unit)) return false;
 
-        if (workerJobs.Exists(j => j.tileIndex == tileIndex)) return false;
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (workerJobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
 
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return false;
         if (!tileData.isLand) return false;
 
-        workerJobs.Add(new WorkerJob(tileIndex, owner, unit));
+        workerJobs.Add(new WorkerJob(tileIndex, planetIndex, owner, unit));
         return true;
     }
 
@@ -333,7 +341,8 @@ public class ImprovementManager : MonoBehaviour
 
     private void CompleteJob(BuildJob job)
     {
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
+        var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
+        Vector3 pos = ts != null ? ts.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
 
         if (job.data.completePrefab != null)
         {
@@ -350,7 +359,7 @@ public class ImprovementManager : MonoBehaviour
             // Ensure the click handler exists and is initialized so the UI can open
             var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
             if (clickHandler == null) clickHandler = completedImprovement.AddComponent<ImprovementClickHandler>();
-            clickHandler.Initialize(job.tileIndex, job.data);
+            clickHandler.Initialize(job.tileIndex, job.data, job.planetIndex);
 
             // Add collider if needed for clicking
             if (completedImprovement.GetComponent<Collider>() == null)
@@ -361,14 +370,14 @@ public class ImprovementManager : MonoBehaviour
             }
 
             // Store runtime reference on the tile data for later upgrade application
-            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(job.tileIndex) : null;
+            var tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
             if (tileData != null)
             {
                 tileData.improvement = job.data;
                 // Persist owner on tile data for save/load and gameplay checks
                 tileData.improvementOwner = job.owner;
                 tileData.improvementInstanceObject = completedImprovement;
-                if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(job.tileIndex, tileData);
+                if (ts != null) ts.SetTileData(job.tileIndex, tileData);
             }
         }
 
@@ -382,8 +391,10 @@ public class ImprovementManager : MonoBehaviour
         // Register trap runtime state if this improvement is a trap
         if (job.data.isTrap)
         {
-            traps[job.tileIndex] = new TrapRuntime
+            long trapKey = ((long)job.planetIndex << 32) ^ (uint)job.tileIndex;
+            traps[trapKey] = new TrapRuntime
             {
+                planetIndex = job.planetIndex,
                 tileIndex = job.tileIndex,
                 owner = job.owner,
                 data = job.data,
@@ -397,6 +408,8 @@ public class ImprovementManager : MonoBehaviour
 
     private void CompleteUnitJob(UnitJob job)
     {
+        var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
         // Spawn the unit and register occupancy
         var unitPrefab = job.data.GetPrefab();
         if (unitPrefab == null)
@@ -406,9 +419,9 @@ public class ImprovementManager : MonoBehaviour
             return;
         }
 
-    // Find a valid spawn tile (prefer job tile if unoccupied)
-    int spawnIndex = FindSpawnTile(job.tileIndex);
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
+        // Find a valid spawn tile (prefer job tile if unoccupied)
+        int spawnIndex = FindSpawnTile(job.tileIndex, job.planetIndex);
+        Vector3 pos = ts != null ? ts.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
     var go = Object.Instantiate(unitPrefab, pos, Quaternion.identity);
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
@@ -424,11 +437,12 @@ public class ImprovementManager : MonoBehaviour
         job.owner.combatUnits.Add(unit);
         LimitManager.Instance.AddCombatUnit(job.owner, job.data);
         // Determine layer based on tile (surface vs underwater)
-        var tdata = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(spawnIndex) : null;
+        var tdata = ts != null ? ts.GetTileData(spawnIndex) : null;
         unit.currentLayer = (tdata != null && !tdata.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
         // Register occupancy in occupancy manager (defensive)
-        try { TileOccupancyManager.Instance?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
+        try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         // Add unit to army system
         ArmyIntegration.OnUnitCreated(unit, spawnIndex);
@@ -438,6 +452,8 @@ public class ImprovementManager : MonoBehaviour
 
     private void CompleteWorkerJob(WorkerJob job)
     {
+        var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
         // Spawn the worker unit and register occupancy
         var prefab = job.data.prefab;
         if (prefab == null)
@@ -447,8 +463,8 @@ public class ImprovementManager : MonoBehaviour
             return;
         }
 
-        int spawnIndex = FindSpawnTile(job.tileIndex);
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
+        int spawnIndex = FindSpawnTile(job.tileIndex, job.planetIndex);
+        Vector3 pos = ts != null ? ts.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
         var go = Object.Instantiate(prefab, pos, Quaternion.identity);
         var unit = go.GetComponent<WorkerUnit>();
         if (unit == null)
@@ -462,29 +478,34 @@ public class ImprovementManager : MonoBehaviour
         unit.Initialize(job.data, job.owner, spawnIndex);
         job.owner.workerUnits.Add(unit);
         LimitManager.Instance.AddWorkerUnit(job.owner, job.data);
-        var tdataW = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(spawnIndex) : null;
+        var tdataW = ts != null ? ts.GetTileData(spawnIndex) : null;
         unit.currentLayer = (tdataW != null && !tdataW.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
-        try { TileOccupancyManager.Instance?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
+        try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         workerJobs.Remove(job);
     }
 
-    private int FindSpawnTile(int centerIndex)
+    private int FindSpawnTile(int centerIndex, int planetIndex)
     {
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (ts == null || !ts.IsReady()) return centerIndex;
+
         // If center tile is free, use it
-    var tileData = TileSystem.Instance.GetTileData(centerIndex);
+        var tileData = ts.GetTileData(centerIndex);
         // Prefer occupancy manager when checking for free surface occupant
-        var occCenter = TileOccupancyManager.GetOccupantObjectForTileWithFallback(centerIndex, TileLayer.Surface);
+        var occCenter = occ != null ? occ.GetOccupantObjectWithFallback(centerIndex, TileLayer.Surface) : null;
         if (occCenter == null) return centerIndex;
 
         // Otherwise try neighbors
-        var neighbors = TileSystem.Instance.GetNeighbors(centerIndex);
+        var neighbors = ts.GetNeighbors(centerIndex);
         foreach (int n in neighbors)
         {
-            var td = TileSystem.Instance.GetTileData(n);
+            var td = ts.GetTileData(n);
             bool free = false;
-            var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(n, TileLayer.Surface);
+            var occObj = occ != null ? occ.GetOccupantObjectWithFallback(n, TileLayer.Surface) : null;
             free = occObj == null;
 
             if (td != null && td.isLand && free)
@@ -502,6 +523,7 @@ public class ImprovementManager : MonoBehaviour
     private class BuildJob
     {
         public int tileIndex;
+        public int planetIndex;
         public Civilization owner;
         public ImprovementData data;
         public int remainingWork;
@@ -510,9 +532,10 @@ public class ImprovementManager : MonoBehaviour
     // Persistent worker identifiers (GUIDs) to survive save/load
     public List<string> assignedWorkerPersistentIds = new List<string>();
 
-        public BuildJob(int tileIndex, Civilization owner, ImprovementData data)
+        public BuildJob(int tileIndex, int planetIndex, Civilization owner, ImprovementData data)
         {
             this.tileIndex = tileIndex;
+            this.planetIndex = planetIndex;
             this.owner = owner;
             this.data = data;
             this.remainingWork = data.workCost;
@@ -530,13 +553,15 @@ public class ImprovementManager : MonoBehaviour
     private class UnitJob
     {
         public int tileIndex;
+        public int planetIndex;
         public Civilization owner;
         public CombatUnitData data;
         public int remainingWork;
 
-        public UnitJob(int tileIndex, Civilization owner, CombatUnitData data)
+        public UnitJob(int tileIndex, int planetIndex, Civilization owner, CombatUnitData data)
         {
             this.tileIndex = tileIndex;
+            this.planetIndex = planetIndex;
             this.owner = owner;
             this.data = data;
             this.remainingWork = Mathf.Max(1, data.workerWorkCost);
@@ -554,13 +579,15 @@ public class ImprovementManager : MonoBehaviour
     private class WorkerJob
     {
         public int tileIndex;
+        public int planetIndex;
         public Civilization owner;
         public WorkerUnitData data;
         public int remainingWork;
 
-        public WorkerJob(int tileIndex, Civilization owner, WorkerUnitData data)
+        public WorkerJob(int tileIndex, int planetIndex, Civilization owner, WorkerUnitData data)
         {
             this.tileIndex = tileIndex;
+            this.planetIndex = planetIndex;
             this.owner = owner;
             this.data = data;
             this.remainingWork = Mathf.Max(1, data.workerWorkCost);
@@ -578,11 +605,13 @@ public class ImprovementManager : MonoBehaviour
     public void NotifyUnitEnteredTile(int tileIndex, CombatUnit unit)
     {
         if (unit == null) return;
-        if (!traps.TryGetValue(tileIndex, out var trap)) return;
+        long trapKey = ((long)unit.planetIndex << 32) ^ (uint)tileIndex;
+        if (!traps.TryGetValue(trapKey, out var trap)) return;
         if (!trap.armed || trap.usesLeft <= 0) return;
 
         // Validate improvement still exists and is a trap
-        var tileData = TileSystem.Instance.GetTileData(tileIndex);
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData?.improvement == null || !tileData.improvement.isTrap)
             return;
 
@@ -608,10 +637,10 @@ public class ImprovementManager : MonoBehaviour
 
         // Decrement uses and update or remove
         trap.usesLeft--;
-        traps[tileIndex] = trap;
+        traps[trapKey] = trap;
         if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
         {
-            RemoveImprovement(tileIndex);
+            RemoveImprovement(tileIndex, unit.planetIndex);
         }
     }
 
@@ -622,11 +651,13 @@ public class ImprovementManager : MonoBehaviour
     public void NotifyUnitEnteredTile(int tileIndex, WorkerUnit worker)
     {
         if (worker == null) return;
-        if (!traps.TryGetValue(tileIndex, out var trap)) return;
+        long trapKey = ((long)worker.planetIndex << 32) ^ (uint)tileIndex;
+        if (!traps.TryGetValue(trapKey, out var trap)) return;
         if (!trap.armed || trap.usesLeft <= 0) return;
 
         // Validate improvement still exists and is a trap
-        var tileData = TileSystem.Instance.GetTileData(tileIndex);
+        var ts = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData?.improvement == null || !tileData.improvement.isTrap)
             return;
 
@@ -649,19 +680,21 @@ public class ImprovementManager : MonoBehaviour
 
         // Decrement uses and update or remove
         trap.usesLeft--;
-        traps[tileIndex] = trap;
+        traps[trapKey] = trap;
         if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
         {
-            RemoveImprovement(tileIndex);
+            RemoveImprovement(tileIndex, worker.planetIndex);
         }
     }
 
     /// <summary>
     /// Remove any improvement from a tile, including trap state.
     /// </summary>
-    public void RemoveImprovement(int tileIndex)
+    public void RemoveImprovement(int tileIndex, int planetIndex = -1)
     {
-    var tileData = TileSystem.Instance.GetTileData(tileIndex);
+        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return;
         var data = tileData.improvement;
         if (data == null) return;
@@ -669,13 +702,14 @@ public class ImprovementManager : MonoBehaviour
         // Optional destroyed prefab
         if (data.destroyedPrefab != null)
         {
-            Instantiate(data.destroyedPrefab, TileSystem.Instance.GetTileSurfacePosition(tileIndex), Quaternion.identity);
+            Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
         }
 
         tileData.improvement = null;
-        TileSystem.Instance.SetTileData(tileIndex, tileData);
+        ts?.SetTileData(tileIndex, tileData);
 
-        traps.Remove(tileIndex);
+        long trapKey = ((long)planetIndex << 32) ^ (uint)tileIndex;
+        traps.Remove(trapKey);
     }
 
     /// <summary>
@@ -685,7 +719,8 @@ public class ImprovementManager : MonoBehaviour
     // Planet-aware rehydration: if planetIndex >= 0, use planet-aware tile lookup so this works in multi-planet mode
     public void RehydrateTileUpgrades(int tileIndex, int planetIndex = -1)
     {
-        HexTileData tileData = (planetIndex >= 0) ? TileSystem.Instance.GetTileDataFromPlanet(tileIndex, planetIndex) : TileSystem.Instance.GetTileData(tileIndex);
+        var ts = (planetIndex >= 0) ? (TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
+        HexTileData tileData = (planetIndex >= 0) ? ts?.GetTileDataFromPlanet(tileIndex, planetIndex) : ts?.GetTileData(tileIndex);
 
         if (tileData == null) return;
         if (tileData.improvement == null || tileData.improvementInstanceObject == null) return;
@@ -723,12 +758,12 @@ public class ImprovementManager : MonoBehaviour
                     newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
 
                     var ch = newObj.GetComponent<ImprovementClickHandler>() ?? newObj.AddComponent<ImprovementClickHandler>();
-                    ch.Initialize(tileIndex, tileData.improvement);
+                    ch.Initialize(tileIndex, tileData.improvement, planetIndex);
 
                     tileData.improvementInstanceObject = newObj;
                     // Persist change back to the correct planet
-                    if (planetIndex >= 0) TileSystem.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
-                    else TileSystem.Instance.SetTileData(tileIndex, tileData);
+                    if (planetIndex >= 0) ts?.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+                    else ts?.SetTileData(tileIndex, tileData);
 
                     Destroy(instanceObj);
                     instanceObj = newObj;
@@ -759,8 +794,8 @@ public class ImprovementManager : MonoBehaviour
 
         // After applying all visuals, recompute defense aggregates and persist tile data
         tileData.RecomputeImprovementDefenseAggregates();
-        if (planetIndex >= 0) TileSystem.Instance.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
-        else TileSystem.Instance.SetTileData(tileIndex, tileData);
+        if (planetIndex >= 0) ts?.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+        else ts?.SetTileData(tileIndex, tileData);
     }
 
     /// <summary>
@@ -774,9 +809,10 @@ public class ImprovementManager : MonoBehaviour
         if (planetGen == null) return;
 
         int count = planetGen.Grid?.TileCount ?? 0;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         for (int i = 0; i < count; i++)
         {
-            var tileData = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
+            var tileData = ts != null ? ts.GetTileDataFromPlanet(i, planetIndex) : null;
             if (tileData == null) continue;
             if (tileData.improvement == null) continue;
             // Attempt to rehydrate this tile (no-op if runtime instance not present)

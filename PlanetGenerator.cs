@@ -234,6 +234,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
 
+    [Header("Diagnostics")]
+    [Tooltip("Warn when code changes HexTileData.owner/controllingCity via PlanetGenerator.SetHexTileData instead of TileSystem.SetTileOwner.")]
+    [SerializeField] private bool debugOwnershipGuard = false;
+    [Tooltip("Includes stack traces for unsafe ownership writes (can be noisy/slow).")]
+    [SerializeField] private bool debugOwnershipGuardVerbose = false;
+    internal bool suppressOwnershipGuards = false;
+
     [Header("Layer Integration")]
     [Tooltip("Optional GasGiantRenderer for planetoid visuals (enabled/disabled via layer config)")]
     public GasGiantRenderer gasGiantRenderer;
@@ -2338,22 +2345,53 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     // --- NEW: Setter for HexTileData ---
     public void SetHexTileData(int tileIndex, HexTileData td) {
         if (!data.ContainsKey(tileIndex)) return;
+        if (!suppressOwnershipGuards && (debugOwnershipGuard || debugOwnershipGuardVerbose))
+        {
+            var prev = data[tileIndex];
+            if (prev != null && td != null)
+            {
+                bool ownerChanged = !ReferenceEquals(prev.owner, td.owner);
+                bool controllingCityChanged = !ReferenceEquals(prev.controllingCity, td.controllingCity);
+                if (ownerChanged || controllingCityChanged)
+                {
+                    string prevOwnerName = prev.owner != null ? prev.owner.name : "null";
+                    string newOwnerName = td.owner != null ? td.owner.name : "null";
+                    string prevCityName = prev.controllingCity != null ? prev.controllingCity.name : "null";
+                    string newCityName = td.controllingCity != null ? td.controllingCity.name : "null";
+                    Debug.LogWarning(
+                        $"[PlanetGenerator][OwnershipGuard] Direct SetHexTileData changed ownership fields. " +
+                        $"planet={planetIndex} tile={tileIndex} owner {prevOwnerName}->{newOwnerName} controllingCity {prevCityName}->{newCityName}. " +
+                        $"Use TileSystem.SetTileOwner(...) instead.");
+                    if (debugOwnershipGuardVerbose)
+                    {
+                        Debug.LogWarning($"[PlanetGenerator][OwnershipGuard] StackTrace:\n{Environment.StackTrace}");
+                    }
+                }
+            }
+        }
         data[tileIndex] = td;
         // baseData may also want updating if you allow undoing.
         baseData[tileIndex] = td;
     }
     // ----------------------------------------
 
-    public void SetTileOccupant(int tileIndex, GameObject occupant) {
+    public void SetTileOccupant(int tileIndex, GameObject occupant, TileLayer layer = TileLayer.Surface) {
         if (!data.ContainsKey(tileIndex)) return;
-        HexTileData td = data[tileIndex]; td.occupantId = occupant ? occupant.GetInstanceID() : 0; data[tileIndex] = td;
-        // Keep TileOccupancyManager in sync for Surface layer (compatibility)
+        HexTileData td = data[tileIndex];
+        // Legacy compatibility: only Surface uses HexTileData.occupantId
+        if (layer == TileLayer.Surface)
+        {
+            td.occupantId = occupant ? occupant.GetInstanceID() : 0;
+            data[tileIndex] = td;
+        }
+
+        // Keep TileOccupancyManager in sync (layer-aware)
         try
         {
-            var occ = TileOccupancyManager.Instance;
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
             if (occ != null)
             {
-                occ.SetOccupant(tileIndex, occupant, TileLayer.Surface);
+                occ.SetOccupant(tileIndex, occupant, layer);
             }
         }
         catch { }

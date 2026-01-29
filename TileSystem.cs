@@ -7,7 +7,20 @@ using UnityEngine;
 /// </summary>
 public class TileSystem : MonoBehaviour
 {
-    public static TileSystem Instance { get; private set; }
+    // Per-planet TileSystem instances (true multi-planet gameplay).
+    private static readonly Dictionary<int, TileSystem> _byPlanetIndex = new();
+
+    /// <summary>
+    /// Convenience accessor for the *current planet's* TileSystem.
+    /// For multi-planet logic, prefer `GetForPlanet(planetIndex)`.
+    /// </summary>
+    public static TileSystem Instance => GetForPlanet((GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0);
+
+    public static TileSystem GetForPlanet(int planetIndex)
+    {
+        _byPlanetIndex.TryGetValue(planetIndex, out var ts);
+        return ts;
+    }
 
     [Header("Configuration")] public int civCapacity = 8;
     [Tooltip("Enable fog of war globally.")] public bool enableFogOfWar = true;
@@ -34,8 +47,17 @@ public class TileSystem : MonoBehaviour
 
     [Header("Planet References")]
     [SerializeField] private PlanetGenerator planetRef;          // primary planet (single-planet scope)
+    [Tooltip("Which planet this TileSystem instance belongs to.")]
+    [SerializeField] public int planetIndex = -1;
 
     [Header("Runtime Flags")] public bool isReady;
+
+    [Header("Diagnostics")]
+    [Tooltip("Logs tile ownership changes and warns on unsafe ownership writes. Recommended only while diagnosing ownership bugs.")]
+    [SerializeField] private bool debugTileOwnership = false;
+    [Tooltip("Includes stack traces for unsafe ownership writes (can be noisy/slow).")]
+    [SerializeField] private bool debugTileOwnershipVerbose = false;
+    private bool _suppressOwnershipGuards = false;
 
     [Header("Input / Raycast Settings")]
     [Tooltip("Camera for raycasts (auto-detects if null)")] public Camera mainCamera;
@@ -62,15 +84,26 @@ public class TileSystem : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this; DontDestroyOnLoad(gameObject);
+        // Register only if planetIndex is already known (scene-placed TileSystems).
+        // Runtime-created TileSystems set planetIndex in InitializeFromPlanet and register there.
+        if (planetIndex >= 0)
+        {
+            if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
+            {
+                Debug.LogWarning($"[TileSystem] Duplicate TileSystem detected for planetIndex={planetIndex}. Keeping '{existing.name}', destroying '{name}'.");
+                Destroy(gameObject);
+                return;
+            }
+            _byPlanetIndex[planetIndex] = this;
+        }
         if (mainCamera == null) mainCamera = Camera.main;
     }
 
     void OnDestroy()
     {
-        if (Instance == this)
+        if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing == this)
         {
+            _byPlanetIndex.Remove(planetIndex);
             // MEMORY FIX: Clear all large arrays to help garbage collector
 // Clear tile data arrays
             tiles = null;
@@ -122,10 +155,7 @@ public class TileSystem : MonoBehaviour
             OnTileHovered = null;
             OnTileHoverExited = null;
             OnTileClicked = null;
-            
-            // Clear singleton reference
-            Instance = null;
-            
+
             isReady = false;
         }
     }
@@ -133,6 +163,8 @@ public class TileSystem : MonoBehaviour
     void Update()
     {
     // Input handling
+        // Only the currently active planet's TileSystem should process input.
+        if (GameManager.Instance != null && GameManager.Instance.currentPlanetIndex != planetIndex) return;
         if (!isReady) return;
         if (mainCamera == null) mainCamera = Camera.main;
         if (mainCamera == null) return;
@@ -180,6 +212,14 @@ public class TileSystem : MonoBehaviour
     public void InitializeFromPlanet(PlanetGenerator planetGen)
     {
         if (planetGen == null || planetGen.Grid == null) { Debug.LogWarning("[TileSystem] Planet generator missing grid."); return; }
+        // Bind this TileSystem to the planet and register it.
+        planetIndex = planetGen.planetIndex;
+        if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
+        {
+            Debug.LogWarning($"[TileSystem] InitializeFromPlanet found existing TileSystem for planetIndex={planetIndex}. Skipping initialization on '{name}'.");
+            return;
+        }
+        _byPlanetIndex[planetIndex] = this;
         int tileCount = planetGen.Grid.TileCount;
         planetRef = planetGen;
         tiles = new HexTileData[tileCount];
@@ -231,18 +271,22 @@ public class TileSystem : MonoBehaviour
         {
             Debug.LogWarning($"[TileSystem] {fallbackCreated} tiles had no generator data; created fallback entries.");
         }
-        // Initialize occupancy manager and migrate legacy occupant ids
-        var occMgrObj = UnityEngine.Object.FindFirstObjectByType<TileOccupancyManager>();
+        // Initialize per-planet occupancy manager and migrate legacy occupant ids
+        // IMPORTANT: In multi-planet gameplay each planet needs its own occupancy storage.
+        var occMgrObj = GetComponentInChildren<TileOccupancyManager>();
         if (occMgrObj == null)
         {
-            var go = new GameObject("_TileOccupancyManager");
+            var go = new GameObject($"_TileOccupancyManager_P{planetIndex}");
+            go.transform.SetParent(transform, false);
             occMgrObj = go.AddComponent<TileOccupancyManager>();
+            occMgrObj.planetIndex = planetIndex;
         }
-        if (occMgrObj != null)
+        else
         {
-            occMgrObj.Initialize(tileCount);
-            occMgrObj.MigrateLegacyOccupants(tiles);
+            occMgrObj.planetIndex = planetIndex;
         }
+        occMgrObj.Initialize(tileCount);
+        occMgrObj.MigrateLegacyOccupants(tiles);
         AllocateOwnerColors();
         AllocateFog(tileCount);
     AllocateReligion(tileCount);
@@ -301,6 +345,117 @@ public class TileSystem : MonoBehaviour
         ownerByTile[tile] = newOwner;
         _dirtyOverlayTiles.Add(tile);
         OnTileOwnerChanged?.Invoke(tile, oldOwner, newOwner);
+    }
+
+    /// <summary>
+    /// Centralized ownership setter (authoritative).
+    /// Updates:
+    /// - HexTileData.owner and HexTileData.controllingCity
+    /// - Civilization.ownedTilesByPlanet (remove from previous owner, add to new owner)
+    /// - ownerByTile overlay array + OnTileOwnerChanged event (best-effort)
+    /// </summary>
+    public bool SetTileOwner(int tile, Civilization newOwner, City controllingCity = null, bool updateCivOwnedSets = true, bool updateOverlay = true)
+    {
+        if (!isReady) return false;
+        if (tiles == null) return false;
+        if (tile < 0 || tile >= tiles.Length) return false;
+
+        var td = GetTileData(tile);
+        if (td == null) return false;
+
+        var prevOwner = td.owner;
+        var prevCity = td.controllingCity;
+        if (prevOwner == newOwner && td.controllingCity == controllingCity)
+        {
+            // Keep generator/state consistent even if no logical change.
+            if (planetRef != null) planetRef.SetHexTileData(tile, td);
+            return true;
+        }
+
+        if (debugTileOwnership)
+        {
+            string prevOwnerName = prevOwner != null ? prevOwner.name : "null";
+            string newOwnerName = newOwner != null ? newOwner.name : "null";
+            string prevCityName = prevCity != null ? prevCity.name : "null";
+            string newCityName = controllingCity != null ? controllingCity.name : "null";
+            Debug.Log($"[TileSystem][SetTileOwner] planet={planetIndex} tile={tile} owner {prevOwnerName}->{newOwnerName} controllingCity {prevCityName}->{newCityName}");
+        }
+
+        if (updateCivOwnedSets)
+        {
+            if (prevOwner != null && prevOwner.ownedTilesByPlanet != null)
+            {
+                if (prevOwner.ownedTilesByPlanet.TryGetValue(planetIndex, out var prevSet) && prevSet != null)
+                    prevSet.Remove(tile);
+            }
+
+            if (newOwner != null)
+            {
+                if (newOwner.ownedTilesByPlanet == null) newOwner.ownedTilesByPlanet = new Dictionary<int, HashSet<int>>();
+                if (!newOwner.ownedTilesByPlanet.TryGetValue(planetIndex, out var newSet) || newSet == null)
+                {
+                    newSet = new HashSet<int>();
+                    newOwner.ownedTilesByPlanet[planetIndex] = newSet;
+                }
+                newSet.Add(tile);
+            }
+        }
+
+        td.owner = newOwner;
+        td.controllingCity = controllingCity;
+        _suppressOwnershipGuards = true;
+        try
+        {
+            SetTileData(tile, td);
+        }
+        finally
+        {
+            _suppressOwnershipGuards = false;
+        }
+        if (planetRef != null)
+        {
+            planetRef.suppressOwnershipGuards = true;
+            try { planetRef.SetHexTileData(tile, td); }
+            finally { planetRef.suppressOwnershipGuards = false; }
+        }
+
+        if (updateOverlay)
+        {
+            int newOwnerId = -1;
+            if (newOwner != null && CivilizationManager.Instance != null)
+            {
+                // Best-effort: map Civilization to an overlay owner index by its registration order.
+                var all = CivilizationManager.Instance.GetAllCivs();
+                int idx = all.IndexOf(newOwner);
+                if (idx >= 0) newOwnerId = idx;
+            }
+
+            if (newOwnerId >= 0 && newOwnerId < maxOwners)
+            {
+                SetOwner(tile, newOwnerId);
+            }
+            else if (newOwnerId >= maxOwners)
+            {
+                Debug.LogWarning($"[TileSystem] Overlay owner id {newOwnerId} >= maxOwners {maxOwners}; skipping overlay update for tile {tile}.");
+            }
+            else if (newOwner == null)
+            {
+                // Neutral.
+                SetOwner(tile, -1);
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Convenience wrapper to set ownership on a specific planet's TileSystem.
+    /// </summary>
+    public static bool SetTileOwnerOnPlanet(int planetIndex, int tile, Civilization newOwner, City controllingCity = null, bool updateCivOwnedSets = true, bool updateOverlay = true)
+    {
+        var ts = GetForPlanet(planetIndex);
+        if (ts == null || !ts.isReady) return false;
+        return ts.SetTileOwner(tile, newOwner, controllingCity, updateCivOwnedSets, updateOverlay);
     }
     #endregion
 
@@ -451,6 +606,39 @@ public class TileSystem : MonoBehaviour
     {
         if (!isReady || tiles == null) return;
         if (tile < 0 || tile >= tiles.Length) return;
+
+        // Guardrail: prevent silent ownership desync by detecting direct writes to owner/controllingCity.
+        // All gameplay ownership changes should go through SetTileOwner so ownedTilesByPlanet stays correct.
+        if (!_suppressOwnershipGuards)
+        {
+            var prev = tiles[tile];
+            if (prev != null && data != null)
+            {
+                bool ownerChanged = !ReferenceEquals(prev.owner, data.owner);
+                bool controllingCityChanged = !ReferenceEquals(prev.controllingCity, data.controllingCity);
+                if (ownerChanged || controllingCityChanged)
+                {
+                    string prevOwnerName = prev.owner != null ? prev.owner.name : "null";
+                    string newOwnerName = data.owner != null ? data.owner.name : "null";
+                    string prevCityName = prev.controllingCity != null ? prev.controllingCity.name : "null";
+                    string newCityName = data.controllingCity != null ? data.controllingCity.name : "null";
+
+                    if (debugTileOwnership || debugTileOwnershipVerbose)
+                    {
+                        Debug.LogWarning(
+                            $"[TileSystem][OwnershipGuard] Direct SetTileData changed ownership fields. " +
+                            $"planet={planetIndex} tile={tile} owner {prevOwnerName}->{newOwnerName} controllingCity {prevCityName}->{newCityName}. " +
+                            $"Use TileSystem.SetTileOwner(...) instead.");
+
+                        if (debugTileOwnershipVerbose)
+                        {
+                            Debug.LogWarning($"[TileSystem][OwnershipGuard] StackTrace:\n{Environment.StackTrace}");
+                        }
+                    }
+                }
+            }
+        }
+
         tiles[tile] = data;
         _dirtyOverlayTiles.Add(tile);
         // Could raise a generic OnTileDataChanged later
@@ -481,30 +669,21 @@ public class TileSystem : MonoBehaviour
 
     #region Multi-Planet Support
     /// <summary>
-    /// Gets tile data from a specific planet by querying the planet generator directly.
-    /// This allows querying tile data from planets other than the current one.
+    /// Gets tile data from a specific planet.
+    /// With per-planet TileSystems, this prefers the planet's TileSystem (so ownership/fog/etc remain correct).
     /// </summary>
     public HexTileData GetTileDataFromPlanet(int tile, int planetIndex)
     {
-        // If querying current planet, use the cached array for performance
-        if (planetRef != null && isReady)
+        var ts = GetForPlanet(planetIndex);
+        if (ts != null && ts.isReady)
         {
-            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
-            
-            if (planetIndex == currentPlanetIndex)
-            {
-                return GetTileData(tile);
-            }
+            return ts.GetTileData(tile);
         }
-        
-        // Query the specific planet's generator
+
+        // Fallback: query the planet generator directly (covers very early generation, before TileSystem init).
         PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
-        if (planetGen != null)
-        {
-            return planetGen.GetHexTileData(tile);
-        }
-        
-        // Fallback to current planet if requested planet not found
+        if (planetGen != null) return planetGen.GetHexTileData(tile);
+
         return GetTileData(tile);
     }
     
@@ -515,30 +694,25 @@ public class TileSystem : MonoBehaviour
     public void SetTileDataOnPlanet(int tile, HexTileData data, int planetIndex)
     {
         if (data == null) return;
-        
-        // If updating current planet, use the cached array and mark dirty
-        if (planetRef != null && isReady)
+
+        // Prefer writing through the planet's TileSystem (keeps dirty flags and derived state consistent).
+        var ts = GetForPlanet(planetIndex);
+        if (ts != null && ts.isReady)
         {
-            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
-            
-            if (planetIndex == currentPlanetIndex)
+            ts.SetTileData(tile, data);
+            // Also update the generator for that planet so generator/state remain consistent.
+            if (ts.planetRef != null)
             {
-                SetTileData(tile, data);
-                // Also update the planet generator to keep in sync
-                if (planetRef != null)
-                {
-                    planetRef.SetHexTileData(tile, data);
-                }
-                return;
+                ts.planetRef.suppressOwnershipGuards = true;
+                try { ts.planetRef.SetHexTileData(tile, data); }
+                finally { ts.planetRef.suppressOwnershipGuards = false; }
             }
+            return;
         }
-        
-        // Update the specific planet's generator
+
+        // Fallback: update generator directly (very early generation).
         PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
-        if (planetGen != null)
-        {
-            planetGen.SetHexTileData(tile, data);
-        }
+        if (planetGen != null) planetGen.SetHexTileData(tile, data);
     }
     
     /// <summary>
@@ -547,18 +721,13 @@ public class TileSystem : MonoBehaviour
     /// </summary>
     public Vector3 GetTileCenterFromPlanet(int tile, int planetIndex)
     {
-        // If querying current planet, reuse flat center
-        if (planetRef != null && isReady)
+        var ts = GetForPlanet(planetIndex);
+        if (ts != null && ts.isReady)
         {
-            int currentPlanetIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
-            
-            if (planetIndex == currentPlanetIndex)
-            {
-                return GetTileCenterFlat(tile);
-            }
+            return ts.GetTileCenterFlat(tile);
         }
-        
-        // Query the specific planet's grid and project to its flat plane
+
+        // Fallback: query generator directly.
         PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
         if (planetGen != null && planetGen.Grid != null)
         {
@@ -570,8 +739,7 @@ public class TileSystem : MonoBehaviour
                 return new Vector3(c.x, yPlane, c.z);
             }
         }
-        
-        // Fallback to current planet flat center
+
         return GetTileCenterFlat(tile);
     }
     
@@ -582,26 +750,8 @@ public class TileSystem : MonoBehaviour
     /// </summary>
     public int GetOwnerFromPlanet(int tile, int planetIndex)
     {
-        // If querying current planet, use the cached array
-        if (planetRef != null && isReady)
-        {
-            int currentPlanetIndex = -1;
-            if (GameManager.Instance != null)
-            {
-                currentPlanetIndex = GameManager.Instance.enableMultiPlanetSystem 
-                    ? GameManager.Instance.currentPlanetIndex 
-                    : 0;
-            }
-            
-            if (planetIndex == currentPlanetIndex)
-            {
-                return GetOwner(tile);
-            }
-        }
-        
-        // TODO: For true multi-planet support, we'd need per-planet ownership storage
-        // For now, ownership is only tracked for the current planet
-        // Return -1 (neutral) for other planets
+        var ts = GetForPlanet(planetIndex);
+        if (ts != null && ts.isReady) return ts.GetOwner(tile);
         return -1;
     }
     
@@ -730,24 +880,25 @@ public class TileSystem : MonoBehaviour
         return new Vector3(c.x, terrainY + unitOffset, c.z);
     }
 
-    public bool IsTileAccessible(int tile, bool mustBeLand, int unitId)
+    public bool IsTileAccessible(int tile, bool mustBeLand, int unitId, TileLayer layer = TileLayer.Surface)
     {
         var td = GetTileData(tile); if (td == null) return false;
         if (mustBeLand && !td.isLand) return false;
         // Movement points removed - tiles are always accessible (movement speed is fatigue-based)
         int occ = td.occupantId;
-        if (TileOccupancyManager.Instance != null)
-            occ = TileOccupancyManager.Instance.GetOccupantId(tile, TileLayer.Surface);
+        var occMgr = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occMgr != null)
+            occ = occMgr.GetOccupantId(tile, layer);
         return occ == 0 || occ == unitId;
     }
 
-    public void SetTileOccupant(int tile, GameObject occupant)
+    public void SetTileOccupant(int tile, GameObject occupant, TileLayer layer = TileLayer.Surface)
     {
         var td = GetTileData(tile); if (td == null) return;
         if (occupant == null)
         {
-            // Clear surface occupant via occupancy manager
-            TileOccupancyManager.Instance?.ClearOccupant(tile, TileLayer.Surface);
+            // Clear occupant via occupancy manager
+            (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupant(tile, layer);
             return;
         }
 
@@ -757,11 +908,11 @@ public class TileSystem : MonoBehaviour
         if (td.improvementOwner != null && unitOwner != null && unitOwner != td.improvementOwner)
         { Debug.LogWarning($"[TileSystem] Prevented {occupant.name} from occupying tile {tile} owned by {td.improvementOwner.civData?.civName}."); return; }
 
-        // Set as surface occupant (legacy compatibility)
-        TileOccupancyManager.Instance?.SetOccupant(tile, occupant, TileLayer.Surface);
+        // Set occupant (layer-aware)
+        (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tile, occupant, layer);
     }
 
-    public void ClearTileOccupant(int tile) => SetTileOccupant(tile, null);
+    public void ClearTileOccupant(int tile, TileLayer layer = TileLayer.Surface) => SetTileOccupant(tile, null, layer);
     #endregion
 
     // Overload for legacy calls that passed planetIndex (ignored in single-planet scope)

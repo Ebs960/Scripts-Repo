@@ -387,7 +387,7 @@ UpdateUnitInfoForWorkerUnit();
         if (civ == null) return;
 
         // First, list buildable improvements
-        var improvements = civ.GetAvailableImprovementsForWorker(worker.data, worker.currentTileIndex);
+        var improvements = civ.GetAvailableImprovementsForWorker(worker.data, worker.currentTileIndex, worker.planetIndex);
         if (improvements != null)
         {
             foreach (var imp in improvements)

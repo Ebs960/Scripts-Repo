@@ -166,14 +166,15 @@ public class DemonManager : MonoBehaviour
     /// </summary>
     private bool MoveTowardsTarget(DemonArmy army)
     {
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
         
         // Find nearest enemy (any civilization unit, worker, or city)
         int targetTile = FindNearestTarget(army);
         if (targetTile < 0) return false;
         
         // Get neighbors and find best move towards target
-        var neighbors = TileSystem.Instance.GetNeighbors(army.currentTileIndex);
+        var neighbors = ts.GetNeighbors(army.currentTileIndex);
         if (neighbors == null || neighbors.Length == 0) return false;
         
         int bestNeighbor = -1;
@@ -181,10 +182,10 @@ public class DemonManager : MonoBehaviour
         
         foreach (int neighbor in neighbors)
         {
-            var tileData = TileSystem.Instance.GetTileData(neighbor);
+            var tileData = ts.GetTileData(neighbor);
             if (tileData == null || !CanDemonArmyEnterTile(tileData)) continue;
             
-            float dist = TileSystem.Instance.GetTileDistance(neighbor, targetTile);
+            float dist = ts.GetTileDistance(neighbor, targetTile);
             if (dist < bestDistance)
             {
                 bestDistance = dist;
@@ -206,7 +207,8 @@ public class DemonManager : MonoBehaviour
     /// </summary>
     private int FindNearestTarget(DemonArmy army)
     {
-        if (TileSystem.Instance == null) return -1;
+        var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return -1;
         
         float nearestDist = float.MaxValue;
         int nearestTile = -1;
@@ -224,7 +226,7 @@ public class DemonManager : MonoBehaviour
                     if (civArmy == null) continue;
                     if (civArmy.currentTileIndex == army.currentTileIndex) continue;
                     
-                    float dist = TileSystem.Instance.GetTileDistance(army.currentTileIndex, civArmy.currentTileIndex);
+                    float dist = ts.GetTileDistance(army.currentTileIndex, civArmy.currentTileIndex);
                     if (dist < nearestDist && dist <= targetSearchRange)
                     {
                         nearestDist = dist;
@@ -245,7 +247,7 @@ public class DemonManager : MonoBehaviour
                 {
                     if (city == null) continue;
                     
-                    float dist = TileSystem.Instance.GetTileDistance(army.currentTileIndex, city.centerTileIndex);
+                    float dist = ts.GetTileDistance(army.currentTileIndex, city.centerTileIndex);
                     if (dist < nearestDist && dist <= targetSearchRange)
                     {
                         nearestDist = dist;
@@ -260,7 +262,7 @@ public class DemonManager : MonoBehaviour
         {
             if (worker == null) continue;
             
-            float dist = TileSystem.Instance.GetTileDistance(army.currentTileIndex, worker.currentTileIndex);
+            float dist = ts.GetTileDistance(army.currentTileIndex, worker.currentTileIndex);
             if (dist < nearestDist && dist <= targetSearchRange)
             {
                 nearestDist = dist;
@@ -276,16 +278,17 @@ public class DemonManager : MonoBehaviour
     /// </summary>
     private bool MoveRandomly(DemonArmy army)
     {
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
         
-        var neighbors = TileSystem.Instance.GetNeighbors(army.currentTileIndex);
+        var neighbors = ts.GetNeighbors(army.currentTileIndex);
         if (neighbors == null || neighbors.Length == 0) return false;
         
         // Shuffle neighbors
         var validNeighbors = new List<int>();
         foreach (int neighbor in neighbors)
         {
-            var tileData = TileSystem.Instance.GetTileData(neighbor);
+            var tileData = ts.GetTileData(neighbor);
             if (tileData != null && CanDemonArmyEnterTile(tileData))
             {
                 validNeighbors.Add(neighbor);
@@ -326,7 +329,8 @@ public class DemonManager : MonoBehaviour
     /// </summary>
     private void MoveDemonArmy(DemonArmy army, int targetTile)
     {
-        if (TileSystem.Instance == null) return;
+        var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return;
         
         // Deduct movement point
         army.currentMovePoints--;
@@ -337,7 +341,7 @@ public class DemonManager : MonoBehaviour
         // Move visual
         if (army.armyVisual != null)
         {
-            Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(targetTile);
+            Vector3 worldPos = ts.GetTileSurfacePosition(targetTile);
             army.armyVisual.transform.position = worldPos;
         }
         
@@ -363,7 +367,7 @@ public class DemonManager : MonoBehaviour
         // Check for civilization armies at this tile
         if (ArmyManager.Instance != null)
         {
-            var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(army.currentTileIndex);
+            var armiesAtTile = ArmyManager.Instance.GetArmiesAtTile(army.currentTileIndex, army.planetIndex);
             foreach (var civArmy in armiesAtTile)
             {
                 if (civArmy != null && civArmy.owner != null)
@@ -450,12 +454,6 @@ InitiateBattleWithArmy(army, civArmy);
     /// </summary>
     private void SpawnDemonArmy()
     {
-        if (TileSystem.Instance == null)
-        {
-            Debug.LogWarning("[DemonManager] TileSystem not ready, cannot spawn demons");
-            return;
-        }
-        
         if (GameManager.Instance == null)
         {
             Debug.LogError("[DemonManager] GameManager not available");
@@ -473,9 +471,10 @@ InitiateBattleWithArmy(army, civArmy);
             if (planetGen == null || planetGen.Grid == null) continue;
             
             var planetGrid = planetGen.Grid;
+            var tsPlanet = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
             for (int i = 0; i < planetGrid.TileCount; i++)
             {
-                var tileData = TileSystem.Instance.GetTileDataFromPlanet(i, planetIndex);
+                var tileData = tsPlanet != null ? tsPlanet.GetTileDataFromPlanet(i, planetIndex) : null;
                 if (tileData == null) continue;
 
                 // Check if tile is a valid demon spawn biome
@@ -497,7 +496,13 @@ return;
         // Pick random spawn location
         var (spawnTileIndex, spawnPlanetIndex) = validTiles[Random.Range(0, validTiles.Count)];
         
-        Vector3 spawnPos = TileSystem.Instance.GetTileSurfacePosition(spawnTileIndex);
+        var ts = TileSystem.GetForPlanet(spawnPlanetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady())
+        {
+            Debug.LogWarning("[DemonManager] TileSystem not ready for selected spawn planet; cannot spawn demons");
+            return;
+        }
+        Vector3 spawnPos = ts.GetTileSurfacePosition(spawnTileIndex);
 
         // Create the demon army
         DemonArmy newArmy = new DemonArmy
@@ -687,12 +692,13 @@ return;
     /// <summary>
     /// Get demon armies at a specific tile
     /// </summary>
-    public List<DemonArmy> GetDemonArmiesAtTile(int tileIndex)
+    public List<DemonArmy> GetDemonArmiesAtTile(int tileIndex, int planetIndex = -1)
     {
         var result = new List<DemonArmy>();
+        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         foreach (var army in activeDemonArmies)
         {
-            if (army.currentTileIndex == tileIndex)
+            if (army.planetIndex == planetIndex && army.currentTileIndex == tileIndex)
                 result.Add(army);
         }
         return result;

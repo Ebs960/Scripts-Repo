@@ -26,7 +26,8 @@ public class TransportUIManager : MonoBehaviour
     private bool isInDeployMode = false;
     private SphericalHexGrid grid;
     private PlanetGenerator planet;
-    private Dictionary<int, GameObject> tileHighlights = new Dictionary<int, GameObject>();
+    // Keyed by (planetIndex,tileIndex) to avoid cross-planet collisions
+    private Dictionary<long, GameObject> tileHighlights = new Dictionary<long, GameObject>();
 
     void Awake()
     {
@@ -159,7 +160,8 @@ public class TransportUIManager : MonoBehaviour
         GameObject unitObj = null;
         
         // Centralized lookup (multi-planet-aware)
-        unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
+        int pIndex = selectedTransport.planetIndex;
+        unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, selectedTransport.currentLayer, pIndex);
         
         if (unitObj != null)
         {
@@ -194,7 +196,9 @@ public class TransportUIManager : MonoBehaviour
         }
         else
         {
-            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
+            int pIndex = selectedTransport.planetIndex;
+            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            int[] neighbors = ts != null ? ts.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
             foreach (int neighbor in neighbors)
             {
                 if (neighbor == tileIndex)
@@ -286,7 +290,9 @@ public class TransportUIManager : MonoBehaviour
         List<int> tilesToCheck = new List<int>();
         tilesToCheck.Add(selectedTransport.currentTileIndex);
         
-        int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
+        int pIndex = selectedTransport.planetIndex;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        int[] neighbors = ts != null ? ts.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
         if (neighbors != null)
         {
             tilesToCheck.AddRange(neighbors);
@@ -297,7 +303,7 @@ public class TransportUIManager : MonoBehaviour
         {
             GameObject unitObj = null;
             // Layer-aware lookup (centralized)
-            unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
+            unitObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, selectedTransport.currentLayer, pIndex);
             
             if (unitObj != null)
             {
@@ -322,7 +328,9 @@ public class TransportUIManager : MonoBehaviour
         List<int> tilesToCheck = new List<int>();
         tilesToCheck.Add(selectedTransport.currentTileIndex);
         
-    int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
+        int pIndex = selectedTransport.planetIndex;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        int[] neighbors = ts != null ? ts.GetNeighbors(selectedTransport.currentTileIndex) : System.Array.Empty<int>();
         if (neighbors != null)
         {
             tilesToCheck.AddRange(neighbors);
@@ -342,14 +350,18 @@ public class TransportUIManager : MonoBehaviour
         if (grid == null || planet == null)
             return;
 
+        int pIndex = selectedTransport != null ? selectedTransport.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        long key = ((long)pIndex << 32) ^ (uint)tileIndex;
+
         // Create a highlight object if it doesn't exist
-        if (!tileHighlights.ContainsKey(tileIndex))
+        if (!tileHighlights.ContainsKey(key))
         {
             GameObject highlightObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
             highlightObj.name = $"TileHighlight_{tileIndex}";
 
             // Position at tile center, slightly above
-            Vector3 tileCenter = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : Vector3.zero;
+            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            Vector3 tileCenter = ts != null ? ts.GetTileCenterFlat(tileIndex) : Vector3.zero;
             highlightObj.transform.position = tileCenter + Vector3.up * 0.05f;
             
             // Scale the highlight to match tile size
@@ -373,12 +385,12 @@ public class TransportUIManager : MonoBehaviour
             renderer.material = highlightMat;
             
             // Store in dictionary
-            tileHighlights[tileIndex] = highlightObj;
+            tileHighlights[key] = highlightObj;
         }
         else
         {
             // Update existing highlight color
-            GameObject highlightObj = tileHighlights[tileIndex];
+            GameObject highlightObj = tileHighlights[key];
             MeshRenderer renderer = highlightObj.GetComponent<MeshRenderer>();
             renderer.material.color = color;
         }

@@ -115,7 +115,7 @@ public class ArmyManager : MonoBehaviour
             if (unit == null || unit.owner == null) continue;
             
             // Try to add to existing army at same tile (manual loop to avoid LINQ)
-            var armiesAtTile = GetArmiesAtTile(unit.currentTileIndex);
+            var armiesAtTile = GetArmiesAtTile(unit.currentTileIndex, unit.planetIndex);
             Army friendlyArmy = null;
             foreach (var army in armiesAtTile)
             {
@@ -165,6 +165,8 @@ public class ArmyManager : MonoBehaviour
         army.owner = owner;
         army.maxUnits = defaultMaxUnitsPerArmy;
         army.armyName = armyName ?? $"Army_{owner.civData.civName}";
+        // Multi-planet: army belongs to the same planet as its first unit.
+        army.planetIndex = (units != null && units.Count > 0 && units[0] != null) ? units[0].planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         
         // Add all units to army
         foreach (var unit in units)
@@ -179,9 +181,10 @@ public class ArmyManager : MonoBehaviour
         if (units.Count > 0 && units[0] != null)
         {
             army.currentTileIndex = units[0].currentTileIndex;
-            if (TileSystem.Instance != null)
+            var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+            if (ts != null)
             {
-                Vector3 worldPos = TileSystem.Instance.GetTileCenterFlat(army.currentTileIndex);
+                Vector3 worldPos = ts.GetTileCenterFlat(army.currentTileIndex);
                 army.transform.position = worldPos;
             }
         }
@@ -251,12 +254,13 @@ return army;
     /// <summary>
     /// Get all armies at a specific tile (manual loop to avoid LINQ allocation)
     /// </summary>
-    public List<Army> GetArmiesAtTile(int tileIndex)
+    public List<Army> GetArmiesAtTile(int tileIndex, int planetIndex = -1)
     {
         var result = new List<Army>();
+        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         foreach (var army in armiesList)
         {
-            if (army != null && army.currentTileIndex == tileIndex)
+            if (army != null && army.planetIndex == planetIndex && army.currentTileIndex == tileIndex)
             {
                 result.Add(army);
             }
@@ -271,17 +275,18 @@ return army;
     private void CheckForArmyBattles()
     {
         // Group armies by tile (manual grouping to avoid LINQ)
-        Dictionary<int, List<Army>> armiesByTile = new Dictionary<int, List<Army>>();
+        Dictionary<long, List<Army>> armiesByTile = new Dictionary<long, List<Army>>();
         
         foreach (var army in armiesList)
         {
             if (army == null || army.currentTileIndex < 0) continue;
             
-            if (!armiesByTile.ContainsKey(army.currentTileIndex))
+            long key = ((long)army.planetIndex << 32) ^ (uint)army.currentTileIndex;
+            if (!armiesByTile.ContainsKey(key))
             {
-                armiesByTile[army.currentTileIndex] = new List<Army>();
+                armiesByTile[key] = new List<Army>();
             }
-            armiesByTile[army.currentTileIndex].Add(army);
+            armiesByTile[key].Add(army);
         }
         
         // Check each tile with multiple armies
@@ -529,11 +534,11 @@ return army;
     /// </summary>
     public void MoveSelectedArmiesToTile(int tileIndex)
     {
-        if (TileSystem.Instance == null) return;
-        
         foreach (var army in selectedArmies)
         {
             if (army == null || army.currentTileIndex < 0) continue;
+            var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+            if (ts == null || !ts.IsReady()) continue;
             
             // Check if army has movement points
             if (army.currentMovePoints <= 0)
@@ -542,7 +547,7 @@ continue;
             }
             
             // Find path to target tile
-            var path = FindPath(army.currentTileIndex, tileIndex);
+            var path = FindPath(army.currentTileIndex, tileIndex, ts);
             if (path != null && path.Count > 1)
             {
                 // Limit path length based on available movement points
@@ -553,7 +558,7 @@ continue;
                 for (int i = 1; i < path.Count && remainingPoints > 0; i++)
                 {
                     int tileIdx = path[i];
-                    var tileData = TileSystem.Instance.GetTileData(tileIdx);
+                    var tileData = ts.GetTileData(tileIdx);
                     if (tileData != null)
                     {
                         int cost = BiomeHelper.GetMovementCost(tileData.biome);
@@ -612,9 +617,9 @@ continue;
     /// Simple pathfinding for armies (A* or simple neighbor-based)
     /// Uses reusable collections to avoid allocations
     /// </summary>
-    private List<int> FindPath(int startTile, int targetTile)
+    private List<int> FindPath(int startTile, int targetTile, TileSystem ts)
     {
-        if (TileSystem.Instance == null) return null;
+        if (ts == null || !ts.IsReady()) return null;
         if (startTile == targetTile)
         {
             reusablePathfindingPath.Clear();
@@ -651,12 +656,12 @@ continue;
             }
             
             // Check neighbors
-            var neighbors = TileSystem.Instance.GetNeighbors(current);
+            var neighbors = ts.GetNeighbors(current);
             foreach (int neighbor in neighbors)
             {
                 if (reusablePathfindingVisited.Contains(neighbor)) continue;
                 
-                var tileData = TileSystem.Instance.GetTileData(neighbor);
+                var tileData = ts.GetTileData(neighbor);
                 if (tileData == null || !tileData.isLand) continue; // Only move on land
                 
                 reusablePathfindingVisited.Add(neighbor);

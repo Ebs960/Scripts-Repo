@@ -130,9 +130,10 @@ public class UnitReinforcementManager : MonoBehaviour
     private bool IsUnitInCity(CombatUnit unit)
     {
         if (unit == null || unit.currentTileIndex < 0) return false;
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
         
-        var tileData = TileSystem.Instance.GetTileData(unit.currentTileIndex);
+        var tileData = ts.GetTileData(unit.currentTileIndex);
         if (tileData == null) return false;
         
         // Check if tile has a city

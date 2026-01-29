@@ -59,8 +59,9 @@ public class AncientRuinsManager : MonoBehaviour
 
             if (tileData.biome != Biome.Ocean && tileData.biome != Biome.Seas)
             {
-                Vector3 position = (TileSystem.Instance != null && TileSystem.Instance.IsReady())
-                    ? TileSystem.Instance.GetTileSurfacePosition(tileIndex)
+                var ts = TileSystem.GetForPlanet(planetGenerator.planetIndex) ?? TileSystem.Instance;
+                Vector3 position = (ts != null && ts.IsReady())
+                    ? ts.GetTileSurfacePosition(tileIndex)
                     : planetGenerator.transform.position;
                 GameObject ruinGO = Instantiate(ruinPrefab, position, Quaternion.identity, transform);
                 ruins.Add(ruinGO.GetComponent<AncientRuin>());

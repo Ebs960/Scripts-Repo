@@ -109,7 +109,8 @@ public class WorkerUnit : BaseUnit
         {
             if (ImprovementManager.Instance.JobAssignedToWorker(currentTileIndex, this))
             {
-                var tileData = TileSystem.Instance?.GetTileData(currentTileIndex);
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
                 if (tileData != null && tileData.improvement != null)
                     ContributeWork();
                 else
@@ -204,7 +205,8 @@ public class WorkerUnit : BaseUnit
         if (data == null || !data.canFoundCity || owner == null) return false;
         if (!owner.CanFoundMoreCities()) return false;
 
-        var td = TileSystem.Instance?.GetTileData(currentTileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (td == null || !td.isLand) return false;
 
         // Distance check
@@ -214,8 +216,8 @@ public class WorkerUnit : BaseUnit
         {
             foreach (var city in civ.cities)
             {
-                Vector3 a = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
-                Vector3 b = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
+                Vector3 a = ts != null ? ts.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
+                Vector3 b = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
                 float d = Vector3.Distance(a, b);
                 if (d < minCityDist) return false;
             }
@@ -270,7 +272,8 @@ public class WorkerUnit : BaseUnit
             float valF = base.CurrentDefense;
             if (currentTileIndex >= 0)
             {
-                var td = TileSystem.Instance?.GetTileData(currentTileIndex);
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
                 if (td != null)
                 {
                     valF += td.improvementDefenseAddWorker;
@@ -300,14 +303,16 @@ public class WorkerUnit : BaseUnit
 
     public override bool CanMoveTo(int tileIndex)
     {
-        var td = TileSystem.Instance?.GetTileData(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
         if (td == null || !td.isPassable || !td.isLand) return false;
         
         // Cost check
         int cost = BiomeHelper.GetMovementCost(td, this);
         if (currentMovePoints < cost) return false;
 
-        var occObj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
         if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
         return true;
     }
@@ -348,7 +353,8 @@ public class WorkerUnit : BaseUnit
         if (resource == null) return false;
         if (currentWorkPoints <= 0) return false;
         if (tileIndex != currentTileIndex) return false;
-        var td = TileSystem.Instance?.GetTileData(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
         if (td == null || !td.isLand) return false;
         return true;
     }
@@ -408,7 +414,8 @@ public class WorkerUnit : BaseUnit
     private void CheckForHazardousBiomeDamage()
     {
         if (currentTileIndex < 0) return;
-        var td = TileSystem.Instance?.GetTileData(currentTileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (td == null) return;
 
         if (BiomeHelper.IsDamagingBiome(td.biome))

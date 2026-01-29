@@ -26,7 +26,7 @@ public static class UnitRegistry
         {
             try
             {
-                var occ = TileOccupancyManager.Instance;
+                var occ = TileOccupancyManager.GetForPlanet(bu.planetIndex) ?? TileOccupancyManager.Instance;
                 if (occ != null && bu.currentTileIndex >= 0)
                 {
                     occ.SetOccupant(bu.currentTileIndex, obj, bu.currentLayer);
@@ -57,7 +57,7 @@ public static class UnitRegistry
         {
             try
             {
-                var occ = TileOccupancyManager.Instance;
+                var occ = TileOccupancyManager.GetForPlanet(bu2.planetIndex) ?? TileOccupancyManager.Instance;
                 if (occ != null && bu2.currentTileIndex >= 0)
                 {
                     occ.ClearOccupant(bu2.currentTileIndex, bu2.currentLayer);

@@ -215,8 +215,9 @@ public class CombatUnit : BaseUnit
             Debug.LogWarning($"[CombatUnit] {gameObject.name} Awake: NO ANIMATOR FOUND!");
         }
         
-        // Use GameManager API for multi-planet support
-        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // BaseUnit.Awake already binds planet/grid using planetIndex.
+        // Keep planet/grid consistent with this unit's assigned planet.
+        planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet;
         if (planet != null) grid = planet.Grid;
         UnitRegistry.Register(gameObject);
 
@@ -575,7 +576,8 @@ public class CombatUnit : BaseUnit
     // Only land units can move on land, naval on water
     public override bool CanMoveTo(int tileIndex)
     {
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if(tileData == null || !tileData.isPassable) return false;
         
         // Regular planet rules: water check for naval units
@@ -598,7 +600,8 @@ public class CombatUnit : BaseUnit
         // Layer-aware occupancy check: use occupancy manager with legacy fallback
         try
         {
-            var occObj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
             if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
         }
         catch { /* ignore and fallback */ }
@@ -619,22 +622,24 @@ public class CombatUnit : BaseUnit
     public void MoveAlongPath(List<int> path)
     {
         // Flat-only movement: rely on TileSystem for planar centers
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
 
         foreach (int idx in path)
         {
-            var currentTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
+            var currentTileData = ts != null ? ts.GetTileData(idx) : null;
 
             // Movement points removed - movement speed is now fatigue-based
 
-            if (TileSystem.Instance == null) {
+            if (ts == null) {
                 Debug.LogWarning("[CombatUnit] TileSystem not ready; skipping movement step.");
                 continue;
             }
-            Vector3 pos = TileSystem.Instance.GetTileSurfacePosition(idx);
+            Vector3 pos = ts.GetTileSurfacePosition(idx);
             transform.position = pos;
 
             // Update tile occupancy using layered occupancy manager
-            try { TileOccupancyManager.Instance?.SetOccupant(idx, gameObject, currentLayer); } catch { }
+            try { occ?.SetOccupant(idx, gameObject, currentLayer); } catch { }
 
             currentTileIndex = idx;
         }
@@ -787,7 +792,8 @@ if (!data.canSwitchToMelee)
 
         // Tile defense bonus for target (e.g., hills)
         int tileBonus = 0;
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(target.currentTileIndex) : null;
+        var tsTarget = TileSystem.GetForPlanet(target.planetIndex) ?? TileSystem.Instance;
+        var tileData = tsTarget != null ? tsTarget.GetTileData(target.currentTileIndex) : null;
         if (tileData != null)
         {
             tileBonus = BiomeHelper.GetDefenseBonus(tileData.biome);
@@ -1034,7 +1040,8 @@ if (!data.canSwitchToMelee)
         if (owner != null && owner.isPlayerControlled && UIManager.Instance != null)
         {
             // Get tile data to show biome in notification
-            var tileDataForNotification = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            var tileDataForNotification = ts != null ? ts.GetTileData(currentTileIndex) : null;
             if (tileDataForNotification != null)
             {
                 UIManager.Instance.ShowNotification($"{data.unitName} took {damageAmount} damage from {tileDataForNotification.biome} terrain!");
@@ -1146,7 +1153,8 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         OnAnimationTrigger?.Invoke("attack");
 
         int tileBonus = 0;
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(attacker.currentTileIndex) : null;
+        var tsAttacker = TileSystem.GetForPlanet(attacker.planetIndex) ?? TileSystem.Instance;
+        var tileData = tsAttacker != null ? tsAttacker.GetTileData(attacker.currentTileIndex) : null;
         if (tileData != null)
         {
             tileBonus = BiomeHelper.GetDefenseBonus(tileData.biome);
@@ -1213,7 +1221,8 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         // Include tile-based improvement defense modifiers
         if (currentTileIndex >= 0)
         {
-            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
             if (tileData != null)
             {
                 val += tileData.improvementDefenseAddCombat;
@@ -1281,7 +1290,8 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         // Campaign map routing logic (shouldn't reach here if IsInBattle() check works)
         if (grid == null) return;
 
-        int[] neighbours = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : grid.neighbors[currentTileIndex].ToArray();
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        int[] neighbours = ts != null ? ts.GetNeighbors(currentTileIndex) : grid.neighbors[currentTileIndex].ToArray();
         if (neighbours == null || neighbours.Length == 0) return;
 
         // Build a list of viable tiles we can move to
@@ -1387,7 +1397,7 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         if (grid == null)
         {
             // Use GameManager API for multi-planet support
-        planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+            planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
             if (planet != null)
             {
                 grid = planet.Grid;
@@ -1416,8 +1426,9 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
     public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
         // Flat-only placement: place on terrain surface with proper height
-        if (TileSystem.Instance == null) return;
-        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+        Vector3 flatCenter = ts.GetTileSurfacePosition(tileIndex);
         transform.position = flatCenter;
 
         Vector3 forward = transform.forward;
@@ -1657,7 +1668,8 @@ return;
         if (currentTileIndex < 0) return;
         
         // Get tile data
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (tileData == null) return;
         
         // Check if the biome can cause damage
@@ -1720,7 +1732,8 @@ return;
         }
         else
         {
-            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : null;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            int[] neighbors = ts != null ? ts.GetNeighbors(currentTileIndex) : null;
             foreach (int neighbor in neighbors)
             {
                 if (unit.currentTileIndex == neighbor)
@@ -1771,13 +1784,17 @@ return;
         }
         else
         {
-            int[] neighbors = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(currentTileIndex) : null;
-            foreach (int neighbor in neighbors)
+            var tsCheck = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            int[] neighbors = tsCheck != null ? tsCheck.GetNeighbors(currentTileIndex) : null;
+            if (neighbors != null)
             {
-                if (targetTileIndex == neighbor)
+                foreach (int neighbor in neighbors)
                 {
-                    isValidTile = true;
-                    break;
+                    if (targetTileIndex == neighbor)
+                    {
+                        isValidTile = true;
+                        break;
+                    }
                 }
             }
         }
@@ -1799,16 +1816,18 @@ return;
         
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
-    var targetTileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(targetTileIndex) : null;
-    if (TileSystem.Instance == null) {
-        Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
-        return false;
-    }
-    unit.transform.position = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) {
+            Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
+            return false;
+        }
+        var targetTileData = ts.GetTileData(targetTileIndex);
+        unit.transform.position = ts.GetTileSurfacePosition(targetTileIndex);
         unit.currentTileIndex = targetTileIndex;
         
         // Update tile occupancy using layered occupancy manager
-    try { TileOccupancyManager.Instance?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
 
     // Trigger trap if unloading onto a trapped tile
     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);
@@ -2051,20 +2070,22 @@ return;
 
     private bool HasEnemyAdjacent()
     {
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
         if (currentTileIndex < 0) return false;
 
         // Check this tile and neighbours for enemy occupants
-        var tileData = TileSystem.Instance.GetTileData(currentTileIndex);
+        var tileData = ts.GetTileData(currentTileIndex);
         if (tileData == null) return false;
 
         List<int> tilesToCheck = new List<int> { currentTileIndex };
-        var neighbours = TileSystem.Instance.GetNeighbors(currentTileIndex);
+        var neighbours = ts.GetNeighbors(currentTileIndex);
         if (neighbours != null) tilesToCheck.AddRange(neighbours);
 
         foreach (int idx in tilesToCheck)
         {
-            GameObject obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(idx, TileLayer.Surface);
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            GameObject obj = occ != null ? occ.GetOccupantObjectWithFallback(idx, currentLayer) : null;
             if (obj == null) continue;
             if (obj == null) continue;
             var unit = obj.GetComponent<CombatUnit>();

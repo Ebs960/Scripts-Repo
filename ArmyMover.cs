@@ -52,9 +52,10 @@ isMoving = false;
             
             // Get movement cost for this tile
             int movementCost = 1; // Default
-            if (TileSystem.Instance != null)
+            var ts = TileSystem.GetForPlanet(army.planetIndex) ?? TileSystem.Instance;
+            if (ts != null)
             {
-                var tileData = TileSystem.Instance.GetTileData(targetTile);
+                var tileData = ts.GetTileData(targetTile);
                 if (tileData != null)
                 {
                     movementCost = BiomeHelper.GetMovementCost(tileData.biome);
@@ -66,9 +67,9 @@ isMoving = false;
             
             // Get world position for target tile (use surface position for proper terrain height)
             Vector3 targetPos = Vector3.zero;
-            if (TileSystem.Instance != null)
+            if (ts != null)
             {
-                targetPos = TileSystem.Instance.GetTileSurfacePosition(targetTile);
+                targetPos = ts.GetTileSurfacePosition(targetTile);
             }
             
             // Move towards target position

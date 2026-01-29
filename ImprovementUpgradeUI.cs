@@ -15,6 +15,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     private ImprovementData currentImprovement;
     private int currentTileIndex = -1;
+    private int currentPlanetIndex = -1;
     private Civilization currentCiv;
     private List<GameObject> upgradeButtons = new List<GameObject>();
 
@@ -27,12 +28,13 @@ public class ImprovementUpgradeUI : MonoBehaviour
             upgradePanel.SetActive(false);
     }
 
-    public void ShowUpgradePanel(ImprovementData improvement, int tileIndex, Civilization civ)
+    public void ShowUpgradePanel(ImprovementData improvement, int tileIndex, Civilization civ, int planetIndex = -1)
     {
         if (improvement == null || civ == null) return;
 
         currentImprovement = improvement;
         currentTileIndex = tileIndex;
+        currentPlanetIndex = planetIndex;
         currentCiv = civ;
 
         if (improvementNameText != null)
@@ -52,6 +54,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         ClearUpgradeButtons();
         currentImprovement = null;
         currentTileIndex = -1;
+        currentPlanetIndex = -1;
         currentCiv = null;
     }
 
@@ -141,7 +144,9 @@ return;
     private void BuildUpgrade(ImprovementUpgradeData upgrade)
     {
         // Apply visual changes on the instantiated improvement when requested
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+        if (currentPlanetIndex < 0) currentPlanetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         GameObject instanceObj = tileData?.improvementInstanceObject;
 
         if (upgrade.makesVisualChange && instanceObj != null)
@@ -173,11 +178,11 @@ return;
                     // Ensure click handler
                     var ch = newObj.GetComponent<ImprovementClickHandler>();
                     if (ch == null) ch = newObj.AddComponent<ImprovementClickHandler>();
-                    ch.Initialize(currentTileIndex, tileData.improvement);
+                    ch.Initialize(currentTileIndex, tileData.improvement, currentPlanetIndex);
 
                     // Replace reference on tile data
                     tileData.improvementInstanceObject = newObj;
-                    if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(currentTileIndex, tileData);
+                    ts?.SetTileData(currentTileIndex, tileData);
 
                     // Destroy old instance
                     Destroy(instanceObj);
@@ -227,7 +232,7 @@ return;
                 tileData.builtUpgrades.Add(keyToPersist);
             // Recompute aggregated defense modifiers and persist
             tileData.RecomputeImprovementDefenseAggregates();
-            if (TileSystem.Instance != null) TileSystem.Instance.SetTileData(currentTileIndex, tileData);
+            ts?.SetTileData(currentTileIndex, tileData);
 }
 
         // Apply immediate yield bonuses to the civilization
@@ -238,7 +243,9 @@ return;
     private bool HasUpgrade(ImprovementUpgradeData upgrade)
     {
         // Check if this upgrade has already been built on this tile
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(currentTileIndex) : null;
+        if (currentPlanetIndex < 0) currentPlanetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (tileData?.builtUpgrades == null) return false;
         
         return tileData.builtUpgrades.Contains(upgrade.upgradeName);

@@ -118,6 +118,7 @@ public class HexMapChunkManager : MonoBehaviour
     private PlanetGenerator planetGenerator;
     private Transform cameraTransform;
     private TerrainOverlayGPU terrainOverlayGPU;
+    private TileSystem overlayTileSystem;
 
     private bool ShouldRunDiagnostics()
     {
@@ -417,18 +418,16 @@ TrySubscribeToSurfaceReady(gen);
     
     private void BakeTexture()
     {
-        // Use GPU baking when possible (BiomeColors mode only)
-        bool gpuAllowed = (textureBakerComputeShader != null) &&
-                          (colorProvider == null || colorProvider.renderMode == MinimapRenderMode.BiomeColors);
-        
-        if (gpuAllowed)
+        // GPU-only baking (CPU path removed). Requires a compute shader.
+        if (textureBakerComputeShader == null)
         {
-            bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, colorProvider, textureBakerComputeShader, textureWidth, textureHeight);
-}
-        else
-        {
-            bakeResult = PlanetTextureBaker.Bake(planetGenerator, colorProvider, textureWidth, textureHeight);
-}
+            Debug.LogError("[HexMapChunkManager] textureBakerComputeShader is NULL. PlanetTextureBaker is GPU-only now, so baking cannot proceed.");
+            bakeResult = new PlanetTextureBaker.BakeResult { width = textureWidth, height = textureHeight };
+            return;
+        }
+
+        // Note: GPU baker uses per-tile colors; for non-BiomeColors render modes this is an approximation.
+        bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, colorProvider, textureBakerComputeShader, textureWidth, textureHeight);
     }
 
     private void BuildBiomeVisualMaps()
@@ -827,7 +826,7 @@ TrySubscribeToSurfaceReady(gen);
         Shader shader = null;
         try
         {
-            var rp = UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset;
+            var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
             bool isHDRP = (rp != null && (rp.GetType().Name.Contains("HDRenderPipeline") || rp.GetType().Name.Contains("HighDefinition")));
             if (isHDRP && hdrpTerrainShader != null)
             {
@@ -1059,10 +1058,12 @@ TrySubscribeToSurfaceReady(gen);
             terrainOverlayGPU.Initialize(bakeResult.lut, bakeResult.width, bakeResult.height, textureWidth, textureHeight);
             
             // Subscribe to TileSystem events
-            if (TileSystem.Instance != null)
+            int pIndex = planetGenerator != null ? planetGenerator.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+            overlayTileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            if (overlayTileSystem != null)
             {
-                TileSystem.Instance.OnTileOwnerChanged += HandleTileOwnerChanged;
-                TileSystem.Instance.OnFogChanged += HandleFogChanged;
+                overlayTileSystem.OnTileOwnerChanged += HandleTileOwnerChanged;
+                overlayTileSystem.OnFogChanged += HandleFogChanged;
             }
             
             // Apply overlay textures to material
@@ -1873,10 +1874,11 @@ TrySubscribeToSurfaceReady(gen);
         TryUnsubscribeFromPlanetReady();
         TryUnsubscribeFromSurfaceReady();
         
-        if (TileSystem.Instance != null)
+        if (overlayTileSystem != null)
         {
-            TileSystem.Instance.OnTileOwnerChanged -= HandleTileOwnerChanged;
-            TileSystem.Instance.OnFogChanged -= HandleFogChanged;
+            overlayTileSystem.OnTileOwnerChanged -= HandleTileOwnerChanged;
+            overlayTileSystem.OnFogChanged -= HandleFogChanged;
+            overlayTileSystem = null;
         }
         
         DestroyAllChunks();

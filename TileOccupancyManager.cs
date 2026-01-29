@@ -9,7 +9,20 @@ using UnityEngine;
 /// </summary>
 public class TileOccupancyManager : MonoBehaviour
 {
-    public static TileOccupancyManager Instance { get; private set; }
+    // Per-planet occupancy (required for true multi-planet gameplay).
+    private static readonly Dictionary<int, TileOccupancyManager> _byPlanetIndex = new();
+
+    /// <summary>
+    /// Convenience accessor for the *current planet's* occupancy manager.
+    /// For multi-planet logic, prefer GetForPlanet(planetIndex).
+    /// </summary>
+    public static TileOccupancyManager Instance => GetForPlanet((GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0);
+
+    public static TileOccupancyManager GetForPlanet(int planetIndex)
+    {
+        _byPlanetIndex.TryGetValue(planetIndex, out var om);
+        return om;
+    }
 
     [Header("Debug")]
     [Tooltip("When true, log when code falls back to legacy HexTileData.occupantId instead of the occupancy manager")]
@@ -21,22 +34,48 @@ public class TileOccupancyManager : MonoBehaviour
     // One-time warning flags to avoid log spam
     private bool warnedNotInitialized = false;
 
+    [Tooltip("Which planet this occupancy manager belongs to.")]
+    [SerializeField] public int planetIndex = -1;
+
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this; DontDestroyOnLoad(gameObject);
+        // Register only if planetIndex is already known (scene-placed managers).
+        // Runtime-created managers set planetIndex before Initialize() and register there.
+        if (planetIndex >= 0)
+        {
+            if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
+            {
+                Debug.LogWarning($"[TileOccupancyManager] Duplicate occupancy manager detected for planetIndex={planetIndex}. Keeping '{existing.name}', destroying '{name}'.");
+                Destroy(gameObject);
+                return;
+            }
+            _byPlanetIndex[planetIndex] = this;
+        }
         // Enable fallback logging in editor and development builds to aid migration
         try { if (Debug.isDebugBuild) logLegacyFallbacks = true; } catch { }
     }
 
     void OnDestroy()
     {
-        if (Instance == this) Instance = null;
+        if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing == this)
+        {
+            _byPlanetIndex.Remove(planetIndex);
+        }
         occupants = null;
     }
 
     public void Initialize(int tileCount)
     {
+        // Ensure we're registered for this planet (planetIndex is assigned by the owning TileSystem).
+        if (planetIndex >= 0)
+        {
+            if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
+            {
+                Debug.LogWarning($"[TileOccupancyManager] Initialize found existing occupancy manager for planetIndex={planetIndex}. Skipping Initialize() on '{name}'.");
+                return;
+            }
+            _byPlanetIndex[planetIndex] = this;
+        }
         this.tileCount = tileCount;
         occupants = new int[tileCount, 4];
     }
@@ -82,7 +121,7 @@ public class TileOccupancyManager : MonoBehaviour
         }
 
         // Legacy fallback: check HexTileData.occupantId so older code still works
-        var ts = TileSystem.Instance;
+        var ts = TileSystem.GetForPlanet(planetIndex);
         if (ts != null)
         {
             var td = ts.GetTileData(tile);
@@ -107,15 +146,32 @@ public class TileOccupancyManager : MonoBehaviour
     /// </summary>
     public static GameObject GetOccupantObjectForTileWithFallback(int tile, TileLayer layer, int planetIndex = -1)
     {
-        // If occupancy manager instance exists, prefer it (it also mirrors Surface -> HexTileData)
-        if (Instance != null)
+        // If a specific planet is provided, prefer that planet's occupancy manager.
+        if (planetIndex >= 0)
         {
-            try
+            var om = GetForPlanet(planetIndex);
+            if (om != null)
             {
-                var obj = Instance.GetOccupantObjectWithFallback(tile, layer);
-                if (obj != null) return obj;
+                try
+                {
+                    var obj = om.GetOccupantObjectWithFallback(tile, layer);
+                    if (obj != null) return obj;
+                }
+                catch { /* ignore and try generator/tile fallback */ }
             }
-            catch { /* ignore and try planet-level fallback */ }
+        }
+        else
+        {
+            // Otherwise use current planet occupancy manager.
+            if (Instance != null)
+            {
+                try
+                {
+                    var obj = Instance.GetOccupantObjectWithFallback(tile, layer);
+                    if (obj != null) return obj;
+                }
+                catch { /* ignore and try generator/tile fallback */ }
+            }
         }
 
         // If a specific planet is requested, try to query its PlanetGenerator's HexTileData
@@ -130,7 +186,7 @@ public class TileOccupancyManager : MonoBehaviour
         }
 
         // Fallback to current TileSystem tile data (covers single-planet or current-planet cases)
-        var ts = TileSystem.Instance;
+        var ts = (planetIndex >= 0) ? (TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
         if (ts != null)
         {
             var td = ts.GetTileData(tile);
@@ -175,7 +231,7 @@ public class TileOccupancyManager : MonoBehaviour
         // Keep legacy HexTileData.occupantId in sync for Surface layer (compatibility)
         if (layer == TileLayer.Surface)
         {
-            var ts = TileSystem.Instance;
+            var ts = TileSystem.GetForPlanet(planetIndex);
             if (ts != null)
             {
                 var td = ts.GetTileData(tile);

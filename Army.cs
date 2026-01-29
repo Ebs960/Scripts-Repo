@@ -29,6 +29,8 @@ public class Army : MonoBehaviour
     [Header("Campaign Map Position")]
     [Tooltip("Current tile index on campaign map")]
     public int currentTileIndex = -1;
+    [Tooltip("Which planet this army belongs to (multi-planet gameplay).")]
+    public int planetIndex = -1;
     [Tooltip("Movement speed of the army (based on slowest unit)")]
     public float armyMoveSpeed = 3f;
     
@@ -441,9 +443,10 @@ return true;
     /// </summary>
     public bool CanMoveTo(int tileIndex)
     {
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
         
-        var tileData = TileSystem.Instance.GetTileData(tileIndex);
+        var tileData = ts.GetTileData(tileIndex);
         if (tileData == null || !tileData.isPassable) return false;
         
         int movementCost = BiomeHelper.GetMovementCost(tileData.biome);
@@ -460,9 +463,10 @@ return true;
         currentTileIndex = tileIndex;
         
         // Update visual position (use surface position for proper terrain height)
-        if (TileSystem.Instance != null)
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts != null)
         {
-            Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
+            Vector3 worldPos = ts.GetTileSurfacePosition(tileIndex);
             transform.position = worldPos;
         }
         
@@ -518,6 +522,7 @@ return true;
         newArmy.owner = owner;
         newArmy.currentTileIndex = currentTileIndex;
         newArmy.maxUnits = maxUnits;
+        newArmy.planetIndex = planetIndex;
         
         // Transfer units
         foreach (var unit in unitsToSplit)
@@ -733,9 +738,10 @@ return newArmy;
     private void UpdateArmyVisualPosition()
     {
         if (armyVisual == null) return;
-        if (TileSystem.Instance == null) return;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
         
-        Vector3 worldPos = TileSystem.Instance.GetTileSurfacePosition(currentTileIndex);
+        Vector3 worldPos = ts.GetTileSurfacePosition(currentTileIndex);
         transform.position = worldPos;
     }
     
@@ -776,11 +782,12 @@ return newArmy;
         if (units.Count == 0) return false;
         
         // Check if animal is adjacent or on same tile
-        if (TileSystem.Instance == null) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
         
         if (animal.currentTileIndex == currentTileIndex) return true;
         
-        var neighbors = TileSystem.Instance.GetNeighbors(currentTileIndex);
+        var neighbors = ts.GetNeighbors(currentTileIndex);
         foreach (int neighbor in neighbors)
         {
             if (neighbor == animal.currentTileIndex) return true;

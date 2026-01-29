@@ -53,11 +53,25 @@ public class CultureManager : MonoBehaviour
             bool meetsBiomeReq = true;
             foreach (var biome in cult.requiredControlledBiomes)
             {
-                int count = civ.ownedTileIndices.FindAll(idx => {
-                    var td = planet.GetHexTileData(idx);
-                    return td != null && td.biome == biome;
-                }).Count;
-                if (count == 0)
+                bool foundOnAnyPlanet = false;
+                if (civ.ownedTilesByPlanet != null && GameManager.Instance != null)
+                {
+                    foreach (var kv in civ.ownedTilesByPlanet)
+                    {
+                        int planetIndex = kv.Key;
+                        var set = kv.Value;
+                        if (set == null || set.Count == 0) continue;
+                        var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+                        if (planetGen == null) continue;
+                        foreach (int idx in set)
+                        {
+                            var td = planetGen.GetHexTileData(idx);
+                            if (td != null && td.biome == biome) { foundOnAnyPlanet = true; break; }
+                        }
+                        if (foundOnAnyPlanet) break;
+                    }
+                }
+                if (!foundOnAnyPlanet)
                 {
                     meetsBiomeReq = false;
                     break;

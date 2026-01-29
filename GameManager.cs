@@ -139,31 +139,36 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"[GameManager] Planet {planetIndex} does not exist");
             return;
         }
-currentPlanetIndex = planetIndex;
+        currentPlanetIndex = planetIndex;
         climateManager = GetClimateManager(currentPlanetIndex);
-        
-        // Rebind TileSystem to the new current planet
+
+        // Per-planet TileSystems: do NOT reinitialize tile state on switch.
+        // Ensure the destination planet has a TileSystem instance (created during generation).
         var gen = GetPlanetGenerator(currentPlanetIndex);
-        if (TileSystem.Instance != null && gen != null)
+        if (gen != null)
         {
-            TileSystem.Instance.InitializeFromPlanet(gen);
-            // FIX: ensure occupancy manager is initialized and legacy occupantIds are migrated
-            if (TileOccupancyManager.Instance != null && gen.Grid != null)
-            {
-                int count = gen.Grid.TileCount;
-                if (count > 0)
-                {
-                    TileOccupancyManager.Instance.Initialize(count);
-                    var tiles = new global::HexTileData[count];
-                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
-                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for planet '{(gen!=null?gen.name:"<null>")}'. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
-            }
+            EnsureTileSystemForPlanet(gen);
         }
+    }
+
+    /// <summary>
+    /// Ensure a per-planet TileSystem exists and is initialized for a generated planet.
+    /// This is required for true multi-planet gameplay (per-planet ownership/fog/occupancy).
+    /// </summary>
+    private TileSystem EnsureTileSystemForPlanet(PlanetGenerator generator)
+    {
+        if (generator == null) return null;
+        int idx = generator.planetIndex;
+        var existing = TileSystem.GetForPlanet(idx);
+        if (existing != null) return existing;
+
+        var go = new GameObject($"TileSystem_Planet_{idx}");
+        // Parent under the planet for organization; TileSystem input is gated to currentPlanetIndex.
+        go.transform.SetParent(generator.transform, false);
+        var ts = go.AddComponent<TileSystem>();
+        ts.planetIndex = idx;
+        ts.InitializeFromPlanet(generator);
+        return ts;
     }
 
     [Header("Game State")]
@@ -513,15 +518,24 @@ currentPlanetIndex = planetIndex;
     private void OnSceneUnloaded_Cleanup(Scene scene)
     {
 // Clear GPU texture/buffer caches (these persist as static and leak in editor)
-        PlanetTextureBakerGPU.ClearAllCaches();
+        PlanetTextureBaker.ClearAllCaches();
         
         // Clear ResourceCache to free ScriptableObject references
         ResourceCache.Clear();
         
         // Clear TileSystem caches if it exists
-        if (TileSystem.Instance != null)
+        // Multi-planet: clear caches for all per-planet TileSystems
+        if (planetGenerators != null && planetGenerators.Count > 0)
         {
-            TileSystem.Instance.ClearAllCaches();
+            foreach (var kv in planetGenerators)
+            {
+                var ts = TileSystem.GetForPlanet(kv.Key);
+                ts?.ClearAllCaches();
+            }
+        }
+        else
+        {
+            TileSystem.Instance?.ClearAllCaches();
         }
         
         // Request garbage collection to free memory immediately
@@ -532,7 +546,7 @@ currentPlanetIndex = planetIndex;
     private void OnApplicationQuit()
     {
         // Final cleanup on application quit
-        PlanetTextureBakerGPU.ClearAllCaches();
+        PlanetTextureBaker.ClearAllCaches();
         ResourceCache.Clear();
     }
 
@@ -637,16 +651,8 @@ currentPlanetIndex = planetIndex;
             return;
         }
 
-        // Ensure TileSystem exists early (before other managers need tile data)
-        if (TileSystem.Instance == null)
-        {
-            GameObject tileSystemGO = new GameObject("TileSystem");
-            tileSystemGO.AddComponent<TileSystem>();
-        }
-        else
-        {
-            
-        }
+        // TileSystems are now per-planet and are created/initialized during planet generation.
+        // Do not create a global TileSystem singleton here.
 
         // Create SpaceRouteManager for interplanetary travel
         if (SpaceRouteManager.Instance == null)
@@ -1662,27 +1668,8 @@ currentPlanetIndex = planetIndex;
         if (earthPlanetGen != null && earthPlanetGen.HasGeneratedSurface)
         {
             
-            // Ensure TileSystem is initialized to Earth before spawning
-            if (TileSystem.Instance != null)
-            {
-                TileSystem.Instance.InitializeFromPlanet(earthPlanetGen);
-                // FIX: initialize occupancy manager and migrate legacy occupantIds
-                if (TileOccupancyManager.Instance != null && earthPlanetGen.Grid != null)
-                {
-                    int count = earthPlanetGen.Grid.TileCount;
-                    if (count > 0)
-                    {
-                        TileOccupancyManager.Instance.Initialize(count);
-                        var tiles = new global::HexTileData[count];
-                        for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
-                        TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for Earth. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
-                }
-            }
+            // Ensure Earth has a per-planet TileSystem before spawning.
+            EnsureTileSystemForPlanet(earthPlanetGen);
             
             // Spawn civilizations on Earth
             if (civilizationManager != null)
@@ -2072,8 +2059,10 @@ currentPlanetIndex = planetIndex;
         }
     }
 
-    // TileSystem will be bound to the active planet as needed
-    
+    // Ensure per-planet TileSystem exists and is initialized before notifying listeners.
+    // This makes OnPlanetFullyGenerated / OnPlanetReady safe for tile queries on that planet.
+    EnsureTileSystemForPlanet(generator);
+
     // Now fire the surface generated event - spawning will find the registered generator
     
     OnPlanetSurfaceGenerated?.Invoke(planetIndex);
@@ -2132,28 +2121,8 @@ currentPlanetIndex = planetIndex;
             surfaceJustGenerated = true;
         }
 
-        // Update references in other systems
-        // Rebind TileSystem to this planet
-        if (TileSystem.Instance != null)
-        {
-            TileSystem.Instance.InitializeFromPlanet(generator);
-            // FIX: initialize occupancy manager and migrate legacy occupantIds
-            if (TileOccupancyManager.Instance != null && generator != null && generator.Grid != null)
-            {
-                int count = generator.Grid.TileCount;
-                if (count > 0)
-                {
-                    TileOccupancyManager.Instance.Initialize(count);
-                    var tiles = new global::HexTileData[count];
-                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
-                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[GameManager] TileOccupancyManager not present; skipped occupancy init/migration for planet '{(generator!=null?generator.name:"<null>")}'. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
-            }
-        }
+        // Per-planet TileSystems: ensure destination planet has one; do NOT reinitialize tile state on switch.
+        EnsureTileSystemForPlanet(generator);
 
         // Match initial generation ordering: TileSystem binds first, then notify.
         if (surfaceJustGenerated)
@@ -2179,27 +2148,8 @@ currentPlanetIndex = planetIndex;
 
         // SunBillboard removed in flat-only refactor
 
-        // Initialize TileSystem once the planet is generated
-        if (TileSystem.Instance != null && planetGenerator != null)
-        {
-            TileSystem.Instance.InitializeFromPlanet(planetGenerator);
-            // FIX: initialize occupancy manager and migrate any legacy occupantIds into the manager
-            if (TileOccupancyManager.Instance != null && planetGenerator.Grid != null)
-            {
-                int count = planetGenerator.Grid.TileCount;
-                if (count > 0)
-                {
-                    TileOccupancyManager.Instance.Initialize(count);
-                    var tiles = new global::HexTileData[count];
-                    for (int ti = 0; ti < count; ti++) tiles[ti] = TileSystem.Instance.GetTileData(ti);
-                    TileOccupancyManager.Instance.MigrateLegacyOccupants(tiles);
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[GameManager] TileOccupancyManager not present; skipped occupancy init/migration after planet generation. Add a TileOccupancyManager to the scene or ensure it is created before occupancy lookups.");
-            }
-        }
+        // Ensure per-planet TileSystem exists/initialized for the generated planet.
+        EnsureTileSystemForPlanet(planetGenerator);
 
         OnPlanetFullyGenerated?.Invoke(planetGenerator);
     
@@ -2399,9 +2349,17 @@ currentPlanetIndex = planetIndex;
         }
         
         // Clear tile data caches
-        if (TileSystem.Instance != null)
+        if (planetGenerators != null && planetGenerators.Count > 0)
         {
-            TileSystem.Instance.ClearAllCaches();
+            foreach (var kv in planetGenerators)
+            {
+                var ts = TileSystem.GetForPlanet(kv.Key);
+                ts?.ClearAllCaches();
+            }
+        }
+        else
+        {
+            TileSystem.Instance?.ClearAllCaches();
         }
         
         // AUDIO FIX: Clean up music manager resources

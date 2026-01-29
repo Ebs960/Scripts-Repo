@@ -74,24 +74,25 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     private void UpdateReligiousPressure(Civilization civ)
     {
-        // Use TileSystem for tile data and neighbors
-        if (TileSystem.Instance == null)
-            return;
-            
         // Find all Holy Sites belonging to this civilization
         foreach (City city in civ.cities)
         {
+            if (city == null) continue;
+            int pIndex = city.planetIndex;
+            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            if (ts == null || !ts.IsReady()) continue;
+
             // Get tiles within city radius
             var centerTileIndex = city.centerTileIndex;
-            var cityTiles = GetTilesInRadius(centerTileIndex, city.TerritoryRadius);
+            var cityTiles = GetTilesInRadius(ts, centerTileIndex, city.TerritoryRadius);
             
             foreach (int tileIndex in cityTiles)
             {
-                if (!TileSystem.Instance.HasHolySite(tileIndex))
+                if (!ts.HasHolySite(tileIndex))
                     continue;
 
-                TileSystem.Instance.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
-                SpreadPressure(tileIndex, civ.foundedReligion);
+                ts.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
+                SpreadPressure(ts, tileIndex, civ.foundedReligion);
             }
         }
     }
@@ -99,10 +100,10 @@ public class ReligionManager : MonoBehaviour
     /// <summary>
     /// Gets all tile indices within a certain radius of the center tile using a breadth-first search
     /// </summary>
-    private List<int> GetTilesInRadius(int centerTileIndex, int radius)
+    private List<int> GetTilesInRadius(TileSystem ts, int centerTileIndex, int radius)
     {
         List<int> result = new List<int>();
-        if (TileSystem.Instance == null || radius <= 0)
+        if (ts == null || !ts.IsReady() || radius <= 0)
             return result;
             
         Queue<(int index, int dist)> queue = new Queue<(int, int)>();
@@ -118,7 +119,7 @@ public class ReligionManager : MonoBehaviour
 
             if (currentDist < radius)
             {
-                var neighbors = TileSystem.Instance.GetNeighbors(currentIndex);
+                var neighbors = ts.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
                     if (!visited.Contains(neighbor))
@@ -140,9 +141,9 @@ public class ReligionManager : MonoBehaviour
     /// <summary>
     /// Spreads religious pressure from a Holy Site to nearby tiles
     /// </summary>
-    private void SpreadPressure(int sourceTileIndex, ReligionData religion)
+    private void SpreadPressure(TileSystem ts, int sourceTileIndex, ReligionData religion)
     {
-        if (TileSystem.Instance == null)
+        if (ts == null || !ts.IsReady())
             return;
             
         Queue<(int index, int dist)> queue = new Queue<(int, int)>();
@@ -160,13 +161,13 @@ public class ReligionManager : MonoBehaviour
                 float pressure = holySitePressurePerTurn - (currentDist * pressureDecayPerTile);
                 if (pressure > 0)
                 {
-                    TileSystem.Instance.AddReligionPressure(currentIndex, religion, pressure);
+                    ts.AddReligionPressure(currentIndex, religion, pressure);
                 }
             }
 
             if (currentDist < maxPressureSpreadDistance)
             {
-                var neighbors = TileSystem.Instance.GetNeighbors(currentIndex);
+                var neighbors = ts.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
                     if (!visited.Contains(neighbor))
@@ -283,16 +284,19 @@ public class ReligionManager : MonoBehaviour
     {
         if (city == null)
             return null;
+
+        var ts = TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return null;
             
         // Get all tiles within city radius
-        var tiles = GetTilesInRadius(city.centerTileIndex, city.TerritoryRadius);
+        var tiles = GetTilesInRadius(ts, city.centerTileIndex, city.TerritoryRadius);
         
         // Count total pressure for each religion (using serializable pressure list)
         Dictionary<ReligionData, float> religionPressures = new Dictionary<ReligionData, float>();
         
         foreach (int tileIndex in tiles)
         {
-            var list = TileSystem.Instance?.GetReligionPressures(tileIndex);
+            var list = ts.GetReligionPressures(tileIndex);
             if (list == null) continue;
             for (int i = 0; i < list.Count; i++)
             {

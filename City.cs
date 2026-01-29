@@ -36,7 +36,12 @@ public class City : MonoBehaviour
     public string cityName;
     public Civilization owner;
     public int centerTileIndex;
+    [Tooltip("Which planet this city belongs to (multi-planet gameplay).")]
+    public int planetIndex = -1;
     public Governor governor;
+
+    // Convenience accessor: always use the correct planet's TileSystem.
+    private TileSystem TileSys => TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
 
     [Header("Growth & Level")]
     public int level = 1;
@@ -131,32 +136,33 @@ public class City : MonoBehaviour
         if (owner == null) return; 
 
         owner.AddCity(this);
+
+        // Determine planet context early (city prefab may not be parented under a planet)
+        if (planetIndex < 0)
+        {
+            // Prefer explicit parent planet generator if present
+            var pg = GetComponentInParent<PlanetGenerator>();
+            if (pg != null) planetIndex = pg.planetIndex;
+            else if (planetGenerator != null) planetIndex = planetGenerator.planetIndex;
+            else if (GameManager.Instance != null) planetIndex = GameManager.Instance.currentPlanetIndex;
+            else planetIndex = 0;
+        }
+        var ts = TileSys;
         
         // Ensure city center and territory tiles are assigned to civ
         var territory = GetTerritoryTiles(baseRadius);
         foreach (var idx in territory)
         {
-            if (!owner.ownedTileIndices.Contains(idx))
-                owner.ownedTileIndices.Add(idx);
-            
-            // Also set tileData.owner for consistent ownership tracking
-            if (TileSystem.Instance != null)
+            if (ts != null)
             {
-                var tileData = TileSystem.Instance.GetTileData(idx);
-                if (tileData != null)
-                {
-                    tileData.owner = owner;
-                    tileData.controllingCity = this;
-                    TileSystem.Instance.SetTileData(idx, tileData);
-                }
+                ts.SetTileOwner(idx, owner, this);
             }
         }
 
         CreateLabelUI();
         
-        // Cache reference
-        // Use GameManager API for multi-planet support
-        planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // Cache reference: bind to the correct planet generator for this city
+        planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
     }
 
     /// <summary>
@@ -444,8 +450,8 @@ if (UIManager.Instance != null)
         }
 
         // 5) Reassign map-ownership of the city's tiles
-        // Use GameManager API for multi-planet support
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
+        // Use this city's planet context (multi-planet support)
+        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planet != null)
         {
             // Get territory radius based on number of remaining cities
@@ -454,13 +460,8 @@ if (UIManager.Instance != null)
             List<int> territoryTiles = GetTerritoryTiles(radius);
             foreach (int idx in territoryTiles)
             {
-                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
-                if (tileData != null)
-                {
-                    tileData.owner = rebelCiv;
-                    tileData.controllingCity = this;
-                    TileSystem.Instance?.SetTileData(idx, tileData);
-                }
+                var ts = TileSys;
+                if (ts != null) ts.SetTileOwner(idx, rebelCiv, this);
             }
         }
 
@@ -474,10 +475,12 @@ if (UIManager.Instance != null)
     private List<int> GetTerritoryTiles(int radius)
     {
         List<int> tiles = new List<int>();
+        var ts = TileSys;
+        if (ts == null) return tiles;
         
         // Start with center and direct neighbors
         tiles.Add(centerTileIndex);
-        foreach (int neighbor in TileSystem.Instance.GetNeighbors(centerTileIndex))
+        foreach (int neighbor in ts.GetNeighbors(centerTileIndex))
         {
             tiles.Add(neighbor);
         }
@@ -489,7 +492,7 @@ if (UIManager.Instance != null)
             List<int> newTiles = new List<int>();
             foreach (int tile in tiles)
             {
-                foreach (int neighbor in TileSystem.Instance.GetNeighbors(tile))
+                foreach (int neighbor in ts.GetNeighbors(tile))
                 {
                     if (!processed.Contains(neighbor))
                     {
@@ -554,10 +557,12 @@ if (UIManager.Instance != null)
     private bool ControlsCoast()
     {
         if (planetGenerator == null) throw new System.Exception("City references not set!");
+        var ts = TileSys;
+        if (ts == null) return false;
         
-        foreach (int idx in TileSystem.Instance.GetNeighbors(centerTileIndex))
+        foreach (int idx in ts.GetNeighbors(centerTileIndex))
         {
-            var tileData = TileSystem.Instance.GetTileData(idx);
+            var tileData = ts.GetTileData(idx);
             if (tileData == null) continue;
             var biome = tileData.biome;
             if (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean)
@@ -709,9 +714,11 @@ if (UIManager.Instance != null)
     public bool IsValidDistrictTile(int tileIndex, DistrictData district)
     {
         if (planetGenerator == null) throw new System.Exception("City references not set!");
+        var ts = TileSys;
+        if (ts == null) return false;
         
         // Get tile data
-    var tileData = TileSystem.Instance.GetTileData(tileIndex);
+        var tileData = ts.GetTileData(tileIndex);
         if (tileData == null) return false;
         
         // Check if tile is owned by this city's civilization
@@ -726,8 +733,8 @@ if (UIManager.Instance != null)
             return false;
             
         // Check if tile is within territory radius
-        var cityPos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
-        var tilePos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : transform.position;
+        var cityPos = ts.GetTileCenterFlat(centerTileIndex);
+        var tilePos = ts.GetTileCenterFlat(tileIndex);
         float distance = Vector3.Distance(cityPos, tilePos);
         if (distance > TerritoryRadius * 1.0f) // Scale factor based on your map scale
             return false;
@@ -752,9 +759,9 @@ if (UIManager.Instance != null)
         if (district.requiresRiver)
         {
             bool hasRiver = false;
-            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
+            foreach (int neighborIdx in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
+                var neighborData = ts.GetTileData(neighborIdx);
                 if (neighborData != null && neighborData.biome == Biome.River)
                 {
                     hasRiver = true;
@@ -768,9 +775,9 @@ if (UIManager.Instance != null)
         if (district.requiresCoastal)
         {
             bool hasWater = false;
-            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
+            foreach (int neighborIdx in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
+                var neighborData = ts.GetTileData(neighborIdx);
                 if (neighborData != null && 
                    (neighborData.biome == Biome.Ocean || 
                     neighborData.biome == Biome.Seas || 
@@ -787,9 +794,9 @@ if (UIManager.Instance != null)
         if (district.requiresMountainAdjacent)
         {
             bool hasMountain = false;
-            foreach (int neighborIdx in TileSystem.Instance.GetNeighbors(tileIndex))
+            foreach (int neighborIdx in ts.GetNeighbors(tileIndex))
             {
-                var neighborData = TileSystem.Instance.GetTileData(neighborIdx);
+                var neighborData = ts.GetTileData(neighborIdx);
                 if (neighborData != null && neighborData.biome == Biome.Mountain)
                 {
                     hasMountain = true;
@@ -935,8 +942,9 @@ if (UIManager.Instance != null)
         owner.faith -= unitData.faithCost;
         
         // Spawn the unit
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        var ts = TileSys;
+        Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
         
         var prefab = unitData.GetPrefab();
         if (prefab == null)
@@ -954,6 +962,7 @@ if (UIManager.Instance != null)
             return false;
         }
         unit.Initialize(unitData, owner);
+        unit.planetIndex = planetIndex;
         
         // Add to owner's units
         owner.combatUnits.Add(unit);
@@ -984,13 +993,15 @@ return true;
         
         // Terrains
         if (reqTerrains != null && reqTerrains.Length > 0) {
-            if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
+            if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+            var ts = TileSys;
+            if (ts == null) return false;
             
             // gather city‐radius tiles (1 tile for simplicity)
             bool found = false;
-            foreach (int n in TileSystem.Instance.GetNeighbors(centerTileIndex)) {
-                if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-                var tdOpt = TileSystem.Instance.GetTileData(n);
+            foreach (int n in ts.GetNeighbors(centerTileIndex)) {
+                if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+                var tdOpt = ts.GetTileData(n);
                 
                 if (tdOpt == null) continue;
                 if (System.Array.IndexOf(reqTerrains, tdOpt.biome) >= 0) {
@@ -1006,8 +1017,9 @@ return true;
     /// Completes the item and adds it to the appropriate collection or instantiates it.
     /// </summary>
     private void CompleteItem(ScriptableObject d) {
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
-        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        var ts = TileSys;
+        Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
 
         switch (d) {
             case CombatUnitData u:
@@ -1026,6 +1038,7 @@ return true;
                     break;
                 }
                 unit.Initialize(u, owner);
+                unit.planetIndex = planetIndex;
                 owner.combatUnits.Add(unit);
                 producedUnits.Add(u);
                 
@@ -1193,9 +1206,11 @@ Destroy(oldTuple.instance);
     {
         if (district == null || planetGenerator == null)
             return;
+        var ts = TileSys;
+        if (ts == null) return;
             
         // Get position for the district
-        Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tileIndex) : transform.position;
+        Vector3 pos = ts.GetTileCenterFlat(tileIndex);
         
         // Instantiate the district
         GameObject districtInstance = null;
@@ -1205,7 +1220,7 @@ Destroy(oldTuple.instance);
         }
         
         // Update the tile data to include this district
-        var tileData2 = TileSystem.Instance.GetTileData(tileIndex);
+        var tileData2 = ts.GetTileData(tileIndex);
         if (tileData2 != null)
         {
             // Mark the district on the tile
@@ -1214,14 +1229,14 @@ Destroy(oldTuple.instance);
             // If it's a Holy Site, mark via TileSystem and seed pressure
             if (district.isHolySite)
             {
-                TileSystem.Instance.SetHolySite(tileIndex, true, district);
+                ts.SetHolySite(tileIndex, true, district);
                 if (owner.hasFoundedReligion && owner.foundedReligion != null)
                 {
-                    TileSystem.Instance.AddReligionPressure(tileIndex, owner.foundedReligion, 100f);
+                    ts.AddReligionPressure(tileIndex, owner.foundedReligion, 100f);
                 }
             }
             // Update the tile data (district placement)
-            TileSystem.Instance.SetTileData(tileIndex, tileData2);
+            ts.SetTileData(tileIndex, tileData2);
         }
         
         // Add to city's districts
@@ -1392,11 +1407,16 @@ Destroy(oldTuple.instance);
     int SumYield(System.Func<HexTileData,int> selector)
     {
         int total = 0;
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
         if (planetGenerator == null) return 0; // Safety check
+        var ts = TileSys;
+        if (ts == null) return 0;
 
-        var owned = owner.ownedTileIndices; // Needs access to owner's tile list
-        Vector3 cityCenterPos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(centerTileIndex) : transform.position;
+        // Planet-scoped owned tiles (tile indices repeat across planets)
+        if (owner == null || owner.ownedTilesByPlanet == null || !owner.ownedTilesByPlanet.TryGetValue(planetIndex, out var ownedSet) || ownedSet == null)
+            return 0;
+        var owned = ownedSet;
+        Vector3 cityCenterPos = ts.GetTileCenterFlat(centerTileIndex);
         float maxDist = 1.0f * TerritoryRadius; // Default spacing value
         
         // Create test tile once to determine which yield type the selector accesses
@@ -1431,11 +1451,11 @@ Destroy(oldTuple.instance);
 
         foreach (int idx in owned)
         {
-            Vector3 tilePos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(idx) : transform.position;
+            Vector3 tilePos = ts.GetTileCenterFlat(idx);
             float distanceSqr = (cityCenterPos - tilePos).sqrMagnitude;
             if (distanceSqr <= maxDist * maxDist)
             {
-                var maybe = TileSystem.Instance.GetTileData(idx);
+                var maybe = ts.GetTileData(idx);
                 if (maybe != null)
                 {
                     total += selector(maybe);
@@ -1452,7 +1472,7 @@ Destroy(oldTuple.instance);
             }
         }
         // Add yield from city center tile itself (if not covered by loop)
-        var centerMaybe = TileSystem.Instance.GetTileData(centerTileIndex);
+        var centerMaybe = ts.GetTileData(centerTileIndex);
         if(centerMaybe != null) {
              // Decide if center tile yield counts or if it's replaced by city flat yields
         }
@@ -1592,13 +1612,8 @@ Destroy(oldTuple.instance);
                 List<int> territoryTiles = GetTerritoryTiles(TerritoryRadius);
                 foreach (int idx in territoryTiles)
                 {
-                    var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
-                    if (tileData != null)
-                    {
-                        tileData.owner = attackerCiv;
-                        tileData.controllingCity = this;
-                        TileSystem.Instance?.SetTileData(idx, tileData);
-                    }
+                    var ts = TileSys;
+                    if (ts != null) ts.SetTileOwner(idx, attackerCiv, this);
                 }
             }
             
@@ -1670,13 +1685,15 @@ Destroy(oldTuple.instance);
             faith += district.baseFaith;
             if (district.isHolySite)
             {
-                var tileData = TileSystem.Instance.GetTileData(tileIndex);
+                var ts = TileSys;
+                if (ts == null) continue;
+                var tileData = ts.GetTileData(tileIndex);
                 if (tileData == null) continue;
-                var adjacentTiles = TileSystem.Instance.GetNeighbors(tileIndex);
+                var adjacentTiles = ts.GetNeighbors(tileIndex);
                 faith += Mathf.RoundToInt(adjacentTiles.Length * district.adjacencyBonusPerAdjacentTile);
                 ReligionData dominantReligion = owner.hasFoundedReligion && owner.foundedReligion != null
                     ? owner.foundedReligion
-                    : TileSystem.Instance.GetDominantReligion(tileIndex);
+                    : ts.GetDominantReligion(tileIndex);
             }
         }
         return faith;
@@ -1688,10 +1705,12 @@ Destroy(oldTuple.instance);
     private int FindValidDistrictTile(DistrictData district)
     {
         if (planetGenerator == null) throw new System.Exception("City references not set!");
+        var ts = TileSys;
+        if (ts == null) return -1;
         
         // Check city center and neighbors
     var tiles = new List<int> { centerTileIndex };
-    tiles.AddRange(TileSystem.Instance.GetNeighbors(centerTileIndex));
+    tiles.AddRange(ts.GetNeighbors(centerTileIndex));
         
         foreach (int tileIndex in tiles)
         {
@@ -1752,8 +1771,12 @@ Destroy(oldTuple.instance);
             foreach (var city in civ.cities)
             {
                 if (city == this) continue; // Skip self
-                
-                int distance = Mathf.RoundToInt(TileSystem.Instance.GetTileDistance(centerTileIndex, city.centerTileIndex));
+
+                // Trade range is planet-local for now (no interplanetary trade distance here).
+                if (city == null || city.planetIndex != planetIndex) continue;
+                var ts = TileSys;
+                if (ts == null) continue;
+                int distance = Mathf.RoundToInt(ts.GetTileDistance(centerTileIndex, city.centerTileIndex));
                 if (distance <= tradeRange)
                 {
                     citiesInRange.Add(city);

@@ -38,6 +38,10 @@ public class Civilization : MonoBehaviour
     public bool isPlayerControlled = false;
 
     [Header("Map & Military")]
+    // NOTE: Multi-planet gameplay requires planet-scoped ownership because tile indices repeat per planet.
+    // Key = planetIndex, Value = owned tile indices on that planet.
+    public Dictionary<int, HashSet<int>> ownedTilesByPlanet = new Dictionary<int, HashSet<int>>();
+    // Legacy (single-planet) list kept for compatibility; do not use for multi-planet logic.
     public List<int> ownedTileIndices       = new List<int>();
     public List<City> cities                = new List<City>();
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
@@ -1130,8 +1134,9 @@ return false;
         // Check if the city has a Holy Site
         bool hasHolySite = false;
         
-        // Get the hex tile data for the city's center tile
-        var tileDataHS = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(holySiteCity.centerTileIndex) : null;
+        // Get the hex tile data for the city's center tile (planet-aware)
+        var tsHS = (holySiteCity != null) ? (TileSystem.GetForPlanet(holySiteCity.planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
+        var tileDataHS = tsHS != null ? tsHS.GetTileData(holySiteCity.centerTileIndex) : null;
         if (tileDataHS != null)
         {
             hasHolySite = tileDataHS.HasHolySite;
@@ -1264,8 +1269,9 @@ return false;
         // Check if the city has a Holy Site
         bool hasHolySite = false;
         
-        // Get the hex tile data for the city's center tile
-        var tileDataMS = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(city.centerTileIndex) : null;
+        // Get the hex tile data for the city's center tile (planet-aware)
+        var tsMS = (city != null) ? (TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
+        var tileDataMS = tsMS != null ? tsMS.GetTileData(city.centerTileIndex) : null;
         if (tileDataMS != null)
         {
             hasHolySite = tileDataMS.HasHolySite;
@@ -1283,7 +1289,7 @@ return false;
         var grid = planetGenerator != null ? planetGenerator.Grid : null;
         if (grid != null)
         {
-            Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
+            Vector3 pos = tsMS != null ? tsMS.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
             var missionaryPrefab = missionaryData.GetPrefab();
             if (missionaryPrefab == null)
             {
@@ -1300,6 +1306,7 @@ return false;
                 return false;
             }
             missionaryUnit.Initialize(missionaryData, this);
+            missionaryUnit.planetIndex = (city != null) ? city.planetIndex : 0;
             
             // Add unit to army system
             if (missionaryUnit.currentTileIndex >= 0)
@@ -1964,6 +1971,8 @@ return true;
             }
         }
         newCity.centerTileIndex = tileIndex;
+        // Multi-planet: persist which planet this city belongs to so it doesn't read/write the wrong TileSystem later.
+        newCity.planetIndex = (planetToUse != null) ? planetToUse.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         newCity.Initialize(cityName, this);
         AddCity(newCity);
     }
@@ -2025,7 +2034,7 @@ return true;
     /// Get the list of improvements this worker can currently build, filtered to remove obsolete ones.
     /// If tileIndex is provided, also filters by tile land/biome requirements.
     /// </summary>
-    public List<ImprovementData> GetAvailableImprovementsForWorker(WorkerUnitData worker, int tileIndex = -1)
+    public List<ImprovementData> GetAvailableImprovementsForWorker(WorkerUnitData worker, int tileIndex = -1, int planetIndex = -1)
     {
         var list = new List<ImprovementData>();
         if (worker == null || worker.buildableImprovements == null) return list;
@@ -2036,7 +2045,9 @@ return true;
         HexTileData tileData = null;
         if (tileIndex >= 0)
         {
-            tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+            if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         }
 
         // Precompute unlocked replacements for tile-aware obsolescence

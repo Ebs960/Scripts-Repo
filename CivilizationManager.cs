@@ -856,44 +856,51 @@ break; // Only propose one alliance per turn
     /// </summary>
     private int CountNearbyThreats(Civilization civ)
     {
-        if (civ == null || civ.ownedTileIndices == null || TileSystem.Instance == null) return 0;
+        if (civ == null || civ.ownedTilesByPlanet == null || civ.ownedTilesByPlanet.Count == 0) return 0;
         
         int threatCount = 0;
         const int threatRange = 3; // Tiles to check around owned tiles
         
-        // Get all owned tiles
-        var ownedTiles = new HashSet<int>(civ.ownedTileIndices);
-        
-        // Check each owned tile's neighbors
-        foreach (int tileIndex in ownedTiles)
+        // Check each owned tile's neighbors per-planet (tile indices repeat across planets).
+        foreach (var kv in civ.ownedTilesByPlanet)
         {
-            if (tileIndex < 0) continue;
-            
-            // Get tiles in threat range
-            var tilesInRange = GetTilesInRange(tileIndex, threatRange);
-            
-            foreach (int neighborTile in tilesInRange)
+            int planetIndex = kv.Key;
+            var ownedTiles = kv.Value;
+            if (ownedTiles == null || ownedTiles.Count == 0) continue;
+
+            var ts = TileSystem.GetForPlanet(planetIndex);
+            if (ts == null || !ts.IsReady()) continue;
+
+            foreach (int tileIndex in ownedTiles)
             {
-                if (neighborTile < 0) continue;
-                
-                // Check if tile is owned by an enemy
-                var tileData = TileSystem.Instance.GetTileData(neighborTile);
-                if (tileData == null || tileData.owner == null) continue;
-                if (tileData.owner == civ) continue; // Own tile
-                
-                // Check if we're at war with this civ
-                var currentRelation = DiplomacyManager.Instance != null
-                    ? DiplomacyManager.Instance.GetRelationship(civ, tileData.owner)
-                    : DiplomaticState.Peace;
-                
-                if (currentRelation == DiplomaticState.War)
+                if (tileIndex < 0) continue;
+
+                // Get tiles in threat range (planet-local BFS)
+                var tilesInRange = GetTilesInRange(tileIndex, threatRange, ts);
+
+                foreach (int neighborTile in tilesInRange)
                 {
-                    // Count enemy units on this tile
-                    var enemyUnits = tileData.owner.combatUnits
-                        .Where(u => u != null && u.currentTileIndex == neighborTile)
-                        .Count();
-                    
-                    threatCount += enemyUnits;
+                    if (neighborTile < 0) continue;
+
+                    // Check if tile is owned by an enemy
+                    var tileData = ts.GetTileData(neighborTile);
+                    if (tileData == null || tileData.owner == null) continue;
+                    if (tileData.owner == civ) continue; // Own tile
+
+                    // Check if we're at war with this civ
+                    var currentRelation = DiplomacyManager.Instance != null
+                        ? DiplomacyManager.Instance.GetRelationship(civ, tileData.owner)
+                        : DiplomaticState.Peace;
+
+                    if (currentRelation == DiplomaticState.War)
+                    {
+                        // Count enemy units on this tile (planet-local)
+                        int enemyUnits = tileData.owner.combatUnits
+                            .Where(u => u != null && u.planetIndex == planetIndex && u.currentTileIndex == neighborTile)
+                            .Count();
+
+                        threatCount += enemyUnits;
+                    }
                 }
             }
         }
@@ -907,28 +914,38 @@ break; // Only propose one alliance per turn
     private List<Civilization> FindWeakNeighbors(Civilization civ)
     {
         var weakNeighbors = new List<Civilization>();
-        if (civ == null || civ.ownedTileIndices == null || TileSystem.Instance == null) return weakNeighbors;
+        if (civ == null || civ.ownedTilesByPlanet == null || civ.ownedTilesByPlanet.Count == 0) return weakNeighbors;
         
         var myStrength = ComputeMilitaryStrength(civ);
         var neighboringCivs = new HashSet<Civilization>();
         
-        // Find all neighboring civilizations
-        foreach (int tileIndex in civ.ownedTileIndices)
+        // Find all neighboring civilizations per-planet
+        foreach (var kv in civ.ownedTilesByPlanet)
         {
-            if (tileIndex < 0) continue;
-            
-            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
-            if (neighbors == null) continue;
-            
-            foreach (int neighborTile in neighbors)
+            int planetIndex = kv.Key;
+            var ownedTiles = kv.Value;
+            if (ownedTiles == null || ownedTiles.Count == 0) continue;
+
+            var ts = TileSystem.GetForPlanet(planetIndex);
+            if (ts == null || !ts.IsReady()) continue;
+
+            foreach (int tileIndex in ownedTiles)
             {
-                if (neighborTile < 0) continue;
-                
-                var tileData = TileSystem.Instance.GetTileData(neighborTile);
-                if (tileData == null || tileData.owner == null) continue;
-                if (tileData.owner == civ) continue; // Own tile
-                
-                neighboringCivs.Add(tileData.owner);
+                if (tileIndex < 0) continue;
+
+                var neighbors = ts.GetNeighbors(tileIndex);
+                if (neighbors == null) continue;
+
+                foreach (int neighborTile in neighbors)
+                {
+                    if (neighborTile < 0) continue;
+
+                    var tileData = ts.GetTileData(neighborTile);
+                    if (tileData == null || tileData.owner == null) continue;
+                    if (tileData.owner == civ) continue; // Own tile
+
+                    neighboringCivs.Add(tileData.owner);
+                }
             }
         }
         
@@ -1025,24 +1042,32 @@ break; // Only propose one alliance per turn
     /// </summary>
     private bool CheckSharedBorders(Civilization civ1, Civilization civ2)
     {
-        if (civ1 == null || civ2 == null || civ1.ownedTileIndices == null || civ2.ownedTileIndices == null) return false;
-        if (TileSystem.Instance == null) return false;
-        
-        var civ2Tiles = new HashSet<int>(civ2.ownedTileIndices);
-        
-        // Check if any of civ1's tiles are adjacent to civ2's tiles
-        foreach (int tileIndex in civ1.ownedTileIndices)
+        if (civ1 == null || civ2 == null) return false;
+        if (civ1.ownedTilesByPlanet == null || civ2.ownedTilesByPlanet == null) return false;
+
+        // Shared borders are planet-local (tile indices repeat across planets).
+        foreach (var kv in civ1.ownedTilesByPlanet)
         {
-            if (tileIndex < 0) continue;
-            
-            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
-            if (neighbors == null) continue;
-            
-            foreach (int neighborTile in neighbors)
+            int planetIndex = kv.Key;
+            if (!civ2.ownedTilesByPlanet.TryGetValue(planetIndex, out var civ2Tiles) || civ2Tiles == null || civ2Tiles.Count == 0)
+                continue;
+
+            var civ1Tiles = kv.Value;
+            if (civ1Tiles == null || civ1Tiles.Count == 0) continue;
+
+            var ts = TileSystem.GetForPlanet(planetIndex);
+            if (ts == null || !ts.IsReady()) continue;
+
+            foreach (int tileIndex in civ1Tiles)
             {
-                if (civ2Tiles.Contains(neighborTile))
+                if (tileIndex < 0) continue;
+                var neighbors = ts.GetNeighbors(tileIndex);
+                if (neighbors == null) continue;
+
+                foreach (int neighborTile in neighbors)
                 {
-                    return true; // Found shared border
+                    if (civ2Tiles.Contains(neighborTile))
+                        return true;
                 }
             }
         }
@@ -1053,10 +1078,10 @@ break; // Only propose one alliance per turn
     /// <summary>
     /// Get tiles in range of a center tile (BFS)
     /// </summary>
-    private List<int> GetTilesInRange(int centerTile, int range)
+    private List<int> GetTilesInRange(int centerTile, int range, TileSystem ts)
     {
         var tilesInRange = new List<int>();
-        if (centerTile < 0 || TileSystem.Instance == null) return tilesInRange;
+        if (centerTile < 0 || ts == null) return tilesInRange;
         
         var visited = new HashSet<int>();
         var queue = new Queue<(int tile, int distance)>();
@@ -1074,7 +1099,7 @@ break; // Only propose one alliance per turn
             
             if (distance >= range) continue; // Reached max range
             
-            var neighbors = TileSystem.Instance.GetNeighbors(currentTile);
+            var neighbors = ts.GetNeighbors(currentTile);
             if (neighbors == null) continue;
             
             foreach (int neighbor in neighbors)
@@ -1112,8 +1137,9 @@ break; // Only propose one alliance per turn
         civs.Clear();
         currentCivIndex = -1;
         
-        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
-        var planet   = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        // Multi-planet: spawn on the currently active planet.
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var planet   = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         var grid      = planet != null ? planet.Grid : null;
         var occupied = new HashSet<int>();
 
@@ -1230,12 +1256,13 @@ break; // Only propose one alliance per turn
             return;
         }
         
-        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
-        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        // Multi-planet: spawn on the currently active planet.
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         var grid  = planet != null ? planet.Grid : null;
         if (grid == null)
         {
-            Debug.LogError("SpawnOneCivilization: Earth's SphericalHexGrid not found!");
+            Debug.LogError("SpawnOneCivilization: Planet grid not found!");
             return;
         }
         
@@ -1321,9 +1348,9 @@ break; // Only propose one alliance per turn
             Debug.LogError("SpawnOneCivilization: pioneerData is not assigned in CivilizationManager!");
             return;
         }
-// Instantiate pioneer (same as animals - no parenting to planet)
-        // FIXED: Use Earth-specific positioning for pioneer
-    Vector3 pos = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(tile) : Vector3.zero;
+        // Instantiate pioneer (same as animals - no parenting to planet)
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
 var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         if (wgo == null)
         {
@@ -1340,6 +1367,7 @@ var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
         }
         
         pioneer.Initialize(pioneerData, civ, tile);
+        pioneer.planetIndex = planetIndex;
         civ.workerUnits.Add(pioneer);
         
     }
@@ -1352,31 +1380,32 @@ var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
     {
 // COPIED FROM ANIMALMANAGER: Use exact same approach for reliability
         var candidates = new List<int>();
-        // FIXED: Always spawn civilizations on Earth (planet index 0) regardless of current planet
-        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
 
         if (planet == null)
         {
-            Debug.LogError("FindSpawnTile: No Earth planet generator found!");
+            Debug.LogError("FindSpawnTile: No planet generator found!");
             return -1;
         }
         
         if (planet.Grid == null)
         {
-            Debug.LogError("FindSpawnTile: Earth grid is null!");
+            Debug.LogError("FindSpawnTile: planet grid is null!");
             return -1;
         }
         
         if (!planet.Grid.IsBuilt)
         {
-            Debug.LogError("FindSpawnTile: Earth grid is not built!");
+            Debug.LogError("FindSpawnTile: planet grid is not built!");
             return -1;
         }
         
         if (!planet.HasGeneratedSurface)
         {
-            Debug.LogError($"FindSpawnTile: Earth surface not ready! HasGeneratedSurface = {planet.HasGeneratedSurface}");
+            Debug.LogError($"FindSpawnTile: planet surface not ready! HasGeneratedSurface = {planet.HasGeneratedSurface}");
             return -1;
         }
         
@@ -1393,7 +1422,7 @@ var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
             if (occupied.Contains(i)) continue;
             
             // Use same tile data retrieval as AnimalManager
-            var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(i) : null;
+            var tile = ts != null ? ts.GetTileData(i) : null;
             if (tile == null) {
                 invalidTileCount++;
                 continue;
@@ -1480,16 +1509,19 @@ return result;
             return;
         }
 
-        // Get the planet generator (Earth - index 0)
-        var planet = GameManager.Instance?.GetPlanetGenerator(0);
+        int planetIndex = playerCiv != null && playerCiv.workerUnits.Count > 0 && playerCiv.workerUnits[0] != null
+            ? playerCiv.workerUnits[0].planetIndex
+            : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         if (planet == null || planet.Grid == null)
         {
-            Debug.LogWarning("Cannot position camera: Earth planet generator not found");
+            Debug.LogWarning("Cannot position camera: planet generator not found");
             return;
         }
 
         // Get the tile position and convert to direction from planet center
-        Vector3 tileWorldPosition = TileSystem.Instance != null ? TileSystem.Instance.GetTileCenterFlat(pioneerTileIndex) : Vector3.zero;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Vector3 tileWorldPosition = ts != null ? ts.GetTileCenterFlat(pioneerTileIndex) : Vector3.zero;
 
         // Focus the camera on the tile in flat space
         cameraManager.JumpToWorldPoint(tileWorldPosition);

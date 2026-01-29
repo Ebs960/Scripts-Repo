@@ -181,6 +181,11 @@ public class BiomeVisualDatabase : ScriptableObject
         normalArray.wrapMode = TextureWrapMode.Repeat;
         maskArray.wrapMode = TextureWrapMode.Repeat;
 
+        // Debug: quick manual override (uncomment to force a visible red texture into slice 0)
+        // var testTex = Texture2D.redTexture;
+        // albedoArray.SetPixels(testTex.GetPixels(), 0, 0);
+        // albedoArray.Apply();
+
         int writeSlice = 0;
         var surfaceStart = new int[familyEntries.Count];
 
@@ -193,6 +198,24 @@ public class BiomeVisualDatabase : ScriptableObject
                 int variants = Mathf.Max(1, sf.VariantCount);
                 for (int v = 0; v < variants; v++)
                 {
+                    // Debug + validation: confirm slice add & catch mismatches early
+                    var familyDisplayName = !string.IsNullOrEmpty(sf.familyName) ? sf.familyName : sf.name;
+                    var albedo = sf.albedoArray;
+                    int expectedWidth = targetW;
+                    int expectedHeight = targetH;
+
+                    Debug.Log($"[BuildSurfaceLibrary] Adding slice: {familyDisplayName}, Variant: {v}, Albedo: {(albedo ? albedo.name : "null")}, Format: {(albedo ? albedo.format.ToString() : "null")}, Size: {(albedo ? albedo.width + "x" + albedo.height : "null")}");
+
+                    if (albedo != null && albedo.format != TextureFormat.RGBA32)
+                    {
+                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {albedo.name} format is {albedo.format}, expected RGBA32. This may break texture array.");
+                    }
+
+                    if (albedo != null && (albedo.width != expectedWidth || albedo.height != expectedHeight))
+                    {
+                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {albedo.name} size is {albedo.width}x{albedo.height}, expected {expectedWidth}x{expectedHeight}");
+                    }
+
                     // Copy from sf arrays if available
                     if (sf.albedoArray != null && v < sf.albedoArray.depth)
                     {
@@ -248,6 +271,18 @@ public class BiomeVisualDatabase : ScriptableObject
                 // albedo
                 if (bv.albedo != null)
                 {
+                    Debug.Log($"[BuildSurfaceLibrary] Adding legacy slice: Biome {bv.name}, Albedo: {(bv.albedo ? bv.albedo.name : "null")}, Format: {(bv.albedo ? bv.albedo.format.ToString() : "null")}, Size: {(bv.albedo ? bv.albedo.width + "x" + bv.albedo.height : "null")}");
+
+                    if (bv.albedo.format != TextureFormat.RGBA32)
+                    {
+                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {bv.albedo.name} format is {bv.albedo.format}, expected RGBA32. This may break texture array.");
+                    }
+
+                    if (bv.albedo.width != targetW || bv.albedo.height != targetH)
+                    {
+                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {bv.albedo.name} size is {bv.albedo.width}x{bv.albedo.height}, expected {targetW}x{targetH}");
+                    }
+
                     Graphics.CopyTexture(bv.albedo, 0, 0, albedoArray, writeSlice, 0);
                 }
                 else

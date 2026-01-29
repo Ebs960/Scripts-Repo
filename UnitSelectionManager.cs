@@ -27,6 +27,10 @@ public class UnitSelectionManager : MonoBehaviour
     private int cachedHoveredTileIndex = -1;
     private Vector3 cachedHoveredWorldPos = Vector3.zero;
     private bool isHoveringTile = false;
+
+    // Multi-planet: subscribe to the active planet's TileSystem events
+    private TileSystem eventTileSystem;
+    private int eventPlanetIndex = int.MinValue;
     
     void Awake()
     {
@@ -75,27 +79,49 @@ public class UnitSelectionManager : MonoBehaviour
     
     void Update()
     {
+        // Keep event subscription aligned with the active planet.
+        int desiredPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (eventTileSystem == null || eventPlanetIndex != desiredPlanet)
+        {
+            // Unsubscribe from previous
+            if (eventTileSystem != null)
+            {
+                eventTileSystem.OnTileHovered -= OnTileHoveredTileSystem;
+                eventTileSystem.OnTileHoverExited -= OnTileExitedTileSystem;
+                eventTileSystem.OnTileClicked -= OnTileClickedTileSystem;
+            }
+
+            eventPlanetIndex = desiredPlanet;
+            eventTileSystem = TileSystem.GetForPlanet(desiredPlanet) ?? TileSystem.Instance;
+
+            // Subscribe to new (if ready)
+            if (eventTileSystem != null)
+            {
+                eventTileSystem.OnTileHovered += OnTileHoveredTileSystem;
+                eventTileSystem.OnTileHoverExited += OnTileExitedTileSystem;
+                eventTileSystem.OnTileClicked += OnTileClickedTileSystem;
+            }
+        }
+
         HandleInput();
     }
 
     private void OnEnable()
     {
-        if (TileSystem.Instance != null)
-        {
-            TileSystem.Instance.OnTileHovered += OnTileHoveredTileSystem;
-            TileSystem.Instance.OnTileHoverExited += OnTileExitedTileSystem;
-            TileSystem.Instance.OnTileClicked += OnTileClickedTileSystem;
-        }
+        // Ensure Update() resubscribes immediately on enable
+        eventTileSystem = null;
+        eventPlanetIndex = int.MinValue;
     }
 
     private void OnDisable()
     {
-        if (TileSystem.Instance != null)
+        if (eventTileSystem != null)
         {
-            TileSystem.Instance.OnTileHovered -= OnTileHoveredTileSystem;
-            TileSystem.Instance.OnTileHoverExited -= OnTileExitedTileSystem;
-            TileSystem.Instance.OnTileClicked -= OnTileClickedTileSystem;
+            eventTileSystem.OnTileHovered -= OnTileHoveredTileSystem;
+            eventTileSystem.OnTileHoverExited -= OnTileExitedTileSystem;
+            eventTileSystem.OnTileClicked -= OnTileClickedTileSystem;
         }
+        eventTileSystem = null;
     }
 
     private void OnTileHoveredTileSystem(int tileIndex, Vector3 worldPos)
@@ -133,11 +159,12 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private BaseUnit GetUnitOnTile(int tileIndex)
     {
-        if (TileSystem.Instance == null) return null;
-        // Prefer occupancy manager for layer-aware lookup (surface for legacy selection)
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        // Prefer occupancy manager for planet + layer-aware lookup
         try
         {
-            var obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, TileLayer.Surface);
+            var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
+            var obj = occ != null ? occ.TryGetAnyOccupantObject(tileIndex) : null;
             if (obj != null) return obj.GetComponent<BaseUnit>();
         }
         catch { }
@@ -214,9 +241,11 @@ return;
     private (bool hit, Vector3 worldPosition, int tileIndex) GetMouseHitInfo()
     {
         // Use TileSystem's new texture-based picking system (replaces old TileIndexHolder approach)
-        if (TileSystem.Instance != null)
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts != null)
         {
-            var result = TileSystem.Instance.GetMouseHitInfo();
+            var result = ts.GetMouseHitInfo();
             return (result.hit, result.worldPosition, result.tileIndex);
         }
 

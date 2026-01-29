@@ -81,7 +81,8 @@ if (mult == 0f) return;
     {
         CombatUnit nearestTarget = null;
         float nearestDistance = float.MaxValue;
-        var tileSystem = TileSystem.Instance;
+        int pIndex = predator != null ? predator.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
 
         foreach (var civUnit in UnitRegistry.GetCombatUnits())
         {
@@ -92,6 +93,10 @@ if (mult == 0f) return;
                 continue;
 
             if (civUnit.owner == null || civUnit.currentTileIndex < 0)
+                continue;
+
+            // Multi-planet: predators only consider targets on the same planet
+            if (civUnit.planetIndex != pIndex)
                 continue;
 
             float distance = tileSystem != null
@@ -115,12 +120,15 @@ if (mult == 0f) return;
     {
         var nearestCivUnit = FindNearestCivilizationUnit(prey, 4); // Slightly larger range for detection
         if (nearestCivUnit == null) return null;
+
+        int pIndex = prey != null ? prey.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         
-    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
+        var neighborIndices = ts != null ? ts.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
+                var neighbor = ts != null ? ts.GetTileData(index) : null;
                 return neighbor != null && prey.CanMoveTo(index);
             })
             .ToList();
@@ -129,11 +137,11 @@ if (mult == 0f) return;
         
         // Find the destination that is furthest from the civilization unit
         int bestDestination = validDestinations[0];
-    float maxDistance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(bestDestination, nearestCivUnit.currentTileIndex) : 0f;
+        float maxDistance = ts != null ? ts.GetTileDistance(bestDestination, nearestCivUnit.currentTileIndex) : 0f;
         
         foreach (var destination in validDestinations)
         {
-            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(destination, nearestCivUnit.currentTileIndex) : 0f;
+            float distance = ts != null ? ts.GetTileDistance(destination, nearestCivUnit.currentTileIndex) : 0f;
             if (distance > maxDistance)
             {
                 maxDistance = distance;
@@ -191,7 +199,8 @@ if (mult == 0f) return;
             int baseMovePoints = unit.data != null ? unit.data.animalMovePoints : 1;
             animalMovePoints[unit] = baseMovePoints;
 
-            var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(unit.currentTileIndex) : null;
+            var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+            var tileData = ts != null ? ts.GetTileData(unit.currentTileIndex) : null;
             if (tileData == null) continue;
 
             // Animals can move multiple times per turn based on their movement points
@@ -268,11 +277,12 @@ if (mult == 0f) return;
         if (target == null) return false;
         
         // Try to move closer to the target
-    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(predator.currentTileIndex) : System.Array.Empty<int>();
+        var ts = TileSystem.GetForPlanet(predator.planetIndex) ?? TileSystem.Instance;
+        var neighborIndices = ts != null ? ts.GetNeighbors(predator.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
+                var neighbor = ts != null ? ts.GetTileData(index) : null;
                 return neighbor != null && predator.CanMoveTo(index);
             })
             .ToList();
@@ -281,11 +291,11 @@ if (mult == 0f) return;
         
         // Find the destination that gets us closest to the target
         int bestDestination = validDestinations[0];
-    float minDistance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(bestDestination, target.currentTileIndex) : float.MaxValue;
+        float minDistance = ts != null ? ts.GetTileDistance(bestDestination, target.currentTileIndex) : float.MaxValue;
         
         foreach (var destination in validDestinations)
         {
-            float distance = TileSystem.Instance != null ? TileSystem.Instance.GetTileDistance(destination, target.currentTileIndex) : float.MaxValue;
+            float distance = ts != null ? ts.GetTileDistance(destination, target.currentTileIndex) : float.MaxValue;
             if (distance < minDistance)
             {
                 minDistance = distance;
@@ -336,12 +346,13 @@ return true;
     {
         // Check if unit has movement points
         if (GetAnimalMovePoints(unit) <= 0) return false;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         
-    var neighborIndices = TileSystem.Instance != null ? TileSystem.Instance.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
+        var neighborIndices = ts != null ? ts.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
             {
-                var neighbor = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(index) : null;
+                var neighbor = ts != null ? ts.GetTileData(index) : null;
                 return neighbor != null && unit.CanMoveTo(index);
             })
             .ToList();
@@ -360,13 +371,20 @@ return true;
     void TrySpawn(AnimalSpawnRule rule)
     {
         var candidates = new List<int>();
-        // FIXED: Always spawn animals on Earth (planet index 0) regardless of current planet
-        var planet = GameManager.Instance?.GetPlanetGenerator(0); // Force Earth
+        // Multi-planet: spawn on the currently active planet.
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady())
+        {
+            Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals.");
+            return;
+        }
 
         for (int i = 0; i < tileCount; i++)
         {
-            var tile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(i) : null;
+            var tile = ts.GetTileData(i);
             if (tile == null) continue;
 
             // If allowedBiomes specified, require match
@@ -393,12 +411,7 @@ return true;
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
         // Flat-only positioning for animal spawning (use surface position for proper terrain height)
-        if (TileSystem.Instance == null)
-        {
-            Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals in flat-only mode.");
-            return;
-        }
-        Vector3 pos = TileSystem.Instance.GetTileSurfacePosition(chosenIndex);
+        Vector3 pos = ts.GetTileSurfacePosition(chosenIndex);
 
         var animalPrefab = rule.unitData.GetPrefab();
         if (animalPrefab == null)
@@ -416,15 +429,16 @@ return true;
             return;
         }
         unit.Initialize(rule.unitData, null);
+        unit.planetIndex = pIndex;
         unit.currentTileIndex = chosenIndex;
         // Determine layer (land vs water)
-        var chosenTile = TileSystem.Instance.GetTileData(chosenIndex);
+        var chosenTile = ts.GetTileData(chosenIndex);
         unit.currentLayer = (chosenTile != null && !chosenTile.isLand) ? TileLayer.Underwater : TileLayer.Surface;
         // Ensure upright orientation on flat map
         unit.PositionUnitOnSurface(null, chosenIndex);
 
         // Register occupancy explicitly
-        try { TileOccupancyManager.Instance?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
+        try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         activeAnimals.Add(unit);
         unit.OnDeath += () =>
@@ -460,12 +474,13 @@ return true;
     /// <summary>
     /// Get animals at a specific tile
     /// </summary>
-    public List<CombatUnit> GetAnimalsAtTile(int tileIndex)
+    public List<CombatUnit> GetAnimalsAtTile(int tileIndex, int planetIndex = -1)
     {
         var result = new List<CombatUnit>();
+        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         foreach (var animal in activeAnimals)
         {
-            if (animal != null && animal.currentTileIndex == tileIndex)
+            if (animal != null && animal.planetIndex == planetIndex && animal.currentTileIndex == tileIndex)
             {
                 result.Add(animal);
             }
@@ -476,20 +491,22 @@ return true;
     /// <summary>
     /// Get animals adjacent to a specific tile (for hunting range checks)
     /// </summary>
-    public List<CombatUnit> GetAnimalsNearTile(int tileIndex)
+    public List<CombatUnit> GetAnimalsNearTile(int tileIndex, int planetIndex = -1)
     {
         var result = new List<CombatUnit>();
+        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         
         // Animals on the tile
-        result.AddRange(GetAnimalsAtTile(tileIndex));
+        result.AddRange(GetAnimalsAtTile(tileIndex, planetIndex));
         
         // Animals on adjacent tiles
-        if (TileSystem.Instance != null)
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts != null)
         {
-            var neighbors = TileSystem.Instance.GetNeighbors(tileIndex);
+            var neighbors = ts.GetNeighbors(tileIndex);
             foreach (int neighbor in neighbors)
             {
-                result.AddRange(GetAnimalsAtTile(neighbor));
+                result.AddRange(GetAnimalsAtTile(neighbor, planetIndex));
             }
         }
         

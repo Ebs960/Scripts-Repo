@@ -255,7 +255,8 @@ OnSeasonChanged?.Invoke(season);
                 int idx = unit.currentTileIndex;
                 if (idx < 0) continue;
 
-                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                var tileData = ts != null ? ts.GetTileData(idx) : null;
                 if (tileData == null) continue;
 
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;
@@ -284,7 +285,8 @@ OnSeasonChanged?.Invoke(season);
                 int idx = worker.currentTileIndex;
                 if (idx < 0) continue;
 
-                var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(idx) : null;
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                var tileData = ts != null ? ts.GetTileData(idx) : null;
                 if (tileData == null) continue;
 
                 bool sheltered = tileData.improvement != null && tileData.improvement.isShelter;

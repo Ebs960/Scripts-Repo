@@ -7,7 +7,8 @@ using UnityEngine;
 public static class RoadConnectivityHelper
 {
     // Simple cache: key = city center tile index, value = (version, TileYield)
-    private static readonly System.Collections.Generic.Dictionary<int, (int version, TileYield yield)> _cache = new System.Collections.Generic.Dictionary<int, (int, TileYield)>();
+    private static readonly System.Collections.Generic.Dictionary<(int planetIndex, int tileIndex), (int version, TileYield yield)> _cache =
+        new System.Collections.Generic.Dictionary<(int planetIndex, int tileIndex), (int, TileYield)>();
 
     /// <summary>
     /// Find all cities connected to the given city via contiguous road tiles (isRoad=true).
@@ -17,14 +18,16 @@ public static class RoadConnectivityHelper
     {
         var result = new List<City>();
         if (sourceCity == null || sourceCity.owner == null) return result;
+        var ts = TileSystem.GetForPlanet(sourceCity.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return result;
         var visited = new HashSet<int>();
         var queue = new Queue<int>();
 
         // Start BFS only from adjacent road tiles (roads must touch the city territory)
-        var neighborTiles = TileSystem.Instance.GetNeighbors(sourceCity.centerTileIndex);
+        var neighborTiles = ts.GetNeighbors(sourceCity.centerTileIndex);
         foreach (int t in neighborTiles)
         {
-            var td = TileSystem.Instance.GetTileData(t);
+            var td = ts.GetTileData(t);
             if (td == null) continue;
             if (td.improvement != null && td.improvement.isRoad)
             {
@@ -36,7 +39,7 @@ public static class RoadConnectivityHelper
         while (queue.Count > 0)
         {
             int idx = queue.Dequeue();
-            var td = TileSystem.Instance.GetTileData(idx);
+            var td = ts.GetTileData(idx);
             if (td == null) continue;
 
             // If the tile has a city that's not the source, add it
@@ -46,10 +49,10 @@ public static class RoadConnectivityHelper
             }
 
             // Explore neighbors that are roads
-            foreach (int n in TileSystem.Instance.GetNeighbors(idx))
+            foreach (int n in ts.GetNeighbors(idx))
             {
                 if (visited.Contains(n)) continue;
-                var nd = TileSystem.Instance.GetTileData(n);
+                var nd = ts.GetTileData(n);
                 if (nd == null) continue;
                 if (nd.improvement != null && nd.improvement.isRoad)
                 {
@@ -70,9 +73,11 @@ public static class RoadConnectivityHelper
     {
         var total = new TileYield();
         if (city == null) return total;
+        var ts = TileSystem.GetForPlanet(city.planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return total;
 
         int currentVersion = ImprovementManager.Instance != null ? ImprovementManager.Instance.roadNetworkVersion : 0;
-        if (_cache.TryGetValue(city.centerTileIndex, out var cached))
+        if (_cache.TryGetValue((city.planetIndex, city.centerTileIndex), out var cached))
         {
             if (cached.version == currentVersion)
                 return cached.yield;
@@ -81,7 +86,7 @@ public static class RoadConnectivityHelper
         // We will perform a BFS from road tiles adjacent to the city and compute, for each reachable city,
         // the best bottleneck (min along path) of connected*PerTurn values for that path. Then sum those per-connection yields.
 
-    var neighborTiles = TileSystem.Instance.GetNeighbors(city.centerTileIndex);
+        var neighborTiles = ts.GetNeighbors(city.centerTileIndex);
         var queue = new Queue<int>();
 
         // Track best known bottleneck sum metric for a tile to avoid reprocessing poor paths
@@ -90,7 +95,7 @@ public static class RoadConnectivityHelper
         // Initialize queue with adjacent road tiles, each with initial bottleneck equal to that tile's configured connection yield
         foreach (int t in neighborTiles)
         {
-            var td = TileSystem.Instance.GetTileData(t);
+            var td = ts.GetTileData(t);
             if (td == null || td.improvement == null) continue;
             var imp = td.improvement;
             if (!imp.isRoad) continue;
@@ -111,7 +116,7 @@ public static class RoadConnectivityHelper
         foreach (var kv in bestMetric)
         {
             int t = kv.Key;
-            var td = TileSystem.Instance.GetTileData(t);
+            var td = ts.GetTileData(t);
             var imp = td.improvement;
             var by = ImprovementManager.Instance != null ? ImprovementManager.Instance.GetConnectionYieldForImprovement(imp) : new TileYield();
             tileBottlenecks[t] = by;
@@ -120,7 +125,7 @@ public static class RoadConnectivityHelper
         while (queue.Count > 0)
         {
             int idx = queue.Dequeue();
-            var td = TileSystem.Instance.GetTileData(idx);
+            var td = ts.GetTileData(idx);
             if (td == null) continue;
 
             // If this tile has an adjacent city that's not the source, record the current bottleneck as a candidate
@@ -142,9 +147,9 @@ public static class RoadConnectivityHelper
             }
 
             // Expand neighbors (only along road tiles)
-            foreach (int n in TileSystem.Instance.GetNeighbors(idx))
+            foreach (int n in ts.GetNeighbors(idx))
             {
-                var nd = TileSystem.Instance.GetTileData(n);
+                var nd = ts.GetTileData(n);
                 if (nd == null || nd.improvement == null || !nd.improvement.isRoad) continue;
 
                 // Compute new bottleneck as min of current bottleneck and this neighbor's configured connection yield
@@ -200,7 +205,7 @@ public static class RoadConnectivityHelper
 
         // Cache result
         if (ImprovementManager.Instance != null)
-            _cache[city.centerTileIndex] = (ImprovementManager.Instance.roadNetworkVersion, total);
+            _cache[(city.planetIndex, city.centerTileIndex)] = (ImprovementManager.Instance.roadNetworkVersion, total);
 
         return total;
     }

@@ -374,7 +374,8 @@ public class SpaceRouteManager : MonoBehaviour
         var combatUnit = unit.GetComponent<CombatUnit>();
         if (combatUnit != null && combatUnit.currentTileIndex >= 0)
         {
-            if (TileSystem.Instance != null) TileSystem.Instance.ClearTileOccupant(combatUnit.currentTileIndex);
+            var ts = TileSystem.GetForPlanet(fromPlanetIndex) ?? TileSystem.Instance;
+            ts?.ClearTileOccupant(combatUnit.currentTileIndex, combatUnit.currentLayer);
         }
 
         // Unit remains visible but is now "in space"
@@ -429,13 +430,18 @@ public class SpaceRouteManager : MonoBehaviour
         var tileData = planetGen.GetHexTileData(landingTile);
         if (tileData != null)
         {
+            // Ensure unit knows which planet it is on (multi-planet gameplay)
+            var bu = unit != null ? unit.GetComponent<BaseUnit>() : null;
+            if (bu != null) bu.planetIndex = planetIndex;
+
             // Get tile world position and place unit (flat-only)
-            if (TileSystem.Instance == null)
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts == null || !ts.IsReady())
             {
-                Debug.LogError("[SpaceRouteManager] TileSystem not ready; cannot place unit in flat-only mode.");
+                Debug.LogError($"[SpaceRouteManager] TileSystem for planet {planetIndex} not ready; cannot place unit in flat-only mode.");
                 return;
             }
-            Vector3 tileCenter = TileSystem.Instance.GetTileCenterFlat(landingTile);
+            Vector3 tileCenter = ts.GetTileCenterFlat(landingTile);
             unit.transform.position = tileCenter;
             unit.transform.SetParent(planetGen.transform);
         }

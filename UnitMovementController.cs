@@ -82,8 +82,17 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public List<int> FindPath(int startIndex, int endIndex)
     {
-        var startTile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(startIndex) : null;
-        var endTile = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(endIndex) : null;
+        // Multi-planet: FindPath without unit context uses the current planet.
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady())
+        {
+            Debug.LogWarning("[UnitMovementController] Pathfinding error: TileSystem not ready.");
+            return null;
+        }
+
+        var startTile = ts.GetTileData(startIndex);
+        var endTile = ts.GetTileData(endIndex);
 
         if (startTile == null || endTile == null)
         {
@@ -105,8 +114,8 @@ public class UnitMovementController : MonoBehaviour
         startNode.gCost = 0;
         // Use planar centers for heuristic on flat map
         startNode.hCost = Vector3.Distance(
-            TileSystem.Instance.GetTileCenterFlat(startIndex),
-            TileSystem.Instance.GetTileCenterFlat(endIndex));
+            ts.GetTileCenterFlat(startIndex),
+            ts.GetTileCenterFlat(endIndex));
 
 
         while (openSet.Count > 0)
@@ -121,14 +130,14 @@ public class UnitMovementController : MonoBehaviour
             openSet.Remove(currentNode);
             closedSet.Add(currentNode.tileIndex);
 
-            foreach (int neighborIndex in TileSystem.Instance.GetNeighbors(currentNode.tileIndex))
+            foreach (int neighborIndex in ts.GetNeighbors(currentNode.tileIndex))
             {
                 if (closedSet.Contains(neighborIndex))
                 {
                     continue;
                 }
 
-                var neighborTileData = TileSystem.Instance.GetTileData(neighborIndex);
+                var neighborTileData = ts.GetTileData(neighborIndex);
                 if (neighborTileData == null) continue; // Skip invalid tiles
 
                 int moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
@@ -148,8 +157,8 @@ public class UnitMovementController : MonoBehaviour
                     neighborNode.gCost = tentativeGCost;
                     // Heuristic based on planar distance between tile centers
                     neighborNode.hCost = Vector3.Distance(
-                        TileSystem.Instance.GetTileCenterFlat(neighborIndex),
-                        TileSystem.Instance.GetTileCenterFlat(endIndex));
+                        ts.GetTileCenterFlat(neighborIndex),
+                        ts.GetTileCenterFlat(endIndex));
                     
                     if (openSet.Contains(neighborNode))
                         openSet.Remove(neighborNode);
@@ -214,9 +223,14 @@ public class UnitMovementController : MonoBehaviour
         for (int i = 0; i < path.Count; i++)
         {
             int targetTileIndex = path[i];
+
+            // Per-planet TileSystem/Occupancy (true multi-planet gameplay)
+            int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
             
             // Get movement cost for this step (tile-aware: improvements may alter cost)
-            var tileData = TileSystem.Instance.GetTileData(targetTileIndex);
+            var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
             int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, workerUnit) : 1;
             
             // Deduct movement points for workers (they still use turn-based movement)
@@ -235,7 +249,7 @@ unit.UpdateWalkingState(false);
             
             // Calculate planar positions on the flat map (using surface position for terrain height)
             Vector3 startPosition = unitTransform.position;
-            Vector3 endPosition = TileSystem.Instance.GetTileSurfacePosition(targetTileIndex);
+            Vector3 endPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : startPosition;
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);
             if (journeyLength < 0.001f) continue;
@@ -269,7 +283,7 @@ unit.UpdateWalkingState(false);
             
             // Update current tile and occupancy using BaseUnit properties
             unit.currentTileIndex = targetTileIndex;
-            try { TileOccupancyManager.Instance?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
+            try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
             
             // Check for traps on arrival (ImprovementManager accepts either type)
             if (combatUnit != null)
@@ -321,11 +335,14 @@ unit.UpdateWalkingState(false);
     /// </summary>
     private void PositionUnitOnSurface(Transform unitTransform, int tileIndex)
     {
-        var tileData = TileSystem.Instance != null ? TileSystem.Instance.GetTileData(tileIndex) : null;
+        // Best-effort: use current planet TileSystem for surface positioning.
+        int pIndex = (GameManager.Instance != null) ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return;
 
         // Place unit at terrain surface with proper height and upright orientation
-        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
+        Vector3 flatCenter = ts.GetTileSurfacePosition(tileIndex);
         unitTransform.position = flatCenter;
 
         Vector3 forward = unitTransform.forward;

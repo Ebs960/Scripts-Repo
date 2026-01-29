@@ -83,6 +83,8 @@ public abstract class BaseUnit : MonoBehaviour
     public int currentHealth { get; protected set; }
     public int currentTileIndex = -1;
     public TileLayer currentLayer = TileLayer.Surface;
+    [Tooltip("Which planet this unit belongs to (multi-planet gameplay).")]
+    public int planetIndex = -1;
     public float moveSpeed = 2f;
     public bool isMoving { get; set; }
 
@@ -328,9 +330,10 @@ public abstract class BaseUnit : MonoBehaviour
         {
             float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
             // Include tile-based defense bonus
-            if (currentTileIndex >= 0 && TileSystem.Instance != null)
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (currentTileIndex >= 0 && ts != null)
             {
-                var tileData = TileSystem.Instance.GetTileData(currentTileIndex);
+                var tileData = ts.GetTileData(currentTileIndex);
                 if (tileData != null)
                 {
                     // Subclasses can add their own tile bonuses
@@ -360,10 +363,22 @@ public abstract class BaseUnit : MonoBehaviour
         if (animator == null)
             animator = GetComponent<Animator>();
 
-        // Get planet/grid references
-        planet = GameManager.Instance?.GetPlanetGenerator(0); // Default to Earth
-        if (planet != null)
-            grid = planet.Grid;
+        // Bind to the correct planet/grid for multi-planet gameplay.
+        // Priority:
+        // 1) Explicitly set planetIndex (spawners/transport should set this)
+        // 2) Parent PlanetGenerator (if unit is parented under a planet)
+        // 3) Current planet in GameManager
+        // 4) Earth (0) fallback
+        if (planetIndex < 0)
+        {
+            var pg = GetComponentInParent<PlanetGenerator>();
+            if (pg != null) planetIndex = pg.planetIndex;
+        }
+        if (planetIndex < 0 && GameManager.Instance != null) planetIndex = GameManager.Instance.currentPlanetIndex;
+        if (planetIndex < 0) planetIndex = 0;
+
+        planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planet != null) grid = planet.Grid;
 
         // Register with UnitRegistry
         UnitRegistry.Register(gameObject);
@@ -742,13 +757,15 @@ public abstract class BaseUnit : MonoBehaviour
         {
             try
             {
-                if (TileOccupancyManager.Instance != null)
+                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                if (occ != null)
                 {
-                    TileOccupancyManager.Instance.ClearOccupant(currentTileIndex, currentLayer);
+                    occ.ClearOccupant(currentTileIndex, currentLayer);
                 }
-                else if (TileSystem.Instance != null)
+                else
                 {
-                    TileSystem.Instance.ClearTileOccupant(currentTileIndex);
+                    var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                    ts?.ClearTileOccupant(currentTileIndex);
                 }
             }
             catch { }
@@ -793,12 +810,14 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool CanMoveTo(int tileIndex)
     {
-        var td = TileSystem.Instance?.GetTileData(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
         if (td == null || !td.isPassable) return false;
         // Layer-aware occupancy check: use occupancy manager with fallback
         try
         {
-            var obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(tileIndex, currentLayer);
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            var obj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
             if (obj != null && obj.GetInstanceID() != gameObject.GetInstanceID()) return false;
         }
         catch { }
@@ -821,8 +840,9 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     protected virtual void PositionUnitOnSurface(int tileIndex)
     {
-        if (TileSystem.Instance == null) return;
-        Vector3 flatCenter = TileSystem.Instance.GetTileSurfacePosition(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+        Vector3 flatCenter = ts.GetTileSurfacePosition(tileIndex);
         transform.position = flatCenter;
 
         Vector3 forward = transform.forward;
@@ -913,12 +933,14 @@ public abstract class BaseUnit : MonoBehaviour
     protected int CountAdjacentAllies(int tileIndex)
     {
         int count = 0;
-        var neighbours = TileSystem.Instance?.GetNeighbors(tileIndex);
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var neighbours = ts != null ? ts.GetNeighbors(tileIndex) : null;
         if (neighbours == null) return 0;
 
         foreach (int idx in neighbours)
         {
-            GameObject obj = TileOccupancyManager.Instance?.GetOccupantObjectWithFallback(idx, TileLayer.Surface);
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            GameObject obj = occ != null ? occ.GetOccupantObjectWithFallback(idx, currentLayer) : null;
             if (obj == null) continue;
 
             if (obj == null) continue;
