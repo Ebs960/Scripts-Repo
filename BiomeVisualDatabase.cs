@@ -219,7 +219,32 @@ public class BiomeVisualDatabase : ScriptableObject
                     // Copy from sf arrays if available
                     if (sf.albedoArray != null && v < sf.albedoArray.depth)
                     {
-                        Graphics.CopyTexture(sf.albedoArray, v, 0, albedoArray, writeSlice, 0);
+                        // Fix: handle size mismatches (e.g. 2048x2048 sources) by resampling to targetW/targetH.
+                        if (sf.albedoArray.width != targetW || sf.albedoArray.height != targetH)
+                        {
+                            var tmpSrc = new Texture2D(sf.albedoArray.width, sf.albedoArray.height, TextureFormat.RGBA32, false, false);
+                            Graphics.CopyTexture(sf.albedoArray, v, 0, tmpSrc, 0, 0);
+
+                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                            Graphics.Blit(tmpSrc, rt);
+
+                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                            scaled.Apply(true, false);
+                            RenderTexture.active = prev;
+
+                            RenderTexture.ReleaseTemporary(rt);
+                            UnityEngine.Object.Destroy(tmpSrc);
+
+                            Graphics.CopyTexture(scaled, 0, 0, albedoArray, writeSlice, 0);
+                            UnityEngine.Object.Destroy(scaled);
+                        }
+                        else
+                        {
+                            Graphics.CopyTexture(sf.albedoArray, v, 0, albedoArray, writeSlice, 0);
+                        }
                     }
                     else
                     {
@@ -230,7 +255,31 @@ public class BiomeVisualDatabase : ScriptableObject
 
                     if (sf.normalArray != null && v < sf.normalArray.depth)
                     {
-                        Graphics.CopyTexture(sf.normalArray, v, 0, normalArray, writeSlice, 0);
+                        if (sf.normalArray.width != targetW || sf.normalArray.height != targetH)
+                        {
+                            var tmpSrc = new Texture2D(sf.normalArray.width, sf.normalArray.height, TextureFormat.RGBA32, false, true);
+                            Graphics.CopyTexture(sf.normalArray, v, 0, tmpSrc, 0, 0);
+
+                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                            Graphics.Blit(tmpSrc, rt);
+
+                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                            scaled.Apply(true, false);
+                            RenderTexture.active = prev;
+
+                            RenderTexture.ReleaseTemporary(rt);
+                            UnityEngine.Object.Destroy(tmpSrc);
+
+                            Graphics.CopyTexture(scaled, 0, 0, normalArray, writeSlice, 0);
+                            UnityEngine.Object.Destroy(scaled);
+                        }
+                        else
+                        {
+                            Graphics.CopyTexture(sf.normalArray, v, 0, normalArray, writeSlice, 0);
+                        }
                     }
                     else
                     {
@@ -242,7 +291,31 @@ public class BiomeVisualDatabase : ScriptableObject
 
                     if (sf.maskArray != null && v < sf.maskArray.depth)
                     {
-                        Graphics.CopyTexture(sf.maskArray, v, 0, maskArray, writeSlice, 0);
+                        if (sf.maskArray.width != targetW || sf.maskArray.height != targetH)
+                        {
+                            var tmpSrc = new Texture2D(sf.maskArray.width, sf.maskArray.height, TextureFormat.RGBA32, false, true);
+                            Graphics.CopyTexture(sf.maskArray, v, 0, tmpSrc, 0, 0);
+
+                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                            Graphics.Blit(tmpSrc, rt);
+
+                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                            scaled.Apply(true, false);
+                            RenderTexture.active = prev;
+
+                            RenderTexture.ReleaseTemporary(rt);
+                            UnityEngine.Object.Destroy(tmpSrc);
+
+                            Graphics.CopyTexture(scaled, 0, 0, maskArray, writeSlice, 0);
+                            UnityEngine.Object.Destroy(scaled);
+                        }
+                        else
+                        {
+                            Graphics.CopyTexture(sf.maskArray, v, 0, maskArray, writeSlice, 0);
+                        }
                     }
                     else
                     {
@@ -255,7 +328,31 @@ public class BiomeVisualDatabase : ScriptableObject
                     // emissive
                     if (sf.emissiveArray != null && v < sf.emissiveArray.depth)
                     {
-                        Graphics.CopyTexture(sf.emissiveArray, v, 0, emissiveArray, writeSlice, 0);
+                        if (sf.emissiveArray.width != targetW || sf.emissiveArray.height != targetH)
+                        {
+                            var tmpSrc = new Texture2D(sf.emissiveArray.width, sf.emissiveArray.height, TextureFormat.RGBAHalf, false, true);
+                            Graphics.CopyTexture(sf.emissiveArray, v, 0, tmpSrc, 0, 0);
+
+                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+                            Graphics.Blit(tmpSrc, rt);
+
+                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBAHalf, true, true);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                            scaled.Apply(true, false);
+                            RenderTexture.active = prev;
+
+                            RenderTexture.ReleaseTemporary(rt);
+                            UnityEngine.Object.Destroy(tmpSrc);
+
+                            Graphics.CopyTexture(scaled, 0, 0, emissiveArray, writeSlice, 0);
+                            UnityEngine.Object.Destroy(scaled);
+                        }
+                        else
+                        {
+                            Graphics.CopyTexture(sf.emissiveArray, v, 0, emissiveArray, writeSlice, 0);
+                        }
                     }
                     else
                     {
@@ -283,7 +380,26 @@ public class BiomeVisualDatabase : ScriptableObject
                         Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {bv.albedo.name} size is {bv.albedo.width}x{bv.albedo.height}, expected {targetW}x{targetH}");
                     }
 
-                    Graphics.CopyTexture(bv.albedo, 0, 0, albedoArray, writeSlice, 0);
+                    if (bv.albedo.width != targetW || bv.albedo.height != targetH)
+                    {
+                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                        Graphics.Blit(bv.albedo, rt);
+
+                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
+                        var prev = RenderTexture.active;
+                        RenderTexture.active = rt;
+                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                        scaled.Apply(true, false);
+                        RenderTexture.active = prev;
+
+                        RenderTexture.ReleaseTemporary(rt);
+                        Graphics.CopyTexture(scaled, 0, 0, albedoArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(scaled);
+                    }
+                    else
+                    {
+                        Graphics.CopyTexture(bv.albedo, 0, 0, albedoArray, writeSlice, 0);
+                    }
                 }
                 else
                 {
@@ -292,7 +408,26 @@ public class BiomeVisualDatabase : ScriptableObject
 
                 if (bv.normal != null)
                 {
-                    Graphics.CopyTexture(bv.normal, 0, 0, normalArray, writeSlice, 0);
+                    if (bv.normal.width != targetW || bv.normal.height != targetH)
+                    {
+                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                        Graphics.Blit(bv.normal, rt);
+
+                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                        var prev = RenderTexture.active;
+                        RenderTexture.active = rt;
+                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                        scaled.Apply(true, false);
+                        RenderTexture.active = prev;
+
+                        RenderTexture.ReleaseTemporary(rt);
+                        Graphics.CopyTexture(scaled, 0, 0, normalArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(scaled);
+                    }
+                    else
+                    {
+                        Graphics.CopyTexture(bv.normal, 0, 0, normalArray, writeSlice, 0);
+                    }
                 }
                 else
                 {
@@ -304,7 +439,26 @@ public class BiomeVisualDatabase : ScriptableObject
 
                 if (bv.maskMap != null)
                 {
-                    Graphics.CopyTexture(bv.maskMap, 0, 0, maskArray, writeSlice, 0);
+                    if (bv.maskMap.width != targetW || bv.maskMap.height != targetH)
+                    {
+                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                        Graphics.Blit(bv.maskMap, rt);
+
+                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                        var prev = RenderTexture.active;
+                        RenderTexture.active = rt;
+                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                        scaled.Apply(true, false);
+                        RenderTexture.active = prev;
+
+                        RenderTexture.ReleaseTemporary(rt);
+                        Graphics.CopyTexture(scaled, 0, 0, maskArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(scaled);
+                    }
+                    else
+                    {
+                        Graphics.CopyTexture(bv.maskMap, 0, 0, maskArray, writeSlice, 0);
+                    }
                 }
                 else
                 {

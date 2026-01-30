@@ -71,7 +71,13 @@ public class TileOccupancyManager : MonoBehaviour
         {
             if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
             {
-                Debug.LogWarning($"[TileOccupancyManager] Initialize found existing occupancy manager for planetIndex={planetIndex}. Skipping Initialize() on '{name}'.");
+                Debug.LogWarning($"[TileOccupancyManager] Initialize found existing occupancy manager for planetIndex={planetIndex}. Will initialize existing '{existing.name}' and destroy duplicate '{name}'.");
+                // Ensure the existing manager is initialized so occupancy lookups don't fall back to legacy HexTileData.occupantId.
+                if (existing.occupants == null || existing.tileCount != tileCount)
+                {
+                    existing.Initialize(tileCount);
+                }
+                Destroy(gameObject);
                 return;
             }
             _byPlanetIndex[planetIndex] = this;

@@ -795,23 +795,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         if (enableDiagnostics)
         {
             Debug.Log($"[PlanetGenerator][Diag] mapWidth={mapWidth:F1} mapHeight={mapHeight:F1} tiles={tileCount}");
-            // Log continent/island sizing (use GameSetupData as authoritative source)
-            Debug.Log($"[StampGen][Diag] mapSize={GameSetupData.mapSize} contTiles(WxH) min={GameSetupData.continentMinWidthTiles}x{GameSetupData.continentMinHeightTiles} max={GameSetupData.continentMaxWidthTiles}x{GameSetupData.continentMaxHeightTiles} minDistance={GameSetupData.continentMinDistanceTiles}");
-            Debug.Log($"[StampGen][Diag] islandRadius (effective) min={GameSetupData.islandMinRadiusTiles} max={GameSetupData.islandMaxRadiusTiles} minDistanceFromContinents={GameSetupData.islandMinDistanceFromContinents}");
-            Debug.Log($"[StampGen][Diag] lakeRadius (effective) min={GameSetupData.lakeMinRadiusTiles} max={GameSetupData.lakeMaxRadiusTiles} minDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
-            Debug.Log($"[Setup] mapSize={GameSetupData.mapSize} contCount={GameSetupData.numberOfContinents} islandCount={GameSetupData.numberOfIslands} generateIslands={GameSetupData.generateIslands}");
-            Debug.Log($"[PlanetGenerator][Diag] numberOfContinents (effective)={GameSetupData.numberOfContinents} continentTiles(WxH) min={GameSetupData.continentMinWidthTiles}x{GameSetupData.continentMinHeightTiles} max={GameSetupData.continentMaxWidthTiles}x{GameSetupData.continentMaxHeightTiles}");
-            Debug.Log($"[PlanetGenerator][Diag] generateIslands (effective)={GameSetupData.generateIslands} numberOfIslands (effective)={GameSetupData.numberOfIslands}");
             Debug.Log($"[PlanetGenerator][Diag] latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureBias={temperatureBias} moistureBias={moistureBias}");
 
-            // Additional comprehensive diagnostic summary (include GameSetupData vs generator-resolved values)
-            int[] riverPresetMap = { 0, 1, 4, 6, 8, 10 };
-            int expectedRiverFromMoisture = riverPresetMap[Mathf.Clamp(GameSetupData.selectedMoisturePreset, 0, riverPresetMap.Length - 1)];
-            Debug.Log($"[StampGen][Summary] seed={seed} randomSeed={randomSeed} mapSize={GameSetupData.mapSize} climatePreset={GameSetupData.selectedClimatePreset} moisturePreset={GameSetupData.selectedMoisturePreset} landPreset={GameSetupData.selectedLandPreset} terrainPreset={GameSetupData.selectedTerrainPreset}");
-            Debug.Log($"[StampGen][Summary] GameSetupData -> riversEnabled={GameSetupData.enableRivers} riverCount={GameSetupData.riverCount} (expected from moisture preset={expectedRiverFromMoisture}) lakesEnabled={GameSetupData.enableLakes} lakeCount={GameSetupData.numberOfLakes} lakeMinRadius={GameSetupData.lakeMinRadiusTiles} lakeMaxRadius={GameSetupData.lakeMaxRadiusTiles} lakeMinDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
-            Debug.Log($"[StampGen][Summary] GameSetupData -> enableRivers={GameSetupData.enableRivers} minRiversPerContinent={GameSetupData.minRiversPerContinent} maxRiversPerContinent={GameSetupData.maxRiversPerContinent} lakeMinRadiusTiles={GameSetupData.lakeMinRadiusTiles} lakeMaxRadiusTiles={GameSetupData.lakeMaxRadiusTiles} lakeMinDistanceFromCoast={GameSetupData.lakeMinDistanceFromCoast}");
-            Debug.Log($"[StampGen][Summary] continents={numberOfContinents} islands={numberOfIslands} generateIslands={generateIslands} continentMinDistanceTiles={GameSetupData.continentMinDistanceTiles}");
-            Debug.Log($"[StampGen][Summary] temperatureBias={temperatureBias} moistureBias={moistureBias} latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureNoiseFreq={temperatureNoiseFrequency} tempDetailMultiplier={temperatureDetailMultiplier} tempDetailStrength={temperatureDetailStrength}");
         }
         
         int tilesX = grid.Width;
@@ -883,16 +868,9 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
         }
 
-        Debug.Log(
-            $"[StampGen][Diag] continentMinDistanceTiles = " +
-            $"{GameSetupData.continentMinDistanceTiles}"
-        );
-
         foreach (var continent in continentDataList) {
             StampEllipse(continent);
         }
-
-        Debug.Log($"[StampGen] Continents stamped: {continentDataList.Count}");
 
         // ---------- 2.5. Generate Islands (Stamping) ---------
         int islandsStamped = 0;
@@ -931,7 +909,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
         }
 
-        Debug.Log($"[StampGen] Islands stamped: {islandsStamped}");
+        // (Stamping debug logs removed)
 
         // ---------- 2.75. Coastal irregularity passes (bays & peninsulas) ----------
         // compute current land count (islands/stamps applied so far)
@@ -1153,12 +1131,10 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 StampCircle(tileCoords[i], fallbackRadius, false, true);
                 lakeCenters.Add(tileCoords[i]);
                 lakesStamped++;
-                Debug.LogWarning("[StampGen] Forced a fallback lake to seed rivers.");
                 break;
             }
         }
-
-        Debug.Log($"[StampGen] Lakes stamped: {lakesStamped}");
+        // (Stamping debug logs removed)
         float ComputeLandElevationForIndex(int index)
         {
             Vector2Int coord = tileCoords[index];
@@ -1223,22 +1199,14 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 if (neighborElevation < minNeighborElevation) minNeighborElevation = neighborElevation;
             }
 
-            if (validNeighborCount == 0)
-            {
-                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor=none delta=NA validNeighbors=0 perimeterSize={lakeSet.Count}");
-            }
-            else
-            {
-                float delta = minNeighborElevation - lakeElevation;
-                Debug.Log($"[StampGen][LakeOutlet] lakeId={lakeId} lakeElev={lakeElevation:F4} minNeighbor={minNeighborElevation:F4} delta={delta:F4} validNeighbors={validNeighborCount} perimeterSize={lakeSet.Count}");
-            }
+            // (Stamping debug logs removed)
         }
 
         landTilesGenerated = 0;
         for (int i = 0; i < tileCount; i++) {
             if (isLandTile[i]) landTilesGenerated++;
         }
-        Debug.Log($"[StampGen] Total land tiles: {landTilesGenerated}");
+        // (Stamping debug logs removed)
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
         if (!allowOceans)
@@ -1533,7 +1501,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 break;
             }
         }
-        Debug.Assert(noiseDidNotChangeLand, "[StampGen] noiseDidNotChangeLand assertion failed.");
+        // (Stamping debug asserts removed)
 
         // Log climate variability after biome assignment loop
 // Log top biome counts as a quick distribution check
@@ -1855,7 +1823,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             HashSet<int> usedLakeIds = new HashSet<int>();
             if (riverSources.Count == 0)
             {
-                Debug.LogWarning("[StampGen] No lake-edge river sources found; falling back to inland land tiles.");
                 foreach (var kvp in tileData)
                 {
                     var td = kvp.Value;
@@ -1882,24 +1849,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             if (riverSources.Count == 0)
             {
-                Debug.LogWarning("[StampGen] No valid river sources found.");
-                // Dump a few samples from original source set (if any lake sources existed)
-                int sampleCount = Math.Min(10, sourceToLakeId.Count);
-                int i = 0;
-                foreach (var kvp in sourceToLakeId)
-                {
-                    if (i++ >= sampleCount) break;
-                    if (!tileData.TryGetValue(kvp.Key, out var sTile)) continue;
-                    Debug.Log($"[StampGen][Debug] lakeSource sample idx={kvp.Key} lakeId={kvp.Value} isLand={sTile.isLand} isLake={sTile.isLake} isRiver={sTile.isRiver} biome={sTile.biome} elev={sTile.elevation}");
-                }
-                // Also log a few random inland samples
-                i = 0;
-                foreach (var kvp in tileData)
-                {
-                    if (i++ >= 10) break;
-                    var td = kvp.Value;
-                    Debug.Log($"[StampGen][Debug] tile sample idx={kvp.Key} isLand={td.isLand} isLake={td.isLake} isRiver={td.isRiver} biome={td.biome} elev={td.elevation}");
-                }
                 yield break;
             }
 
@@ -1910,8 +1859,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             int attempts = 0;
 
             // Determine target river count strictly from lakes (one river per lake maximum)
-            // Debug: report sources and lake-edge counts; targetRiverCount will be derived from lake groups below
-            Debug.Log($"[StampGen][River] sources={riverSources.Count} lakeSources={sourceToLakeId.Count}");
+            // (Stamping debug logs removed)
 
             // Group lake-edge sources by lake id to enforce one river per lake
             Dictionary<int, List<int>> lakeSourcesDict = new Dictionary<int, List<int>>();
@@ -1969,7 +1917,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             // Determine target river count: one river per lake-group when lakes exist, otherwise fall back to preset
             targetRiverCount = (lakeSourcesDict.Count > 0) ? lakeSourcesDict.Count : Mathf.Clamp(GameSetupData.riverCount, 0, 200);
-            Debug.Log($"[StampGen][River] targetRiverCount={targetRiverCount} lakeGroups={lakeSourcesDict.Count} coastTiles={coastTiles.Count}");
+            // (Stamping debug logs removed)
 
             // Helper: quick reachability check. If `reachesCoast` is precomputed, use it; otherwise fallback to BFS.
 
@@ -2118,7 +2066,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             {
                 if (attempts++ > 70000)
                 {
-                    Debug.LogWarning("[StampGen][River] excessive attempts (70000) without reaching target; aborting to avoid hang.");
                     break;
                 }
 
@@ -2160,7 +2107,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     // No lakes - pick a random inland source
                     if (riverSources.Count == 0)
                     {
-                        Debug.LogWarning("[StampGen] No valid river sources found (after filtering).");
                         break;
                     }
                     int pick = riverRand.Next(riverSources.Count);
@@ -2268,11 +2214,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     continue;
                 }
 
-                // Per-river diagnostics: source, lakeId (if any), target, hexDistance, path length, A* attempts
-                int pathTargetIdx = path[path.Count - 1];
-                int chosenLakeId = sourceToLakeId.TryGetValue(sourceIndex, out var lid) ? lid : -1;
-                int hexDist = HexDistanceWrapped(tileCoords[sourceIndex], tileCoords[pathTargetIdx], tilesX);
-                Debug.Log($"[StampGen][River] src={sourceIndex} lake={chosenLakeId} tgt={pathTargetIdx} hexDist={hexDist} pathLen={path.Count} aStarAttempts={targetAttempts} result=SUCCESS");
+                // (Stamping per-river debug logs removed)
 
                 // Apply river tiles (do NOT include termination tiles)
                 riversGenerated++;
@@ -2312,9 +2254,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 yield return null;
             }
 
-            Debug.Log($"[StampGen] Rivers generated: {riversGenerated}");
-            float riverGenerationElapsed = Time.realtimeSinceStartup - riverGenerationStart;
-            Debug.Log($"[StampGen][Timing] rivers={riversGenerated} totalMs={riverGenerationElapsed * 1000f:F1} aStarCalls={aStarCalls} aStarTotalMs={aStarMs:F1} aStarAvgMs={(aStarCalls>0? aStarMs / aStarCalls:0):F2} bfsCalls={bfsCalls} bfsTotalMs={bfsMs:F1}");
+            // (Stamping debug logs removed)
         }
 
         // Old greedy river walk removed — A* pathfinder is now authoritative. Do not use BuildRiverWalk.
@@ -2555,10 +2495,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             int chosenWidthTiles = rand.Next(minW, maxW + 1);
             int chosenHeightTiles = rand.Next(minH, maxH + 1);
 
-            Debug.Assert(
-                chosenWidthTiles < mapWidthTiles && chosenHeightTiles < mapHeightTiles,
-                $"[StampGen][ERROR] Continent size {chosenWidthTiles}x{chosenHeightTiles} >= map size {mapWidthTiles}x{mapHeightTiles}"
-            );
+            // (Stamping debug asserts removed)
 
             continents.Add(new ContinentData {
                 name = $"Continent {continentIndex++}",
@@ -2568,12 +2505,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             });
         }
 
-        if (enableDiagnostics) {
-            for (int i = 0; i < continents.Count; i++) {
-                var c = continents[i];
-                Debug.Log($"[StampGen][Continent] {c.name} center={c.center} tiles={c.widthTiles}x{c.heightTiles}");
-            }
-        }
+        // (Stamping debug logs removed)
 
         return continents;
     }

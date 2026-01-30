@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Tundra Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Tundra Family
-  albedoArray: {fileID: 18700000, guid: 77cab8ad54d8b084abe849a67ec5492a, type: 2}
-  normalArray: {fileID: 18700000, guid: 4f9e35a31d584c64b84a3caf9c46885c, type: 2}
-  maskArray: {fileID: 18700000, guid: 55953cb37218b31429659cae2c98b0a0, type: 2}
+  albedoArray: {fileID: 18700000, guid: 59cb8ffea3c77c643a1c2a977505db2e, type: 2}
+  normalArray: {fileID: 18700000, guid: 0d3e5fb0be6df9849aab0c84f23676df, type: 2}
+  maskArray: {fileID: 18700000, guid: 88fb77538924b824eaaed7eae77aff8d, type: 2}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1
