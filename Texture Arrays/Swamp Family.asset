@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Swamp Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Swamp Family
-  albedoArray: {fileID: 18700000, guid: 18406d9d95eb5894e9776bb41c35dbe4, type: 2}
-  normalArray: {fileID: 18700000, guid: 2a367ff25cefeb24ea39879be89721fc, type: 2}
-  maskArray: {fileID: 18700000, guid: 73ad638c5a393ee419e43d95a50907c7, type: 2}
+  albedoArray: {fileID: 18700000, guid: 3fc36d357a616e344af5011bfba8bcf3, type: 3}
+  normalArray: {fileID: 18700000, guid: e5a4ca6b2966a5d47b100936d0e5ef50, type: 3}
+  maskArray: {fileID: 18700000, guid: 42e1efc3babc30445b6f9fdc942a53a5, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

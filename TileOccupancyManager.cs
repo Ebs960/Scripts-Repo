@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages per-tile multi-layer occupancy while remaining compatible with legacy HexTileData.occupantId.
-/// - Surface layer mirrors HexTileData.occupantId for compatibility.
-/// - Other layers are stored separately.
+/// Manages per-tile multi-layer occupancy. This is the SINGLE SOURCE OF TRUTH for all occupancy.
+/// Supports 4 layers: Surface, Underwater, Atmosphere, Orbit.
+/// 
+/// HexTileData.occupantId is DEPRECATED - do not use it. All occupancy queries should go through
+/// this manager via GetOccupantId/GetOccupantObject/SetOccupant/ClearOccupant.
 /// </summary>
 public class TileOccupancyManager : MonoBehaviour
 {
@@ -25,8 +27,8 @@ public class TileOccupancyManager : MonoBehaviour
     }
 
     [Header("Debug")]
-    [Tooltip("When true, log when code falls back to legacy HexTileData.occupantId instead of the occupancy manager")]
-    public bool logLegacyFallbacks = false;
+    [Tooltip("Enable verbose logging for occupancy operations")]
+    public bool verboseLogging = false;
 
     private int tileCount;
     // occupants[tile][layer] => instance id (0 = none)
@@ -51,8 +53,8 @@ public class TileOccupancyManager : MonoBehaviour
             }
             _byPlanetIndex[planetIndex] = this;
         }
-        // Enable fallback logging in editor and development builds to aid migration
-        try { if (Debug.isDebugBuild) logLegacyFallbacks = true; } catch { }
+        // Enable verbose logging in editor and development builds
+        try { if (Debug.isDebugBuild) verboseLogging = false; } catch { }
     }
 
     void OnDestroy()
@@ -72,7 +74,7 @@ public class TileOccupancyManager : MonoBehaviour
             if (_byPlanetIndex.TryGetValue(planetIndex, out var existing) && existing != null && existing != this)
             {
                 Debug.LogWarning($"[TileOccupancyManager] Initialize found existing occupancy manager for planetIndex={planetIndex}. Will initialize existing '{existing.name}' and destroy duplicate '{name}'.");
-                // Ensure the existing manager is initialized so occupancy lookups don't fall back to legacy HexTileData.occupantId.
+                // Ensure the existing manager is initialized.
                 if (existing.occupants == null || existing.tileCount != tileCount)
                 {
                     existing.Initialize(tileCount);
@@ -86,16 +88,30 @@ public class TileOccupancyManager : MonoBehaviour
         occupants = new int[tileCount, 4];
     }
 
+    /// <summary>
+    /// LEGACY: Migrate old HexTileData.occupantId values into the occupancy manager.
+    /// Only needed for loading old save files that used the deprecated occupantId field.
+    /// New code should NOT rely on this - units should re-register via SetOccupant on load.
+    /// </summary>
+    [Obsolete("Legacy migration for old saves. Units should register via SetOccupant on load.")]
     public void MigrateLegacyOccupants(HexTileData[] tiles)
     {
         if (tiles == null || occupants == null) return;
         int len = Math.Min(tiles.Length, tileCount);
+        int migrated = 0;
         for (int i = 0; i < len; i++)
         {
+            #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId
             if (tiles[i] != null && tiles[i].occupantId != 0)
             {
                 occupants[i, (int)TileLayer.Surface] = tiles[i].occupantId;
+                migrated++;
             }
+            #pragma warning restore 612, 618
+        }
+        if (migrated > 0 && verboseLogging)
+        {
+            Debug.Log($"[TileOccupancyManager] Migrated {migrated} legacy occupants from HexTileData.occupantId");
         }
     }
 
@@ -113,92 +129,31 @@ public class TileOccupancyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Get occupant object for a given tile & layer, falling back to legacy HexTileData.occupantId
-    /// if the occupancy manager has no record. When fallback logging is enabled this will
-    /// emit a warning showing the tile and layer so the code path can be migrated.
+    /// Get occupant object for a given tile & layer.
+    /// This is the authoritative source for occupancy - no fallback to legacy fields.
     /// </summary>
     public GameObject GetOccupantObjectWithFallback(int tile, TileLayer layer)
     {
-        // First, if we have a valid index and the occupancy manager knows about it, return that
-        if (ValidIndex(tile))
-        {
-            var obj = GetOccupantObject(tile, layer);
-            if (obj != null) return obj;
-        }
-
-        // Legacy fallback: check HexTileData.occupantId so older code still works
-        var ts = TileSystem.GetForPlanet(planetIndex);
-        if (ts != null)
-        {
-            var td = ts.GetTileData(tile);
-            if (td != null && td.occupantId != 0)
-            {
-                if (logLegacyFallbacks)
-                {
-                    Debug.LogWarning($"[TileOccupancyManager] Legacy fallback used for tile={tile}, layer={layer}. Found occupantId={td.occupantId}. Please migrate callers to use the occupancy manager.");
-                }
-                return UnitRegistry.GetObject(td.occupantId);
-            }
-        }
-
-        return null;
+        // TileOccupancyManager is the single source of truth - no fallback needed
+        return GetOccupantObject(tile, layer);
     }
 
     /// <summary>
-    /// Static helper that returns the occupant GameObject for a tile/layer, searching the
-    /// occupancy manager first (if present) and falling back to per-planet HexTileData
-    /// `occupantId` when necessary. When a `planetIndex` is provided, the helper will
-    /// attempt to read the backing PlanetGenerator for that planet (useful for multi-planet scans).
+    /// Static helper that returns the occupant GameObject for a tile/layer.
+    /// Uses the occupancy manager for the specified planet (or current planet if not specified).
+    /// This is the authoritative source for occupancy - no fallback to legacy HexTileData.occupantId.
     /// </summary>
     public static GameObject GetOccupantObjectForTileWithFallback(int tile, TileLayer layer, int planetIndex = -1)
     {
-        // If a specific planet is provided, prefer that planet's occupancy manager.
-        if (planetIndex >= 0)
+        // Get the appropriate occupancy manager
+        var om = (planetIndex >= 0) ? GetForPlanet(planetIndex) : Instance;
+        
+        if (om != null)
         {
-            var om = GetForPlanet(planetIndex);
-            if (om != null)
-            {
-                try
-                {
-                    var obj = om.GetOccupantObjectWithFallback(tile, layer);
-                    if (obj != null) return obj;
-                }
-                catch { /* ignore and try generator/tile fallback */ }
-            }
-        }
-        else
-        {
-            // Otherwise use current planet occupancy manager.
-            if (Instance != null)
-            {
-                try
-                {
-                    var obj = Instance.GetOccupantObjectWithFallback(tile, layer);
-                    if (obj != null) return obj;
-                }
-                catch { /* ignore and try generator/tile fallback */ }
-            }
+            return om.GetOccupantObject(tile, layer);
         }
 
-        // If a specific planet is requested, try to query its PlanetGenerator's HexTileData
-        if (planetIndex >= 0 && GameManager.Instance != null)
-        {
-            var pg = GameManager.Instance.GetPlanetGenerator(planetIndex) ?? GameManager.Instance.planetGenerator;
-            if (pg != null)
-            {
-                var td = pg.GetHexTileData(tile);
-                if (td != null && td.occupantId != 0) return UnitRegistry.GetObject(td.occupantId);
-            }
-        }
-
-        // Fallback to current TileSystem tile data (covers single-planet or current-planet cases)
-        var ts = (planetIndex >= 0) ? (TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance) : TileSystem.Instance;
-        if (ts != null)
-        {
-            var td = ts.GetTileData(tile);
-            if (td != null && td.occupantId != 0) return UnitRegistry.GetObject(td.occupantId);
-        }
-
+        // No occupancy manager available - this shouldn't happen in normal gameplay
         return null;
     }
 
@@ -228,25 +183,20 @@ public class TileOccupancyManager : MonoBehaviour
         return obj != null;
     }
 
+    /// <summary>
+    /// Set the occupant for a tile on a specific layer.
+    /// This is the ONLY way to set occupancy - do not write to HexTileData.occupantId directly.
+    /// </summary>
     public void SetOccupant(int tile, GameObject occupant, TileLayer layer)
     {
         if (!ValidIndex(tile)) return;
         int id = occupant != null ? occupant.GetInstanceID() : 0;
         occupants[tile, (int)layer] = id;
 
-        // Keep legacy HexTileData.occupantId in sync for Surface layer (compatibility)
-        if (layer == TileLayer.Surface)
+        if (verboseLogging)
         {
-            var ts = TileSystem.GetForPlanet(planetIndex);
-            if (ts != null)
-            {
-                var td = ts.GetTileData(tile);
-                if (td != null)
-                {
-                    td.occupantId = id;
-                    ts.SetTileData(tile, td);
-                }
-            }
+            string name = occupant != null ? occupant.name : "null";
+            Debug.Log($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer} occupant={name} id={id}");
         }
     }
 
@@ -261,7 +211,7 @@ public class TileOccupancyManager : MonoBehaviour
         {
             if (!warnedNotInitialized)
             {
-                Debug.LogWarning("[TileOccupancyManager] Occupancy manager not initialized. Call TileOccupancyManager.Instance.Initialize(tileCount) after planet/grid generation so occupancy lookups don't fall back to legacy HexTileData.occupantId.");
+                Debug.LogWarning("[TileOccupancyManager] Occupancy manager not initialized. Call Initialize(tileCount) after planet/grid generation.");
                 warnedNotInitialized = true;
             }
             return false;

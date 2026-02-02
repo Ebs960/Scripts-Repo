@@ -3,7 +3,9 @@
 
 // Input buffers
 StructuredBuffer<int> _PixelToTileLUT;      // Pixel index -> tile index
-StructuredBuffer<byte> _FogByTile;          // Tile index -> fog value (0=hidden, 1=explored, 2=visible)
+// NOTE: Using byte here would require a stride-1 ComputeBuffer, which Unity does not support.
+// We store fog values as uint (0=hidden, 1=explored, 2=visible) in a stride-4 ComputeBuffer.
+StructuredBuffer<uint> _FogByTile;          // Tile index -> fog value (0=hidden, 1=explored, 2=visible)
 StructuredBuffer<int> _OwnerByTile;        // Tile index -> owner (-1=neutral, >=0=civId)
 StructuredBuffer<float4> _OwnerColors;      // Owner index -> color
 
@@ -36,7 +38,7 @@ void UpdateFogMask (uint3 id : SV_DispatchThreadID)
         tileIndex = 0;
     
     // Get fog value (0=hidden, 1=explored, 2=visible)
-    byte fogValue = _FogByTile[tileIndex];
+    uint fogValue = _FogByTile[tileIndex];
     
     // Convert to mask value (0=hidden/black, 0.5=explored/gray, 1=visible/white)
     float maskValue = 0.0;

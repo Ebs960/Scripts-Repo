@@ -1451,6 +1451,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             if (finalElevation > mountainThreshold) elevTier = ElevationTier.Mountain;
             else if (finalElevation > hillThreshold) elevTier = ElevationTier.Hill;
 
+            #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
             var td = new HexTileData
             {
                 biome = biome,
@@ -1469,6 +1470,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 isPassable = true,
                 isMoonTile = false
             };
+            #pragma warning restore 612, 618
             data[i] = td;
             baseData[i] = td;
 
@@ -1491,16 +1493,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             Debug.Log($"[PlanetGenerator][Diag] temperature y=0: {northLabel} y=max: {southLabel} y=mid: {equatorLabel}");
         }
 
-        bool noiseDidNotChangeLand = true;
-        for (int i = 0; i < tileCount; i++)
-        {
-            if (!data.ContainsKey(i)) continue;
-            if (data[i].isLand != isLandTile[i])
-            {
-                noiseDidNotChangeLand = false;
-                break;
-            }
-        }
         // (Stamping debug asserts removed)
 
         // Log climate variability after biome assignment loop
@@ -1591,11 +1583,11 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // is used as the baseline for any water surfaces (HDRP Water Surfaces
         // should be positioned exactly at this Y). This ensures no system
         // computes its own sea-level offset independently.
-        if (GameManager.Instance != null)
-        {
-            SeaLevelWorldY = GameManager.Instance.GetFlatPlaneY();
-            Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
-        }
+        //
+        // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
+        // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
+        SeaLevelWorldY = 1.3f;
+        Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
         // Create coast tiles first where land meets water (excluding glaciers and rivers)
@@ -2315,28 +2307,18 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
     }
     // ----------------------------------------
 
+    /// <summary>
+    /// Set the occupant for a tile. Delegates to TileOccupancyManager which is the single source of truth.
+    /// </summary>
     public void SetTileOccupant(int tileIndex, GameObject occupant, TileLayer layer = TileLayer.Surface) {
         if (!data.ContainsKey(tileIndex)) return;
-        HexTileData td = data[tileIndex];
-        // Legacy compatibility: only Surface uses HexTileData.occupantId
-        if (layer == TileLayer.Surface)
+        
+        // TileOccupancyManager is the single source of truth for all layer occupancy
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
         {
-            td.occupantId = occupant ? occupant.GetInstanceID() : 0;
-            data[tileIndex] = td;
+            occ.SetOccupant(tileIndex, occupant, layer);
         }
-
-        // Keep TileOccupancyManager in sync (layer-aware)
-        try
-        {
-            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            if (occ != null)
-            {
-                occ.SetOccupant(tileIndex, occupant, layer);
-            }
-        }
-        catch { }
-        // baseData may also want updating if you allow undoing.
-        baseData[tileIndex] = td;
     }
     public void SetTileBiome(int tileIndex, Biome newBiome) {
         if (!data.ContainsKey(tileIndex)) return;
@@ -2465,11 +2447,31 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
         int continentIndex = 1;
         for (int i = 0; i < count; i++) {
+            // Pick size first so we can keep the continent away from the top/bottom edges.
+            // If we pick the center first, large continents near the poles get clipped by the map boundary,
+            // creating the "north band rectangle" artifact.
+            int chosenWidthTiles = rand.Next(minW, maxW + 1);
+            int chosenHeightTiles = rand.Next(minH, maxH + 1);
+            chosenWidthTiles = Mathf.Clamp(chosenWidthTiles, 1, mapWidthTiles);
+            chosenHeightTiles = Mathf.Clamp(chosenHeightTiles, 1, mapHeightTiles);
+
+            // Compute a vertical safety margin so the ellipse stamp doesn't get cut off.
+            // Horizontal wrap is supported, so we only need to protect Y.
+            int halfH = Mathf.Max(0, (int)Mathf.Ceil(chosenHeightTiles * 0.5f));
+            int yMin = Mathf.Clamp(halfH, 0, Mathf.Max(0, mapHeightTiles - 1));
+            int yMax = Mathf.Clamp((mapHeightTiles - 1) - halfH, 0, Mathf.Max(0, mapHeightTiles - 1));
+            if (yMax < yMin)
+            {
+                // Extremely small maps vs. huge continents: fall back to full range.
+                yMin = 0;
+                yMax = Mathf.Max(0, mapHeightTiles - 1);
+            }
+
             Vector2Int center = Vector2Int.zero;
             bool accepted = false;
 
             for (int attempt = 0; attempt < maxAttemptsPerContinent; attempt++) {
-                var candidate = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(0, mapHeightTiles));
+                var candidate = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(yMin, yMax + 1));
                 bool farEnough = true;
                 foreach (var c in continents) {
                     int dist = HexDistanceWrapped(candidate, c.center, mapWidthTiles);
@@ -2489,19 +2491,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             }
 
             if (!accepted) {
-                center = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(0, mapHeightTiles));
+                center = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(yMin, yMax + 1));
             }
-
-            int chosenWidthTiles = rand.Next(minW, maxW + 1);
-            int chosenHeightTiles = rand.Next(minH, maxH + 1);
 
             // (Stamping debug asserts removed)
 
             continents.Add(new ContinentData {
                 name = $"Continent {continentIndex++}",
                 center = center,
-                widthTiles = Mathf.Clamp(chosenWidthTiles, 1, mapWidthTiles),
-                heightTiles = Mathf.Clamp(chosenHeightTiles, 1, mapHeightTiles)
+                widthTiles = chosenWidthTiles,
+                heightTiles = chosenHeightTiles
             });
         }
 

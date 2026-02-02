@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Planet (Volcanic) Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Planet (Volcanic) Family
-  albedoArray: {fileID: 18700000, guid: cf67b76982ddaff4aa86ca803d2f796f, type: 2}
-  normalArray: {fileID: 18700000, guid: 13f3fc4c25797ff4f89e4ba6bd5e9334, type: 2}
-  maskArray: {fileID: 18700000, guid: 485991d38dad2104eb88041fa5b21424, type: 2}
-  emissiveArray: {fileID: 18700000, guid: 1e6864b0ded053b499a31d838719a4f4, type: 2}
+  albedoArray: {fileID: 18700000, guid: 4d0052ef53611344bbe6d1b4235b9eab, type: 3}
+  normalArray: {fileID: 18700000, guid: 4e0eb971ac5b1114e8433ebc2548f103, type: 3}
+  maskArray: {fileID: 18700000, guid: 808ce58c5aa627a479eacae4d3dca4db, type: 3}
+  emissiveArray: {fileID: 18700000, guid: 027294f7e41f2e345a25d5e52e898e77, type: 3}
   supportsEmission: 1
   defaultTiling: 1
   defaultTint: {r: 1, g: 1, b: 1, a: 1}

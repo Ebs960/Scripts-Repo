@@ -388,6 +388,15 @@ public class ResourceManager : MonoBehaviour
             ? SimpleObjectPool.Instance.Get(resource.prefab, position, Quaternion.identity)
             : Instantiate(resource.prefab, position, Quaternion.identity);
 
+        // Keep hierarchy organized: parent spawned world objects under their planet generator.
+        // (Do not change gameplay logic; this is purely scene organization.)
+        try
+        {
+            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+            if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
+        }
+        catch { }
+
         var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
         inst.data = resource;
         inst.tileIndex = tileIndex;

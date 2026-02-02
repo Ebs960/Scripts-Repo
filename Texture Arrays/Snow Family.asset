@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Snow Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Snow Family
-  albedoArray: {fileID: 18700000, guid: 67796aeb5d516a44684a5db05844e553, type: 2}
-  normalArray: {fileID: 18700000, guid: a35e8abd1bdf8984382cc6c65858ec83, type: 2}
-  maskArray: {fileID: 18700000, guid: 22d25f4093d521748b076bdb4f94b359, type: 2}
+  albedoArray: {fileID: 18700000, guid: 0416f37b04ffbdc4b8af12249846face, type: 3}
+  normalArray: {fileID: 18700000, guid: a36621bf4619e5b4fa352eb42dd4cef9, type: 3}
+  maskArray: {fileID: 18700000, guid: 2d5f46a68856da64289c7e3d258d7add, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

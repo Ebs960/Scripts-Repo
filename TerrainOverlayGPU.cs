@@ -52,6 +52,8 @@ public class TerrainOverlayGPU : MonoBehaviour
     private ComputeBuffer _ownerBuffer;
     private ComputeBuffer _ownerColorBuffer;
     private ComputeBuffer _lutBuffer;
+    // Unity ComputeBuffer stride must be a multiple of 4, so fog values (byte[]) are expanded to int[] for GPU upload.
+    private int[] _fogIntCache;
     private int[] _cachedLUT;
     private int _cachedLUTWidth;
     private int _cachedLUTHeight;
@@ -171,7 +173,13 @@ public class TerrainOverlayGPU : MonoBehaviour
         
         // Update buffers with latest data
         _ownerBuffer.SetData(ownerArray);
-        _fogBuffer.SetData(fogArray);
+        // Expand fog bytes (0..2) into ints for stride-4 ComputeBuffer upload.
+        EnsureFogIntCache(ownerArray.Length);
+        for (int i = 0; i < fogArray.Length && i < _fogIntCache.Length; i++)
+        {
+            _fogIntCache[i] = fogArray[i];
+        }
+        _fogBuffer.SetData(_fogIntCache);
         _ownerColorBuffer.SetData(ownerColors);
         _lutBuffer.SetData(_cachedLUT);
         
@@ -258,11 +266,12 @@ public class TerrainOverlayGPU : MonoBehaviour
     
     private void EnsureBuffers(int tileCount, int ownerColorCount)
     {
-        // Fog buffer (byte per tile: 0=hidden, 1=explored, 2=visible)
+        // Fog buffer (uint per tile: 0=hidden, 1=explored, 2=visible).
+        // IMPORTANT: Unity does not support ComputeBuffer stride=1, so we cannot upload bytes directly.
         if (_fogBuffer == null || _fogBuffer.count != tileCount)
         {
             _fogBuffer?.Release();
-            _fogBuffer = new ComputeBuffer(tileCount, sizeof(byte));
+            _fogBuffer = new ComputeBuffer(tileCount, sizeof(int));
         }
         
         // Owner buffer (int per tile: -1=neutral, >=0=civId)
@@ -284,6 +293,14 @@ public class TerrainOverlayGPU : MonoBehaviour
         {
             _lutBuffer?.Release();
             _lutBuffer = new ComputeBuffer(_cachedLUT.Length, sizeof(int));
+        }
+    }
+
+    private void EnsureFogIntCache(int tileCount)
+    {
+        if (_fogIntCache == null || _fogIntCache.Length != tileCount)
+        {
+            _fogIntCache = new int[tileCount];
         }
     }
     

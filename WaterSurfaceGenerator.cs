@@ -101,6 +101,11 @@ public class WaterSurfaceGenerator : MonoBehaviour
         float padX = tileWidth * 0.5f;
         float padZ = tileHeight * 0.5f;
 
+        // Map wraps horizontally (X axis). Terrain chunks are teleported/ghosted by ±MapWidth.
+        // To keep water present across the wrap seam, we mirror each generated water surface
+        // to the left and right by ±MapWidth.
+        float mapWidthWorld = grid.MapWidth;
+
         for (int i = 0; i < tileCount; i++)
         {
             if (visited[i]) continue;
@@ -120,7 +125,7 @@ public class WaterSurfaceGenerator : MonoBehaviour
             // Position all HDRP Water Surfaces at the planet's authoritative sea level.
             float height = planetGen.SeaLevelWorldY;
 
-            CreateWaterSurface(regionIsLake, bounds, height, spawnedSurfaces.Count);
+            CreateWaterSurface(regionIsLake, bounds, height, mapWidthWorld, spawnedSurfaces.Count);
             createdRegions++;
         }
 
@@ -227,7 +232,7 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return false;
     }
 
-    private void CreateWaterSurface(bool isLake, Bounds bounds, float height, int regionIndex)
+    private void CreateWaterSurface(bool isLake, Bounds bounds, float height, float mapWidthWorld, int regionIndex)
     {
         var prefab = isLake ? lakeSurfacePrefab : oceanSurfacePrefab;
         if (prefab == null)
@@ -259,6 +264,21 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         meshFilter.sharedMesh = BuildQuadMesh(bounds);
         spawnedSurfaces.Add(instance);
+
+        // Mirror to left/right so water exists across horizontal wrap seams.
+        // This matches the chunk manager's world-wrap model (periodic repeat in X by MapWidth).
+        if (mapWidthWorld > 0.001f)
+        {
+            var left = Instantiate(instance, transform, false);
+            left.name = $"WaterSurface_{regionIndex}_GhostLeft";
+            left.transform.localPosition = new Vector3(-mapWidthWorld, localY, 0f);
+            spawnedSurfaces.Add(left);
+
+            var right = Instantiate(instance, transform, false);
+            right.name = $"WaterSurface_{regionIndex}_GhostRight";
+            right.transform.localPosition = new Vector3(mapWidthWorld, localY, 0f);
+            spawnedSurfaces.Add(right);
+        }
     }
 
     private static Mesh BuildQuadMesh(Bounds bounds)

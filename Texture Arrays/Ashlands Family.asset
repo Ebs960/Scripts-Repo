@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Ashlands Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Ashlands Family
-  albedoArray: {fileID: 18700000, guid: 7e49dd6e831710c4eab72d2c17c6db07, type: 2}
-  normalArray: {fileID: 18700000, guid: 7cd29ff85b98e4040872e2a62196e363, type: 2}
-  maskArray: {fileID: 18700000, guid: d830a911555db2f46b1461eb34b27488, type: 2}
+  albedoArray: {fileID: 18700000, guid: ff43738291b85c547bb902f7498c524a, type: 3}
+  normalArray: {fileID: 18700000, guid: 784e1fe20bf576242a4e95e452461db2, type: 3}
+  maskArray: {fileID: 18700000, guid: fe8a34819ff2ee642bab583b67d6da0a, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

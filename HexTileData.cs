@@ -62,8 +62,12 @@ public class HexTileData
     public int policyPointYield;
     public int faithYield; // Added faith yield for tiles
 
-    // --- Occupancy & Control ---
-    public int occupantId; // Preserving existing property
+    // --- Occupancy (DEPRECATED) ---
+    // WARNING: This field is DEPRECATED. Use TileOccupancyManager for all occupancy queries.
+    // TileOccupancyManager handles ALL layers (Surface, Underwater, Atmosphere, Orbit).
+    // This field only ever stored Surface occupants and is kept only for loading old saves.
+    [Obsolete("Use TileOccupancyManager.GetOccupantId/SetOccupant instead. This field only supports Surface layer.")]
+    public int occupantId;
 
     // --- Seasonal Modifier ---
     [Header("Seasonal")]

@@ -1918,6 +1918,12 @@ return true;
         if (planetToUse == null)
             planetToUse = GameManager.Instance?.GetCurrentPlanetGenerator();
         // City class sets its own references now
+
+        // Keep hierarchy organized: parent the city under its planet generator so it doesn't "hang out" at scene root.
+        if (planetToUse != null)
+        {
+            cityGO.transform.SetParent(planetToUse.transform, true);
+        }
 // --- Position and orient the city on the correct tile ---
         if (gridToUse != null)
         {

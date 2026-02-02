@@ -531,6 +531,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1183,6 +1184,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minimapImage: {fileID: 8280042980049759750}
   planetDropdown: {fileID: 4068761577598587462}
+  layerDropdown: {fileID: 0}
   minimapContainer: {fileID: 2569911654292508293}
   zoomInButton: {fileID: 6924044681161247334}
   zoomOutButton: {fileID: 551640169055990870}
@@ -1200,7 +1202,7 @@ MonoBehaviour:
   buttonZoomStep: 1
   mainPlanetIndex: 0
   useTileColorAtlas: 1
-  minimapComputeShader: {fileID: 7200000, guid: db872d5b896072443989b31c28d23070, type: 3}
+  minimapComputeShader: {fileID: 7200000, guid: 4b8eb083ed10e0c4e85cc7cd6acbdd27, type: 3}
   uiCamera: {fileID: 0}
 --- !u!1 &3992384041759471822
 GameObject:
@@ -1305,6 +1307,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1441,6 +1444,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1988,6 +1992,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2124,6 +2129,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0

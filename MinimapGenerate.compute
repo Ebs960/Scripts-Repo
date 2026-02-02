@@ -1,0 +1,46 @@
+// Minimap generation compute shader
+// Takes a LUT (pixel -> tile mapping) and tile color atlas, outputs a minimap texture
+
+#pragma kernel CSMain
+
+// Input: LUT mapping pixel index to tile index (-1 = no tile)
+StructuredBuffer<int> _LUT;
+
+// Input: 1D texture containing one color per tile (width = tile count)
+Texture2D<float4> _TileAtlas;
+
+// Output: The generated minimap texture
+RWTexture2D<float4> _Result;
+
+// Dimensions
+int _Width;
+int _Height;
+int _TileCount;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Bounds check
+    if (id.x >= (uint)_Width || id.y >= (uint)_Height)
+        return;
+
+    // Calculate pixel index (row-major order)
+    int pixelIndex = id.y * _Width + id.x;
+
+    // Look up tile index from LUT
+    int tileIndex = _LUT[pixelIndex];
+
+    // Default to transparent if no tile.
+    // This prevents "streaks/bands" at the texture edges when the LUT contains -1 pixels.
+    float4 color = float4(0, 0, 0, 0);
+
+    // If valid tile, sample from atlas
+    if (tileIndex >= 0 && tileIndex < _TileCount)
+    {
+        // Atlas is a 1D texture where x = tileIndex
+        color = _TileAtlas.Load(int3(tileIndex, 0, 0));
+    }
+
+    // Write to output
+    _Result[id.xy] = color;
+}

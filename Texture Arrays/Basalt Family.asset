@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Basalt Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Basalt Family
-  albedoArray: {fileID: 18700000, guid: 863c5ea28fd664340ad1396954c2b731, type: 2}
-  normalArray: {fileID: 18700000, guid: 7e3a2bca84f71dd4b8519642f0d9fdc1, type: 2}
-  maskArray: {fileID: 18700000, guid: 642d429c1c6794848b0d1b3d46e82fc1, type: 2}
+  albedoArray: {fileID: 18700000, guid: 30e3d74bb801bbe4fa875be90eee42f3, type: 3}
+  normalArray: {fileID: 18700000, guid: 43044d01ad390db4fa0cab646aeaf0d2, type: 3}
+  maskArray: {fileID: 18700000, guid: 0bbee5757cd46e348b098da69124f7f1, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

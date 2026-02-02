@@ -56,6 +56,14 @@ public class HexMapChunk : MonoBehaviour
         
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
+
+        // Terrain chunks should never be occlusion-culled. Occlusion data is typically baked for static level geometry,
+        // and can incorrectly cull large/dynamic surfaces at grazing angles, which looks like "terrain disappearing".
+        // This is a targeted fix that avoids relying on camera-wide Occlusion Culling toggles.
+        if (meshRenderer != null)
+        {
+            meshRenderer.allowOcclusionWhenDynamic = false;
+        }
         
         // Add collider for raycasting
         meshCollider = GetComponent<MeshCollider>();
@@ -68,9 +76,13 @@ public class HexMapChunk : MonoBehaviour
         mesh.name = $"Chunk_{chunkX}_{chunkZ}";
         meshFilter.mesh = mesh;
         
-        // Set layer for terrain raycasting
-        int terrainLayer = LayerMask.NameToLayer("Terrain");
-        gameObject.layer = terrainLayer >= 0 ? terrainLayer : 0;
+        // IMPORTANT:
+        // These chunks are the *visible* terrain renderers.
+        // Do NOT force them onto a "Terrain" layer, because many cameras exclude that layer (common setup),
+        // which makes the entire map invisible.
+        //
+        // Raycasting is handled by `HexMapChunkManager`'s dedicated `ChunkMapCollider` instead.
+        gameObject.layer = manager != null ? manager.gameObject.layer : 0;
     }
     
     /// <summary>
@@ -85,6 +97,9 @@ public class HexMapChunk : MonoBehaviour
             // Using .material would silently instantiate a per-renderer copy, which breaks
             // later runtime updates and causes main vs ghost columns to diverge.
             meshRenderer.sharedMaterial = material;
+
+            // Ensure this remains disabled even if renderer got recreated.
+            meshRenderer.allowOcclusionWhenDynamic = false;
         }
     }
     
@@ -327,6 +342,36 @@ public class HexMapChunk : MonoBehaviour
         mesh.tangents = tangents;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
+
+        // IMPORTANT (HDRP / GPU displacement):
+        // This mesh is a flat plane in CPU vertex data; actual terrain relief is applied in the shader via heightmap displacement.
+        // Unity's frustum culling uses the mesh bounds. If bounds have ~0 thickness in Y, chunks can be culled incorrectly
+        // at low camera angles (looks like "terrain disappearing / see-through at the horizon").
+        //
+        // Fix: expand the bounds vertically based on the displacement strength.
+        try
+        {
+            float displacement = 0f;
+            if (manager != null && manager.SharedMaterial != null && manager.SharedMaterial.HasProperty("_ElevationScale"))
+            {
+                displacement = manager.SharedMaterial.GetFloat("_ElevationScale");
+            }
+            else if (GameManager.Instance != null)
+            {
+                displacement = GameManager.Instance.GetTerrainDisplacementStrength();
+            }
+
+            // Add generous padding. We allow for both up and down displacement to be safe.
+            float halfY = Mathf.Max(5f, Mathf.Abs(displacement) + 5f);
+            var b = mesh.bounds;
+            b.center = new Vector3(b.center.x, 0f, b.center.z);
+            b.size = new Vector3(b.size.x, halfY * 2f, b.size.z);
+            mesh.bounds = b;
+        }
+        catch
+        {
+            // Bounds expansion is a robustness improvement; ignore failures to avoid breaking chunk generation.
+        }
         
         // Update collider
         if (meshCollider != null)

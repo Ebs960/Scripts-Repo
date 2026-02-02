@@ -20,9 +20,8 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private MinimapColorProvider colorProvider;
     [SerializeField] private ComputeShader textureBakerComputeShader;
-    [SerializeField] private Shader hdrpTerrainShader;
     [SerializeField]
-    [Tooltip("The terrain shader used to render biome chunks. Must support _BiomeIndexMap and _AlbedoArray.")]
+    [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
     private Shader terrainShader;
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     
@@ -671,7 +670,9 @@ TrySubscribeToSurfaceReady(gen);
 
         if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
         {
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.R8, false, true)
+            // Store slice index directly as float (RFloat) so Shader Graph sampling does NOT require *255 decoding.
+            // This is a stability/UX win: fewer fragile packing/unpacking assumptions.
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -679,29 +680,86 @@ TrySubscribeToSurfaceReady(gen);
             };
         }
 
-        var pixels = new Color32[width * height];
+        // NOTE:
+        // Despite the name, this map is now used as a *surface slice index map* (families/variants),
+        // because the Shader Graph version looks better and is simpler when it samples arrays by a single index.
+        // Values are written as float slice indices (RFloat), and shader code can use them directly (round if needed).
+        bool warnedSliceOutOfRange = false;
+        int minVal = int.MaxValue;
+        int maxVal = 0;
+
+        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
+        var pixels = new Color[width * height];
         for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
         {
             int tileIndex = bakeResult.lut[i];
             if (tileIndex < 0)
             {
-                pixels[i] = new Color32(0, 0, 0, 255);
+                pixels[i] = new Color(0f, 0f, 0f, 1f);
                 continue;
             }
 
             if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
             {
-                pixels[i] = new Color32(0, 0, 0, 255);
+                pixels[i] = new Color(0f, 0f, 0f, 1f);
                 continue;
             }
 
             var visual = biomeVisualDatabase.Get(tile.biome);
             int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
-            pixels[i] = new Color32((byte)biomeIndex, 0, 0, 255);
+
+            // Convert biomeIndex -> surface slice index (startSlice + chosenVariant)
+            int sliceIndex = 0;
+            if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
+            {
+                var map = biomeSurfaceMapArray[biomeIndex];
+                int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+                int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+                int forcedVariant = Mathf.RoundToInt(map.w);
+
+                int chosenVariant = 0;
+                if (forcedVariant >= 0 && forcedVariant < variantCount)
+                {
+                    chosenVariant = forcedVariant;
+                }
+                else
+                {
+                    // Deterministic per-tile variant selection (stable across runs)
+                    unchecked
+                    {
+                        int h = tileIndex * 1103515245 + 12345;
+                        chosenVariant = Mathf.Abs(h) % variantCount;
+                    }
+                }
+
+                sliceIndex = startSlice + chosenVariant;
+            }
+
+            if (maxSlice >= 0 && sliceIndex > maxSlice)
+            {
+                if (!warnedSliceOutOfRange)
+                {
+                    Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
+                    warnedSliceOutOfRange = true;
+                }
+                sliceIndex = maxSlice;
+            }
+            if (sliceIndex < 0) sliceIndex = 0;
+
+            if (sliceIndex < minVal) minVal = sliceIndex;
+            if (sliceIndex > maxVal) maxVal = sliceIndex;
+
+            pixels[i] = new Color(sliceIndex, 0f, 0f, 1f);
         }
 
-        biomeIndexMap.SetPixels32(pixels);
+        biomeIndexMap.SetPixels(pixels);
         biomeIndexMap.Apply(false, false);
+
+        if (ShouldRunDiagnostics())
+        {
+            if (minVal == int.MaxValue) minVal = 0;
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RFloat).");
+        }
     }
 
     private void BuildHeightmap(int width, int height)
@@ -822,32 +880,52 @@ TrySubscribeToSurfaceReady(gen);
     
     private void CreateSharedMaterial()
     {
-        // Prefer an HDRP-specific shader when running under HDRP and an HDRP shader was assigned.
-        Shader shader = null;
-        try
+        bool ShaderSupportsBiomeTerrain(Shader s)
         {
-            var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-            bool isHDRP = (rp != null && (rp.GetType().Name.Contains("HDRenderPipeline") || rp.GetType().Name.Contains("HighDefinition")));
-            if (isHDRP && hdrpTerrainShader != null)
-            {
-                shader = hdrpTerrainShader;
-            }
-        }
-        catch
-        {
-            // If any reflection/lookup fails, fall back to the generic shader below.
+            if (s == null) return false;
+            // We require these to be present; missing any usually means the assigned shader graph
+            // doesn't match our runtime binding and will render with default values (often "all blue").
+            // Note: Shader.HasProperty does not exist; check via a temporary Material instead.
+            var tmp = new Material(s);
+            bool ok =
+                tmp.HasProperty("_BiomeIndexMap") &&
+                tmp.HasProperty("_Heightmap") &&
+                tmp.HasProperty("_BiomeAlbedoArray") &&
+                tmp.HasProperty("_BiomeNormalArray") &&
+                tmp.HasProperty("_BiomeMaskArray") &&
+                // Shader Graph can either sample surface slices directly from _BiomeIndexMap (slice map mode),
+                // or it can use _BiomeSurfaceMapTex (biome->slice mapping mode). We still set _BiomeSurfaceMapTex,
+                // but do not require it for shader compatibility checks.
+                tmp.HasProperty("_BiomeCount");
+            Destroy(tmp);
+            return ok;
         }
 
-        if (shader == null) shader = terrainShader;
-
+        // Single inspector-assigned shader (no fallbacks).
+        Shader shader = terrainShader;
         if (shader == null)
         {
-            Debug.LogError("[HexMapChunkManager] Terrain shader not assigned. Please assign either the HDRP shader or the fallback terrain shader in the Inspector.");
+            Debug.LogError("[HexMapChunkManager] Terrain shader is not assigned. Assign exactly one terrain shader on HexMapChunkManager.");
+            return;
+        }
+
+        // Final guard: if we still don't support the required properties, log loudly so we can fix the assignment.
+        if (!ShaderSupportsBiomeTerrain(shader))
+        {
+            Debug.LogError($"[HexMapChunkManager] Selected terrain shader '{shader.name}' is missing required properties. " +
+                           "Expected: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount. " +
+                           "This will render incorrectly (often solid blue).");
             return;
         }
 
         sharedMaterial = new Material(shader);
         sharedMaterial.name = "ChunkTerrainMaterial";
+
+        // One-time diagnostic: confirms which shader we actually bound at runtime.
+        if (ShouldRunDiagnostics())
+        {
+            Debug.Log($"[HexMapChunkManager][Diag] Using terrain shader: {shader.name}");
+        }
 
         ApplyBiomeMaterialSettings();
         
@@ -1191,6 +1269,9 @@ TrySubscribeToSurfaceReady(gen);
             worldPicker.flatMapCollider = pickingCollider;
             worldPicker.mapWidth = mapWidth;
             worldPicker.mapHeight = mapHeight;
+            // Ensure a camera is assigned for picking. If the scene doesn't tag MainCamera (common in HDRP setups),
+            // WorldPicker will still fall back to any available camera, but assigning here reduces ambiguity.
+            if (worldPicker.targetCamera == null) worldPicker.targetCamera = Camera.main != null ? Camera.main : FindAnyObjectByType<Camera>();
             Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, collider={(pickingCollider != null ? "assigned" : "null")}, mapSize={mapWidth}x{mapHeight}");
         }
         else
@@ -1260,8 +1341,15 @@ TrySubscribeToSurfaceReady(gen);
         // GPU-accelerated downscaling using Graphics.Blit
         RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
         rt.filterMode = FilterMode.Bilinear;
-        rt.wrapMode = TextureWrapMode.Repeat;
+        // IMPORTANT:
+        // This texture is displayed in UI as a minimap. We do NOT want vertical wrapping bleed at the top/bottom edges,
+        // which can appear as a distorted band (especially after bilinear downscaling).
+        // Clamp the destination and temporarily clamp the source during the blit so edge samples don't wrap.
+        rt.wrapMode = TextureWrapMode.Clamp;
+        var prevWrap = bakeResult.texture.wrapMode;
+        bakeResult.texture.wrapMode = TextureWrapMode.Clamp;
         Graphics.Blit(bakeResult.texture, rt);
+        bakeResult.texture.wrapMode = prevWrap;
         
         if (!returnTexture2D)
             return rt;
@@ -1277,7 +1365,7 @@ TrySubscribeToSurfaceReady(gen);
         RenderTexture.active = previous;
         RenderTexture.ReleaseTemporary(rt);
         
-        downscaled.wrapMode = TextureWrapMode.Repeat;
+        downscaled.wrapMode = TextureWrapMode.Clamp;
         downscaled.filterMode = FilterMode.Bilinear;
         
         return downscaled;

@@ -343,10 +343,13 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
+        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
 
         if (job.data.completePrefab != null)
         {
             GameObject completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
+            // Keep hierarchy organized: parent improvements under their planet generator.
+            if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
 
             // Attach ImprovementInstance component to track applied upgrades and attached parts
             var instance = completedImprovement.GetComponent<ImprovementInstance>();
@@ -410,6 +413,7 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
+        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
         // Spawn the unit and register occupancy
         var unitPrefab = job.data.GetPrefab();
         if (unitPrefab == null)
@@ -423,6 +427,8 @@ public class ImprovementManager : MonoBehaviour
         int spawnIndex = FindSpawnTile(job.tileIndex, job.planetIndex);
         Vector3 pos = ts != null ? ts.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
     var go = Object.Instantiate(unitPrefab, pos, Quaternion.identity);
+        // Keep hierarchy organized: parent units under their planet generator.
+        if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -454,6 +460,7 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
+        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
         // Spawn the worker unit and register occupancy
         var prefab = job.data.prefab;
         if (prefab == null)
@@ -466,6 +473,8 @@ public class ImprovementManager : MonoBehaviour
         int spawnIndex = FindSpawnTile(job.tileIndex, job.planetIndex);
         Vector3 pos = ts != null ? ts.GetTileSurfacePosition(spawnIndex) : Vector3.zero;
         var go = Object.Instantiate(prefab, pos, Quaternion.identity);
+        // Keep hierarchy organized: parent workers under their planet generator.
+        if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         var unit = go.GetComponent<WorkerUnit>();
         if (unit == null)
         {
@@ -702,7 +711,9 @@ public class ImprovementManager : MonoBehaviour
         // Optional destroyed prefab
         if (data.destroyedPrefab != null)
         {
-            Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
+            var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
+            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+            if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         }
 
         tileData.improvement = null;
@@ -752,6 +763,8 @@ public class ImprovementManager : MonoBehaviour
                     Vector3 pos = instanceObj.transform.position;
                     Quaternion rot = instanceObj.transform.rotation;
                     var newObj = Instantiate(found.replacePrefab, pos, rot);
+                    var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                    if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                     var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
                     newInst.tileIndex = tileIndex;
                     newInst.data = impInstance.data;

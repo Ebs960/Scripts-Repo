@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Ice Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Ice Family
-  albedoArray: {fileID: 18700000, guid: 0c570fdc54d7a3742b8e6c8408d878e8, type: 2}
-  normalArray: {fileID: 18700000, guid: 0466f91cbea7446478897e9d3930eba0, type: 2}
-  maskArray: {fileID: 18700000, guid: 2009f333b71640c41bbbc992d75590c2, type: 2}
+  albedoArray: {fileID: 18700000, guid: 5e4a609b0d1d41447a32f0823815e1e0, type: 3}
+  normalArray: {fileID: 18700000, guid: ba713be1503f2924ea03656cf66809bd, type: 3}
+  maskArray: {fileID: 18700000, guid: d3d451d4c517cf147986865d920b85eb, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Desert Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Desert Family
-  albedoArray: {fileID: 18700000, guid: a5c4d3f810a81fe449bff5239a10907e, type: 2}
-  normalArray: {fileID: 18700000, guid: 500a9185d935fd5478d5f8c5a2c02afc, type: 2}
-  maskArray: {fileID: 18700000, guid: 6e4c0553895363e4881021d52e14f216, type: 2}
+  albedoArray: {fileID: 18700000, guid: 215cf44039d741a4bae9ae0eb8ba5283, type: 3}
+  normalArray: {fileID: 18700000, guid: 54a768160ef8e6d4c87a8662543a7697, type: 3}
+  maskArray: {fileID: 18700000, guid: 569bf8d0913d0dc40aa62bed5676d5df, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

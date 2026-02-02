@@ -519,6 +519,7 @@ public class GameManager : MonoBehaviour
     {
 // Clear GPU texture/buffer caches (these persist as static and leak in editor)
         PlanetTextureBaker.ClearAllCaches();
+        BiomeVisualDatabase.ClearAllCachedSurfaceLibraries();
         
         // Clear ResourceCache to free ScriptableObject references
         ResourceCache.Clear();
@@ -547,6 +548,7 @@ public class GameManager : MonoBehaviour
     {
         // Final cleanup on application quit
         PlanetTextureBaker.ClearAllCaches();
+        BiomeVisualDatabase.ClearAllCachedSurfaceLibraries();
         ResourceCache.Clear();
     }
 

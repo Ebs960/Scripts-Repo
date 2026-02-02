@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Planet (Soil) Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Planet (Soil) Family
-  albedoArray: {fileID: 18700000, guid: f20b4579f9d1d4148a54dd14e00fd232, type: 2}
-  normalArray: {fileID: 18700000, guid: 2686ac9b9a40e0541a857429535826fc, type: 2}
-  maskArray: {fileID: 18700000, guid: 36dced1f5fedce345a25733d129d2228, type: 2}
+  albedoArray: {fileID: 18700000, guid: 73512cf95a16aa04e8a5c834edf5dfdc, type: 3}
+  normalArray: {fileID: 18700000, guid: d41487cb6909e66429f0f86256a61f1a, type: 3}
+  maskArray: {fileID: 18700000, guid: 6a94cad1ef0df374480a4373409542ff, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

@@ -954,6 +954,8 @@ if (UIManager.Instance != null)
         }
         
         var unitGO = Instantiate(prefab, pos, Quaternion.identity);
+        // Keep hierarchy organized: parent spawned world objects under their planet generator.
+        if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
         var unit = unitGO.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -1030,6 +1032,7 @@ return true;
                     break;
                 }
                 var unitGO = Instantiate(unitPrefab, pos, Quaternion.identity);
+                if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
                 var unit = unitGO.GetComponent<CombatUnit>();
                 if (unit == null)
                 {
@@ -1063,6 +1066,7 @@ return true;
 
             case WorkerUnitData w:
                 var wGO = Instantiate(w.prefab, pos, Quaternion.identity);
+                if (planetGenerator != null) wGO.transform.SetParent(planetGenerator.transform, true);
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);
                 owner.workerUnits.Add(worker);
@@ -1217,6 +1221,7 @@ Destroy(oldTuple.instance);
         if (district.prefab != null)
         {
             districtInstance = Instantiate(district.prefab, pos, Quaternion.identity);
+            if (planetGenerator != null) districtInstance.transform.SetParent(planetGenerator.transform, true);
         }
         
         // Update the tile data to include this district
@@ -1914,6 +1919,8 @@ cityUI.ShowForCity(this);
     
         // 2. Instantiate the new prefab at the current position/rotation
         GameObject newCityGO = Instantiate(newPrefab, transform.position, transform.rotation);
+        // Keep hierarchy stable: preserve parent so the city stays under its planet in the hierarchy.
+        if (transform.parent != null) newCityGO.transform.SetParent(transform.parent, true);
         City newCity = newCityGO.GetComponent<City>();
         if (newCity == null)
         {

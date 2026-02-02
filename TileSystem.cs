@@ -167,6 +167,8 @@ public class TileSystem : MonoBehaviour
         if (GameManager.Instance != null && GameManager.Instance.currentPlanetIndex != planetIndex) return;
         if (!isReady) return;
         if (mainCamera == null) mainCamera = Camera.main;
+        // HDRP / some scenes may not tag a camera as MainCamera. Fall back to any camera so tile hover/click still work.
+        if (mainCamera == null) mainCamera = FindAnyObjectByType<Camera>();
         if (mainCamera == null) return;
 
         // MIGRATED: Check InputManager priority before processing (Background priority for TileSystem)
@@ -245,6 +247,7 @@ public class TileSystem : MonoBehaviour
                 bool isHill = planetGen.IsTileHill(i);
                 float elev = planetGen.GetTileElevation(i);
                 bool isLand = biome != Biome.Ocean && biome != Biome.Seas && biome != Biome.Coast && biome != Biome.River && biome != Biome.Glacier;
+                #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
                 tiles[i] = new HexTileData
                 {
                     biome = biome,
@@ -259,6 +262,7 @@ public class TileSystem : MonoBehaviour
                     occupantId = 0,
                     isMoonTile = false
                 };
+                #pragma warning restore 612, 618
                 fallbackCreated++;
             }
             else
@@ -286,7 +290,10 @@ public class TileSystem : MonoBehaviour
             occMgrObj.planetIndex = planetIndex;
         }
         occMgrObj.Initialize(tileCount);
+        // Legacy migration for old saves - suppress obsolete warning
+        #pragma warning disable 612, 618
         occMgrObj.MigrateLegacyOccupants(tiles);
+        #pragma warning restore 612, 618
         AllocateOwnerColors();
         AllocateFog(tileCount);
     AllocateReligion(tileCount);
@@ -884,11 +891,9 @@ public class TileSystem : MonoBehaviour
     {
         var td = GetTileData(tile); if (td == null) return false;
         if (mustBeLand && !td.isLand) return false;
-        // Movement points removed - tiles are always accessible (movement speed is fatigue-based)
-        int occ = td.occupantId;
+        // TileOccupancyManager is the single source of truth for occupancy
         var occMgr = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-        if (occMgr != null)
-            occ = occMgr.GetOccupantId(tile, layer);
+        int occ = occMgr != null ? occMgr.GetOccupantId(tile, layer) : 0;
         return occ == 0 || occ == unitId;
     }
 

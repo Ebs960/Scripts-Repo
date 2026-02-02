@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Mountain Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Mountain Family
-  albedoArray: {fileID: 18700000, guid: 84bdd1f41b769484891077fa61292b53, type: 2}
-  normalArray: {fileID: 18700000, guid: 8526aad8033f00b45a8dba8e1a062bdf, type: 2}
-  maskArray: {fileID: 18700000, guid: 949e82edb0d10c741a6e9084c87f7b41, type: 2}
+  albedoArray: {fileID: 18700000, guid: a7604d44dd2484c4e857f37183679382, type: 3}
+  normalArray: {fileID: 18700000, guid: d7c10566dff621c47bb26f690848e456, type: 3}
+  maskArray: {fileID: 18700000, guid: 9de9feae32ae6764ba75594c0291e26c, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

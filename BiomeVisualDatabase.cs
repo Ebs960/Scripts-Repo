@@ -8,6 +8,47 @@ public class BiomeVisualDatabase : ScriptableObject
 
     private Dictionary<Biome, BiomeVisualData> lookup;
 
+    // --------------------------- Surface Library Cache (Editor/Runtime) ---------------------------
+    // Building Texture2DArrays is extremely memory-heavy. In multi-planet mode, many systems may call
+    // BuildSurfaceLibrary() repeatedly (and across play sessions if domain reload is disabled).
+    // Cache the built library so we only allocate once per database signature, and provide explicit cleanup.
+    private struct CachedSurfaceLibrary
+    {
+        public string signature;
+        public SurfaceLibrary library;
+    }
+
+    private static readonly Dictionary<int, CachedSurfaceLibrary> _surfaceLibraryCacheByDb = new Dictionary<int, CachedSurfaceLibrary>();
+
+    public static void ClearAllCachedSurfaceLibraries()
+    {
+        foreach (var kvp in _surfaceLibraryCacheByDb)
+        {
+            ReleaseSurfaceLibrary(kvp.Value.library);
+        }
+        _surfaceLibraryCacheByDb.Clear();
+    }
+
+    private static void ReleaseSurfaceLibrary(SurfaceLibrary lib)
+    {
+        if (lib == null) return;
+        DestroyUnityObject(lib.albedoArray);
+        DestroyUnityObject(lib.normalArray);
+        DestroyUnityObject(lib.maskArray);
+        DestroyUnityObject(lib.emissiveArray);
+        lib.albedoArray = null;
+        lib.normalArray = null;
+        lib.maskArray = null;
+        lib.emissiveArray = null;
+    }
+
+    private static void DestroyUnityObject(Object obj)
+    {
+        if (obj == null) return;
+        if (Application.isPlaying) Destroy(obj);
+        else DestroyImmediate(obj, allowDestroyingAssets: false);
+    }
+
     // Surface library returned by BuildSurfaceLibrary()
     public class SurfaceLibrary
     {
@@ -156,6 +197,26 @@ public class BiomeVisualDatabase : ScriptableObject
         {
             Debug.LogWarning("[BiomeVisualDatabase] No variants found in surface families.");
             return null;
+        }
+
+        // Cache lookup: build signature from the database + discovered family order + target size + slice count.
+        // This prevents repeated Texture2DArray allocations (a common cause of 2nd/3rd Play OOM in the editor).
+        int dbId = GetInstanceID();
+        string signature = $"{name}|biomes={biomes.Count}|families={familyEntries.Count}|size={targetW}x{targetH}|totalSlices={total}";
+        if (_surfaceLibraryCacheByDb.TryGetValue(dbId, out var cached) &&
+            cached.library != null &&
+            cached.signature == signature &&
+            cached.library.albedoArray != null &&
+            cached.library.normalArray != null &&
+            cached.library.maskArray != null &&
+            cached.library.emissiveArray != null)
+        {
+            return cached.library;
+        }
+        // If signature changed or cache is invalid, release any previous cached arrays to avoid leaks.
+        if (cached.library != null)
+        {
+            ReleaseSurfaceLibrary(cached.library);
         }
 
         // Create destination flattened arrays
@@ -487,6 +548,9 @@ public class BiomeVisualDatabase : ScriptableObject
         lib.surfaceVariantCounts = variantCounts.ToArray();
         lib.biomeToSurfaceIndex = biomeToSurface;
         lib.biomeForcedVariant = biomeForced;
+
+        // Store cache entry (prevents multi-planet builds from allocating arrays repeatedly).
+        _surfaceLibraryCacheByDb[dbId] = new CachedSurfaceLibrary { signature = signature, library = lib };
 
         return lib;
     }

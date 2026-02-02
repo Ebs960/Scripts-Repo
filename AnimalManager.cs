@@ -421,6 +421,9 @@ return true;
         }
         
         var go = Instantiate(animalPrefab, pos, Quaternion.identity);
+        // Keep hierarchy organized: parent spawned animals under their planet generator.
+        // (Do not change gameplay logic; this is purely scene organization.)
+        if (planet != null) go.transform.SetParent(planet.transform, true);
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
         {

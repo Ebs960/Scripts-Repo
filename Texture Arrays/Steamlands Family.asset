@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Steamlands Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Steamlands Family
-  albedoArray: {fileID: 18700000, guid: 0dce817069f337944b50e56779b70b03, type: 2}
-  normalArray: {fileID: 18700000, guid: 21e58f1e0865af64aa37198903dea2c4, type: 2}
-  maskArray: {fileID: 18700000, guid: 8d2e2bd9747d4e84c91f4c425b0f48bb, type: 2}
+  albedoArray: {fileID: 18700000, guid: 8990ff85a6d5f7b42a7c8d6a49af4dfa, type: 3}
+  normalArray: {fileID: 18700000, guid: b3bc099d1c9d9654ba2beb31c4c55ee3, type: 3}
+  maskArray: {fileID: 18700000, guid: bb4b71aecb4db4b41bc5b7c39021ad2a, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

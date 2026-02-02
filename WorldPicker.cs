@@ -39,6 +39,8 @@ public class WorldPicker : MonoBehaviour
         hitWorldPos = Vector3.zero;
 
         if (targetCamera == null) targetCamera = Camera.main;
+        // HDRP / some scenes may not tag a camera as MainCamera. Fall back to any camera so picking still works.
+        if (targetCamera == null) targetCamera = FindAnyObjectByType<Camera>();
         if (targetCamera == null) return false;
         if (lut == null || lut.Length == 0)
         {

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Taiga Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Taiga Family
-  albedoArray: {fileID: 18700000, guid: ce75de35c9474e7469edd065eb4f8440, type: 2}
-  normalArray: {fileID: 18700000, guid: a6e6d686d3ac4b74e9224279c0d42415, type: 2}
-  maskArray: {fileID: 18700000, guid: 2f6eef72894a8ac43b84f981ecdef194, type: 2}
+  albedoArray: {fileID: 18700000, guid: bc7c09856f3dc054b904d912f593aaf5, type: 3}
+  normalArray: {fileID: 18700000, guid: df93153c85a266c4d80e38d80a3e7333, type: 3}
+  maskArray: {fileID: 18700000, guid: 782b5fd1337d33e4c80e5b28bddd6e1e, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Pluto Tholins Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Pluto Tholins Family
-  albedoArray: {fileID: 18700000, guid: 08c7f99e42eb52c4281aa0ad21bc1f59, type: 2}
-  normalArray: {fileID: 18700000, guid: a7488762362082846b52b86c723599ea, type: 2}
-  maskArray: {fileID: 18700000, guid: 3266a529f73d78b41a15553383b1d3ee, type: 2}
+  albedoArray: {fileID: 18700000, guid: e326a30f238956c44a0b68dfae1977a0, type: 3}
+  normalArray: {fileID: 18700000, guid: 708c1386d375cb74bb486cb60fb99010, type: 3}
+  maskArray: {fileID: 18700000, guid: 470d7c2b300a56e44bd74437709fc27e, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

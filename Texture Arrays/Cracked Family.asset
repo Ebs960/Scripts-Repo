@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Cracked Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Cracked Family
-  albedoArray: {fileID: 18700000, guid: d429553da3d65424a952d72890093f12, type: 2}
-  normalArray: {fileID: 18700000, guid: 492210a799ad16840a4acaa7b5e5b0f4, type: 2}
-  maskArray: {fileID: 18700000, guid: 3bc60c17bf6e88c46a56405517636cc5, type: 2}
+  albedoArray: {fileID: 18700000, guid: 0525b11d6bbb5b548b94acb73e4783fb, type: 3}
+  normalArray: {fileID: 18700000, guid: bae26514c26056a4680dca8946e73e51, type: 3}
+  maskArray: {fileID: 18700000, guid: f152e097ef8dca2469ed215fa77df28a, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1
