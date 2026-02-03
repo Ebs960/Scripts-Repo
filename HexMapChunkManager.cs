@@ -26,8 +26,10 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     
     [Header("Texture Settings")]
+    [Tooltip("Width of biome texture arrays (used for shader arrays and baking).")]
     [SerializeField] private int textureWidth = 2048;
-    [SerializeField] private int textureHeight = 1024;
+    [Tooltip("Height of biome texture arrays (used for shader arrays and baking). Use 2048 for 2048x2048 RGBA32 arrays.")]
+    [SerializeField] private int textureHeight = 2048;
     
     [Header("Chunk Settings")]
     [Tooltip("Number of chunk columns (X axis). More columns = finer wrap granularity.")]
@@ -474,7 +476,7 @@ TrySubscribeToSurfaceReady(gen);
         int count = visuals.Count;
         if (count == 0) return;
 
-        var lib = biomeVisualDatabase.BuildSurfaceLibrary();
+        var lib = biomeVisualDatabase.BuildSurfaceLibrary(textureWidth, textureHeight);
         if (lib != null)
         {
             // Use flattened arrays as the texture sources
@@ -594,6 +596,7 @@ TrySubscribeToSurfaceReady(gen);
             sizeSource = fallbackAlbedo;
         }
 
+        // Fallback path uses first source dimensions (no scaling here). For 2048x2048 arrays use surface families so BuildSurfaceLibrary(override) is used.
         int width = sizeSource.width;
         int height = sizeSource.height;
 

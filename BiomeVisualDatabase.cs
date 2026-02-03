@@ -97,7 +97,9 @@ public class BiomeVisualDatabase : ScriptableObject
     /// Build a flattened surface library from referenced SurfaceFamilyData and legacy per-biome textures.
     /// Returns null on failure.
     /// </summary>
-    public SurfaceLibrary BuildSurfaceLibrary()
+    /// <param name="overrideWidth">If &gt; 0, force texture array width (e.g. 2048). Otherwise inferred from first source.</param>
+    /// <param name="overrideHeight">If &gt; 0, force texture array height (e.g. 2048). Otherwise inferred from first source.</param>
+    public SurfaceLibrary BuildSurfaceLibrary(int overrideWidth = 0, int overrideHeight = 0)
     {
         if (biomes == null) return null;
 
@@ -144,26 +146,34 @@ public class BiomeVisualDatabase : ScriptableObject
             }
         }
 
-        // Determine target slice size
+        // Determine target slice size: use override when specified, otherwise infer from first source
         int targetW = 0, targetH = 0;
-        foreach (var entry in familyEntries)
+        if (overrideWidth > 0 && overrideHeight > 0)
         {
-            if (entry is SurfaceFamilyData sf)
+            targetW = overrideWidth;
+            targetH = overrideHeight;
+        }
+        else
+        {
+            foreach (var entry in familyEntries)
             {
-                if (sf.albedoArray != null)
+                if (entry is SurfaceFamilyData sf)
                 {
-                    targetW = sf.albedoArray.width;
-                    targetH = sf.albedoArray.height;
-                    break;
+                    if (sf.albedoArray != null)
+                    {
+                        targetW = sf.albedoArray.width;
+                        targetH = sf.albedoArray.height;
+                        break;
+                    }
                 }
-            }
-            else if (entry is BiomeVisualData bv)
-            {
-                if (bv.albedo != null)
+                else if (entry is BiomeVisualData bv)
                 {
-                    targetW = bv.albedo.width;
-                    targetH = bv.albedo.height;
-                    break;
+                    if (bv.albedo != null)
+                    {
+                        targetW = bv.albedo.width;
+                        targetH = bv.albedo.height;
+                        break;
+                    }
                 }
             }
         }
