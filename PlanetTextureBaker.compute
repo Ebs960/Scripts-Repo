@@ -49,6 +49,10 @@ void BakeTextures (uint3 id : SV_DispatchThreadID)
     int biomeIndex = _TileBiomeIndices[tileIndex];
     float2 uv = _TileUVs[tileIndex];
     
+    // Normalize UVs defensively (repeat U, clamp V)
+    uv.x = frac(uv.x);
+    uv.y = saturate(uv.y);
+    
     // Clamp biome index
     if (biomeIndex < 0 || biomeIndex >= _MaxBiomeValue)
         biomeIndex = 0;
@@ -59,7 +63,8 @@ void BakeTextures (uint3 id : SV_DispatchThreadID)
     if (_RenderMode == 0) // BiomeColors mode
     {
         // Look up color from biome color lookup table
-        if (_BiomeColorLookup != NULL && biomeIndex >= 0 && biomeIndex < _MaxBiomeValue)
+        // Note: StructuredBuffers can't be NULL-checked in HLSL, so we rely on bounds checking
+        if (biomeIndex >= 0 && biomeIndex < _MaxBiomeValue)
         {
             biomeColor = _BiomeColorLookup[biomeIndex];
         }
@@ -72,7 +77,10 @@ void BakeTextures (uint3 id : SV_DispatchThreadID)
     else if (_RenderMode == 1) // BiomeTextures mode
     {
         // Sample from texture array using biome-to-texture-index mapping
-        if (_BiomeTextureArray != NULL && _BiomeToTextureIndex != NULL)
+        // Note: We can't NULL-check StructuredBuffers or Texture2DArray in HLSL
+        // We rely on _BiomeTextureArraySize > 0 to indicate array is available
+        
+        if (_BiomeTextureArraySize > 0 && biomeIndex >= 0 && biomeIndex < _MaxBiomeValue)
         {
             // Look up texture array index for this biome
             int textureArrayIndex = _BiomeToTextureIndex[biomeIndex];
@@ -80,27 +88,27 @@ void BakeTextures (uint3 id : SV_DispatchThreadID)
             if (textureArrayIndex >= 0 && textureArrayIndex < _BiomeTextureArraySize)
             {
                 // Sample from texture array at the mapped index
-                biomeColor = _BiomeTextureArray.SampleLevel(sampler_BiomeTextureArray, float3(uv, textureArrayIndex), 0);
+                // HLSL constructor expects float, so cast slice index explicitly (DX11 is stricter here).
+                biomeColor = _BiomeTextureArray.SampleLevel(sampler_BiomeTextureArray, float3(uv, (float)textureArrayIndex), 0);
             }
-            else if (_TileBiomeColors != NULL)
+            else
             {
                 // Biome has no texture assigned, fallback to pre-computed color
                 biomeColor = _TileBiomeColors[tileIndex];
             }
         }
-        else if (_TileBiomeColors != NULL)
+        else
         {
-            // Fallback to pre-computed colors if texture array or mapping unavailable
+            // Fallback to pre-computed colors if texture array unavailable
             biomeColor = _TileBiomeColors[tileIndex];
         }
     }
     else if (_RenderMode == 2) // CustomTexture mode
     {
         // Sample from single custom texture using UV
-        if (_CustomTexture != NULL)
-        {
-            biomeColor = _CustomTexture.SampleLevel(sampler_CustomTexture, uv, 0);
-        }
+        // Note: We can't NULL-check Texture2D in HLSL, so we always try to sample
+        // If texture isn't set, this will return black/transparent
+        biomeColor = _CustomTexture.SampleLevel(sampler_CustomTexture, uv, 0);
     }
     
     // Sample elevation
