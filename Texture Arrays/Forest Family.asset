@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Forest Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Forest Family
-  albedoArray: {fileID: 18700000, guid: 857fdb4a62a58c246842edfa451faff4, type: 3}
-  normalArray: {fileID: 18700000, guid: d42b8644fc4bffd49b701493746e4651, type: 3}
-  maskArray: {fileID: 18700000, guid: 0b6292dd5bdc773409a225b5f204d7ec, type: 3}
+  albedoArray: {fileID: 18700000, guid: ad97966f93a1a6348a39fd8419071d83, type: 3}
+  normalArray: {fileID: 18700000, guid: b53f29486d2422f46a9613f3ff562f4f, type: 3}
+  maskArray: {fileID: 18700000, guid: 16feb00721592e147a99b79622e63446, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

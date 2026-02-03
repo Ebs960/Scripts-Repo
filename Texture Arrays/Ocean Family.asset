@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Ocean Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Ocean Family
-  albedoArray: {fileID: 18700000, guid: 92f198f0223133149aa2d0cba43bac76, type: 3}
-  normalArray: {fileID: 18700000, guid: 330fdd6e620ff05408a3cfbd7b736282, type: 3}
-  maskArray: {fileID: 18700000, guid: 68455eb6c7a005d41bde98a438685fba, type: 3}
+  albedoArray: {fileID: 18700000, guid: ef112ba3450a55244b22ef096e8b1e85, type: 3}
+  normalArray: {fileID: 18700000, guid: 017a7ba7b6b2bcd4fa8f575f1791a5b2, type: 3}
+  maskArray: {fileID: 18700000, guid: 0244cf4a6a083bd488dc395f60150e2f, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

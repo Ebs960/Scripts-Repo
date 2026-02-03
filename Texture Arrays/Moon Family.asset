@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Moon Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Moon Family
-  albedoArray: {fileID: 18700000, guid: 1f074a57f89490e47a3a93af719d8aa2, type: 3}
-  normalArray: {fileID: 18700000, guid: bcada8db077e3134c9a5afadcc419e07, type: 3}
-  maskArray: {fileID: 18700000, guid: 2ed642bbc01902448be7b048120af18d, type: 3}
+  albedoArray: {fileID: 18700000, guid: 4151dfca025764140a9d66087cd07c84, type: 3}
+  normalArray: {fileID: 18700000, guid: 231989d244118d54883014a80ca6de01, type: 3}
+  maskArray: {fileID: 18700000, guid: 369867fc54d23af4c85193643fa5c84e, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

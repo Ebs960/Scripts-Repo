@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Grass Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Grass Family
-  albedoArray: {fileID: 18700000, guid: b2c40940bd083c7408332a70cca7a636, type: 3}
-  normalArray: {fileID: 18700000, guid: 00ad5c5ebb2156a4f92936eaecb1e85d, type: 3}
-  maskArray: {fileID: 18700000, guid: bf71bb6124723ac4683831fbb0bc5009, type: 3}
+  albedoArray: {fileID: 18700000, guid: d0b170398c45815479c37279cf8ff7ed, type: 3}
+  normalArray: {fileID: 18700000, guid: f673617c353309b46b541a075ead6855, type: 3}
+  maskArray: {fileID: 18700000, guid: e55c4b1e6f86d9642afd6f63842a37aa, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

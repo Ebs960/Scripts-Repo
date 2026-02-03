@@ -74,12 +74,8 @@ public class HexMapChunkManager : MonoBehaviour
     private Quaternion _lastTransformRot;
     private Vector3 _lastTransformScale;
     
-    [Header("Hex Grid Outline")]
-    [SerializeField] private bool showHexGrid = false;
-    [SerializeField] private Color hexGridColor = new Color(0.1f, 0.1f, 0.1f, 0.5f);
-    [SerializeField, Range(0.01f, 0.1f)] private float hexGridWidth = 0.03f;
-    [Tooltip("Number of hex tiles across the map width (adjust to match your tile count).")]
-    [SerializeField] private float hexScale = 80f;
+    // NOTE: Hex grid overlay was removed - shader graph doesn't support it.
+    // To add hex grid, create a separate HexGridOverlay script using line renderers or decals.
     
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
@@ -932,9 +928,6 @@ TrySubscribeToSurfaceReady(gen);
 
         ApplyBiomeMaterialSettings();
         
-        // Apply hex grid settings
-        ApplyHexGridSettings();
-        
         // Create and apply LUT texture for tile highlighting
         CreateAndApplyLUTTexture();
     }
@@ -977,55 +970,8 @@ TrySubscribeToSurfaceReady(gen);
         }
 }
     
-    /// <summary>
-    /// Apply hex grid settings to the shared material.
-    /// </summary>
-    private void ApplyHexGridSettings()
-    {
-        if (sharedMaterial == null) return;
-        
-        sharedMaterial.SetFloat("_EnableHexGrid", showHexGrid ? 1f : 0f);
-        sharedMaterial.SetColor("_HexGridColor", hexGridColor);
-        sharedMaterial.SetFloat("_HexGridWidth", hexGridWidth);
-        sharedMaterial.SetFloat("_HexScale", hexScale);
-    }
-    
-    /// <summary>
-    /// Toggle hex grid visibility at runtime.
-    /// </summary>
-    public void SetHexGridVisible(bool visible)
-    {
-        showHexGrid = visible;
-        ApplyHexGridSettings();
-    }
-    
-    /// <summary>
-    /// Configure hex grid appearance at runtime.
-    /// </summary>
-    public void ConfigureHexGrid(bool visible, Color? color = null, float? lineWidth = null, float? scale = null)
-    {
-        showHexGrid = visible;
-        if (color.HasValue) hexGridColor = color.Value;
-        if (lineWidth.HasValue) hexGridWidth = Mathf.Clamp(lineWidth.Value, 0.01f, 0.1f);
-        if (scale.HasValue) hexScale = scale.Value;
-        ApplyHexGridSettings();
-    }
-    
-    /// <summary>
-    /// Auto-calculate hex scale based on the actual tile count.
-    /// Call this after building to match grid lines to actual hex tiles.
-    /// </summary>
-    public void AutoCalculateHexScale()
-    {
-        if (grid != null)
-        {
-            // Calculate based on tiles across the map width
-            // For pointy-top hexes, width = sqrt(3) * radius, so tiles across ≈ mapWidth / (sqrt(3) * hexRadius)
-            // This is approximate - adjust based on your hex grid setup
-            hexScale = grid.Width;
-            ApplyHexGridSettings();
-}
-    }
+    // Hex grid methods removed - shader graph doesn't support these properties.
+    // To implement hex grid, create a separate HexGridOverlay component.
     
     private void CreateColumnParents()
     {
@@ -1152,10 +1098,17 @@ TrySubscribeToSurfaceReady(gen);
         }
     }
     
+    /// <summary>
+    /// Apply fog and ownership overlay textures to the shared material.
+    /// NOTE: The current shader graph does NOT have _FogMask, _EnableFog, _OwnershipOverlay, _EnableOwnership properties.
+    /// These are set here for future compatibility when the shader is updated, or for alternative rendering approaches.
+    /// Consider using a separate overlay pass or decal system for fog/ownership until the shader graph is extended.
+    /// </summary>
     private void ApplyOverlayTexturesToMaterial()
     {
         if (sharedMaterial == null || terrainOverlayGPU == null) return;
         
+        // NOTE: These properties don't exist in the current shader graph - they're set for future compatibility
         var fogMask = terrainOverlayGPU.GetFogMaskTexture();
         if (fogMask != null)
         {

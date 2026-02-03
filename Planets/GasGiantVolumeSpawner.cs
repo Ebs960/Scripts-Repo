@@ -1,40 +1,55 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Simple spawner + pool that enables a Volume prefab for planets within range.
+/// <summary>
+/// Manages volumetric cloud effects for gas giant planets.
+/// Activation is controlled via SetVolumetricsEnabled() from PlayerUI, NOT by camera distance.
+/// Only activates on planets that have an Atmosphere layer and no Surface layer.
+/// </summary>
 public class GasGiantVolumeSpawner : MonoBehaviour
 {
     [Tooltip("Prefab containing a Volume component and GasGiantVolumetricController")]
     public GameObject volumePrefab;
 
-    [Tooltip("Maximum camera distance at which the volumetric layer will be created/enabled")]
-    public float spawnDistance = 20000f;
-
     [Tooltip("Number of pooled instances to keep ready to avoid GC spikes")]
     public int poolSize = 2;
 
-    Camera cam;
     List<GameObject> pool = new List<GameObject>();
     GameObject activeInstance;
+    
+    /// <summary>
+    /// Whether volumetrics are currently enabled (set via UI toggle)
+    /// </summary>
+    public bool IsVolumetricsEnabled => activeInstance != null && activeInstance.activeSelf;
 
     void Start()
     {
-        cam = Camera.main;
         // Pre-warm pool
-        for (int i = 0; i < poolSize; i++)
+        if (volumePrefab != null)
         {
-            var go = Instantiate(volumePrefab);
-            go.SetActive(false);
-            pool.Add(go);
+            for (int i = 0; i < poolSize; i++)
+            {
+                var go = Instantiate(volumePrefab);
+                go.SetActive(false);
+                pool.Add(go);
+            }
+            Debug.Log($"[GasGiantVolumeSpawner] Pool initialized size={pool.Count}");
         }
-        Debug.Log($"[GasGiantVolumeSpawner] Pool initialized size={pool.Count} spawnDistance={spawnDistance}");
+        else
+        {
+            Debug.LogWarning("[GasGiantVolumeSpawner] volumePrefab is not assigned. Volumetric clouds will not work.");
+        }
     }
 
-    void Update()
+    // NOTE: Update() removed - volumetrics are now controlled via SetVolumetricsEnabled() from PlayerUI
+
+    /// <summary>
+    /// Enable or disable volumetric clouds. Called from PlayerUI when toggling atmosphere layer.
+    /// </summary>
+    /// <param name="enabled">True to show volumetric clouds, false to hide them</param>
+    public void SetVolumetricsEnabled(bool enabled)
     {
-        if (cam == null || volumePrefab == null) return;
-        float dist = Vector3.Distance(cam.transform.position, transform.position);
-        if (dist <= spawnDistance)
+        if (enabled)
         {
             EnsureInstanceActive();
         }

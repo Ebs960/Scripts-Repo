@@ -319,9 +319,14 @@ public class BiomeVisualDatabase : ScriptableObject
                     }
                     else
                     {
-                        // fill white
-                        var white = Texture2D.whiteTexture;
+                        // Create full-size fallback albedo (white)
+                        var white = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
+                        var whitePixels = new Color[targetW * targetH];
+                        for (int p = 0; p < whitePixels.Length; p++) whitePixels[p] = Color.white;
+                        white.SetPixels(whitePixels);
+                        white.Apply(true, false);
                         Graphics.CopyTexture(white, 0, 0, albedoArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(white);
                     }
 
                     if (sf.normalArray != null && v < sf.normalArray.depth)
@@ -354,10 +359,15 @@ public class BiomeVisualDatabase : ScriptableObject
                     }
                     else
                     {
-                        var flat = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
-                        flat.SetPixel(0, 0, new Color(0.5f, 0.5f, 1f));
-                        flat.Apply();
+                        // Create full-size fallback normal (flat blue = no displacement)
+                        var flat = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                        var flatColor = new Color(0.5f, 0.5f, 1f, 1f);
+                        var flatPixels = new Color[targetW * targetH];
+                        for (int p = 0; p < flatPixels.Length; p++) flatPixels[p] = flatColor;
+                        flat.SetPixels(flatPixels);
+                        flat.Apply(true, false);
                         Graphics.CopyTexture(flat, 0, 0, normalArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(flat);
                     }
 
                     if (sf.maskArray != null && v < sf.maskArray.depth)
@@ -390,10 +400,15 @@ public class BiomeVisualDatabase : ScriptableObject
                     }
                     else
                     {
-                        var def = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
-                        def.SetPixel(0, 0, new Color(0f, 1f, 0f, 0.5f));
-                        def.Apply();
+                        // Create full-size fallback mask (R=metallic=0, G=AO=1, B=unused=0, A=smoothness=0.5)
+                        var def = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                        var defColor = new Color(0f, 1f, 0f, 0.5f);
+                        var defPixels = new Color[targetW * targetH];
+                        for (int p = 0; p < defPixels.Length; p++) defPixels[p] = defColor;
+                        def.SetPixels(defPixels);
+                        def.Apply(true, false);
                         Graphics.CopyTexture(def, 0, 0, maskArray, writeSlice, 0);
+                        UnityEngine.Object.Destroy(def);
                     }
 
                     // emissive
@@ -474,7 +489,14 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    Graphics.CopyTexture(Texture2D.whiteTexture, 0, 0, albedoArray, writeSlice, 0);
+                    // Create full-size fallback albedo (white)
+                    var white = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
+                    var whitePixels = new Color[targetW * targetH];
+                    for (int p = 0; p < whitePixels.Length; p++) whitePixels[p] = Color.white;
+                    white.SetPixels(whitePixels);
+                    white.Apply(true, false);
+                    Graphics.CopyTexture(white, 0, 0, albedoArray, writeSlice, 0);
+                    UnityEngine.Object.Destroy(white);
                 }
 
                 if (bv.normal != null)
@@ -502,10 +524,15 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    var flat = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
-                    flat.SetPixel(0, 0, new Color(0.5f, 0.5f, 1f));
-                    flat.Apply();
+                    // Create full-size fallback normal (flat blue = no displacement)
+                    var flat = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                    var flatColor = new Color(0.5f, 0.5f, 1f, 1f);
+                    var flatPixels = new Color[targetW * targetH];
+                    for (int p = 0; p < flatPixels.Length; p++) flatPixels[p] = flatColor;
+                    flat.SetPixels(flatPixels);
+                    flat.Apply(true, false);
                     Graphics.CopyTexture(flat, 0, 0, normalArray, writeSlice, 0);
+                    UnityEngine.Object.Destroy(flat);
                 }
 
                 if (bv.maskMap != null)
@@ -533,13 +560,18 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    var def = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
-                    def.SetPixel(0, 0, new Color(0f, 1f, 0f, 0.5f));
-                    def.Apply();
+                    // Create full-size fallback mask (R=metallic=0, G=AO=1, B=unused=0, A=smoothness=0.5)
+                    var def = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
+                    var defColor = new Color(0f, 1f, 0f, 0.5f);
+                    var defPixels = new Color[targetW * targetH];
+                    for (int p = 0; p < defPixels.Length; p++) defPixels[p] = defColor;
+                    def.SetPixels(defPixels);
+                    def.Apply(true, false);
                     Graphics.CopyTexture(def, 0, 0, maskArray, writeSlice, 0);
+                    UnityEngine.Object.Destroy(def);
                 }
 
-                    // emissive: legacy per-biome BV has no emissive texture, fill black (use matching fallback)
+                // emissive: legacy per-biome BV has no emissive texture, fill black (use matching fallback)
                     Graphics.CopyTexture(fallbackEmissive, 0, 0, emissiveArray, writeSlice, 0);
 
                 writeSlice++;

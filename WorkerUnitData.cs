@@ -28,6 +28,11 @@ public class WorkerUnitData : ScriptableObject
     public int baseAttack = 0;
     public int baseDefense = 0;
     public bool canFoundCity;
+    
+    [Header("Vision")]
+    [Tooltip("How many tiles this unit can see (reveals fog of war). Default is 2 tiles.")]
+    [Range(1, 10)]
+    public int sightRange = 2;
     [Tooltip("Can harvest resources that require special skills/equipment")]
     public bool canHarvestSpecialResources = false;
     [Tooltip("Can forage resources from unimproved tiles")]

@@ -32,6 +32,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scienceYieldText;
     [SerializeField] private TextMeshProUGUI cultureYieldText;
     [SerializeField] private TextMeshProUGUI policyPointYieldText;
+    [SerializeField] private TextMeshProUGUI faithYieldText;
 
     [Header("Player Panel - Resources Inventory")]
     [SerializeField] private Transform resourceListContainer;
@@ -392,12 +393,14 @@ currentCiv = civ;
         int totalScience = SumCityYield(civ, city => city.GetSciencePerTurn());
         int totalCulture = SumCityYield(civ, city => city.GetCulturePerTurn());
         int totalPolicyPoints = SumCityYield(civ, city => city.GetPolicyPointPerTurn());
+        int totalFaith = SumCityYield(civ, city => city.GetFaithPerTurn());
 
         if (foodYieldText != null) foodYieldText.text = $"+{totalFood}";
         if (goldYieldText != null) goldYieldText.text = $"+{totalGold}";
         if (scienceYieldText != null) scienceYieldText.text = $"+{totalScience}";
         if (cultureYieldText != null) cultureYieldText.text = $"+{totalCulture}";
         if (policyPointYieldText != null) policyPointYieldText.text = $"+{totalPolicyPoints}";
+        if (faithYieldText != null) faithYieldText.text = $"+{totalFaith}";
 
         // Inventory - Use the existing ResourceManager to get the civilization's resource inventory
         PopulateResourceList(civ);
@@ -482,77 +485,118 @@ currentCiv = civ;
         return FindAnyObjectByType<PlanetGenerator>();
     }
 
-    private void ToggleSurfaceLayer()
+    private LayerManager GetActiveLayerManager()
     {
         var gen = GetActivePlanetGenerator();
-        if (gen == null)
+        if (gen == null) return null;
+        var lm = gen.GetComponent<LayerManager>();
+        if (lm == null)
         {
-            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Surface layer.");
+            Debug.LogError("PlayerUI: No LayerManager found on active PlanetGenerator. Add LayerManager to the same GameObject as PlanetGenerator.");
+        }
+        return lm;
+    }
+
+    private void ToggleSurfaceLayer()
+    {
+        var lm = GetActiveLayerManager();
+        if (lm == null)
+        {
+            Debug.LogError("PlayerUI: No LayerManager available to toggle Surface layer.");
             return;
         }
 
-        if (gen.surfaceRoot == null)
+        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Surface))
         {
-            Debug.LogWarning("PlayerUI: PlanetGenerator.surfaceRoot is not assigned.");
+            Debug.LogWarning("PlayerUI: This planet does not support the Surface layer.");
             return;
         }
 
-        bool enabled = !gen.surfaceRoot.activeSelf;
-        gen.surfaceRoot.SetActive(enabled);
+        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Surface);
+        lm.SetLayerVisible(GameManager.PlanetLayerType.Surface, enabled);
         Debug.Log($"PlayerUI: Surface layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
-
-        // If gas giant visuals are configured, follow the rule: enable gas giant only when atmosphere exists and surface is disabled
-        if (gen.gasGiantRenderer != null && gen.atmosphereRoot != null)
-        {
-            bool shouldShowGasGiant = gen.atmosphereRoot.activeSelf && !gen.surfaceRoot.activeSelf;
-            try { gen.gasGiantRenderer.gameObject.SetActive(shouldShowGasGiant); } catch { }
-        }
     }
 
     private void ToggleUnderwaterLayer()
     {
-        var gen = GetActivePlanetGenerator();
-        if (gen == null)
+        var lm = GetActiveLayerManager();
+        if (lm == null)
         {
-            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Underwater layer.");
+            Debug.LogError("PlayerUI: No LayerManager available to toggle Underwater layer.");
             return;
         }
 
-        if (gen.underwaterRoot == null)
+        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Underwater))
         {
-            Debug.LogWarning("PlayerUI: PlanetGenerator.underwaterRoot is not assigned.");
+            Debug.LogWarning("PlayerUI: This planet does not support the Underwater layer.");
             return;
         }
 
-        bool enabled = !gen.underwaterRoot.activeSelf;
-        gen.underwaterRoot.SetActive(enabled);
+        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Underwater);
+        lm.SetLayerVisible(GameManager.PlanetLayerType.Underwater, enabled);
         Debug.Log($"PlayerUI: Underwater layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
     }
 
     private void ToggleAtmosphereLayer()
     {
-        var gen = GetActivePlanetGenerator();
-        if (gen == null)
+        var lm = GetActiveLayerManager();
+        if (lm == null)
         {
-            Debug.LogError("PlayerUI: No PlanetGenerator available to toggle Atmosphere layer.");
+            Debug.LogError("PlayerUI: No LayerManager available to toggle Atmosphere layer.");
             return;
         }
 
-        if (gen.atmosphereRoot == null)
+        // Check if planet actually has atmosphere layer
+        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Atmosphere))
         {
-            Debug.LogWarning("PlayerUI: PlanetGenerator.atmosphereRoot is not assigned.");
+            Debug.LogWarning("PlayerUI: This planet does not have an Atmosphere layer.");
             return;
         }
 
-        bool enabled = !gen.atmosphereRoot.activeSelf;
-        gen.atmosphereRoot.SetActive(enabled);
+        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Atmosphere);
+        lm.SetLayerVisible(GameManager.PlanetLayerType.Atmosphere, enabled);
         Debug.Log($"PlayerUI: Atmosphere layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+    }
 
-        // Follow gas giant rule: only show gas giant when atmosphere on and surface off
-        if (gen.gasGiantRenderer != null && gen.surfaceRoot != null)
+    /// <summary>
+    /// Update layer toggle button visibility based on current planet's supported layers.
+    /// Call this when switching planets.
+    /// </summary>
+    public void UpdateLayerButtonVisibility()
+    {
+        var lm = GetActiveLayerManager();
+        if (lm == null) return;
+
+        // Show/hide atmosphere button based on whether planet has atmosphere layer
+        if (atmosphereToggleButton != null)
         {
-            bool shouldShowGasGiant = gen.atmosphereRoot.activeSelf && !gen.surfaceRoot.activeSelf;
-            try { gen.gasGiantRenderer.gameObject.SetActive(shouldShowGasGiant); } catch { }
+            bool hasAtmosphere = lm.IsLayerSupported(GameManager.PlanetLayerType.Atmosphere);
+            atmosphereToggleButton.gameObject.SetActive(hasAtmosphere);
+        }
+
+        // Show/hide underwater button based on whether planet has underwater layer
+        if (underwaterToggleButton != null)
+        {
+            bool hasUnderwater = lm.IsLayerSupported(GameManager.PlanetLayerType.Underwater);
+            underwaterToggleButton.gameObject.SetActive(hasUnderwater);
+        }
+
+        // Surface button is always shown (most planets have surface)
+        // but could be hidden for pure gas giants if desired
+    }
+
+    /// <summary>
+    /// Disable all volumetric effects. Call when switching planets or cleaning up.
+    /// </summary>
+    public void DisableAllVolumetrics()
+    {
+        var lm = GetActiveLayerManager();
+        if (lm == null) return;
+
+        // LayerManager owns volumetrics; disabling Atmosphere visibility is the clean "no-volumetrics" state.
+        if (lm.IsLayerSupported(GameManager.PlanetLayerType.Atmosphere))
+        {
+            lm.SetLayerVisible(GameManager.PlanetLayerType.Atmosphere, false);
         }
     }
 

@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5925504326619234538
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2077881031370820829}
+  - component: {fileID: 5169407846644934013}
+  m_Layer: 0
+  m_Name: Game Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2077881031370820829
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925504326619234538}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.3569984, y: 0, z: 395}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5169407846644934013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925504326619234538}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08a5353c72672444ea1c2562e1245e13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  planetGeneratorPrefab: {fileID: 5948921737104557089, guid: 09392ee2ad8a51640a8a88d6e0043fd5, type: 3}
+  genericPlanetPrefab: {fileID: 5948921737104557089, guid: 09392ee2ad8a51640a8a88d6e0043fd5, type: 3}
+  civilizationManagerPrefab: {fileID: 5078762782248899889, guid: d3086756317f18443b83fc6b9506ac20, type: 3}
+  climateManagerPrefab: {fileID: 3021605306762045428, guid: 0d1557b9054c3494baee41b4003347cd, type: 3}
+  turnManagerPrefab: {fileID: 5893386904891374589, guid: 93285b9ea8dd91240a2c2c09466d694e, type: 3}
+  unitSelectionManagerPrefab: {fileID: 220189038093199564, guid: e037bf4fd4ef9aa4eaf354ad1ab7d7f4, type: 3}
+  unitMovementControllerPrefab: {fileID: 8449357187526985390, guid: 2d554e2a7b20e9d499a2b44c9a23a232, type: 3}
+  policyManagerPrefab: {fileID: 5827348004349737857, guid: f148bf5fe5f0aab5fbf465be2bc8e8f5, type: 3}
+  diplomacyManagerPrefab: {fileID: 7713998864883962541, guid: 484ab6d245f898545af8d36421f8e998, type: 3}
+  resourceManagerPrefab: {fileID: 9096172635684676849, guid: c19fc2cb83ed3b4468207dbed9136ff0, type: 3}
+  religionManagerPrefab: {fileID: 2327436067432216681, guid: 33555c2e7db54a64e9447be01085b1c3, type: 3}
+  animalManagerPrefab: {fileID: 5037077973696526078, guid: 93f46d7f65b709447aa3d9b3106f8d32, type: 3}
+  ancientRuinsManagerPrefab: {fileID: 4044188429278125522, guid: c7c5601f29cee5a40b53de2cd271a818, type: 3}
+  spaceRouteManagerPrefab: {fileID: 8982728844980242529, guid: d410c223fef729f4cbc5ab12b96ec1ee, type: 3}
+  selectedPlayerCivilizationData: {fileID: 0}
+  numberOfCivilizations: 4
+  numberOfCityStates: 2
+  numberOfTribes: 2
+  animalPrevalence: 3
+  mapSize: 3
+  generateMoon: 1
+  overrideContinentMinDistance: 0
+  continentMinDistanceOverrideTiles: 6
+  planetGenerator: {fileID: 0}
+  civilizationManager: {fileID: 0}
+  climateManager: {fileID: 0}
+  diplomacyManager: {fileID: 0}
+  enableMultiPlanetSystem: 1
+  maxPlanets: 14
+  useRealSolarSystem: 1
+  restrictDiagnosticsToFirstPlanet: 1
+  currentPlanetIndex: 0
+  gameInProgress: 0
+  currentTurn: 0
+  turnManager: {fileID: 0}
+  planetConfigs:
+  - {fileID: 11400000, guid: 280af2c3d0a34c84d9b9151b0cbc4ebd, type: 2}
+  - {fileID: 11400000, guid: 7751c15bf6c686e41bbe61c9db5ebcb0, type: 2}
+  - {fileID: 11400000, guid: 740ab9ca7e444e84186623e4d83787c9, type: 2}
+  - {fileID: 11400000, guid: 600a333340e0816449c362971fbffe6e, type: 2}
+  - {fileID: 11400000, guid: 841a290ba429d0841973aa212239f2b2, type: 2}
+  - {fileID: 11400000, guid: 9a060c2578193b94abddc98fb21b1f1d, type: 2}
+  - {fileID: 11400000, guid: 28b00184f1cb94342abe0a919ef399b0, type: 2}
+  - {fileID: 11400000, guid: 58c8fcab27603e845902322126c224a2, type: 2}
+  - {fileID: 11400000, guid: da273905ba95bb3479b9045b2059a16e, type: 2}
+  - {fileID: 11400000, guid: deafb649ee381f64f8ae3ddca4fa2ccd, type: 2}
+  - {fileID: 11400000, guid: a195d7dac848ccf4181058e8a87993e3, type: 2}
+  - {fileID: 11400000, guid: 458f70b0cc7a5284796af510d8a95903, type: 2}
+  - {fileID: 11400000, guid: ab34978db1ac01e409d57ca38172f215, type: 2}
+  - {fileID: 11400000, guid: 08673f7e6917cdc4ba5502d71aad78fd, type: 2}
+  playerUIPrefab: {fileID: 2503341999680901819, guid: c85c2eb93c358504b88e863b70f3dbe2, type: 3}
+  planetaryCameraPrefab: {fileID: 2381392174087293691, guid: fe35e703a26a8fa4c8877f56ac020fe2, type: 3}
+  spaceLoadingPanelPrefab: {fileID: 6133071633519259708, guid: beab29331181187429f0c6b672d538b9, type: 3}
+  loadingPanelPrefab: {fileID: 5188036789961826290, guid: 1fdb7130e1f913242b73dd1a5665e796, type: 3}
+  minimapColorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
+  uiClickClip: {fileID: 8300000, guid: 269c352e6d5cd9841a5489e931292248, type: 3}
+  uiClickVolume: 1
+  hexTiles: []
+  flatMapWidth: 512
+  flatMapHeight: 256
+  flatPlaneY: 0
+  terrainDisplacementStrength: 5

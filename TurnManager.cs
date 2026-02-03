@@ -134,6 +134,12 @@ var gameManager = GameManager.Instance;
 
         civ.BeginTurn(round);
 
+        // Fog of War: recompute vision at start of this civ's turn (based on current unit/army positions).
+        if (UnitVisionManager.Instance != null)
+        {
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(civ));
+        }
+
         if (ImprovementManager.Instance != null)
             ImprovementManager.Instance.ProcessTurn(civ);
         

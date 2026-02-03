@@ -26,7 +26,7 @@ public class TerrainOverlayGPU : MonoBehaviour
     [Tooltip("Fog mask texture resolution (should match terrain texture resolution)")]
     [SerializeField] private int fogTextureWidth = 2048;
     [Tooltip("Fog mask texture resolution (should match terrain texture resolution)")]
-    [SerializeField] private int fogTextureHeight = 1024;
+    [SerializeField] private int fogTextureHeight = 2048;
     
     [Header("Ownership Overlay")]
     [Tooltip("Enable ownership overlay")]

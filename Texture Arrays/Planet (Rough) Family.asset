@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Planet (Rough) Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Planet (Rough) Family
-  albedoArray: {fileID: 18700000, guid: f99bd850c6d8c8f4d846c5f1322ac9aa, type: 3}
-  normalArray: {fileID: 18700000, guid: afdb88f7fe7f86c4197056097bcff0c1, type: 3}
-  maskArray: {fileID: 18700000, guid: 8e73370c4ef35ce4b9c5da0a1fa8d597, type: 3}
+  albedoArray: {fileID: 18700000, guid: 0dafaa49d06ff8646bd67ea5fca192e5, type: 3}
+  normalArray: {fileID: 18700000, guid: 919c8a29050b1d545af9c39058d5c8c8, type: 3}
+  maskArray: {fileID: 18700000, guid: e9cf7551b54f46d418646eed655cfa65, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

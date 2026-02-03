@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: RiverLake Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: RiverLake Family
-  albedoArray: {fileID: 18700000, guid: 082389d837b7f8e4e88b881c4a24d630, type: 3}
-  normalArray: {fileID: 18700000, guid: ee61188ddbb9c414bb3b488360db5057, type: 3}
-  maskArray: {fileID: 18700000, guid: 2d308048f3221da4280688024b022ad0, type: 3}
+  albedoArray: {fileID: 18700000, guid: 1777ec9c89b4c68428076c30848778c0, type: 3}
+  normalArray: {fileID: 18700000, guid: c9306730f6f86dc4a982f79644841778, type: 3}
+  maskArray: {fileID: 18700000, guid: c52348ffab15c7745aa552ce8b912681, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

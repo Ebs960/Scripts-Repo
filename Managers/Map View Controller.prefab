@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &686157753620886417
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8601294865766896876}
+  - component: {fileID: 9118114098886121293}
+  m_Layer: 0
+  m_Name: Map View Controller
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8601294865766896876
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 686157753620886417}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9118114098886121293
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 686157753620886417}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52e2e96d60c12154b96b6dc543a707a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlatGlobeZoomViewController
+  flatMapRenderer: {fileID: 0}
+  globeVisualRoot: {fileID: 0}
+  autoBindGlobeRootFromGameManager: 1
+  planetaryCamera: {fileID: 0}
+  targetCamera: {fileID: 0}
+  flatZoomDistance: 2
+  globeZoomDistance: 30
+  flatOnlyMaxT: 0.3
+  globeOnlyMinT: 0.7
+  startInFlatMode: 1
+  controlCameraInFlatMode: 1
+  flatCameraHeight: 120
+  flatPanSpeed: 60
+  flatOrthographic: 1
+  flatOrthoSize: 60
+  flatZoomScrollSpeed: 12
+  disableGlobeTileCollidersWhenFlat: 1
+  disableGlobeTileRenderersWhenFlat: 1
+  zoomT: 0
+  isFlatActive: 0
+  flatDistanceDriver: 0

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Hellscape Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Hellscape Family
-  albedoArray: {fileID: 18700000, guid: cedcaffbde1ad0a4d8d84455f6a0dd7b, type: 3}
-  normalArray: {fileID: 18700000, guid: 7e85f6c3774dc274894ffac06207a8f7, type: 3}
-  maskArray: {fileID: 18700000, guid: 8c3c8ad161c37354585af2d32721d64f, type: 3}
+  albedoArray: {fileID: 18700000, guid: 1aa2c2c0a33bf164eb1b04d4e2aca72b, type: 3}
+  normalArray: {fileID: 18700000, guid: 96fe11d4a7360a740b83a0f776f17ec7, type: 3}
+  maskArray: {fileID: 18700000, guid: d54be5683eb8e7149969e294882a9316, type: 3}
   emissiveArray: {fileID: 18700000, guid: 3ce800d5e6f1e4f4cb11bd91ae26525a, type: 3}
   supportsEmission: 1
   defaultTiling: 1

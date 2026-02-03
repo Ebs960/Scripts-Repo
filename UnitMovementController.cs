@@ -242,6 +242,12 @@ public class UnitMovementController : MonoBehaviour
 unit.UpdateWalkingState(false);
                     if (i > 0)
                         GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+
+                    // Fog of War: moving stopped early, refresh vision for unit owner.
+                    if (UnitVisionManager.Instance != null && unit.owner != null)
+                    {
+                        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                    }
                     yield break;
                 }
                 workerUnit.DeductMovePoints(movementCost);
@@ -300,6 +306,12 @@ unit.UpdateWalkingState(false);
                     combatUnit.isMoving = false;
                 else
                     unit.UpdateWalkingState(false);
+
+                    // Fog of War: unit died or was trapped; update vision for owner at the final tile reached.
+                    if (UnitVisionManager.Instance != null && unit.owner != null)
+                    {
+                        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                    }
                     yield break;
             }
             
@@ -328,6 +340,12 @@ unit.UpdateWalkingState(false);
         
         // Fire movement completed event
         GameEventManager.Instance.RaiseMovementCompletedEvent((MonoBehaviour)unit, path[0], path[path.Count - 1], path.Count);
+
+        // Fog of War: movement completed; refresh vision for unit owner.
+        if (UnitVisionManager.Instance != null && unit.owner != null)
+        {
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+        }
     }
 
     /// <summary>

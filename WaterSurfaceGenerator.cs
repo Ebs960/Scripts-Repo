@@ -65,7 +65,11 @@ public class WaterSurfaceGenerator : MonoBehaviour
         // Clear any stale surfaces and generate fresh ones
         ClearSurfaces();
         // Gate water generation to planets that explicitly support the Underwater layer
-        if (!gen.HasLayer(GameManager.PlanetLayerType.Underwater))
+        var layerManager = gen.GetComponent<LayerManager>();
+        bool hasUnderwater = (layerManager != null)
+            ? layerManager.IsLayerSupported(GameManager.PlanetLayerType.Underwater)
+            : gen.HasLayer(GameManager.PlanetLayerType.Underwater); // fallback for legacy scenes
+        if (!hasUnderwater)
         {
             Debug.Log("[WaterSurfaceGenerator] Planet does not support Underwater layer; skipping water surface generation.");
             return;

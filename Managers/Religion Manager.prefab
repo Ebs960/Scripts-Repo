@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2327436067432216681
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7402432424117989817}
+  - component: {fileID: 3232890529588253900}
+  m_Layer: 0
+  m_Name: Religion Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7402432424117989817
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2327436067432216681}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3232890529588253900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2327436067432216681}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51b4db79efe5643459ee1ef374c49780, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  availablePantheons:
+  - {fileID: 11400000, guid: ae05b1bb31c66ac49823b19ccf54b981, type: 2}
+  - {fileID: 11400000, guid: 6233d36f39d495a4e8ca8a3b8b604230, type: 2}
+  availableReligions:
+  - {fileID: 11400000, guid: e37b535bebccc98478c63bc5000bc5e8, type: 2}
+  - {fileID: 11400000, guid: fa31efdef22cbd341a6ad377856849ad, type: 2}
+  maxReligionsPerGame: 5
+  holySitePressurePerTurn: 10
+  pressureDecayPerTile: 2
+  maxPressureSpreadDistance: 6

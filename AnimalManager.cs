@@ -434,9 +434,11 @@ return true;
         unit.Initialize(rule.unitData, null);
         unit.planetIndex = pIndex;
         unit.currentTileIndex = chosenIndex;
-        // Determine layer (land vs water)
+        // Determine layer (centralized rules) and convert to occupancy layer
         var chosenTile = ts.GetTileData(chosenIndex);
-        unit.currentLayer = (chosenTile != null && !chosenTile.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        var spawnLayer = UnitLayerRules.GetSpawnLayerForUnit(unit, chosenTile);
+        if (!LayerConversion.TryToTileLayer(spawnLayer, out var occLayer)) occLayer = TileLayer.Surface;
+        unit.currentLayer = occLayer;
         // Ensure upright orientation on flat map
         unit.PositionUnitOnSurface(null, chosenIndex);
 

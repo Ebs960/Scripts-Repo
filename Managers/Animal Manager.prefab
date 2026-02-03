@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5037077973696526078
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6437318603759594491}
+  - component: {fileID: 1468058827945001994}
+  m_Layer: 0
+  m_Name: Animal Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6437318603759594491
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037077973696526078}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 960, y: 540, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1468058827945001994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037077973696526078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef52c274682bdbe42ad71cacf30989c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnRules:
+  - unitData: {fileID: 11400000, guid: cace335e8947a2541999b4036e6beedd, type: 2}
+    initialCount: 2
+    spawnRate: 2
+    maxCount: 25
+    allowedBiomes: 040000001e000000030000000a000000
+  - unitData: {fileID: 11400000, guid: 92f67b8ac6e8cd6419033fe19c304add, type: 2}
+    initialCount: 4
+    spawnRate: 2
+    maxCount: 17
+    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
+  - unitData: {fileID: 11400000, guid: b55b6436c1222ba42893f8881c2164c3, type: 2}
+    initialCount: 8
+    spawnRate: 2
+    maxCount: 30
+    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
+  - unitData: {fileID: 11400000, guid: 5571e81397a508843a27aadf863bbd51, type: 2}
+    initialCount: 3
+    spawnRate: 3
+    maxCount: 40
+    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
+  - unitData: {fileID: 11400000, guid: cb5f6325b7f612240afec3401ae65710, type: 2}
+    initialCount: 5
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
+  - unitData: {fileID: 11400000, guid: e53b1330c0b943849975be332b1d8835, type: 2}
+    initialCount: 3
+    spawnRate: 2
+    maxCount: 40
+    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000

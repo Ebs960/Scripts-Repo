@@ -47,6 +47,11 @@ public class ArmyMover : MonoBehaviour
             if (!army.CanMoveTo(targetTile))
             {
 isMoving = false;
+                // Fog of War: army cannot continue; refresh vision for owner at current position.
+                if (UnitVisionManager.Instance != null && army.owner != null)
+                {
+                    UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(army.owner));
+                }
                 yield break; // Stop movement if out of points
             }
             
@@ -96,6 +101,12 @@ isMoving = false;
         }
         
         isMoving = false;
+
+        // Fog of War: army movement finished; refresh vision for owner.
+        if (UnitVisionManager.Instance != null && army.owner != null)
+        {
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(army.owner));
+        }
     }
     
     void OnDestroy()

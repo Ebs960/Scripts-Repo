@@ -306,52 +306,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     {
         if (data == null) return;
 
-        // IMPORTANT: Use a single source-of-truth for ALL layer checks.
-        // `HasLayer()` is authoritative (PlanetConfig first, then GameManager planet data),
-        // which avoids mismatches where Surface/Atmosphere come from PlanetData but Underwater
-        // comes from PlanetConfig (or vice versa).
-        bool hasAtmosphereLayer = HasLayer(GameManager.PlanetLayerType.Atmosphere);
-        bool hasSurfaceLayer = HasLayer(GameManager.PlanetLayerType.Surface);
-
-        bool enableGasGiantVisuals = hasAtmosphereLayer && !hasSurfaceLayer;
-
-        if (gasGiantRenderer != null)
-        {
-            gasGiantRenderer.SetEnabledForPlanet(enableGasGiantVisuals);
-            Debug.Log($"[PlanetGenerator] ApplyPlanetLayers: gasGiantRenderer set to {enableGasGiantVisuals} (hasAtmosphere={hasAtmosphereLayer} hasSurface={hasSurfaceLayer})");
-        }
-        else
-        {
-            Debug.Log($"[PlanetGenerator] ApplyPlanetLayers: no GasGiantRenderer assigned. enableGasGiantVisuals={enableGasGiantVisuals}");
-        }
-
-        // Activate/deactivate visual roots according to authoritative layers
-        bool hasUnderwaterLayer = HasLayer(GameManager.PlanetLayerType.Underwater);
-
-        if (surfaceRoot != null)
-        {
-            surfaceRoot.SetActive(hasSurfaceLayer);
-            var lp = surfaceRoot.transform.localPosition;
-            surfaceRoot.transform.localPosition = new Vector3(lp.x, surfaceYOffset, lp.z);
-            Debug.Log($"[PlanetGenerator] Surface root active={hasSurfaceLayer} yOffset={surfaceYOffset}");
-        }
-
-        if (underwaterRoot != null)
-        {
-            underwaterRoot.SetActive(hasUnderwaterLayer);
-            var lp = underwaterRoot.transform.localPosition;
-            underwaterRoot.transform.localPosition = new Vector3(lp.x, underwaterYOffset, lp.z);
-            Debug.Log($"[PlanetGenerator] Underwater root active={hasUnderwaterLayer} yOffset={underwaterYOffset}");
-        }
-
-        if (atmosphereRoot != null)
-        {
-            atmosphereRoot.SetActive(hasAtmosphereLayer);
-            var lp = atmosphereRoot.transform.localPosition;
-            atmosphereRoot.transform.localPosition = new Vector3(lp.x, atmosphereYOffset, lp.z);
-            Debug.Log($"[PlanetGenerator] Atmosphere root active={hasAtmosphereLayer} yOffset={atmosphereYOffset}");
-        }
-
         if (terrainRenderer == null)
         {
             terrainRenderer = UnityEngine.Object.FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
@@ -365,10 +319,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        if (terrainRenderer != null)
+        // Centralized layer authority: LayerManager owns layer support/visibility and toggling of roots + gas giant rules.
+        var layerManager = GetComponent<LayerManager>();
+        if (layerManager == null)
         {
-            terrainRenderer.enabled = !enableGasGiantVisuals;
+            layerManager = gameObject.AddComponent<LayerManager>();
         }
+
+        layerManager.InitializeForPlanet(this, data);
     }
 
     [Header("Diagnostics")]

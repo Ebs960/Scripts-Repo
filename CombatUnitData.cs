@@ -214,6 +214,11 @@ public class CombatUnitData : ScriptableObject
     public int baseDefense;
     public int baseHealth;
     public float baseRange;
+    
+    [Header("Vision")]
+    [Tooltip("How many tiles this unit can see (reveals fog of war). Default is 2 tiles.")]
+    [Range(1, 10)]
+    public int sightRange = 2;
 
     [Header("Progression")]
     public int[] xpToNextLevel;

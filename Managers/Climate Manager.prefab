@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3021605306762045428
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8785622733146116754}
+  - component: {fileID: 415827775267771747}
+  m_Layer: 0
+  m_Name: Climate Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8785622733146116754
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3021605306762045428}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -6.943096, y: 1.4297218, z: 3.1413188}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &415827775267771747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3021605306762045428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 374ba1a9152d9d741b0b720b76e43334, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  turnsPerSeason: 3
+  currentSeason: 0
+  forceSeasonChange: 0
+  debugTargetSeason: 3
+  seasonalTextures:
+  - biome: 4
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  - biome: 5
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  - biome: 10
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  - biome: 31
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  - biome: 11
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  - biome: 4
+    season: 3
+    seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
+    seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}

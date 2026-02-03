@@ -1,18 +1,33 @@
 #pragma kernel BakeTextures
 
 // Input buffers
-StructuredBuffer<int> _PixelToTileLUT;      // Pixel index -> tile index
-StructuredBuffer<float4> _TileBiomeColors; // Tile index -> RGBA color
-StructuredBuffer<float> _TileElevations;    // Tile index -> elevation (0-1)
+StructuredBuffer<int> _PixelToTileLUT;          // Pixel index -> tile index
+StructuredBuffer<int> _TileBiomeIndices;         // Tile index -> biome enum value
+StructuredBuffer<float2> _TileUVs;              // Tile index -> UV coordinates (0-1)
+StructuredBuffer<float> _TileElevations;        // Tile index -> elevation (0-1)
+
+// Optional buffers (depending on render mode)
+StructuredBuffer<float4> _BiomeColorLookup;     // Biome enum value -> RGBA color (BiomeColors mode)
+StructuredBuffer<int> _BiomeToTextureIndex;    // Biome enum value -> texture array index (-1 = no texture)
+StructuredBuffer<float4> _TileBiomeColors;      // Tile index -> RGBA color (fallback)
+
+// Texture resources (depending on render mode)
+Texture2DArray<float4> _BiomeTextureArray;      // Array of biome textures (BiomeTextures mode)
+SamplerState sampler_BiomeTextureArray;
+Texture2D<float4> _CustomTexture;                // Single custom texture (CustomTexture mode)
+SamplerState sampler_CustomTexture;
 
 // Output textures
-RWTexture2D<float4> _BiomeTexture;         // RGBA32 biome texture
-RWTexture2D<float> _HeightTexture;         // RFloat heightmap texture
+RWTexture2D<float4> _BiomeTexture;              // RGBA32 biome texture
+RWTexture2D<float> _HeightTexture;              // RFloat heightmap texture
 
 // Parameters
 int _Width;
 int _Height;
 int _TileCount;
+int _MaxBiomeValue;
+int _RenderMode;  // 0 = BiomeColors, 1 = BiomeTextures, 2 = CustomTexture
+int _BiomeTextureArraySize;  // Size of texture array (number of textures)
 
 [numthreads(8,8,1)]
 void BakeTextures (uint3 id : SV_DispatchThreadID)
@@ -30,8 +45,63 @@ void BakeTextures (uint3 id : SV_DispatchThreadID)
     if (tileIndex < 0 || tileIndex >= _TileCount)
         tileIndex = 0;
     
-    // Sample biome color
-    float4 biomeColor = _TileBiomeColors[tileIndex];
+    // Get biome index and UV for this tile
+    int biomeIndex = _TileBiomeIndices[tileIndex];
+    float2 uv = _TileUVs[tileIndex];
+    
+    // Clamp biome index
+    if (biomeIndex < 0 || biomeIndex >= _MaxBiomeValue)
+        biomeIndex = 0;
+    
+    // Sample biome color based on render mode
+    float4 biomeColor = float4(1.0, 0.0, 1.0, 1.0); // Default: magenta (error color)
+    
+    if (_RenderMode == 0) // BiomeColors mode
+    {
+        // Look up color from biome color lookup table
+        if (_BiomeColorLookup != NULL && biomeIndex >= 0 && biomeIndex < _MaxBiomeValue)
+        {
+            biomeColor = _BiomeColorLookup[biomeIndex];
+        }
+        else
+        {
+            // Fallback to magenta if lookup fails
+            biomeColor = float4(1.0, 0.0, 1.0, 1.0);
+        }
+    }
+    else if (_RenderMode == 1) // BiomeTextures mode
+    {
+        // Sample from texture array using biome-to-texture-index mapping
+        if (_BiomeTextureArray != NULL && _BiomeToTextureIndex != NULL)
+        {
+            // Look up texture array index for this biome
+            int textureArrayIndex = _BiomeToTextureIndex[biomeIndex];
+            
+            if (textureArrayIndex >= 0 && textureArrayIndex < _BiomeTextureArraySize)
+            {
+                // Sample from texture array at the mapped index
+                biomeColor = _BiomeTextureArray.SampleLevel(sampler_BiomeTextureArray, float3(uv, textureArrayIndex), 0);
+            }
+            else if (_TileBiomeColors != NULL)
+            {
+                // Biome has no texture assigned, fallback to pre-computed color
+                biomeColor = _TileBiomeColors[tileIndex];
+            }
+        }
+        else if (_TileBiomeColors != NULL)
+        {
+            // Fallback to pre-computed colors if texture array or mapping unavailable
+            biomeColor = _TileBiomeColors[tileIndex];
+        }
+    }
+    else if (_RenderMode == 2) // CustomTexture mode
+    {
+        // Sample from single custom texture using UV
+        if (_CustomTexture != NULL)
+        {
+            biomeColor = _CustomTexture.SampleLevel(sampler_CustomTexture, uv, 0);
+        }
+    }
     
     // Sample elevation
     float elevation = _TileElevations[tileIndex];

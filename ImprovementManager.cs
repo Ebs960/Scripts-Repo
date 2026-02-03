@@ -442,9 +442,11 @@ public class ImprovementManager : MonoBehaviour
         unit.InitializeAndReturn(job.data, job.owner, spawnIndex);
         job.owner.combatUnits.Add(unit);
         LimitManager.Instance.AddCombatUnit(job.owner, job.data);
-        // Determine layer based on tile (surface vs underwater)
+        // Determine layer (centralized rules) and convert to occupancy layer
         var tdata = ts != null ? ts.GetTileData(spawnIndex) : null;
-        unit.currentLayer = (tdata != null && !tdata.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        var spawnLayer = UnitLayerRules.GetSpawnLayerForUnit(unit, tdata);
+        if (!LayerConversion.TryToTileLayer(spawnLayer, out var occLayer)) occLayer = TileLayer.Surface;
+        unit.currentLayer = occLayer;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
         // Register occupancy in occupancy manager (defensive)
@@ -488,7 +490,9 @@ public class ImprovementManager : MonoBehaviour
         job.owner.workerUnits.Add(unit);
         LimitManager.Instance.AddWorkerUnit(job.owner, job.data);
         var tdataW = ts != null ? ts.GetTileData(spawnIndex) : null;
-        unit.currentLayer = (tdataW != null && !tdataW.isLand) ? TileLayer.Underwater : TileLayer.Surface;
+        var spawnLayerW = UnitLayerRules.GetSpawnLayerForUnit(unit, tdataW);
+        if (!LayerConversion.TryToTileLayer(spawnLayerW, out var occLayerW)) occLayerW = TileLayer.Surface;
+        unit.currentLayer = occLayerW;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }

@@ -979,7 +979,14 @@ if (UIManager.Instance != null)
             unit.currentTileIndex = centerTileIndex;
             ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
         }
-return true;
+
+        // Fog of War: immediately refresh vision for this civ after spawning a unit.
+        if (UnitVisionManager.Instance != null && owner != null)
+        {
+            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(owner));
+        }
+
+    return true;
     }
 
     /// <summary>
@@ -1056,6 +1063,12 @@ return true;
                     unit.currentTileIndex = centerTileIndex;
                     ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
                 }
+
+                // Fog of War: immediately refresh vision for this civ after producing a unit.
+                if (UnitVisionManager.Instance != null && owner != null)
+                {
+                    UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(owner));
+                }
                 
                 // Award governor experience for unit production
                 if (governor != null)
@@ -1070,6 +1083,12 @@ return true;
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);
                 owner.workerUnits.Add(worker);
+
+                // Fog of War: immediately refresh vision for this civ after producing a worker.
+                if (UnitVisionManager.Instance != null && owner != null)
+                {
+                    UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(owner));
+                }
                 
                 // Award governor experience for unit production
                 if (governor != null)

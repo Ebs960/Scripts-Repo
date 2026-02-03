@@ -1319,6 +1319,12 @@ return false;
                 ArmyIntegration.OnUnitCreated(missionaryUnit, city.centerTileIndex);
             }
             combatUnits.Add(missionaryUnit);
+
+            // Fog of War: immediately refresh vision for this civ after spawning a unit.
+            if (UnitVisionManager.Instance != null)
+            {
+                UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(this));
+            }
             
             // The missionary unit should have the civilization's religion associated with it
             // This would be handled by a specialized ReligionUnit component or by adding properties to CombatUnit

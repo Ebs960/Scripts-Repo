@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Plains
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   biome: 4
-  surfaceFamily: {fileID: 11400000, guid: 2687477c49eb8b446a38c89dc2335a9e, type: 2}
+  waterType: 0
+  surfaceFamily: {fileID: 11400000, guid: 14434d63f6eced048b9fb4a03ce9429a, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}

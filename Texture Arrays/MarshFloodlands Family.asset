@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: MarshFloodlands Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: MarshFloodlands Family
-  albedoArray: {fileID: 18700000, guid: c287867e83ba1ea4e913348c548752f3, type: 3}
-  normalArray: {fileID: 18700000, guid: 0c6e1fc20361e3946aa953567b45d1a1, type: 3}
-  maskArray: {fileID: 18700000, guid: f3850d889d963084a94470119f9b97ac, type: 3}
+  albedoArray: {fileID: 18700000, guid: e48f9bc704bfdec4fa09027594810e4b, type: 3}
+  normalArray: {fileID: 18700000, guid: abfb54f9b61b7ab4ba54788255d939fe, type: 3}
+  maskArray: {fileID: 18700000, guid: 17e27fff963514946a3d892c3889764d, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

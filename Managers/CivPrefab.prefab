@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4861414517550174292
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4350965697267458634}
+  - component: {fileID: 3869005264615670488}
+  m_Layer: 0
+  m_Name: CivPrefab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4350965697267458634
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4861414517550174292}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 960, y: 540, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3869005264615670488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4861414517550174292}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f1225b3f1e7c83498dcd8c3bfa63c1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isPlayerControlled: 0
+  ownedTileIndices: 
+  cities: []
+  combatUnits: []
+  workerUnits: []
+  startingEquipment: []
+  cityPrefab: {fileID: 0}
+  researchedTechs: []
+  currentTech: {fileID: 0}
+  currentTechProgress: 0
+  scienceModifier: 0
+  researchedCultures: []
+  currentCulture: {fileID: 0}
+  currentCultureProgress: 0
+  cultureModifier: 0
+  unlockedPolicies: []
+  activePolicies: []
+  unlockedGovernments: []
+  currentGovernment: {fileID: 0}
+  warWeariness: 0
+  warWearinessPerWarTurn: 0.02
+  warWearinessRecoveryPerTurn: 0.01
+  famineActive: 0
+  gold: 0
+  food: 0
+  science: 0
+  culture: 0
+  policyPoints: 0
+  faith: 0
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  faithModifier: 0
+  foundedPantheon: {fileID: 0}
+  chosenFounderBelief: {fileID: 0}
+  foundedReligion: {fileID: 0}
+  hasFoundedPantheon: 0
+  hasFoundedReligion: 0
+  unlockedCombatUnits: []
+  unlockedWorkerUnits: []
+  unlockedBuildings: []
+  unlockedAbilities: []
+  governorCount: 1
+  unlockedGovernorTraits: []
+  planetGenerator: {fileID: 0}

@@ -14,7 +14,7 @@ public class WorldPicker : MonoBehaviour
     [Tooltip("Width of the LUT texture (matches texture resolution)")]
     public int lutWidth = 2048;
     [Tooltip("Height of the LUT texture (matches texture resolution)")]
-    public int lutHeight = 1024;
+    public int lutHeight = 2048;
     [Tooltip("Pixel → Tile Index Lookup Table (from EquirectLUTBuilder)")]
     public int[] lut;
     

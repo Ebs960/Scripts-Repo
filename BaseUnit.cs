@@ -794,6 +794,72 @@ public abstract class BaseUnit : MonoBehaviour
     #region Movement
 
     /// <summary>
+    /// Whether this unit can enter orbit around its current planet.
+    /// Minimal rule: only CombatUnit Spaceships may enter orbit (no travel changes).
+    /// </summary>
+    public virtual bool CanEnterOrbit()
+    {
+        var cu = this as CombatUnit;
+        if (cu == null || cu.data == null) return false;
+        return cu.data.unitType == CombatCategory.Spaceship;
+    }
+
+    /// <summary>
+    /// Place this unit into orbit over a specific tile index.
+    /// This updates occupancy (Orbit layer) and the unit's current layer.
+    /// No interplanetary travel is performed here.
+    /// </summary>
+    public virtual void EnterOrbit(int tileIndex)
+    {
+        if (!CanEnterOrbit())
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot enter orbit (unit not permitted).");
+            return;
+        }
+
+        if (tileIndex < 0)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} EnterOrbit called with invalid tileIndex={tileIndex}.");
+            return;
+        }
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot enter orbit: TileSystem missing for planetIndex={planetIndex}.");
+            return;
+        }
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot enter orbit: TileOccupancyManager missing for planetIndex={planetIndex}.");
+            return;
+        }
+
+        // Clear current occupancy first (if any), then set Orbit occupancy.
+        try
+        {
+            if (currentTileIndex >= 0)
+            {
+                occ.ClearOccupant(currentTileIndex, currentLayer);
+            }
+        }
+        catch { }
+
+        currentTileIndex = tileIndex;
+        currentLayer = TileLayer.Orbit;
+        occ.SetOccupant(tileIndex, gameObject, TileLayer.Orbit);
+
+        // Minimal visuals: position above the tile surface so orbiting units don't Z-fight with surface units.
+        // Keep offset small and constant to avoid gameplay implications.
+        Vector3 surface = ts.GetTileSurfacePosition(tileIndex);
+        transform.position = surface + Vector3.up * 4f;
+
+        UpdateWalkingState(false);
+    }
+
+    /// <summary>
     /// Request movement to target tile. Uses UnitMovementController.
     /// </summary>
     public virtual void MoveTo(int targetTileIndex)

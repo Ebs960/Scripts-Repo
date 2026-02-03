@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5078762782248899889
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 443059075104243439}
+  - component: {fileID: 4603053344312888432}
+  m_Layer: 0
+  m_Name: CivManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &443059075104243439
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5078762782248899889}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 960, y: 540, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4603053344312888432
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5078762782248899889}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40ab5e07eb0b6784cbf3130f19bd8b60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  civilizationPrefab: {fileID: 4861414517550174292, guid: 7b8c76687c8a8414ebc1f7dbb1f090a1, type: 3}
+  pioneerPrefab: {fileID: 3076081410584474018, guid: 90a0dc12a7c50a44389726ee18d0ea55, type: 3}
+  pioneerData: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
+  cityPrefab: {fileID: 1758543710615258454, guid: 8023f4a1f8c01f44a8d418c0eb35d794, type: 3}
+  allCivDatas: []
+  playerCiv: {fileID: 0}

@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3058985958848534842
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8540917934770016297}
+  - component: {fileID: 4050885774052144637}
+  - component: {fileID: 7033136494572521988}
+  - component: {fileID: 6515396151515733605}
+  m_Layer: 0
+  m_Name: Hex Map Stuff and Tile Info
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8540917934770016297
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058985958848534842}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4050885774052144637
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058985958848534842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 444f8271227f3e643950b34982980f18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexMapChunkManager
+  colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
+  textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
+  terrainShader: {fileID: -6465566751694194690, guid: 15f3c6b4d6a9c894284b24aedcdbb772, type: 3}
+  biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
+  textureWidth: 2048
+  textureHeight: 1024
+  chunksX: 9
+  chunksZ: 4
+  meshSubdivisionsPerChunk: 32
+  displacementStrength: 2.8
+  flatY: 0
+  globalSnowAmount: 0
+  globalWetness: 0
+  enableWrap: 1
+  wrapBuffer: 0.35
+  debugWrap: 0
+  debugWrapVerbose: 0
+  debugLogCooldownSeconds: 0.5
+  logTransformChainOnBuild: 0
+  debugTransformChanges: 0
+  preBuildOnPlanetReady: 1
+  disableOldRenderer: 1
+  enableSeasonMasks: 0
+--- !u!114 &7033136494572521988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058985958848534842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3c6026402d60fa4dba2afa88d007bf8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TileHoverSystem
+  enableHover: 0
+  hoverDelay: 0.05
+  debugLog: 0
+--- !u!114 &6515396151515733605
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058985958848534842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa2a4457109e68f4ba0ebe96fddf0c24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexGridOverlay
+  showGrid: 0
+  gridColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.5}
+  lineWidth: 0.05
+  heightOffset: 0.1
+  lineMaterial: {fileID: 2100000, guid: 40861cf147703c74c8a7f49fd85d7052, type: 2}
+  maxHexesToRender: 10000
+  renderDistance: 500
+  updateInterval: 0.1
