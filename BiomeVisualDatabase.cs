@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 [CreateAssetMenu(menuName = "Terrain/Biome Visual Database")]
 public class BiomeVisualDatabase : ScriptableObject
@@ -102,6 +103,24 @@ public class BiomeVisualDatabase : ScriptableObject
     public SurfaceLibrary BuildSurfaceLibrary(int overrideWidth = 0, int overrideHeight = 0)
     {
         if (biomes == null) return null;
+
+        static long EstimateTextureArrayBytes(int w, int h, int depth, int bytesPerPixel, bool hasMipmaps)
+        {
+            // Full mip chain multiplier is ~4/3 for large POT textures. Good enough for diagnostics.
+            double mipMul = hasMipmaps ? (4.0 / 3.0) : 1.0;
+            return (long)System.Math.Round((double)w * h * depth * bytesPerPixel * mipMul);
+        }
+
+        static string FormatBytes(long bytes)
+        {
+            const double KB = 1024.0;
+            const double MB = 1024.0 * 1024.0;
+            const double GB = 1024.0 * 1024.0 * 1024.0;
+            if (bytes >= GB) return $"{bytes / GB:0.00} GB";
+            if (bytes >= MB) return $"{bytes / MB:0.0} MB";
+            if (bytes >= KB) return $"{bytes / KB:0.0} KB";
+            return $"{bytes} B";
+        }
 
         // Discover families in encounter order
         var familyEntries = new List<object>(); // either SurfaceFamilyData or BiomeVisualData (legacy)
@@ -209,6 +228,21 @@ public class BiomeVisualDatabase : ScriptableObject
             return null;
         }
 
+        // Diagnostic: rough memory estimate for the flattened arrays we are about to allocate.
+        // This is usually the single largest GPU memory consumer at map start.
+        try
+        {
+            // RGBA32 = 4 bytes/px. RGBAHalf = 8 bytes/px.
+            long albedoBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
+            long normalBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
+            long maskBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
+            long emissiveBytes = EstimateTextureArrayBytes(targetW, targetH, total, 8, hasMipmaps: true);
+            long totalBytes = albedoBytes + normalBytes + maskBytes + emissiveBytes;
+            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary request: db='{name}' size={targetW}x{targetH} totalSlices={total} (families={familyEntries.Count}). " +
+                      $"Estimated GPU tex memory (arrays only): albedo={FormatBytes(albedoBytes)}, normal={FormatBytes(normalBytes)}, mask={FormatBytes(maskBytes)}, emissive={FormatBytes(emissiveBytes)}, TOTAL={FormatBytes(totalBytes)}");
+        }
+        catch { /* diagnostics only */ }
+
         // Cache lookup: build signature from the database + discovered family order + target size + slice count.
         // This prevents repeated Texture2DArray allocations (a common cause of 2nd/3rd Play OOM in the editor).
         int dbId = GetInstanceID();
@@ -236,21 +270,55 @@ public class BiomeVisualDatabase : ScriptableObject
 
         var emissiveArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBAHalf, true, true);
 
-        // Create a fallback black emissive texture matching the emissive array format/size
-        Texture2D fallbackEmissive = new Texture2D(targetW, targetH, TextureFormat.RGBAHalf, true, true)
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear,
-            name = "SurfaceEmissiveFallback"
-        };
-        var blackPixels = new Color[targetW * targetH];
-        for (int i = 0; i < blackPixels.Length; i++) blackPixels[i] = Color.black;
-        fallbackEmissive.SetPixels(blackPixels);
-        fallbackEmissive.Apply(true, false);
-
         albedoArray.wrapMode = TextureWrapMode.Repeat;
         normalArray.wrapMode = TextureWrapMode.Repeat;
         maskArray.wrapMode = TextureWrapMode.Repeat;
+
+        // Avoid huge managed allocations (Color[]) and CPU readbacks during slice scaling/fallback fills.
+        // We use GPU RenderTextures as intermediate targets and CopyTexture into the Texture2DArray slices.
+        RenderTexture rtSrgb = null;
+        RenderTexture rtLinear = null;
+        RenderTexture rtHalf = null;
+        var prevActive = RenderTexture.active;
+
+        // Reusable temporary 2D textures for pulling a slice out of a Texture2DArray when scaling is needed.
+        // Key: (w,h,format,linearFlag).
+        var tmp2DCache = new Dictionary<(int w, int h, TextureFormat fmt, bool linear), Texture2D>(8);
+
+        Texture2D GetOrCreateTmp2D(int w, int h, TextureFormat fmt, bool linear)
+        {
+            var key = (w, h, fmt, linear);
+            if (tmp2DCache.TryGetValue(key, out var existing) && existing != null) return existing;
+            var t = new Texture2D(w, h, fmt, mipChain: false, linear: linear)
+            {
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear,
+                name = $"_TmpSlice_{w}x{h}_{fmt}_{(linear ? "Lin" : "sRGB")}"
+            };
+            tmp2DCache[key] = t;
+            return t;
+        }
+
+        RenderTexture GetOrCreateRT(ref RenderTexture rt, RenderTextureFormat fmt, RenderTextureReadWrite rw)
+        {
+            if (rt != null && rt.width == targetW && rt.height == targetH) return rt;
+            if (rt != null) RenderTexture.ReleaseTemporary(rt);
+            rt = RenderTexture.GetTemporary(targetW, targetH, 0, fmt, rw);
+            rt.wrapMode = TextureWrapMode.Repeat;
+            rt.filterMode = FilterMode.Bilinear;
+            return rt;
+        }
+
+        void ClearRT(RenderTexture rt, Color clearColor)
+        {
+            RenderTexture.active = rt;
+            GL.Clear(true, true, clearColor);
+        }
+
+        // Allocate RTs once up-front (keeps lifetime predictable).
+        GetOrCreateRT(ref rtSrgb, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+        GetOrCreateRT(ref rtLinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        GetOrCreateRT(ref rtHalf, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
 
         // Debug: quick manual override (uncomment to force a visible red texture into slice 0)
         // var testTex = Texture2D.redTexture;
@@ -290,159 +358,87 @@ public class BiomeVisualDatabase : ScriptableObject
                     // Copy from sf arrays if available
                     if (sf.albedoArray != null && v < sf.albedoArray.depth)
                     {
-                        // Fix: handle size mismatches (e.g. 2048x2048 sources) by resampling to targetW/targetH.
-                        if (sf.albedoArray.width != targetW || sf.albedoArray.height != targetH)
+                        if (sf.albedoArray.width == targetW && sf.albedoArray.height == targetH)
                         {
-                            var tmpSrc = new Texture2D(sf.albedoArray.width, sf.albedoArray.height, TextureFormat.RGBA32, false, false);
-                            Graphics.CopyTexture(sf.albedoArray, v, 0, tmpSrc, 0, 0);
-
-                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-                            Graphics.Blit(tmpSrc, rt);
-
-                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
-                            var prev = RenderTexture.active;
-                            RenderTexture.active = rt;
-                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                            scaled.Apply(true, false);
-                            RenderTexture.active = prev;
-
-                            RenderTexture.ReleaseTemporary(rt);
-                            UnityEngine.Object.Destroy(tmpSrc);
-
-                            Graphics.CopyTexture(scaled, 0, 0, albedoArray, writeSlice, 0);
-                            UnityEngine.Object.Destroy(scaled);
+                            Graphics.CopyTexture(sf.albedoArray, v, 0, albedoArray, writeSlice, 0);
                         }
                         else
                         {
-                            Graphics.CopyTexture(sf.albedoArray, v, 0, albedoArray, writeSlice, 0);
+                            var tmpSrc = GetOrCreateTmp2D(sf.albedoArray.width, sf.albedoArray.height, TextureFormat.RGBA32, linear: false);
+                            Graphics.CopyTexture(sf.albedoArray, v, 0, tmpSrc, 0, 0);
+                            Graphics.Blit(tmpSrc, rtSrgb);
+                            Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
                         }
                     }
                     else
                     {
-                        // Create full-size fallback albedo (white)
-                        var white = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
-                        var whitePixels = new Color[targetW * targetH];
-                        for (int p = 0; p < whitePixels.Length; p++) whitePixels[p] = Color.white;
-                        white.SetPixels(whitePixels);
-                        white.Apply(true, false);
-                        Graphics.CopyTexture(white, 0, 0, albedoArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(white);
+                        // Full-size fallback albedo (white) without allocating a huge Color[].
+                        ClearRT(rtSrgb, Color.white);
+                        Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
                     }
 
                     if (sf.normalArray != null && v < sf.normalArray.depth)
                     {
-                        if (sf.normalArray.width != targetW || sf.normalArray.height != targetH)
+                        if (sf.normalArray.width == targetW && sf.normalArray.height == targetH)
                         {
-                            var tmpSrc = new Texture2D(sf.normalArray.width, sf.normalArray.height, TextureFormat.RGBA32, false, true);
-                            Graphics.CopyTexture(sf.normalArray, v, 0, tmpSrc, 0, 0);
-
-                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-                            Graphics.Blit(tmpSrc, rt);
-
-                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                            var prev = RenderTexture.active;
-                            RenderTexture.active = rt;
-                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                            scaled.Apply(true, false);
-                            RenderTexture.active = prev;
-
-                            RenderTexture.ReleaseTemporary(rt);
-                            UnityEngine.Object.Destroy(tmpSrc);
-
-                            Graphics.CopyTexture(scaled, 0, 0, normalArray, writeSlice, 0);
-                            UnityEngine.Object.Destroy(scaled);
+                            Graphics.CopyTexture(sf.normalArray, v, 0, normalArray, writeSlice, 0);
                         }
                         else
                         {
-                            Graphics.CopyTexture(sf.normalArray, v, 0, normalArray, writeSlice, 0);
+                            var tmpSrc = GetOrCreateTmp2D(sf.normalArray.width, sf.normalArray.height, TextureFormat.RGBA32, linear: true);
+                            Graphics.CopyTexture(sf.normalArray, v, 0, tmpSrc, 0, 0);
+                            Graphics.Blit(tmpSrc, rtLinear);
+                            Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
                         }
                     }
                     else
                     {
-                        // Create full-size fallback normal (flat blue = no displacement)
-                        var flat = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                        var flatColor = new Color(0.5f, 0.5f, 1f, 1f);
-                        var flatPixels = new Color[targetW * targetH];
-                        for (int p = 0; p < flatPixels.Length; p++) flatPixels[p] = flatColor;
-                        flat.SetPixels(flatPixels);
-                        flat.Apply(true, false);
-                        Graphics.CopyTexture(flat, 0, 0, normalArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(flat);
+                        // Full-size fallback normal (flat blue) without allocating a huge Color[].
+                        ClearRT(rtLinear, new Color(0.5f, 0.5f, 1f, 1f));
+                        Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
                     }
 
                     if (sf.maskArray != null && v < sf.maskArray.depth)
                     {
-                        if (sf.maskArray.width != targetW || sf.maskArray.height != targetH)
+                        if (sf.maskArray.width == targetW && sf.maskArray.height == targetH)
                         {
-                            var tmpSrc = new Texture2D(sf.maskArray.width, sf.maskArray.height, TextureFormat.RGBA32, false, true);
-                            Graphics.CopyTexture(sf.maskArray, v, 0, tmpSrc, 0, 0);
-
-                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-                            Graphics.Blit(tmpSrc, rt);
-
-                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                            var prev = RenderTexture.active;
-                            RenderTexture.active = rt;
-                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                            scaled.Apply(true, false);
-                            RenderTexture.active = prev;
-
-                            RenderTexture.ReleaseTemporary(rt);
-                            UnityEngine.Object.Destroy(tmpSrc);
-
-                            Graphics.CopyTexture(scaled, 0, 0, maskArray, writeSlice, 0);
-                            UnityEngine.Object.Destroy(scaled);
+                            Graphics.CopyTexture(sf.maskArray, v, 0, maskArray, writeSlice, 0);
                         }
                         else
                         {
-                            Graphics.CopyTexture(sf.maskArray, v, 0, maskArray, writeSlice, 0);
+                            var tmpSrc = GetOrCreateTmp2D(sf.maskArray.width, sf.maskArray.height, TextureFormat.RGBA32, linear: true);
+                            Graphics.CopyTexture(sf.maskArray, v, 0, tmpSrc, 0, 0);
+                            Graphics.Blit(tmpSrc, rtLinear);
+                            Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
                         }
                     }
                     else
                     {
-                        // Create full-size fallback mask (R=metallic=0, G=AO=1, B=unused=0, A=smoothness=0.5)
-                        var def = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                        var defColor = new Color(0f, 1f, 0f, 0.5f);
-                        var defPixels = new Color[targetW * targetH];
-                        for (int p = 0; p < defPixels.Length; p++) defPixels[p] = defColor;
-                        def.SetPixels(defPixels);
-                        def.Apply(true, false);
-                        Graphics.CopyTexture(def, 0, 0, maskArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(def);
+                        // Full-size fallback mask without allocating a huge Color[].
+                        ClearRT(rtLinear, new Color(0f, 1f, 0f, 0.5f));
+                        Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
                     }
 
                     // emissive
                     if (sf.emissiveArray != null && v < sf.emissiveArray.depth)
                     {
-                        if (sf.emissiveArray.width != targetW || sf.emissiveArray.height != targetH)
+                        if (sf.emissiveArray.width == targetW && sf.emissiveArray.height == targetH)
                         {
-                            var tmpSrc = new Texture2D(sf.emissiveArray.width, sf.emissiveArray.height, TextureFormat.RGBAHalf, false, true);
-                            Graphics.CopyTexture(sf.emissiveArray, v, 0, tmpSrc, 0, 0);
-
-                            var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-                            Graphics.Blit(tmpSrc, rt);
-
-                            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBAHalf, true, true);
-                            var prev = RenderTexture.active;
-                            RenderTexture.active = rt;
-                            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                            scaled.Apply(true, false);
-                            RenderTexture.active = prev;
-
-                            RenderTexture.ReleaseTemporary(rt);
-                            UnityEngine.Object.Destroy(tmpSrc);
-
-                            Graphics.CopyTexture(scaled, 0, 0, emissiveArray, writeSlice, 0);
-                            UnityEngine.Object.Destroy(scaled);
+                            Graphics.CopyTexture(sf.emissiveArray, v, 0, emissiveArray, writeSlice, 0);
                         }
                         else
                         {
-                            Graphics.CopyTexture(sf.emissiveArray, v, 0, emissiveArray, writeSlice, 0);
+                            var tmpSrc = GetOrCreateTmp2D(sf.emissiveArray.width, sf.emissiveArray.height, TextureFormat.RGBAHalf, linear: true);
+                            Graphics.CopyTexture(sf.emissiveArray, v, 0, tmpSrc, 0, 0);
+                            Graphics.Blit(tmpSrc, rtHalf);
+                            Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
                         }
                     }
                     else
                     {
-                        Graphics.CopyTexture(fallbackEmissive, 0, 0, emissiveArray, writeSlice, 0);
+                        // Full-size fallback emissive (black) without allocating a huge Color[].
+                        ClearRT(rtHalf, Color.black);
+                        Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
                     }
 
                     writeSlice++;
@@ -468,19 +464,8 @@ public class BiomeVisualDatabase : ScriptableObject
 
                     if (bv.albedo.width != targetW || bv.albedo.height != targetH)
                     {
-                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-                        Graphics.Blit(bv.albedo, rt);
-
-                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
-                        var prev = RenderTexture.active;
-                        RenderTexture.active = rt;
-                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                        scaled.Apply(true, false);
-                        RenderTexture.active = prev;
-
-                        RenderTexture.ReleaseTemporary(rt);
-                        Graphics.CopyTexture(scaled, 0, 0, albedoArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(scaled);
+                        Graphics.Blit(bv.albedo, rtSrgb);
+                        Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
                     }
                     else
                     {
@@ -489,33 +474,16 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    // Create full-size fallback albedo (white)
-                    var white = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, false);
-                    var whitePixels = new Color[targetW * targetH];
-                    for (int p = 0; p < whitePixels.Length; p++) whitePixels[p] = Color.white;
-                    white.SetPixels(whitePixels);
-                    white.Apply(true, false);
-                    Graphics.CopyTexture(white, 0, 0, albedoArray, writeSlice, 0);
-                    UnityEngine.Object.Destroy(white);
+                    ClearRT(rtSrgb, Color.white);
+                    Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
                 }
 
                 if (bv.normal != null)
                 {
                     if (bv.normal.width != targetW || bv.normal.height != targetH)
                     {
-                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-                        Graphics.Blit(bv.normal, rt);
-
-                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                        var prev = RenderTexture.active;
-                        RenderTexture.active = rt;
-                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                        scaled.Apply(true, false);
-                        RenderTexture.active = prev;
-
-                        RenderTexture.ReleaseTemporary(rt);
-                        Graphics.CopyTexture(scaled, 0, 0, normalArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(scaled);
+                        Graphics.Blit(bv.normal, rtLinear);
+                        Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
                     }
                     else
                     {
@@ -524,34 +492,16 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    // Create full-size fallback normal (flat blue = no displacement)
-                    var flat = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                    var flatColor = new Color(0.5f, 0.5f, 1f, 1f);
-                    var flatPixels = new Color[targetW * targetH];
-                    for (int p = 0; p < flatPixels.Length; p++) flatPixels[p] = flatColor;
-                    flat.SetPixels(flatPixels);
-                    flat.Apply(true, false);
-                    Graphics.CopyTexture(flat, 0, 0, normalArray, writeSlice, 0);
-                    UnityEngine.Object.Destroy(flat);
+                    ClearRT(rtLinear, new Color(0.5f, 0.5f, 1f, 1f));
+                    Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
                 }
 
                 if (bv.maskMap != null)
                 {
                     if (bv.maskMap.width != targetW || bv.maskMap.height != targetH)
                     {
-                        var rt = RenderTexture.GetTemporary(targetW, targetH, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-                        Graphics.Blit(bv.maskMap, rt);
-
-                        var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                        var prev = RenderTexture.active;
-                        RenderTexture.active = rt;
-                        scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-                        scaled.Apply(true, false);
-                        RenderTexture.active = prev;
-
-                        RenderTexture.ReleaseTemporary(rt);
-                        Graphics.CopyTexture(scaled, 0, 0, maskArray, writeSlice, 0);
-                        UnityEngine.Object.Destroy(scaled);
+                        Graphics.Blit(bv.maskMap, rtLinear);
+                        Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
                     }
                     else
                     {
@@ -560,23 +510,28 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 else
                 {
-                    // Create full-size fallback mask (R=metallic=0, G=AO=1, B=unused=0, A=smoothness=0.5)
-                    var def = new Texture2D(targetW, targetH, TextureFormat.RGBA32, true, true);
-                    var defColor = new Color(0f, 1f, 0f, 0.5f);
-                    var defPixels = new Color[targetW * targetH];
-                    for (int p = 0; p < defPixels.Length; p++) defPixels[p] = defColor;
-                    def.SetPixels(defPixels);
-                    def.Apply(true, false);
-                    Graphics.CopyTexture(def, 0, 0, maskArray, writeSlice, 0);
-                    UnityEngine.Object.Destroy(def);
+                    ClearRT(rtLinear, new Color(0f, 1f, 0f, 0.5f));
+                    Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
                 }
 
                 // emissive: legacy per-biome BV has no emissive texture, fill black (use matching fallback)
-                    Graphics.CopyTexture(fallbackEmissive, 0, 0, emissiveArray, writeSlice, 0);
+                ClearRT(rtHalf, Color.black);
+                Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
 
                 writeSlice++;
             }
         }
+
+        // Cleanup intermediate resources (keep array allocations intact; those are returned/cached).
+        RenderTexture.active = prevActive;
+        if (rtSrgb != null) RenderTexture.ReleaseTemporary(rtSrgb);
+        if (rtLinear != null) RenderTexture.ReleaseTemporary(rtLinear);
+        if (rtHalf != null) RenderTexture.ReleaseTemporary(rtHalf);
+        foreach (var kv in tmp2DCache)
+        {
+            if (kv.Value != null) DestroyUnityObject(kv.Value);
+        }
+        tmp2DCache.Clear();
 
         // Build result
         var lib = new SurfaceLibrary();
@@ -593,6 +548,19 @@ public class BiomeVisualDatabase : ScriptableObject
 
         // Store cache entry (prevents multi-planet builds from allocating arrays repeatedly).
         _surfaceLibraryCacheByDb[dbId] = new CachedSurfaceLibrary { signature = signature, library = lib };
+
+        // Diagnostic: log actual managed heap + Unity-reported runtime size for arrays.
+        // Profiler.GetRuntimeMemorySizeLong is approximate but good for identifying biggest offenders.
+        try
+        {
+            long a = lib.albedoArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.albedoArray) : 0;
+            long n = lib.normalArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.normalArray) : 0;
+            long m = lib.maskArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.maskArray) : 0;
+            long e = lib.emissiveArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.emissiveArray) : 0;
+            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary complete: slicesWritten={writeSlice}/{total}. " +
+                      $"RuntimeMemorySize: albedo={FormatBytes(a)}, normal={FormatBytes(n)}, mask={FormatBytes(m)}, emissive={FormatBytes(e)}, TOTAL={FormatBytes(a+n+m+e)}");
+        }
+        catch { /* diagnostics only */ }
 
         return lib;
     }

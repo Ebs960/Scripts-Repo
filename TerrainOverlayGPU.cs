@@ -96,8 +96,21 @@ public class TerrainOverlayGPU : MonoBehaviour
         _cachedLUT = lut;
         _cachedLUTWidth = lutWidth;
         _cachedLUTHeight = lutHeight;
-        fogTextureWidth = textureWidth;
-        fogTextureHeight = textureHeight;
+        
+        // IMPORTANT:
+        // The overlay compute shaders index into the LUT using (_Width,_Height) and pixelIndex=y*_Width+x.
+        // Therefore the overlay textures MUST match the LUT dimensions exactly, or mapping becomes incorrect
+        // (and can go out-of-bounds if overlay is larger than LUT).
+        //
+        // To keep things robust, we treat LUT resolution as the single source of truth and ignore the
+        // passed-in textureWidth/textureHeight except for a diagnostic warning.
+        if (textureWidth != lutWidth || textureHeight != lutHeight)
+        {
+            Debug.LogWarning($"[TerrainOverlayGPU] Initialize resolution mismatch: lut={lutWidth}x{lutHeight} vs texture={textureWidth}x{textureHeight}. " +
+                             $"Overlays will use LUT resolution ({lutWidth}x{lutHeight}) to stay correct.");
+        }
+        fogTextureWidth = lutWidth;
+        fogTextureHeight = lutHeight;
         
         ReleaseResources();
         CreateOverlayTextures();
