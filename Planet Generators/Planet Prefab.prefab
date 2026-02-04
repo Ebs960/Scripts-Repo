@@ -1,0 +1,549 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1048475128305947683
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4969945254994613023}
+  m_Layer: 6
+  m_Name: Surface
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4969945254994613023
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1048475128305947683}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351839581991319769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2456195774341594989
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6931367162624303467}
+  m_Layer: 6
+  m_Name: Underwater
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6931367162624303467
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2456195774341594989}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -2, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351839581991319769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &4916646554407244369
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7407095892055119772}
+  m_Layer: 6
+  m_Name: Orbit
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7407095892055119772
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4916646554407244369}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351839581991319769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5948921737104557089
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1351839581991319769}
+  - component: {fileID: 6434261854368368276}
+  - component: {fileID: 1909149276891878161}
+  - component: {fileID: -8712523666204221431}
+  - component: {fileID: 3081038926846228259}
+  - component: {fileID: -5893155586537961453}
+  - component: {fileID: -5750504008650881166}
+  - component: {fileID: 90253933363781833}
+  - component: {fileID: 5887581935907441457}
+  m_Layer: 6
+  m_Name: Planet Prefab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1351839581991319769
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 1
+  m_Children:
+  - {fileID: 4969945254994613023}
+  - {fileID: 6931367162624303467}
+  - {fileID: 7407095892055119772}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6434261854368368276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98e4eadbb7a61124ba5f657eea900107, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugOwnershipGuard: 0
+  debugOwnershipGuardVerbose: 0
+  gasGiantRenderer: {fileID: -5893155586537961453}
+  terrainRenderer: {fileID: 0}
+  surfaceRoot: {fileID: 1048475128305947683}
+  underwaterRoot: {fileID: 2456195774341594989}
+  atmosphereRoot: {fileID: 4916646554407244369}
+  surfaceYOffset: 0
+  underwaterYOffset: -2
+  atmosphereYOffset: 4
+  planetConfig: {fileID: 0}
+  enableDiagnostics: 0
+  debugDrawContinents: 0
+  randomSeed: 1
+  seed: 12345
+  numberOfContinents: 8
+  minContinentWidthTilesSmall: 13
+  maxContinentWidthTilesSmall: 22
+  minContinentHeightTilesSmall: 11
+  maxContinentHeightTilesSmall: 18
+  minContinentWidthTilesStandard: 10
+  maxContinentWidthTilesStandard: 10
+  minContinentHeightTilesStandard: 10
+  maxContinentHeightTilesStandard: 10
+  minContinentWidthTilesLarge: 46
+  maxContinentWidthTilesLarge: 72
+  minContinentHeightTilesLarge: 28
+  maxContinentHeightTilesLarge: 49
+  seedPositionVariance: 0.231
+  mountainElevationBoost: 1.02
+  elevationFreq: 0.9
+  moistureFreq: 0.25
+  moistureBias: 0
+  temperatureBias: 0
+  latitudeInfluence: 0.355
+  latitudeExponent: 1.445
+  temperatureNoiseFrequency: 0.02
+  temperatureDetailMultiplier: 2
+  temperatureDetailStrength: 0.15
+  usePeriodicClimateNoise: 1
+  climateSmoothingPasses: 2
+  climateSmoothingStrength: 0.502
+  mountainThreshold: 0.934
+  hillThreshold: 0.64
+  baseLandElevation: 0.25
+  oceanElevation: 0
+  seasElevation: 0.1
+  coastElevation: 0.12
+  hillElevationBoost: 0.71
+  maxTotalElevation: 1.375
+  billowHillWeight: 0.113
+  ridgedMountainWeight: 0.224
+  enableRivers: 0
+  minRiversPerContinent: 3
+  maxRiversPerContinent: 5
+  riverDepth: 0.1
+  enableLakes: 1
+  numberOfLakes: 8
+  lakeMinRadiusTiles: 3
+  lakeMaxRadiusTiles: 12
+  lakeMinDistanceFromCoast: 4
+  coastBiteCount: 4
+  coastBiteRadiusMin: 2
+  coastBiteRadiusMax: 3
+  coastSpurCount: 6
+  coastSpurRadiusMin: 1
+  coastSpurRadiusMax: 3
+  minLandTilesForCoastStamps: 120
+  lakeElevation: 0.02
+  lakeRenderElevation: 0.05
+  lakeDepth: 0.2
+  numberOfIslands: 8
+  generateIslands: 1
+  minIslandWidthTilesSmall: 1
+  maxIslandWidthTilesSmall: 6
+  minIslandHeightTilesSmall: 3
+  maxIslandHeightTilesSmall: 5
+  minIslandWidthTilesStandard: 10
+  maxIslandWidthTilesStandard: 10
+  minIslandHeightTilesStandard: 10
+  maxIslandHeightTilesStandard: 10
+  minIslandWidthTilesLarge: 11
+  maxIslandWidthTilesLarge: 26
+  minIslandHeightTilesLarge: 12
+  maxIslandHeightTilesLarge: 24
+  generateIslandChains: 1
+  islandsPerChain: 3
+  decorationManager:
+    biomeDecorations:
+    - biome: 5
+      decorationPrefabs:
+      - {fileID: 5715431555359567883, guid: 3e415b9e41fc0fc42a43f4c2288ef5b5, type: 3}
+      - {fileID: 775350760059989336, guid: e30e2f18db6b39d4683b66afd4a5a450, type: 3}
+      - {fileID: 4420624231065746693, guid: b1be47f734b04ed42b50a63f59230da4, type: 3}
+      - {fileID: 2072027742752075045, guid: 3b17f970a767b76458bf9e27ee55edb1, type: 3}
+      spawnChance: 1
+      minDecorations: 3
+      maxDecorations: 9
+      minDistanceFromCenter: 0.192
+      maxDistanceFromCenter: 0.534
+      scaleMultiplier: 0
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 31
+      decorationPrefabs:
+      - {fileID: 3021269433761367290, guid: c1aa4768eb2570042a52eaf1bd080b87, type: 3}
+      - {fileID: 2762941736355349345, guid: fa1f67b5c0bbbcc4fba17a6ce8834f3e, type: 3}
+      - {fileID: 4576329218756661725, guid: 6ef36284a778b9441bbfb5f96438ce34, type: 3}
+      - {fileID: 2732420507932821058, guid: d2b6de4ef632c2f49ad38840c3f0c01d, type: 3}
+      spawnChance: 1
+      minDecorations: 3
+      maxDecorations: 9
+      minDistanceFromCenter: 0.192
+      maxDistanceFromCenter: 0.653
+      scaleMultiplier: 0
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 10
+      decorationPrefabs:
+      - {fileID: 2097433367991603148, guid: 75db6019ec08e9c458864f70e8286427, type: 3}
+      - {fileID: 262517846094804394, guid: c4a957758fa72174988c4adcaf425341, type: 3}
+      - {fileID: 3893334088454115399, guid: 3722d0137bc1fd148b8d9fe7204a27c4, type: 3}
+      - {fileID: 1050074039934176600, guid: e0f9bd1f9a306ad4ea2d25ec9314bd29, type: 3}
+      spawnChance: 1
+      minDecorations: 6
+      maxDecorations: 11
+      minDistanceFromCenter: 0.148
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 0
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 4
+      decorationPrefabs:
+      - {fileID: 7181419839899416018, guid: a9a23c6e400fa614b9243d2e87a4e61f, type: 3}
+      - {fileID: 5337829209080920567, guid: a0897e4e948ffd641abe594c4a358a59, type: 3}
+      spawnChance: 1
+      minDecorations: 6
+      maxDecorations: 12
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 30
+      decorationPrefabs:
+      - {fileID: 1050074039934176600, guid: e0f9bd1f9a306ad4ea2d25ec9314bd29, type: 3}
+      spawnChance: 1
+      minDecorations: 3
+      maxDecorations: 5
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 2
+      decorationPrefabs:
+      - {fileID: 4765364194085272615, guid: 0cbdc828f6f292e4cb6b5d05fa1152fb, type: 3}
+      - {fileID: 43313407307955955, guid: 40d23679a7161964e9ec8f746294f649, type: 3}
+      - {fileID: 148166790036271842, guid: 84d97f7d1efbc244190b572993c2df2e, type: 3}
+      spawnChance: 1
+      minDecorations: 2
+      maxDecorations: 3
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 3
+      decorationPrefabs:
+      - {fileID: 631246904361392278, guid: 7da2fbccefcba814d81b226e585fc872, type: 3}
+      - {fileID: 4172946779998441590, guid: ac67d0f9294c4704d8cf846b62af1c9b, type: 3}
+      - {fileID: 2097433367991603148, guid: 75db6019ec08e9c458864f70e8286427, type: 3}
+      spawnChance: 1
+      minDecorations: 2
+      maxDecorations: 3
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 28
+      decorationPrefabs:
+      - {fileID: 1934129064774525428, guid: 41140391c653065448435339dd308efe, type: 3}
+      - {fileID: 1486322097090235530, guid: ce276eab9bc4b604082d341f26aeb016, type: 3}
+      - {fileID: 6261417497461265607, guid: 1d74cdbba60d27045a837ce06ca73d36, type: 3}
+      spawnChance: 1
+      minDecorations: 2
+      maxDecorations: 3
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 12
+      decorationPrefabs:
+      - {fileID: 8210539703208218797, guid: bfcfd9fc1af6d144d94960ccbbb82340, type: 3}
+      - {fileID: 1529942069240098874, guid: 2200a3c7b838f304f95d4f1c9bb67817, type: 3}
+      - {fileID: 2964524500777903165, guid: 939e0103b4a66b444ae9d6ec11adff8c, type: 3}
+      - {fileID: 3601518973238773690, guid: 16aeaa3c9b20289459c27b21eaa7d200, type: 3}
+      spawnChance: 1
+      minDecorations: 3
+      maxDecorations: 6
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 9
+      decorationPrefabs:
+      - {fileID: 3601518973238773690, guid: 16aeaa3c9b20289459c27b21eaa7d200, type: 3}
+      - {fileID: 560329789326634434, guid: 382baac7c6e7625499b7c04a7453f936, type: 3}
+      - {fileID: 7113745836601215694, guid: 1b669d5b0d141fa46b91e584a947b7bd, type: 3}
+      spawnChance: 1
+      minDecorations: 2
+      maxDecorations: 3
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    - biome: 12
+      decorationPrefabs:
+      - {fileID: 1663886740036296841, guid: 4046aacf426624342908d45eb3ace6a3, type: 3}
+      - {fileID: 6559243613880866920, guid: 3dcc39b1d1a135f4a834741939575dc3, type: 3}
+      - {fileID: 5181754048688525795, guid: 42e2414c1303d0c44a9128c504fc13c0, type: 3}
+      spawnChance: 1
+      minDecorations: 6
+      maxDecorations: 10
+      minDistanceFromCenter: 0.124
+      maxDistanceFromCenter: 0.755
+      scaleMultiplier: 8
+      scaleVariation: 0.055
+      randomRotation: 1
+    enableDecorations: 1
+    globalScaleMultiplier: 1
+  currentMapTypeName: 
+  isRainforestMapType: 0
+  isScorchedMapType: 0
+  isInfernalMapType: 0
+  isDemonicMapType: 0
+  isIceWorldMapType: 0
+  isMonsoonMapType: 0
+  isMarsWorldType: 0
+  isVenusWorldType: 0
+  isMercuryWorldType: 0
+  isJupiterWorldType: 0
+  isSaturnWorldType: 0
+  isUranusWorldType: 0
+  isNeptuneWorldType: 0
+  isPlutoWorldType: 0
+  isTitanWorldType: 0
+  isEuropaWorldType: 0
+  isIoWorldType: 0
+  isLunaWorldType: 0
+  allowOceans: 1
+  allowIslands: 1
+  landTilesGenerated: 0
+  planetIndex: 0
+--- !u!114 &1909149276891878161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edb751e37647d2342b86c471b7db5b3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GasGiantVolumeSpawner
+  volumePrefab: {fileID: 1692630127137379890, guid: f3cb1e8236986384d8432b3616796107, type: 3}
+  poolSize: 2
+  verboseLogs: 0
+  instantiateProfile: 1
+  fadeDuration: 1
+--- !u!23 &-8712523666204221431
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &3081038926846228259
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Mesh: {fileID: 0}
+--- !u!114 &-5893155586537961453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cfcc91371fcb3d45b226df9c64968d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GasGiantRenderer
+  visualData: {fileID: 11400000, guid: 2b25eacab853f8142bb848686eed13f1, type: 2}
+  gasGiantMaterial: {fileID: 2100000, guid: aea3a3c2633ad77418a5a928371b834e, type: 2}
+  rotationSpeed: 1
+  verboseLogs: 0
+--- !u!114 &-5750504008650881166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: ab0c50d17e744304f87d51a38c189a9b, type: 2}
+--- !u!114 &90253933363781833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39d53021cf2e77841947e6ab284caee2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WaterSurfaceGenerator
+  biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
+  oceanSurfacePrefab: {fileID: 7206017743671402131, guid: 64d208c167009ad40a1fbbbb7c3473bd, type: 3}
+  lakeSurfacePrefab: {fileID: 5353522929808825505, guid: 9776e4d57f046da4eba4f7db7562cfeb, type: 3}
+--- !u!114 &5887581935907441457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 341828991b841a04db7485272a3d544c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LayerManager
+  planetGenerator: {fileID: 6434261854368368276}
+  surfaceRootOverride: {fileID: 0}
+  underwaterRootOverride: {fileID: 0}
+  atmosphereRootOverride: {fileID: 0}
+  gasGiantRendererOverride: {fileID: -5893155586537961453}
+  gasGiantVolumeSpawnerOverride: {fileID: 0}
+  terrainRendererOverride: {fileID: 0}
+  logLayerChanges: 0
