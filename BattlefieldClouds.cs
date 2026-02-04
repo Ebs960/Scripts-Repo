@@ -704,9 +704,7 @@ public class BattlefieldClouds : MonoBehaviour
         {
             // Lush, humid biomes - more clouds
             case Biome.Jungle:
-            case Biome.Rainforest:
             case Biome.Swamp:
-            case Biome.Marsh:
                 cloudDensity = 0.7f;
                 cloudColor = new Color(0.9f, 0.9f, 0.95f, 0.7f);
                 scrollSpeed = 0.3f;
@@ -727,7 +725,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.Tundra:
             case Biome.Glacier:
             case Biome.IcicleField:
-            case Biome.CryoForest:
                 cloudDensity = 0.8f;
                 cloudColor = new Color(0.85f, 0.85f, 0.9f, 0.8f);
                 scrollSpeed = 0.4f;
@@ -747,7 +744,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.Volcanic:
             case Biome.Hellscape:
             case Biome.Ashlands:
-            case Biome.CharredForest:
             case Biome.Scorched:
                 cloudDensity = 0.6f;
                 cloudColor = new Color(0.3f, 0.25f, 0.2f, 0.7f); // Dark smoke-like
@@ -774,17 +770,10 @@ public class BattlefieldClouds : MonoBehaviour
                 scrollSpeed = 0.7f;
                 break;
                 
-            // Mountain - high clouds
-            case Biome.Mountain:
-                cloudDensity = 0.4f;
-                cloudColor = new Color(1f, 1f, 1f, 0.5f);
-                cloudHeight = 200f;
-                scrollSpeed = 0.8f;
-                break;
+            // Mountain visuals handled by elevation-based overrides elsewhere
                 
             // Mars - thin, dusty atmosphere
             case Biome.MartianRegolith:
-            case Biome.MartianCanyon:
             case Biome.MartianDunes:
             case Biome.MartianPolarIce:
                 cloudDensity = 0.15f;
@@ -796,7 +785,6 @@ public class BattlefieldClouds : MonoBehaviour
             // Venus - SUPER THICK sulfuric acid clouds that cover entire map
             case Biome.VenusLava:
             case Biome.VenusianPlains:
-            case Biome.VenusHighlands:
                 venusAtmosphere = true; // Enable Venus thick atmosphere mode
                 thickAtmosphereLayers = 6;
                 venusVisibility = 60f;
@@ -812,7 +800,6 @@ public class BattlefieldClouds : MonoBehaviour
                 
             // Gas giants - thick swirling clouds
             case Biome.JovianClouds:
-            case Biome.JovianStorm:
             case Biome.SaturnSurface:
             case Biome.SaturnRings:
                 cloudDensity = 0.95f;
@@ -823,10 +810,7 @@ public class BattlefieldClouds : MonoBehaviour
                 break;
                 
             // Ice giants
-            case Biome.UranusIce:
             case Biome.UranusSurface:
-            case Biome.NeptuneWinds:
-            case Biome.NeptuneIce:
             case Biome.NeptuneSurface:
                 cloudDensity = 0.7f;
                 cloudColor = new Color(0.7f, 0.8f, 0.9f, 0.7f); // Blue-ish
@@ -838,7 +822,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.MoonCraters:
             case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
-            case Biome.MercuryScarp:
             case Biome.MercurianIce:
             case Biome.EuropaIce:
             case Biome.EuropaRidges:

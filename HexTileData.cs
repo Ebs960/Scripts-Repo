@@ -23,6 +23,7 @@ public class HexTileData
     public bool isPassable;
     public int movementCost;
     public bool isHill; // Preserving existing property
+    public bool isMountain; // New flag replacing Biome.Mountain enum use
     public bool isMoonTile; // Preserving existing property
     public float temperature; // Per-tile temperature, set during map generation
     public float moisture; // Per-tile moisture, set during map generation

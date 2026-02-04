@@ -524,7 +524,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
             // Lush biomes - misty, green-tinted
             case Biome.Forest:
             case Biome.Jungle:
-            case Biome.Rainforest:
                 enableHeightFog = true;
                 groundFogDensity = 0.4f;
                 groundFogColor = new Color(0.7f, 0.8f, 0.7f, 1f);
@@ -537,7 +536,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Swamp - heavy fog
             case Biome.Swamp:
-            case Biome.Marsh:
             case Biome.Floodlands:
                 enableHeightFog = true;
                 groundFogDensity = 0.6f;
@@ -578,7 +576,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
             case Biome.Glacier:
             case Biome.Tundra:
             case Biome.IcicleField:
-            case Biome.CryoForest:
                 enableHeightFog = true;
                 groundFogDensity = 0.25f;
                 groundFogColor = new Color(0.85f, 0.9f, 1f, 1f); // Cold blue
@@ -617,7 +614,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Mars - dusty red atmosphere
             case Biome.MartianRegolith:
-            case Biome.MartianCanyon:
             case Biome.MartianDunes:
                 enableHeightFog = true;
                 groundFogDensity = 0.2f;
@@ -630,7 +626,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
             // Venus - thick yellow haze
             case Biome.VenusLava:
             case Biome.VenusianPlains:
-            case Biome.VenusHighlands:
                 enableHeightFog = true;
                 groundFogDensity = 0.7f;
                 fogFadeHeight = 25f;
@@ -641,7 +636,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Gas giants - swirling atmosphere
             case Biome.JovianClouds:
-            case Biome.JovianStorm:
             case Biome.SaturnSurface:
                 enableHeightFog = true;
                 groundFogDensity = 0.5f;

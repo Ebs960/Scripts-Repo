@@ -196,12 +196,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                   biome == Biome.Ashlands ||
                           biome == Biome.IoVolcanic;
         
-        bool needsFireflies = biome == Biome.Forest || biome == Biome.Swamp || 
-                             biome == Biome.Marsh || biome == Biome.Jungle;
-        
+        bool needsFireflies = biome == Biome.Forest || biome == Biome.Swamp ||
+                     biome == Biome.Jungle;
+
         bool needsSnowflakes = biome == Biome.Arctic || biome == Biome.Glacier ||
-                      biome == Biome.IcicleField || biome == Biome.CryoForest ||
-                      biome == Biome.Tundra;
+                  biome == Biome.IcicleField || biome == Biome.Tundra;
         
         if (needsEmbers)
         {
@@ -544,7 +543,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 
             // Jungle - dense spores
             case Biome.Jungle:
-            case Biome.Rainforest:
                 particleCount = 500;
                 particleColor = new Color(0.9f, 1f, 0.7f, 0.5f);
                 particleSize = 0.04f;
@@ -553,7 +551,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 
             // Swamp/marsh - mist particles
             case Biome.Swamp:
-            case Biome.Marsh:
             case Biome.Floodlands:
                 particleCount = 400;
                 particleColor = new Color(0.8f, 0.9f, 0.8f, 0.3f);
@@ -574,7 +571,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
             // Volcanic - ash
             case Biome.Volcanic:
             case Biome.Ashlands:
-            case Biome.CharredForest:
             case Biome.Scorched:
                 particleCount = 400;
                 particleColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
@@ -606,7 +602,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 case Biome.Glacier:
                 case Biome.Tundra:
                 case Biome.IcicleField:
-                case Biome.CryoForest:
                 particleCount = 100; // Just some ice crystals
                 particleColor = new Color(0.9f, 0.95f, 1f, 0.3f);
                 particleSize = 0.02f;
@@ -623,7 +618,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 
             // Mars - red dust
             case Biome.MartianRegolith:
-            case Biome.MartianCanyon:
             case Biome.MartianDunes:
                 particleCount = 300;
                 particleColor = new Color(0.8f, 0.5f, 0.3f, 0.4f);
@@ -634,7 +628,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
             // Venus - thick haze
             case Biome.VenusLava:
             case Biome.VenusianPlains:
-            case Biome.VenusHighlands:
                 particleCount = 600;
                 particleColor = new Color(0.9f, 0.8f, 0.5f, 0.5f);
                 particleSize = 0.08f;
@@ -643,7 +636,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 
             // Gas giants - swirling particles
             case Biome.JovianClouds:
-            case Biome.JovianStorm:
             case Biome.SaturnSurface:
                 particleCount = 400;
                 particleColor = new Color(0.9f, 0.85f, 0.7f, 0.4f);
@@ -652,9 +644,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 break;
                 
             // Ice giants
-            case Biome.UranusIce:
-            case Biome.NeptuneWinds:
-            case Biome.NeptuneIce:
+            case Biome.NeptuneSurface:
                 particleCount = 300;
                 particleColor = new Color(0.7f, 0.85f, 1f, 0.4f);
                 windInfluence = 2.5f;

@@ -19,7 +19,6 @@ public class BattleMapBiomeSetup : MonoBehaviour
         public Biome[] biomesToInclude = { 
         Biome.Plains, 
         Biome.Forest, 
-        Biome.Mountain, 
         Biome.Desert, 
         Biome.Swamp,
             Biome.Arctic,

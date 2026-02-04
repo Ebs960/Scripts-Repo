@@ -423,7 +423,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             case Biome.Jungle:
-            case Biome.Rainforest:
                 // Dense, humid jungle lighting
                 sunColor = new Color(0.95f, 1f, 0.9f);
                 sunIntensity = 1.0f;
@@ -451,7 +450,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // === SWAMP/MARSH BIOMES ===
             case Biome.Swamp:
-            case Biome.Marsh:
             case Biome.Floodlands:
                 // Murky, humid swamp lighting
                 sunColor = new Color(0.85f, 0.9f, 0.8f);
@@ -495,7 +493,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
                 
             case Biome.IcicleField:
-            case Biome.CryoForest:
                 // Crystalline ice world lighting
                 sunColor = new Color(0.8f, 0.9f, 1f);
                 sunIntensity = 1.1f;
@@ -534,19 +531,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.1f;
                 break;
                 
-            // === MOUNTAIN BIOMES ===
-            case Biome.Mountain:
-                // Crisp, high-altitude lighting
-                sunColor = new Color(1f, 0.98f, 0.95f);
-                sunIntensity = 1.4f;
-                skyColor = new Color(0.4f, 0.55f, 0.9f);
-                groundColor = new Color(0.35f, 0.35f, 0.35f);
-                fogColor = new Color(0.75f, 0.82f, 0.95f);
-                fogStartDistance = 150f;
-                fogEndDistance = 600f;
-                saturation = 0.05f;
-                contrast = 0.15f;
-                break;
+            // Mountain visuals handled by elevation-based overrides elsewhere
                 
             // === VOLCANIC/HELLISH BIOMES ===
             case Biome.Volcanic:
@@ -580,7 +565,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             case Biome.Ashlands:
-            case Biome.CharredForest:
                 // Ashen, smoky lighting
                 sunColor = new Color(0.9f, 0.75f, 0.6f);
                 sunIntensity = 0.9f;
@@ -624,18 +608,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.12f;
                 break;
                 
-            case Biome.MartianCanyon:
-                // Deep Martian canyon
-                sunColor = new Color(1f, 0.8f, 0.65f);
-                sunIntensity = 1.0f;
-                skyColor = new Color(0.6f, 0.45f, 0.35f);
-                groundColor = new Color(0.4f, 0.25f, 0.15f);
-                fogColor = new Color(0.7f, 0.5f, 0.4f);
-                fogStartDistance = 50f;
-                fogEndDistance = 300f;
-                saturation = 0.15f;
-                contrast = 0.15f;
-                break;
                 
             case Biome.MartianPolarIce:
                 // Mars polar ice caps
@@ -664,7 +636,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             case Biome.VenusianPlains:
-            case Biome.VenusHighlands:
                 // Venus thick atmosphere
                 sunColor = new Color(1f, 0.75f, 0.5f);
                 sunIntensity = 0.7f;
@@ -680,7 +651,6 @@ public class BattleSceneVisuals : MonoBehaviour
             // ==================== MERCURY BIOMES ====================
             case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
-            case Biome.MercuryScarp:
                 // Stark Mercury dayside
                 sunColor = new Color(1f, 1f, 0.95f);
                 sunIntensity = 2.0f; // Very bright sun
@@ -707,7 +677,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // ==================== GAS GIANT BIOMES ====================
             case Biome.JovianClouds:
-            case Biome.JovianStorm:
                 // Jupiter's turbulent atmosphere
                 sunColor = new Color(0.95f, 0.9f, 0.85f);
                 sunIntensity = 0.8f;
@@ -735,7 +704,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
             // ==================== ICE GIANT BIOMES ====================
-            case Biome.UranusIce:
             case Biome.UranusSurface:
                 // Uranus cyan-blue atmosphere
                 sunColor = new Color(0.85f, 0.95f, 1f);
@@ -749,8 +717,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.05f;
                 break;
                 
-            case Biome.NeptuneWinds:
-            case Biome.NeptuneIce:
             case Biome.NeptuneSurface:
                 // Neptune deep blue
                 sunColor = new Color(0.8f, 0.9f, 1f);

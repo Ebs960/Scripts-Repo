@@ -229,7 +229,7 @@ public class DistrictPlacementController : MonoBehaviour
             foreach (int neighborIndex in ts.GetNeighbors(tileIndex))
             {
                 var neighborData = ts.GetTileData(neighborIndex);
-                if (neighborData != null && neighborData.biome == Biome.Mountain)
+                if (neighborData != null && neighborData.elevationTier == ElevationTier.Mountain)
                 {
                     adjacentToMountain = true;
                     break;

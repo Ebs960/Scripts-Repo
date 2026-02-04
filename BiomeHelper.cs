@@ -5,49 +5,39 @@ using System;
 
 /// ---------- ENUM & DATA STRUCTS ----------
 public enum Biome {
-    Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Glacier, Tundra, Grassland, Marsh, Taiga, Swamp, Seas, 
-    Mountain,
+    Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Glacier, Tundra, Grassland, Taiga, Swamp, Seas,
     River,
     Lake,       // Inland freshwater body
     MoonDunes,
     MoonCraters,
     Volcanic,  // Added new volcanic terrain
     Steamlands,     // Added new steam terrain
-    Rainforest, // Added new rainforest biome - even wetter than jungle
     Ashlands,  // New biome for scorched map types
-    CharredForest, // New biome for scorched map types
     Scorched,   // New biome for extremely hot and dry conditions in scorched maps
     Floodlands,  // New biome unique to monsoon map types
     Hellscape,   // New biome for demonic worlds - extremely hostile terrain
     Arctic,       // New biome - the coldest of all polar biomes
     IcicleField,  // Ice World exclusive biome
-    CryoForest,   // Ice World exclusive biome
 
     // Real Solar System Planet Biomes
     MartianRegolith,    // Mars - dusty red soil
-    MartianCanyon,      // Mars - deep canyons and valleys
     MartianPolarIce,    // Mars - polar ice caps
     MartianDunes,       // Mars - sand dunes
     
     VenusLava,       // Venus - molten lava flows
     VenusianPlains,     // Venus - rocky plains
-    VenusHighlands,  // Venus - elevated terrain
     
     MercuryPlains,   // Mercury - heavily cratered surface
     MercuryBasalt,    // Mercury - basaltic plains 
     MercurianIce,       // Mercury - cold night side ice formations
-    MercuryScarp,      // Mercury - steep cliffs and scarps
+    
     JovianClouds,       // Jupiter - gas giant cloud layers
-    JovianStorm,        // Jupiter - storm systems like Great Red Spot
     
     SaturnRings,     // Saturn - ring particle fields
     SaturnSurface,    // Saturn - cloud layers
     
-    UranusIce,         // Uranus - ice giant surface
     UranusSurface,     // Uranus - methane atmosphere
     
-    NeptuneWinds,     // Neptune - extreme wind patterns
-    NeptuneIce,       // Neptune - ice formations
     NeptuneSurface,   // Neptune - standard surface terrain
     
     PlutoCryo,          // Pluto - frozen nitrogen plains
@@ -83,6 +73,23 @@ public struct YieldValues {
 
 /// ---------- HELPER LOGIC ----------
 public static class BiomeHelper {
+
+    /// <summary>
+    /// Determine whether a tile elevation qualifies as a mountain.
+    /// This replaces the old `Biome.Mountain` enum member which has been removed.
+    /// </summary>
+    public static bool IsMountain(float elevation, float mountainThreshold)
+    {
+        return elevation >= mountainThreshold;
+    }
+
+    /// <summary>
+    /// Determine whether a tile elevation qualifies as a hill (but not a mountain).
+    /// </summary>
+    public static bool IsHill(float elevation, float hillThreshold, float mountainThreshold)
+    {
+        return elevation >= hillThreshold && elevation < mountainThreshold;
+    }
 
     public static Biome GetBiome(bool isLand, float temperature, float moisture,
         bool isRainforestMapType = false, bool isScorchedMapType = false,
@@ -148,11 +155,11 @@ public static class BiomeHelper {
             }
             // Warm regions
             if (temperature <= 0.5f) {
-                if (moisture > 0.3f) return Biome.MartianCanyon;
+                if (moisture > 0.3f) return Biome.MartianRegolith;
                 return Biome.MartianRegolith;
             }
             // Hot regions
-            if (moisture > 0.4f) return Biome.MartianCanyon;
+            if (moisture > 0.4f) return Biome.MartianRegolith;
             return Biome.MartianRegolith; // Default Mars
         }
         
@@ -161,15 +168,15 @@ public static class BiomeHelper {
             // Hottest regions
             if (temperature > 0.6f) {
                 if (moisture < 0.2f) return Biome.VenusLava;
-                return Biome.VenusHighlands;
+                return Biome.VenusianPlains;
             }
             // Warm regions
             if (temperature > 0.4f) {
                 if (moisture < 0.5f) return Biome.VenusianPlains;
-                return Biome.VenusHighlands;
+                return Biome.VenusianPlains;
             }
             // All other regions
-            if (moisture > 0.3f) return Biome.VenusHighlands;
+            if (moisture > 0.3f) return Biome.VenusianPlains;
             return Biome.VenusianPlains; // Default Venus
         }
         
@@ -188,10 +195,10 @@ public static class BiomeHelper {
                 // Moderate day side regions
                 if (temperature > 0.3f) {
                     if (moisture < 0.3f) return Biome.MercuryBasalt;
-                    return Biome.MercuryScarp;
+                    return Biome.MercuryBasalt;
                 }
                 // Cooler day side areas
-                if (moisture < 0.2f) return Biome.MercuryScarp;
+                if (moisture < 0.2f) return Biome.MercuryBasalt;
                 return Biome.MercuryPlains;
             }
             else {
@@ -205,7 +212,7 @@ public static class BiomeHelper {
             // North/south is passed in normalized range [-1,1]. Use absolute value to detect polar caps.
             float absLat = Mathf.Abs(northSouth);
             // Consider 70+ degrees as polar region (0.78 in normalized [-1,1])
-            if (absLat >= 0.78f) return Biome.JovianStorm; // Polar storms
+            if (absLat >= 0.78f) return Biome.JovianClouds; // Polar storms
             return Biome.JovianClouds; // Elsewhere
         }
         
@@ -231,15 +238,15 @@ public static class BiomeHelper {
             // Very cold regions
             if (temperature < -0.4f) {
                 if (moisture > 0.7f) return Biome.UranusSurface;
-                return Biome.UranusIce;
+                return Biome.UranusSurface;
             }
             // Cold regions
             if (temperature < -0.2f) {
-                if (moisture > 0.5f) return Biome.UranusIce;
+                if (moisture > 0.5f) return Biome.UranusSurface;
                 return Biome.UranusSurface;
             }
             // All other regions
-            if (moisture > 0.6f) return Biome.UranusIce;
+            if (moisture > 0.6f) return Biome.UranusSurface;
             return Biome.UranusSurface; // Default Uranus
         }
         
@@ -247,16 +254,16 @@ public static class BiomeHelper {
         if (isNeptuneWorldType) {
             // Very cold regions
             if (temperature < -0.4f) {
-                if (moisture > 0.7f) return Biome.NeptuneWinds;
-                return Biome.NeptuneIce;
+                if (moisture > 0.7f) return Biome.NeptuneSurface;
+                return Biome.NeptuneSurface;
             }
             // Cold regions
             if (temperature < -0.2f) {
-                if (moisture > 0.5f) return Biome.NeptuneIce;
-                return Biome.NeptuneWinds;
+                if (moisture > 0.5f) return Biome.NeptuneSurface;
+                return Biome.NeptuneSurface;
             }
             // All other regions
-            if (moisture > 0.6f) return Biome.NeptuneWinds;
+            if (moisture > 0.6f) return Biome.NeptuneSurface;
             return Biome.NeptuneSurface; // Default Neptune
         }
         
@@ -352,7 +359,7 @@ public static class BiomeHelper {
         if (isIceWorldMapType)
         {
             if (temperature < 0.25f && moisture > 0.7f)
-                return Biome.CryoForest; // Wettest, coldest = CryoForest
+                return Biome.IcicleField; // Wettest, coldest mapped to IcicleField
             if (temperature < 0.25f && moisture > 0.45f)
                 return Biome.IcicleField; // Drier, cold = IcicleField
             // fallback to normal cold/frozen logic below
@@ -367,7 +374,7 @@ public static class BiomeHelper {
             if (temperature > 0.7f) {
                 if (moisture < 0.2f) return Biome.Scorched; // Very hot, very dry
                 if (moisture < 0.4f) return Biome.Ashlands; // Very hot, dry
-                if (moisture < 0.7f) return Biome.CharredForest; // Very hot, medium-wet
+                if (moisture < 0.7f) return Biome.Ashlands; // Very hot, medium-wet
                 return Biome.Steamlands; // Very hot, wet
             }
         }
@@ -375,7 +382,7 @@ public static class BiomeHelper {
         // For extremely high temperatures in infernal maps
         if (isInfernalMapType && temperature > 0.85f) {
             if (moisture > 0.75f) return Biome.Steamlands;
-            if (moisture > 0.5f) return Biome.CharredForest; // Hot + Very Wet = Steamlands vents
+            if (moisture > 0.5f) return Biome.Ashlands; // Hot + Very Wet = Steamlands vents
             return Biome.Volcanic;                          // Very hot = Volcanic terrain
         }
 
@@ -383,13 +390,13 @@ public static class BiomeHelper {
         if (isScorchedMapType && temperature > 0.85f) {
             if (temperature > 0.90f && moisture < 0.2f) return Biome.Scorched;  // Extremely hot + Very Dry = Scorched wastes
             if (moisture > 0.75f) return Biome.Steamlands;                         // Extremely hot + Very Wet = Steamlands vents
-            if (moisture > 0.5f) return Biome.CharredForest; // Hot + Medium Wet = Charred remains of forest
+            if (moisture > 0.5f) return Biome.Ashlands; // Hot + Medium Wet = Charred remains of forest
             return Biome.Ashlands;                          // Hot + Dry = Ashlands
         }
 
         // Very high moisture in hot/warm climates creates rainforests in rainforest map types
         if (isRainforestMapType && temperature > 0.7f && moisture > 0.6f) {
-            return Biome.Rainforest;
+            return Biome.Jungle;
         }
 
         // MONSOON MAP TYPE: Unique biome
@@ -424,7 +431,7 @@ public static class BiomeHelper {
             if (isMercuryWorldType) return Biome.MercuryBasalt;
             if (isJupiterWorldType) return Biome.JovianClouds;
             if (isSaturnWorldType) return Biome.SaturnSurface;
-            if (isUranusWorldType) return Biome.UranusIce;
+            if (isUranusWorldType) return Biome.UranusSurface;
             if (isNeptuneWorldType) return Biome.NeptuneSurface;
             if (isPlutoWorldType) return Biome.PlutoTholins;
             if (isTitanWorldType) return Biome.TitanIce;
@@ -464,7 +471,7 @@ public static class BiomeHelper {
         if (temperature > 0.15f) {
             if (moisture < 0.20f) return Biome.Tundra;
             if (moisture < 0.75f) return Biome.Taiga;
-            return Biome.Marsh;
+            return Biome.Swamp;
         }
 
         // EARTH POLAR BIOMES ONLY (temperature <= 0.20f) - Should never be reached by other planets
@@ -511,79 +518,67 @@ public static class BiomeHelper {
         Biome.Plains => new YieldValues { food = 3, prod = 1, gold = 0, sci = 0, cult = 0 },
         Biome.Forest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 },
         Biome.Jungle => new YieldValues { food = 2, prod = 0, gold = 0, sci = 2, cult = 1 },
-        Biome.Rainforest => new YieldValues { food = 3, prod = 0, gold = 0, sci = 2, cult = 2 }, // More food and culture than jungle
         Biome.Glacier => new YieldValues { food = 0, prod = 0, gold = 1, sci = 2, cult = 1 },
         Biome.Tundra => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
         Biome.Grassland => new YieldValues { food = 1, prod = 2, gold = 0, sci = 0, cult = 1 },
-        Biome.Marsh => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
         Biome.Taiga => new YieldValues { food = 1, prod = 3, gold = 0, sci = 0, cult = 1 },
         Biome.Swamp => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
-        Biome.Mountain => new YieldValues { food = 0, prod = 2, gold = 1, sci = 1, cult = 0 },
         Biome.River => new YieldValues { food = 1, prod = 0, gold = 1, sci = 1, cult = 1 },
-        Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },  // High food, culture from scenic lakes
+        Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },
         Biome.MoonDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 },
         Biome.MoonCraters => new YieldValues { food = 0, prod = 2, gold = 1, sci = 0, cult = 0 },
-        Biome.Volcanic => new YieldValues { food = 0, prod = 3, gold = 2, sci = 0, cult = 0 }, // High production and gold, no food
-        Biome.Steamlands => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 }, // High gold and good production, no food
-        Biome.Ashlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 1, cult = 0 }, // Unique yields for Ashlands
-        Biome.CharredForest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 }, // Unique yields for Charred Forest
-        Biome.Scorched => new YieldValues { food = 0, prod = 1, gold = 2, sci = 2, cult = 0 }, // Harsh but resource-rich
-        Biome.Floodlands => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 }, // Unique yields for Floodlands
-        Biome.Hellscape => new YieldValues { food = 1, prod = 5, gold = 2, sci = 3, cult = 0 }, // 
+        Biome.Volcanic => new YieldValues { food = 0, prod = 3, gold = 2, sci = 0, cult = 0 },
+        Biome.Steamlands => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 },
+        Biome.Ashlands => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 },
+        Biome.Scorched => new YieldValues { food = 0, prod = 1, gold = 2, sci = 2, cult = 0 },
+        Biome.Floodlands => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 },
+        Biome.Hellscape => new YieldValues { food = 1, prod = 5, gold = 2, sci = 3, cult = 0 },
         Biome.Arctic => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
-        Biome.IcicleField => new YieldValues { food = 0, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice World exclusive - high science
-        Biome.CryoForest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 2, cult = 1 }, // Ice World exclusive - balanced
-        
-        // Mars Biomes - Mining/Science focused
-        Biome.MartianRegolith => new YieldValues { food = 0, prod = 2, gold = 1, sci = 3, cult = 0 }, // High science potential
-        Biome.MartianCanyon => new YieldValues { food = 0, prod = 3, gold = 2, sci = 2, cult = 1 }, // Rich mineral deposits
-        Biome.MartianPolarIce => new YieldValues { food = 1, prod = 1, gold = 0, sci = 2, cult = 0 }, // Water source
-        Biome.MartianDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 }, // Barren but explorable
-        
-        // Venus Biomes - Extreme/Hostile
-        Biome.VenusLava => new YieldValues { food = 0, prod = 5, gold = 3, sci = 1, cult = 0 }, // Extreme production
-        Biome.VenusianPlains => new YieldValues { food = 0, prod = 3, gold = 2, sci = 1, cult = 0 }, // Industrial potential
-        Biome.VenusHighlands => new YieldValues { food = 0, prod = 2, gold = 1, sci = 2, cult = 0 }, // Elevated research
-        
-        // Mercury Biomes - Extreme conditions
-        Biome.MercuryPlains => new YieldValues { food = 0, prod = 1, gold = 3, sci = 2, cult = 0 }, // Former MercuryCraters -> MercuryPlains
-        Biome.MercuryBasalt => new YieldValues { food = 0, prod = 4, gold = 1, sci = 1, cult = 0 }, // Construction materials
-        Biome.MercuryScarp => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 0 }, // Geological interest
-        Biome.MercurianIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 4, cult = 0 }, // Water ice + cold research
-        
-        // Gas Giant Biomes - Atmospheric/Energy
-        Biome.JovianClouds => new YieldValues { food = 0, prod = 2, gold = 4, sci = 3, cult = 1 }, // Gas harvesting
-        Biome.JovianStorm => new YieldValues { food = 0, prod = 1, gold = 2, sci = 5, cult = 0 }, // Energy research
-        Biome.SaturnRings => new YieldValues { food = 0, prod = 3, gold = 5, sci = 2, cult = 1 }, // Ring mining
-        Biome.SaturnSurface => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 0 }, // Gas processing
-        
-        // Ice Giant Biomes
-        Biome.UranusIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 4, cult = 0 }, // Cryogenic research
-        Biome.UranusSurface => new YieldValues { food = 0, prod = 3, gold = 2, sci = 3, cult = 0 }, // Fuel production
-        Biome.NeptuneWinds => new YieldValues { food = 0, prod = 1, gold = 1, sci = 5, cult = 0 }, // Atmospheric dynamics
-        Biome.NeptuneIce => new YieldValues { food = 1, prod = 2, gold = 1, sci = 3, cult = 0 }, // Ice resources
-        Biome.NeptuneSurface => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 1 }, // Standard Neptune terrain
-        
-        // Pluto Biomes - Extreme cold/distance
-        Biome.PlutoCryo => new YieldValues { food = 0, prod = 1, gold = 1, sci = 4, cult = 2 }, // Frontier science
-        Biome.PlutoTholins => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 1 }, // Organic chemistry
-        
-        // Moon Biomes - Specialized environments
-        Biome.TitanLakes => new YieldValues { food = 1, prod = 2, gold = 4, sci = 3, cult = 0 }, // Hydrocarbon wealth
-        Biome.TitanDunes => new YieldValues { food = 0, prod = 2, gold = 2, sci = 2, cult = 0 }, // Organic materials
-        Biome.TitanIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 2, cult = 0 }, // Water ice
-        Biome.EuropaIce => new YieldValues { food = 2, prod = 1, gold = 1, sci = 3, cult = 0 }, // Subsurface ocean
-        Biome.EuropaRidges => new YieldValues { food = 1, prod = 2, gold = 2, sci = 4, cult = 0 }, // Geological activity
-        Biome.IoVolcanic => new YieldValues { food = 0, prod = 6, gold = 3, sci = 2, cult = 0 }, // Extreme volcanism
-        Biome.IoSulfur => new YieldValues { food = 0, prod = 3, gold = 4, sci = 1, cult = 0 }, // Sulfur mining
-        
+        Biome.IcicleField => new YieldValues { food = 0, prod = 2, gold = 1, sci = 3, cult = 0 },
+
+        // Mars Biomes
+        Biome.MartianRegolith => new YieldValues { food = 0, prod = 3, gold = 2, sci = 2, cult = 1 },
+        Biome.MartianPolarIce => new YieldValues { food = 1, prod = 1, gold = 0, sci = 2, cult = 0 },
+        Biome.MartianDunes => new YieldValues { food = 0, prod = 1, gold = 0, sci = 1, cult = 0 },
+
+        // Venus Biomes
+        Biome.VenusLava => new YieldValues { food = 0, prod = 5, gold = 3, sci = 1, cult = 0 },
+        Biome.VenusianPlains => new YieldValues { food = 0, prod = 3, gold = 2, sci = 1, cult = 0 },
+
+        // Mercury Biomes
+        Biome.MercuryPlains => new YieldValues { food = 0, prod = 1, gold = 3, sci = 2, cult = 0 },
+        Biome.MercuryBasalt => new YieldValues { food = 0, prod = 4, gold = 1, sci = 1, cult = 0 },
+        Biome.MercurianIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 4, cult = 0 },
+
+        // Gas Giants
+        Biome.JovianClouds => new YieldValues { food = 0, prod = 2, gold = 4, sci = 3, cult = 1 },
+        Biome.SaturnRings => new YieldValues { food = 0, prod = 3, gold = 5, sci = 2, cult = 1 },
+        Biome.SaturnSurface => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 0 },
+
+        // Ice Giants
+        Biome.UranusSurface => new YieldValues { food = 0, prod = 3, gold = 2, sci = 3, cult = 0 },
+        Biome.NeptuneSurface => new YieldValues { food = 0, prod = 2, gold = 2, sci = 3, cult = 1 },
+
+        // Pluto
+        Biome.PlutoCryo => new YieldValues { food = 0, prod = 1, gold = 1, sci = 4, cult = 2 },
+        Biome.PlutoTholins => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 1 },
+
+        // Moons and others
+        Biome.TitanLakes => new YieldValues { food = 1, prod = 2, gold = 4, sci = 3, cult = 0 },
+        Biome.TitanDunes => new YieldValues { food = 0, prod = 2, gold = 2, sci = 2, cult = 0 },
+        Biome.TitanIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 2, cult = 0 },
+        Biome.EuropaIce => new YieldValues { food = 2, prod = 1, gold = 1, sci = 3, cult = 0 },
+        Biome.EuropaRidges => new YieldValues { food = 1, prod = 2, gold = 2, sci = 4, cult = 0 },
+        Biome.IoVolcanic => new YieldValues { food = 0, prod = 6, gold = 3, sci = 2, cult = 0 },
+        Biome.IoSulfur => new YieldValues { food = 0, prod = 3, gold = 4, sci = 1, cult = 0 },
+
         _ => new YieldValues { food = 1, prod = 1, gold = 1, sci = 1, cult = 1 }
     };
 
     // Returns only temperate-allowed biomes regardless of temperature extremes
     public static Biome GetTemperateBiome(float moisture)
     {
-        if (moisture > 0.8f) return Biome.Marsh;
+        if (moisture > 0.8f) return Biome.Swamp;
         if (moisture > 0.6f) return Biome.Forest;
         if (moisture > 0.45f) return Biome.Grassland;
         return Biome.Plains;
@@ -595,58 +590,47 @@ public static class BiomeHelper {
     public static int GetDefenseBonus(Biome biome) => biome switch {
         Biome.Forest => 1,
         Biome.Jungle => 2,
-        Biome.Rainforest => 2, // Same defense bonus as jungle
-        Biome.Mountain => 3,
-        Biome.Volcanic => 4,     // Significant defense bonus due to difficult terrain
-        Biome.Steamlands => 2,        // Some defense bonus due to obscured visibility
-        Biome.Ashlands => 1,     // Minor defense bonus from ash dunes
-        Biome.CharredForest => 3, // Good defense bonus from burned tree remains
-        Biome.Scorched => 0,     // No defense bonus - too harsh for cover
-        Biome.Floodlands => 1,   // Minor defense bonus from floodlands
-        Biome.Hellscape => 0,    // No defense bonus - extremely hostile terrain
-        Biome.Arctic => 0,        // No defense bonus - polar land areas
-        Biome.IcicleField => 1,   // Minor defense from ice formations
-        Biome.CryoForest => 2,    // Good defense from frozen trees
-        
-        // Real Planet Defense Bonuses
-        Biome.MartianCanyon => 3,     // Excellent natural fortifications
-        Biome.MartianRegolith => 0,   // No cover on dusty plains
-        Biome.MartianPolarIce => 1,   // Some cover from ice formations
-        Biome.MartianDunes => 0,      // Shifting sands provide no cover
-        
-        Biome.VenusLava => 0,      // Too hostile for defensive positions
-        Biome.VenusianPlains => 0,    // Flat, no cover
-        Biome.VenusHighlands => 2, // Elevated defensive positions
-        
-        Biome.MercuryPlains => 2,  // Mapped crater cover to MercuryPlains
-        Biome.MercuryBasalt => 0,   // Flat rocky plains
-        Biome.MercuryScarp => 3,    // Cliff walls excellent for defense
-        Biome.MercurianIce => 1,      // Some cover from ice formations
-        
-        Biome.JovianClouds => 1,      // Limited visibility in clouds
-        Biome.JovianStorm => 0,       // Too chaotic for defense
-        Biome.SaturnRings => 1,    // Ring particles provide some cover
-        Biome.SaturnSurface => 1,   // Cloud cover
-        
-        Biome.UranusIce => 0,        // Flat ice surface
-        Biome.UranusSurface => 0,    // Gaseous atmosphere
-        Biome.NeptuneWinds => 0,    // Too chaotic for defense
-        Biome.NeptuneIce => 0,      // Flat ice surface
-        Biome.NeptuneSurface => 1,  // Some terrain features for cover
-        
-        Biome.PlutoCryo => 3,    // Mountain-like terrain on Pluto (mapped)
-        Biome.PlutoTholins => 0,      // Organic deposits, no cover
-        
-        Biome.TitanLakes => 0,        // Open liquid surfaces
-        Biome.Lake => 0,              // Open water, no cover
-        Biome.TitanDunes => 1,        // Sand dune cover
-        Biome.TitanIce => 0,          // Flat ice surfaces
-        Biome.EuropaRidges => 2,      // Ice ridge formations
-        Biome.EuropaIce => 0,         // Smooth ice plains
-        Biome.IoVolcanic => 0,        // Too active/dangerous
-        Biome.IoSulfur => 0,          // Flat sulfur plains
-        
-        _ => 0  // No bonus for other biome types
+        Biome.Volcanic => 4,
+        Biome.Steamlands => 2,
+        Biome.Ashlands => 1,
+        Biome.Scorched => 0,
+        Biome.Floodlands => 1,
+        Biome.Hellscape => 0,
+        Biome.Arctic => 0,
+        Biome.IcicleField => 1,
+
+        // Planet-specific
+        Biome.MartianRegolith => 0,
+        Biome.MartianPolarIce => 1,
+        Biome.MartianDunes => 0,
+
+        Biome.VenusLava => 0,
+        Biome.VenusianPlains => 0,
+
+        Biome.MercuryPlains => 2,
+        Biome.MercuryBasalt => 0,
+        Biome.MercurianIce => 1,
+
+        Biome.JovianClouds => 1,
+        Biome.SaturnRings => 1,
+        Biome.SaturnSurface => 1,
+
+        Biome.UranusSurface => 0,
+        Biome.NeptuneSurface => 1,
+
+        Biome.PlutoCryo => 3,
+        Biome.PlutoTholins => 0,
+
+        Biome.TitanLakes => 0,
+        Biome.Lake => 0,
+        Biome.TitanDunes => 1,
+        Biome.TitanIce => 0,
+        Biome.EuropaRidges => 2,
+        Biome.EuropaIce => 0,
+        Biome.IoVolcanic => 0,
+        Biome.IoSulfur => 0,
+
+        _ => 0
     };
     
     /// <summary>
@@ -659,71 +643,56 @@ public static class BiomeHelper {
         Biome.Tundra => 1,
         Biome.Savannah => 1,
         Biome.Coast => 1,
-        
+
         Biome.Forest => 2,
         Biome.Jungle => 2,
-        Biome.Rainforest => 3, // Harder to move through than jungle
-        Biome.Marsh => 2,
         Biome.Swamp => 3,
         Biome.Taiga => 2,
-        
-        Biome.Mountain => 3,
-        
-        Biome.Ocean => 1,  // For naval units
-        Biome.Seas => 1,   // For naval units
-        Biome.Lake => 2,   // Inland water - navigable but slower
-        
-        Biome.Volcanic => 3,     // Very difficult to traverse
-        Biome.Steamlands => 2,        // Moderately difficult due to hot steam vents
-        Biome.Ashlands => 2,     // Difficult due to ash drifts
-        Biome.CharredForest => 2, // Difficult due to fallen burned trees
-        Biome.Scorched => 3,     // Very difficult to traverse due to extreme heat
-        Biome.Floodlands => 2,   // Difficult due to floodwaters
-        Biome.Hellscape => 2,    // No movement cost - extremely hostile terrain
-        Biome.Arctic => 2,        // Higher movement cost - extremely harsh conditions
-        Biome.IcicleField => 3,   // Difficult traversal through ice spikes
-        Biome.CryoForest => 2,    // Frozen trees slow movement
-        Biome.Glacier => 4,      // Very high movement cost - glacier traversal
-        
-        // Real Planet Movement Costs
-        Biome.MartianRegolith => 2,   // Dusty, shifting surface
-        Biome.MartianCanyon => 3,     // Difficult canyon navigation
-        Biome.MartianPolarIce => 2,   // Slippery ice surfaces
-        Biome.MartianDunes => 3,      // Shifting sand dunes
-        
-        Biome.VenusLava => 4,      // Extremely dangerous to traverse
-        Biome.VenusianPlains => 2,    // Rocky but navigable
-        Biome.VenusHighlands => 2, // Elevated terrain
-        
-        Biome.MercuryPlains => 3,  // Mapped crater traversal to MercuryPlains
-        Biome.MercuryBasalt => 1,   // Solid rock surface
-        Biome.MercuryScarp => 4,    // Steep cliff traversal
-        Biome.MercurianIce => 2,      // Slippery ice surfaces
-        
-        Biome.JovianClouds => 2,      // Atmospheric flight
-        Biome.JovianStorm => 4,       // Dangerous storm navigation
-        Biome.SaturnRings => 3,    // Navigating ring particles
-        Biome.SaturnSurface => 2,   // Standard atmospheric travel
-        
-        Biome.UranusIce => 2,        // Ice surface travel
-        Biome.UranusSurface => 3,    // Hazardous atmosphere
-        Biome.NeptuneWinds => 4,    // Extreme wind resistance
-        Biome.NeptuneIce => 2,      // Standard ice travel
-        Biome.NeptuneSurface => 2,  // Standard Neptune terrain
-        
-        Biome.PlutoCryo => 3,         // Extreme cold conditions
-        Biome.PlutoTholins => 2,      // Organic compound terrain
 
-        
-        Biome.TitanLakes => 2,        // Liquid methane navigation
-        Biome.TitanDunes => 3,        // Sand dune traversal
-        Biome.TitanIce => 2,          // Ice surface travel
-        Biome.EuropaIce => 1,         // Smooth ice, easy travel
-        Biome.EuropaRidges => 3,      // Navigating ice ridges
-        Biome.IoVolcanic => 4,        // Active volcanic surface
-        Biome.IoSulfur => 2,          // Sulfur plains
-        
-        _ => 1  // Default cost
+        Biome.Ocean => 1,
+        Biome.Seas => 1,
+        Biome.Lake => 2,
+
+        Biome.Volcanic => 3,
+        Biome.Steamlands => 2,
+        Biome.Ashlands => 2,
+        Biome.Scorched => 3,
+        Biome.Floodlands => 2,
+        Biome.Arctic => 2,
+        Biome.IcicleField => 3,
+        Biome.Glacier => 4,
+
+        // Planet-specific
+        Biome.MartianRegolith => 2,
+        Biome.MartianPolarIce => 2,
+        Biome.MartianDunes => 3,
+
+        Biome.VenusLava => 4,
+        Biome.VenusianPlains => 2,
+
+        Biome.MercuryPlains => 3,
+        Biome.MercuryBasalt => 1,
+        Biome.MercurianIce => 2,
+
+        Biome.JovianClouds => 2,
+        Biome.SaturnRings => 3,
+        Biome.SaturnSurface => 2,
+
+        Biome.UranusSurface => 3,
+        Biome.NeptuneSurface => 2,
+
+        Biome.PlutoCryo => 3,
+        Biome.PlutoTholins => 2,
+
+        Biome.TitanLakes => 2,
+        Biome.TitanDunes => 3,
+        Biome.TitanIce => 2,
+        Biome.EuropaIce => 1,
+        Biome.EuropaRidges => 3,
+        Biome.IoVolcanic => 4,
+        Biome.IoSulfur => 2,
+
+        _ => 1
     };
     
     
@@ -764,22 +733,19 @@ public static class BiomeHelper {
             Biome.Floodlands => true,
             Biome.Hellscape => true,
             Biome.Arctic => true,
-            Biome.IcicleField => true,      // Extreme cold damage
-            
-            // Real Planet Damaging Biomes
-            Biome.VenusLava => true,     // Molten lava damage
-            Biome.MercuryPlains => true, // Radiation exposure (mapped)
-            Biome.MercuryBasalt => true,  // Extreme temperature swings
-            Biome.MercuryScarp => true,   // Radiation exposure
-            Biome.MercurianIce => true,     // Extreme cold damage
-            Biome.JovianStorm => true,      // Storm damage
-            Biome.UranusSurface => true,   // Toxic atmosphere
-            Biome.NeptuneWinds => true,   // Extreme wind damage
-            Biome.NeptuneSurface => true, // Harsh Neptune conditions
-            Biome.PlutoCryo => true,        // Extreme cold
-            Biome.IoVolcanic => true,       // Volcanic activity
-            Biome.IoSulfur => true,         // Toxic sulfur exposure
-            
+            Biome.IcicleField => true,
+
+            // Planet-specific damaging biomes
+            Biome.VenusLava => true,
+            Biome.MercuryPlains => true,
+            Biome.MercuryBasalt => true,
+            Biome.MercurianIce => true,
+            Biome.UranusSurface => true,
+            Biome.NeptuneSurface => true,
+            Biome.PlutoCryo => true,
+            Biome.IoVolcanic => true,
+            Biome.IoSulfur => true,
+
             _ => false
         };
     }
@@ -790,29 +756,26 @@ public static class BiomeHelper {
     public static float GetBiomeDamage(Biome biome)
     {
         return biome switch {
-            Biome.Volcanic => 0.15f,  // Significant damage from lava
-            Biome.Steamlands => 0.10f,     // Moderate damage from scalding steam
-            Biome.Ashlands => 0.05f,  // Minor damage from toxic ash
-            Biome.Scorched => 0.20f,  // Highest damage - extremely hostile environment
-            Biome.Floodlands => 0.10f, // Minor damage from floodwaters
-            Biome.Hellscape => 0.30f,   // extreme damage - extremely hostile terrain
-            Biome.Arctic => 0.05f,      // Minor damage from polar land areas   
-            Biome.IcicleField => 0.15f, // Piercing ice damage
-            
-            // Real Planet Damage Values
-            Biome.VenusLava => 0.50f,     // Extreme heat damage
-            Biome.MercuryPlains => 0.20f,  // Radiation damage (mapped)
-            Biome.MercuryBasalt => 0.15f,   // Temperature extremes
-            Biome.MercuryScarp => 0.25f,    // High radiation exposure
-            Biome.MercurianIce => 0.10f,      // Cold damage (less than other Mercury biomes)
-            Biome.JovianStorm => 0.40f,       // Severe storm damage
-            Biome.UranusSurface => 0.25f,    // Toxic atmosphere
-            Biome.NeptuneWinds => 0.30f,    // Extreme wind shear
-            Biome.NeptuneSurface => 0.15f,  // Harsh Neptune conditions
-            Biome.PlutoCryo => 0.20f,         // Extreme cold damage
-            Biome.IoVolcanic => 0.60f,        // Highest damage - active volcanism
-            Biome.IoSulfur => 0.20f,          // Sulfur toxicity
-            
+            Biome.Volcanic => 0.15f,
+            Biome.Steamlands => 0.10f,
+            Biome.Ashlands => 0.05f,
+            Biome.Scorched => 0.20f,
+            Biome.Floodlands => 0.10f,
+            Biome.Hellscape => 0.30f,
+            Biome.Arctic => 0.05f,
+            Biome.IcicleField => 0.15f,
+
+            // Planet-specific values
+            Biome.VenusLava => 0.50f,
+            Biome.MercuryPlains => 0.20f,
+            Biome.MercuryBasalt => 0.15f,
+            Biome.MercurianIce => 0.10f,
+            Biome.UranusSurface => 0.25f,
+            Biome.NeptuneSurface => 0.15f,
+            Biome.PlutoCryo => 0.20f,
+            Biome.IoVolcanic => 0.60f,
+            Biome.IoSulfur => 0.20f,
+
             _ => 0f
         };
     }
@@ -835,25 +798,22 @@ public static class BiomeHelper {
             case Biome.Ashlands:
                 return BiomeTerrainSettings.CreateDesert();
 
-            case Biome.Mountain:
+            // Mountain terrain is determined by elevation; PlutoCryo remains mountain-like
             case Biome.PlutoCryo:
                 return BiomeTerrainSettings.CreateMountain();
 
             case Biome.Forest:
             case Biome.Taiga:
-            case Biome.Rainforest:
             case Biome.Jungle:
                 return BiomeTerrainSettings.CreateForest();
 
             case Biome.Swamp:
-            case Biome.Marsh:
             case Biome.Floodlands:
                 return BiomeTerrainSettings.CreateSwamp();
 
             case Biome.Glacier:
             case Biome.Arctic:
             case Biome.IcicleField:
-            case Biome.CryoForest:
             case Biome.MartianPolarIce:
             case Biome.MercurianIce:
             case Biome.EuropaIce:
@@ -874,20 +834,16 @@ public static class BiomeHelper {
             case Biome.MoonDunes:
             case Biome.MoonCraters:
             case Biome.MartianRegolith:
-            case Biome.MartianCanyon:
             case Biome.MartianDunes:
             case Biome.MercuryPlains:
             case Biome.MercuryBasalt:
-            case Biome.MercuryScarp:
             case Biome.PlutoTholins:
                 return BiomeTerrainSettings.CreateMoon();
 
             case Biome.VenusianPlains:
-            case Biome.VenusHighlands:
                 return BiomeTerrainSettings.CreateVenus();
 
             default:
-                // Sensible default for any unmapped biome
                 return BiomeTerrainSettings.CreatePlains();
         }
     }

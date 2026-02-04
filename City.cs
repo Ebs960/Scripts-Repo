@@ -797,7 +797,7 @@ if (UIManager.Instance != null)
             foreach (int neighborIdx in ts.GetNeighbors(tileIndex))
             {
                 var neighborData = ts.GetTileData(neighborIdx);
-                if (neighborData != null && neighborData.biome == Biome.Mountain)
+                if (neighborData != null && neighborData.elevationTier == ElevationTier.Mountain)
                 {
                     hasMountain = true;
                     break;

@@ -361,8 +361,8 @@ public class UnitVisionManager : MonoBehaviour
         var tileData = tileSystem.GetTileData(tileIndex);
         if (tileData != null)
         {
-            // Mountains block vision beyond them (Biome uses Mountain singular; tier also exists).
-            return tileData.biome == Biome.Mountain || tileData.elevationTier == ElevationTier.Mountain;
+            // Mountains block vision beyond them (use elevation tier since Mountain enum removed).
+            return tileData.elevationTier == ElevationTier.Mountain;
         }
         return false;
     }

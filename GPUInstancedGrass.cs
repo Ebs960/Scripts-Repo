@@ -908,7 +908,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 break;
                 
             case Biome.Jungle:
-            case Biome.Rainforest:
                 grassColorBase = new Color(0.3f, 0.65f, 0.35f);
                 grassColorTip = new Color(0.4f, 0.75f, 0.45f);
                 grassColorDry = new Color(0.45f, 0.55f, 0.35f);
@@ -926,7 +925,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 
                 
             case Biome.Swamp:
-            case Biome.Marsh:
                 grassColorBase = new Color(0.35f, 0.5f, 0.3f);
                 grassColorTip = new Color(0.45f, 0.6f, 0.4f);
                 grassColorDry = new Color(0.5f, 0.5f, 0.35f);
@@ -972,11 +970,9 @@ public class GPUInstancedGrass : MonoBehaviour
             case Biome.IoVolcanic:
             case Biome.MartianRegolith:
             case Biome.MartianDunes:
-            case Biome.MartianCanyon:
             case Biome.MartianPolarIce:
             case Biome.MercuryBasalt:
             case Biome.MercuryPlains:
-            case Biome.MercuryScarp:
             case Biome.MercurianIce:
             case Biome.MoonDunes:
             case Biome.MoonCraters:

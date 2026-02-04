@@ -81,16 +81,16 @@ public struct BiomeDecorationEntry
             Biome.Ocean or Biome.Coast or Biome.Seas => 0f,
             
             // Lush biomes - high decoration chance
-            Biome.Forest or Biome.Jungle or Biome.Rainforest => 0.9f,
+            Biome.Forest or Biome.Jungle => 0.9f,
             Biome.Grassland or Biome.Plains or Biome.Savannah => 0.8f,
             
             // Moderate decoration biomes
-            Biome.Taiga or Biome.Taiga => 0.7f,
-            Biome.Marsh or Biome.Swamp => 0.6f,
+            Biome.Taiga => 0.7f,
+            Biome.Swamp => 0.6f,
             
             // Sparse decoration biomes
             Biome.Desert or Biome.Tundra => 0.4f,
-            Biome.Mountain or Biome.Arctic => 0.3f,
+            Biome.Arctic => 0.3f,
             
             // Hostile biomes - minimal decorations
             Biome.Volcanic or Biome.Steamlands => 0.2f,
@@ -110,11 +110,11 @@ public struct BiomeDecorationEntry
         return biome switch
         {
             // Lush biomes
-            Biome.Forest or Biome.Jungle or Biome.Rainforest => 2,
+            Biome.Forest or Biome.Jungle => 2,
             Biome.Grassland or Biome.Plains => 1,
             
             // Sparse biomes
-            Biome.Desert or Biome.Tundra or Biome.Mountain => 1,
+            Biome.Desert or Biome.Tundra => 1,
             
             // Very sparse biomes
             Biome.Volcanic or Biome.Hellscape => 1,
@@ -129,15 +129,15 @@ public struct BiomeDecorationEntry
         return biome switch
         {
             // Lush biomes - lots of decorations
-            Biome.Forest or Biome.Jungle or Biome.Rainforest => 5,
+            Biome.Forest or Biome.Jungle => 5,
             Biome.Grassland or Biome.Plains or Biome.Savannah => 4,
             
             // Moderate biomes
             Biome.Taiga or Biome.Taiga => 3,
-            Biome.Marsh or Biome.Swamp => 3,
+            Biome.Swamp => 3,
             
             // Sparse biomes
-            Biome.Desert or Biome.Tundra or Biome.Mountain => 2,
+            Biome.Desert or Biome.Tundra => 2,
             
             // Very sparse biomes
             Biome.Volcanic or Biome.Hellscape => 1,
@@ -1344,6 +1344,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
             Biome biome;
             bool isHill = false;
+            bool isMountain = false;
 
             if (isLake)
             {
@@ -1357,7 +1358,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 {
                     if (biome != Biome.Glacier && biome != Biome.Arctic)
                     {
-                        biome = Biome.Mountain;
+                        // Mark tile as mountain (no enum member exists anymore)
+                        isMountain = true;
                         // Apply mountain boost so mountains sit noticeably above surrounding land
                         finalElevation += mountainElevationBoost;
                     }
@@ -1419,6 +1421,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                 isLake = isLake,
                 isRiver = isRiverTile[i],
                 isHill = isHill,
+                isMountain = isMountain,
                 elevation = finalElevation,
                 renderElevation = 0f,
                 elevationTier = elevTier,
@@ -1579,8 +1582,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
                     hasWaterNeighbor = true; break;
                 }
             }
-            // Convert land tile to Coast if adjacent to Ocean/Seas (but NEVER Snow or Mountains)
-            if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i) && data[i].biome != Biome.Mountain) {
+            // Convert land tile to Coast if adjacent to Ocean/Seas (but NEVER Snow or mountain-flagged tiles)
+            if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i) && !data[i].isMountain) {
                 var td = data[i];
                 td.biome = Biome.Coast;
                 td.isLand = true; // Coast is technically land

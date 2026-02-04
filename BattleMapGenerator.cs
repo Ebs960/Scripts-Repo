@@ -896,12 +896,10 @@ GenerateTerrainWithVista();
         return primaryBattleBiome switch
         {
             Biome.Forest => 1500f,
-            Biome.Jungle => 1800f,
-            Biome.Rainforest => 2000f,
+            Biome.Jungle => 2000f,
             Biome.Taiga => 1200f,
             Biome.Plains => 800f,
             Biome.Desert => 500f,
-            Biome.Mountain => 1000f,
             _ => 1000f
         };
     }
@@ -914,8 +912,7 @@ GenerateTerrainWithVista();
         return primaryBattleBiome switch
         {
             Biome.Forest => 250f,
-            Biome.Jungle => 300f,
-            Biome.Rainforest => 350f,
+            Biome.Jungle => 350f,
             Biome.Taiga => 200f,
             _ => 200f
         };
@@ -929,8 +926,7 @@ GenerateTerrainWithVista();
         return primaryBattleBiome switch
         {
             Biome.Forest => 200,
-            Biome.Jungle => 250,
-            Biome.Rainforest => 300,
+            Biome.Jungle => 300,
             Biome.Taiga => 150,
             Biome.Plains => 100,
             Biome.Desert => 50,
@@ -1972,9 +1968,8 @@ break;
     {
         return biome switch
         {
-            Biome.Mountain => TerrainType.Mountain,
             Biome.Forest or Biome.Jungle => TerrainType.Forest,
-            Biome.Swamp or Biome.Marsh => TerrainType.Swamp,
+            Biome.Swamp => TerrainType.Swamp,
             Biome.Ocean or Biome.Seas => TerrainType.Water,
             _ => TerrainType.Plains
         };
@@ -1987,7 +1982,7 @@ break;
 
     private bool IsBiomeImpassable(Biome biome)
     {
-        return biome == Biome.Ocean || biome == Biome.Seas || biome == Biome.Mountain;
+        return biome == Biome.Ocean || biome == Biome.Seas;
     }
 
     private bool ShouldSpawnObstacle(Biome biome)
@@ -1995,8 +1990,7 @@ break;
         float chance = biome switch
         {
             Biome.Forest or Biome.Jungle => 0.3f,
-            Biome.Mountain => 0.2f,
-            Biome.Swamp or Biome.Marsh => 0.15f,
+            Biome.Swamp => 0.15f,
             Biome.Desert => 0.1f,
             _ => 0.05f
         };
