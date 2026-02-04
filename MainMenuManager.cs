@@ -832,9 +832,8 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.isScorchedWorld = mapTypeLower.Contains("scorched") || 
                                        mapTypeLower.Contains("ashlands") || 
                                        mapTypeLower.Contains("charred");
-        // --- New: Ice World and Monsoon World flags ---
+        // --- New: Ice World flag
         GameSetupData.isIceWorld = mapTypeLower.Contains("ice world") || mapTypeLower.Contains("icicle") || mapTypeLower.Contains("cryo");
-        GameSetupData.isMonsoonWorld = mapTypeLower.Contains("monsoon") || mapTypeLower.Contains("floodlands");
         // River settings
         GameSetupData.enableRivers = enableRivers;
         GameSetupData.riverCount = riverCount;

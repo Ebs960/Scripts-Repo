@@ -13,7 +13,6 @@ public enum Biome {
     Steamlands,     // Added new steam terrain
     Ashlands,  // New biome for scorched map types
     Scorched,   // New biome for extremely hot and dry conditions in scorched maps
-    Floodlands,  // New biome unique to monsoon map types
     Hellscape,   // New biome for demonic worlds - extremely hostile terrain
     Arctic,       // New biome - the coldest of all polar biomes
     IcicleField,  // Ice World exclusive biome
@@ -90,7 +89,7 @@ public static class BiomeHelper {
     public static Biome GetBiome(bool isLand, float temperature, float moisture,
         bool isRainforestMapType = false, bool isScorchedMapType = false,
         bool isInfernalMapType = false, bool isDemonicMapType = false,
-        bool isIceWorldMapType = false, bool isMonsoonMapType = false,
+        bool isIceWorldMapType = false,
         bool isMarsWorldType = false, bool isVenusWorldType = false,
         bool isMercuryWorldType = false, bool isJupiterWorldType = false,
         bool isSaturnWorldType = false, bool isUranusWorldType = false,
@@ -345,12 +344,6 @@ public static class BiomeHelper {
             return Biome.Jungle;
         }
 
-        // MONSOON MAP TYPE: Unique biome
-        if (isMonsoonMapType && temperature > 0.4f && temperature < 0.8f && moisture > 0.8f)
-        {
-            return Biome.Floodlands;
-        }
-
         // === EARTH-ONLY STANDARD BIOME LOGIC ===
         // This section only executes for Earth (when no planet flags are set)
         
@@ -475,7 +468,6 @@ public static class BiomeHelper {
         Biome.Steamlands => new YieldValues { food = 0, prod = 2, gold = 3, sci = 0, cult = 0 },
         Biome.Ashlands => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 },
         Biome.Scorched => new YieldValues { food = 0, prod = 1, gold = 2, sci = 2, cult = 0 },
-        Biome.Floodlands => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 },
         Biome.Hellscape => new YieldValues { food = 1, prod = 5, gold = 2, sci = 3, cult = 0 },
         Biome.Arctic => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
         Biome.IcicleField => new YieldValues { food = 0, prod = 2, gold = 1, sci = 3, cult = 0 },
@@ -535,7 +527,6 @@ public static class BiomeHelper {
         Biome.Steamlands => 2,
         Biome.Ashlands => 1,
         Biome.Scorched => 0,
-        Biome.Floodlands => 1,
         Biome.Hellscape => 0,
         Biome.Arctic => 0,
         Biome.IcicleField => 1,
@@ -595,7 +586,6 @@ public static class BiomeHelper {
         Biome.Steamlands => 2,
         Biome.Ashlands => 2,
         Biome.Scorched => 3,
-        Biome.Floodlands => 2,
         Biome.Arctic => 2,
         Biome.IcicleField => 3,
         Biome.Glacier => 4,
@@ -665,7 +655,6 @@ public static class BiomeHelper {
             Biome.Steamlands => true,
             Biome.Ashlands => true,
             Biome.Scorched => true,
-            Biome.Floodlands => true,
             Biome.Hellscape => true,
             Biome.Arctic => true,
             Biome.IcicleField => true,
@@ -694,7 +683,6 @@ public static class BiomeHelper {
             Biome.Steamlands => 0.10f,
             Biome.Ashlands => 0.05f,
             Biome.Scorched => 0.20f,
-            Biome.Floodlands => 0.10f,
             Biome.Hellscape => 0.30f,
             Biome.Arctic => 0.05f,
             Biome.IcicleField => 0.15f,
@@ -741,7 +729,6 @@ public static class BiomeHelper {
                 return BiomeTerrainSettings.CreateForest();
 
             case Biome.Swamp:
-            case Biome.Floodlands:
                 return BiomeTerrainSettings.CreateSwamp();
 
             case Biome.Glacier:

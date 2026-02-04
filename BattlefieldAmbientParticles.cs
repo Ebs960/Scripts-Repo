@@ -549,9 +549,8 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 driftSpeed = 0.15f;
                 break;
                 
-            // Swamp/marsh - mist particles
+            // Swa - mist particles
             case Biome.Swamp:
-            case Biome.Floodlands:
                 particleCount = 400;
                 particleColor = new Color(0.8f, 0.9f, 0.8f, 0.3f);
                 particleSize = 0.1f;

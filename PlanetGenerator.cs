@@ -576,7 +576,6 @@ public bool isScorchedMapType = false; // Whether this is a scorched map type
 public bool isInfernalMapType = false; // Whether this is an infernal map type
 public bool isDemonicMapType = false; // Add this field
 public bool isIceWorldMapType = false; // Whether this is an ice world map type
-public bool isMonsoonMapType = false; // Whether this is a monsoon map type
 
 
     [Header("Real Planet Flags")]
@@ -2319,7 +2318,6 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         isInfernalMapType = mapTypeName.Contains("Infernal");
         isDemonicMapType = mapTypeName.Contains("Demonic");
         isIceWorldMapType = mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial")|| mapTypeName.Contains("Ice");
-        isMonsoonMapType = mapTypeName.Contains("Monsoon") || mapTypeName.Contains("Floodlands");
     }
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
@@ -2344,7 +2342,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         Biome assignedBiome = BiomeHelper.GetBiome(
             isLand, temperature, moisture,
             isRainforestMapType, isScorchedMapType, isInfernalMapType, isDemonicMapType,
-            isIceWorldMapType, isMonsoonMapType,
+            isIceWorldMapType,
             isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
             isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
             isTitanWorldType, isEuropaWorldType, isIoWorldType,

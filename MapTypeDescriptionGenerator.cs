@@ -332,13 +332,6 @@ public static class MapTypeDescriptionGenerator
             {
                 desc.Append("\n\nEternal winter reigns supreme, crafting a world of crystalline beauty and deadly cold. Frozen forests of impossible forms pierce the perpetual twilight, while fields of icicles catch the aurora's light like nature's own cathedral. Life has learned to flourish in the ice, creating biomes unlike any found in warmer worlds—cryoforests where trees of frost grow, and icicle fields where silence itself seems to freeze solid.");
             }
-            
-            // Monsoon map type - Floodlands biome
-            if (mapTypeName.IndexOf("Monsoon", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                mapTypeName.IndexOf("Floodlands", System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                desc.Append("\n\nThe sky weeps without end, and the earth drinks until it can drink no more. Floodlands stretch for leagues, where the boundary between land and water dissolves into a labyrinth of channels and wetlands. Here, life moves to the rhythm of the endless rain—settlements built on stilts, crops that thrive in the deluge, and civilizations that have learned to dance with the flood rather than fight it.");
-            }
         }
 
         return desc.ToString().Trim();

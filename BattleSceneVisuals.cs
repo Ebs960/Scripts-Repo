@@ -448,9 +448,8 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.1f;
                 break;
                 
-            // === SWAMP/MARSH BIOMES ===
+            // === SWAMP BIOMES ===
             case Biome.Swamp:
-            case Biome.Floodlands:
                 // Murky, humid swamp lighting
                 sunColor = new Color(0.85f, 0.9f, 0.8f);
                 sunIntensity = 0.9f;

@@ -764,7 +764,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.Coast:
             case Biome.Ocean:
             case Biome.Seas:
-            case Biome.Floodlands:
                 cloudDensity = 0.5f;
                 cloudColor = new Color(0.95f, 0.97f, 1f, 0.55f);
                 scrollSpeed = 0.7f;

@@ -536,7 +536,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Swamp - heavy fog
             case Biome.Swamp:
-            case Biome.Floodlands:
                 enableHeightFog = true;
                 groundFogDensity = 0.6f;
                 fogFadeHeight = 6f;
