@@ -456,7 +456,10 @@ public abstract class BaseUnit : MonoBehaviour
                     DestroyImmediate(item);
                 else
 #endif
-                    Destroy(item);
+                {
+                    // Pool equipment visuals in play mode to reduce Instantiate/Destroy churn.
+                    EquipmentVisualPool.Release(item);
+                }
             }
         }
         equippedItemObjects.Clear();
@@ -484,7 +487,13 @@ public abstract class BaseUnit : MonoBehaviour
                     DestroyImmediate(child.gameObject);
                 else
 #endif
-                    Destroy(child.gameObject);
+                {
+                    // If this was an equipment visual we created, return it to pool; otherwise destroy.
+                    if (EquipmentVisualPool.IsPooledInstance(child.gameObject))
+                        EquipmentVisualPool.Release(child.gameObject);
+                    else
+                        Destroy(child.gameObject);
+                }
             }
         }
 
@@ -497,8 +506,14 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (holder == null || itemData == null || itemData.equipmentPrefab == null) return;
 
-        // Instantiate equipment
-        GameObject equipObj = Instantiate(itemData.equipmentPrefab);
+        // Acquire equipment visual (pooled in play mode, instantiated in edit mode).
+        GameObject equipObj =
+#if UNITY_EDITOR
+            (!Application.isPlaying) ? Instantiate(itemData.equipmentPrefab) :
+#endif
+            EquipmentVisualPool.Acquire(itemData.equipmentPrefab);
+
+        // Preserve authored local rotation from prefab (pool resets to prefab-authored local).
         Quaternion authoredLocal = equipObj.transform.localRotation;
         equipObj.transform.SetParent(holder, false);
         equipObj.transform.localPosition = Vector3.zero;

@@ -103,8 +103,10 @@ public class CombatUnit : BaseUnit
     
     // takesWeatherDamage, hasWinterPenalty are inherited from BaseUnit
     
-    // Performance optimization: track last displayed health to avoid unnecessary UI updates
-    private int _lastDisplayedHealth = -1;
+    // Battle tick (event-driven state changes + low-frequency fatigue integration)
+    private Coroutine _battleTickCoroutine;
+    private float _battleTickLastTime;
+    private const float BATTLE_TICK_INTERVAL = 0.2f; // 5 Hz; avoids per-frame Update() cost
 
     // Battle system fields
     [Header("Battle System")]
@@ -161,7 +163,26 @@ public class CombatUnit : BaseUnit
     /// </summary>
     public void SetRouted(bool routed)
     {
+        if (isRouted == routed) return;
         isRouted = routed;
+
+        // Keep animator parameters in sync immediately (no per-frame Update()).
+        UpdateRoutingAnimation();
+        UpdateAttackingAnimation();
+    }
+
+    /// <summary>
+    /// Lightweight battle state setter that only updates local state + animator parameters.
+    /// Use this for most internal transitions. It does NOT trigger expensive behaviors like FindNearestEnemy().
+    /// </summary>
+    private void SetBattleStateRaw(BattleUnitState newState)
+    {
+        if (battleState == newState) return;
+        battleState = newState;
+
+        // Event-driven animator sync (replaces per-frame Update()).
+        UpdateAttackingAnimation();
+        UpdateRoutingAnimation();
     }
 
     // Transport system
@@ -761,7 +782,7 @@ public class CombatUnit : BaseUnit
         activeWeapon = equippedWeapon; // legacy fallback
 
     // Set battle state to Attacking - IsAttacking bool will handle continuous attack animations
-    battleState = BattleUnitState.Attacking;
+    SetBattleStateRaw(BattleUnitState.Attacking);
     
     // For ranged attacks, still use the trigger (one-shot projectile launch animation)
     bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
@@ -880,7 +901,7 @@ if (!data.canSwitchToMelee)
             activeWeapon = equippedWeapon;
 
         // Set battle state to Attacking - IsAttacking bool will handle continuous melee attack animations
-        battleState = BattleUnitState.Attacking;
+        SetBattleStateRaw(BattleUnitState.Attacking);
         
         // For ranged attacks, still use the trigger (one-shot projectile launch animation)
         bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
@@ -1091,7 +1112,7 @@ if (!data.canSwitchToMelee)
         
         isRouted = true;
         // Set battle state to Routing and start retreat
-        battleState = BattleUnitState.Routing;
+        SetBattleStateRaw(BattleUnitState.Routing);
         StartRetreat();
 }
     
@@ -1147,7 +1168,7 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         if (isRouted) return; // Routed units cannot counter-attack
 
         // Set battle state to Attacking - IsAttacking bool will handle continuous attack animations
-        battleState = BattleUnitState.Attacking;
+        SetBattleStateRaw(BattleUnitState.Attacking);
         // No trigger needed for melee counter-attacks - IsAttacking bool handles it
         
         OnAnimationTrigger?.Invoke("attack");
@@ -1202,7 +1223,7 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
             // Unit routs: cannot attack, moves randomly away
             isRouted = true;
             // Set battle state to Routing - IsRouting bool will handle continuous routing animations
-            battleState = BattleUnitState.Routing;
+            SetBattleStateRaw(BattleUnitState.Routing);
             // Flee one tile away (or start continuous retreat in battle)
             AttemptFlee();
         }
@@ -1614,7 +1635,19 @@ return;
     public bool IsInBattle 
     { 
         get => _isInBattle;
-        set => _isInBattle = value;
+        set
+        {
+            if (_isInBattle == value) return;
+            _isInBattle = value;
+
+            // Enter/exit battle tick for fatigue + safety animation sync.
+            if (_isInBattle) StartBattleTick();
+            else StopBattleTick();
+
+            // Ensure animator booleans are consistent when battle mode toggles.
+            UpdateAttackingAnimation();
+            UpdateRoutingAnimation();
+        }
     }
 
     // Event fired when multi-tile move finishes
@@ -1644,7 +1677,7 @@ return;
             // Stop routing animation and return to normal state
             if (battleState == BattleUnitState.Routing)
             {
-                battleState = BattleUnitState.Idle;
+                SetBattleStateRaw(BattleUnitState.Idle);
             }
             // Stop retreat coroutine if running
             if (retreatCoroutine != null)
@@ -1962,7 +1995,7 @@ return;
                     #if UNITY_EDITOR
                     if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(item); else
                     #endif
-                    Destroy(item);
+                    EquipmentVisualPool.Release(item);
                 }
             }
             equippedItemObjects.Clear();
@@ -1977,7 +2010,7 @@ return;
                 #if UNITY_EDITOR
                 if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(item); else
                 #endif
-                Destroy(item);
+                EquipmentVisualPool.Release(item);
             }
         }
         equippedItemObjects.Clear();
@@ -1989,7 +2022,7 @@ return;
                 #if UNITY_EDITOR
                 if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(item); else
                 #endif
-                Destroy(item);
+                EquipmentVisualPool.Release(item);
             }
         }
         extraEquippedItemObjects.Clear();
@@ -2019,7 +2052,12 @@ return;
                 #if UNITY_EDITOR
                 if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(child.gameObject); else
                 #endif
-                Destroy(child.gameObject);
+                {
+                    if (EquipmentVisualPool.IsPooledInstance(child.gameObject))
+                        EquipmentVisualPool.Release(child.gameObject);
+                    else
+                        Destroy(child.gameObject);
+                }
             }
         }
 
@@ -2032,8 +2070,12 @@ return;
     {
         if (holder == null || itemData == null || itemData.equipmentPrefab == null) return;
 
-        // Instantiate
-        GameObject equipObj = Instantiate(itemData.equipmentPrefab);
+        // Acquire (pooled in play mode)
+        GameObject equipObj =
+        #if UNITY_EDITOR
+            (!Application.isPlaying) ? Instantiate(itemData.equipmentPrefab) :
+        #endif
+            EquipmentVisualPool.Acquire(itemData.equipmentPrefab);
         
         // CombatUnit-specific attachment logic
         Quaternion authoredLocal = equipObj.transform.localRotation;
@@ -2095,29 +2137,35 @@ return;
         return false;
     }
 
-    void Update()
+    private void StartBattleTick()
     {
-        // Only update every few frames for performance
-        if (Time.frameCount % 3 != 0) return;
+        if (_battleTickCoroutine != null) return;
+        _battleTickLastTime = Time.time;
+        _battleTickCoroutine = StartCoroutine(BattleTickCoroutine());
+    }
 
-        // Melee engagement state is now handled by UpdateMeleeEngagementState() based on range checks
-        // Old timer-based system removed - engagement is now reactive to actual enemy proximity
-        
-        // Update fatigue system
-        UpdateFatigue();
+    private void StopBattleTick()
+    {
+        if (_battleTickCoroutine == null) return;
+        StopCoroutine(_battleTickCoroutine);
+        _battleTickCoroutine = null;
+    }
 
-        // CRITICAL: Update IsAttacking bool based on battle state
-        UpdateAttackingAnimation();
-        
-        // CRITICAL: Update IsRouting bool based on battle state
-        UpdateRoutingAnimation();
-
-        // Update unit label only when health changes
-        if (unitLabelInstance != null && currentHealth != _lastDisplayedHealth)
+    private System.Collections.IEnumerator BattleTickCoroutine()
+    {
+        var wait = new WaitForSeconds(BATTLE_TICK_INTERVAL);
+        while (IsInBattle && battleState != BattleUnitState.Dead)
         {
-            unitLabelInstance.UpdateLabel(data.unitName, owner.civData.civName, currentHealth, MaxHealth);
-            _lastDisplayedHealth = currentHealth;
+            float now = Time.time;
+            float dt = Mathf.Max(0f, now - _battleTickLastTime);
+            _battleTickLastTime = now;
+
+            // Fatigue is time-based, so we integrate it here rather than in per-frame Update().
+            UpdateFatigueWithDelta(dt);
+
+            yield return wait;
         }
+        _battleTickCoroutine = null;
     }
     
     /// <summary>
@@ -2125,10 +2173,15 @@ return;
     /// </summary>
     private void UpdateFatigue()
     {
+        // Back-compat shim: some older code paths may still call UpdateFatigue().
+        // Preserve previous behavior by approximating the old "every 3 frames" update cadence.
+        UpdateFatigueWithDelta(Time.deltaTime * 3f);
+    }
+
+    private void UpdateFatigueWithDelta(float deltaTime)
+    {
         if (data == null) return;
-        
-        float deltaTime = Time.deltaTime * 3f; // Compensate for every-3rd-frame update
-        
+
         // Accumulate fatigue based on activity
         if (battleState == BattleUnitState.Attacking)
         {
@@ -2507,7 +2560,7 @@ return;
                 case "attack":
                     // REMOVED: Attack is now controlled by IsAttacking bool, not a trigger
                     // Just set the battle state instead
-                    battleState = BattleUnitState.Attacking;
+                    SetBattleStateRaw(BattleUnitState.Attacking);
                     return; // Don't set a trigger
                 case "Hit":
                 case "hit":
@@ -2762,7 +2815,7 @@ return;
     public void InitializeForBattle(bool isAttackerSide)
     {
         isAttacker = isAttackerSide;
-        battleState = BattleUnitState.Idle;
+        SetBattleStateRaw(BattleUnitState.Idle);
         currentTarget = null;
         
         // Mark unit as in battle (prevents world map movement from interfering)
@@ -2808,13 +2861,16 @@ return;
         // Check if we're transitioning from Routing to a non-routing state
         bool wasRouting = (battleState == BattleUnitState.Routing || isRouted);
         
-        battleState = newState;
+        SetBattleStateRaw(newState);
         
         switch (newState)
         {
             case BattleUnitState.Idle:
                 // Stop current actions
                 StopAllCoroutines();
+                // StopAllCoroutines also stops our battle tick; restart it if we are still in battle.
+                _battleTickCoroutine = null;
+                if (IsInBattle) StartBattleTick();
                 // If we were routing, immediately update animation to clear IsRouting parameter
                 if (wasRouting)
                 {
@@ -2854,7 +2910,7 @@ return;
     {
         if (battleState == BattleUnitState.Dead) return;
 
-        battleState = BattleUnitState.Moving;
+        SetBattleStateRaw(BattleUnitState.Moving);
         StartCoroutine(MoveToPositionCoroutine(targetPosition));
     }
 
@@ -2866,7 +2922,7 @@ return;
         if (target == null || battleState == BattleUnitState.Dead) return;
 
         currentTarget = target;
-        battleState = BattleUnitState.Attacking;
+        SetBattleStateRaw(BattleUnitState.Attacking);
         
         // Check if in range
         float distance = Vector3.Distance(transform.position, target.transform.position);
@@ -2917,7 +2973,7 @@ return;
     private void StartRetreat()
     {
         // Set battle state to Routing
-        battleState = BattleUnitState.Routing;
+        SetBattleStateRaw(BattleUnitState.Routing);
         
         // Start continuous retreat coroutine (keeps moving away from enemies)
         if (retreatCoroutine != null)
@@ -3085,7 +3141,7 @@ return;
         if (battleState == BattleUnitState.Moving && !isRouted)
         {
             transform.position = targetPosition;
-            battleState = BattleUnitState.Idle;
+            SetBattleStateRaw(BattleUnitState.Idle);
         }
     }
 
@@ -3095,7 +3151,7 @@ return;
         if (target == null || target.battleState == BattleUnitState.Dead)
         {
             currentTarget = null;
-            battleState = BattleUnitState.Idle;
+            SetBattleStateRaw(BattleUnitState.Idle);
             yield break;
         }
         
@@ -3140,7 +3196,7 @@ return;
                 else
                 {
                     // Target is not routed, attack normally
-                    battleState = BattleUnitState.Attacking;
+                    SetBattleStateRaw(BattleUnitState.Attacking);
                     Attack(target);
                     yield break;
                 }

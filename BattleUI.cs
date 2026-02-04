@@ -19,6 +19,7 @@ public class BattleUI : MonoBehaviour
     // Formation button tracking
     private List<GameObject> formationButtons = new List<GameObject>();
     private List<FormationUnit> trackedFormations = new List<FormationUnit>();
+    private readonly Dictionary<FormationUnit, TextMeshProUGUI> _formationToButtonText = new Dictionary<FormationUnit, TextMeshProUGUI>();
 
     void Start()
     {
@@ -36,7 +37,7 @@ public class BattleUI : MonoBehaviour
 
     void Update()
     {
-        UpdateUI();
+        // Input is still frame-driven (Escape pause), but UI updates are event-driven.
         HandleInput();
     }
 
@@ -248,6 +249,7 @@ if (trackedFormations == null || trackedFormations.Count == 0)
         
         formationButtons.Add(buttonGO);
         UpdateFormationButton(formation, text);
+        _formationToButtonText[formation] = text;
     }
 
     private void UpdateFormationButton(FormationUnit formation, TextMeshProUGUI text)
@@ -271,24 +273,12 @@ if (trackedFormations == null || trackedFormations.Count == 0)
         }
     }
 
-    private void UpdateUI()
+    private void HandleFormationUIStatsDirty(FormationUnit formation)
     {
-        // Update formation button texts
-        if (trackedFormations != null && trackedFormations.Count > 0)
+        if (formation == null) return;
+        if (_formationToButtonText.TryGetValue(formation, out var text) && text != null)
         {
-            int buttonIndex = 0;
-            foreach (var formation in trackedFormations)
-            {
-                if (formation == null) continue;
-                if (buttonIndex >= formationButtons.Count) break;
-                
-                var buttonGO = formationButtons[buttonIndex++];
-                var text = buttonGO.GetComponentInChildren<TextMeshProUGUI>();
-                if (text != null)
-                {
-                    UpdateFormationButton(formation, text);
-                }
-            }
+            UpdateFormationButton(formation, text);
         }
     }
 
@@ -316,6 +306,15 @@ if (trackedFormations == null || trackedFormations.Count == 0)
 
     private void ClearFormationButtons()
     {
+        // Unsubscribe from formation events
+        if (trackedFormations != null)
+        {
+            foreach (var f in trackedFormations)
+            {
+                if (f != null) f.OnUIStatsDirty -= HandleFormationUIStatsDirty;
+            }
+        }
+
         foreach (var button in formationButtons)
         {
             if (button != null)
@@ -325,6 +324,7 @@ if (trackedFormations == null || trackedFormations.Count == 0)
         }
         formationButtons.Clear();
         trackedFormations.Clear();
+        _formationToButtonText.Clear();
     }
 
     // Button event handlers
@@ -371,6 +371,12 @@ battleHUDPanel.SetActive(true);
         
         // Now assign the formations list (create a copy to avoid reference issues)
         trackedFormations = new List<FormationUnit>(formations);
+
+        // Subscribe to formation stat change events so we can update button text without per-frame polling.
+        foreach (var f in trackedFormations)
+        {
+            if (f != null) f.OnUIStatsDirty += HandleFormationUIStatsDirty;
+        }
         
         // Debug: Check formations list after clearing buttons
 int buttonsCreated = 0;

@@ -198,7 +198,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         
         return list.Where(e => e != null
                             && e.equipmentType == type
-                            && (e.allowedUnitTypes == null || e.allowedUnitTypes.Length == 0 || e.allowedUnitTypes.Contains(unit.unitType)))
+                            && (currentCiv == null || currentCiv.CanEquipEquipmentForUnitTypeCached(unit.unitType, e)))
                    .ToList();
     }
 

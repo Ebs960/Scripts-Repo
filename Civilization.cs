@@ -33,6 +33,10 @@ public class Civilization : MonoBehaviour
     private Dictionary<BuildingData, bool> _buildingAvailabilityCache = new Dictionary<BuildingData, bool>();
     private Dictionary<EquipmentData, bool> _equipmentAvailabilityCache = new Dictionary<EquipmentData, bool>();
     private bool _availabilityCacheDirty = true;
+
+    // Equipment "can equip" cache (by unit archetype + equipment). This is used by Equipment UI filtering.
+    // Key: (equipment instance id, unitType enum) packed into a long.
+    private readonly Dictionary<long, bool> _canEquipByUnitTypeCache = new Dictionary<long, bool>();
     
     // Runtime property for diplomatic state access
     public bool isPlayerControlled = false;
@@ -46,6 +50,115 @@ public class Civilization : MonoBehaviour
     public List<City> cities                = new List<City>();
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
+
+    // -------------------- Owned biome aggregates (multi-planet) --------------------
+    // Motivation: Tech/Culture requirements used to scan ownedTilesByPlanet and then query tile data for each tile.
+    // That becomes O(tiles) per check on large worlds. We maintain incremental counts instead.
+    private bool _biomeControlCacheBuilt = false;
+    private int _biomeEnumCount = -1;
+    private readonly Dictionary<int, int[]> _ownedBiomeCountsByPlanet = new Dictionary<int, int[]>();
+    private int[] _ownedBiomeCountsAnyPlanet; // index = (int)Biome, value = total owned tiles of that biome across all planets
+
+    private void EnsureBiomeAggregateArrays()
+    {
+        if (_biomeEnumCount <= 0)
+            _biomeEnumCount = System.Enum.GetValues(typeof(Biome)).Length;
+        if (_ownedBiomeCountsAnyPlanet == null || _ownedBiomeCountsAnyPlanet.Length != _biomeEnumCount)
+            _ownedBiomeCountsAnyPlanet = new int[_biomeEnumCount];
+    }
+
+    private int[] GetOrCreatePlanetBiomeCounts(int planetIndex)
+    {
+        EnsureBiomeAggregateArrays();
+        if (!_ownedBiomeCountsByPlanet.TryGetValue(planetIndex, out var arr) || arr == null || arr.Length != _biomeEnumCount)
+        {
+            arr = new int[_biomeEnumCount];
+            _ownedBiomeCountsByPlanet[planetIndex] = arr;
+        }
+        return arr;
+    }
+
+    private void RebuildOwnedBiomeAggregates()
+    {
+        EnsureBiomeAggregateArrays();
+        _ownedBiomeCountsByPlanet.Clear();
+        System.Array.Clear(_ownedBiomeCountsAnyPlanet, 0, _ownedBiomeCountsAnyPlanet.Length);
+
+        if (ownedTilesByPlanet == null || ownedTilesByPlanet.Count == 0)
+        {
+            _biomeControlCacheBuilt = true;
+            return;
+        }
+
+        foreach (var kv in ownedTilesByPlanet)
+        {
+            int planetIndex = kv.Key;
+            var set = kv.Value;
+            if (set == null || set.Count == 0) continue;
+
+            var perPlanet = GetOrCreatePlanetBiomeCounts(planetIndex);
+
+            // Prefer TileSystem (fast array lookup); fall back to PlanetGenerator if needed.
+            var ts = TileSystem.GetForPlanet(planetIndex);
+            PlanetGenerator gen = null;
+            if (ts == null && GameManager.Instance != null) gen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+
+            foreach (int tileIndex in set)
+            {
+                HexTileData td = ts != null ? ts.GetTileData(tileIndex) : (gen != null ? gen.GetHexTileData(tileIndex) : null);
+                if (td == null) continue;
+                Biome biome = td.biome;
+
+                int b = (int)biome;
+                if (b < 0 || b >= _biomeEnumCount) continue;
+                perPlanet[b]++;
+                _ownedBiomeCountsAnyPlanet[b]++;
+            }
+        }
+
+        _biomeControlCacheBuilt = true;
+    }
+
+    /// <summary>
+    /// Returns true if this civ currently controls at least one tile of the given biome on any planet.
+    /// Used by Tech/Culture prerequisite checks (avoids scanning owned tiles).
+    /// </summary>
+    public bool HasControlledBiome(Biome biome)
+    {
+        if (!_biomeControlCacheBuilt) RebuildOwnedBiomeAggregates();
+        EnsureBiomeAggregateArrays();
+        int b = (int)biome;
+        if (b < 0 || b >= _ownedBiomeCountsAnyPlanet.Length) return false;
+        return _ownedBiomeCountsAnyPlanet[b] > 0;
+    }
+
+    /// <summary>
+    /// Incremental update hook used by TileSystem.SetTileOwner().
+    /// Keeps owned biome aggregates in sync without rescanning the entire map.
+    /// </summary>
+    internal void NotifyOwnedTileBiomeChanged(int planetIndex, Biome biome, bool nowOwned)
+    {
+        // Ensure cache exists before applying deltas (avoids negative counts if we haven't built baseline yet).
+        if (!_biomeControlCacheBuilt) RebuildOwnedBiomeAggregates();
+
+        int b = (int)biome;
+        EnsureBiomeAggregateArrays();
+        if (b < 0 || b >= _biomeEnumCount) return;
+
+        var perPlanet = GetOrCreatePlanetBiomeCounts(planetIndex);
+
+        if (nowOwned)
+        {
+            perPlanet[b]++;
+            _ownedBiomeCountsAnyPlanet[b]++;
+        }
+        else
+        {
+            // Defensive clamping: ownership can be noisy during generation/debug operations.
+            perPlanet[b] = Mathf.Max(0, perPlanet[b] - 1);
+            _ownedBiomeCountsAnyPlanet[b] = Mathf.Max(0, _ownedBiomeCountsAnyPlanet[b] - 1);
+        }
+    }
     
     [Header("Interplanetary Trade")]
     public List<TradeRoute> interplanetaryTradeRoutes = new List<TradeRoute>();
@@ -1567,6 +1680,7 @@ return true;
             equipmentInventory[equipment] = 0;
             
         equipmentInventory[equipment] += count;
+        _canEquipByUnitTypeCache.Clear();
         
         // Notify listeners
         OnEquipmentChanged?.Invoke(equipment, equipmentInventory[equipment]);
@@ -1622,6 +1736,7 @@ return true;
         }
             
         equipmentInventory[equipment] -= count;
+        _canEquipByUnitTypeCache.Clear();
         
         // Notify listeners
         OnEquipmentChanged?.Invoke(equipment, equipmentInventory[equipment]);
@@ -2888,6 +3003,73 @@ return true;
         _workerAvailabilityCache.Clear();
         _buildingAvailabilityCache.Clear();
         _equipmentAvailabilityCache.Clear();
+        _canEquipByUnitTypeCache.Clear();
+    }
+
+    /// <summary>
+    /// Cached check: can a *newly produced level-1 unit archetype* equip this item, given the civ's current unlocks/inventory?
+    /// This is intentionally "unit type" based (not per-instance) for fast UI filtering.
+    /// </summary>
+    public bool CanEquipEquipmentForUnitTypeCached(CombatCategory unitType, EquipmentData equipment)
+    {
+        if (equipment == null) return false;
+
+        // Must be usable by CombatUnits for this panel.
+        if (!(equipment.targetUnit == EquipmentTarget.Both || equipment.targetUnit == EquipmentTarget.CombatUnit))
+            return false;
+
+        // Must have at least one in inventory.
+        if (!HasEquipment(equipment))
+            return false;
+
+        // Unit type restriction.
+        if (equipment.allowedUnitTypes != null && equipment.allowedUnitTypes.Length > 0)
+        {
+            bool typeAllowed = false;
+            foreach (var t in equipment.allowedUnitTypes)
+            {
+                if (t == unitType) { typeAllowed = true; break; }
+            }
+            if (!typeAllowed) return false;
+        }
+
+        // Minimum level: EquipmentManagerPanel configures defaults for archetypes; treat level 1 as baseline.
+        if (equipment.minimumLevel > 1) return false;
+
+        long key = ((long)equipment.GetInstanceID() << 32) ^ (uint)unitType;
+        if (_canEquipByUnitTypeCache.TryGetValue(key, out var cached))
+            return cached;
+
+        // Tech prerequisites
+        if (equipment.requiredTechs != null && equipment.requiredTechs.Length > 0)
+        {
+            foreach (var tech in equipment.requiredTechs)
+            {
+                if (tech == null) continue;
+                if (researchedTechs == null || !researchedTechs.Contains(tech))
+                {
+                    _canEquipByUnitTypeCache[key] = false;
+                    return false;
+                }
+            }
+        }
+
+        // Culture prerequisites
+        if (equipment.requiredCultures != null && equipment.requiredCultures.Length > 0)
+        {
+            foreach (var culture in equipment.requiredCultures)
+            {
+                if (culture == null) continue;
+                if (researchedCultures == null || !researchedCultures.Contains(culture))
+                {
+                    _canEquipByUnitTypeCache[key] = false;
+                    return false;
+                }
+            }
+        }
+
+        _canEquipByUnitTypeCache[key] = true;
+        return true;
     }
 
     /// <summary>

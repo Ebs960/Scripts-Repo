@@ -30,6 +30,11 @@ public class TechUI : MonoBehaviour
     private Civilization playerCiv;
     private TechData currentlySelectedTech;
     private List<TechButtonUI> techButtons = new List<TechButtonUI>(); // To manage button states
+    
+    // Build-once caching to avoid Destroy/Recreate churn every time the panel opens.
+    private bool _treeBuilt = false;
+    private int _builtTechCount = -1;
+    private bool _builtUsedCustomLayout = false;
 
     void Start()
     {
@@ -88,19 +93,35 @@ public class TechUI : MonoBehaviour
 
     void PopulateTechTree()
     {
-        // Clear existing tech nodes
-        foreach (Transform child in techContent)
-        {
-            if (child.name.StartsWith("TechNode_") || child.name == "BackgroundContainer")
-                Destroy(child.gameObject);
-        }
-        techButtons.Clear();
-
         if (TechManager.Instance == null || TechManager.Instance.allTechs == null)
         {
             Debug.LogError("TechManager or its techs not available.");
             return;
         }
+
+        int currentTechCount = TechManager.Instance.allTechs.Count;
+        bool needsRebuild =
+            !_treeBuilt ||
+            techButtons == null || techButtons.Count == 0 ||
+            _builtTechCount != currentTechCount ||
+            _builtUsedCustomLayout != useCustomLayout;
+
+        if (!needsRebuild)
+        {
+            // Tree already exists: only refresh state (locked/available/researched) and info panel.
+            RefreshTechButtonStates();
+            return;
+        }
+
+        // Rebuild path (rare): clear old nodes/lines/background.
+        if (techContent != null)
+        {
+            foreach (Transform child in techContent)
+            {
+                if (child != null) Destroy(child.gameObject);
+            }
+        }
+        techButtons.Clear();
 
         // Create background first
         CreateTechTreeBackground();
@@ -119,6 +140,10 @@ public class TechUI : MonoBehaviour
         CreateConnectionLines();
 
         RefreshTechButtonStates();
+
+        _treeBuilt = true;
+        _builtTechCount = currentTechCount;
+        _builtUsedCustomLayout = useCustomLayout;
     }
 
     private void CreateTechTreeBackground()

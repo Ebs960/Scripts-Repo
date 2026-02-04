@@ -394,6 +394,9 @@ public class TileSystem : MonoBehaviour
             {
                 if (prevOwner.ownedTilesByPlanet.TryGetValue(planetIndex, out var prevSet) && prevSet != null)
                     prevSet.Remove(tile);
+
+                // Maintain biome ownership aggregates (Tech/Culture prereq optimization).
+                prevOwner.NotifyOwnedTileBiomeChanged(planetIndex, td.biome, nowOwned: false);
             }
 
             if (newOwner != null)
@@ -405,6 +408,9 @@ public class TileSystem : MonoBehaviour
                     newOwner.ownedTilesByPlanet[planetIndex] = newSet;
                 }
                 newSet.Add(tile);
+
+                // Maintain biome ownership aggregates (Tech/Culture prereq optimization).
+                newOwner.NotifyOwnedTileBiomeChanged(planetIndex, td.biome, nowOwned: true);
             }
         }
 

@@ -72,7 +72,7 @@ MonoBehaviour:
   climateManager: {fileID: 0}
   diplomacyManager: {fileID: 0}
   enableMultiPlanetSystem: 1
-  maxPlanets: 14
+  maxPlanets: 12
   useRealSolarSystem: 1
   restrictDiagnosticsToFirstPlanet: 1
   currentPlanetIndex: 0

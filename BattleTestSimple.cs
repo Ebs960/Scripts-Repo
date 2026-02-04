@@ -3381,6 +3381,19 @@ public class FormationUnit : MonoBehaviour
     // Badge refresh timer (avoid updating UI text every frame)
     private float badgeUpdateTimer = 0f;
     private const float BADGE_UPDATE_INTERVAL = 0.5f;
+
+    // Event-driven UI hooks (BattleUI subscribes to avoid per-frame polling)
+    public event System.Action<FormationUnit> OnUIStatsDirty;
+
+    /// <summary>
+    /// Mark formation UI stats dirty and notify listeners (e.g., BattleUI).
+    /// This is intentionally lightweight; actual badge redraw remains throttled internally.
+    /// </summary>
+    public void MarkUIStatsDirty()
+    {
+        badgeUpdateDirty = true;
+        OnUIStatsDirty?.Invoke(this);
+    }
     
     // Cached FindObjectsByType results to avoid expensive scene searches
     private static FormationUnit[] cachedAllFormations;
@@ -5129,7 +5142,7 @@ if (terrainHit.collider != null)
             // Debug.Log removed for performance
         }
 
-        badgeUpdateDirty = true;
+        MarkUIStatsDirty();
     }
     
     System.Collections.IEnumerator CombatDamageCoroutine(FormationUnit enemyFormation)
@@ -5683,7 +5696,7 @@ if (terrainHit.collider != null)
         }
         
         // Mark for badge update only if formation is not being destroyed
-        owner.badgeUpdateDirty = true;
+        owner.MarkUIStatsDirty();
         
         // Destroy soldier after delay (but don't remove from list again)
         Destroy(soldier, 1.2f);
@@ -5848,7 +5861,7 @@ if (terrainHit.collider != null)
         if (moraleShock > 0f)
         {
             defenderFormation.currentMorale = Mathf.Max(0, (int)(defenderFormation.currentMorale - moraleShock));
-            defenderFormation.badgeUpdateDirty = true;
+            defenderFormation.MarkUIStatsDirty();
         }
         
         // Calculate final damage
@@ -6818,7 +6831,7 @@ if (terrainHit.collider != null)
         totalHealth = Mathf.Max(totalHealth, totalSoldierMaxHealth); // Ensure totalHealth is at least the sum
         
         // Mark badge for update (will be updated in throttled update)
-        badgeUpdateDirty = true;
+        MarkUIStatsDirty();
     }
     
     // --- Badge UI helpers ---
