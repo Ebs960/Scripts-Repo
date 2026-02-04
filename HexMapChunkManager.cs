@@ -472,7 +472,11 @@ TrySubscribeToSurfaceReady(gen);
         int count = visuals.Count;
         if (count == 0) return;
 
-        var lib = biomeVisualDatabase.BuildSurfaceLibrary(textureWidth, textureHeight);
+        // IMPORTANT:
+        // `textureWidth/textureHeight` are used for the equirect LUT + baked planet textures (often 2:1 like 2048x1024).
+        // Terrain surface Texture2DArrays should be square (e.g., 2048x2048). Do NOT tie them to the LUT height.
+        int surfaceSize = textureWidth;
+        var lib = biomeVisualDatabase.BuildSurfaceLibrary(surfaceSize, surfaceSize);
         if (lib != null)
         {
             // Use flattened arrays as the texture sources
@@ -572,95 +576,21 @@ TrySubscribeToSurfaceReady(gen);
             return;
         }
 
-        // Fallback: original per-biome arrays (kept for compatibility)
-        Texture2D fallbackAlbedo = Texture2D.whiteTexture;
-        Texture2D fallbackNormal = CreateFlatNormal();
-        Texture2D fallbackMask = CreateDefaultMask();
-
-        Texture2D sizeSource = null;
-        foreach (var entry in visuals)
-        {
-            if (entry != null && entry.albedo != null)
-            {
-                sizeSource = entry.albedo;
-                break;
-            }
-        }
-
-        if (sizeSource == null)
-        {
-            sizeSource = fallbackAlbedo;
-        }
-
-        // Fallback path uses first source dimensions (no scaling here). For 2048x2048 arrays use surface families so BuildSurfaceLibrary(override) is used.
-        int width = sizeSource.width;
-        int height = sizeSource.height;
-
-        biomeAlbedoArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, false);
-        biomeNormalArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
-        biomeMaskArray = new Texture2DArray(width, height, count, TextureFormat.RGBA32, true, true);
-        biomeEmissiveArray = new Texture2DArray(width, height, count, TextureFormat.RGBAHalf, true, true);
-
-        // Create a fallback black emissive texture that matches the emissive array format/size
-        Texture2D fallbackEmissive = new Texture2D(width, height, TextureFormat.RGBAHalf, true, true)
-        {
-            wrapMode = TextureWrapMode.Repeat,
-            filterMode = FilterMode.Bilinear,
-            name = "BiomeEmissiveFallback"
-        };
-        var blackPixels = new Color[width * height];
-        for (int p = 0; p < blackPixels.Length; p++) blackPixels[p] = Color.black;
-        fallbackEmissive.SetPixels(blackPixels);
-        fallbackEmissive.Apply(true, false);
-
-        biomeTintArray = new Vector4[count];
-        biomeParamsArray = new Vector4[count];
-
-        for (int i = 0; i < count; i++)
-        {
-            var entry = visuals[i];
-            Texture2D albedo = entry != null && entry.albedo != null ? entry.albedo : fallbackAlbedo;
-            Texture2D normal = entry != null && entry.normal != null ? entry.normal : fallbackNormal;
-            Texture2D mask = entry != null && entry.maskMap != null ? entry.maskMap : fallbackMask;
-
-            if (albedo.width != width || albedo.height != height)
-            {
-                Debug.LogWarning($"[HexMapChunkManager] Biome albedo size mismatch for {entry?.biome}. Expected {width}x{height}.");
-                albedo = fallbackAlbedo;
-            }
-            if (normal.width != width || normal.height != height)
-            {
-                Debug.LogWarning($"[HexMapChunkManager] Biome normal size mismatch for {entry?.biome}. Expected {width}x{height}.");
-                normal = fallbackNormal;
-            }
-            if (mask.width != width || mask.height != height)
-            {
-                Debug.LogWarning($"[HexMapChunkManager] Biome mask size mismatch for {entry?.biome}. Expected {width}x{height}.");
-                mask = fallbackMask;
-            }
-
-            Graphics.CopyTexture(albedo, 0, 0, biomeAlbedoArray, i, 0);
-            Graphics.CopyTexture(normal, 0, 0, biomeNormalArray, i, 0);
-            Graphics.CopyTexture(mask, 0, 0, biomeMaskArray, i, 0);
-            // fallback emissive = black (use matching format/size texture)
-            Graphics.CopyTexture(fallbackEmissive, 0, 0, biomeEmissiveArray, i, 0);
-
-            if (entry != null)
-            {
-                biomeTintArray[i] = entry.tint;
-                biomeParamsArray[i] = new Vector4(entry.tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
-            }
-            else
-            {
-                biomeTintArray[i] = Color.white;
-                biomeParamsArray[i] = new Vector4(1f, 0f, 0f, 0f);
-            }
-        }
-
-        biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
-        biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
-        biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
-        biomeEmissiveArray.wrapMode = TextureWrapMode.Repeat;
+        // STRICT MODE:
+        // No per-biome RGBA32 fallback arrays. If the surface library failed to build, fix the SurfaceFamilyData assets
+        // (size/format/mip consistency) rather than silently allocating uncompressed arrays at runtime.
+        Debug.LogError("[HexMapChunkManager] BuildSurfaceLibrary failed (strict). Terrain biome Texture2DArrays were NOT built. " +
+                       "Fix your SurfaceFamilyData arrays so they are consistent (e.g., BC7 2048x2048 with matching mips).");
+        biomeAlbedoArray = null;
+        biomeNormalArray = null;
+        biomeMaskArray = null;
+        biomeEmissiveArray = null;
+        biomeTintArray = null;
+        biomeParamsArray = null;
+        biomeSurfaceMapArray = null;
+        biomeSurfaceMapTexture = null;
+        biomeEmissiveMapTexture = null;
+        return;
     }
 
     private void BuildBiomeIndexMap(int width, int height)

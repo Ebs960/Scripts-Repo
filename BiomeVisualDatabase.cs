@@ -104,13 +104,6 @@ public class BiomeVisualDatabase : ScriptableObject
     {
         if (biomes == null) return null;
 
-        static long EstimateTextureArrayBytes(int w, int h, int depth, int bytesPerPixel, bool hasMipmaps)
-        {
-            // Full mip chain multiplier is ~4/3 for large POT textures. Good enough for diagnostics.
-            double mipMul = hasMipmaps ? (4.0 / 3.0) : 1.0;
-            return (long)System.Math.Round((double)w * h * depth * bytesPerPixel * mipMul);
-        }
-
         static string FormatBytes(long bytes)
         {
             const double KB = 1024.0;
@@ -122,10 +115,17 @@ public class BiomeVisualDatabase : ScriptableObject
             return $"{bytes} B";
         }
 
-        // Discover families in encounter order
-        var familyEntries = new List<object>(); // either SurfaceFamilyData or BiomeVisualData (legacy)
+        // STRICT MODE (memory-first):
+        // - We DO NOT support legacy per-biome Texture2D fields here.
+        // - We DO NOT rescale or format-convert at runtime.
+        // - We build flattened arrays ONLY via Graphics.CopyTexture from SurfaceFamilyData Texture2DArrays.
+        // This preserves compression (e.g., BC7) and prevents accidental RGBA32 blowups.
+
+        // Discover families in encounter order (SurfaceFamilyData only)
+        var families = new List<SurfaceFamilyData>();
         var biomeToSurface = new int[biomes.Count];
         var biomeForced = new int[biomes.Count];
+        var legacyBiomes = new List<string>();
 
         for (int i = 0; i < biomes.Count; i++)
         {
@@ -138,34 +138,38 @@ public class BiomeVisualDatabase : ScriptableObject
                 continue;
             }
 
-            if (b.surfaceFamily != null)
+            if (b.surfaceFamily == null)
             {
-                int idx = familyEntries.IndexOf(b.surfaceFamily);
-                if (idx < 0)
-                {
-                    idx = familyEntries.Count;
-                    familyEntries.Add(b.surfaceFamily);
-                }
-                biomeToSurface[i] = idx;
-            }
-            else
-            {
-                // legacy per-biome textures: treat each as its own family
-                // only add if at least one texture exists
+                // Any legacy texture usage is forbidden in strict mode.
                 if (b.albedo != null || b.normal != null || b.maskMap != null)
-                {
-                    int idx = familyEntries.Count;
-                    familyEntries.Add(b); // marker for ad-hoc family
-                    biomeToSurface[i] = idx;
-                }
-                else
-                {
-                    biomeToSurface[i] = -1;
-                }
+                    legacyBiomes.Add($"{b.name}({b.biome})");
+                biomeToSurface[i] = -1;
+                continue;
             }
+
+            int idx = families.IndexOf(b.surfaceFamily);
+            if (idx < 0)
+            {
+                idx = families.Count;
+                families.Add(b.surfaceFamily);
+            }
+            biomeToSurface[i] = idx;
         }
 
-        // Determine target slice size: use override when specified, otherwise infer from first source
+        if (legacyBiomes.Count > 0)
+        {
+            Debug.LogError($"[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): {legacyBiomes.Count} biomes use legacy per-biome Texture2D fields instead of surfaceFamily. " +
+                           $"Assign a SurfaceFamilyData with matching Texture2DArrays. First few: {string.Join(", ", legacyBiomes.GetRange(0, Mathf.Min(8, legacyBiomes.Count)))}");
+            return null;
+        }
+
+        if (families.Count == 0)
+        {
+            Debug.LogError("[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): No SurfaceFamilyData assigned on any biome entry.");
+            return null;
+        }
+
+        // Determine target size
         int targetW = 0, targetH = 0;
         if (overrideWidth > 0 && overrideHeight > 0)
         {
@@ -174,391 +178,229 @@ public class BiomeVisualDatabase : ScriptableObject
         }
         else
         {
-            foreach (var entry in familyEntries)
+            var first = families[0];
+            if (first != null && first.albedoArray != null)
             {
-                if (entry is SurfaceFamilyData sf)
-                {
-                    if (sf.albedoArray != null)
-                    {
-                        targetW = sf.albedoArray.width;
-                        targetH = sf.albedoArray.height;
-                        break;
-                    }
-                }
-                else if (entry is BiomeVisualData bv)
-                {
-                    if (bv.albedo != null)
-                    {
-                        targetW = bv.albedo.width;
-                        targetH = bv.albedo.height;
-                        break;
-                    }
-                }
+                targetW = first.albedoArray.width;
+                targetH = first.albedoArray.height;
             }
         }
 
-        if (targetW == 0 || targetH == 0)
+        if (targetW <= 0 || targetH <= 0)
         {
-            Debug.LogWarning("[BiomeVisualDatabase] No valid textures found to build surface library.");
+            Debug.LogError("[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): Could not infer a valid target size. Provide overrideWidth/overrideHeight and ensure surface families have albedo arrays.");
             return null;
         }
 
-        // Calculate total slices
-        var variantCounts = new List<int>();
-        foreach (var entry in familyEntries)
+        // Determine expected formats + mip counts from the first family (must match across all families)
+        var firstFamily = families[0];
+        if (firstFamily == null)
         {
-            if (entry is SurfaceFamilyData sf)
-            {
-                int v = sf.VariantCount;
-                if (v <= 0) v = 1;
-                variantCounts.Add(v);
-            }
-            else // BiomeVisualData ad-hoc
-            {
-                variantCounts.Add(1);
-            }
+            Debug.LogError("[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): First surface family is null.");
+            return null;
+        }
+        if (firstFamily.albedoArray == null || firstFamily.normalArray == null || firstFamily.maskArray == null)
+        {
+            Debug.LogError($"[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): SurfaceFamily '{firstFamily.name}' is missing required arrays (albedo/normal/mask).");
+            return null;
         }
 
+        TextureFormat albedoFmt = firstFamily.albedoArray.format;
+        TextureFormat normalFmt = firstFamily.normalArray.format;
+        TextureFormat maskFmt = firstFamily.maskArray.format;
+        int albedoMipCount = firstFamily.albedoArray.mipmapCount;
+        int normalMipCount = firstFamily.normalArray.mipmapCount;
+        int maskMipCount = firstFamily.maskArray.mipmapCount;
+
+        bool includeEmissive = false;
+        TextureFormat emissiveFmt = TextureFormat.RGBAHalf;
+        int emissiveMipCount = 0;
+        if (firstFamily.emissiveArray != null)
+        {
+            includeEmissive = true;
+            emissiveFmt = firstFamily.emissiveArray.format;
+            emissiveMipCount = firstFamily.emissiveArray.mipmapCount;
+        }
+
+        // If any other family has emissive, include it and enforce consistency.
+        foreach (var f in families)
+        {
+            if (f != null && f.emissiveArray != null) { includeEmissive = true; break; }
+        }
+
+        // Calculate total slices + validate families
+        var variantCounts = new int[families.Count];
         int total = 0;
-        foreach (var v in variantCounts) total += v;
+        var errors = new List<string>(16);
 
-        if (total == 0)
+        for (int i = 0; i < families.Count; i++)
         {
-            Debug.LogWarning("[BiomeVisualDatabase] No variants found in surface families.");
+            var sf = families[i];
+            if (sf == null)
+            {
+                errors.Add($"Family[{i}] is null.");
+                variantCounts[i] = 0;
+                continue;
+            }
+
+            int variants = Mathf.Max(1, sf.VariantCount);
+            variantCounts[i] = variants;
+            total += variants;
+
+            void CheckArray(string kind, Texture2DArray arr, TextureFormat expectedFmt, int expectedMipCount)
+            {
+                if (arr == null)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' missing {kind} Texture2DArray.");
+                    return;
+                }
+                if (arr.width != targetW || arr.height != targetH)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' {kind} size is {arr.width}x{arr.height}, expected {targetW}x{targetH}.");
+                }
+                if (arr.format != expectedFmt)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' {kind} format is {arr.format}, expected {expectedFmt}.");
+                }
+                if (arr.mipmapCount != expectedMipCount)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' {kind} mipmapCount is {arr.mipmapCount}, expected {expectedMipCount}.");
+                }
+                if (arr.depth < variants)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' {kind} depth is {arr.depth}, but VariantCount is {variants}.");
+                }
+            }
+
+            CheckArray("albedo", sf.albedoArray, albedoFmt, albedoMipCount);
+            CheckArray("normal", sf.normalArray, normalFmt, normalMipCount);
+            CheckArray("mask", sf.maskArray, maskFmt, maskMipCount);
+
+            if (includeEmissive)
+            {
+                if (sf.emissiveArray == null)
+                {
+                    errors.Add($"SurfaceFamily '{sf.name}' missing emissive Texture2DArray (strict: emissive is enabled because at least one family provides it).");
+                }
+                else
+                {
+                    if (emissiveMipCount == 0)
+                    {
+                        emissiveFmt = sf.emissiveArray.format;
+                        emissiveMipCount = sf.emissiveArray.mipmapCount;
+                    }
+                    CheckArray("emissive", sf.emissiveArray, emissiveFmt, emissiveMipCount);
+                }
+            }
+        }
+
+        if (total <= 0)
+        {
+            Debug.LogError("[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): No slices to build.");
             return null;
         }
 
-        // Diagnostic: rough memory estimate for the flattened arrays we are about to allocate.
-        // This is usually the single largest GPU memory consumer at map start.
-        try
+        if (errors.Count > 0)
         {
-            // RGBA32 = 4 bytes/px. RGBAHalf = 8 bytes/px.
-            long albedoBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
-            long normalBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
-            long maskBytes = EstimateTextureArrayBytes(targetW, targetH, total, 4, hasMipmaps: true);
-            long emissiveBytes = EstimateTextureArrayBytes(targetW, targetH, total, 8, hasMipmaps: true);
-            long totalBytes = albedoBytes + normalBytes + maskBytes + emissiveBytes;
-            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary request: db='{name}' size={targetW}x{targetH} totalSlices={total} (families={familyEntries.Count}). " +
-                      $"Estimated GPU tex memory (arrays only): albedo={FormatBytes(albedoBytes)}, normal={FormatBytes(normalBytes)}, mask={FormatBytes(maskBytes)}, emissive={FormatBytes(emissiveBytes)}, TOTAL={FormatBytes(totalBytes)}");
+            Debug.LogError($"[BiomeVisualDatabase] BuildSurfaceLibrary FAILED (strict): Surface families are not consistent. Fix the Texture2DArrays so they all share the same size/format/mips.\n- {string.Join("\n- ", errors)}");
+            return null;
         }
-        catch { /* diagnostics only */ }
 
-        // Cache lookup: build signature from the database + discovered family order + target size + slice count.
-        // This prevents repeated Texture2DArray allocations (a common cause of 2nd/3rd Play OOM in the editor).
+        // Cache lookup: include formats + mip counts so we don't reuse incompatible caches.
         int dbId = GetInstanceID();
-        string signature = $"{name}|biomes={biomes.Count}|families={familyEntries.Count}|size={targetW}x{targetH}|totalSlices={total}";
+        string signature =
+            $"{name}|biomes={biomes.Count}|families={families.Count}|size={targetW}x{targetH}|totalSlices={total}" +
+            $"|A={albedoFmt}/{albedoMipCount}|N={normalFmt}/{normalMipCount}|M={maskFmt}/{maskMipCount}" +
+            (includeEmissive ? $"|E={emissiveFmt}/{emissiveMipCount}" : "|E=none");
+
         if (_surfaceLibraryCacheByDb.TryGetValue(dbId, out var cached) &&
             cached.library != null &&
             cached.signature == signature &&
             cached.library.albedoArray != null &&
             cached.library.normalArray != null &&
             cached.library.maskArray != null &&
-            cached.library.emissiveArray != null)
+            (!includeEmissive || cached.library.emissiveArray != null))
         {
             return cached.library;
         }
-        // If signature changed or cache is invalid, release any previous cached arrays to avoid leaks.
+
         if (cached.library != null)
         {
             ReleaseSurfaceLibrary(cached.library);
         }
 
-        // Create destination flattened arrays
-        var albedoArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBA32, true, false);
-        var normalArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBA32, true, true);
-        var maskArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBA32, true, true);
+        // Allocate destination arrays in the SAME formats as the source arrays (preserves compression like BC7).
+        bool hasMipsA = albedoMipCount > 1;
+        bool hasMipsN = normalMipCount > 1;
+        bool hasMipsM = maskMipCount > 1;
+        bool hasMipsE = includeEmissive && emissiveMipCount > 1;
 
-        var emissiveArray = new Texture2DArray(targetW, targetH, total, TextureFormat.RGBAHalf, true, true);
+        var albedoArray = new Texture2DArray(targetW, targetH, total, albedoFmt, hasMipsA, linear: false);
+        var normalArray = new Texture2DArray(targetW, targetH, total, normalFmt, hasMipsN, linear: true);
+        var maskArray = new Texture2DArray(targetW, targetH, total, maskFmt, hasMipsM, linear: true);
+        Texture2DArray emissiveArray = null;
+        if (includeEmissive)
+        {
+            // Emissive can be compressed or half; we preserve whatever format is in the source family assets.
+            emissiveArray = new Texture2DArray(targetW, targetH, total, emissiveFmt, hasMipsE, linear: true);
+        }
 
         albedoArray.wrapMode = TextureWrapMode.Repeat;
         normalArray.wrapMode = TextureWrapMode.Repeat;
         maskArray.wrapMode = TextureWrapMode.Repeat;
-
-        // Avoid huge managed allocations (Color[]) and CPU readbacks during slice scaling/fallback fills.
-        // We use GPU RenderTextures as intermediate targets and CopyTexture into the Texture2DArray slices.
-        RenderTexture rtSrgb = null;
-        RenderTexture rtLinear = null;
-        RenderTexture rtHalf = null;
-        var prevActive = RenderTexture.active;
-
-        // Reusable temporary 2D textures for pulling a slice out of a Texture2DArray when scaling is needed.
-        // Key: (w,h,format,linearFlag).
-        var tmp2DCache = new Dictionary<(int w, int h, TextureFormat fmt, bool linear), Texture2D>(8);
-
-        Texture2D GetOrCreateTmp2D(int w, int h, TextureFormat fmt, bool linear)
-        {
-            var key = (w, h, fmt, linear);
-            if (tmp2DCache.TryGetValue(key, out var existing) && existing != null) return existing;
-            var t = new Texture2D(w, h, fmt, mipChain: false, linear: linear)
-            {
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Bilinear,
-                name = $"_TmpSlice_{w}x{h}_{fmt}_{(linear ? "Lin" : "sRGB")}"
-            };
-            tmp2DCache[key] = t;
-            return t;
-        }
-
-        RenderTexture GetOrCreateRT(ref RenderTexture rt, RenderTextureFormat fmt, RenderTextureReadWrite rw)
-        {
-            if (rt != null && rt.width == targetW && rt.height == targetH) return rt;
-            if (rt != null) RenderTexture.ReleaseTemporary(rt);
-            rt = RenderTexture.GetTemporary(targetW, targetH, 0, fmt, rw);
-            rt.wrapMode = TextureWrapMode.Repeat;
-            rt.filterMode = FilterMode.Bilinear;
-            return rt;
-        }
-
-        void ClearRT(RenderTexture rt, Color clearColor)
-        {
-            RenderTexture.active = rt;
-            GL.Clear(true, true, clearColor);
-        }
-
-        // Allocate RTs once up-front (keeps lifetime predictable).
-        GetOrCreateRT(ref rtSrgb, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-        GetOrCreateRT(ref rtLinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-        GetOrCreateRT(ref rtHalf, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-
-        // Debug: quick manual override (uncomment to force a visible red texture into slice 0)
-        // var testTex = Texture2D.redTexture;
-        // albedoArray.SetPixels(testTex.GetPixels(), 0, 0);
-        // albedoArray.Apply();
+        if (emissiveArray != null) emissiveArray.wrapMode = TextureWrapMode.Repeat;
 
         int writeSlice = 0;
-        var surfaceStart = new int[familyEntries.Count];
+        var surfaceStart = new int[families.Count];
 
-        for (int s = 0; s < familyEntries.Count; s++)
+        for (int s = 0; s < families.Count; s++)
         {
             surfaceStart[s] = writeSlice;
-            var entry = familyEntries[s];
-            if (entry is SurfaceFamilyData sf)
+            var sf = families[s];
+            int variants = variantCounts[s];
+
+            for (int v = 0; v < variants; v++)
             {
-                int variants = Mathf.Max(1, sf.VariantCount);
-                for (int v = 0; v < variants; v++)
+                // Copy mip chain explicitly so compressed arrays keep correct mips.
+                for (int mip = 0; mip < albedoMipCount; mip++)
+                    Graphics.CopyTexture(sf.albedoArray, v, mip, albedoArray, writeSlice, mip);
+                for (int mip = 0; mip < normalMipCount; mip++)
+                    Graphics.CopyTexture(sf.normalArray, v, mip, normalArray, writeSlice, mip);
+                for (int mip = 0; mip < maskMipCount; mip++)
+                    Graphics.CopyTexture(sf.maskArray, v, mip, maskArray, writeSlice, mip);
+                if (includeEmissive && emissiveArray != null)
                 {
-                    // Debug + validation: confirm slice add & catch mismatches early
-                    var familyDisplayName = !string.IsNullOrEmpty(sf.familyName) ? sf.familyName : sf.name;
-                    var albedo = sf.albedoArray;
-                    int expectedWidth = targetW;
-                    int expectedHeight = targetH;
-
-                    Debug.Log($"[BuildSurfaceLibrary] Adding slice: {familyDisplayName}, Variant: {v}, Albedo: {(albedo ? albedo.name : "null")}, Format: {(albedo ? albedo.format.ToString() : "null")}, Size: {(albedo ? albedo.width + "x" + albedo.height : "null")}");
-
-                    if (albedo != null && albedo.format != TextureFormat.RGBA32)
-                    {
-                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {albedo.name} format is {albedo.format}, expected RGBA32. This may break texture array.");
-                    }
-
-                    if (albedo != null && (albedo.width != expectedWidth || albedo.height != expectedHeight))
-                    {
-                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {albedo.name} size is {albedo.width}x{albedo.height}, expected {expectedWidth}x{expectedHeight}");
-                    }
-
-                    // Copy from sf arrays if available
-                    if (sf.albedoArray != null && v < sf.albedoArray.depth)
-                    {
-                        if (sf.albedoArray.width == targetW && sf.albedoArray.height == targetH)
-                        {
-                            Graphics.CopyTexture(sf.albedoArray, v, 0, albedoArray, writeSlice, 0);
-                        }
-                        else
-                        {
-                            var tmpSrc = GetOrCreateTmp2D(sf.albedoArray.width, sf.albedoArray.height, TextureFormat.RGBA32, linear: false);
-                            Graphics.CopyTexture(sf.albedoArray, v, 0, tmpSrc, 0, 0);
-                            Graphics.Blit(tmpSrc, rtSrgb);
-                            Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
-                        }
-                    }
-                    else
-                    {
-                        // Full-size fallback albedo (white) without allocating a huge Color[].
-                        ClearRT(rtSrgb, Color.white);
-                        Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
-                    }
-
-                    if (sf.normalArray != null && v < sf.normalArray.depth)
-                    {
-                        if (sf.normalArray.width == targetW && sf.normalArray.height == targetH)
-                        {
-                            Graphics.CopyTexture(sf.normalArray, v, 0, normalArray, writeSlice, 0);
-                        }
-                        else
-                        {
-                            var tmpSrc = GetOrCreateTmp2D(sf.normalArray.width, sf.normalArray.height, TextureFormat.RGBA32, linear: true);
-                            Graphics.CopyTexture(sf.normalArray, v, 0, tmpSrc, 0, 0);
-                            Graphics.Blit(tmpSrc, rtLinear);
-                            Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
-                        }
-                    }
-                    else
-                    {
-                        // Full-size fallback normal (flat blue) without allocating a huge Color[].
-                        ClearRT(rtLinear, new Color(0.5f, 0.5f, 1f, 1f));
-                        Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
-                    }
-
-                    if (sf.maskArray != null && v < sf.maskArray.depth)
-                    {
-                        if (sf.maskArray.width == targetW && sf.maskArray.height == targetH)
-                        {
-                            Graphics.CopyTexture(sf.maskArray, v, 0, maskArray, writeSlice, 0);
-                        }
-                        else
-                        {
-                            var tmpSrc = GetOrCreateTmp2D(sf.maskArray.width, sf.maskArray.height, TextureFormat.RGBA32, linear: true);
-                            Graphics.CopyTexture(sf.maskArray, v, 0, tmpSrc, 0, 0);
-                            Graphics.Blit(tmpSrc, rtLinear);
-                            Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
-                        }
-                    }
-                    else
-                    {
-                        // Full-size fallback mask without allocating a huge Color[].
-                        ClearRT(rtLinear, new Color(0f, 1f, 0f, 0.5f));
-                        Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
-                    }
-
-                    // emissive
-                    if (sf.emissiveArray != null && v < sf.emissiveArray.depth)
-                    {
-                        if (sf.emissiveArray.width == targetW && sf.emissiveArray.height == targetH)
-                        {
-                            Graphics.CopyTexture(sf.emissiveArray, v, 0, emissiveArray, writeSlice, 0);
-                        }
-                        else
-                        {
-                            var tmpSrc = GetOrCreateTmp2D(sf.emissiveArray.width, sf.emissiveArray.height, TextureFormat.RGBAHalf, linear: true);
-                            Graphics.CopyTexture(sf.emissiveArray, v, 0, tmpSrc, 0, 0);
-                            Graphics.Blit(tmpSrc, rtHalf);
-                            Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
-                        }
-                    }
-                    else
-                    {
-                        // Full-size fallback emissive (black) without allocating a huge Color[].
-                        ClearRT(rtHalf, Color.black);
-                        Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
-                    }
-
-                    writeSlice++;
+                    for (int mip = 0; mip < emissiveMipCount; mip++)
+                        Graphics.CopyTexture(sf.emissiveArray, v, mip, emissiveArray, writeSlice, mip);
                 }
-            }
-            else if (entry is BiomeVisualData bv)
-            {
-                // ad-hoc single variant from legacy fields
-                // albedo
-                if (bv.albedo != null)
-                {
-                    Debug.Log($"[BuildSurfaceLibrary] Adding legacy slice: Biome {bv.name}, Albedo: {(bv.albedo ? bv.albedo.name : "null")}, Format: {(bv.albedo ? bv.albedo.format.ToString() : "null")}, Size: {(bv.albedo ? bv.albedo.width + "x" + bv.albedo.height : "null")}");
-
-                    if (bv.albedo.format != TextureFormat.RGBA32)
-                    {
-                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {bv.albedo.name} format is {bv.albedo.format}, expected RGBA32. This may break texture array.");
-                    }
-
-                    if (bv.albedo.width != targetW || bv.albedo.height != targetH)
-                    {
-                        Debug.LogWarning($"[BuildSurfaceLibrary] Albedo texture {bv.albedo.name} size is {bv.albedo.width}x{bv.albedo.height}, expected {targetW}x{targetH}");
-                    }
-
-                    if (bv.albedo.width != targetW || bv.albedo.height != targetH)
-                    {
-                        Graphics.Blit(bv.albedo, rtSrgb);
-                        Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
-                    }
-                    else
-                    {
-                        Graphics.CopyTexture(bv.albedo, 0, 0, albedoArray, writeSlice, 0);
-                    }
-                }
-                else
-                {
-                    ClearRT(rtSrgb, Color.white);
-                    Graphics.CopyTexture(rtSrgb, 0, 0, albedoArray, writeSlice, 0);
-                }
-
-                if (bv.normal != null)
-                {
-                    if (bv.normal.width != targetW || bv.normal.height != targetH)
-                    {
-                        Graphics.Blit(bv.normal, rtLinear);
-                        Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
-                    }
-                    else
-                    {
-                        Graphics.CopyTexture(bv.normal, 0, 0, normalArray, writeSlice, 0);
-                    }
-                }
-                else
-                {
-                    ClearRT(rtLinear, new Color(0.5f, 0.5f, 1f, 1f));
-                    Graphics.CopyTexture(rtLinear, 0, 0, normalArray, writeSlice, 0);
-                }
-
-                if (bv.maskMap != null)
-                {
-                    if (bv.maskMap.width != targetW || bv.maskMap.height != targetH)
-                    {
-                        Graphics.Blit(bv.maskMap, rtLinear);
-                        Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
-                    }
-                    else
-                    {
-                        Graphics.CopyTexture(bv.maskMap, 0, 0, maskArray, writeSlice, 0);
-                    }
-                }
-                else
-                {
-                    ClearRT(rtLinear, new Color(0f, 1f, 0f, 0.5f));
-                    Graphics.CopyTexture(rtLinear, 0, 0, maskArray, writeSlice, 0);
-                }
-
-                // emissive: legacy per-biome BV has no emissive texture, fill black (use matching fallback)
-                ClearRT(rtHalf, Color.black);
-                Graphics.CopyTexture(rtHalf, 0, 0, emissiveArray, writeSlice, 0);
-
                 writeSlice++;
             }
         }
 
-        // Cleanup intermediate resources (keep array allocations intact; those are returned/cached).
-        RenderTexture.active = prevActive;
-        if (rtSrgb != null) RenderTexture.ReleaseTemporary(rtSrgb);
-        if (rtLinear != null) RenderTexture.ReleaseTemporary(rtLinear);
-        if (rtHalf != null) RenderTexture.ReleaseTemporary(rtHalf);
-        foreach (var kv in tmp2DCache)
+        var lib = new SurfaceLibrary
         {
-            if (kv.Value != null) DestroyUnityObject(kv.Value);
-        }
-        tmp2DCache.Clear();
+            albedoArray = albedoArray,
+            normalArray = normalArray,
+            maskArray = maskArray,
+            emissiveArray = emissiveArray,
+            totalSlices = writeSlice,
+            surfaceStartSlice = surfaceStart,
+            surfaceVariantCounts = variantCounts,
+            biomeToSurfaceIndex = biomeToSurface,
+            biomeForcedVariant = biomeForced
+        };
 
-        // Build result
-        var lib = new SurfaceLibrary();
-        lib.albedoArray = albedoArray;
-        lib.normalArray = normalArray;
-        lib.maskArray = maskArray;
-        lib.emissiveArray = emissiveArray;
-        lib.totalSlices = writeSlice;
-
-        lib.surfaceStartSlice = surfaceStart;
-        lib.surfaceVariantCounts = variantCounts.ToArray();
-        lib.biomeToSurfaceIndex = biomeToSurface;
-        lib.biomeForcedVariant = biomeForced;
-
-        // Store cache entry (prevents multi-planet builds from allocating arrays repeatedly).
         _surfaceLibraryCacheByDb[dbId] = new CachedSurfaceLibrary { signature = signature, library = lib };
 
-        // Diagnostic: log actual managed heap + Unity-reported runtime size for arrays.
-        // Profiler.GetRuntimeMemorySizeLong is approximate but good for identifying biggest offenders.
         try
         {
             long a = lib.albedoArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.albedoArray) : 0;
             long n = lib.normalArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.normalArray) : 0;
             long m = lib.maskArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.maskArray) : 0;
             long e = lib.emissiveArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.emissiveArray) : 0;
-            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary complete: slicesWritten={writeSlice}/{total}. " +
-                      $"RuntimeMemorySize: albedo={FormatBytes(a)}, normal={FormatBytes(n)}, mask={FormatBytes(m)}, emissive={FormatBytes(e)}, TOTAL={FormatBytes(a+n+m+e)}");
+            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary OK (strict): size={targetW}x{targetH} slicesWritten={writeSlice}/{total} " +
+                      $"formats: albedo={albedoFmt}, normal={normalFmt}, mask={maskFmt}, emissive={(includeEmissive ? emissiveFmt.ToString() : "none")} | " +
+                      $"RuntimeMemorySize: albedo={FormatBytes(a)}, normal={FormatBytes(n)}, mask={FormatBytes(m)}, emissive={FormatBytes(e)}, TOTAL={FormatBytes(a + n + m + e)}");
         }
         catch { /* diagnostics only */ }
 
