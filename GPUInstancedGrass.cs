@@ -971,11 +971,9 @@ public class GPUInstancedGrass : MonoBehaviour
             case Biome.MartianRegolith:
             case Biome.MartianDunes:
             case Biome.MartianPolarIce:
-            case Biome.MercuryBasalt:
             case Biome.MercuryPlains:
             case Biome.MercurianIce:
             case Biome.MoonDunes:
-            case Biome.MoonCraters:
                 densityMultiplier = 0f;
                 break;
                 

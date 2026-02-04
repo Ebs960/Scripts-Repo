@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Floodlands
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 25
+  biome: 20
+  waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 794ce7f20e6ee354eaa42d72b7176d13, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}

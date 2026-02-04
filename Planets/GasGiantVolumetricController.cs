@@ -23,6 +23,8 @@ public class GasGiantVolumetricController : MonoBehaviour
     VolumeComponent cloudsComponent; // obtained via reflection-friendly lookup
 
     Coroutine fadeCoroutine;
+    [Tooltip("Enable verbose logging for volumetric mapping (useful for debugging HDRP parameter names)")]
+    public bool verboseLogs = false;
 
     void Awake()
     {
@@ -60,7 +62,7 @@ public class GasGiantVolumetricController : MonoBehaviour
             }
         }
 
-        Debug.Log($"[GasGiantVolumetricController] Awake: instantiateProfile={instantiateProfile} profileInstance={(profileInstance!=null)} cloudsComponent={(cloudsComponent!=null)}");
+        if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantVolumetricController] Awake: instantiateProfile={instantiateProfile} profileInstance={(profileInstance!=null)} cloudsComponent={(cloudsComponent!=null)}");
 
         ApplyVisualData(visualData);
     }
@@ -71,17 +73,17 @@ public class GasGiantVolumetricController : MonoBehaviour
         visualData = data;
         if (visualData == null)
         {
-            Debug.LogWarning("[GasGiantVolumetricController] ApplyVisualData called with null visualData.");
+            if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.LogWarning("[GasGiantVolumetricController] ApplyVisualData called with null visualData.");
             return;
         }
 
         if (cloudsComponent == null)
         {
-            Debug.LogWarning("[GasGiantVolumetricController] No Volumetric Clouds component found on profile; skipping volumetric mapping.");
+            if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.LogWarning("[GasGiantVolumetricController] No Volumetric Clouds component found on profile; skipping volumetric mapping.");
             return;
         }
 
-        Debug.Log($"[GasGiantVolumetricController] Applying visual data: shape3D={(visualData.shapeNoise3D!=null)} detail3D={(visualData.detailNoise3D!=null)} flowMap={(visualData.flowMap!=null)}");
+        if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantVolumetricController] Applying visual data: shape3D={(visualData.shapeNoise3D!=null)} detail3D={(visualData.detailNoise3D!=null)} flowMap={(visualData.flowMap!=null)}");
 
         // Safe reflection helper: tries to set a named field.value or property.value on the clouds component
         bool TrySet(string fieldName, object value)
@@ -98,7 +100,7 @@ public class GasGiantVolumetricController : MonoBehaviour
                         if (pv != null && pv.CanWrite)
                         {
                             pv.SetValue(param, value);
-                            Debug.Log($"[GasGiantVolumetricController] Set field '{fieldName}' via VolumeParameter.value");
+                            if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantVolumetricController] Set field '{fieldName}' via VolumeParameter.value");
                             return true;
                         }
                     }
@@ -106,16 +108,16 @@ public class GasGiantVolumetricController : MonoBehaviour
 
                 // Try property path as fallback (some versions expose properties)
                 PropertyInfo p = cloudsComponent.GetType().GetProperty(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (p != null && p.CanWrite)
-                {
-                    p.SetValue(cloudsComponent, value);
-                    Debug.Log($"[GasGiantVolumetricController] Set property '{fieldName}' on cloudsComponent");
-                    return true;
-                }
+                    if (p != null && p.CanWrite)
+                    {
+                        p.SetValue(cloudsComponent, value);
+                        if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantVolumetricController] Set property '{fieldName}' on cloudsComponent");
+                        return true;
+                    }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[GasGiantVolumetricController] Failed to set '{fieldName}': {ex.Message}");
+                if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.LogWarning($"[GasGiantVolumetricController] Failed to set '{fieldName}': {ex.Message}");
             }
             return false;
         }

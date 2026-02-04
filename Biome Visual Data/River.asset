@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: River
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 15
+  biome: 13
   waterType: 3
-  surfaceFamily: {fileID: 11400000, guid: 01ede336cd781dc4c8861bf71b7ab35d, type: 2}
+  surfaceFamily: {fileID: 11400000, guid: 585db334d6051de4498e3edb2c65a586, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}

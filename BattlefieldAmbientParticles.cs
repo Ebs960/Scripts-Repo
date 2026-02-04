@@ -651,13 +651,11 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 break;
                 
             // Airless moons - no particles
-                case Biome.MoonDunes:
-                case Biome.MoonCraters:
-                case Biome.MercuryPlains:
-            case Biome.MercuryBasalt:
-            case Biome.EuropaIce:
-            case Biome.IoVolcanic:
-            case Biome.PlutoCryo:
+                            case Biome.MoonDunes:
+                            case Biome.MercuryPlains:
+                            case Biome.EuropaIce:
+                            case Biome.IoVolcanic:
+                            case Biome.PlutoCryo:
                 particleCount = 0;
                 break;
                 

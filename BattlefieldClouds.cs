@@ -801,7 +801,6 @@ public class BattlefieldClouds : MonoBehaviour
             // Gas giants - thick swirling clouds
             case Biome.JovianClouds:
             case Biome.SaturnSurface:
-            case Biome.SaturnRings:
                 cloudDensity = 0.95f;
                 cloudColor = new Color(0.9f, 0.85f, 0.7f, 0.9f);
                 scrollSpeed = 1.5f;
@@ -819,16 +818,13 @@ public class BattlefieldClouds : MonoBehaviour
                 
             // Moons - minimal or no atmosphere
             case Biome.MoonDunes:
-            case Biome.MoonCraters:
             case Biome.MercuryPlains:
-            case Biome.MercuryBasalt:
             case Biome.MercurianIce:
             case Biome.EuropaIce:
             case Biome.EuropaRidges:
             case Biome.IoVolcanic:
             case Biome.IoSulfur:
             case Biome.PlutoCryo:
-            case Biome.PlutoTholins:
                 cloudDensity = 0f; // No atmosphere
                 break;
                 

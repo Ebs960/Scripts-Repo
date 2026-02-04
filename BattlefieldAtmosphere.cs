@@ -646,7 +646,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Airless moons - no atmosphere
             case Biome.MoonDunes:
-            case Biome.MoonCraters:
             case Biome.MercuryPlains:
             case Biome.EuropaIce:
             case Biome.PlutoCryo:

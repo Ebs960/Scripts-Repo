@@ -6,6 +6,8 @@ public class GasGiantRenderer : MonoBehaviour
     public GasGiantVisualData visualData;
     public Material gasGiantMaterial;
     public float rotationSpeed = 1f;
+    [Tooltip("Enable verbose logging for gas giant renderer")]
+    public bool verboseLogs = false;
 
     private MeshRenderer mr;
     private bool warnedVisualDataMissing = false;
@@ -26,9 +28,9 @@ public class GasGiantRenderer : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[GasGiantRenderer] No gasGiantMaterial assigned; renderer will use shared material if present.");
+            if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.LogWarning("[GasGiantRenderer] No gasGiantMaterial assigned; renderer will use shared material if present.");
         }
-        Debug.Log($"[GasGiantRenderer] Awake on '{gameObject.name}' materialAssigned={(gasGiantMaterial!=null)}");
+        if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantRenderer] Awake on '{gameObject.name}' materialAssigned={(gasGiantMaterial!=null)}");
 
         // Apply visual data once at startup if available
         ApplyVisualDataToMaterial(force: true);
@@ -38,7 +40,7 @@ public class GasGiantRenderer : MonoBehaviour
     {
         if (visualData == null || mr == null)
         {
-            if (!warnedVisualDataMissing && mr != null)
+            if (!warnedVisualDataMissing && mr != null && (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)))
             {
                 Debug.LogWarning("[GasGiantRenderer] visualData is null; gas giant will not update material parameters.");
                 warnedVisualDataMissing = true;
@@ -80,7 +82,7 @@ public class GasGiantRenderer : MonoBehaviour
         lastBandSharpness = visualData.bandSharpness;
         lastStormStrength = visualData.stormStrength;
 
-        Debug.Log($"[GasGiantRenderer] Applied visualData to material on '{gameObject.name}' tint={visualData.tint} bandSharpness={visualData.bandSharpness} storm={visualData.stormStrength}");
+        if (verboseLogs || (GasGiantDebug.Instance != null && GasGiantDebug.Instance.verboseLogs)) Debug.Log($"[GasGiantRenderer] Applied visualData to material on '{gameObject.name}' tint={visualData.tint} bandSharpness={visualData.bandSharpness} storm={visualData.stormStrength}");
     }
 
     private static bool ColorEquals(Color a, Color b)

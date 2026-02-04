@@ -1496,14 +1496,6 @@ public class GameManager : MonoBehaviour
                 g.isEuropaWorldType = true;
                 g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
                 break;
-            case "Ganymede":
-                g.isGanymedeWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Callisto":
-                g.isCallistoWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
             case "Titan":
                 g.isTitanWorldType = true;
                 g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
@@ -1544,7 +1536,7 @@ public class GameManager : MonoBehaviour
                 "Luna",
                 "Mars", "Venus", "Mercury",
                 "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-                "Io", "Europa", "Ganymede", "Callisto", "Titan"
+                "Io", "Europa", "Titan"
             };
             totalPlanets = realBodies.Count;
         }
@@ -1567,7 +1559,7 @@ public class GameManager : MonoBehaviour
                 planetIndex = i,
                 planetName = name,
                 planetType = GetPlanetType(name),
-                celestialBodyType = (name == "Luna" || name == "Io" || name == "Europa" || name == "Ganymede" || name == "Callisto" || name == "Titan")
+                celestialBodyType = (name == "Luna" || name == "Io" || name == "Europa" || name == "Titan")
                     ? CelestialBodyType.Moon
                     : CelestialBodyType.Planet,
                 planetSize = GetPlanetSize(name),
@@ -1742,10 +1734,6 @@ public class GameManager : MonoBehaviour
                 return new Vector3(baseSpacing * 2 + moonDistance, 0, moonDistance);
             case "Europa":
                 return new Vector3(baseSpacing * 2 - moonDistance, 0, moonDistance);
-            case "Ganymede":
-                return new Vector3(baseSpacing * 2 + moonDistance, 0, -moonDistance);
-            case "Callisto":
-                return new Vector3(baseSpacing * 2 - moonDistance, 0, -moonDistance);
                 
             // Saturn's moon - positioned near Saturn
             case "Titan":
@@ -1776,8 +1764,6 @@ public class GameManager : MonoBehaviour
             "Pluto" => PlanetType.Ice,
             "Io" => PlanetType.Volcanic,
             "Europa" => PlanetType.Ice,
-            "Ganymede" => PlanetType.Ice,
-            "Callisto" => PlanetType.Barren,
             "Titan" => PlanetType.Tundra,
             _ => PlanetType.Terran
         };
@@ -1800,7 +1786,7 @@ public class GameManager : MonoBehaviour
             "Neptune" => MapSize.Standard,
             "Pluto" => MapSize.Small,
             // Moons are generally smaller
-            "Luna" or "Io" or "Europa" or "Ganymede" or "Callisto" or "Titan" => MapSize.Small,
+            "Luna" or "Io" or "Europa" or "Titan" => MapSize.Small,
             _ => MapSize.Standard
         };
     }
@@ -1823,7 +1809,7 @@ public class GameManager : MonoBehaviour
             "Pluto" => 39.5f,
             // Moons have same distance as their parent planet
             "Luna" => 1.0f, // Earth's distance
-            "Io" or "Europa" or "Ganymede" or "Callisto" => 5.2f, // Jupiter's distance
+            "Io" or "Europa" => 5.2f, // Jupiter's distance
             "Titan" => 9.5f, // Saturn's distance
             _ => 1.0f
         };
@@ -1849,8 +1835,6 @@ public class GameManager : MonoBehaviour
             "Luna" => 27.32f,
             "Io" => 1.77f,
             "Europa" => 3.55f,
-            "Ganymede" => 7.15f,
-            "Callisto" => 16.69f,
             "Titan" => 15.95f,
             _ => 365f
         };
@@ -1875,8 +1859,6 @@ public class GameManager : MonoBehaviour
             "Luna" => -20f,
             "Io" => -130f,
             "Europa" => -160f,
-            "Ganymede" => -180f,
-            "Callisto" => -185f,
             "Titan" => -179f,
             _ => 15f
         };
@@ -1901,8 +1883,6 @@ public class GameManager : MonoBehaviour
             "Pluto" => "The dwarf planet - a distant, frozen world at the edge of the solar system",
             "Io" => "Jupiter's volcanic moon - the most geologically active body in the solar system",
             "Europa" => "Jupiter's ice moon - hiding a subsurface ocean beneath its frozen crust",
-            "Ganymede" => "Jupiter's largest moon - bigger than Mercury with its own magnetic field",
-            "Callisto" => "Jupiter's cratered moon - an ancient, heavily bombarded ice world",
             "Titan" => "Saturn's largest moon - shrouded in thick atmosphere with hydrocarbon lakes",
             _ => "A mysterious world waiting to be explored"
         };

@@ -580,7 +580,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // === MOON BIOMES ===
             case Biome.MoonDunes:
-            case Biome.MoonCraters:
                 // Stark lunar lighting
                 sunColor = new Color(1f, 1f, 1f);
                 sunIntensity = 1.5f;
@@ -650,7 +649,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // ==================== MERCURY BIOMES ====================
             case Biome.MercuryPlains:
-            case Biome.MercuryBasalt:
                 // Stark Mercury dayside
                 sunColor = new Color(1f, 1f, 0.95f);
                 sunIntensity = 2.0f; // Very bright sun
@@ -689,7 +687,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.12f;
                 break;
                 
-            case Biome.SaturnRings:
             case Biome.SaturnSurface:
                 // Saturn's golden haze
                 sunColor = new Color(1f, 0.95f, 0.8f);
@@ -732,7 +729,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 
             // ==================== DWARF PLANET/MOON BIOMES ====================
             case Biome.PlutoCryo:
-            case Biome.PlutoTholins:
                 // Pluto's frozen twilight
                 sunColor = new Color(0.9f, 0.92f, 1f);
                 sunIntensity = 0.3f; // Very distant sun

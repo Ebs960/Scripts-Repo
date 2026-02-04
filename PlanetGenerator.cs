@@ -98,7 +98,6 @@ public struct BiomeDecorationEntry
             
             // Moon biomes
             Biome.MoonDunes => 0.5f,
-            Biome.MoonCraters => 0.3f,
             
             // Default
             _ => 0.5f
@@ -585,7 +584,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         isJupiterWorldType, isSaturnWorldType, isUranusWorldType,
         isNeptuneWorldType, isPlutoWorldType,
         isTitanWorldType, isEuropaWorldType, isIoWorldType,
-        isGanymedeWorldType, isCallistoWorldType, isLunaWorldType;
+        isLunaWorldType;
 
     [Header("Feature Toggles")]
     public bool allowOceans = true;
@@ -597,7 +596,7 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         isJupiterWorldType = isSaturnWorldType = isUranusWorldType =
         isNeptuneWorldType = isPlutoWorldType =
         isTitanWorldType = isEuropaWorldType = isIoWorldType =
-        isGanymedeWorldType = isCallistoWorldType = isLunaWorldType = false;
+        isLunaWorldType = false;
     }
 
 
@@ -973,8 +972,8 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
         // ---------- 3. Generate Lakes (Stamping) ----------
         bool isEarthPlanet = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType && !isJupiterWorldType &&
                             !isSaturnWorldType && !isUranusWorldType && !isNeptuneWorldType && !isPlutoWorldType &&
-                            !isTitanWorldType && !isEuropaWorldType && !isIoWorldType && !isGanymedeWorldType &&
-                            !isCallistoWorldType && !isLunaWorldType;
+                            !isTitanWorldType && !isEuropaWorldType && !isIoWorldType &&
+                            !isLunaWorldType;
 
         int lakesStamped = 0;
         List<Vector2Int> lakeCenters = new List<Vector2Int>();
@@ -2348,16 +2347,16 @@ public bool isMonsoonMapType = false; // Whether this is a monsoon map type
             isIceWorldMapType, isMonsoonMapType,
             isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
             isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
-            isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
-            isCallistoWorldType, isLunaWorldType, northSouth, eastWest
+            isTitanWorldType, isEuropaWorldType, isIoWorldType,
+            isLunaWorldType, northSouth, eastWest
         );
         
         // Validate and log inappropriate biome assignments
         return BiomeHelper.ValidateAndLogBiome(assignedBiome, 
             isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
             isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
-            isTitanWorldType, isEuropaWorldType, isIoWorldType, isGanymedeWorldType,
-            isCallistoWorldType, isLunaWorldType);
+            isTitanWorldType, isEuropaWorldType, isIoWorldType,
+            isLunaWorldType);
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)
