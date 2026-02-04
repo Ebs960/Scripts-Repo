@@ -295,7 +295,9 @@ public static class PlanetTextureBaker
         {
             if (textures[i].width != width || textures[i].height != height)
             {
-                Debug.LogError($"[PlanetTextureBaker] Texture '{textures[i].name}' has dimensions {textures[i].width}x{textures[i].height}, but expected {width}x{height}. Texture2DArray requires all textures to have the same dimensions. Skipping this texture.");
+                Debug.LogError($"[PlanetTextureBaker] Dimension mismatch: Texture '{textures[i].name}' has dimensions {textures[i].width}x{textures[i].height}, " +
+                             $"but expected {width}x{height} (from '{textures[0].name}'). " +
+                             $"Texture2DArray requires all textures to have the same dimensions. Skipping '{textures[i].name}'.");
                 dimensionsMatch = false;
             }
         }
@@ -305,24 +307,66 @@ public static class PlanetTextureBaker
             Debug.LogWarning("[PlanetTextureBaker] Not all textures have matching dimensions. Texture array may be incomplete.");
         }
         
-        // Create Texture2DArray
-        _cachedBiomeTextureArray = new Texture2DArray(width, height, textures.Count, TextureFormat.RGBA32, false);
+        // Detect source texture format. Use the first texture's format for the array so Graphics.CopyTexture works directly.
+        // This saves memory (compressed formats are much smaller) and avoids conversion overhead.
+        TextureFormat sourceFormat = textures[0].format;
+        Debug.Log($"[PlanetTextureBaker] Building texture array: {textures.Count} textures, size={width}x{height}, format={sourceFormat} (from '{textures[0].name}')");
+        
+        // Validate all textures use the same format (required for Texture2DArray)
+        bool formatsMatch = true;
+        for (int i = 1; i < textures.Count; i++)
+        {
+            if (textures[i].format != sourceFormat)
+            {
+                Debug.LogWarning($"[PlanetTextureBaker] Format mismatch: Texture '{textures[i].name}' has format {textures[i].format} ({(int)textures[i].format}), " +
+                               $"but expected {sourceFormat} ({(int)sourceFormat}) from '{textures[0].name}'. " +
+                               $"Texture2DArray requires all textures to have the same format. Will convert '{textures[i].name}' via Blit.");
+                formatsMatch = false;
+            }
+        }
+        
+        // Create Texture2DArray in the same format as source textures (allows direct Graphics.CopyTexture without conversion)
+        _cachedBiomeTextureArray = new Texture2DArray(width, height, textures.Count, sourceFormat, false);
         _cachedBiomeTextureArray.filterMode = FilterMode.Bilinear;
         _cachedBiomeTextureArray.wrapMode = TextureWrapMode.Repeat;
         
-        // Copy textures into array using Graphics.CopyTexture (GPU-to-GPU, works even for non-readable textures)
+        // Copy textures into array. If formats match, use direct copy (fast, preserves compression).
+        // If formats don't match, convert via Blit (rare case - should only happen if textures are inconsistently configured).
+        RenderTexture tempRT = null;
+        if (!formatsMatch)
+        {
+            // Only allocate temp RT if we need format conversion
+            tempRT = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            tempRT.filterMode = FilterMode.Bilinear;
+            tempRT.wrapMode = TextureWrapMode.Repeat;
+        }
+        
         for (int i = 0; i < textures.Count; i++)
         {
             var tex = textures[i];
             try
             {
-                // Graphics.CopyTexture works GPU-to-GPU, so it should work even for non-readable textures
-                Graphics.CopyTexture(tex, 0, _cachedBiomeTextureArray, i);
+                if (tex.format == sourceFormat)
+                {
+                    // Formats match - direct copy (fast, preserves compression)
+                    Graphics.CopyTexture(tex, srcElement: 0, srcMip: 0, _cachedBiomeTextureArray, dstElement: i, dstMip: 0);
+                }
+                else
+                {
+                    // Format mismatch - convert via Blit (slower, but handles mixed formats)
+                    Graphics.Blit(tex, tempRT);
+                    Graphics.CopyTexture(tempRT, srcElement: 0, srcMip: 0, _cachedBiomeTextureArray, dstElement: i, dstMip: 0);
+                }
             }
             catch (System.Exception ex)
             {
                 Debug.LogWarning($"[PlanetTextureBaker] Failed to copy texture '{tex.name}' to array: {ex.Message}. This texture will use fallback colors.");
             }
+        }
+        
+        if (tempRT != null)
+        {
+            RenderTexture.ReleaseTemporary(tempRT);
         }
         
         // Build biome-to-texture-index mapping buffer (for GPU lookup)

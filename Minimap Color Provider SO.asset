@@ -130,6 +130,8 @@ MonoBehaviour:
     color: {r: 0, g: 0, b: 0, a: 0}
   - biome: 0
     color: {r: 0, g: 0, b: 0, a: 0}
+  - biome: 0
+    color: {r: 0, g: 0, b: 0, a: 0}
   biomeTextures:
   - biome: 0
     texture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
@@ -172,7 +174,7 @@ MonoBehaviour:
   - biome: 20
     texture: {fileID: 2800000, guid: 5026d7f4d1fe71343ad669ac62fcf96c, type: 3}
   - biome: 21
-    texture: {fileID: 2800000, guid: e63c7e66aca47a244b9e4a24948d0a2a, type: 3}
+    texture: {fileID: 2800000, guid: 301b85b139d65814d8a9243c53be5864, type: 3}
   - biome: 22
     texture: {fileID: 2800000, guid: 67ce47906a2de5a4d91a88154e620349, type: 3}
   - biome: 24
@@ -232,7 +234,7 @@ MonoBehaviour:
   - biome: 51
     texture: {fileID: 2800000, guid: 5852a849453cfe34caf500242bdb9c61, type: 3}
   - biome: 52
-    texture: {fileID: 2800000, guid: 8ca8bf35ad0374c439eba439bf7145a8, type: 3}
+    texture: {fileID: 2800000, guid: 078a542e75eef954c89e22dda37ace2f, type: 3}
   - biome: 53
     texture: {fileID: 2800000, guid: 46104f263d967bb41807cf2f3ae036ea, type: 3}
   - biome: 54
@@ -247,5 +249,7 @@ MonoBehaviour:
     texture: {fileID: 2800000, guid: 3a37abd9c805703439e8af6787975e9f, type: 3}
   - biome: 17
     texture: {fileID: 2800000, guid: 9da50c8a0c191044c9df3b6674b2a4b9, type: 3}
+  - biome: 45
+    texture: {fileID: 2800000, guid: 5bcc034b69b980e4fb881829995980b6, type: 3}
   customMinimapTexture: {fileID: 0}
   cacheTexturePixels: 1

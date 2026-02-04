@@ -26,6 +26,18 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Install()
     {
+        // If domain reload is disabled, static caches can persist across Play sessions and
+        // accumulate huge Texture2DArray allocations. Clear known caches on entering Play.
+        try
+        {
+            PlanetTextureBaker.ClearAllCaches();
+            BiomeVisualDatabase.ClearAllCachedSurfaceLibraries();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Memory] Cache clear on play start failed: {ex.Message}");
+        }
+
         // Create an early, persistent reporter.
         var go = new GameObject("__RuntimeMemoryBreakdown");
         DontDestroyOnLoad(go);
@@ -33,14 +45,15 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         go.AddComponent<RuntimeMemoryBreakdown>();
 
         // Snapshot as early as Unity allows.
-        Snapshot("BeforeSceneLoad");
+        // Keep the very-first snapshot lightweight to avoid tipping over into OOM.
+        Snapshot("BeforeSceneLoad", includeObjectBreakdown: false);
     }
 
     private bool _subscribed;
 
     private void Start()
     {
-        Snapshot("AfterSceneLoad");
+        Snapshot("AfterSceneLoad", includeObjectBreakdown: true);
     }
 
     private void Update()
@@ -64,11 +77,11 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
     }
 
-    private void HandlePlanetGridBuilt(int planetIndex) => Snapshot($"OnPlanetGridBuilt planet={planetIndex}");
-    private void HandlePlanetSurfaceGenerated(int planetIndex) => Snapshot($"OnPlanetSurfaceGenerated planet={planetIndex}");
-    private void HandlePlanetReady(int planetIndex) => Snapshot($"OnPlanetReady planet={planetIndex}");
+    private void HandlePlanetGridBuilt(int planetIndex) => Snapshot($"OnPlanetGridBuilt planet={planetIndex}", includeObjectBreakdown: true);
+    private void HandlePlanetSurfaceGenerated(int planetIndex) => Snapshot($"OnPlanetSurfaceGenerated planet={planetIndex}", includeObjectBreakdown: true);
+    private void HandlePlanetReady(int planetIndex) => Snapshot($"OnPlanetReady planet={planetIndex}", includeObjectBreakdown: true);
 
-    private static void Snapshot(string label)
+    private static void Snapshot(string label, bool includeObjectBreakdown)
     {
         try
         {
@@ -87,6 +100,8 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
                 $"[Memory][{label}] Process: WorkingSet={FormatBytes(ws)} Private={FormatBytes(priv)} | " +
                 $"Unity: Alloc={FormatBytes(totalAlloc)} Reserved={FormatBytes(totalReserved)} UnusedReserved={FormatBytes(totalUnusedReserved)} | " +
                 $"MonoHeap={FormatBytes(monoHeap)} MonoUsed={FormatBytes(monoUsed)} | GC.GetTotalMemory={FormatBytes(gcTotal)}");
+
+            if (!includeObjectBreakdown) return;
 
             // Major object type breakdown
             SummarizeType<Texture2DArray>("Texture2DArray");
