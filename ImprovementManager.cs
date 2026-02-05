@@ -89,10 +89,35 @@ public class ImprovementManager : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            // Defensive: ensure we don't double-subscribe across enable cycles.
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
     void OnDestroy()
     {
         if (GameManager.Instance != null)
             GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        ProcessTurn(civ);
     }
 
     private void HandlePlanetReady(int planetIndex)

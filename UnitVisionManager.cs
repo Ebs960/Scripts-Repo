@@ -70,6 +70,29 @@ public class UnitVisionManager : MonoBehaviour
     {
         FindReferences();
     }
+
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        // Update vision for the civ whose turn it is
+        // Note: This runs after civ.BeginTurn() is called, so unit positions are updated
+        UpdateVisionForCiv(GetCivIndex(civ));
+    }
     
     void Update()
     {

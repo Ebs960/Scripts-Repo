@@ -51,6 +51,35 @@ public class ArmyManager : MonoBehaviour
             return;
         }
     }
+
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        // Reset army movement points for the civ whose turn it is
+        var civArmies = GetArmiesByOwner(civ);
+        foreach (var army in civArmies)
+        {
+            if (army != null)
+            {
+                army.ResetForNewTurn();
+            }
+        }
+    }
     
     void Update()
     {

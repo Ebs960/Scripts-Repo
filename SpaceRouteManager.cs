@@ -88,16 +88,37 @@ public class SpaceRouteManager : MonoBehaviour
         // Cache manager references to avoid repeated FindAnyObjectByType calls
         _cachedTurnManager = FindAnyObjectByType<TurnManager>();
         _cachedStatusUI = FindAnyObjectByType<SpaceTravelStatusUI>();
-        
-        // Subscribe to turn progression
-        var turnManager = _cachedTurnManager;
-        if (turnManager != null)
-        {
-            // Hook into turn end event (you'll need to expose this in TurnManager)
-}
-        else
+
+        if (TurnManager.Instance == null)
         {
             Debug.LogWarning("[SpaceRouteManager] TurnManager not found! Space travel won't progress automatically.");
+        }
+    }
+
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            // Defensive: ensure we don't double-subscribe across enable cycles.
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        // Only progress space travel on player turn
+        if (civ == TurnManager.Instance?.playerCiv)
+        {
+            ProgressAllTravels();
         }
     }
 

@@ -8,8 +8,27 @@ public class TurnManager : MonoBehaviour
 {
     public static TurnManager Instance { get; private set; }
 
-    /// <summary> Fired whenever the active civilization changes. </summary>
+    /// <summary>
+    /// Fired whenever the active civilization changes (after <see cref="Civilization.BeginTurn"/>).
+    /// Legacy event kept for existing subscribers.
+    /// </summary>
     public event Action<Civilization, int> OnTurnChanged;
+
+    /// <summary> Fired when a new round begins. </summary>
+    public event Action<int> OnRoundStarted;
+    /// <summary> Fired when a round ends (after the last civ ends its turn, before incrementing). </summary>
+    public event Action<int> OnRoundEnded;
+    /// <summary>
+    /// Fired once per round between rounds for "world"/neutral systems (e.g. animals).
+    /// This runs after <see cref="OnRoundEnded"/> and before <see cref="OnRoundStarted"/> of the next round.
+    /// </summary>
+    public event Action<int> OnNeutralTurn;
+    /// <summary> Fired when a civilization is about to begin its turn (before BeginTurn). </summary>
+    public event Action<Civilization, int> OnCivTurnStarting;
+    /// <summary> Fired when a civilization has begun its turn (after BeginTurn). </summary>
+    public event Action<Civilization, int> OnCivTurnStarted;
+    /// <summary> Fired when a civilization ends its turn (triggered by turn advance). </summary>
+    public event Action<Civilization, int> OnCivTurnEnded;
     /// <summary> Fired when AI processing begins or ends. </summary>
     public event Action<bool, Civilization> OnAIProcessingChanged;
 
@@ -81,6 +100,7 @@ public class TurnManager : MonoBehaviour
             Debug.LogWarning("TurnManager: GameManager instance not found when starting turns.");
         }
 
+        OnRoundStarted?.Invoke(round);
         StartCoroutine(AdvanceTurnCoroutine());
     }
 
@@ -100,16 +120,40 @@ public class TurnManager : MonoBehaviour
             yield break;
         }
 
-        currentIndex++;
-        if (currentIndex >= civs.Count)
+        // End the current civ's turn (if any)
+        if (currentIndex >= 0 && currentIndex < civs.Count)
         {
-            currentIndex = 0;
-            round++;
+            var endingCiv = civs[currentIndex];
+            OnCivTurnEnded?.Invoke(endingCiv, round);
+
+            // If we just ended the last civ in the list, run end-of-round phases.
+            if (currentIndex == civs.Count - 1)
+            {
+                OnRoundEnded?.Invoke(round);
+                OnNeutralTurn?.Invoke(round);
+
+                round++;
+
+                var gmRoundAdvance = GameManager.Instance;
+                if (gmRoundAdvance != null)
+                {
+                    gmRoundAdvance.currentTurn = round;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    Debug.Assert(gmRoundAdvance.currentTurn == round, "TurnManager: GameManager turn counter out of sync after advancing round.");
+#endif
+                }
+
+                OnRoundStarted?.Invoke(round);
+            }
         }
+
+        // Advance to next civ
+        currentIndex++;
+        if (currentIndex >= civs.Count) currentIndex = 0;
 
         var civ = civs[currentIndex];
         bool isPlayer = civ == playerCiv;
-var gameManager = GameManager.Instance;
+        var gameManager = GameManager.Instance;
         if (gameManager != null)
         {
             gameManager.currentTurn = round;
@@ -122,46 +166,14 @@ var gameManager = GameManager.Instance;
             Debug.LogWarning("TurnManager: GameManager instance not found when advancing turns.");
         }
 
-        if (isPlayer && round > 1 && AnimalManager.Instance != null)
-            AnimalManager.Instance.ProcessTurn();
-
-        // Progress interplanetary space travel
-        if (isPlayer && SpaceRouteManager.Instance != null)
-            SpaceRouteManager.Instance.ProgressAllTravels();
-
-        OnTurnChanged?.Invoke(civ, round);
+        OnCivTurnStarting?.Invoke(civ, round);
         OnAIProcessingChanged?.Invoke(!isPlayer, civ);
 
         civ.BeginTurn(round);
 
-        // Fog of War: recompute vision at start of this civ's turn (based on current unit/army positions).
-        if (UnitVisionManager.Instance != null)
-        {
-            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(civ));
-        }
-
-        if (ImprovementManager.Instance != null)
-            ImprovementManager.Instance.ProcessTurn(civ);
-        
-        // Apply unit reinforcement
-        if (UnitReinforcementManager.Instance != null)
-        {
-            UnitReinforcementManager.Instance.UpdateGarrisonStatus();
-            UnitReinforcementManager.Instance.ApplyReinforcementToAllUnits();
-        }
-        
-        // Reset army movement points
-        if (ArmyManager.Instance != null)
-        {
-            var civArmies = ArmyManager.Instance.GetArmiesByOwner(civ);
-            foreach (var army in civArmies)
-            {
-                if (army != null)
-                {
-                    army.ResetForNewTurn();
-                }
-            }
-        }
+        OnCivTurnStarted?.Invoke(civ, round);
+        // Legacy: many systems subscribe here.
+        OnTurnChanged?.Invoke(civ, round);
 
         if (!isPlayer)
         {

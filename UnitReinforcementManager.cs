@@ -40,6 +40,29 @@ public class UnitReinforcementManager : MonoBehaviour
             return;
         }
     }
+
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        // Update garrison status and apply reinforcement at the start of each turn
+        UpdateGarrisonStatus();
+        ApplyReinforcementToAllUnits();
+    }
     
     /// <summary>
     /// Apply reinforcement to all units at the start of a turn

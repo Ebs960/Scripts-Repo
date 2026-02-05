@@ -34,6 +34,28 @@ public class AnimalManager : MonoBehaviour
         else { Destroy(gameObject); return; }
     }
 
+    void OnEnable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnNeutralTurn += HandleNeutralTurn;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnNeutralTurn -= HandleNeutralTurn;
+        }
+    }
+
+    private void HandleNeutralTurn(int round)
+    {
+        // Animals run during the neutral/world phase (once per round).
+        ProcessTurn();
+    }
+
     public void SpawnInitialAnimals()
     {
 int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
