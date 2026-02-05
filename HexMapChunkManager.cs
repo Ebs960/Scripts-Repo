@@ -1798,6 +1798,9 @@ TrySubscribeToSurfaceReady(gen);
     /// </summary>
     public void DestroyAllChunks()
     {
+        // Release GPU resources allocated by this manager (textures, arrays, RTs, buffers)
+        ReleaseGpuResources();
+
         // Destroy ghost columns first
         DestroyGhostColumns();
         
@@ -1838,6 +1841,59 @@ TrySubscribeToSurfaceReady(gen);
         }
         
         tileToChunk.Clear();
+    }
+
+    /// <summary>
+    /// Explicitly release GPU/native resources held by this manager.
+    /// Call this before unloading or switching planets to free VRAM and native memory.
+    /// </summary>
+    public void ReleaseGpuResources()
+    {
+        // Clear textures from material so shader doesn't hold native refs
+        if (sharedMaterial != null)
+        {
+            sharedMaterial.SetTexture("_BiomeAlbedoArray", null);
+            sharedMaterial.SetTexture("_BiomeNormalArray", null);
+            sharedMaterial.SetTexture("_BiomeMaskArray", null);
+            sharedMaterial.SetTexture("_SurfaceEmissiveArray", null);
+            sharedMaterial.SetTexture("_BiomeIndexMap", null);
+            sharedMaterial.SetTexture("_Heightmap", null);
+            sharedMaterial.SetTexture("_BiomeSurfaceMapTex", null);
+            sharedMaterial.SetTexture("_BiomeEmissiveMapTex", null);
+            sharedMaterial.SetTexture("_LUT", null);
+        }
+
+        // Destroy Texture2DArray / Texture2D resources
+        if (biomeAlbedoArray != null) { UnityEngine.Object.DestroyImmediate(biomeAlbedoArray); biomeAlbedoArray = null; }
+        if (biomeNormalArray != null) { UnityEngine.Object.DestroyImmediate(biomeNormalArray); biomeNormalArray = null; }
+        if (biomeMaskArray != null) { UnityEngine.Object.DestroyImmediate(biomeMaskArray); biomeMaskArray = null; }
+        if (biomeEmissiveArray != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveArray); biomeEmissiveArray = null; }
+
+        if (biomeIndexMap != null) { UnityEngine.Object.DestroyImmediate(biomeIndexMap); biomeIndexMap = null; }
+        if (heightmapTexture != null) { UnityEngine.Object.DestroyImmediate(heightmapTexture); heightmapTexture = null; }
+        if (biomeSurfaceMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeSurfaceMapTexture); biomeSurfaceMapTexture = null; }
+        if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
+        if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }
+
+        // Release RenderTextures from bakeResult (if present)
+        try
+        {
+            if (bakeResult.texture != null) { bakeResult.texture.Release(); UnityEngine.Object.DestroyImmediate(bakeResult.texture); bakeResult.texture = null; }
+        }
+        catch { }
+        try
+        {
+            if (bakeResult.heightmap != null) { bakeResult.heightmap.Release(); UnityEngine.Object.DestroyImmediate(bakeResult.heightmap); bakeResult.heightmap = null; }
+        }
+        catch { }
+        try
+        {
+            if (bakeResult.normalmap != null) { bakeResult.normalmap.Release(); UnityEngine.Object.DestroyImmediate(bakeResult.normalmap); bakeResult.normalmap = null; }
+        }
+        catch { }
+
+        // Clear cached GPU resources in the baker (compute buffers, cached arrays)
+        try { PlanetTextureBaker.ClearAllCaches(); } catch { }
     }
     
     #endregion

@@ -683,6 +683,43 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
     {
         ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
 
+        // Ensure GPU resources are released when this generator is destroyed (planet unload)
+        try
+        {
+            ReleaseGpuResources();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PlanetGenerator] Exception while releasing GPU resources on destroy: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Release GPU/native resources related to this planet (textures, buffers, baker caches).
+    /// Call when unloading or switching planets to reduce VRAM and native memory usage.
+    /// </summary>
+    public void ReleaseGpuResources()
+    {
+        try
+        {
+            if (terrainRenderer != null)
+            {
+                terrainRenderer.ReleaseGpuResources();
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PlanetGenerator] Failed releasing HexMapChunkManager GPU resources: {ex.Message}");
+        }
+
+        try
+        {
+            PlanetTextureBaker.ClearAllCaches();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PlanetGenerator] Failed releasing PlanetTextureBaker caches: {ex.Message}");
+        }
     }
 
     private void HandlePlanetSeasonChanged(int planet, Season newSeason)
