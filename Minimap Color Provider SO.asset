@@ -96,8 +96,6 @@ MonoBehaviour:
     color: {r: 0, g: 0, b: 0, a: 0}
   - biome: 0
     color: {r: 0, g: 0, b: 0, a: 0}
-  - biome: 0
-    color: {r: 0, g: 0, b: 0, a: 0}
   biomeTextures:
   - biome: 0
     texture: {fileID: 2800000, guid: dcadb768a607b2146b9440f502ef8a6e, type: 3}
@@ -136,51 +134,49 @@ MonoBehaviour:
   - biome: 19
     texture: {fileID: 2800000, guid: 471aa7016420cca408911ea25d8fa872, type: 3}
   - biome: 20
-    texture: {fileID: 2800000, guid: aa638c9b06783904d9d030a2b2426237, type: 3}
-  - biome: 21
     texture: {fileID: 2800000, guid: a416f7c598d61bf4d9b07c370a7e94a6, type: 3}
-  - biome: 22
+  - biome: 21
     texture: {fileID: 2800000, guid: f56072fbf54d548488220cab70ff575d, type: 3}
-  - biome: 24
-    texture: {fileID: 2800000, guid: 3b0102293581cd94e9e7891bee66ab22, type: 3}
-  - biome: 23
+  - biome: 22
     texture: {fileID: 2800000, guid: a6ca79b1d9234a04ab4795f8c44f38e1, type: 3}
-  - biome: 25
+  - biome: 24
     texture: {fileID: 2800000, guid: 9ddece66bcff0b04eb429598d705b398, type: 3}
-  - biome: 26
+  - biome: 23
+    texture: {fileID: 2800000, guid: 3b0102293581cd94e9e7891bee66ab22, type: 3}
+  - biome: 25
     texture: {fileID: 2800000, guid: 0c61c35620089904683d99e551e8529a, type: 3}
-  - biome: 27
+  - biome: 26
     texture: {fileID: 2800000, guid: b009244bfdbb2704aaabf0013e7f66a7, type: 3}
-  - biome: 28
+  - biome: 27
     texture: {fileID: 2800000, guid: 4d3dc3094ddb58843a39e0e896291de8, type: 3}
-  - biome: 29
+  - biome: 28
     texture: {fileID: 2800000, guid: e92235d5248aeaf448011da4c49b52d6, type: 3}
-  - biome: 30
+  - biome: 29
     texture: {fileID: 2800000, guid: f2be7d5a421304148abb7706c51c94d3, type: 3}
-  - biome: 31
+  - biome: 30
     texture: {fileID: 2800000, guid: 84fbc363861933945b35dcc1f6e64a6c, type: 3}
+  - biome: 31
+    texture: {fileID: 2800000, guid: 0ca9f77e6f45ff84e9f8736969f62691, type: 3}
   - biome: 33
-    texture: {fileID: 2800000, guid: d26263835fef5fa40a060232ff98b47d, type: 3}
-  - biome: 34
     texture: {fileID: 2800000, guid: bf9918073f0a84d4487d32fdcfd03ff4, type: 3}
-  - biome: 35
+  - biome: 34
     texture: {fileID: 2800000, guid: 5e09edeb421037d42811b8e5cb51e0e7, type: 3}
-  - biome: 36
+  - biome: 35
     texture: {fileID: 2800000, guid: 078a542e75eef954c89e22dda37ace2f, type: 3}
-  - biome: 37
+  - biome: 36
     texture: {fileID: 2800000, guid: 46104f263d967bb41807cf2f3ae036ea, type: 3}
-  - biome: 38
+  - biome: 37
     texture: {fileID: 2800000, guid: 6c60378b0b967a049aa2bfbd12b328bb, type: 3}
-  - biome: 39
+  - biome: 38
     texture: {fileID: 2800000, guid: 6a19e5ee8532dda44bcd14072785b034, type: 3}
-  - biome: 40
+  - biome: 39
     texture: {fileID: 2800000, guid: 6c4cbd3baaed82740a377f0a9bc71bee, type: 3}
-  - biome: 41
+  - biome: 40
     texture: {fileID: 2800000, guid: 98e66698a127ab54ea5cdfa3d27c4592, type: 3}
-  - biome: 42
+  - biome: 41
     texture: {fileID: 2800000, guid: 3a37abd9c805703439e8af6787975e9f, type: 3}
   - biome: 32
-    texture: {fileID: 2800000, guid: 0ca9f77e6f45ff84e9f8736969f62691, type: 3}
+    texture: {fileID: 2800000, guid: d26263835fef5fa40a060232ff98b47d, type: 3}
   - biome: 17
     texture: {fileID: 2800000, guid: 5026d7f4d1fe71343ad669ac62fcf96c, type: 3}
   customMinimapTexture: {fileID: 0}
