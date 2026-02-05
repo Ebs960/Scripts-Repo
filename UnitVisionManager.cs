@@ -33,7 +33,7 @@ public class UnitVisionManager : MonoBehaviour
     
     // Cached references
     private TileSystem tileSystem;
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     
     // Per-civilization visible tiles (computed each update)
     private Dictionary<int, HashSet<int>> civVisibleTiles = new Dictionary<int, HashSet<int>>();

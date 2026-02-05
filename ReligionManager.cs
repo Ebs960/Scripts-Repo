@@ -28,7 +28,7 @@ public class ReligionManager : MonoBehaviour
     
     // References (kept for now, but neighbors/data are via TileSystem)
     private PlanetGenerator planetGenerator;
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private CivilizationManager cachedCivManager; // Cached reference to avoid repeated FindAnyObjectByType calls
     
     void Awake()

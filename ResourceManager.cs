@@ -15,7 +15,7 @@ public class ResourceManager : MonoBehaviour
     private readonly List<ResourceInstance> spawnedResources = new List<ResourceInstance>();
 
     private PlanetGenerator planetGenerator;
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     
     // Prevent multiple initialization
     private bool _isInitialized = false;
@@ -336,9 +336,7 @@ public class ResourceManager : MonoBehaviour
         int currentPlanet = 0;
         if (GameManager.Instance != null)
         {
-            currentPlanet = GameManager.Instance.enableMultiPlanetSystem 
-                ? GameManager.Instance.currentPlanetIndex 
-                : 0;
+            currentPlanet = GameManager.Instance.currentPlanetIndex;
         }
         return GetResourceInstanceAtTile(tileIndex, currentPlanet);
     }

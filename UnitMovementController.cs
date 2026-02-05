@@ -7,7 +7,7 @@ using System.Linq;
 public class UnitMovementController : MonoBehaviour
 {
     public static UnitMovementController Instance { get; private set; }
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private PlanetGenerator planet;
     
     [Header("Movement Settings")]
@@ -46,7 +46,7 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Set references from GameManager after generators are created
     /// </summary>
-    public void SetReferences(SphericalHexGrid icoGrid, PlanetGenerator planetGen)
+    public void SetReferences(HexGrid icoGrid, PlanetGenerator planetGen)
     {
         grid = icoGrid;
         planet = planetGen;
@@ -57,7 +57,7 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public void FindReferencesInCurrentScene()
     {
-        // Find SphericalHexGrid directly in the current scene via PlanetGenerator
+        // Find HexGrid directly in the current scene via PlanetGenerator
         // Use GameManager API for multi-planet support
         if (planet == null)
         {

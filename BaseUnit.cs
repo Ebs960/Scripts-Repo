@@ -74,7 +74,7 @@ public abstract class BaseUnit : MonoBehaviour
     public bool takesWeatherDamage = true;
 
     // Core references
-    protected SphericalHexGrid grid;
+    protected HexGrid grid;
     protected PlanetGenerator planet;
     protected Animator animator;
 

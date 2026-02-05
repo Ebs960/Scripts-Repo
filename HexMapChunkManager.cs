@@ -111,7 +111,7 @@ public class HexMapChunkManager : MonoBehaviour
     private float columnWidth;
     
     // References
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private PlanetGenerator planetGenerator;
     private Transform cameraTransform;
     private TerrainOverlayGPU terrainOverlayGPU;
@@ -138,7 +138,7 @@ public class HexMapChunkManager : MonoBehaviour
     private bool _subscribedToSeasonChanges;
     
     // Public accessors (API compatible with FlatMapTextureRenderer)
-    public SphericalHexGrid Grid => grid;
+    public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
     public int MeshSubdivisionsPerChunk => meshSubdivisionsPerChunk;
     public float MapWidth => mapWidth;

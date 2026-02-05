@@ -1432,7 +1432,7 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         }
         else
         {
-            Debug.LogError($"CombatUnit {gameObject.name} could not find SphericalHexGrid to position itself on tile {tileIndex}.");
+            Debug.LogError($"CombatUnit {gameObject.name} could not find HexGrid to position itself on tile {tileIndex}.");
             return null;
         }
         return this;
@@ -1444,7 +1444,7 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
     /// <summary>
     /// Properly positions and orients the unit on the planet surface
     /// </summary>
-    public void PositionUnitOnSurface(SphericalHexGrid G, int tileIndex) // Renamed parameter to avoid conflict
+    public void PositionUnitOnSurface(HexGrid G, int tileIndex) // Renamed parameter to avoid conflict
     {
         // Flat-only placement: place on terrain surface with proper height
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;

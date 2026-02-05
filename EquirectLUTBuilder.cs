@@ -14,7 +14,7 @@ public static class EquirectLUTBuilder
     /// - u in [0..1] maps to X across the flat map width
     /// - v in [0..1] maps to Z across the flat map height
     /// </summary>
-    public static int[] BuildLUT(SphericalHexGrid grid, int width, int height)
+    public static int[] BuildLUT(HexGrid grid, int width, int height)
     {
         if (grid == null || !grid.IsBuilt || width <= 0 || height <= 0)
             return null;

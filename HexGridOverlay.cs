@@ -35,7 +35,7 @@ public class HexGridOverlay : MonoBehaviour
     [SerializeField] private float updateInterval = 0.1f;
     
     // References
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private PlanetGenerator planetGenerator;
     private Camera mainCamera;
     

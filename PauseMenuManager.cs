@@ -459,7 +459,7 @@ HideSaveLoadUI();
         {
             saveData.currentTurn = GameManager.Instance.currentTurn;
             saveData.mapSize = GameManager.Instance.mapSize;
-            saveData.enableMultiPlanetSystem = GameManager.Instance.enableMultiPlanetSystem;
+            saveData.enableMultiPlanetSystem = true; // Legacy: always true, kept for save compatibility
             saveData.currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
             saveData.gameInProgress = GameManager.Instance.gameInProgress;
 

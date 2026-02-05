@@ -128,7 +128,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_tileAtlasCache.TryGetValue(key, out var atlas)) return atlas;
         // Moons are treated as separate planets now; ignore isMoon and use the planet generator for the given index.
         PlanetGenerator planetGen = _gameManager != null ? _gameManager.GetPlanetGenerator(planetIndex) : null;
-        SphericalHexGrid grid = planetGen?.Grid;
+        HexGrid grid = planetGen?.Grid;
         if (grid == null) return null;
         Debug.Log($"[MinimapUI] Requesting tile atlas for planet {planetIndex} layer={layer} (tileCount={grid.TileCount})");
         return EnsureTileColorAtlas(planetIndex, isMoon, grid, layer);
@@ -144,7 +144,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     // Build or fetch a LUT mapping each minimap pixel to a tile index for a specific body
     // PERFORMANCE: Now uses batched coroutine generation to avoid blocking
-    private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
+    private int[] EnsureIndexLUTForBody(int planetIndex, bool isMoon, HexGrid grid, int width, int height)
     {
         if (grid == null) return null;
         string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
@@ -160,7 +160,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
     
     // Batched LUT generation - processes rows per frame to avoid blocking
-    private IEnumerator GenerateLUTBatched(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height, string key)
+    private IEnumerator GenerateLUTBatched(int planetIndex, bool isMoon, HexGrid grid, int width, int height, string key)
     {
         Debug.Log($"[MinimapUI] GenerateLUTBatched begin for planet {planetIndex} key={key}");
         var lut = new int[width * height];
@@ -196,7 +196,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     }
     
     // Synchronous version for immediate use (fallback)
-    private int[] EnsureIndexLUTForBodySync(int planetIndex, bool isMoon, SphericalHexGrid grid, int width, int height)
+    private int[] EnsureIndexLUTForBodySync(int planetIndex, bool isMoon, HexGrid grid, int width, int height)
     {
         if (grid == null) return null;
         string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_W{width}_H{height}";
@@ -274,7 +274,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // Build or fetch a compact per-tile color atlas for a body (planet or moon).
     // PERFORMANCE: Pre-caches all tile data to avoid per-tile lookups
     // Atlas layout: square texture array flattened to Color32[] where index -> tileIndex mapping is stored in parallel by tile order.
-    private Color32[] EnsureTileColorAtlas(int planetIndex, bool isMoon, SphericalHexGrid grid, TileLayer layer = TileLayer.Surface)
+    private Color32[] EnsureTileColorAtlas(int planetIndex, bool isMoon, HexGrid grid, TileLayer layer = TileLayer.Surface)
     {
         if (!useTileColorAtlas || grid == null) return null;
         string key = $"P{planetIndex}_M{(isMoon ? 1 : 0)}_L{(int)layer}";

@@ -600,8 +600,8 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
 
 
     // --------------------------- Private fields -----------------------------
-    SphericalHexGrid grid;
-    public SphericalHexGrid Grid => grid;
+    HexGrid grid;
+    public HexGrid Grid => grid;
     NoiseSampler noise;
     public Dictionary<int, HexTileData> data = new();
     public Dictionary<int, HexTileData> baseData = new();
@@ -643,7 +643,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
 
         // OBSOLETE: Prefab loading code removed - new system uses texture-based rendering
         // Initialize the grid for this planet (will be configured by GameManager)
-        grid = new SphericalHexGrid();
+        grid = new HexGrid();
         
 
                 

@@ -160,7 +160,7 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return visual.waterType == BiomeVisualData.WaterType.Ocean || visual.waterType == BiomeVisualData.WaterType.Lake;
     }
 
-    private List<int> FloodFillRegion(PlanetGenerator planetGen, SphericalHexGrid grid, int startIndex, bool[] visited)
+    private List<int> FloodFillRegion(PlanetGenerator planetGen, HexGrid grid, int startIndex, bool[] visited)
     {
         var region = new List<int>();
         var queue = new Queue<int>();
@@ -195,7 +195,7 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return region;
     }
 
-    private static Bounds CalculateRegionBounds(SphericalHexGrid grid, List<int> region, float padX, float padZ)
+    private static Bounds CalculateRegionBounds(HexGrid grid, List<int> region, float padX, float padZ)
     {
         Vector3 min = new Vector3(float.MaxValue, 0f, float.MaxValue);
         Vector3 max = new Vector3(float.MinValue, 0f, float.MinValue);

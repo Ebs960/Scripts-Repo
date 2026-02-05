@@ -24,7 +24,7 @@ public class TransportUIManager : MonoBehaviour
     private CombatUnit selectedUnitToUnload;
     private bool isInLoadMode = false;
     private bool isInDeployMode = false;
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private PlanetGenerator planet;
     // Keyed by (planetIndex,tileIndex) to avoid cross-planet collisions
     private Dictionary<long, GameObject> tileHighlights = new Dictionary<long, GameObject>();

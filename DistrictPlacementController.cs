@@ -23,7 +23,7 @@ public class DistrictPlacementController : MonoBehaviour
     private int currentHoveredTileIndex = -1;
 
     // Components references
-    private SphericalHexGrid grid;
+    private HexGrid grid;
     private PlanetGenerator planet;
 
     // Multi-planet: subscribe to the active planet's TileSystem events (resubscribe on planet switches).

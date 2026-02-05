@@ -78,10 +78,6 @@ public class GameManager : MonoBehaviour
     public ClimateManager climateManager;
     public DiplomacyManager diplomacyManager;
 
-    [Header("Multi-Planet System")]
-    [Tooltip("Multi-planet generation is always enabled. This legacy flag is retained for save compatibility.")]
-    [HideInInspector]
-    public bool enableMultiPlanetSystem = true;
     [Tooltip("Maximum number of planets to generate")]
     public int maxPlanets = 8;
     [Tooltip("Generate real solar system instead of procedural planets")]
@@ -333,7 +329,7 @@ public class GameManager : MonoBehaviour
 
     // --- References to high-res planet textures and grid ---
 
-    public SphericalHexGrid planetGrid;
+    public HexGrid planetGrid;
 
     public List<HexTileData> hexTiles = new List<HexTileData>();
 
@@ -2378,7 +2374,7 @@ public class GameManager : MonoBehaviour
                 saveName = saveName,
                 currentTurn = currentTurn,
                 mapSize = mapSize,
-                enableMultiPlanetSystem = enableMultiPlanetSystem,
+                enableMultiPlanetSystem = true, // Legacy: always true, kept for save compatibility
                 currentPlanetIndex = currentPlanetIndex,
                 gameInProgress = gameInProgress,
                 flatMapWidth = GetFlatMapWidth(),
@@ -2521,7 +2517,7 @@ public class GameManager : MonoBehaviour
         {
             SetFlatMapDimensionsFromSize(mapSize);
         }
-        enableMultiPlanetSystem = saveData.enableMultiPlanetSystem;
+        // Legacy: enableMultiPlanetSystem is always true, ignore loaded value for compatibility
         currentPlanetIndex = saveData.currentPlanetIndex;
 
         // Apply camera transform after scene objects exist
@@ -2813,7 +2809,7 @@ yield return StartCoroutine(SpawnCivsAndAnimals());
     {
 _spawnedCivsAndAnimals = true;
 
-        if (enableMultiPlanetSystem && currentPlanetIndex != 0)
+        if (currentPlanetIndex != 0)
         {
             Debug.LogWarning("[GameManager] Forcing Earth (0) context before spawning");
             currentPlanetIndex = 0;

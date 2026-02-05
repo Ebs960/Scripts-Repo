@@ -1994,7 +1994,7 @@ return true;
     /// This is now the primary method for founding cities.
     /// </summary>
     /// <param name="tileIndex">The tile where the city will be founded.</param>
-    public void FoundNewCity(int tileIndex, SphericalHexGrid gridOverride = null, PlanetGenerator planetOverride = null)
+    public void FoundNewCity(int tileIndex, HexGrid gridOverride = null, PlanetGenerator planetOverride = null)
     {
 // City-cap gating
         if (!CanFoundMoreCities())
@@ -2030,7 +2030,7 @@ return true;
             return;
         }
 // Set references for correct world context
-        SphericalHexGrid gridToUse = gridOverride ?? planetGrid;
+        HexGrid gridToUse = gridOverride ?? planetGrid;
         PlanetGenerator planetToUse = planetOverride ?? planetGenerator;
         if (gridToUse == null) {
             var currentPlanet = GameManager.Instance?.GetCurrentPlanetGenerator();
@@ -2349,7 +2349,7 @@ return true;
         return (unitConsumption, cityConsumption, unitConsumption + cityConsumption);
     }
 
-    public void Initialize(CivData data, LeaderData leaderData, bool isPlayer, SphericalHexGrid grid = null, PlanetGenerator planet = null)
+    public void Initialize(CivData data, LeaderData leaderData, bool isPlayer, HexGrid grid = null, PlanetGenerator planet = null)
     {
         civData = data;
         leader = leaderData; // Set the leader for this civilization instance
@@ -2990,7 +2990,7 @@ return true;
         return finalYields;
     }
 
-    public SphericalHexGrid planetGrid; // Add this field to store the main planet's grid
+    public HexGrid planetGrid; // Add this field to store the main planet's grid
     public PlanetGenerator planetGenerator; // Add this field to store the main planet's generator
 
     /// <summary>
