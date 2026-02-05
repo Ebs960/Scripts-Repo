@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Venusian Plains
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 28
+  biome: 27
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 2d06a6062c184c74d95bb8b47024109b, type: 2}
   forcedVariant: -1

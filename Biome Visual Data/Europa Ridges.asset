@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Europa Ridges
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 41
+  biome: 39
   waterType: 0
-  surfaceFamily: {fileID: 11400000, guid: daf14c9f243617f4cb54b76c0f97c05b, type: 2}
+  surfaceFamily: {fileID: 11400000, guid: 2d06a6062c184c74d95bb8b47024109b, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Hellscape
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 21
+  biome: 20
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: ec2a112b05ee0974e8f864c0205cfe06, type: 2}
   forcedVariant: -1
