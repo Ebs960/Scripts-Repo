@@ -29,6 +29,8 @@ public static class PlanetTextureBaker
     private static ComputeBuffer _biomeToTextureIndexBuffer; // Maps biome enum value -> texture array index (-1 = no texture)
     private static ComputeBuffer _biomeColorLookupBuffer;
     private static MinimapRenderMode _cachedRenderMode;
+    private static bool _clearingCaches = false;
+    private static bool _isBaking = false;
 
     public struct BakeResult
     {
@@ -85,7 +87,16 @@ public static class PlanetTextureBaker
         }
 
         // Use GPU path (implementation is inlined here; PlanetTextureBakerGPU.cs was removed)
-        var gpuResult = BakeInternalGPU(planetGen, colorProvider, computeShader, width, height);
+        _isBaking = true;
+        GPUBakeResult gpuResult;
+        try
+        {
+            gpuResult = BakeInternalGPU(planetGen, colorProvider, computeShader, width, height);
+        }
+        finally
+        {
+            _isBaking = false;
+        }
         
         var res = new BakeResult
         {
@@ -116,39 +127,41 @@ public static class PlanetTextureBaker
     /// </summary>
     public static void ClearAllCaches()
     {
-        foreach (var buf in _lutBufferCache.Values) buf?.Release();
-        foreach (var buf in _colorBufferCache.Values) buf?.Release();
-        foreach (var buf in _elevationBufferCache.Values) buf?.Release();
-        foreach (var buf in _biomeIndexBufferCache.Values) buf?.Release();
-        foreach (var buf in _tileUVBufferCache.Values) buf?.Release();
-        foreach (var rt in _biomeTextureCache.Values) rt?.Release();
-        foreach (var rt in _heightTextureCache.Values) rt?.Release();
+        if (_clearingCaches) return;
+        if (_isBaking)
+        {
+            Debug.LogWarning("[PlanetTextureBaker] ClearAllCaches deferred because a bake is in progress.");
+            return;
+        }
+        _clearingCaches = true;
+        try
+        {
+            try { foreach (var buf in _lutBufferCache.Values) { try { if (buf != null) buf.Release(); } catch { } } } catch { }
+            try { foreach (var buf in _colorBufferCache.Values) { try { if (buf != null) buf.Release(); } catch { } } } catch { }
+            try { foreach (var buf in _elevationBufferCache.Values) { try { if (buf != null) buf.Release(); } catch { } } } catch { }
+            try { foreach (var buf in _biomeIndexBufferCache.Values) { try { if (buf != null) buf.Release(); } catch { } } } catch { }
+            try { foreach (var buf in _tileUVBufferCache.Values) { try { if (buf != null) buf.Release(); } catch { } } } catch { }
 
-        _lutBufferCache.Clear();
-        _colorBufferCache.Clear();
-        _elevationBufferCache.Clear();
-        _biomeIndexBufferCache.Clear();
-        _tileUVBufferCache.Clear();
-        _biomeTextureCache.Clear();
-        _heightTextureCache.Clear();
-        
-        // Clear texture array cache
-        if (_cachedBiomeTextureArray != null)
-        {
-            Object.DestroyImmediate(_cachedBiomeTextureArray);
-            _cachedBiomeTextureArray = null;
+            try { foreach (var rt in _biomeTextureCache.Values) { try { if (rt != null) { if (rt.IsCreated()) rt.Release(); Object.DestroyImmediate(rt); } } catch { } } } catch { }
+            try { foreach (var rt in _heightTextureCache.Values) { try { if (rt != null) { if (rt.IsCreated()) rt.Release(); Object.DestroyImmediate(rt); } } catch { } } } catch { }
+
+            _lutBufferCache.Clear();
+            _colorBufferCache.Clear();
+            _elevationBufferCache.Clear();
+            _biomeIndexBufferCache.Clear();
+            _tileUVBufferCache.Clear();
+            _biomeTextureCache.Clear();
+            _heightTextureCache.Clear();
+
+            try { if (_cachedBiomeTextureArray != null) { Object.DestroyImmediate(_cachedBiomeTextureArray); _cachedBiomeTextureArray = null; } } catch { _cachedBiomeTextureArray = null; }
+            _cachedCustomTexture = null;
+            _biomeToTextureIndex = null;
+            try { if (_biomeColorLookupBuffer != null) { _biomeColorLookupBuffer.Release(); _biomeColorLookupBuffer = null; } } catch { _biomeColorLookupBuffer = null; }
+            try { if (_biomeToTextureIndexBuffer != null) { _biomeToTextureIndexBuffer.Release(); _biomeToTextureIndexBuffer = null; } } catch { _biomeToTextureIndexBuffer = null; }
         }
-        _cachedCustomTexture = null;
-        _biomeToTextureIndex = null;
-        if (_biomeColorLookupBuffer != null)
+        finally
         {
-            _biomeColorLookupBuffer.Release();
-            _biomeColorLookupBuffer = null;
-        }
-        if (_biomeToTextureIndexBuffer != null)
-        {
-            _biomeToTextureIndexBuffer.Release();
-            _biomeToTextureIndexBuffer = null;
+            _clearingCaches = false;
         }
     }
 
@@ -621,10 +634,27 @@ public static class PlanetTextureBaker
 
     private static ComputeBuffer GetOrCreateLUTBuffer(string key, int[] data)
     {
-        if (_lutBufferCache.TryGetValue(key, out var buf) && buf != null && buf.count == data.Length)
-            return buf;
-
-        if (buf != null) buf.Release();
+        try
+        {
+            if (_lutBufferCache.TryGetValue(key, out var buf))
+            {
+                if (buf != null)
+                {
+                    try
+                    {
+                        if (buf.count == data.Length)
+                            return buf;
+                    }
+                    catch
+                    {
+                        // buffer appears invalid/destroyed
+                        try { buf.Release(); } catch { }
+                        _lutBufferCache.Remove(key);
+                    }
+                }
+            }
+        }
+        catch { _lutBufferCache.Remove(key); }
 
         var newBuf = new ComputeBuffer(data.Length, sizeof(int));
         newBuf.SetData(data);
@@ -634,10 +664,18 @@ public static class PlanetTextureBaker
 
     private static ComputeBuffer GetOrCreateColorBuffer(string key, Color32[] data)
     {
-        if (_colorBufferCache.TryGetValue(key, out var buf) && buf != null && buf.count == data.Length)
-            return buf;
-
-        if (buf != null) buf.Release();
+        try
+        {
+            if (_colorBufferCache.TryGetValue(key, out var buf))
+            {
+                if (buf != null)
+                {
+                    try { if (buf.count == data.Length) return buf; }
+                    catch { try { buf.Release(); } catch { } _colorBufferCache.Remove(key); }
+                }
+            }
+        }
+        catch { _colorBufferCache.Remove(key); }
 
         // Convert Color32[] to float4[] for GPU
         var float4Colors = new Vector4[data.Length];
@@ -659,10 +697,18 @@ public static class PlanetTextureBaker
 
     private static ComputeBuffer GetOrCreateElevationBuffer(string key, float[] data)
     {
-        if (_elevationBufferCache.TryGetValue(key, out var buf) && buf != null && buf.count == data.Length)
-            return buf;
-
-        if (buf != null) buf.Release();
+        try
+        {
+            if (_elevationBufferCache.TryGetValue(key, out var buf))
+            {
+                if (buf != null)
+                {
+                    try { if (buf.count == data.Length) return buf; }
+                    catch { try { buf.Release(); } catch { } _elevationBufferCache.Remove(key); }
+                }
+            }
+        }
+        catch { _elevationBufferCache.Remove(key); }
 
         var newBuf = new ComputeBuffer(data.Length, sizeof(float));
         newBuf.SetData(data);
@@ -672,10 +718,18 @@ public static class PlanetTextureBaker
     
     private static ComputeBuffer GetOrCreateBiomeIndexBuffer(string key, int[] data)
     {
-        if (_biomeIndexBufferCache.TryGetValue(key, out var buf) && buf != null && buf.count == data.Length)
-            return buf;
-
-        if (buf != null) buf.Release();
+        try
+        {
+            if (_biomeIndexBufferCache.TryGetValue(key, out var buf))
+            {
+                if (buf != null)
+                {
+                    try { if (buf.count == data.Length) return buf; }
+                    catch { try { buf.Release(); } catch { } _biomeIndexBufferCache.Remove(key); }
+                }
+            }
+        }
+        catch { _biomeIndexBufferCache.Remove(key); }
 
         var newBuf = new ComputeBuffer(data.Length, sizeof(int));
         newBuf.SetData(data);
@@ -685,10 +739,18 @@ public static class PlanetTextureBaker
     
     private static ComputeBuffer GetOrCreateTileUVBuffer(string key, Vector2[] data)
     {
-        if (_tileUVBufferCache.TryGetValue(key, out var buf) && buf != null && buf.count == data.Length)
-            return buf;
-
-        if (buf != null) buf.Release();
+        try
+        {
+            if (_tileUVBufferCache.TryGetValue(key, out var buf))
+            {
+                if (buf != null)
+                {
+                    try { if (buf.count == data.Length) return buf; }
+                    catch { try { buf.Release(); } catch { } _tileUVBufferCache.Remove(key); }
+                }
+            }
+        }
+        catch { _tileUVBufferCache.Remove(key); }
 
         var newBuf = new ComputeBuffer(data.Length, sizeof(float) * 2);
         newBuf.SetData(data);
@@ -698,39 +760,53 @@ public static class PlanetTextureBaker
 
     private static RenderTexture GetOrCreateBiomeTexture(string key, int width, int height)
     {
-        if (_biomeTextureCache.TryGetValue(key, out var rt) && rt != null && rt.width == width && rt.height == height)
-            return rt;
+        try
+        {
+            if (_biomeTextureCache.TryGetValue(key, out var rt) && rt != null && rt.width == width && rt.height == height)
+                return rt;
 
-        if (rt != null) rt.Release();
+            if (rt != null)
+            {
+                try { if (rt.IsCreated()) rt.Release(); Object.DestroyImmediate(rt); } catch { }
+            }
+        }
+        catch { }
 
-        rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
+        var newRt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
         {
             enableRandomWrite = true,
             filterMode = FilterMode.Trilinear,
             wrapMode = TextureWrapMode.Repeat,
             name = $"PlanetBiomeTexture_{key}"
         };
-        rt.Create();
-        _biomeTextureCache[key] = rt;
-        return rt;
+        newRt.Create();
+        _biomeTextureCache[key] = newRt;
+        return newRt;
     }
 
     private static RenderTexture GetOrCreateHeightTexture(string key, int width, int height)
     {
-        if (_heightTextureCache.TryGetValue(key, out var rt) && rt != null && rt.width == width && rt.height == height)
-            return rt;
+        try
+        {
+            if (_heightTextureCache.TryGetValue(key, out var rt) && rt != null && rt.width == width && rt.height == height)
+                return rt;
 
-        if (rt != null) rt.Release();
+            if (rt != null)
+            {
+                try { if (rt.IsCreated()) rt.Release(); Object.DestroyImmediate(rt); } catch { }
+            }
+        }
+        catch { }
 
-        rt = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
+        var newRt = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
         {
             enableRandomWrite = true,
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Repeat,
             name = $"PlanetHeightTexture_{key}"
         };
-        rt.Create();
-        _heightTextureCache[key] = rt;
-        return rt;
+        newRt.Create();
+        _heightTextureCache[key] = newRt;
+        return newRt;
     }
 }

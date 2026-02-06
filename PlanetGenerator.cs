@@ -722,6 +722,23 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
     }
 
+    /// <summary>
+    /// Inject an externally-created `HexGrid` instance (for example from `HexGridComponent`).
+    /// Use this when the grid is prepared in-scene and should be used by this generator
+    /// before baking/chunk building.
+    /// </summary>
+    public void SetGrid(HexGrid newGrid)
+    {
+        if (newGrid == null)
+        {
+            Debug.LogWarning("[PlanetGenerator] SetGrid called with null grid; ignoring.");
+            return;
+        }
+
+        grid = newGrid;
+        Debug.Log($"[PlanetGenerator] Grid injected: {grid.Width}x{grid.Height} ({grid.TileCount} tiles)");
+    }
+
     private void HandlePlanetSeasonChanged(int planet, Season newSeason)
     {
         if (planet != planetIndex) return;
