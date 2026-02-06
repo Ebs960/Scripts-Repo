@@ -1,5 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Generates a single equirectangular world texture for a planet, using:
@@ -289,6 +292,23 @@ public static class PlanetTextureBaker
                 }
                 _biomeToTextureIndex[bt.biome] = textureToIndex[bt.texture];
             }
+        }
+
+        // Debug: list every collected texture with basic info so we can confirm exactly what's being packed
+        Debug.Log($"[PlanetTextureBaker] Collected {textures.Count} textures for biome texture array:");
+        for (int i = 0; i < textures.Count; i++)
+        {
+            var tex = textures[i];
+            if (tex == null)
+            {
+                Debug.LogWarning($"[PlanetTextureBaker]  [{i}] <null>");
+                continue;
+            }
+            string path = "(runtime)";
+#if UNITY_EDITOR
+            try { path = AssetDatabase.GetAssetPath(tex); if (string.IsNullOrEmpty(path)) path = "(none)"; } catch { path = "(editor-unavailable)"; }
+#endif
+            Debug.Log($"[PlanetTextureBaker]  [{i}] {tex.name} format={tex.format} size={tex.width}x{tex.height} readable={tex.isReadable} path={path}");
         }
         
         if (textures.Count == 0)

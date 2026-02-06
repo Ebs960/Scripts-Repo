@@ -4,7 +4,11 @@ using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Profiling;
+using System.Reflection;
 using Debug = UnityEngine.Debug;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Startup memory reporter to help diagnose out-of-memory issues.
@@ -127,6 +131,31 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         foreach (var o in objs)
         {
             if (o == null) continue;
+            // Filter to project assets (Assets/ or Packages/) OR allow named runtime objects
+            bool include = false;
+#if UNITY_EDITOR
+            string path = AssetDatabase.GetAssetPath(o);
+            if (!string.IsNullOrEmpty(path) && (path.StartsWith("Assets/") || path.StartsWith("Packages/")))
+            {
+                include = true;
+            }
+#endif
+            if (!include)
+            {
+                // Allow runtime-created textures if they contain common game prefixes
+                var n = o.name ?? string.Empty;
+                if (n.IndexOf("biome", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("planet", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("minimap", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("tile", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("biometexturearray", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    include = true;
+                }
+            }
+
+            if (!include) continue;
+
             count++;
             total += Profiler.GetRuntimeMemorySizeLong(o);
         }
@@ -138,21 +167,110 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
     {
         var entries = new List<(string kind, string name, long bytes)>(256);
 
-        void Add<T>(string kind) where T : UnityEngine.Object
+        void AddObject(UnityEngine.Object o, string kind)
         {
-            foreach (var o in Resources.FindObjectsOfTypeAll<T>())
-            {
-                if (o == null) continue;
-                long b = Profiler.GetRuntimeMemorySizeLong(o);
-                if (b <= 0) continue;
-                entries.Add((kind, o.name, b));
-            }
+            if (o == null) return;
+            long b = Profiler.GetRuntimeMemorySizeLong(o);
+            if (b <= 0) return;
+            entries.Add((kind, o.name, b));
         }
 
-        Add<Texture2DArray>("Texture2DArray");
-        Add<RenderTexture>("RenderTexture");
-        Add<Texture2D>("Texture2D");
+        // 1) PlanetTextureBaker caches (private static fields) via reflection
+        try
+        {
+            var ptType = typeof(PlanetTextureBaker);
+            var f1 = ptType.GetField("_cachedBiomeTextureArray", BindingFlags.NonPublic | BindingFlags.Static);
+            var f2 = ptType.GetField("_cachedCustomTexture", BindingFlags.NonPublic | BindingFlags.Static);
+            var f3 = ptType.GetField("_biomeTextureCache", BindingFlags.NonPublic | BindingFlags.Static);
+            var f4 = ptType.GetField("_heightTextureCache", BindingFlags.NonPublic | BindingFlags.Static);
+            if (f1 != null) AddObject(f1.GetValue(null) as UnityEngine.Object, "Texture2DArray");
+            if (f2 != null) AddObject(f2.GetValue(null) as UnityEngine.Object, "Texture2D");
+            if (f3 != null)
+            {
+                var dict = f3.GetValue(null) as System.Collections.IDictionary;
+                if (dict != null)
+                {
+                    foreach (System.Collections.DictionaryEntry de in dict)
+                        AddObject(de.Value as UnityEngine.Object, "RenderTexture");
+                }
+            }
+            if (f4 != null)
+            {
+                var dict = f4.GetValue(null) as System.Collections.IDictionary;
+                if (dict != null)
+                {
+                    foreach (System.Collections.DictionaryEntry de in dict)
+                        AddObject(de.Value as UnityEngine.Object, "RenderTexture");
+                }
+            }
+        }
+        catch { }
 
+        // 2) BiomeVisualDatabase cached surface libraries (private static cache)
+        try
+        {
+            var bvType = typeof(BiomeVisualDatabase);
+            var cacheField = bvType.GetField("_surfaceLibraryCacheByDb", BindingFlags.NonPublic | BindingFlags.Static);
+            if (cacheField != null)
+            {
+                var cache = cacheField.GetValue(null) as System.Collections.IDictionary;
+                if (cache != null)
+                {
+                    foreach (System.Collections.DictionaryEntry de in cache)
+                    {
+                        var cached = de.Value;
+                        if (cached == null) continue;
+                        // cached is a struct value; use reflection to get 'library'
+                        var libField = cached.GetType().GetField("library");
+                        if (libField == null) continue;
+                        var lib = libField.GetValue(cached) as object;
+                        if (lib == null) continue;
+                        var libType = lib.GetType();
+                        var a = libType.GetField("albedoArray");
+                        var n = libType.GetField("normalArray");
+                        var m = libType.GetField("maskArray");
+                        var e = libType.GetField("emissiveArray");
+                        if (a != null) AddObject(a.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
+                        if (n != null) AddObject(n.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
+                        if (m != null) AddObject(m.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
+                        if (e != null) AddObject(e.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // 3) MinimapColorProvider assets (biomeTextures and custom texture)
+        try
+        {
+            foreach (var prov in Resources.FindObjectsOfTypeAll<MinimapColorProvider>())
+            {
+                if (prov == null) continue;
+                if (prov.customMinimapTexture != null) AddObject(prov.customMinimapTexture, "Texture2D");
+                var listField = prov.GetType().GetField("biomeTextures");
+                if (listField != null)
+                {
+                    var list = listField.GetValue(prov) as System.Collections.IEnumerable;
+                    if (list != null)
+                    {
+                        foreach (var item in list)
+                        {
+                            if (item == null) continue;
+                            // BiomeTexture struct has a 'texture' field
+                            var texField = item.GetType().GetField("texture");
+                            if (texField != null)
+                            {
+                                var tex = texField.GetValue(item) as UnityEngine.Object;
+                                AddObject(tex, "Texture2D");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // Sort and print top entries (by bytes)
         var top = entries
             .OrderByDescending(e => e.bytes)
             .Take(TopN)
@@ -160,7 +278,7 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
 
         if (top.Length == 0) return;
 
-        Debug.Log("[Memory] Top textures by runtime memory:");
+        Debug.Log("[Memory] Top game textures by runtime memory:");
         for (int i = 0; i < top.Length; i++)
         {
             Debug.Log($"[Memory]  #{i + 1:00} {top[i].kind} '{top[i].name}' ≈ {FormatBytes(top[i].bytes)}");
