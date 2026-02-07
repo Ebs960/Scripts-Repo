@@ -917,11 +917,36 @@ public class GameManager : MonoBehaviour
 
             // Land generation settings (allowed overrides only)
             planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
-            planetGenerator.enableRivers = GameSetupData.enableRivers;
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
             planetGenerator.generateIslands = GameSetupData.generateIslands;
-            planetGenerator.enableLakes = GameSetupData.enableLakes;
-            planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
+            
+            // Water features must be gated by Underwater layer support.
+            // If the planet has no authoritative layer config/data (legacy), preserve legacy behavior (allow).
+            bool hasLayerAuthority = (planetGenerator.planetConfig != null &&
+                                     planetGenerator.planetConfig.supportedLayers != null &&
+                                     planetGenerator.planetConfig.supportedLayers.Count > 0);
+            if (!hasLayerAuthority)
+            {
+                try
+                {
+                    var pd = GetPlanetData();
+                    if (pd != null && pd.ContainsKey(planetGenerator.planetIndex) &&
+                        pd[planetGenerator.planetIndex] != null &&
+                        pd[planetGenerator.planetIndex].supportedLayers != null &&
+                        pd[planetGenerator.planetIndex].supportedLayers.Count > 0)
+                    {
+                        hasLayerAuthority = true;
+                    }
+                }
+                catch { /* ignore */ }
+            }
+            bool supportsUnderwater = hasLayerAuthority
+                ? planetGenerator.HasLayer(PlanetLayerType.Underwater)
+                : true;
+
+            planetGenerator.enableRivers = supportsUnderwater && GameSetupData.enableRivers;
+            planetGenerator.enableLakes  = supportsUnderwater && GameSetupData.enableLakes;
+            planetGenerator.numberOfLakes = supportsUnderwater ? GameSetupData.numberOfLakes : 0;
             planetGenerator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
             planetGenerator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
             planetGenerator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
@@ -935,9 +960,7 @@ public class GameManager : MonoBehaviour
             // Ensure island/rivers/lakes flags and counts come from GameSetupData
             planetGenerator.generateIslands = GameSetupData.generateIslands;
             planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
-            planetGenerator.enableRivers = GameSetupData.enableRivers;
-            planetGenerator.enableLakes = GameSetupData.enableLakes;
-            planetGenerator.numberOfLakes = GameSetupData.numberOfLakes;
+            // Water features already gated above; don't overwrite here.
             planetGenerator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
             planetGenerator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
             planetGenerator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
@@ -1994,10 +2017,33 @@ public class GameManager : MonoBehaviour
         Debug.Log($"[GameManager][Diag] Multi-planet apply: continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, generateIslands={generator.generateIslands} (preserving noise tuning on prefab)");
 
         // Rivers & lakes (allowed preset-driven settings)
-        generator.enableRivers = GameSetupData.enableRivers;
+        // Water features must be gated by Underwater layer support.
+        // PlanetConfig is assigned above when available, so HasLayer() is authoritative here.
+        bool hasLayerAuthority2 = (generator.planetConfig != null &&
+                                  generator.planetConfig.supportedLayers != null &&
+                                  generator.planetConfig.supportedLayers.Count > 0);
+        if (!hasLayerAuthority2)
+        {
+            try
+            {
+                var allPd = GetPlanetData();
+                if (allPd != null && allPd.ContainsKey(generator.planetIndex) &&
+                    allPd[generator.planetIndex] != null &&
+                    allPd[generator.planetIndex].supportedLayers != null &&
+                    allPd[generator.planetIndex].supportedLayers.Count > 0)
+                {
+                    hasLayerAuthority2 = true;
+                }
+            }
+            catch { /* ignore */ }
+        }
+        bool supportsUnderwater2 = hasLayerAuthority2
+            ? generator.HasLayer(PlanetLayerType.Underwater)
+            : true;
 
-        generator.enableLakes = GameSetupData.enableLakes;
-        generator.numberOfLakes = GameSetupData.numberOfLakes;
+        generator.enableRivers = supportsUnderwater2 && GameSetupData.enableRivers;
+        generator.enableLakes  = supportsUnderwater2 && GameSetupData.enableLakes;
+        generator.numberOfLakes = supportsUnderwater2 ? GameSetupData.numberOfLakes : 0;
         generator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
         generator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
         generator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;

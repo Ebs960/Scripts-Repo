@@ -17,6 +17,11 @@ int _Width;
 int _Height;
 int _TileCount;
 
+// Grid line overlay (tile borders derived from LUT neighbor differences)
+int _DrawGridLines;          // 0/1
+int _GridLineWidthPixels;    // 1..N
+float4 _GridLineColor;       // RGBA, alpha = blend strength
+
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
@@ -39,6 +44,56 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     {
         // Atlas is a 1D texture where x = tileIndex
         color = _TileAtlas.Load(int3(tileIndex, 0, 0));
+    }
+
+    // Optional gridlines: detect tile borders by comparing LUT neighbor tile indices.
+    // This produces crisp borders that match actual tile shapes even after wrapping.
+    if (_DrawGridLines == 1 && tileIndex >= 0 && tileIndex < _TileCount)
+    {
+        int x = (int)id.x;
+        int y = (int)id.y;
+
+        // Clamp width to a sane minimum/maximum (avoid accidental huge loops).
+        int w = _GridLineWidthPixels;
+        if (w < 1) w = 1;
+        if (w > 4) w = 4;
+
+        bool isEdge = false;
+
+        // Compare to right/down neighbors within thickness.
+        // (We only need one direction; the other side will draw its own edge.)
+        [unroll]
+        for (int dx = 1; dx <= 4; dx++)
+        {
+            if (dx > w) break;
+            int nx = x + dx;
+            if (nx < _Width)
+            {
+                int nTile = _LUT[y * _Width + nx];
+                if (nTile >= 0 && nTile < _TileCount && nTile != tileIndex) { isEdge = true; break; }
+            }
+        }
+        if (!isEdge)
+        {
+            [unroll]
+            for (int dy = 1; dy <= 4; dy++)
+            {
+                if (dy > w) break;
+                int ny = y + dy;
+                if (ny < _Height)
+                {
+                    int nTile = _LUT[ny * _Width + x];
+                    if (nTile >= 0 && nTile < _TileCount && nTile != tileIndex) { isEdge = true; break; }
+                }
+            }
+        }
+
+        if (isEdge)
+        {
+            float a = saturate(_GridLineColor.a);
+            color.rgb = lerp(color.rgb, _GridLineColor.rgb, a);
+            color.a = max(color.a, a);
+        }
     }
 
     // Write to output

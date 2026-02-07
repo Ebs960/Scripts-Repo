@@ -1787,9 +1787,7 @@ MonoBehaviour:
   zoomLevelText: {fileID: 3513231434145898316}
   positionIndicator: {fileID: 8306577482277223502}
   minimapResolution: {x: 1024, y: 512}
-  reuseFlatMapTexture: 1
   lutRowsPerFrame: 50
-  colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
   maxZoom: 4
   minZoom: 1
   zoomSpeed: 0.25

@@ -25,13 +25,8 @@ public static class PlanetTextureBaker
     private static readonly Dictionary<string, RenderTexture> _biomeTextureCache = new Dictionary<string, RenderTexture>();
     private static readonly Dictionary<string, RenderTexture> _heightTextureCache = new Dictionary<string, RenderTexture>();
     
-    // Cache for texture arrays (built from MinimapColorProvider)
-    private static Texture2DArray _cachedBiomeTextureArray;
-    private static Texture2D _cachedCustomTexture;
-    private static Dictionary<Biome, int> _biomeToTextureIndex;
-    private static ComputeBuffer _biomeToTextureIndexBuffer; // Maps biome enum value -> texture array index (-1 = no texture)
+    // GPU color lookup cache (built from MinimapColorProvider)
     private static ComputeBuffer _biomeColorLookupBuffer;
-    private static MinimapRenderMode _cachedRenderMode;
     private static bool _clearingCaches = false;
     private static bool _isBaking = false;
 
@@ -156,11 +151,7 @@ public static class PlanetTextureBaker
             _biomeTextureCache.Clear();
             _heightTextureCache.Clear();
 
-            try { if (_cachedBiomeTextureArray != null) { Object.DestroyImmediate(_cachedBiomeTextureArray); _cachedBiomeTextureArray = null; } } catch { _cachedBiomeTextureArray = null; }
-            _cachedCustomTexture = null;
-            _biomeToTextureIndex = null;
             try { if (_biomeColorLookupBuffer != null) { _biomeColorLookupBuffer.Release(); _biomeColorLookupBuffer = null; } } catch { _biomeColorLookupBuffer = null; }
-            try { if (_biomeToTextureIndexBuffer != null) { _biomeToTextureIndexBuffer.Release(); _biomeToTextureIndexBuffer = null; } } catch { _biomeToTextureIndexBuffer = null; }
         }
         finally
         {
@@ -171,64 +162,21 @@ public static class PlanetTextureBaker
     // -------------------- GPU bake implementation (previously PlanetTextureBakerGPU.cs) --------------------
     
     /// <summary>
-    /// Builds a Texture2DArray from biome textures and creates biome-to-index mapping.
-    /// Also builds color lookup table for BiomeColors mode.
+    /// Builds a StructuredBuffer with colors for all biomes.
+    /// Index in buffer = Biome enum value.
+    /// The effective color source is centralized inside MinimapColorProvider:
+    /// - ProviderColors uses provider.biomeColors
+    /// - DefaultColors uses BiomeColorHelper defaults
     /// </summary>
-    private static void BuildTextureArrayAndMappings(MinimapColorProvider colorProvider)
+    private static void BuildBiomeColorLookup(MinimapColorProvider colorProvider)
     {
-        if (colorProvider == null)
-        {
-            Debug.LogError("[PlanetTextureBaker] Cannot build texture array: colorProvider is null");
-            return;
-        }
-        
-        // Check if we need to rebuild (render mode changed or not yet built)
-        if (_cachedBiomeTextureArray != null && _cachedRenderMode == colorProvider.renderMode)
-        {
-            // Already built for this render mode
-            return;
-        }
-        
-        // Clear old cache
-        if (_cachedBiomeTextureArray != null)
-        {
-            Object.DestroyImmediate(_cachedBiomeTextureArray);
-            _cachedBiomeTextureArray = null;
-        }
+        // Always rebuild when asked; this avoids stale colors if the asset is edited at runtime or between loads.
         if (_biomeColorLookupBuffer != null)
         {
             _biomeColorLookupBuffer.Release();
             _biomeColorLookupBuffer = null;
         }
-        
-        _cachedRenderMode = colorProvider.renderMode;
-        _biomeToTextureIndex = new Dictionary<Biome, int>();
-        
-        switch (colorProvider.renderMode)
-        {
-            case MinimapRenderMode.BiomeColors:
-                // Build color lookup table (one color per biome enum value)
-                BuildBiomeColorLookup(colorProvider);
-                break;
-                
-            case MinimapRenderMode.BiomeTextures:
-                // Build texture array from biome textures
-                BuildBiomeTextureArray(colorProvider);
-                break;
-                
-            case MinimapRenderMode.CustomTexture:
-                // Use single custom texture (no array needed)
-                _cachedCustomTexture = colorProvider.customMinimapTexture;
-                break;
-        }
-    }
-    
-    /// <summary>
-    /// Builds a StructuredBuffer with colors for all biomes (for BiomeColors mode).
-    /// Index in buffer = Biome enum value.
-    /// </summary>
-    private static void BuildBiomeColorLookup(MinimapColorProvider colorProvider)
-    {
+
         // Get max biome enum value
         int maxBiomeValue = System.Enum.GetValues(typeof(Biome)).Length;
         var colors = new Vector4[maxBiomeValue];
@@ -239,27 +187,15 @@ public static class PlanetTextureBaker
             colors[i] = new Vector4(1f, 0f, 1f, 1f); // Magenta
         }
         
-        // Fill in configured colors
-        foreach (var bc in colorProvider.biomeColors)
-        {
-            int biomeIndex = (int)bc.biome;
-            if (biomeIndex >= 0 && biomeIndex < maxBiomeValue)
-            {
-                colors[biomeIndex] = new Vector4(bc.color.r, bc.color.g, bc.color.b, bc.color.a);
-            }
-        }
-        
-        // Fill in defaults for unconfigured biomes
+        // Minimap colors are intentionally fixed to default biome colors (BiomeColorHelper) for minimap-only visuals.
+        // The provider parameter is kept for call-site compatibility but is not used.
         for (int i = 0; i < maxBiomeValue; i++)
         {
-            if (colors[i].x == 1f && colors[i].y == 0f && colors[i].z == 1f) // Still magenta
-            {
-                Biome biome = (Biome)i;
-                Color defaultColor = BiomeColorHelper.GetMinimapColor(biome);
-                colors[i] = new Vector4(defaultColor.r, defaultColor.g, defaultColor.b, defaultColor.a);
-            }
+            Biome biome = (Biome)i;
+            Color c = BiomeColorHelper.GetMinimapColor(biome);
+            colors[i] = new Vector4(c.r, c.g, c.b, c.a);
         }
-        
+
         // Create compute buffer
         if (_biomeColorLookupBuffer != null)
         {
@@ -267,168 +203,6 @@ public static class PlanetTextureBaker
         }
         _biomeColorLookupBuffer = new ComputeBuffer(maxBiomeValue, sizeof(float) * 4);
         _biomeColorLookupBuffer.SetData(colors);
-    }
-    
-    /// <summary>
-    /// Builds a Texture2DArray from all biome textures and creates biome-to-index mapping.
-    /// </summary>
-    private static void BuildBiomeTextureArray(MinimapColorProvider colorProvider)
-    {
-        var textures = new List<Texture2D>();
-        var biomeList = new List<Biome>();
-        
-        // Collect all unique textures (deduplicate by texture reference)
-        var textureToIndex = new Dictionary<Texture2D, int>();
-        foreach (var bt in colorProvider.biomeTextures)
-        {
-            if (bt.texture != null)
-            {
-                if (!textureToIndex.ContainsKey(bt.texture))
-                {
-                    int index = textures.Count;
-                    textures.Add(bt.texture);
-                    textureToIndex[bt.texture] = index;
-                    biomeList.Add(bt.biome);
-                }
-                _biomeToTextureIndex[bt.biome] = textureToIndex[bt.texture];
-            }
-        }
-
-        // Debug: list every collected texture with basic info so we can confirm exactly what's being packed
-        Debug.Log($"[PlanetTextureBaker] Collected {textures.Count} textures for biome texture array:");
-        for (int i = 0; i < textures.Count; i++)
-        {
-            var tex = textures[i];
-            if (tex == null)
-            {
-                Debug.LogWarning($"[PlanetTextureBaker]  [{i}] <null>");
-                continue;
-            }
-            string path = "(runtime)";
-#if UNITY_EDITOR
-            try { path = AssetDatabase.GetAssetPath(tex); if (string.IsNullOrEmpty(path)) path = "(none)"; } catch { path = "(editor-unavailable)"; }
-#endif
-            Debug.Log($"[PlanetTextureBaker]  [{i}] {tex.name} format={tex.format} size={tex.width}x{tex.height} readable={tex.isReadable} path={path}");
-        }
-        
-        if (textures.Count == 0)
-        {
-            Debug.LogWarning("[PlanetTextureBaker] No biome textures found in BiomeTextures mode. Falling back to colors.");
-            BuildBiomeColorLookup(colorProvider);
-            return;
-        }
-        
-        // Find common dimensions (use first texture's size)
-        int width = textures[0].width;
-        int height = textures[0].height;
-        
-        // Validate all textures have same dimensions (required for Texture2DArray)
-        bool dimensionsMatch = true;
-        for (int i = 1; i < textures.Count; i++)
-        {
-            if (textures[i].width != width || textures[i].height != height)
-            {
-                Debug.LogError($"[PlanetTextureBaker] Dimension mismatch: Texture '{textures[i].name}' has dimensions {textures[i].width}x{textures[i].height}, " +
-                             $"but expected {width}x{height} (from '{textures[0].name}'). " +
-                             $"Texture2DArray requires all textures to have the same dimensions. Skipping '{textures[i].name}'.");
-                dimensionsMatch = false;
-            }
-        }
-        
-        if (!dimensionsMatch)
-        {
-            Debug.LogWarning("[PlanetTextureBaker] Not all textures have matching dimensions. Texture array may be incomplete.");
-        }
-        
-        // Detect source texture format. Use the first texture's format for the array so Graphics.CopyTexture works directly.
-        // This saves memory (compressed formats are much smaller) and avoids conversion overhead.
-        TextureFormat sourceFormat = textures[0].format;
-        Debug.Log($"[PlanetTextureBaker] Building texture array: {textures.Count} textures, size={width}x{height}, format={sourceFormat} (from '{textures[0].name}')");
-        
-        // Validate all textures use the same format (required for Texture2DArray)
-        bool formatsMatch = true;
-        for (int i = 1; i < textures.Count; i++)
-        {
-            if (textures[i].format != sourceFormat)
-            {
-                Debug.LogWarning($"[PlanetTextureBaker] Format mismatch: Texture '{textures[i].name}' has format {textures[i].format} ({(int)textures[i].format}), " +
-                               $"but expected {sourceFormat} ({(int)sourceFormat}) from '{textures[0].name}'. " +
-                               $"Texture2DArray requires all textures to have the same format. Will convert '{textures[i].name}' via Blit.");
-                formatsMatch = false;
-            }
-        }
-        
-        // Create Texture2DArray in the same format as source textures (allows direct Graphics.CopyTexture without conversion)
-        _cachedBiomeTextureArray = new Texture2DArray(width, height, textures.Count, sourceFormat, false);
-        _cachedBiomeTextureArray.filterMode = FilterMode.Bilinear;
-        _cachedBiomeTextureArray.wrapMode = TextureWrapMode.Repeat;
-        
-        // Copy textures into array. If formats match, use direct copy (fast, preserves compression).
-        // If formats don't match, convert via Blit (rare case - should only happen if textures are inconsistently configured).
-        RenderTexture tempRT = null;
-        if (!formatsMatch)
-        {
-            // Only allocate temp RT if we need format conversion
-            tempRT = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            tempRT.filterMode = FilterMode.Bilinear;
-            tempRT.wrapMode = TextureWrapMode.Repeat;
-        }
-        
-        for (int i = 0; i < textures.Count; i++)
-        {
-            var tex = textures[i];
-            try
-            {
-                if (tex.format == sourceFormat)
-                {
-                    // Formats match - direct copy (fast, preserves compression)
-                    Graphics.CopyTexture(tex, srcElement: 0, srcMip: 0, _cachedBiomeTextureArray, dstElement: i, dstMip: 0);
-                }
-                else
-                {
-                    // Format mismatch - convert via Blit (slower, but handles mixed formats)
-                    Graphics.Blit(tex, tempRT);
-                    Graphics.CopyTexture(tempRT, srcElement: 0, srcMip: 0, _cachedBiomeTextureArray, dstElement: i, dstMip: 0);
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[PlanetTextureBaker] Failed to copy texture '{tex.name}' to array: {ex.Message}. This texture will use fallback colors.");
-            }
-        }
-        
-        if (tempRT != null)
-        {
-            RenderTexture.ReleaseTemporary(tempRT);
-        }
-        
-        // Build biome-to-texture-index mapping buffer (for GPU lookup)
-        int maxBiomeValue = System.Enum.GetValues(typeof(Biome)).Length;
-        var biomeToIndexMap = new int[maxBiomeValue];
-        
-        // Initialize all to -1 (no texture)
-        for (int i = 0; i < maxBiomeValue; i++)
-        {
-            biomeToIndexMap[i] = -1;
-        }
-        
-        // Fill in mappings
-        foreach (var kvp in _biomeToTextureIndex)
-        {
-            int biomeValue = (int)kvp.Key;
-            if (biomeValue >= 0 && biomeValue < maxBiomeValue)
-            {
-                biomeToIndexMap[biomeValue] = kvp.Value;
-            }
-        }
-        
-        // Create compute buffer for mapping
-        if (_biomeToTextureIndexBuffer != null)
-        {
-            _biomeToTextureIndexBuffer.Release();
-        }
-        _biomeToTextureIndexBuffer = new ComputeBuffer(maxBiomeValue, sizeof(int));
-        _biomeToTextureIndexBuffer.SetData(biomeToIndexMap);
     }
 
     private struct GPUBakeResult
@@ -470,14 +244,12 @@ public static class PlanetTextureBaker
             return res;
         }
 
-        // Build texture array and mappings from color provider (GPU-ready)
-        if (colorProvider != null)
+        // Build GPU-ready biome color lookup (default biome colors).
+        BuildBiomeColorLookup(colorProvider);
+        if (_biomeColorLookupBuffer == null)
         {
-            BuildTextureArrayAndMappings(colorProvider);
-        }
-        else
-        {
-            Debug.LogError("[PlanetTextureBaker] CRITICAL: MinimapColorProvider is NULL! GPU bake needs biome textures from the provider.");
+            Debug.LogError("[PlanetTextureBaker] CRITICAL: Failed to build _BiomeColorLookup buffer.");
+            return res;
         }
 
         // Build per-tile data: biome indices, UVs, and elevations (for GPU texture sampling)
@@ -542,7 +314,7 @@ public static class PlanetTextureBaker
         var elevationBuffer = GetOrCreateElevationBuffer(cacheKey, tileElevations);
         
         // Color buffer kept for fallback/reference (may not be used in GPU path)
-        var colorBuffer = GetOrCreateColorBuffer(cacheKey, tileColors);
+        // (Removed) Per-tile color buffer upload: shader uses biome lookup; tileColors are kept only for output/reference.
 
         if (lutBuffer == null || biomeIndexBuffer == null || tileUVBuffer == null || elevationBuffer == null)
         {
@@ -574,52 +346,8 @@ public static class PlanetTextureBaker
         computeShader.SetBuffer(kernel, "_TileUVs", tileUVBuffer);
         computeShader.SetBuffer(kernel, "_TileElevations", elevationBuffer);
         
-        // Set texture resources based on render mode
-        if (colorProvider != null)
-        {
-            switch (colorProvider.renderMode)
-            {
-                case MinimapRenderMode.BiomeColors:
-                    // Use color lookup table
-                    if (_biomeColorLookupBuffer != null)
-                    {
-                        computeShader.SetBuffer(kernel, "_BiomeColorLookup", _biomeColorLookupBuffer);
-                    }
-                    computeShader.SetInt("_RenderMode", 0); // BiomeColors = 0
-                    break;
-                    
-                case MinimapRenderMode.BiomeTextures:
-                    // Use texture array
-                    if (_cachedBiomeTextureArray != null)
-                    {
-                        computeShader.SetTexture(kernel, "_BiomeTextureArray", _cachedBiomeTextureArray);
-                    }
-                    // Set biome-to-texture-index mapping
-                    if (_biomeToTextureIndexBuffer != null)
-                    {
-                        computeShader.SetBuffer(kernel, "_BiomeToTextureIndex", _biomeToTextureIndexBuffer);
-                    }
-                    // Also set color buffer as fallback
-                    computeShader.SetBuffer(kernel, "_TileBiomeColors", colorBuffer);
-                    computeShader.SetInt("_RenderMode", 1); // BiomeTextures = 1
-                    break;
-                    
-                case MinimapRenderMode.CustomTexture:
-                    // Use single custom texture
-                    if (_cachedCustomTexture != null)
-                    {
-                        computeShader.SetTexture(kernel, "_CustomTexture", _cachedCustomTexture);
-                    }
-                    computeShader.SetInt("_RenderMode", 2); // CustomTexture = 2
-                    break;
-            }
-        }
-        else
-        {
-            // Fallback: use color buffer
-            computeShader.SetBuffer(kernel, "_TileBiomeColors", colorBuffer);
-            computeShader.SetInt("_RenderMode", 0);
-        }
+        // Set biome color lookup (required)
+        computeShader.SetBuffer(kernel, "_BiomeColorLookup", _biomeColorLookupBuffer);
 
         // Set output textures
         computeShader.SetTexture(kernel, "_BiomeTexture", biomeRT);
@@ -630,16 +358,6 @@ public static class PlanetTextureBaker
         computeShader.SetInt("_Height", height);
         computeShader.SetInt("_TileCount", tileCount);
         computeShader.SetInt("_MaxBiomeValue", System.Enum.GetValues(typeof(Biome)).Length);
-        
-        // Set texture array size if using BiomeTextures mode
-        if (colorProvider != null && colorProvider.renderMode == MinimapRenderMode.BiomeTextures && _cachedBiomeTextureArray != null)
-        {
-            computeShader.SetInt("_BiomeTextureArraySize", _cachedBiomeTextureArray.depth);
-        }
-        else
-        {
-            computeShader.SetInt("_BiomeTextureArraySize", 0);
-        }
 
         // Dispatch compute shader (8x8 thread groups)
         int threadGroupsX = Mathf.CeilToInt(width / 8f);

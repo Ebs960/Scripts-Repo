@@ -46,7 +46,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 444f8271227f3e643950b34982980f18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexMapChunkManager
-  colorProvider: {fileID: 11400000, guid: 9e082cf28c6d19d43afb5d67df08a8a2, type: 2}
   textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
   terrainShader: {fileID: -6465566751694194690, guid: 15f3c6b4d6a9c894284b24aedcdbb772, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
@@ -55,7 +54,7 @@ MonoBehaviour:
   chunksX: 9
   chunksZ: 4
   meshSubdivisionsPerChunk: 32
-  displacementStrength: 2.8
+  displacementStrength: 2.9
   flatY: 0
   globalSnowAmount: 0
   globalWetness: 0
@@ -96,10 +95,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa2a4457109e68f4ba0ebe96fddf0c24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexGridOverlay
-  showGrid: 0
+  showGrid: 1
   gridColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.5}
   lineWidth: 0.05
-  heightOffset: 0.1
+  heightOffset: 4
   lineMaterial: {fileID: 2100000, guid: 40861cf147703c74c8a7f49fd85d7052, type: 2}
   maxHexesToRender: 10000
   renderDistance: 500

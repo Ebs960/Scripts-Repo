@@ -27,6 +27,18 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
 #if UNITY_EDITOR
     private const int TopN = 15;
 
+    // If true, the heavy object breakdown (textures, arrays) is only collected for the first planet (planetIndex==0).
+    // This reduces repeated heavy reports that can allocate or produce excessive logging in multi-planet runs.
+    private static bool _detailedOnlyFirstPlanet = true;
+    private static bool _detailedSnapshotTaken = false;
+
+    // Public toggle to allow enabling/disabling first-planet-only detailed reports at runtime
+    public static bool DetailedOnlyFirstPlanet
+    {
+        get => _detailedOnlyFirstPlanet;
+        set => _detailedOnlyFirstPlanet = value;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Install()
     {
@@ -81,9 +93,26 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
     }
 
-    private void HandlePlanetGridBuilt(int planetIndex) => Snapshot($"OnPlanetGridBuilt planet={planetIndex}", includeObjectBreakdown: true);
-    private void HandlePlanetSurfaceGenerated(int planetIndex) => Snapshot($"OnPlanetSurfaceGenerated planet={planetIndex}", includeObjectBreakdown: true);
-    private void HandlePlanetReady(int planetIndex) => Snapshot($"OnPlanetReady planet={planetIndex}", includeObjectBreakdown: true);
+    private void HandlePlanetGridBuilt(int planetIndex)
+    {
+        // Lightweight grid-built snapshot (always include breakdown for quick diagnostics)
+        Snapshot($"OnPlanetGridBuilt planet={planetIndex}", includeObjectBreakdown: true);
+    }
+
+    private void HandlePlanetSurfaceGenerated(int planetIndex)
+    {
+        // Optionally restrict heavy object breakdown to first planet only to reduce noise/overhead
+        bool include = !_detailedOnlyFirstPlanet || planetIndex == 0 || !_detailedSnapshotTaken;
+        Snapshot($"OnPlanetSurfaceGenerated planet={planetIndex}", includeObjectBreakdown: include);
+        if (planetIndex == 0) _detailedSnapshotTaken = true;
+    }
+
+    private void HandlePlanetReady(int planetIndex)
+    {
+        bool include = !_detailedOnlyFirstPlanet || planetIndex == 0 || !_detailedSnapshotTaken;
+        Snapshot($"OnPlanetReady planet={planetIndex}", includeObjectBreakdown: include);
+        if (planetIndex == 0) _detailedSnapshotTaken = true;
+    }
 
     private static void Snapshot(string label, bool includeObjectBreakdown)
     {
@@ -179,12 +208,8 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         try
         {
             var ptType = typeof(PlanetTextureBaker);
-            var f1 = ptType.GetField("_cachedBiomeTextureArray", BindingFlags.NonPublic | BindingFlags.Static);
-            var f2 = ptType.GetField("_cachedCustomTexture", BindingFlags.NonPublic | BindingFlags.Static);
             var f3 = ptType.GetField("_biomeTextureCache", BindingFlags.NonPublic | BindingFlags.Static);
             var f4 = ptType.GetField("_heightTextureCache", BindingFlags.NonPublic | BindingFlags.Static);
-            if (f1 != null) AddObject(f1.GetValue(null) as UnityEngine.Object, "Texture2DArray");
-            if (f2 != null) AddObject(f2.GetValue(null) as UnityEngine.Object, "Texture2D");
             if (f3 != null)
             {
                 var dict = f3.GetValue(null) as System.Collections.IDictionary;
@@ -234,36 +259,6 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
                         if (n != null) AddObject(n.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
                         if (m != null) AddObject(m.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
                         if (e != null) AddObject(e.GetValue(lib) as UnityEngine.Object, "Texture2DArray");
-                    }
-                }
-            }
-        }
-        catch { }
-
-        // 3) MinimapColorProvider assets (biomeTextures and custom texture)
-        try
-        {
-            foreach (var prov in Resources.FindObjectsOfTypeAll<MinimapColorProvider>())
-            {
-                if (prov == null) continue;
-                if (prov.customMinimapTexture != null) AddObject(prov.customMinimapTexture, "Texture2D");
-                var listField = prov.GetType().GetField("biomeTextures");
-                if (listField != null)
-                {
-                    var list = listField.GetValue(prov) as System.Collections.IEnumerable;
-                    if (list != null)
-                    {
-                        foreach (var item in list)
-                        {
-                            if (item == null) continue;
-                            // BiomeTexture struct has a 'texture' field
-                            var texField = item.GetType().GetField("texture");
-                            if (texField != null)
-                            {
-                                var tex = texField.GetValue(item) as UnityEngine.Object;
-                                AddObject(tex, "Texture2D");
-                            }
-                        }
                     }
                 }
             }

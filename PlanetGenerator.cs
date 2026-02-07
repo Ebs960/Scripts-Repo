@@ -791,6 +791,30 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                  (float)(prng.NextDouble() * 2000.0 - 1000.0));
         }
         int tileCount = grid.TileCount;
+        
+        // Water (oceans/lakes/rivers) MUST be gated by planet layer support.
+        // Root cause: the previous gating relied on world-type booleans (isMarsWorldType, etc.),
+        // which can be wrong in multi-planet runs and allowed non-underwater planets to stamp lakes.
+        bool hasLayerAuthority = (planetConfig != null && planetConfig.supportedLayers != null && planetConfig.supportedLayers.Count > 0);
+        if (!hasLayerAuthority && GameManager.Instance != null)
+        {
+            try
+            {
+                var allPd = GameManager.Instance.GetPlanetData();
+                int idx = Mathf.Clamp(planetIndex, 0, int.MaxValue);
+                if (allPd != null && allPd.ContainsKey(idx))
+                {
+                    var pd = allPd[idx];
+                    if (pd != null && pd.supportedLayers != null && pd.supportedLayers.Count > 0)
+                        hasLayerAuthority = true;
+                }
+            }
+            catch { /* ignore */ }
+        }
+
+        // If we cannot determine layers (legacy/sandbox scenes), preserve legacy behavior (water allowed).
+        bool supportsUnderwaterLayer = hasLayerAuthority ? HasLayer(GameManager.PlanetLayerType.Underwater) : true;
+        bool allowOceansThisRun = allowOceans && supportsUnderwaterLayer;
 
         // Configure noise sampler for this map's dimensions
         float mapWidth = grid.Width;
@@ -1023,14 +1047,9 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
 
         // ---------- 3. Generate Lakes (Stamping) ----------
-        bool isEarthPlanet = !isMarsWorldType && !isVenusWorldType && !isMercuryWorldType && !isJupiterWorldType &&
-                            !isSaturnWorldType && !isUranusWorldType && !isNeptuneWorldType && !isPlutoWorldType &&
-                            !isTitanWorldType && !isEuropaWorldType && !isIoWorldType &&
-                            !isLunaWorldType;
-
         int lakesStamped = 0;
         List<Vector2Int> lakeCenters = new List<Vector2Int>();
-        if (enableLakes && isEarthPlanet && numberOfLakes > 0)
+        if (enableLakes && allowOceansThisRun && numberOfLakes > 0)
         {
             int lakeMinRadius = Mathf.Max(1, lakeMinRadiusTiles);
             int lakeMaxRadius = Mathf.Max(lakeMinRadius, lakeMaxRadiusTiles);
@@ -1132,7 +1151,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             }
         }
 
-        if (enableRivers && GameSetupData.riverCount > 0 && enableLakes && isEarthPlanet && lakeCenters.Count == 0)
+        if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0 && enableLakes && lakeCenters.Count == 0)
         {
             int fallbackRadius = Mathf.Max(1, lakeMinRadiusTiles);
             for (int i = 0; i < tileCount; i++)
@@ -1219,11 +1238,12 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // (Stamping debug logs removed)
 
         // ---------- 5. Calculate Biomes, Elevation, and Initial Data ---------
-        if (!allowOceans)
+        if (!allowOceansThisRun)
         {
             for (int i = 0; i < tileCount; i++) {
                 isLandTile[i] = true;
                 isLakeTile[i] = false;
+                isRiverTile[i] = false;
             }
         }
 
@@ -1739,7 +1759,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
 
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
-        if (enableRivers && GameSetupData.riverCount > 0)
+        if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
 
         if (loadingPanelController != null)

@@ -42,11 +42,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [Tooltip("Resolution for minimap texture. Higher = better quality but more memory. Recommended: 1024x512 to 4096x2048")]
     [SerializeField] private Vector2Int minimapResolution = new Vector2Int(1024, 512);
     
-    [Tooltip("If true, reuse the flat map texture (if available) instead of regenerating. Much faster and uses less memory.")]
-    [SerializeField] private bool reuseFlatMapTexture = true;
     [Tooltip("Number of rows to process per frame during LUT generation (higher = faster but more frame time)")]
     [SerializeField] private int lutRowsPerFrame = 50; // Process 50 rows per frame for smooth generation
-    [SerializeField] private MinimapColorProvider colorProvider;
+    // Color source for minimap is intentionally fixed to default biome colors (BiomeColorHelper).
+    // This field was removed to avoid multiple "color mode" knobs fighting each other.
     [SerializeField] private float maxZoom = 4f;
     [SerializeField] private float minZoom = 0.5f;
     [SerializeField] private float zoomSpeed = 1f;
@@ -329,7 +328,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 float oy = (hash & 0xFF) / 255f;
                 float sampleU = Mathf.Repeat(0.5f + ox, 1f);
                 float sampleV = Mathf.Repeat(0.5f + oy, 1f);
-                baseColor = (colorProvider != null) ? colorProvider.ColorFor(tileData, new Vector2(sampleU, sampleV)) : GetDefaultBiomeColour(tileData.biome);
+                baseColor = GetDefaultBiomeColour(tileData.biome);
             }
 
             // If there is an occupant on this layer, tint/highlight the tile so the minimap shows units/resources/improvements
@@ -437,6 +436,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         minimapComputeShader.SetInt("_Height", height);
         minimapComputeShader.SetInt("_TileCount", atlas.Length);
 
+        // Gridlines (tile borders) overlay.
+        minimapComputeShader.SetInt("_DrawGridLines", 1);
+        minimapComputeShader.SetInt("_GridLineWidthPixels", 1);
+        // Dark line with moderate alpha so biome colors remain readable.
+        minimapComputeShader.SetVector("_GridLineColor", new Vector4(0f, 0f, 0f, 0.60f));
+
         int tx = Mathf.CeilToInt(width / 8f);
         int ty = Mathf.CeilToInt(height / 8f);
         minimapComputeShader.Dispatch(kernel, tx, ty, 1);
@@ -448,6 +453,9 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     void Awake()
     {
+        // Minimap color mode is centralized in MinimapColorProvider.
+        // BiomeColorHelper is now a pure default palette helper (no provider lookup / no global mode).
+        BiomeColorHelper.ClearCache();
         _gameManager = GameManager.Instance;
         _loadingPanel = FindAnyObjectByType<LoadingPanelController>();
         _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>(); // Cache camera manager reference
@@ -1104,56 +1112,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private void ShowMinimapForPlanet(int planetIndex)
     {
-        // OPTIMIZATION: Try to reuse flat map texture first (if enabled and available)
-        if (reuseFlatMapTexture)
-        {
-            // Use HexMapChunkManager (chunk-based map renderer)
-            var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-            
-            Texture mapTexture = null;
-            System.Func<int, int, Texture> getDownscaled = null;
-            
-            if (chunkManager != null && chunkManager.IsBuilt && chunkManager.MapTexture != null)
-            {
-                mapTexture = chunkManager.MapTexture;
-                getDownscaled = (w, h) => chunkManager.GetDownscaledTexture(w, h);
-            }
-            
-            if (mapTexture != null)
-            {
-                // Check if this is the current planet (flat map shows current planet)
-                var currentPlanet = _gameManager != null ? _gameManager.GetCurrentPlanetGenerator() : null;
-                var targetPlanet = _gameManager != null ? (_gameManager.GetPlanetGenerator(planetIndex) ?? _gameManager.planetGenerator) : null;
-                
-                if (currentPlanet == targetPlanet)
-                {
-                    // Reuse flat map texture - downscale if needed
-                    Texture minimapTex = mapTexture;
-                    
-                    // If minimap resolution is different, downscale
-                    if (minimapResolution.x != mapTexture.width || 
-                        minimapResolution.y != mapTexture.height)
-                    {
-                        var downscaled = getDownscaled?.Invoke(minimapResolution.x, minimapResolution.y);
-                        if (downscaled != null)
-                        {
-                            minimapTex = downscaled;
-                            // Cache it for this planet
-                            _minimapTextures[planetIndex] = minimapTex;
-                        }
-                    }
-                    
-                    if (minimapImage != null && minimapTex != null)
-                    {
-                        minimapImage.texture = minimapTex;
-                        SetZoom(1f);
-                        return; // Successfully reused flat map texture
-                    }
-                }
-            }
-        }
-        
-        // Fallback to pre-generated or on-demand generation
+        // Single minimap generation path:
+        // - Default biome colors only (BiomeColorHelper)
+        // - GPU compute path (with gridlines) when available
+        // - No reuse of chunk-manager map textures (prevents duplicated caches & divergent outputs)
         if (_minimapsPreGenerated)
         {
             // Use pre-generated texture when present; otherwise, generate on-demand
@@ -1189,10 +1151,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     private Color GetDefaultBiomeColour(Biome biome)
     {
-        // Prefer the MinimapColorProvider instance if assigned, otherwise fall back
-        if (colorProvider != null)
-            return colorProvider.ColorForBiome(biome);
-
         return BiomeColorHelper.GetMinimapColor(biome);
     }
     

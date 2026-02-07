@@ -18,7 +18,8 @@ using System.Linq;
 public class HexMapChunkManager : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private MinimapColorProvider colorProvider;
+    // Minimap/flat-map coloring is fixed to default biome colors (BiomeColorHelper).
+    // Keep visuals deterministic and avoid multiple competing "color provider" assets.
     [SerializeField] private ComputeShader textureBakerComputeShader;
     [SerializeField]
     [Tooltip("Terrain shader used to render biome chunks (assign exactly one). Must support the runtime-bound properties: _BiomeIndexMap, _Heightmap, _BiomeAlbedoArray, _BiomeNormalArray, _BiomeMaskArray, _BiomeCount.")]
@@ -424,7 +425,7 @@ TrySubscribeToSurfaceReady(gen);
         }
 
         // Note: GPU baker uses per-tile colors; for non-BiomeColors render modes this is an approximation.
-        bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, colorProvider, textureBakerComputeShader, textureWidth, textureHeight);
+        bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, null, textureBakerComputeShader, textureWidth, textureHeight);
     }
 
     private void BuildBiomeVisualMaps()

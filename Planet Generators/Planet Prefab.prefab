@@ -189,9 +189,9 @@ MonoBehaviour:
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 2
   climateSmoothingStrength: 0.502
-  mountainThreshold: 0.934
-  hillThreshold: 0.64
-  baseLandElevation: 0.25
+  mountainThreshold: 1.21
+  hillThreshold: 0.42
+  baseLandElevation: 0.314
   oceanElevation: 0
   seasElevation: 0.1
   coastElevation: 0.12
@@ -388,7 +388,6 @@ MonoBehaviour:
   isInfernalMapType: 0
   isDemonicMapType: 0
   isIceWorldMapType: 0
-  isMonsoonMapType: 0
   isMarsWorldType: 0
   isVenusWorldType: 0
   isMercuryWorldType: 0
