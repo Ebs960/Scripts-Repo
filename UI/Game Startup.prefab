@@ -13913,7 +13913,7 @@ MonoBehaviour:
   moisturePresetDropdown: {fileID: 27948694622289514}
   mapTypeName: {fileID: 7566517935838265213}
   mapTypeIcon: {fileID: 8317239160007022731}
-  mapTypeDescription: {fileID: 0}
+  mapTypeDescription: {fileID: 286975469015206770}
   backToMenuButton: {fileID: 2888859437634740172}
   startGameButton: {fileID: 2115395561125161101}
   terrainRoughnessDropdown: {fileID: 3106324314298798636}
