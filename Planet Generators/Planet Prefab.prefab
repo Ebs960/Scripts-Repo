@@ -156,7 +156,7 @@ MonoBehaviour:
   atmosphereRoot: {fileID: 4916646554407244369}
   surfaceYOffset: 0
   underwaterYOffset: -2
-  atmosphereYOffset: 4
+  atmosphereYOffset: 20
   planetConfig: {fileID: 0}
   enableDiagnostics: 0
   debugDrawContinents: 0
@@ -189,20 +189,20 @@ MonoBehaviour:
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 2
   climateSmoothingStrength: 0.502
-  mountainThreshold: 1.21
-  hillThreshold: 0.42
-  baseLandElevation: 0.314
+  mountainThreshold: 8
+  hillThreshold: 6
+  baseLandElevation: 2.5
   oceanElevation: 0
-  seasElevation: 0.1
-  coastElevation: 0.12
-  hillElevationBoost: 0.71
-  maxTotalElevation: 1.375
+  seasElevation: 1
+  coastElevation: 2
+  hillElevationBoost: 0.58
+  maxTotalElevation: 9
   billowHillWeight: 0.113
   ridgedMountainWeight: 0.224
   enableRivers: 0
   minRiversPerContinent: 3
   maxRiversPerContinent: 5
-  riverDepth: 0.1
+  riverDepth: 0.1686
   enableLakes: 1
   numberOfLakes: 8
   lakeMinRadiusTiles: 3
@@ -217,7 +217,7 @@ MonoBehaviour:
   minLandTilesForCoastStamps: 120
   lakeElevation: 0.02
   lakeRenderElevation: 0.05
-  lakeDepth: 0.2
+  lakeDepth: 0.1554
   numberOfIslands: 8
   generateIslands: 1
   minIslandWidthTilesSmall: 1
@@ -416,7 +416,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: edb751e37647d2342b86c471b7db5b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GasGiantVolumeSpawner
-  volumePrefab: {fileID: 1692630127137379890, guid: f3cb1e8236986384d8432b3616796107, type: 3}
+  volumePrefab: {fileID: 5268895137369896140, guid: 02afff5e4e1fe414e92ce7f13f83f67d, type: 3}
   poolSize: 2
   verboseLogs: 0
   instantiateProfile: 1
@@ -543,6 +543,6 @@ MonoBehaviour:
   underwaterRootOverride: {fileID: 0}
   atmosphereRootOverride: {fileID: 0}
   gasGiantRendererOverride: {fileID: -5893155586537961453}
-  gasGiantVolumeSpawnerOverride: {fileID: 0}
+  gasGiantVolumeSpawnerOverride: {fileID: 1909149276891878161}
   terrainRendererOverride: {fileID: 0}
   logLayerChanges: 0

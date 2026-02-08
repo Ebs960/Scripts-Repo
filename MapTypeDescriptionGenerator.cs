@@ -168,7 +168,7 @@ public static class MapTypeDescriptionGenerator
           "Warm mangrove swamps and flooded wetlands create a watery maze where land and sea blend into one. Life here is amphibious by necessity, adapted to both elements.",
           "Vast rainforests stretch unbroken for countless leagues, their biodiversity beyond cataloging. Every footstep disturbs a dozen creatures, and the forest hums with the ceaseless activity of a million lives." },
           
-        { "A scorching desert where dunes of golden sand shift with each hot wind, revealing and concealing ruins of civilizations that dared to build here. Oases are fiercely guarded prizes.", 
+        { "A scorching desert where dunes of golden sand shift with each hot wind, Oases are fiercely guarded prizes.", 
           "Arid scrublands bake beneath an unforgiving sun, where thorny plants and venomous creatures have evolved to survive on almost nothing. Water is worth more than gold.", 
           "Hot seasonal forests have adapted to cycles of growth and dormancy, their deciduous trees shedding leaves to conserve water during scorching dry seasons.", 
           "Steamlands jungles where the heat and humidity combine to create a greenhouse of explosive growth. Sweat is constant, comfort is rare, but life flourishes in overwhelming abundance.", 
@@ -341,24 +341,6 @@ public static class MapTypeDescriptionGenerator
     private static string GenerateGeopoliticalDescription(int civCount, int cityStateCount, int tribeCount, int climate, int moisture, int landType, int elevation)
     {
         System.Text.StringBuilder desc = new System.Text.StringBuilder();
-        
-        // Civilization dynamics
-        if (civCount <= 2)
-        {
-            desc.Append("Two great powers stand as twin colossi, their shadows stretching across the world. Between them flows an ocean of tension and possibility—a dance of opposites that defines the very nature of existence here. Their contest is not mere conflict but the fundamental question of what form the future shall take.");
-        }
-        else if (civCount <= 4)
-        {
-            desc.Append($"{GetNumberWord(civCount).Substring(0,1).ToUpper() + GetNumberWord(civCount).Substring(1)} distinct peoples carve their destinies across this world, each watching the others with the careful attention of those who understand that in a room of mirrors, every reflection matters. Alliances shimmer into being and dissolve like morning mist—today's handshake becomes tomorrow's calculated move.");
-        }
-        else if (civCount <= 6)
-        {
-            desc.Append($"{GetNumberWord(civCount).Substring(0,1).ToUpper() + GetNumberWord(civCount).Substring(1)} civilizations weave their fates in an intricate tapestry where no thread moves in isolation. The wise understand that power here is fluid—a river that cannot be dammed by any single hand, but can be channeled by those who read its currents.");
-        }
-        else
-        {
-            desc.Append($"In a world crowded with {civCount} ambitious peoples, space itself becomes a currency. The air hums with the constant negotiation of borders, resources, and influence. Here, survival favors those who understand that every alliance is temporary, every peace conditional, and every territory a question mark in the great equation of dominance.");
-        }
         
         // City-state dynamics
         if (cityStateCount > 0)

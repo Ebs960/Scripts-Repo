@@ -9,8 +9,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
     [SerializeField] private WaterSurface oceanSurfacePrefab;
     [SerializeField] private WaterSurface lakeSurfacePrefab;
 
-    // Note: Sea level is authoritative from PlanetGenerator.SeaLevelWorldY.
-    // This component must not compute or hardcode a Y value.
+    // Note: Sea level for oceans is authoritative from PlanetGenerator.SeaLevelWorldY.
+    // Lake water surfaces compute their own height from surrounding shore terrain.
 
     private readonly List<GameObject> spawnedSurfaces = new List<GameObject>();
 
@@ -126,8 +126,19 @@ public class WaterSurfaceGenerator : MonoBehaviour
             var bounds = CalculateRegionBounds(grid, region, padX, padZ);
             bool regionIsLake = RegionIsLake(planetGen, region);
 
-            // Position all HDRP Water Surfaces at the planet's authoritative sea level.
-            float height = planetGen.SeaLevelWorldY;
+            float height;
+            if (regionIsLake)
+            {
+                // Lake water sits at the level of its lowest shore tile (the natural outlet).
+                // This ensures lake water is flat and at the correct terrain-relative height,
+                // rather than using the global ocean sea level.
+                height = ComputeLakeWaterHeight(planetGen, grid, region);
+            }
+            else
+            {
+                // Ocean/seas use the planet's authoritative sea level.
+                height = planetGen.SeaLevelWorldY;
+            }
 
             CreateWaterSurface(regionIsLake, bounds, height, mapWidthWorld, spawnedSurfaces.Count);
             createdRegions++;
@@ -234,6 +245,111 @@ public class WaterSurfaceGenerator : MonoBehaviour
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Compute the world-space Y height for a lake's water surface.
+    /// The water level equals the lowest shore tile's world Y (the natural outlet).
+    /// This makes each lake sit at the correct terrain-relative height — a mountain
+    /// lake is high, a valley lake is low.
+    /// </summary>
+    private float ComputeLakeWaterHeight(PlanetGenerator planetGen, HexGrid grid, List<int> region)
+    {
+        int tileCount = grid.TileCount;
+        float minShoreRenderElev = float.MaxValue;
+
+        // Build a set for fast membership checks
+        var regionSet = new HashSet<int>(region);
+
+        foreach (int lakeIdx in region)
+        {
+            var neighbors = grid.neighbors[lakeIdx];
+            if (neighbors == null) continue;
+
+            foreach (int n in neighbors)
+            {
+                if (n < 0 || n >= tileCount) continue;
+                if (regionSet.Contains(n)) continue; // skip other lake tiles in this body
+
+                var td = planetGen.GetHexTileData(n);
+                // HexTileData is a struct — check isLand instead of null
+                if (!td.isLand) continue;
+                // Only consider true land shore tiles (not coast/ocean/seas)
+                if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
+
+                if (td.renderElevation < minShoreRenderElev)
+                {
+                    minShoreRenderElev = td.renderElevation;
+                }
+            }
+        }
+
+        // Get the ACTUAL displacement strength from HexMapChunkManager (what the shader uses).
+        // GameManager.terrainDisplacementStrength is a separate value that may not match.
+        float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : 0f;
+        float dispStrength = GetActualDisplacementStrength();
+
+        if (minShoreRenderElev < float.MaxValue)
+        {
+            float waterY = flatY + minShoreRenderElev * dispStrength;
+            Debug.Log($"[WaterSurfaceGenerator] Lake water height from shore: renderElev={minShoreRenderElev:F4} worldY={waterY:F3} (flatY={flatY:F3} disp={dispStrength:F1})");
+            return waterY;
+        }
+
+        // Fallback: no shore tiles found (isolated lake, shouldn't normally happen).
+        // Use the average renderElevation of the lake tiles themselves + a small offset
+        // so the water is slightly above the terrain.
+        float sumElev = 0f;
+        int count = 0;
+        foreach (int idx in region)
+        {
+            var td = planetGen.GetHexTileData(idx);
+            sumElev += td.renderElevation;
+            count++;
+        }
+
+        if (count > 0)
+        {
+            float avgRender = sumElev / count;
+            // Add a small offset so water sits above the lake bed, not at it
+            float waterRender = avgRender + 0.02f;
+            float waterY = flatY + waterRender * dispStrength;
+            Debug.Log($"[WaterSurfaceGenerator] Lake water height from tile average (no shore): renderElev={avgRender:F4}+0.02 worldY={waterY:F3}");
+            return waterY;
+        }
+
+        // Last resort: use global sea level
+        Debug.LogWarning("[WaterSurfaceGenerator] Could not compute lake water height, falling back to SeaLevelWorldY");
+        return planetGen.SeaLevelWorldY;
+    }
+
+    /// <summary>
+    /// Get the actual displacement strength from HexMapChunkManager (matches _ElevationScale in shader).
+    /// Falls back to GameManager.terrainDisplacementStrength if the chunk manager isn't found.
+    /// </summary>
+    private float GetActualDisplacementStrength()
+    {
+        // Try to get it from the planet's terrain renderer first
+        if (attachedPlanet != null && attachedPlanet.terrainRenderer != null)
+        {
+            return attachedPlanet.terrainRenderer.DisplacementStrength;
+        }
+
+        // Try to find any HexMapChunkManager in the scene
+        var chunkManager = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
+        if (chunkManager != null)
+        {
+            return chunkManager.DisplacementStrength;
+        }
+
+        // Final fallback: GameManager's value (may not match shader)
+        if (GameManager.Instance != null)
+        {
+            Debug.LogWarning("[WaterSurfaceGenerator] Using GameManager.terrainDisplacementStrength as fallback — may not match shader _ElevationScale");
+            return GameManager.Instance.GetTerrainDisplacementStrength();
+        }
+
+        return 5f;
     }
 
     private void CreateWaterSurface(bool isLake, Bounds bounds, float height, float mapWidthWorld, int regionIndex)

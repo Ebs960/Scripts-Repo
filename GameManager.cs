@@ -135,6 +135,8 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"[GameManager] Planet {planetIndex} does not exist");
             return;
         }
+
+        int previousPlanetIndex = currentPlanetIndex;
         currentPlanetIndex = planetIndex;
         climateManager = GetClimateManager(currentPlanetIndex);
 
@@ -143,7 +145,20 @@ public class GameManager : MonoBehaviour
         var gen = GetPlanetGenerator(currentPlanetIndex);
         if (gen != null)
         {
+            // Activate the new planet's GameObject (and all children: water, resources, units, etc.)
+            gen.gameObject.SetActive(true);
             EnsureTileSystemForPlanet(gen);
+        }
+
+        // Deactivate the previous planet's GameObject (if switching to a different planet)
+        if (previousPlanetIndex != planetIndex && planetGenerators.ContainsKey(previousPlanetIndex))
+        {
+            var prevGen = planetGenerators[previousPlanetIndex];
+            if (prevGen != null)
+            {
+                prevGen.gameObject.SetActive(false);
+                Debug.Log($"[GameManager] Deactivated planet {previousPlanetIndex} GameObject on switch to planet {planetIndex}");
+            }
         }
     }
 
@@ -2106,6 +2121,15 @@ public class GameManager : MonoBehaviour
 
     // Planet fully ready
     OnPlanetReady?.Invoke(planetIndex);
+
+    // Deactivate this planet's GameObject if it's not the current planet.
+    // This ensures only the active planet's water surfaces, resources, units, etc. are visible.
+    // HexMapChunkManager is outside the planet hierarchy and will rebuild when switching.
+    if (planetIndex != currentPlanetIndex)
+    {
+        planetGO.SetActive(false);
+        Debug.Log($"[GameManager] Planet {planetIndex} ({body}) deactivated after generation (not current planet {currentPlanetIndex})");
+    }
     
     }
 
@@ -2124,11 +2148,19 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        
+        int previousPlanetIndex = currentPlanetIndex;
         currentPlanetIndex = planetIndex;
 
         // Ensure grid is built and surface generated if needed
         var generator = planetGenerators[planetIndex];
+
+        // Activate destination planet BEFORE generation/switching so coroutines can run on it
+        if (generator != null)
+        {
+            generator.gameObject.SetActive(true);
+            Debug.Log($"[GameManager] Activated planet {planetIndex} GameObject for switch");
+        }
+
         bool surfaceJustGenerated = false;
         if (generator != null && !generator.Grid.IsBuilt)
         {
@@ -2156,8 +2188,17 @@ public class GameManager : MonoBehaviour
 
         // Ensure planet-ready listeners rebuild on planet switch.
         OnPlanetReady?.Invoke(planetIndex);
-        
-        
+
+        // Deactivate the previous planet's GameObject (and all children: water, resources, units, etc.)
+        if (previousPlanetIndex != planetIndex && planetGenerators.ContainsKey(previousPlanetIndex))
+        {
+            var prevGen = planetGenerators[previousPlanetIndex];
+            if (prevGen != null)
+            {
+                prevGen.gameObject.SetActive(false);
+                Debug.Log($"[GameManager] Deactivated planet {previousPlanetIndex} GameObject on switch to planet {planetIndex}");
+            }
+        }
     }
 
     /// <summary>

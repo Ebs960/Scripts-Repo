@@ -19,8 +19,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [Header("UI References")]
     [Tooltip("RawImage used to display the generated minimap texture")]
     public RawImage minimapImage;
-    [Tooltip("TMP_Dropdown used to select the active planet (supports TextMeshPro)")]
-    public TMP_Dropdown planetDropdown;
     [Tooltip("Dropdown to choose which occupancy layer the minimap displays")]
     public TMP_Dropdown layerDropdown;
     [Tooltip("Optional container for the minimap – used for scaling")]
@@ -29,10 +27,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public Button zoomInButton;
     [Tooltip("Button to zoom out on the minimap")]
     public Button zoomOutButton;
-    [Tooltip("Button to switch the view to the current planet's moon (assign in inspector)")]
-    public Button moonButton;
-    [Tooltip("Button to switch back to the main planet (assign in inspector)")]
-    public Button mainPlanetButton;
     [Tooltip("Optional text display showing current zoom level")]
     public TextMeshProUGUI zoomLevelText;
     [Tooltip("Position indicator (shows where camera is looking on minimap)")]
@@ -50,10 +44,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     [SerializeField] private float minZoom = 0.5f;
     [SerializeField] private float zoomSpeed = 1f;
     [SerializeField] private float buttonZoomStep = 0.5f;
-
-    [Header("Switching Settings")]
-    [Tooltip("Index of the main planet to switch back to when pressing the main planet button (0 = Earth by default)")]
-    [SerializeField] private int mainPlanetIndex = 0;
 
     // Pre-generation is always on.
     [Header("Atlas Settings")]
@@ -461,31 +451,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>(); // Cache camera manager reference
 
     // if (minimapImage == null) { /* optional: assign via inspector */ }
-        if (planetDropdown != null)
-            planetDropdown.onValueChanged.AddListener(OnPlanetDropdownChanged);
-        
+
         // Set up zoom button listeners
         if (zoomInButton != null)
             zoomInButton.onClick.AddListener(ZoomIn);
         if (zoomOutButton != null)
             zoomOutButton.onClick.AddListener(ZoomOut);
-
-        // Wire Moon button to switch to the current planet's moon
-        if (moonButton != null)
-        {
-            moonButton.onClick.AddListener(OnMoonButtonClicked);
-        }
-    else
-    {
-    }
-        // Wire Main planet button to switch back to configured main planet
-        if (mainPlanetButton != null)
-        {
-            mainPlanetButton.onClick.AddListener(OnMainPlanetButtonClicked);
-        }
-    else
-    {
-    }
         
         // Hide individual UI elements during loading, but keep GameObject active for coroutines
         // Hide UI while we generate minimaps (always pre-generation now)
@@ -505,14 +476,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             minimapImage.color = new Color(1, 1, 1, 0); // Transparent
             minimapImage.raycastTarget = false; // Disable interaction
         }
-        if (planetDropdown != null) 
-        {
-            var canvasGroup = planetDropdown.GetComponent<CanvasGroup>();
-            if (canvasGroup == null) canvasGroup = planetDropdown.gameObject.AddComponent<CanvasGroup>();
-            canvasGroup.alpha = 0; // Invisible
-            canvasGroup.interactable = false; // Disable interaction
-            canvasGroup.blocksRaycasts = false; // Don't block clicks
-        }
         if (zoomInButton != null) 
         {
             var canvasGroup = zoomInButton.GetComponent<CanvasGroup>();
@@ -525,22 +488,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             var canvasGroup = zoomOutButton.GetComponent<CanvasGroup>();
             if (canvasGroup == null) canvasGroup = zoomOutButton.gameObject.AddComponent<CanvasGroup>();
-            canvasGroup.alpha = 0;
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
-        }
-        if (moonButton != null) 
-        {
-            var canvasGroup = moonButton.GetComponent<CanvasGroup>();
-            if (canvasGroup == null) canvasGroup = moonButton.gameObject.AddComponent<CanvasGroup>();
-            canvasGroup.alpha = 0;
-            canvasGroup.interactable = false;
-            canvasGroup.blocksRaycasts = false;
-        }
-        if (mainPlanetButton != null) 
-        {
-            var canvasGroup = mainPlanetButton.GetComponent<CanvasGroup>();
-            if (canvasGroup == null) canvasGroup = mainPlanetButton.gameObject.AddComponent<CanvasGroup>();
             canvasGroup.alpha = 0;
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
@@ -574,16 +521,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             minimapImage.color = Color.white; // Visible
             minimapImage.raycastTarget = true; // Enable interaction
         }
-        if (planetDropdown != null) 
-        {
-            var canvasGroup = planetDropdown.GetComponent<CanvasGroup>();
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 1; // Visible
-                canvasGroup.interactable = true; // Enable interaction
-                canvasGroup.blocksRaycasts = true; // Allow clicks
-            }
-        }
         if (zoomInButton != null) 
         {
             var canvasGroup = zoomInButton.GetComponent<CanvasGroup>();
@@ -597,26 +534,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (zoomOutButton != null) 
         {
             var canvasGroup = zoomOutButton.GetComponent<CanvasGroup>();
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 1;
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = true;
-            }
-        }
-        if (moonButton != null) 
-        {
-            var canvasGroup = moonButton.GetComponent<CanvasGroup>();
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 1;
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = true;
-            }
-        }
-        if (mainPlanetButton != null) 
-        {
-            var canvasGroup = mainPlanetButton.GetComponent<CanvasGroup>();
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1;
@@ -662,6 +579,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             _gameManager.OnGameStarted -= HandleGameStarted;
             _gameManager.OnGameStarted += HandleGameStarted;
+
+            // Auto-update minimap when the active planet changes
+            _gameManager.OnPlanetReady -= HandlePlanetSwitched;
+            _gameManager.OnPlanetReady += HandlePlanetSwitched;
         }
     }
 
@@ -670,7 +591,22 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (_gameManager != null)
         {
             _gameManager.OnGameStarted -= HandleGameStarted;
+            _gameManager.OnPlanetReady -= HandlePlanetSwitched;
         }
+    }
+
+    /// <summary>
+    /// Called when a planet becomes the active planet (including switches).
+    /// Automatically refreshes the minimap to show the new current planet.
+    /// </summary>
+    private void HandlePlanetSwitched(int planetIndex)
+    {
+        // Only update if the minimap is actually visible and ready
+        if (!gameObject.activeInHierarchy) return;
+        if (_gameManager == null) return;
+
+        // Ensure we show the CURRENT planet (the one the player is on)
+        ShowMinimapForPlanet(_gameManager.currentPlanetIndex);
     }
 
     /// <summary>
@@ -681,11 +617,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _gameManager = GameManager.Instance ?? _gameManager;
         _loadingPanel = LoadingPanelController.Instance ?? _loadingPanel;
 
-        // If minimaps were already generated, just show UI and populate dropdown
+        // If minimaps were already generated, just show UI and display current planet
         if (_minimapsPreGenerated)
         {
             ShowUIElements();
-            BuildPlanetDropdown();
+            // Planet dropdown removed — minimap always tracks current planet
             ShowMinimapForPlanet(_gameManager != null ? _gameManager.currentPlanetIndex : 0);
             return;
         }
@@ -697,7 +633,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     void Start()
     {
         // Don't initialize minimap display until game is ready
-        // BuildPlanetDropdown() and ShowMinimapForPlanet() will be called in HandleGameStarted()
+        // ShowMinimapForPlanet() will be called in HandleGameStarted()
     }
 
     // Keep flags fresh if layout / anchors / scaling changes
@@ -795,11 +731,10 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             LoadingPanelController.Instance.OnMinimapGenerationComplete();
         }
 
-        BuildPlanetDropdown();
-        if (totalPlanets > 0)
-        {
-            ShowMinimapForPlanet(0);
-        }
+        BuildLayerDropdown();
+        // Show the current planet's minimap
+        int currentIdx = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
+        ShowMinimapForPlanet(currentIdx);
     }
 
     private string GetPlanetName(int planetIndex)
@@ -1017,63 +952,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     }
 
-    private void BuildPlanetDropdown()
-    {
-        if (planetDropdown == null || _gameManager == null) return;
-
-        planetDropdown.ClearOptions();
-        var options = new List<TMP_Dropdown.OptionData>();
-
-        // Discover actual planet indices available
-        var pd = _gameManager.GetPlanetData();
-        var indices = new List<int>();
-
-        // Prefer planet data count if available
-        if (pd != null && pd.Count > 0)
-        {
-            foreach (var kv in pd)
-            {
-                // Only include indices that have a generator
-                if (_gameManager.GetPlanetGenerator(kv.Key) != null)
-                    indices.Add(kv.Key);
-            }
-        }
-
-        // Fallback: probe generators up to maxPlanets
-        if (indices.Count == 0 && _gameManager != null)
-        {
-            for (int i = 0; i < _gameManager.maxPlanets; i++)
-            {
-                if (_gameManager.GetPlanetGenerator(i) != null)
-                    indices.Add(i);
-            }
-        }
-
-        // Final fallback: if there is a legacy single planet generator, include index 0
-        if (indices.Count == 0 && _gameManager != null && _gameManager.planetGenerator != null)
-            indices.Add(0);
-
-        foreach (var i in indices)
-        {
-            string label = (pd != null && pd.TryGetValue(i, out var d) && !string.IsNullOrEmpty(d.planetName))
-                ? d.planetName
-                : $"Planet {i + 1}";
-            options.Add(new TMP_Dropdown.OptionData(label));
-        }
-
-        // If still nothing, add at least one default entry so UI isn't empty
-        if (options.Count == 0)
-        {
-            options.Add(new TMP_Dropdown.OptionData("Planet 1"));
-        }
-
-        planetDropdown.AddOptions(options);
-        planetDropdown.value = Mathf.Clamp(_gameManager.currentPlanetIndex, 0, options.Count - 1);
-        planetDropdown.RefreshShownValue();
-        // Build the layer dropdown if present
-        BuildLayerDropdown();
-    }
-
     private void BuildLayerDropdown()
     {
         if (layerDropdown == null) return;
@@ -1099,14 +977,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         _minimapsPreGenerated = false;
         // Show currently selected planet minimap (regenerates on demand)
         int planetIndex = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
-        ShowMinimapForPlanet(planetIndex);
-    }
-
-    private void OnPlanetDropdownChanged(int planetIndex)
-    {
-        if (_gameManager != null)
-            _gameManager.SetCurrentPlanet(planetIndex);
-
         ShowMinimapForPlanet(planetIndex);
     }
 
@@ -1391,52 +1261,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             zoomOutButton.interactable = _currentZoom > minZoom;
     }
 
-    /// <summary>
-    /// OnClick handler for the Moon button. Switches to the current planet's moon if available.
-    /// </summary>
-    private void OnMoonButtonClicked()
-    {
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        if (_gameManager == null || _cachedCameraManager == null)
-        {
-            return;
-        }
-
-        // Multi-planet is always enabled at runtime; proceed if GameManager present.
-
-        // Moons are separate planets now. Switch to Luna (if present).
-        _gameManager.GoToEarthMoon();
-        ShowMinimapForPlanet(_gameManager.currentPlanetIndex);
-    }
-
-    /// <summary>
-    /// OnClick handler for the Main planet button. Switches to the configured main planet and ensures we're not on the moon.
-    /// </summary>
-    private void OnMainPlanetButtonClicked()
-    {
-        // Use cached reference to avoid expensive FindAnyObjectByType call
-        if (_cachedCameraManager == null)
-            _cachedCameraManager = FindAnyObjectByType<PlanetaryCameraManager>();
-        if (_gameManager == null || _cachedCameraManager == null)
-        {
-            return;
-        }
-
-        int targetIndex = Mathf.Clamp(mainPlanetIndex, 0, Mathf.Max(0, _gameManager.maxPlanets - 1));
-        // Multi-planet always enabled; set current planet directly
-        _gameManager.SetCurrentPlanet(targetIndex);
-        // Reflect in UI
-        if (planetDropdown != null)
-        {
-            planetDropdown.value = targetIndex;
-            planetDropdown.RefreshShownValue();
-        }
-
-        ShowMinimapForPlanet(targetIndex);
-    }
-    
     /// <summary>
     /// Update the position indicator to show where the camera is positioned on the planet
     /// </summary>

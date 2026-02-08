@@ -102,4 +102,4 @@ MonoBehaviour:
   flatMapWidth: 512
   flatMapHeight: 256
   flatPlaneY: 0
-  terrainDisplacementStrength: 2.9
+  terrainDisplacementStrength: 8.8

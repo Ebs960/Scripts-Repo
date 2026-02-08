@@ -16,10 +16,10 @@ public class PlayerUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI roundText;
     
     [SerializeField] private Button endTurnButton;
-    [Header("Layer Toggles")]
-    [SerializeField] private Button surfaceToggleButton;
-    [SerializeField] private Button underwaterToggleButton;
-    [SerializeField] private Button atmosphereToggleButton;
+    [Header("Layer Selection")]
+    [Tooltip("Single dropdown to switch between planet layers (Surface, Underwater, Atmosphere). Replaces the old individual toggle buttons.")]
+    [SerializeField] private TMP_Dropdown layerDropdown;
+
     [SerializeField] private Button techButton;
     [SerializeField] private Button cultureButton;
     [SerializeField] private Button policyButton;
@@ -192,23 +192,12 @@ Civilization civToUse = currentCiv;
             });
         }
 
-        // Layer toggle buttons (Surface / Underwater / Atmosphere)
-        if (surfaceToggleButton != null)
+        // Layer dropdown (replaces the 3 individual toggle buttons)
+        if (layerDropdown != null)
         {
-            surfaceToggleButton.onClick.RemoveAllListeners();
-            surfaceToggleButton.onClick.AddListener(() => ToggleSurfaceLayer());
-        }
-
-        if (underwaterToggleButton != null)
-        {
-            underwaterToggleButton.onClick.RemoveAllListeners();
-            underwaterToggleButton.onClick.AddListener(() => ToggleUnderwaterLayer());
-        }
-
-        if (atmosphereToggleButton != null)
-        {
-            atmosphereToggleButton.onClick.RemoveAllListeners();
-            atmosphereToggleButton.onClick.AddListener(() => ToggleAtmosphereLayer());
+            layerDropdown.onValueChanged.RemoveAllListeners();
+            layerDropdown.onValueChanged.AddListener(OnLayerDropdownChanged);
+            RefreshLayerDropdown();
         }
 }
 
@@ -477,11 +466,14 @@ currentCiv = civ;
         }
     }
 
-    // ---------------- Layer Toggle Handlers ----------------
+    // ---------------- Layer Dropdown ----------------
+
+    // Tracks which PlanetLayerType each dropdown index maps to (rebuilt when planet changes)
+    private List<GameManager.PlanetLayerType> _layerDropdownMapping = new List<GameManager.PlanetLayerType>();
+
     private PlanetGenerator GetActivePlanetGenerator()
     {
         if (GameManager.Instance != null) return GameManager.Instance.GetCurrentPlanetGenerator();
-        // Fallback for legacy/special scenes
         return FindAnyObjectByType<PlanetGenerator>();
     }
 
@@ -492,97 +484,75 @@ currentCiv = civ;
         var lm = gen.GetComponent<LayerManager>();
         if (lm == null)
         {
-            Debug.LogError("PlayerUI: No LayerManager found on active PlanetGenerator. Add LayerManager to the same GameObject as PlanetGenerator.");
+            Debug.LogError("PlayerUI: No LayerManager found on active PlanetGenerator.");
         }
         return lm;
     }
 
-    private void ToggleSurfaceLayer()
+    /// <summary>
+    /// Rebuild the layer dropdown options based on the current planet's supported layers.
+    /// Call this when switching planets.
+    /// </summary>
+    public void RefreshLayerDropdown()
     {
+        if (layerDropdown == null) return;
+
         var lm = GetActiveLayerManager();
-        if (lm == null)
+        _layerDropdownMapping.Clear();
+        layerDropdown.ClearOptions();
+
+        var options = new List<TMP_Dropdown.OptionData>();
+
+        // Only add layers this planet actually supports
+        GameManager.PlanetLayerType[] layersToCheck = {
+            GameManager.PlanetLayerType.Surface,
+            GameManager.PlanetLayerType.Underwater,
+            GameManager.PlanetLayerType.Atmosphere
+        };
+
+        foreach (var layer in layersToCheck)
         {
-            Debug.LogError("PlayerUI: No LayerManager available to toggle Surface layer.");
-            return;
+            if (lm != null && lm.IsLayerSupported(layer))
+            {
+                _layerDropdownMapping.Add(layer);
+                options.Add(new TMP_Dropdown.OptionData(layer.ToString()));
+            }
         }
 
-        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Surface))
+        // Fallback: always have at least Surface
+        if (options.Count == 0)
         {
-            Debug.LogWarning("PlayerUI: This planet does not support the Surface layer.");
-            return;
+            _layerDropdownMapping.Add(GameManager.PlanetLayerType.Surface);
+            options.Add(new TMP_Dropdown.OptionData("Surface"));
         }
 
-        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Surface);
-        lm.SetLayerVisible(GameManager.PlanetLayerType.Surface, enabled);
-        Debug.Log($"PlayerUI: Surface layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+        layerDropdown.AddOptions(options);
+        layerDropdown.SetValueWithoutNotify(0); // Default to first (Surface)
+        layerDropdown.RefreshShownValue();
     }
 
-    private void ToggleUnderwaterLayer()
+    private void OnLayerDropdownChanged(int index)
     {
+        if (index < 0 || index >= _layerDropdownMapping.Count) return;
+
+        var selectedLayer = _layerDropdownMapping[index];
         var lm = GetActiveLayerManager();
         if (lm == null)
         {
-            Debug.LogError("PlayerUI: No LayerManager available to toggle Underwater layer.");
+            Debug.LogWarning("PlayerUI: No LayerManager available to switch layers.");
             return;
         }
 
-        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Underwater))
-        {
-            Debug.LogWarning("PlayerUI: This planet does not support the Underwater layer.");
-            return;
-        }
-
-        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Underwater);
-        lm.SetLayerVisible(GameManager.PlanetLayerType.Underwater, enabled);
-        Debug.Log($"PlayerUI: Underwater layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
-    }
-
-    private void ToggleAtmosphereLayer()
-    {
-        var lm = GetActiveLayerManager();
-        if (lm == null)
-        {
-            Debug.LogError("PlayerUI: No LayerManager available to toggle Atmosphere layer.");
-            return;
-        }
-
-        // Check if planet actually has atmosphere layer
-        if (!lm.IsLayerSupported(GameManager.PlanetLayerType.Atmosphere))
-        {
-            Debug.LogWarning("PlayerUI: This planet does not have an Atmosphere layer.");
-            return;
-        }
-
-        bool enabled = !lm.IsLayerVisible(GameManager.PlanetLayerType.Atmosphere);
-        lm.SetLayerVisible(GameManager.PlanetLayerType.Atmosphere, enabled);
-        Debug.Log($"PlayerUI: Atmosphere layer {(enabled ? "enabled" : "disabled")} via UI toggle.");
+        lm.SetOnlyLayerVisible(selectedLayer);
+        Debug.Log($"PlayerUI: Switched to layer '{selectedLayer}' via dropdown.");
     }
 
     /// <summary>
-    /// Update layer toggle button visibility based on current planet's supported layers.
-    /// Call this when switching planets.
+    /// Legacy compatibility — calls RefreshLayerDropdown instead.
     /// </summary>
     public void UpdateLayerButtonVisibility()
     {
-        var lm = GetActiveLayerManager();
-        if (lm == null) return;
-
-        // Show/hide atmosphere button based on whether planet has atmosphere layer
-        if (atmosphereToggleButton != null)
-        {
-            bool hasAtmosphere = lm.IsLayerSupported(GameManager.PlanetLayerType.Atmosphere);
-            atmosphereToggleButton.gameObject.SetActive(hasAtmosphere);
-        }
-
-        // Show/hide underwater button based on whether planet has underwater layer
-        if (underwaterToggleButton != null)
-        {
-            bool hasUnderwater = lm.IsLayerSupported(GameManager.PlanetLayerType.Underwater);
-            underwaterToggleButton.gameObject.SetActive(hasUnderwater);
-        }
-
-        // Surface button is always shown (most planets have surface)
-        // but could be hidden for pure gas giants if desired
+        RefreshLayerDropdown();
     }
 
     /// <summary>

@@ -81,6 +81,10 @@ public class MainMenuManager : MonoBehaviour
     public Image mapTypeIcon;
     public TextMeshProUGUI mapTypeDescription;
 
+    [Header("Planet Preview")]
+    [Tooltip("Optional MenuPlanetPreview sphere in the setup UI. Automatically updated when climate/moisture/land settings change.")]
+    public MenuPlanetPreview planetPreview;
+
     [Header("Navigation Buttons")]
     public Button backToMenuButton;           // Back button on setup
     public Button startGameButton;            // Final start game button on setup
@@ -502,7 +506,7 @@ public class MainMenuManager : MonoBehaviour
         // Set the map type name text
         if (mapTypeName != null)
         {
-            mapTypeName.text = $"Map Type: {mapTypeNameStr}";
+            mapTypeName.text = mapTypeNameStr;
         }
 
         // Update the map type description
@@ -514,6 +518,9 @@ public class MainMenuManager : MonoBehaviour
 
         // Update map type icon
         UpdateMapTypeIcon();
+
+        // Update planet preview sphere if assigned
+        UpdatePlanetPreview();
     }
 
     private int GetElevationCategory()
@@ -524,6 +531,33 @@ public class MainMenuManager : MonoBehaviour
         if (terrainPreset.hills >= 0.5f)
             return 1; // Hilly
         return 0; // Low
+    }
+
+    /// <summary>
+    /// Push current map settings to the MenuPlanetPreview sphere (if assigned).
+    /// Maps the existing dropdown indices to the preview's shader parameters.
+    /// </summary>
+    private void UpdatePlanetPreview()
+    {
+        if (planetPreview == null) return;
+
+        // Land shape: map selectedLandPreset (0-4) to scale/threshold.
+        //   0 = Archipelago  → high scale (many small blobs), high threshold (more ocean)
+        //   4 = Pangaea      → low scale (few huge blobs), low threshold (more land)
+        float[] landScales     = { 4.5f, 3.0f, 2.0f, 1.5f, 1.0f };
+        float[] landThresholds = { 0.58f, 0.48f, 0.40f, 0.32f, 0.25f };
+        int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
+        planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx]);
+
+        // Temperature: map selectedClimatePreset (0-5) to 0–1
+        // 0=Frozen→0, 5=Scorching→1
+        float temp = Mathf.Clamp01(selectedClimatePreset / 5f);
+        planetPreview.SetTemperature(temp);
+
+        // Moisture: map selectedMoisturePreset (0-5) to 0–1
+        // 0=Very Low→0, 5=Extreme→1
+        float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);
+        planetPreview.SetMoisture(moist);
     }
 
     #endregion

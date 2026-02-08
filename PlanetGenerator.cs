@@ -384,7 +384,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f, 0.8f)]
     public float seedPositionVariance = 0.1f; // Controls randomness in seed placement
     
-    [Range(0f, 2.5f)]
+    [Range(0f, 5f)]
     [Tooltip("Additional elevation boost for mountain tiles (added to their base elevation). Similar to `hillElevationBoost`.")]
     public float mountainElevationBoost = 0.25f;
     // --- Noise Settings --- 
@@ -430,43 +430,43 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     // --- NEW: Elevation Features ---
     [Header("Elevation Features")]
-    [Range(0f, 2f)]
-    [Tooltip("Elevation value (0-1) above which tiles become mountains.")]
+    [Range(0f, 20f)]
+    [Tooltip("Elevation value above which tiles become mountains.")]
     public float mountainThreshold = 0.75f;
-    [Range(0f, 2f)]
-    [Tooltip("Elevation value (0-1) above which tiles become hills (if not already mountains).")]
+    [Range(0f, 20f)]
+    [Tooltip("Elevation value above which tiles become hills (if not already mountains).")]
     public float hillThreshold = 0.55f;
     
     // --- NEW: Elevation Range Settings ---
     [Header("Elevation Range Settings")]
-    [Range(0f, 1f)]
+    [Range(0f, 3f)]
     [Tooltip("The minimum elevation level for land and glacier tiles (before noise).")]
     public float baseLandElevation = 0.15f;
     
-    [Range(-2f, 1f)]
+    [Range(-3f, 3f)]
     [Tooltip("Elevation for ocean tiles.")]
     public float oceanElevation = 0f;
-    [Range(-2f, 1f)]
+    [Range(-3f, 3f)]
     [Tooltip("Elevation for sea tiles.")]
     public float seasElevation = 0.02f;
-    [Range(-2f, 1f)]
+    [Range(-3f, 3f)]
     [Tooltip("Elevation for coast tiles.")]
     public float coastElevation = 0.05f;
     
-    [Range(0f, 2.5f)]
+    [Range(0f, 5f)]
     [Tooltip("Additional elevation boost for hill tiles (added to their base elevation).")]
     public float hillElevationBoost = 0.1f;
     
-    [Range(0f, 1.5f)]
-    [Tooltip("The absolute maximum elevation any tile can reach (after noise). Set near 1.0 for full range.")]
+    [Range(0f, 10f)]
+    [Tooltip("The absolute maximum elevation any tile can reach (after noise). Higher values give more elevation headroom for hills/mountains.")]
     public float maxTotalElevation = 1.0f;
     
     [Header("Experimental / Advanced")]
-    [Range(0f, 0.5f)]
+    [Range(0f, 2f)]
     [Tooltip("Billow noise weight for rolling hills. Higher = more rounded terrain.")]
     public float billowHillWeight = 0.2f;
     
-    [Range(0f, 0.6f)]
+    [Range(0f, 2f)]
     [Tooltip("Ridged noise weight for mountain spines. Higher = sharper peaks.")]
     public float ridgedMountainWeight = 0.35f;
     
@@ -479,7 +479,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(1, 20)]
     [Tooltip("Maximum rivers per continent")]
     public int maxRiversPerContinent = 2;
-    [Range(0.01f, 0.2f)]
+    [Range(0.01f, 3.0f)]
     [Tooltip("Elevation drop applied along river tiles")]
     public float riverDepth = 0.05f;
 
@@ -514,12 +514,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
     public int minLandTilesForCoastStamps = 120;
-    [Range(0f, 0.2f)]
-    [Tooltip("Fixed elevation for lake tiles")]
-    public float lakeElevation = 0.02f;
-    [Range(0f, 0.2f)]
-    [Tooltip("Render elevation for lake tiles (baseline). This value is reduced by `lakeDepth` to produce the final render elevation.")]
-    public float lakeRenderElevation = 0.05f;
+
     [Header("Lake/River Render Depth")]
     [Range(0f, 0.2f)]
     [Tooltip("Depth reduction applied to lake render elevation (subtracts from lakeRenderElevation). Similar to how `riverDepth` lowers river tiles.")]
@@ -1333,7 +1328,13 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             float finalElevation;
             if (isLakeTile[i])
             {
-                finalElevation = lakeElevation;
+                // Lakes are depressions in the surrounding terrain — use the same
+                // noise-based elevation that land would have at this location, then
+                // subtract lakeDepth so the lake bed sits below the terrain surface.
+                // (Previously used a fixed lakeElevation, making ALL lakes identical height.)
+                float elevationRange = maxTotalElevation - baseLandElevation;
+                finalElevation = baseLandElevation + (noiseElevation * elevationRange) - lakeDepth;
+                finalElevation = Mathf.Max(0f, finalElevation); // Don't go negative
             }
             else if (isLand)
             {
@@ -1543,84 +1544,12 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         {
 }
 
-        // ---------- 5.5. Compute Render Elevation (Normalized for Heightmap) ----------
-        // This normalizes land elevation to use the full 0-1 range for heightmap/displacement
-        // Water stays at their fixed values, land spans most of 0-1
-        Debug.Log($"[PlanetGenerator] Land elevation range before normalization: {landElevMin:F4} to {landElevMax:F4}");
-        
-        float landElevRange = landElevMax - landElevMin;
-        if (landElevRange < 0.001f) landElevRange = 1f; // Prevent division by zero
-        
-        for (int i = 0; i < tileCount; i++)
-        {
-            if (!data.ContainsKey(i)) continue;
-            var td = data[i];
-            
-            if (td.isLand || td.biome == Biome.Glacier)
-            {
-                // Normalize land elevation to use range ~0.1 to 0.95 (leave room for water)
-                float normalizedElev = Mathf.InverseLerp(landElevMin, landElevMax, td.elevation);
-                td.renderElevation = 0.1f + normalizedElev * 0.85f;
-            }
-            else if (td.biome == Biome.Coast)
-            {
-                td.renderElevation = 0.08f; // Just above water
-            }
-            else if (td.biome == Biome.Lake)
-            {
-                // Compute lake render elevation relative to surrounding land so lakes sit below neighboring terrain.
-                // Find neighboring land tiles' normalized elevation and average them to decide lake level, then
-                // subtract `lakeDepth` so the lake sits lower than surrounding land (more realistic).
-                float sumNorm = 0f;
-                int normCount = 0;
-                foreach (int n in grid.neighbors[i])
-                {
-                    if (n < 0 || n >= tileCount) continue;
-                    if (!data.ContainsKey(n)) continue;
-                    var nd = data[n];
-                    if (nd.isLand && nd.biome != Biome.Lake)
-                    {
-                        float neighborNorm = Mathf.InverseLerp(landElevMin, landElevMax, nd.elevation);
-                        sumNorm += neighborNorm;
-                        normCount++;
-                    }
-                }
+        Debug.Log($"[PlanetGenerator] Land elevation range (initial, pre-coast/river): {landElevMin:F4} to {landElevMax:F4}");
 
-                if (normCount > 0)
-                {
-                    float avgNorm = sumNorm / normCount;
-                    float baseRender = 0.1f + avgNorm * 0.85f; // same normalization used for land
-                    td.renderElevation = Mathf.Clamp01(Mathf.Max(0f, baseRender - lakeDepth));
-                }
-                else
-                {
-                    // No neighboring land found (edge case): fallback to the inspector baseline reduced by lakeDepth
-                    td.renderElevation = Mathf.Max(0f, lakeRenderElevation - lakeDepth);
-                }
-            }
-            else if (td.biome == Biome.Seas)
-            {
-                td.renderElevation = 0.03f;
-            }
-            else // Ocean
-            {
-                td.renderElevation = 0f;
-            }
-            
-            data[i] = td;
-            baseData[i] = td;
-        }
-        
-        Debug.Log($"[PlanetGenerator] Render elevation range: ocean=0, seas=0.03, coast=0.08, land=0.1-0.95");
-        // Set authoritative sea level world Y for this planet. The flat plane Y
-        // is used as the baseline for any water surfaces (HDRP Water Surfaces
-        // should be positioned exactly at this Y). This ensures no system
-        // computes its own sea-level offset independently.
-        //
-        // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
-        // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
-        SeaLevelWorldY = 1.3f;
-        Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
+        // ---------- 5.5. Compute Render Elevation — MOVED to section 6.6 ----------
+        // Render elevation normalization now runs AFTER coast/seas/river post-processing
+        // (section 6.6) so that converted coast tiles get correct render elevation
+        // instead of retaining their former land values.
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
         // Create coast tiles first where land meets water (excluding glaciers and rivers)
@@ -1731,18 +1660,21 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
 
         // ---------- 6.1 Set Fixed Coast Elevation (AFTER Coasts/Seas are determined) ----------
+        // Also synchronize elevationTier and hill/mountain flags for tiles whose biome changed
+        // during post-processing. Without this, coast tiles converted from land retain their
+        // original Hill/Mountain tier, causing mismatches with gameplay systems.
         for (int i = 0; i < tileCount; i++) {
             if (data.ContainsKey(i)) {
                 Biome b = data[i].biome;
                 if (b == Biome.Ocean) {
                     tileElevation[i] = oceanElevation;
-                    var td = data[i]; td.elevation = oceanElevation; data[i] = td; baseData[i] = td;
+                    var td = data[i]; td.elevation = oceanElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 } else if (b == Biome.Seas) {
                     tileElevation[i] = seasElevation;
-                    var td = data[i]; td.elevation = seasElevation; data[i] = td; baseData[i] = td;
+                    var td = data[i]; td.elevation = seasElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 } else if (b == Biome.Coast) {
                     tileElevation[i] = coastElevation;
-                    var td = data[i]; td.elevation = coastElevation; data[i] = td; baseData[i] = td;
+                    var td = data[i]; td.elevation = coastElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 }
             }
 
@@ -1761,6 +1693,86 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
+
+        // ---------- 6.6. Compute Render Elevation (Normalized for Heightmap) ----------
+        // This was MOVED from section 5.5 to run AFTER all post-processing (coast/seas
+        // conversion, fixed elevation assignment, river generation). This ensures:
+        //  - Coast tiles converted from land get correct render elevation (0.08)
+        //    instead of retaining their former land values.
+        //  - River tiles (with elevation reduced by riverDepth) are properly normalized.
+        //  - ElevationTier is already synchronized by section 6.1.
+        
+        // Recompute land elevation range from FINAL elevation values.
+        // Exclude coast/ocean/seas since they use fixed render values.
+        float postLandElevMin = float.MaxValue;
+        float postLandElevMax = float.MinValue;
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!data.ContainsKey(i)) continue;
+            var td = data[i];
+            bool isTrueLand = td.isLand && td.biome != Biome.Coast && td.biome != Biome.Ocean && td.biome != Biome.Seas;
+            // Include lakes in the land elevation range since they are now terrain-relative
+            // depressions (noise - lakeDepth). This ensures their slightly-lower elevation
+            // normalizes visibly below surrounding land instead of clamping to the land floor.
+            if (isTrueLand || td.biome == Biome.Glacier || td.biome == Biome.Lake)
+            {
+                if (td.elevation < postLandElevMin) postLandElevMin = td.elevation;
+                if (td.elevation > postLandElevMax) postLandElevMax = td.elevation;
+            }
+        }
+        if (postLandElevMin == float.MaxValue) postLandElevMin = 0f;
+        if (postLandElevMax == float.MinValue) postLandElevMax = 1f;
+        
+        Debug.Log($"[PlanetGenerator] Land elevation range before normalization (post-processed): {postLandElevMin:F4} to {postLandElevMax:F4}");
+        
+        // Guard: if all land elevations are identical, InverseLerp handles it gracefully (returns 0).
+        // No manual range variable needed since InverseLerp does the division internally.
+        
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!data.ContainsKey(i)) continue;
+            var td = data[i];
+            
+            // Coast MUST be checked before isLand because coast tiles have isLand=true
+            if (td.biome == Biome.Coast)
+            {
+                td.renderElevation = 0.08f; // Just above water
+            }
+            else if (td.isLand || td.biome == Biome.Glacier)
+            {
+                // Normalize land/glacier/river elevation to use range ~0.1 to 0.95 (leave room for water)
+                float normalizedElev = Mathf.InverseLerp(postLandElevMin, postLandElevMax, td.elevation);
+                td.renderElevation = 0.1f + normalizedElev * 0.85f;
+            }
+            else if (td.biome == Biome.Lake)
+            {
+                // Lake elevation is already a terrain-relative depression (noise - lakeDepth),
+                // so normalize it the same way as land tiles. The depression is baked into
+                // td.elevation, meaning InverseLerp naturally produces a lower value than
+                // surrounding land — no neighbor averaging needed.
+                float normalizedElev = Mathf.InverseLerp(postLandElevMin, postLandElevMax, td.elevation);
+                td.renderElevation = 0.1f + normalizedElev * 0.85f;
+            }
+            else if (td.biome == Biome.Seas)
+            {
+                td.renderElevation = 0.03f;
+            }
+            else // Ocean
+            {
+                td.renderElevation = 0f;
+            }
+            
+            data[i] = td;
+            baseData[i] = td;
+        }
+        
+        Debug.Log($"[PlanetGenerator] Render elevation range: ocean=0, seas=0.03, coast=0.08, land=0.1-0.95");
+
+        // Set authoritative sea level world Y for this planet.
+        // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
+        // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
+        SeaLevelWorldY = 0.8f;
+        Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
 
         if (loadingPanelController != null)
         {

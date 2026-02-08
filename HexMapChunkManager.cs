@@ -42,6 +42,7 @@ public class HexMapChunkManager : MonoBehaviour
     
     [Header("Displacement Settings")]
     [Tooltip("World units of vertical relief. Higher values = more visible terrain height.")]
+    [Range(0f, 100f)]
     [SerializeField] private float displacementStrength = 5.0f;
     [SerializeField] private float flatY = 0f;
 
@@ -142,6 +143,11 @@ public class HexMapChunkManager : MonoBehaviour
     public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
     public int MeshSubdivisionsPerChunk => meshSubdivisionsPerChunk;
+    /// <summary>
+    /// The actual displacement strength used by the terrain shader (_ElevationScale).
+    /// Water surfaces must use this value to match terrain vertex displacement.
+    /// </summary>
+    public float DisplacementStrength => displacementStrength;
     public float MapWidth => mapWidth;
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
@@ -696,9 +702,12 @@ TrySubscribeToSurfaceReady(gen);
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
 
+        // Use RHalf (16-bit float) instead of R8 (8-bit) for much better elevation precision.
+        // R8 only provides 256 discrete height levels which causes visible stepping/terracing
+        // on terrain slopes. RHalf provides 65536 levels, eliminating banding artifacts.
         if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
         {
-            heightmapTexture = new Texture2D(width, height, TextureFormat.R8, true, true)
+            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Repeat,
@@ -706,7 +715,7 @@ TrySubscribeToSurfaceReady(gen);
             };
         }
 
-        var pixels = new Color32[width * height];
+        var pixels = new Color[width * height];
         for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
         {
             int tileIndex = bakeResult.lut[i];
@@ -716,11 +725,10 @@ TrySubscribeToSurfaceReady(gen);
                 elevation = Mathf.Clamp01(tile.renderElevation);
             }
 
-            byte value = (byte)(elevation * 255);
-            pixels[i] = new Color32(value, value, value, 255);
+            pixels[i] = new Color(elevation, 0f, 0f, 1f);
         }
 
-        heightmapTexture.SetPixels32(pixels);
+        heightmapTexture.SetPixels(pixels);
         heightmapTexture.Apply(true, false);
     }
 
