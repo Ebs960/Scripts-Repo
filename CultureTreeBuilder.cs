@@ -41,6 +41,12 @@ public class CultureTreeBuilder : MonoBehaviour
     public Color emptyCellColor = new Color(0.1f, 0.1f, 0.1f, 0.3f);
     public Color occupiedCellColor = new Color(0.4f, 0.2f, 0.4f, 0.5f); // Purple tint for culture
     
+    [Header("Node Prefab")]
+    [Tooltip("Optional prefab for culture tree nodes. Must have a CultureBuilderNode component with " +
+             "cultureIcon, cultureNameText, and backgroundImage wired up. If left empty, nodes are " +
+             "created procedurally in code (plain rectangles).")]
+    public GameObject cultureNodePrefab;
+    
     [Header("Connection Settings")]
     public Color validConnectionColor = Color.magenta;
     public Color invalidConnectionColor = Color.red;
@@ -503,67 +509,105 @@ return;
         Vector2Int finalGridPos = IsGridCellOccupied(preferredGridPos) ? 
             FindNearestEmptyCell(preferredGridPos) : preferredGridPos;
         
-        // Debug logging for positioning
-// Get the exact world position for this grid cell
+        // Get the exact world position for this grid cell
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
-// Create the culture node completely in code - no prefab needed!
-        GameObject nodeObj = new GameObject($"CultureNode_{culture.cultureName}");
-        nodeObj.transform.SetParent(builderContent, false);
 
-        // Add RectTransform and set it up
-        RectTransform rect = nodeObj.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10); // Slightly smaller than cell
-        rect.anchorMin = new Vector2(0, 1); // Top-left origin to match grid
-        rect.anchorMax = new Vector2(0, 1);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.localScale = Vector3.one;
-        rect.anchoredPosition = snapPosition;
+        GameObject nodeObj;
+        CultureBuilderNode node;
 
-        // Add background image
-        Image backgroundImage = nodeObj.AddComponent<Image>();
-        backgroundImage.color = new Color(0.4f, 0.1f, 0.4f, 0.9f); // Purple background for culture
+        if (cultureNodePrefab != null)
+        {
+            // ---------- PREFAB PATH ----------
+            // Instantiate the designer-authored prefab. The prefab must have a
+            // CultureBuilderNode component with cultureIcon, cultureNameText, and
+            // backgroundImage already wired up in the Inspector.
+            nodeObj = Instantiate(cultureNodePrefab, builderContent);
+            nodeObj.name = $"CultureNode_{culture.cultureName}";
 
-        // Create icon child object
-        GameObject iconObj = new GameObject("Icon");
-        iconObj.transform.SetParent(nodeObj.transform, false);
-        RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-        // For wider cells, put icon on the left side
-        iconRect.anchorMin = new Vector2(0.1f, 0.2f);
-        iconRect.anchorMax = new Vector2(0.4f, 0.8f);
-        iconRect.offsetMin = Vector2.zero;
-        iconRect.offsetMax = Vector2.zero;
+            node = nodeObj.GetComponent<CultureBuilderNode>();
+            if (node == null)
+            {
+                Debug.LogError($"[CultureTreeBuilder] cultureNodePrefab is missing a CultureBuilderNode component! Falling back to code creation.");
+                Destroy(nodeObj);
+                nodeObj = null;
+                node = null;
+            }
+            else
+            {
+                // Position & size to match the grid cell
+                RectTransform rect = nodeObj.GetComponent<RectTransform>();
+                if (rect == null) rect = nodeObj.AddComponent<RectTransform>();
+                rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10);
+                rect.anchorMin = new Vector2(0, 1);
+                rect.anchorMax = new Vector2(0, 1);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.localScale = Vector3.one;
+                rect.anchoredPosition = snapPosition;
 
-        Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = culture.cultureIcon; // Use the culture's icon directly!
-        iconImage.color = Color.white;
-        iconImage.preserveAspect = true;
+                node.Initialize(culture, this);
+                node.SetGridPosition(finalGridPos);
+            }
+        }
+        else
+        {
+            nodeObj = null;
+            node = null;
+        }
 
-        // Create text child object
-        GameObject textObj = new GameObject("Text");
-        textObj.transform.SetParent(nodeObj.transform, false);
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        // For wider cells, put text on the right side
-        textRect.anchorMin = new Vector2(0.45f, 0.1f);
-        textRect.anchorMax = new Vector2(0.95f, 0.9f);
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
+        // ---------- FALLBACK: CODE-GENERATED NODE ----------
+        if (nodeObj == null)
+        {
+            nodeObj = new GameObject($"CultureNode_{culture.cultureName}");
+            nodeObj.transform.SetParent(builderContent, false);
 
-        TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = culture.cultureName; // Use the culture's name directly!
-        text.fontSize = 12;
-        text.fontSizeMin = 8;
-        text.fontSizeMax = 16;
-        text.enableAutoSizing = true;
-        text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.Left;
+            RectTransform rect = nodeObj.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10);
+            rect.anchorMin = new Vector2(0, 1);
+            rect.anchorMax = new Vector2(0, 1);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.localScale = Vector3.one;
+            rect.anchoredPosition = snapPosition;
 
-        // Add the CultureBuilderNode component and set it up
-        CultureBuilderNode node = nodeObj.AddComponent<CultureBuilderNode>();
-        node.cultureIcon = iconImage;
-        node.cultureNameText = text;
-        node.backgroundImage = backgroundImage;
-        node.Initialize(culture, this);
-        node.SetGridPosition(finalGridPos); // Set grid position
+            Image backgroundImage = nodeObj.AddComponent<Image>();
+            backgroundImage.color = new Color(0.4f, 0.1f, 0.4f, 0.9f);
+
+            GameObject iconObj = new GameObject("Icon");
+            iconObj.transform.SetParent(nodeObj.transform, false);
+            RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0.1f, 0.2f);
+            iconRect.anchorMax = new Vector2(0.4f, 0.8f);
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
+
+            Image iconImage = iconObj.AddComponent<Image>();
+            iconImage.sprite = culture.cultureIcon;
+            iconImage.color = Color.white;
+            iconImage.preserveAspect = true;
+
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(nodeObj.transform, false);
+            RectTransform textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0.45f, 0.1f);
+            textRect.anchorMax = new Vector2(0.95f, 0.9f);
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = culture.cultureName;
+            text.fontSize = 12;
+            text.fontSizeMin = 8;
+            text.fontSizeMax = 16;
+            text.enableAutoSizing = true;
+            text.color = Color.white;
+            text.alignment = TMPro.TextAlignmentOptions.Left;
+
+            node = nodeObj.AddComponent<CultureBuilderNode>();
+            node.cultureIcon = iconImage;
+            node.cultureNameText = text;
+            node.backgroundImage = backgroundImage;
+            node.Initialize(culture, this);
+            node.SetGridPosition(finalGridPos);
+        }
         
         // Register in our systems
         cultureNodes[culture] = node;

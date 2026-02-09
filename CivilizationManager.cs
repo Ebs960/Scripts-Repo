@@ -1282,7 +1282,7 @@ break; // Only propose one alliance per turn
             return;
         }
 
-        // Instantiate Civilization
+        // Instantiate Civilization — parent under the planet so it deactivates on planet switch
         GameObject civGO = Instantiate(civilizationPrefab);
         if (civGO == null)
         {
@@ -1291,6 +1291,7 @@ break; // Only propose one alliance per turn
         }
         
         civGO.name = data.civName;
+        if (planet != null) civGO.transform.SetParent(planet.transform, true);
         var civ = civGO.GetComponent<Civilization>();
         if (civ == null)
         {
@@ -1348,10 +1349,11 @@ break; // Only propose one alliance per turn
             Debug.LogError("SpawnOneCivilization: pioneerData is not assigned in CivilizationManager!");
             return;
         }
-        // Instantiate pioneer (same as animals - no parenting to planet)
+        // Instantiate pioneer — parent under the planet so it deactivates on planet switch
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
-var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
+        var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
+        if (planet != null) wgo.transform.SetParent(planet.transform, true);
         if (wgo == null)
         {
             Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5087706284369003049}
   - component: {fileID: 9005955651265350190}
+  - component: {fileID: 7899745576651807021}
   m_Layer: 0
   m_Name: World Picker
   m_TagString: Untagged
@@ -49,3 +50,26 @@ MonoBehaviour:
   lutWidth: 2048
   lutHeight: 1024
   lut: 
+  mapWidth: 360
+  mapHeight: 180
+  debugLog: 0
+--- !u!114 &7899745576651807021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1324316691766204675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84849122e42b3b640b73edb947496072, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TileHighlighter
+  worldPicker: {fileID: 9005955651265350190}
+  enableHighlight: 1
+  highlightColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightWidth: 0.1
+  pulseSpeed: 2
+  pulseMin: 0.2
+  pulseMax: 0.4
+  enablePulse: 0

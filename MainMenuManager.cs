@@ -526,6 +526,8 @@ public class MainMenuManager : MonoBehaviour
     private int GetElevationCategory()
     {
         var terrainPreset = terrainPresets[selectedTerrainPreset];
+        if (terrainPreset.hills >= 0.8f && terrainPreset.mountains >= 0.9f)
+            return 3; // Alpine (extreme mountains)
         if (terrainPreset.hills >= 0.7f && terrainPreset.mountains >= 0.85f)
             return 2; // Mountainous
         if (terrainPreset.hills >= 0.5f)
@@ -542,10 +544,9 @@ public class MainMenuManager : MonoBehaviour
         if (planetPreview == null) return;
 
         // Land shape: map selectedLandPreset (0-4) to scale/threshold.
-        //   0 = Archipelago  → high scale (many small blobs), high threshold (more ocean)
-        //   4 = Pangaea      → low scale (few huge blobs), low threshold (more land)
-        float[] landScales     = { 4.5f, 3.0f, 2.0f, 1.5f, 1.0f };
-        float[] landThresholds = { 0.58f, 0.48f, 0.40f, 0.32f, 0.25f };
+        //  
+        float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.8f };
+        float[] landThresholds = { 0.70f, 0.69f, 0.585f, 0.55f, 0.47f };
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
         planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx]);
 
@@ -558,6 +559,30 @@ public class MainMenuManager : MonoBehaviour
         // 0=Very Low→0, 5=Extreme→1
         float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);
         planetPreview.SetMoisture(moist);
+
+        // Elevation: map GetElevationCategory() (0=Low, 1=Hilly, 2=Mountainous, 3=Alpine) to 0–1
+        int elevCat = GetElevationCategory();
+        float elev = elevCat switch
+        {
+            0 => 0.2f,  // Low — mostly flat with gentle hills
+            1 => 0.55f, // Hilly — visible highlands and color variation
+            2 => 0.75f, // Mountainous — dramatic peaks with snow caps
+            3 => 1.0f,  // Alpine — extreme mountains, maximum elevation
+            _ => 0.3f
+        };
+        planetPreview.SetElevation(elev);
+
+        // Map style: 0 = normal, 0.5 = infernal, 1.0 = demonic
+        // Detect from generated map type name (same logic as GameSetupData flags).
+        string previewName = MapTypeNameGenerator.GetMapTypeName(
+            selectedClimatePreset, selectedMoisturePreset, selectedLandPreset, elevCat);
+        string lower = previewName.ToLower();
+        float mapStyleVal = 0f;
+        if (lower.Contains("demonic") || lower.Contains("hellscape"))
+            mapStyleVal = 1f;   // Demonic: darkest, most intense
+        else if (lower.Contains("infernal"))
+            mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
+        planetPreview.SetMapStyle(mapStyleVal);
     }
 
     #endregion

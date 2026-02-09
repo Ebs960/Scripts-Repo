@@ -1107,6 +1107,35 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                     isLandTile[tileIdx] = false;
                     isLakeTile[tileIdx] = true;
                 }
+
+                // Add 1-2 random land neighbors on the lake perimeter so each lake
+                // has a slightly different shape instead of a uniform circle.
+                int extraTiles = lakeRand.Next(1, 3); // 1 or 2 extra tiles
+                var perimeterLand = new List<int>();
+                foreach (int lt in lakeTiles)
+                {
+                    foreach (int nb in grid.neighbors[lt])
+                    {
+                        if (nb >= 0 && nb < tileCount && isLandTile[nb] && !isLakeTile[nb])
+                            perimeterLand.Add(nb);
+                    }
+                }
+                // Shuffle and pick distinct tiles
+                for (int ei = perimeterLand.Count - 1; ei > 0; ei--)
+                {
+                    int ej = lakeRand.Next(ei + 1);
+                    int tmp = perimeterLand[ei]; perimeterLand[ei] = perimeterLand[ej]; perimeterLand[ej] = tmp;
+                }
+                HashSet<int> addedExtra = new HashSet<int>();
+                foreach (int extra in perimeterLand)
+                {
+                    if (addedExtra.Count >= extraTiles) break;
+                    if (addedExtra.Contains(extra)) continue;
+                    isLandTile[extra] = false;
+                    isLakeTile[extra] = true;
+                    addedExtra.Add(extra);
+                }
+
                 lakeCenters.Add(tileCoords[centerIdx]);
                 lakesStamped++;
             }
@@ -1138,6 +1167,33 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                         isLandTile[tileIdx] = false;
                         isLakeTile[tileIdx] = true;
                     }
+
+                    // Add 1-2 random land neighbors for shape variety (same as main path)
+                    int fbExtraTiles = lakeRand.Next(1, 3);
+                    var fbPerimeter = new List<int>();
+                    foreach (int lt in lakeTiles)
+                    {
+                        foreach (int nb in grid.neighbors[lt])
+                        {
+                            if (nb >= 0 && nb < tileCount && isLandTile[nb] && !isLakeTile[nb])
+                                fbPerimeter.Add(nb);
+                        }
+                    }
+                    for (int ei = fbPerimeter.Count - 1; ei > 0; ei--)
+                    {
+                        int ej = lakeRand.Next(ei + 1);
+                        int tmp = fbPerimeter[ei]; fbPerimeter[ei] = fbPerimeter[ej]; fbPerimeter[ej] = tmp;
+                    }
+                    HashSet<int> fbAdded = new HashSet<int>();
+                    foreach (int extra in fbPerimeter)
+                    {
+                        if (fbAdded.Count >= fbExtraTiles) break;
+                        if (fbAdded.Contains(extra)) continue;
+                        isLandTile[extra] = false;
+                        isLakeTile[extra] = true;
+                        fbAdded.Add(extra);
+                    }
+
                     lakeCenters.Add(tileCoords[centerIdx]);
                     lakesStamped++;
                 }
@@ -1695,13 +1751,13 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // ---------- 6.6. Compute Render Elevation (Normalized for Heightmap) ----------
         // This was MOVED from section 5.5 to run AFTER all post-processing (coast/seas
         // conversion, fixed elevation assignment, river generation). This ensures:
-        //  - Coast tiles converted from land get correct render elevation (0.08)
+        //  - Coast tiles converted from land get correct render elevation
         //    instead of retaining their former land values.
         //  - River tiles (with elevation reduced by riverDepth) are properly normalized.
         //  - ElevationTier is already synchronized by section 6.1.
         
         // Recompute land elevation range from FINAL elevation values.
-        // Exclude coast/ocean/seas since they use fixed render values.
+        // Exclude coast/ocean/seas since they use proportional water render values.
         float postLandElevMin = float.MaxValue;
         float postLandElevMax = float.MinValue;
         for (int i = 0; i < tileCount; i++)
@@ -1726,6 +1782,18 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // Guard: if all land elevations are identical, InverseLerp handles it gracefully (returns 0).
         // No manual range variable needed since InverseLerp does the division internally.
         
+        // Water render elevations are derived from the Inspector fields (oceanElevation,
+        // seasElevation, coastElevation) normalized proportionally into the 0–0.09 range.
+        // This keeps water visually below land (which starts at 0.1) while letting the
+        // Inspector values control the relative heights of ocean / seas / coast.
+        float waterNormRef = Mathf.Max(baseLandElevation, 0.01f);
+        const float waterRenderCeiling = 0.09f; // just below land range start (0.1)
+        float renderOcean = Mathf.Clamp01(Mathf.Max(0f, oceanElevation) / waterNormRef) * waterRenderCeiling;
+        float renderSeas  = Mathf.Clamp01(Mathf.Max(0f, seasElevation)  / waterNormRef) * waterRenderCeiling;
+        float renderCoast = Mathf.Clamp01(Mathf.Max(0f, coastElevation) / waterNormRef) * waterRenderCeiling;
+        
+        Debug.Log($"[PlanetGenerator] Water render elevations (from Inspector): ocean={renderOcean:F4}, seas={renderSeas:F4}, coast={renderCoast:F4}");
+        
         for (int i = 0; i < tileCount; i++)
         {
             if (!data.ContainsKey(i)) continue;
@@ -1734,7 +1802,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             // Coast MUST be checked before isLand because coast tiles have isLand=true
             if (td.biome == Biome.Coast)
             {
-                td.renderElevation = 0.08f; // Just above water
+                td.renderElevation = renderCoast;
             }
             else if (td.isLand || td.biome == Biome.Glacier)
             {
@@ -1753,23 +1821,23 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             }
             else if (td.biome == Biome.Seas)
             {
-                td.renderElevation = 0.03f;
+                td.renderElevation = renderSeas;
             }
             else // Ocean
             {
-                td.renderElevation = 0f;
+                td.renderElevation = renderOcean;
             }
             
             data[i] = td;
             baseData[i] = td;
         }
         
-        Debug.Log($"[PlanetGenerator] Render elevation range: ocean=0, seas=0.03, coast=0.08, land=0.1-0.95");
+        Debug.Log($"[PlanetGenerator] Render elevation range: ocean={renderOcean:F4}, seas={renderSeas:F4}, coast={renderCoast:F4}, land=0.1-0.95");
 
         // Set authoritative sea level world Y for this planet.
         // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
         // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
-        SeaLevelWorldY = 1.15f;
+        SeaLevelWorldY = 1.55f;
         Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
 
         if (loadingPanelController != null)

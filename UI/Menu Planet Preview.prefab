@@ -48,7 +48,7 @@ Light:
   serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 1200
+  m_Intensity: 1450
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -234,7 +234,7 @@ MonoBehaviour:
   m_ShadowVariant: 0
   m_ShadowPrecision: 0
   useOldInspector: 0
-  useVolumetric: 1
+  useVolumetric: 0
   featuresFoldout: 1
   m_AreaLightEmissiveMeshShadowCastingMode: 0
   m_AreaLightEmissiveMeshMotionVectorGenerationMode: 0
@@ -279,7 +279,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 200}
+  m_SizeDelta: {x: 400, y: 400}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!33 &5478185167803027325
 MeshFilter:
@@ -362,7 +362,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3523082564983676708}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -392,10 +392,19 @@ MonoBehaviour:
   previewRenderer: {fileID: 3801824977754855485}
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
   rotationSpeed: 5
+  detailScale: 10
+  detailStrength: 0.044
+  atmosphereColor: {r: 0.62, g: 0.78, b: 0.95, a: 1}
+  atmospherePower: 3.5
+  icosphereSubdivisions: 2
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
+  elevation: 0.3
+  mapStyle: 0
+  spaceBackgroundMaterial: {fileID: 2100000, guid: f531e09e2ad2fb440b4eed7605863143, type: 2}
+  createBackgroundQuad: 1
 --- !u!1 &6832828193519875274
 GameObject:
   m_ObjectHideFlags: 0
@@ -406,7 +415,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7258544816233577559}
   - component: {fileID: 5433544173430284001}
-  - component: {fileID: 69667371095551511}
   - component: {fileID: 3394240967598212281}
   m_Layer: 10
   m_Name: Planet Preview Camera
@@ -423,7 +431,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6832828193519875274}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -5}
+  m_LocalPosition: {x: 0, y: 0, z: -3.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -485,14 +493,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &69667371095551511
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6832828193519875274}
-  m_Enabled: 1
 --- !u!114 &3394240967598212281
 MonoBehaviour:
   m_ObjectHideFlags: 0

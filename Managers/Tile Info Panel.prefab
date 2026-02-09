@@ -606,11 +606,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 268e372d300602340946ae2162c728c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TileInfoWorldPanel
+  worldPicker: {fileID: 0}
   uiCanvas: {fileID: 6902982755029963078}
   panelRect: {fileID: 7089491435275827965}
   biomeText: {fileID: 8485340445143356463}
   yieldsText: {fileID: 169809573639327018}
   elevationText: {fileID: 4837640913002025167}
-  overrideFontAsset: {fileID: 11400000, guid: 8a89fa14b10d46a99122fd4f73fca9a2, type: 2}
+  overrideFontAsset: {fileID: 11400000, guid: 3f361fc091f69a748ae8db5ca0151f34, type: 2}
   backgroundColor: {r: 0.08, g: 0.08, b: 0.12, a: 0.95}
   textColor: {r: 1, g: 1, b: 1, a: 1}
+  followMouse: 0
+  cursorOffset: {x: 20, y: -20}

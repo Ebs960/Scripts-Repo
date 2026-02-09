@@ -176,7 +176,7 @@ MonoBehaviour:
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
   seedPositionVariance: 0.231
-  mountainElevationBoost: 1.02
+  mountainElevationBoost: 1.45
   elevationFreq: 0.9
   moistureFreq: 0.25
   moistureBias: 0
@@ -190,33 +190,31 @@ MonoBehaviour:
   climateSmoothingPasses: 2
   climateSmoothingStrength: 0.502
   mountainThreshold: 8
-  hillThreshold: 6
-  baseLandElevation: 2.5
+  hillThreshold: 5.37
+  baseLandElevation: 2.07
   oceanElevation: 0
   seasElevation: 1
   coastElevation: 2
   hillElevationBoost: 0.58
-  maxTotalElevation: 9
+  maxTotalElevation: 8.5
   billowHillWeight: 0.113
   ridgedMountainWeight: 0.224
   enableRivers: 0
   minRiversPerContinent: 3
   maxRiversPerContinent: 5
-  riverDepth: 0.1686
+  riverDepth: 0.48
   enableLakes: 1
   numberOfLakes: 8
   lakeMinRadiusTiles: 3
   lakeMaxRadiusTiles: 12
   lakeMinDistanceFromCoast: 4
-  coastBiteCount: 4
+  coastBiteCount: 19
   coastBiteRadiusMin: 2
   coastBiteRadiusMax: 3
-  coastSpurCount: 6
-  coastSpurRadiusMin: 1
-  coastSpurRadiusMax: 3
+  coastSpurCount: 10
+  coastSpurRadiusMin: 3
+  coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
-  lakeElevation: 0.02
-  lakeRenderElevation: 0.05
   lakeDepth: 0.1554
   numberOfIslands: 8
   generateIslands: 1

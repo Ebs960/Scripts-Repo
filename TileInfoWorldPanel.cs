@@ -3,16 +3,19 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Developer-authored UI panel showing biome name and yields.
-/// NOTE: This script no longer creates UI at runtime — assign all
-/// UI references in the inspector (Canvas, panel Rect, Text fields,
-/// and a CanvasGroup on the panel) just like a MainMenu-style UI.
+/// UI panel showing biome name and yields when hovering over tiles.
+/// Directly uses WorldPicker for tile detection — no dependency on
+/// TileHoverSystem. Assign the WorldPicker and UI references in the inspector.
 /// </summary>
 public class TileInfoWorldPanel : MonoBehaviour
 {
     public static TileInfoWorldPanel Instance { get; private set; }
 
-    [Header("UI References (optional)")]
+    [Header("Tile Picking")]
+    [Tooltip("Assign the WorldPicker from the scene. Used to detect which tile the mouse is over.")]
+    [SerializeField] private WorldPicker worldPicker;
+
+    [Header("UI References")]
     [SerializeField] private Canvas uiCanvas;
     [SerializeField] private RectTransform panelRect;
     [SerializeField] private TextMeshProUGUI biomeText;
@@ -24,57 +27,106 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private Color backgroundColor = new Color(0.08f, 0.08f, 0.12f, 0.95f);
     [SerializeField] private Color textColor = Color.white;
 
-    // No CanvasGroup/fade: panel visibility is handled by activating/deactivating the panel GameObject.
+    [Header("Behaviour")]
+    [Tooltip("Follow the mouse cursor position on screen.")]
+    [SerializeField] private bool followMouse = true;
+    [Tooltip("Offset from the cursor when followMouse is enabled.")]
+    [SerializeField] private Vector2 cursorOffset = new Vector2(20f, -20f);
+
+    // State
+    private int lastHoveredTile = -1;
 
     private void Awake()
     {
-        if (Instance == null) Instance = this; else if (Instance != this) Destroy(gameObject);
+        if (Instance == null) Instance = this;
+        else if (Instance != this) { Destroy(gameObject); return; }
     }
 
     private void Start()
     {
-        if (uiCanvas == null || panelRect == null || biomeText == null || yieldsText == null)
+        if (panelRect == null || biomeText == null || yieldsText == null)
         {
-            Debug.LogWarning("TileInfoWorldPanel: UI references are not fully assigned. Please create the UI in the scene or a prefab and assign `uiCanvas`, `panelRect`, `biomeText` and `yieldsText` in the inspector. Disabling the component.");
+            Debug.LogWarning("[TileInfoWorldPanel] UI references are not fully assigned (need at least panelRect, biomeText, yieldsText). Disabling.");
             enabled = false;
             return;
         }
 
+        // Auto-find WorldPicker if not assigned
+        if (worldPicker == null)
+        {
+            worldPicker = FindAnyObjectByType<WorldPicker>();
+            if (worldPicker != null)
+                Debug.Log("[TileInfoWorldPanel] Auto-found WorldPicker in scene.");
+            else
+                Debug.LogWarning("[TileInfoWorldPanel] No WorldPicker assigned or found. Tile hover will not work.");
+        }
+
         // Start hidden
         panelRect.gameObject.SetActive(false);
-        StartCoroutine(SubscribeWhenReady());
     }
 
-    private System.Collections.IEnumerator SubscribeWhenReady()
+    private void Update()
     {
-        while (TileHoverSystem.Instance == null) yield return null;
-        TileHoverSystem.Instance.OnTileHoverEnter += OnTileHoverEnter;
-        TileHoverSystem.Instance.OnTileHoverExit += OnTileHoverExit;
-    }
+        if (worldPicker == null) return;
 
-    private void OnDestroy()
-    {
-        if (TileHoverSystem.Instance != null)
+        // Pick the tile under the mouse
+        if (worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
         {
-            TileHoverSystem.Instance.OnTileHoverEnter -= OnTileHoverEnter;
-            TileHoverSystem.Instance.OnTileHoverExit -= OnTileHoverExit;
+            if (tileIndex >= 0)
+            {
+                // Get tile data from the current planet's TileSystem
+                int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+                var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+                var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+
+                if (tileData != null)
+                {
+                    // Only update content when hovering a new tile (avoid per-frame text rebuilding)
+                    if (tileIndex != lastHoveredTile)
+                    {
+                        lastHoveredTile = tileIndex;
+                        UpdateContent(tileData);
+                    }
+                    Show();
+
+                    // Position panel near cursor
+                    if (followMouse && uiCanvas != null)
+                    {
+                        PositionNearCursor();
+                    }
+                    return;
+                }
+            }
+        }
+
+        // No valid tile under cursor — hide
+        if (lastHoveredTile >= 0)
+        {
+            lastHoveredTile = -1;
+            Hide();
         }
     }
 
-    // No Update required — visibility is toggled immediately by SetActive
-
-    // Runtime UI creation removed. UI should be authored by the developer (scene or prefab).
-
-    private void OnTileHoverEnter(int tileIndex, HexTileData tileData, Vector3 _)
+    private void PositionNearCursor()
     {
-        if (tileData == null) return;
-        UpdateContent(tileData);
-        Show();
-    }
+        if (panelRect == null || uiCanvas == null) return;
 
-    private void OnTileHoverExit(int tileIndex)
-    {
-        Hide();
+        Vector2 screenPos = Input.mousePosition;
+        
+        // Convert screen position to canvas space
+        if (uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay)
+        {
+            panelRect.position = screenPos + cursorOffset;
+        }
+        else
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                uiCanvas.transform as RectTransform,
+                screenPos + cursorOffset,
+                uiCanvas.worldCamera,
+                out Vector2 localPoint);
+            panelRect.localPosition = localPoint;
+        }
     }
 
     private void UpdateContent(HexTileData tileData)
@@ -82,8 +134,6 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (biomeText != null) biomeText.text = FormatBiomeName(tileData.biome);
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
 
-        // Elevation & hill status display. If a dedicated `elevationText` field
-        // is assigned in the inspector, write there. Otherwise append to yieldsText.
         string elevInfo = $"Elev: {tileData.elevation:F3} (render {tileData.renderElevation:F3})\nHill: {(tileData.isHill ? "Yes" : "No")}";
         if (elevationText != null)
         {
@@ -99,7 +149,11 @@ public class TileInfoWorldPanel : MonoBehaviour
     {
         string name = biome.ToString();
         var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < name.Length; i++) { if (i > 0 && char.IsUpper(name[i])) sb.Append(' '); sb.Append(name[i]); }
+        for (int i = 0; i < name.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(name[i])) sb.Append(' ');
+            sb.Append(name[i]);
+        }
         return sb.ToString();
     }
 

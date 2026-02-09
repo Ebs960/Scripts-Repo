@@ -41,6 +41,12 @@ public class TechTreeBuilder : MonoBehaviour
     public Color emptyCellColor = Color.clear; // Transparent cells
     public Color occupiedCellColor = Color.clear; // Transparent cells
     
+    [Header("Node Prefab")]
+    [Tooltip("Optional prefab for tech tree nodes. Must have a TechBuilderNode component with " +
+             "techIcon, techNameText, and backgroundImage wired up. If left empty, nodes are " +
+             "created procedurally in code (plain rectangles).")]
+    public GameObject techNodePrefab;
+    
     [Header("Connection Settings")]
     public Color validConnectionColor = Color.green;
     public Color invalidConnectionColor = Color.red;
@@ -507,67 +513,105 @@ return;
         Vector2Int finalGridPos = IsGridCellOccupied(preferredGridPos) ? 
             FindNearestEmptyCell(preferredGridPos) : preferredGridPos;
         
-        // Debug logging for positioning
-// Get the exact world position for this grid cell
+        // Get the exact world position for this grid cell
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
-// Create the tech node completely in code - no prefab needed!
-        GameObject nodeObj = new GameObject($"TechNode_{tech.techName}");
-        nodeObj.transform.SetParent(builderContent, false);
 
-        // Add RectTransform and set it up
-        RectTransform rect = nodeObj.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10); // Slightly smaller than cell
-        rect.anchorMin = new Vector2(0, 1); // Top-left origin to match grid
-        rect.anchorMax = new Vector2(0, 1);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.localScale = Vector3.one;
-        rect.anchoredPosition = snapPosition;
+        GameObject nodeObj;
+        TechBuilderNode node;
 
-        // Add background image
-        Image backgroundImage = nodeObj.AddComponent<Image>();
-        backgroundImage.color = new Color(0.1f, 0.3f, 0.6f, 0.9f); // Blue background
+        if (techNodePrefab != null)
+        {
+            // ---------- PREFAB PATH ----------
+            // Instantiate the designer-authored prefab. The prefab must have a
+            // TechBuilderNode component with techIcon, techNameText, and
+            // backgroundImage already wired up in the Inspector.
+            nodeObj = Instantiate(techNodePrefab, builderContent);
+            nodeObj.name = $"TechNode_{tech.techName}";
 
-        // Create icon child object
-        GameObject iconObj = new GameObject("Icon");
-        iconObj.transform.SetParent(nodeObj.transform, false);
-        RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-        // For wider cells, put icon on the left side
-        iconRect.anchorMin = new Vector2(0.1f, 0.2f);
-        iconRect.anchorMax = new Vector2(0.4f, 0.8f);
-        iconRect.offsetMin = Vector2.zero;
-        iconRect.offsetMax = Vector2.zero;
+            node = nodeObj.GetComponent<TechBuilderNode>();
+            if (node == null)
+            {
+                Debug.LogError($"[TechTreeBuilder] techNodePrefab is missing a TechBuilderNode component! Falling back to code creation.");
+                Destroy(nodeObj);
+                nodeObj = null;
+                node = null;
+            }
+            else
+            {
+                // Position & size to match the grid cell
+                RectTransform rect = nodeObj.GetComponent<RectTransform>();
+                if (rect == null) rect = nodeObj.AddComponent<RectTransform>();
+                rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10);
+                rect.anchorMin = new Vector2(0, 1);
+                rect.anchorMax = new Vector2(0, 1);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.localScale = Vector3.one;
+                rect.anchoredPosition = snapPosition;
 
-        Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = tech.techIcon; // Use the tech's icon directly!
-        iconImage.color = Color.white;
-        iconImage.preserveAspect = true;
+                node.Initialize(tech, this);
+                node.SetGridPosition(finalGridPos);
+            }
+        }
+        else
+        {
+            nodeObj = null;
+            node = null;
+        }
 
-        // Create text child object
-        GameObject textObj = new GameObject("Text");
-        textObj.transform.SetParent(nodeObj.transform, false);
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        // For wider cells, put text on the right side
-        textRect.anchorMin = new Vector2(0.45f, 0.1f);
-        textRect.anchorMax = new Vector2(0.95f, 0.9f);
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
+        // ---------- FALLBACK: CODE-GENERATED NODE ----------
+        if (nodeObj == null)
+        {
+            nodeObj = new GameObject($"TechNode_{tech.techName}");
+            nodeObj.transform.SetParent(builderContent, false);
 
-        TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = tech.techName; // Use the tech's name directly!
-        text.fontSize = 12;
-        text.fontSizeMin = 8;
-        text.fontSizeMax = 16;
-        text.enableAutoSizing = true;
-        text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.Center;
+            RectTransform rect = nodeObj.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10);
+            rect.anchorMin = new Vector2(0, 1);
+            rect.anchorMax = new Vector2(0, 1);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.localScale = Vector3.one;
+            rect.anchoredPosition = snapPosition;
 
-        // Add the TechBuilderNode component and set it up
-        TechBuilderNode node = nodeObj.AddComponent<TechBuilderNode>();
-        node.techIcon = iconImage;
-        node.techNameText = text;
-        node.backgroundImage = backgroundImage;
-        node.Initialize(tech, this);
-        node.SetGridPosition(finalGridPos); // Set grid position
+            Image backgroundImage = nodeObj.AddComponent<Image>();
+            backgroundImage.color = new Color(0.1f, 0.3f, 0.6f, 0.9f);
+
+            GameObject iconObj = new GameObject("Icon");
+            iconObj.transform.SetParent(nodeObj.transform, false);
+            RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0.1f, 0.2f);
+            iconRect.anchorMax = new Vector2(0.4f, 0.8f);
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
+
+            Image iconImage = iconObj.AddComponent<Image>();
+            iconImage.sprite = tech.techIcon;
+            iconImage.color = Color.white;
+            iconImage.preserveAspect = true;
+
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(nodeObj.transform, false);
+            RectTransform textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0.45f, 0.1f);
+            textRect.anchorMax = new Vector2(0.95f, 0.9f);
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = tech.techName;
+            text.fontSize = 12;
+            text.fontSizeMin = 8;
+            text.fontSizeMax = 16;
+            text.enableAutoSizing = true;
+            text.color = Color.white;
+            text.alignment = TMPro.TextAlignmentOptions.Center;
+
+            node = nodeObj.AddComponent<TechBuilderNode>();
+            node.techIcon = iconImage;
+            node.techNameText = text;
+            node.backgroundImage = backgroundImage;
+            node.Initialize(tech, this);
+            node.SetGridPosition(finalGridPos);
+        }
         
         // Register in our systems
         techNodes[tech] = node;

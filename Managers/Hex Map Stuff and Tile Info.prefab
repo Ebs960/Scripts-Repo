@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 8540917934770016297}
   - component: {fileID: 4050885774052144637}
-  - component: {fileID: 7033136494572521988}
   - component: {fileID: 6515396151515733605}
   m_Layer: 0
   m_Name: Hex Map Stuff and Tile Info
@@ -54,7 +53,7 @@ MonoBehaviour:
   chunksX: 9
   chunksZ: 4
   meshSubdivisionsPerChunk: 32
-  displacementStrength: 8.8
+  displacementStrength: 6.5
   flatY: 0
   globalSnowAmount: 0
   globalWetness: 0
@@ -68,21 +67,6 @@ MonoBehaviour:
   preBuildOnPlanetReady: 1
   disableOldRenderer: 1
   enableSeasonMasks: 0
---- !u!114 &7033136494572521988
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3058985958848534842}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b3c6026402d60fa4dba2afa88d007bf8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TileHoverSystem
-  enableHover: 0
-  hoverDelay: 0.05
-  debugLog: 0
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0
