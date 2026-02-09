@@ -534,7 +534,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
         {
             // Forest biomes - pollen/spores
                 case Biome.Forest:
-                case Biome.Taiga:
                 particleCount = 300;
                 particleColor = new Color(1f, 1f, 0.8f, 0.4f);
                 particleSize = 0.03f;

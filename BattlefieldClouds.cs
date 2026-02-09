@@ -714,7 +714,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.Forest:
             case Biome.Grassland:
             case Biome.Plains:
-            case Biome.Taiga:
                 cloudDensity = 0.5f;
                 cloudColor = new Color(1f, 1f, 1f, 0.6f);
                 scrollSpeed = 0.5f;

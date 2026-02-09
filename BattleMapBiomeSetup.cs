@@ -23,8 +23,7 @@ public class BattleMapBiomeSetup : MonoBehaviour
         Biome.Swamp,
             Biome.Arctic,
         Biome.Grassland,
-        Biome.Jungle,
-        Biome.Taiga
+        Biome.Jungle
     };
     
     [ContextMenu("Copy Biome Settings from Planet Generator")]

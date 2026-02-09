@@ -29,7 +29,6 @@ public static class BiomeColorHelper
         { Biome.Grassland, new Color(0.55f, 0.78f, 0.36f) },
         { Biome.Forest, new Color(0.10f, 0.45f, 0.12f) },
         { Biome.Jungle, new Color(0.06f, 0.38f, 0.08f) },
-        { Biome.Taiga, new Color(0.14f, 0.40f, 0.18f) },
         { Biome.Swamp, new Color(0.20f, 0.45f, 0.25f) },
         { Biome.Glacier, new Color(0.86f, 0.94f, 0.97f) },
         { Biome.Tundra, new Color(0.74f, 0.78f, 0.80f) },

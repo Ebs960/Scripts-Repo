@@ -85,7 +85,6 @@ public struct BiomeDecorationEntry
             Biome.Grassland or Biome.Plains or Biome.Savannah => 0.8f,
             
             // Moderate decoration biomes
-            Biome.Taiga => 0.7f,
             Biome.Swamp => 0.6f,
             
             // Sparse decoration biomes
@@ -132,7 +131,6 @@ public struct BiomeDecorationEntry
             Biome.Grassland or Biome.Plains or Biome.Savannah => 4,
             
             // Moderate biomes
-            Biome.Taiga or Biome.Taiga => 3,
             Biome.Swamp => 3,
             
             // Sparse biomes
@@ -1771,7 +1769,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // Set authoritative sea level world Y for this planet.
         // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
         // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
-        SeaLevelWorldY = 0.8f;
+        SeaLevelWorldY = 1.15f;
         Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
 
         if (loadingPanelController != null)

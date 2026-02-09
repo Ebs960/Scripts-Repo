@@ -932,13 +932,6 @@ public class GPUInstancedGrass : MonoBehaviour
                 maxHeight = 0.8f;
                 break;
                 
-            case Biome.Taiga:
-                grassColorBase = new Color(0.4f, 0.55f, 0.4f);
-                grassColorTip = new Color(0.5f, 0.65f, 0.5f);
-                grassColorDry = new Color(0.55f, 0.55f, 0.45f);
-                densityMultiplier = 0.7f;
-                break;
-                
             case Biome.Tundra:
                 grassColorBase = new Color(0.5f, 0.55f, 0.45f);
                 grassColorTip = new Color(0.6f, 0.65f, 0.55f);

@@ -897,7 +897,6 @@ GenerateTerrainWithVista();
         {
             Biome.Forest => 1500f,
             Biome.Jungle => 2000f,
-            Biome.Taiga => 1200f,
             Biome.Plains => 800f,
             Biome.Desert => 500f,
             _ => 1000f
@@ -913,7 +912,6 @@ GenerateTerrainWithVista();
         {
             Biome.Forest => 250f,
             Biome.Jungle => 350f,
-            Biome.Taiga => 200f,
             _ => 200f
         };
     }
@@ -927,7 +925,6 @@ GenerateTerrainWithVista();
         {
             Biome.Forest => 200,
             Biome.Jungle => 300,
-            Biome.Taiga => 150,
             Biome.Plains => 100,
             Biome.Desert => 50,
             _ => 150

@@ -5,7 +5,7 @@ using System;
 
 /// ---------- ENUM & DATA STRUCTS ----------
 public enum Biome {
-    Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Glacier, Tundra, Grassland, Taiga, Swamp, Seas,
+    Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Glacier, Tundra, Grassland, Swamp, Seas,
     River,
     Lake,       // Inland freshwater body
     MoonDunes,
@@ -408,8 +408,7 @@ public static class BiomeHelper {
 
         // Cold climates (Earth only)
         if (temperature > 0.15f) {
-            if (moisture < 0.20f) return Biome.Tundra;
-            if (moisture < 0.75f) return Biome.Taiga;
+            if (moisture < 0.75f) return Biome.Tundra;
             return Biome.Swamp;
         }
 
@@ -459,7 +458,6 @@ public static class BiomeHelper {
         Biome.Glacier => new YieldValues { food = 0, prod = 0, gold = 1, sci = 2, cult = 1 },
         Biome.Tundra => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
         Biome.Grassland => new YieldValues { food = 1, prod = 2, gold = 0, sci = 0, cult = 1 },
-        Biome.Taiga => new YieldValues { food = 1, prod = 3, gold = 0, sci = 0, cult = 1 },
         Biome.Swamp => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
         Biome.River => new YieldValues { food = 1, prod = 0, gold = 1, sci = 1, cult = 1 },
         Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },
@@ -576,7 +574,6 @@ public static class BiomeHelper {
         Biome.Forest => 2,
         Biome.Jungle => 2,
         Biome.Swamp => 3,
-        Biome.Taiga => 2,
 
         Biome.Ocean => 1,
         Biome.Seas => 1,
@@ -724,7 +721,6 @@ public static class BiomeHelper {
                 return BiomeTerrainSettings.CreateMountain();
 
             case Biome.Forest:
-            case Biome.Taiga:
             case Biome.Jungle:
                 return BiomeTerrainSettings.CreateForest();
 

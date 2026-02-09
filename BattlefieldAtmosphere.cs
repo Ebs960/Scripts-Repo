@@ -599,18 +599,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 dustParticleCount = 100;
                 break;
                 
-            // Taiga - misty morning
-            case Biome.Taiga:
-                enableHeightFog = true;
-                groundFogDensity = 0.35f;
-                groundFogColor = new Color(0.75f, 0.8f, 0.85f, 1f);
-                enableLightShafts = true;
-                lightShaftIntensity = 0.35f;
-                lightShaftColor = new Color(1f, 0.95f, 0.8f, 0.35f);
-                enableDustInLight = true;
-                dustParticleCount = 200;
-                break;
-                
             // Mars - dusty red atmosphere
             case Biome.MartianRegolith:
             case Biome.MartianDunes:

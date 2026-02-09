@@ -5,7 +5,7 @@ public static class MapTypeNameGenerator
 {
     private static readonly string[][] baseNames = {
         new[] { "Polar", "Arctic", "Frozen", "Glacial", "Ice", "Frost" },
-        new[] { "Northern", "Boreal", "Taiga", "Tundra", "Pine", "Snow" },
+        new[] { "Northern", "Boreal", "Taiga", "Pine", "Snow", "Frost" },
         new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald" },
         new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon" },
         new[] { "Desert", "Arid", "Sweltering", "Oasis", "Jungle", "Steamlands" },

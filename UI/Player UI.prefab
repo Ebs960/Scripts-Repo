@@ -812,7 +812,7 @@ GameObject:
   - component: {fileID: 4466383120423364735}
   - component: {fileID: 8548702196694302691}
   m_Layer: 5
-  m_Name: Dropdown
+  m_Name: Layer Dropdown
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1063,9 +1063,7 @@ MonoBehaviour:
   civNameText: {fileID: 1759590151869309747}
   roundText: {fileID: 7701481219579060577}
   endTurnButton: {fileID: 7889866425534163290}
-  surfaceToggleButton: {fileID: 0}
-  underwaterToggleButton: {fileID: 0}
-  atmosphereToggleButton: {fileID: 0}
+  layerDropdown: {fileID: 8548702196694302691}
   techButton: {fileID: 7163852110159899690}
   cultureButton: {fileID: 6979382233031895176}
   policyButton: {fileID: 4604736531920097982}

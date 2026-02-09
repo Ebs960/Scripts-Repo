@@ -435,19 +435,6 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.08f;
                 break;
                 
-            case Biome.Taiga:
-                // Cold northern forest lighting
-                sunColor = new Color(0.95f, 0.98f, 1f);
-                sunIntensity = 1.0f;
-                skyColor = new Color(0.45f, 0.6f, 0.85f);
-                groundColor = new Color(0.3f, 0.35f, 0.25f);
-                fogColor = new Color(0.65f, 0.75f, 0.85f);
-                fogStartDistance = 100f;
-                fogEndDistance = 400f;
-                saturation = 0.05f;
-                contrast = 0.1f;
-                break;
-                
             // === SWAMP BIOMES ===
             case Biome.Swamp:
                 // Murky, humid swamp lighting
