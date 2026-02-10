@@ -392,17 +392,7 @@ public class BiomeVisualDatabase : ScriptableObject
 
         _surfaceLibraryCacheByDb[dbId] = new CachedSurfaceLibrary { signature = signature, library = lib };
 
-        try
-        {
-            long a = lib.albedoArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.albedoArray) : 0;
-            long n = lib.normalArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.normalArray) : 0;
-            long m = lib.maskArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.maskArray) : 0;
-            long e = lib.emissiveArray != null ? Profiler.GetRuntimeMemorySizeLong(lib.emissiveArray) : 0;
-            Debug.Log($"[BiomeVisualDatabase] BuildSurfaceLibrary OK (strict): size={targetW}x{targetH} slicesWritten={writeSlice}/{total} " +
-                      $"formats: albedo={albedoFmt}, normal={normalFmt}, mask={maskFmt}, emissive={(includeEmissive ? emissiveFmt.ToString() : "none")} | " +
-                      $"RuntimeMemorySize: albedo={FormatBytes(a)}, normal={FormatBytes(n)}, mask={FormatBytes(m)}, emissive={FormatBytes(e)}, TOTAL={FormatBytes(a + n + m + e)}");
-        }
-        catch { /* diagnostics only */ }
+        // Diagnostics: memory logging removed to reduce editor log noise.
 
         return lib;
     }

@@ -285,12 +285,9 @@ public static class PlanetTextureBaker
                 tileColors[i] = (Color32)Color.magenta;
             }
 
-            // Store elevation (0-1 range)
-            // Use renderElevation if available (normalized for full range), otherwise fall back to elevation
-            float elevation = td != null ?
-                (td.renderElevation > 0.001f ? td.renderElevation : td.elevation) :
-                planetGen.GetTileElevation(i);
-            tileElevations[i] = Mathf.Clamp01(elevation);
+            // Store elevation (world-space units, used directly by heightmap and shader)
+            float elevation = td != null ? td.elevation : planetGen.GetTileElevation(i);
+            tileElevations[i] = elevation;
         }
 
         res.tileColors = tileColors;

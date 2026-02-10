@@ -134,7 +134,7 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (biomeText != null) biomeText.text = FormatBiomeName(tileData.biome);
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
 
-        string elevInfo = $"Elev: {tileData.elevation:F3} (render {tileData.renderElevation:F3})\nHill: {(tileData.isHill ? "Yes" : "No")}";
+        string elevInfo = $"Elev: {tileData.elevation:F2}m\nHill: {(tileData.isHill ? "Yes" : "No")}";
         if (elevationText != null)
         {
             elevationText.text = elevInfo;

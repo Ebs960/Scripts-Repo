@@ -43,13 +43,13 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Atmosphere tint color for rim scattering.")]
     [SerializeField] private Color atmosphereColor = new Color(0.62f, 0.78f, 0.95f, 1f);
     [Tooltip("Power/width of atmosphere rim (higher = tighter rim).")]
-    [Range(0.5f,6f)] [SerializeField] private float atmospherePower = 3.5f;
+    [Range(0.5f,20f)] [SerializeField] private float atmospherePower = 3.5f;
     [Tooltip("Radius/scale multiplier for the atmosphere rim/shell. 1 = default sphere size, >1 = larger atmosphere.")]
-    [Range(0.9f, 3f)] [SerializeField] private float atmosphereRadius = 1.05f;
+    [Range(0.9f, 20f)] [SerializeField] private float atmosphereRadius = 1.05f;
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere used for preview. 0..4 (higher increases vertex count).")]
-    [Range(0,4)] [SerializeField] private int icosphereSubdivisions = 2;
+    [Range(0,10)] [SerializeField] private int icosphereSubdivisions = 2;
 
     // -----------------------------------------------------------------
     //  Preview Parameters (exposed in inspector for quick iteration)

@@ -10,6 +10,5 @@ public class PlanetSandboxEditor : EditorWindow
         var go = new GameObject("PlanetSandbox");
         var sb = go.AddComponent<PlanetSandbox>();
         Selection.activeGameObject = go;
-        Debug.Log("PlanetSandbox created. Assign your scene components (PlanetGenerator, HexGrid, HexMapChunkManager, MinimapUI) in the inspector.");
     }
 }

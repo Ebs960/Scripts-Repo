@@ -351,14 +351,14 @@ public class HexMapChunk : MonoBehaviour
         // Fix: expand the bounds vertically based on the displacement strength.
         try
         {
-            float displacement = 0f;
+            float displacement = 1f; // Default: world-space elevation scale
             if (manager != null && manager.SharedMaterial != null && manager.SharedMaterial.HasProperty("_ElevationScale"))
             {
                 displacement = manager.SharedMaterial.GetFloat("_ElevationScale");
             }
-            else if (GameManager.Instance != null)
+            else if (manager != null)
             {
-                displacement = GameManager.Instance.GetTerrainDisplacementStrength();
+                displacement = manager.DisplacementStrength;
             }
 
             // Add generous padding. We allow for both up and down displacement to be safe.

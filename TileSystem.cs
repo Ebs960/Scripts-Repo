@@ -883,11 +883,10 @@ public class TileSystem : MonoBehaviour
         // Get terrain elevation to calculate actual Y position
         float terrainY = c.y;
         var td = GetTileData(tile);
-        if (td != null && GameManager.Instance != null)
+        if (td != null)
         {
-            // Use renderElevation (0-1) * displacement strength to get actual world Y offset
-            float displacementStrength = GameManager.Instance.GetTerrainDisplacementStrength();
-            terrainY += td.renderElevation * displacementStrength;
+            // Elevation is already in world-space units — add directly to terrain Y
+            terrainY += td.elevation;
         }
         
         return new Vector3(c.x, terrainY + unitOffset, c.z);

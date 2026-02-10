@@ -391,19 +391,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreview
   previewRenderer: {fileID: 3801824977754855485}
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
-  rotationSpeed: 5
-  detailScale: 4
-  detailStrength: 0.044
-  atmosphereColor: {r: 0.62, g: 0.78, b: 0.95, a: 1}
-  atmospherePower: 3.5
-  icosphereSubdivisions: 4
+  rotationSpeed: 25
+  detailScale: 1000
+  detailStrength: 0.012
+  atmosphereColor: {r: 0.435849, g: 0.71120846, b: 1, a: 1}
+  atmospherePower: 11.68
+  atmosphereRadius: 14.86
+  icosphereSubdivisions: 10
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
   elevation: 0.3
   mapStyle: 0
-  spaceBackgroundMaterial: {fileID: 2100000, guid: f531e09e2ad2fb440b4eed7605863143, type: 2}
+  spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
 --- !u!1 &6832828193519875274
 GameObject:

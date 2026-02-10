@@ -188,7 +188,7 @@ MonoBehaviour:
   atmosphereRoot: {fileID: 4916646554407244369}
   resourcesRoot: {fileID: 466950285653567448}
   surfaceYOffset: 0
-  underwaterYOffset: -2
+  underwaterYOffset: -1
   atmosphereYOffset: 20
   atmosphereRadius: 1
   planetConfig: {fileID: 0}
@@ -209,10 +209,10 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.231
-  mountainElevationBoost: 1.45
+  seedPositionVariance: 0.471
+  mountainElevationBoost: 1.9
   elevationFreq: 0.65
-  moistureFreq: 0.25
+  moistureFreq: 0.2
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.355
@@ -223,33 +223,35 @@ MonoBehaviour:
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 2
   climateSmoothingStrength: 0.204
-  mountainThreshold: 8
-  hillThreshold: 5.37
-  baseLandElevation: 2.07
+  mountainThreshold: 12.69
+  hillThreshold: 9.15
+  baseLandElevation: 2.58
   oceanElevation: 0
   seasElevation: 1
   coastElevation: 1.65
-  hillElevationBoost: 0.58
-  maxTotalElevation: 8.5
+  hillElevationBoost: 1.15
+  maxTotalElevation: 10
   billowHillWeight: 0.113
   ridgedMountainWeight: 0.224
   enableRivers: 0
   minRiversPerContinent: 3
   maxRiversPerContinent: 5
-  riverDepth: 0.7
+  riverDepth: 1.2
   enableLakes: 1
   numberOfLakes: 8
-  lakeMinRadiusTiles: 3
+  lakeMinRadiusTiles: 12
   lakeMaxRadiusTiles: 12
   lakeMinDistanceFromCoast: 4
-  coastBiteCount: 19
-  coastBiteRadiusMin: 2
-  coastBiteRadiusMax: 3
-  coastSpurCount: 10
-  coastSpurRadiusMin: 3
-  coastSpurRadiusMax: 4
+  coastBiteCount: 11
+  coastBiteRadiusMin: 1
+  coastBiteRadiusMax: 2
+  coastSpurCount: 4
+  coastSpurRadiusMin: 2
+  coastSpurRadiusMax: 3
   minLandTilesForCoastStamps: 120
-  lakeDepth: 0.507
+  lakeDepth: 1.2
+  seaLevelMatchCoast: 1
+  manualSeaLevelWorldY: 1.55
   numberOfIslands: 8
   generateIslands: 1
   minIslandWidthTilesSmall: 1
@@ -558,6 +560,7 @@ MonoBehaviour:
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   oceanSurfacePrefab: {fileID: 7206017743671402131, guid: 64d208c167009ad40a1fbbbb7c3473bd, type: 3}
   lakeSurfacePrefab: {fileID: 5353522929808825505, guid: 9776e4d57f046da4eba4f7db7562cfeb, type: 3}
+  enableDiagnostics: 1
 --- !u!114 &5887581935907441457
 MonoBehaviour:
   m_ObjectHideFlags: 0

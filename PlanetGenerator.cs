@@ -457,38 +457,40 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f,1f)]
     [SerializeField] public float climateSmoothingStrength = 0.45f;
 
-    // --- NEW: Elevation Features ---
+    // --- Elevation Features ---
+    // All elevation values are in WORLD-SPACE UNITS (height offset from the flat plane).
+    // A tile with elevation 3.5 means its terrain surface is 3.5 world units above flatY.
+    // Negative values are allowed (craters, deep ocean trenches).
     [Header("Elevation Features")]
     [Range(0f, 20f)]
-    [Tooltip("Elevation value above which tiles become mountains.")]
-    public float mountainThreshold = 0.75f;
+    [Tooltip("Elevation (world units) above which tiles become mountains.")]
+    public float mountainThreshold = 5.0f;
     [Range(0f, 20f)]
-    [Tooltip("Elevation value above which tiles become hills (if not already mountains).")]
-    public float hillThreshold = 0.55f;
+    [Tooltip("Elevation (world units) above which tiles become hills (if not already mountains).")]
+    public float hillThreshold = 3.5f;
     
-    // --- NEW: Elevation Range Settings ---
     [Header("Elevation Range Settings")]
-    [Range(0f, 3f)]
-    [Tooltip("The minimum elevation level for land and glacier tiles (before noise).")]
-    public float baseLandElevation = 0.15f;
+    [Range(-5f, 10f)]
+    [Tooltip("Minimum land elevation in world units. Lowest land tiles sit at this height above the flat plane.")]
+    public float baseLandElevation = 0.5f;
     
-    [Range(-3f, 3f)]
-    [Tooltip("Elevation for ocean tiles.")]
+    [Range(-5f, 5f)]
+    [Tooltip("Ocean floor elevation in world units (typically 0 = flat plane level).")]
     public float oceanElevation = 0f;
-    [Range(-3f, 3f)]
-    [Tooltip("Elevation for sea tiles.")]
-    public float seasElevation = 0.02f;
-    [Range(-3f, 3f)]
-    [Tooltip("Elevation for coast tiles.")]
-    public float coastElevation = 0.05f;
-    
-    [Range(0f, 5f)]
-    [Tooltip("Additional elevation boost for hill tiles (added to their base elevation).")]
-    public float hillElevationBoost = 0.1f;
+    [Range(-5f, 5f)]
+    [Tooltip("Shallow seas elevation in world units.")]
+    public float seasElevation = 0.15f;
+    [Range(-5f, 5f)]
+    [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
+    public float coastElevation = 0.3f;
     
     [Range(0f, 10f)]
-    [Tooltip("The absolute maximum elevation any tile can reach (after noise). Higher values give more elevation headroom for hills/mountains.")]
-    public float maxTotalElevation = 1.0f;
+    [Tooltip("Additional elevation boost for hill tiles in world units (added to their base elevation).")]
+    public float hillElevationBoost = 0.4f;
+    
+    [Range(0f, 30f)]
+    [Tooltip("Maximum elevation any tile can reach in world units. This is the height of the tallest possible mountain peak.")]
+    public float maxTotalElevation = 6.0f;
     
     [Header("Experimental / Advanced")]
     [Range(0f, 2f)]
@@ -509,8 +511,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Maximum rivers per continent")]
     public int maxRiversPerContinent = 2;
     [Range(0.01f, 3.0f)]
-    [Tooltip("Elevation drop applied along river tiles")]
-    public float riverDepth = 0.05f;
+    [Tooltip("Elevation drop applied along river tiles (world units subtracted from terrain height).")]
+    public float riverDepth = 0.15f;
 
     // --- Lake Generation ---
     [Header("Lake Generation")]
@@ -544,10 +546,17 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
     public int minLandTilesForCoastStamps = 24;
 
-    [Header("Lake/River Render Depth")]
-    [Range(0f, 1.55f)]
-    [Tooltip("Depth reduction applied to lake render elevation (subtracts from lakeRenderElevation). Similar to how `riverDepth` lowers river tiles.")]
-    public float lakeDepth = 0.05f;
+    [Header("Lake Depth")]
+    [Range(0f, 5f)]
+    [Tooltip("World units subtracted from surrounding land elevation to form the lake bed depression.")]
+    public float lakeDepth = 0.3f;
+
+    [Header("Sea Level")]
+    [Tooltip("When true, SeaLevelWorldY is computed from coastElevation (sea level = flatY + coastElevation). When false, use Manual Sea Level World Y.")]
+    public bool seaLevelMatchCoast = true;
+
+    [Tooltip("Manual world-space Y for sea level when seaLevelMatchCoast is false.")]
+    public float manualSeaLevelWorldY = 0.3f;
 
     // --- Island Generation ---
     [Header("Island Generation")]
@@ -593,34 +602,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Modern decoration system for spawning biome-specific decorations")]
     public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
 
-    [Header("Map Type")]
-    public string currentMapTypeName = ""; // The current map type name
-public bool isRainforestMapType = false; // Whether this is a rainforest map type (determined from map name)
-public bool isScorchedMapType = false; // Whether this is a scorched map type
-public bool isInfernalMapType = false; // Whether this is an infernal map type
-public bool isDemonicMapType = false; // Add this field
-public bool isIceWorldMapType = false; // Whether this is an ice world map type
-
-
-    [Header("Real Planet Flags")]
-    public bool isMarsWorldType, isVenusWorldType, isMercuryWorldType,
-        isJupiterWorldType, isSaturnWorldType, isUranusWorldType,
-        isNeptuneWorldType, isPlutoWorldType,
-        isTitanWorldType, isEuropaWorldType, isIoWorldType,
-        isLunaWorldType;
+    [Header("Planet & Map Type")]
+    [Tooltip("Which celestial body this planet represents. Controls biome assignment rules.")]
+    public PlanetType planetType = PlanetType.Earth;
+    [Tooltip("Earth map variant (only applies when planetType == Earth). Controls special biome rules.")]
+    public MapType mapType = MapType.Standard;
+    public string currentMapTypeName = "";
 
     [Header("Feature Toggles")]
     public bool allowOceans = true;
     public bool allowIslands = true;
-
-    public void ClearRealPlanetFlags()
-    {
-        isMarsWorldType = isVenusWorldType = isMercuryWorldType =
-        isJupiterWorldType = isSaturnWorldType = isUranusWorldType =
-        isNeptuneWorldType = isPlutoWorldType =
-        isTitanWorldType = isEuropaWorldType = isIoWorldType =
-        isLunaWorldType = false;
-    }
 
 
     // --------------------------- Private fields -----------------------------
@@ -630,8 +621,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
     public Dictionary<int, HexTileData> data = new();
     public Dictionary<int, HexTileData> baseData = new();
     private Vector3 noiseOffset;
-    // Cache elevation for river generation
-    public Dictionary<int, float> tileElevation = new Dictionary<int, float>();
+    // tileElevation dictionary removed — use data[i].elevation directly (world-space)
     public int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
     /// <summary>
     /// Public list containing the final HexTileData for every tile on the planet.
@@ -809,7 +799,6 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         // Clear previous data
         data.Clear();
         baseData.Clear();
-        tileElevation.Clear();
         Tiles.Clear();
         landTilesGenerated = 0;
 
@@ -1443,7 +1432,6 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             sampledTemp[i] = temperature;
             sampledMoist[i] = moisture;
             sampledElev[i] = finalElevation;
-            tileElevation[i] = finalElevation;
 
             if (i > 0 && i % 500 == 0)
             {
@@ -1561,8 +1549,6 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                 if (!landTileIndices.Contains(i)) landTileIndices.Add(i);
             }
 
-            tileElevation[i] = finalElevation;
-
             // Track climate min/max for diagnostics
             if (temperature < temperatureMin) temperatureMin = temperature;
             if (temperature > temperatureMax) temperatureMax = temperature;
@@ -1588,7 +1574,6 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                 isHill = isHill,
                 isMountain = isMountain,
                 elevation = finalElevation,
-                renderElevation = 0f,
                 elevationTier = elevTier,
                 temperature = temperature,
                 moisture = moisture,
@@ -1759,13 +1744,10 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             if (data.ContainsKey(i)) {
                 Biome b = data[i].biome;
                 if (b == Biome.Ocean) {
-                    tileElevation[i] = oceanElevation;
                     var td = data[i]; td.elevation = oceanElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 } else if (b == Biome.Seas) {
-                    tileElevation[i] = seasElevation;
                     var td = data[i]; td.elevation = seasElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 } else if (b == Biome.Coast) {
-                    tileElevation[i] = coastElevation;
                     var td = data[i]; td.elevation = coastElevation; td.elevationTier = ElevationTier.Flat; td.isHill = false; td.isMountain = false; data[i] = td; baseData[i] = td;
                 }
             }
@@ -1786,97 +1768,24 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
 
-        // ---------- 6.6. Compute Render Elevation (Normalized for Heightmap) ----------
-        // This was MOVED from section 5.5 to run AFTER all post-processing (coast/seas
-        // conversion, fixed elevation assignment, river generation). This ensures:
-        //  - Coast tiles converted from land get correct render elevation
-        //    instead of retaining their former land values.
-        //  - River tiles (with elevation reduced by riverDepth) are properly normalized.
-        //  - ElevationTier is already synchronized by section 6.1.
-        
-        // Recompute land elevation range from FINAL elevation values.
-        // Exclude coast/ocean/seas since they use proportional water render values.
-        float postLandElevMin = float.MaxValue;
-        float postLandElevMax = float.MinValue;
-        for (int i = 0; i < tileCount; i++)
-        {
-            if (!data.ContainsKey(i)) continue;
-            var td = data[i];
-            bool isTrueLand = td.isLand && td.biome != Biome.Coast && td.biome != Biome.Ocean && td.biome != Biome.Seas;
-            // Include lakes in the land elevation range since they are now terrain-relative
-            // depressions (noise - lakeDepth). This ensures their slightly-lower elevation
-            // normalizes visibly below surrounding land instead of clamping to the land floor.
-            if (isTrueLand || td.biome == Biome.Glacier || td.biome == Biome.Lake)
-            {
-                if (td.elevation < postLandElevMin) postLandElevMin = td.elevation;
-                if (td.elevation > postLandElevMax) postLandElevMax = td.elevation;
-            }
-        }
-        if (postLandElevMin == float.MaxValue) postLandElevMin = 0f;
-        if (postLandElevMax == float.MinValue) postLandElevMax = 1f;
-        
-        Debug.Log($"[PlanetGenerator] Land elevation range before normalization (post-processed): {postLandElevMin:F4} to {postLandElevMax:F4}");
-        
-        // Guard: if all land elevations are identical, InverseLerp handles it gracefully (returns 0).
-        // No manual range variable needed since InverseLerp does the division internally.
-        
-        // Water render elevations are derived from the Inspector fields (oceanElevation,
-        // seasElevation, coastElevation) normalized proportionally into the 0–0.09 range.
-        // This keeps water visually below land (which starts at 0.1) while letting the
-        // Inspector values control the relative heights of ocean / seas / coast.
-        float waterNormRef = Mathf.Max(baseLandElevation, 0.01f);
-        const float waterRenderCeiling = 0.09f; // just below land range start (0.1)
-        float renderOcean = Mathf.Clamp01(Mathf.Max(0f, oceanElevation) / waterNormRef) * waterRenderCeiling;
-        float renderSeas  = Mathf.Clamp01(Mathf.Max(0f, seasElevation)  / waterNormRef) * waterRenderCeiling;
-        float renderCoast = Mathf.Clamp01(Mathf.Max(0f, coastElevation) / waterNormRef) * waterRenderCeiling;
-        
-        Debug.Log($"[PlanetGenerator] Water render elevations (from Inspector): ocean={renderOcean:F4}, seas={renderSeas:F4}, coast={renderCoast:F4}");
-        
-        for (int i = 0; i < tileCount; i++)
-        {
-            if (!data.ContainsKey(i)) continue;
-            var td = data[i];
-            
-            // Coast MUST be checked before isLand because coast tiles have isLand=true
-            if (td.biome == Biome.Coast)
-            {
-                td.renderElevation = renderCoast;
-            }
-            else if (td.isLand || td.biome == Biome.Glacier)
-            {
-                // Normalize land/glacier/river elevation to use range ~0.1 to 0.95 (leave room for water)
-                float normalizedElev = Mathf.InverseLerp(postLandElevMin, postLandElevMax, td.elevation);
-                td.renderElevation = 0.1f + normalizedElev * 0.85f;
-            }
-            else if (td.biome == Biome.Lake)
-            {
-                // Lake elevation is already a terrain-relative depression (noise - lakeDepth),
-                // so normalize it the same way as land tiles. The depression is baked into
-                // td.elevation, meaning InverseLerp naturally produces a lower value than
-                // surrounding land — no neighbor averaging needed.
-                float normalizedElev = Mathf.InverseLerp(postLandElevMin, postLandElevMax, td.elevation);
-                td.renderElevation = 0.1f + normalizedElev * 0.85f;
-            }
-            else if (td.biome == Biome.Seas)
-            {
-                td.renderElevation = renderSeas;
-            }
-            else // Ocean
-            {
-                td.renderElevation = renderOcean;
-            }
-            
-            data[i] = td;
-            baseData[i] = td;
-        }
-        
-        Debug.Log($"[PlanetGenerator] Render elevation range: ocean={renderOcean:F4}, seas={renderSeas:F4}, coast={renderCoast:F4}, land=0.1-0.95");
+        // ---------- 6.6. Elevation is already in world-space units ----------
+        // No normalization needed. The elevation field on each tile IS the world-space
+        // height offset from the flat plane. The heightmap texture stores these values
+        // directly (RHalf supports the full float range including negatives).
+        Debug.Log($"[PlanetGenerator] Elevation is world-space. ocean={oceanElevation:F2}, seas={seasElevation:F2}, coast={coastElevation:F2}, land={baseLandElevation:F2}-{maxTotalElevation:F2}");
 
         // Set authoritative sea level world Y for this planet.
-        // NOTE: We intentionally do NOT bind sea level to GameManager's flat plane Y.
-        // Flat plane Y is a presentation/placement detail; sea level is a gameplay/visual authoring value.
-        SeaLevelWorldY = 1.55f;
-        Debug.Log($"[PlanetGenerator] SeaLevelWorldY set to {SeaLevelWorldY}");
+        // With world-space elevation, sea level is simply flatY + coastElevation.
+        float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : transform.position.y;
+        if (seaLevelMatchCoast)
+        {
+            SeaLevelWorldY = flatY + coastElevation;
+        }
+        else
+        {
+            SeaLevelWorldY = manualSeaLevelWorldY;
+        }
+        Debug.Log($"[PlanetGenerator] SeaLevelWorldY={SeaLevelWorldY:F3} (flatY={flatY:F3} coastElev={coastElevation:F3} matchCoast={seaLevelMatchCoast})");
 
         if (loadingPanelController != null)
         {
@@ -2180,8 +2089,8 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                         }
 
                         float tentativeG = gScore.ContainsKey(current) ? gScore[current] + 1f : float.MaxValue;
-                        float elevCur = tileElevation.ContainsKey(current) ? tileElevation[current] : curTile.elevation;
-                        float elevN = tileElevation.ContainsKey(n) ? tileElevation[n] : nt.elevation;
+                        float elevCur = curTile.elevation;
+                        float elevN = nt.elevation;
                         float uphill = Mathf.Clamp((elevN - elevCur) * 6f, 0f, 5f);
                         tentativeG += uphill;
                         tentativeG += (float)(rand.NextDouble() * 0.2 - 0.1);
@@ -2370,9 +2279,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
                     td.isLake = false;
                     td.isRiver = true;
                     td.isHill = false;
-                    td.elevation = Mathf.Max(0f, td.elevation - riverDepth);
-                    td.renderElevation = Mathf.Max(0f, td.renderElevation - riverDepth);
-                    tileElevation[tileIdx] = td.elevation;
+                    td.elevation = td.elevation - riverDepth; // world-space: river carves into terrain
                     tileData[tileIdx] = td;
                     baseData[tileIdx] = td;
                     riverTiles.Add(tileIdx);
@@ -2415,7 +2322,7 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         data.TryGetValue(tileIndex, out HexTileData td) ? td.isHill : false;
         
     public float GetTileElevation(int tileIndex) =>
-        tileElevation.TryGetValue(tileIndex, out float elev) ? elev : 0f;
+        data.TryGetValue(tileIndex, out HexTileData td) ? td.elevation : 0f;
 
     // --- NEW: Getter for full HexTileData ---
     public HexTileData GetHexTileData(int tileIndex) {
@@ -2499,20 +2406,18 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
     }
 
-    // Method to set the current map type and update flags
+    // Method to set the current map type from a name string
     public void SetMapTypeName(string mapTypeName)
     {
         currentMapTypeName = mapTypeName;
-        isRainforestMapType = mapTypeName.Contains("Rainforest");
-        isScorchedMapType = mapTypeName.Contains("Scorched");
-        isInfernalMapType = mapTypeName.Contains("Infernal");
-        isDemonicMapType = mapTypeName.Contains("Demonic");
-        isIceWorldMapType = mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial")|| mapTypeName.Contains("Ice");
+        if (mapTypeName.Contains("Infernal")) mapType = MapType.Infernal;
+        else if (mapTypeName.Contains("Demonic")) mapType = MapType.Demonic;
+        else if (mapTypeName.Contains("Frozen") || mapTypeName.Contains("Arctic") || mapTypeName.Contains("Glacial") || mapTypeName.Contains("Ice")) mapType = MapType.IceWorld;
+        else mapType = MapType.Standard;
     }
 
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
-        // Calculate north/south and east/west normalized positions using the generator's grid
         float northSouth = 0f;
         float eastWest = 0f;
         if (grid != null && grid.IsBuilt && tileIndex >= 0 && tileIndex < grid.TileCount)
@@ -2524,27 +2429,14 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             northSouth = Mathf.Lerp(-1f, 1f, row / mapH);
             eastWest = Mathf.Lerp(-1f, 1f, col / mapW);
         }
-        
-        // NOTE: Removed Earth-only polar override so polar biomes are determined by temperature and
-        // latitude influence settings in `PlanetGenerator`. This avoids forced asymmetries and
-        // lets `BiomeHelper` decide biomes based on passed temperature/moisture values.
 
         Biome assignedBiome = BiomeHelper.GetBiome(
             isLand, temperature, moisture,
-            isRainforestMapType, isScorchedMapType, isInfernalMapType, isDemonicMapType,
-            isIceWorldMapType,
-            isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
-            isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
-            isTitanWorldType, isEuropaWorldType, isIoWorldType,
-            isLunaWorldType, northSouth, eastWest
+            mapType, planetType,
+            northSouth, eastWest
         );
         
-        // Validate and log inappropriate biome assignments
-        return BiomeHelper.ValidateAndLogBiome(assignedBiome, 
-            isMarsWorldType, isVenusWorldType, isMercuryWorldType, isJupiterWorldType,
-            isSaturnWorldType, isUranusWorldType, isNeptuneWorldType, isPlutoWorldType,
-            isTitanWorldType, isEuropaWorldType, isIoWorldType,
-            isLunaWorldType);
+        return BiomeHelper.ValidateAndLogBiome(assignedBiome, planetType);
     }
 
     public void SetLoadingPanel(LoadingPanelController controller)
@@ -2742,9 +2634,6 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         float minElev = float.MaxValue;
         float maxElev = float.MinValue;
         float avgElev = 0f;
-        float minRenderElev = float.MaxValue;
-        float maxRenderElev = float.MinValue;
-        float avgRenderElev = 0f;
         int landCount = 0;
         int hillCount = 0;
         int mountainCount = 0;
@@ -2755,15 +2644,10 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         {
             var td = kvp.Value;
             float elev = td.elevation;
-            float renderElev = td.renderElevation;
             
             if (elev < minElev) minElev = elev;
             if (elev > maxElev) maxElev = elev;
             avgElev += elev;
-            
-            if (renderElev < minRenderElev) minRenderElev = renderElev;
-            if (renderElev > maxRenderElev) maxRenderElev = renderElev;
-            avgRenderElev += renderElev;
             
             if (td.isLand) landCount++;
             if (td.elevationTier == ElevationTier.Hill) hillCount++;
@@ -2774,12 +2658,10 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
         }
         
         avgElev /= tileData.Count;
-        avgRenderElev /= tileData.Count;
         
         Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Total Tiles: {tileData.Count}, Land: {landCount}");
-        Debug.LogError($"[ELEVATION DIAGNOSTIC] Gameplay Elevation Range: {minElev:F4} to {maxElev:F4} (avg: {avgElev:F4})");
-        Debug.LogError($"[ELEVATION DIAGNOSTIC] Render Elevation Range: {minRenderElev:F4} to {maxRenderElev:F4} (avg: {avgRenderElev:F4})");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Range (world units): {minElev:F3} to {maxElev:F3} (avg: {avgElev:F3})");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Tiers - Flat: {flatCount}, Hills: {hillCount}, Mountains: {mountainCount}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Zero/Near-Zero Elevation Tiles: {zeroElevCount}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - baseLandElevation: {baseLandElevation}, maxTotalElevation: {maxTotalElevation}");
@@ -2805,5 +2687,21 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
             Vector3 size = new Vector3(c.widthTiles * tileWorldWidth, 1f, c.heightTiles * tileWorldHeight);
             Gizmos.DrawWireCube(center, size);
         }
+    }
+
+    /// <summary>
+    /// Get the displacement scale from HexMapChunkManager (artistic multiplier, default 1.0).
+    /// With world-space elevation, this is typically 1.0 unless terrain is artistically exaggerated.
+    /// </summary>
+    private float GetActualDisplacementStrength()
+    {
+        if (terrainRenderer != null)
+            return terrainRenderer.DisplacementStrength;
+
+        var chunkManager = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
+        if (chunkManager != null)
+            return chunkManager.DisplacementStrength;
+
+        return 1f; // World-space elevation: default scale is 1.0
     }
 }

@@ -562,7 +562,8 @@ GenerateTerrainWithVista();
             new Vector3(-waterSize/2, waterHeight, waterSize/2)
         };
         
-        int[] triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+        // Ensure triangle winding faces up (so normals point +Y and the water is visible from above)
+        int[] triangles = new int[] { 0, 2, 1, 0, 3, 2 };
         Vector2[] uvs = new Vector2[]
         {
             new Vector2(0, 0),
@@ -574,7 +575,12 @@ GenerateTerrainWithVista();
         waterMesh.vertices = vertices;
         waterMesh.triangles = triangles;
         waterMesh.uv = uvs;
-        waterMesh.RecalculateNormals();
+        // Explicitly set normals upward to avoid inverted/backface-culling issues
+        Vector3[] normals = new Vector3[vertices.Length];
+        for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
+        waterMesh.normals = normals;
+        // Recalculate bounds (normals already set)
+        waterMesh.RecalculateBounds();
         
         meshFilter.mesh = waterMesh;
         

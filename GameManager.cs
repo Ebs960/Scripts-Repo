@@ -355,10 +355,7 @@ public class GameManager : MonoBehaviour
     public float flatMapHeight = 256f;
     [Tooltip("Y height of the flat map plane (used for world placement)." )]
     public float flatPlaneY = 0f;
-    [Tooltip("Terrain displacement/height scale (how much renderElevation 0-1 translates to world Y offset). Should match HexMapChunkManager.displacementStrength.")]
-    public float terrainDisplacementStrength = 5.0f;
 
-    public float GetTerrainDisplacementStrength() => terrainDisplacementStrength;
 
     // Flat-map-only: tile resolution by size preset
     public static void GetFlatTileResolution(MapSize size, out int tilesX, out int tilesZ)
@@ -1487,63 +1484,21 @@ public class GameManager : MonoBehaviour
 
     private void ApplyRealPlanetIdentity(PlanetGenerator g, string bodyName)
     {
-        g.ClearRealPlanetFlags();
+        g.planetType = global::PlanetType.Earth;
         g.allowOceans = true; g.enableRivers = true; g.allowIslands = true;
 
-        switch (bodyName)
+        // Parse planet type from body name
+        if (System.Enum.TryParse<global::PlanetType>(bodyName, out var parsedType))
         {
-            case "Earth":
-                break;
-            case "Mars":
-                g.isMarsWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Venus":
-                g.isVenusWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Mercury":
-                g.isMercuryWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Jupiter":
-                g.isJupiterWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Saturn":
-                g.isSaturnWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Uranus":
-                g.isUranusWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Neptune":
-                g.isNeptuneWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Io":
-                g.isIoWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Europa":
-                g.isEuropaWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Titan":
-                g.isTitanWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Luna":
-                g.isLunaWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            case "Pluto":
-                g.isPlutoWorldType = true;
-                g.allowOceans = false; g.enableRivers = false; g.allowIslands = false;
-                break;
-            default:
-                break;
+            g.planetType = parsedType;
+        }
+
+        // Non-Earth planets don't have oceans, rivers, or islands
+        if (g.planetType != global::PlanetType.Earth)
+        {
+            g.allowOceans = false;
+            g.enableRivers = false;
+            g.allowIslands = false;
         }
     }
 

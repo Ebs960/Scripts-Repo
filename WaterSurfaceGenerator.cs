@@ -8,6 +8,10 @@ public class WaterSurfaceGenerator : MonoBehaviour
     [SerializeField] private BiomeVisualDatabase biomeVisualDatabase;
     [SerializeField] private WaterSurface oceanSurfacePrefab;
     [SerializeField] private WaterSurface lakeSurfacePrefab;
+    
+    [Header("Diagnostics")]
+    [Tooltip("When enabled, logs extra diagnostic information for water surface placement and mesh generation.")]
+    [SerializeField] private bool enableDiagnostics = true;
 
     // Note: Sea level for oceans is authoritative from PlanetGenerator.SeaLevelWorldY.
     // Lake water surfaces compute their own height from surrounding shore terrain.
@@ -97,20 +101,11 @@ public class WaterSurfaceGenerator : MonoBehaviour
         int tileCount = grid.TileCount;
         Debug.Log($"[WaterSurfaceGenerator] Generating water surfaces: TileCount={tileCount} Resolution={grid.Width}x{grid.Height} SeaLevel={planetGen.SeaLevelWorldY}");
 
-        int createdRegions = 0;
         int createdLakes = 0;
-        int createdOceans = 0;
+        bool hasAnyOceanTile = false;
         bool[] visited = new bool[tileCount];
 
-        // Tile padding for ocean AABB quads (kept for ocean/seas regions)
-        float tileWidth = grid.MapWidth / Mathf.Max(1, grid.Width);
-        float tileHeight = grid.MapHeight / Mathf.Max(1, grid.Height);
-        float padX = tileWidth * 0.5f;
-        float padZ = tileHeight * 0.5f;
-
-        // Map wraps horizontally (X axis). Ghost copies are created at +/-MapWidth.
-        float mapWidthWorld = grid.MapWidth;
-
+        // --- Pass: flood-fill water regions, create lakes, detect ocean presence ---
         for (int i = 0; i < tileCount; i++)
         {
             if (visited[i]) continue;
@@ -126,40 +121,36 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
             bool regionIsLake = RegionIsLake(planetGen, region);
 
-            float height;
-            if (regionIsLake)
-            {
-                // Lake water sits at the level of its lowest shore tile (the natural outlet).
-                height = ComputeLakeWaterHeight(planetGen, grid, region);
-            }
-            else
-            {
-                // Ocean/seas use the planet's authoritative sea level.
-                height = planetGen.SeaLevelWorldY;
-            }
-
             if (regionIsLake)
             {
                 // Build a combined hex mesh from all lake tiles in this body.
                 // Each tile contributes a hexagon, so the water surface exactly matches
                 // the lake's tile footprint — no rectangular overshoot onto land.
+                float height = ComputeLakeWaterHeight(planetGen, grid, region);
                 Vector3 centroid = ComputeRegionCentroid(grid, region);
                 Mesh mesh = BuildCombinedHexMesh(grid, region, centroid);
-                CreateLakeWaterSurface(centroid, mesh, height, mapWidthWorld, spawnedSurfaces.Count);
+                CreateLakeWaterSurface(centroid, mesh, height, spawnedSurfaces.Count);
                 createdLakes++;
             }
             else
             {
-                // Ocean/seas: axis-aligned bounding box quad (appropriate for large bodies
-                // that fill map edges). The AABB naturally covers the rectangular border area.
-                var bounds = CalculateRegionBounds(grid, region, padX, padZ);
-                CreateOceanWaterSurface(bounds, height, mapWidthWorld, spawnedSurfaces.Count);
-                createdOceans++;
+                // Just flag that ocean/seas tiles exist — we handle them as ONE surface below.
+                hasAnyOceanTile = true;
             }
-            createdRegions++;
         }
 
-        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Regions={createdRegions} (lakes={createdLakes}, oceans={createdOceans}) TotalSurfaces={spawnedSurfaces.Count}");
+        // --- Single ocean surface covering the entire map ---
+        // All ocean/seas tiles share the same SeaLevelWorldY, so one large plane is sufficient.
+        // This avoids creating dozens of tiny per-pocket WaterSurface components that hit HDRP's
+        // simultaneous water surface limit.
+        bool createdOcean = false;
+        if (hasAnyOceanTile)
+        {
+            CreateSingleOceanSurface(grid, planetGen.SeaLevelWorldY);
+            createdOcean = true;
+        }
+
+        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Lakes={createdLakes} Ocean={createdOcean} TotalSurfaces={spawnedSurfaces.Count}");
     }
 
     private void ClearSurfaces()
@@ -379,8 +370,10 @@ public class WaterSurfaceGenerator : MonoBehaviour
     /// <summary>
     /// Create a lake water surface using a combined hex mesh positioned at the lake centroid.
     /// The mesh exactly matches the hex tile footprint of the lake body.
+    /// Lakes are always inland (lakeMinDistanceFromCoast ensures this), so no ghost
+    /// copies are needed for the horizontal wrap seam.
     /// </summary>
-    private void CreateLakeWaterSurface(Vector3 centroid, Mesh mesh, float height, float mapWidthWorld, int regionIndex)
+    private void CreateLakeWaterSurface(Vector3 centroid, Mesh mesh, float height, int regionIndex)
     {
         if (lakeSurfacePrefab == null)
         {
@@ -414,59 +407,20 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         meshFilter.sharedMesh = mesh;
         spawnedSurfaces.Add(instance);
-
-        // Ghost copies for horizontal world wrap (+/-MapWidth).
-        // Convert the world-space wrap offset to local space for correct placement
-        // even if WaterSurfaceGenerator is rotated or scaled.
-        if (mapWidthWorld > 0.001f)
-        {
-            Vector3 localWrapOffset = transform.InverseTransformVector(new Vector3(mapWidthWorld, 0f, 0f));
-
-            var left = Instantiate(instance, transform, false);
-            left.name = $"WaterSurface_Lake_{regionIndex}_GhostLeft";
-            left.transform.localPosition = localPos - localWrapOffset;
-            spawnedSurfaces.Add(left);
-
-            var right = Instantiate(instance, transform, false);
-            right.name = $"WaterSurface_Lake_{regionIndex}_GhostRight";
-            right.transform.localPosition = localPos + localWrapOffset;
-            spawnedSurfaces.Add(right);
-        }
     }
 
     #endregion
 
-    #region Ocean Water Surface (AABB Quad)
-
-    private static Bounds CalculateRegionBounds(HexGrid grid, List<int> region, float padX, float padZ)
-    {
-        Vector3 min = new Vector3(float.MaxValue, 0f, float.MaxValue);
-        Vector3 max = new Vector3(float.MinValue, 0f, float.MinValue);
-
-        foreach (var index in region)
-        {
-            Vector3 tileCenter = grid.tileCenters[index];
-            min.x = Mathf.Min(min.x, tileCenter.x);
-            min.z = Mathf.Min(min.z, tileCenter.z);
-            max.x = Mathf.Max(max.x, tileCenter.x);
-            max.z = Mathf.Max(max.z, tileCenter.z);
-        }
-
-        min.x -= padX;
-        min.z -= padZ;
-        max.x += padX;
-        max.z += padZ;
-
-        Vector3 size = new Vector3(Mathf.Max(0.01f, max.x - min.x), 0.1f, Mathf.Max(0.01f, max.z - min.z));
-        Vector3 center = new Vector3((min.x + max.x) * 0.5f, 0f, (min.z + max.z) * 0.5f);
-        return new Bounds(center, size);
-    }
+    #region Ocean Water Surface (Single Full-Map Plane)
 
     /// <summary>
-    /// Create an ocean/seas water surface using an AABB quad.
-    /// Oceans are large bodies that fill map edges, so a rectangular quad is appropriate.
+    /// Create ONE ocean water surface that covers the entire map at SeaLevelWorldY.
+    /// All ocean/seas tiles share the same height, so a single large quad is both
+    /// correct and avoids hitting HDRP's simultaneous WaterSurface component limit.
+    /// The quad is 3× the map width so it remains visible across the horizontal
+    /// wrap seam without needing ghost copies (which would add more WaterSurface components).
     /// </summary>
-    private void CreateOceanWaterSurface(Bounds bounds, float height, float mapWidthWorld, int regionIndex)
+    private void CreateSingleOceanSurface(HexGrid grid, float seaLevelWorldY)
     {
         if (oceanSurfacePrefab == null)
         {
@@ -474,84 +428,48 @@ public class WaterSurfaceGenerator : MonoBehaviour
             return;
         }
 
-        var instance = Instantiate(oceanSurfacePrefab.gameObject, transform, false);
-        instance.name = $"WaterSurface_Ocean_{regionIndex}";
+        float mapW = grid.MapWidth;
+        float mapH = grid.MapHeight;
 
-        // Convert world-space height to this transform's local Y.
-        float localY = transform.InverseTransformPoint(new Vector3(transform.position.x, height, transform.position.z)).y;
-        instance.transform.localPosition = new Vector3(0f, localY, 0f);
+        // Build a quad 3× map width (covers wrap seam) and full map height + padding.
+        float halfW = mapW * 1.5f;
+        float halfH = mapH * 0.5f + 10f; // small Z padding for edge coverage
 
-        Debug.Log($"[WaterSurfaceGenerator] Created ocean surface idx={regionIndex} bounds={bounds.size} height={height}");
-
-        var meshFilter = instance.GetComponent<MeshFilter>();
-        if (meshFilter == null)
+        var mesh = new Mesh { name = "OceanSurfaceFullMap" };
+        mesh.vertices = new[]
         {
-            meshFilter = instance.AddComponent<MeshFilter>();
-        }
-
-        var meshRenderer = instance.GetComponent<MeshRenderer>();
-        if (meshRenderer == null)
-        {
-            meshRenderer = instance.AddComponent<MeshRenderer>();
-        }
-
-        meshFilter.sharedMesh = BuildQuadMesh(bounds);
-        spawnedSurfaces.Add(instance);
-
-        // Mirror to left/right so water exists across horizontal wrap seams.
-        if (mapWidthWorld > 0.001f)
-        {
-            var left = Instantiate(instance, transform, false);
-            left.name = $"WaterSurface_Ocean_{regionIndex}_GhostLeft";
-            left.transform.localPosition = new Vector3(-mapWidthWorld, localY, 0f);
-            spawnedSurfaces.Add(left);
-
-            var right = Instantiate(instance, transform, false);
-            right.name = $"WaterSurface_Ocean_{regionIndex}_GhostRight";
-            right.transform.localPosition = new Vector3(mapWidthWorld, localY, 0f);
-            spawnedSurfaces.Add(right);
-        }
-    }
-
-    private static Mesh BuildQuadMesh(Bounds bounds)
-    {
-        var mesh = new Mesh
-        {
-            name = "WaterSurfaceRegion"
+            new Vector3(-halfW, 0f, -halfH),
+            new Vector3( halfW, 0f, -halfH),
+            new Vector3( halfW, 0f,  halfH),
+            new Vector3(-halfW, 0f,  halfH)
         };
-
-        Vector3 min = bounds.min;
-        Vector3 max = bounds.max;
-
-        var vertices = new[]
-        {
-            new Vector3(min.x, 0f, min.z),
-            new Vector3(max.x, 0f, min.z),
-            new Vector3(max.x, 0f, max.z),
-            new Vector3(min.x, 0f, max.z)
-        };
-
-        var uvs = new[]
+        mesh.uv = new[]
         {
             new Vector2(0f, 0f),
             new Vector2(1f, 0f),
             new Vector2(1f, 1f),
             new Vector2(0f, 1f)
         };
-
-        var triangles = new[]
-        {
-            0, 2, 1,
-            0, 3, 2
-        };
-
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
+        mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
-        return mesh;
+        var instance = Instantiate(oceanSurfacePrefab.gameObject, transform, false);
+        instance.name = "WaterSurface_Ocean";
+
+        // Position at map center XZ, sea level Y (converted to local space).
+        float localY = transform.InverseTransformPoint(new Vector3(transform.position.x, seaLevelWorldY, transform.position.z)).y;
+        instance.transform.localPosition = new Vector3(0f, localY, 0f);
+
+        var meshFilter = instance.GetComponent<MeshFilter>();
+        if (meshFilter == null) meshFilter = instance.AddComponent<MeshFilter>();
+        var meshRenderer = instance.GetComponent<MeshRenderer>();
+        if (meshRenderer == null) meshRenderer = instance.AddComponent<MeshRenderer>();
+
+        meshFilter.sharedMesh = mesh;
+        spawnedSurfaces.Add(instance);
+
+        Debug.Log($"[WaterSurfaceGenerator] Created single ocean surface: size=({halfW * 2:F0}x{halfH * 2:F0}) seaLevel={seaLevelWorldY:F3} localY={localY:F3}");
     }
 
     #endregion
@@ -560,14 +478,13 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
     /// <summary>
     /// Compute the world-space Y height for a lake's water surface.
-    /// The water level equals the lowest shore tile's world Y (the natural outlet).
-    /// This makes each lake sit at the correct terrain-relative height — a mountain
-    /// lake is high, a valley lake is low.
+    /// With world-space elevation, this is simply: flatY + lowest shore tile elevation.
+    /// The water level equals the natural outlet height (lowest surrounding land).
     /// </summary>
     private float ComputeLakeWaterHeight(PlanetGenerator planetGen, HexGrid grid, List<int> region)
     {
         int tileCount = grid.TileCount;
-        float minShoreRenderElev = float.MaxValue;
+        float minShoreElev = float.MaxValue;
 
         // Build a set for fast membership checks
         var regionSet = new HashSet<int>(region);
@@ -583,84 +500,70 @@ public class WaterSurfaceGenerator : MonoBehaviour
                 if (regionSet.Contains(n)) continue; // skip other lake tiles in this body
 
                 var td = planetGen.GetHexTileData(n);
-                // HexTileData is a class — null means missing data
                 if (td == null || !td.isLand) continue;
                 // Only consider true land shore tiles (not coast/ocean/seas)
                 if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
 
-                if (td.renderElevation < minShoreRenderElev)
+                if (td.elevation < minShoreElev)
                 {
-                    minShoreRenderElev = td.renderElevation;
+                    minShoreElev = td.elevation;
                 }
             }
         }
 
-        // Get the ACTUAL displacement strength from HexMapChunkManager (what the shader uses).
         float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : 0f;
-        float dispStrength = GetActualDisplacementStrength();
+        // Elevation is world-space, so multiply by displacementStrength (artistic scale, default 1.0)
+        float dispScale = GetDisplacementScale();
 
-        if (minShoreRenderElev < float.MaxValue)
+        if (minShoreElev < float.MaxValue)
         {
-            float waterY = flatY + minShoreRenderElev * dispStrength;
-            Debug.Log($"[WaterSurfaceGenerator] Lake water height from shore: renderElev={minShoreRenderElev:F4} worldY={waterY:F3} (flatY={flatY:F3} disp={dispStrength:F1})");
+            float waterY = flatY + minShoreElev * dispScale;
+            Debug.Log($"[WaterSurfaceGenerator] Lake water height: shoreElev={minShoreElev:F3} worldY={waterY:F3} (flatY={flatY:F3} scale={dispScale:F2})");
             return waterY;
         }
 
-        // Fallback: no shore tiles found (isolated lake, shouldn't normally happen).
-        // Use the average renderElevation of the lake tiles themselves + a small offset
-        // so the water is slightly above the terrain.
+        // Fallback: no shore tiles found — use average lake tile elevation + small offset
         float sumElev = 0f;
         int count = 0;
         foreach (int idx in region)
         {
             var td = planetGen.GetHexTileData(idx);
             if (td == null) continue;
-            sumElev += td.renderElevation;
+            sumElev += td.elevation;
             count++;
         }
 
         if (count > 0)
         {
-            float avgRender = sumElev / count;
-            // Add a small offset so water sits above the lake bed, not at it
-            float waterRender = avgRender + 0.02f;
-            float waterY = flatY + waterRender * dispStrength;
-            Debug.Log($"[WaterSurfaceGenerator] Lake water height from tile average (no shore): renderElev={avgRender:F4}+0.02 worldY={waterY:F3}");
+            float avgElev = sumElev / count;
+            float waterY = flatY + (avgElev + 0.05f) * dispScale;
+            Debug.Log($"[WaterSurfaceGenerator] Lake water height from average (no shore): elev={avgElev:F3}+0.05 worldY={waterY:F3}");
             return waterY;
         }
 
-        // Last resort: use global sea level
         Debug.LogWarning("[WaterSurfaceGenerator] Could not compute lake water height, falling back to SeaLevelWorldY");
         return planetGen.SeaLevelWorldY;
     }
 
     /// <summary>
-    /// Get the actual displacement strength from HexMapChunkManager (matches _ElevationScale in shader).
-    /// Falls back to GameManager.terrainDisplacementStrength if the chunk manager isn't found.
+    /// Get the displacement scale (artistic multiplier, default 1.0) from HexMapChunkManager.
+    /// With world-space elevation, this is typically 1.0 unless the user wants exaggerated terrain.
     /// </summary>
-    private float GetActualDisplacementStrength()
+    private float GetDisplacementScale()
     {
-        // Try to get it from the planet's terrain renderer first
         if (attachedPlanet != null && attachedPlanet.terrainRenderer != null)
         {
             return attachedPlanet.terrainRenderer.DisplacementStrength;
         }
 
-        // Try to find any HexMapChunkManager in the scene
         var chunkManager = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
         if (chunkManager != null)
         {
             return chunkManager.DisplacementStrength;
         }
 
-        // Final fallback: GameManager's value (may not match shader)
-        if (GameManager.Instance != null)
-        {
-            Debug.LogWarning("[WaterSurfaceGenerator] Using GameManager.terrainDisplacementStrength as fallback — may not match shader _ElevationScale");
-            return GameManager.Instance.GetTerrainDisplacementStrength();
-        }
-
-        return 5f;
+        // Default: 1.0 (elevation is world-space, no scaling needed)
+        return 1f;
     }
 
     #endregion

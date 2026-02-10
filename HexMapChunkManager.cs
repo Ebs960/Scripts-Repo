@@ -41,9 +41,9 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private int meshSubdivisionsPerChunk = 32;
     
     [Header("Displacement Settings")]
-    [Tooltip("World units of vertical relief. Higher values = more visible terrain height.")]
-    [Range(0f, 100f)]
-    [SerializeField] private float displacementStrength = 5.0f;
+    [Tooltip("Multiplier for terrain elevation. With world-space elevation, 1.0 means elevation values are used directly. Values >1 exaggerate terrain height for artistic effect.")]
+    [Range(0.1f, 10f)]
+    [SerializeField] private float displacementStrength = 1.0f;
     [SerializeField] private float flatY = 0f;
 
     [Header("Biome Visual Modifiers")]
@@ -134,10 +134,7 @@ public class HexMapChunkManager : MonoBehaviour
     private int seasonMaskHeight;
     
     // Event subscriptions
-    private bool _subscribedToPlanetReady;
-    private bool _subscribedToSurfaceReady;
     private PlanetGenerator _surfaceEventSource;
-    private bool _subscribedToSeasonChanges;
     
     // Public accessors (API compatible with FlatMapTextureRenderer)
     public HexGrid Grid => grid;
@@ -171,15 +168,24 @@ public class HexMapChunkManager : MonoBehaviour
     
     private void OnEnable()
     {
-        TrySubscribeToPlanetReady();
-        TrySubscribeToSeasonChanges();
+        if (preBuildOnPlanetReady && GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+        
+        ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
     }
     
     private void OnDisable()
     {
-        TryUnsubscribeFromPlanetReady();
-        TryUnsubscribeFromSurfaceReady();
-        TryUnsubscribeFromSeasonChanges();
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        
+        if (_surfaceEventSource != null)
+        {
+            _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
+            _surfaceEventSource = null;
+        }
+        
+        ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
     }
     
     private void Start()
@@ -190,7 +196,9 @@ public class HexMapChunkManager : MonoBehaviour
             if (cam != null) cameraTransform = cam.transform;
         }
         
-        TrySubscribeToPlanetReady();
+        // If GameManager wasn't available during OnEnable, try subscribing now
+        if (preBuildOnPlanetReady && GameManager.Instance != null)
+            GameManager.Instance.OnPlanetReady += HandlePlanetReady;
 
         _lastTransformPos = transform.position;
         _lastTransformRot = transform.rotation;
@@ -219,25 +227,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
     
-    #region Event Subscription (mirrors FlatMapTextureRenderer)
-    
-    private void TrySubscribeToPlanetReady()
-    {
-        if (!preBuildOnPlanetReady) return;
-        if (_subscribedToPlanetReady) return;
-        if (GameManager.Instance == null) return;
-        
-        GameManager.Instance.OnPlanetReady += HandlePlanetReady;
-        _subscribedToPlanetReady = true;
-    }
-    
-    private void TryUnsubscribeFromPlanetReady()
-    {
-        if (!_subscribedToPlanetReady) return;
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
-        _subscribedToPlanetReady = false;
-    }
+    #region Event Handlers
     
     private void HandlePlanetReady(int planetIndex)
     {
@@ -250,58 +240,32 @@ public class HexMapChunkManager : MonoBehaviour
         
         if (gen.HasGeneratedSurface)
         {
-BuildChunks(gen);
+            BuildChunks(gen);
         }
         else
         {
-TrySubscribeToSurfaceReady(gen);
+            // Subscribe to surface generation completion
+            if (_surfaceEventSource != null)
+                _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
+            
+            _surfaceEventSource = gen;
+            gen.OnSurfaceGenerated += HandleSurfaceGenerated;
         }
-    }
-    
-    private void TrySubscribeToSurfaceReady(PlanetGenerator gen)
-    {
-        if (gen == null) return;
-        if (_subscribedToSurfaceReady && _surfaceEventSource == gen) return;
-        
-        TryUnsubscribeFromSurfaceReady();
-        
-        gen.OnSurfaceGenerated += HandleSurfaceGenerated;
-        _surfaceEventSource = gen;
-        _subscribedToSurfaceReady = true;
-    }
-    
-    private void TryUnsubscribeFromSurfaceReady()
-    {
-        if (!_subscribedToSurfaceReady) return;
-        if (_surfaceEventSource != null)
-        {
-            _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
-        }
-        _surfaceEventSource = null;
-        _subscribedToSurfaceReady = false;
     }
     
     private void HandleSurfaceGenerated()
     {
         var gen = _surfaceEventSource ?? GameManager.Instance?.GetCurrentPlanetGenerator();
-        TryUnsubscribeFromSurfaceReady();
-        if (gen == null) return;
         
+        // Unsubscribe from surface event
+        if (_surfaceEventSource != null)
+        {
+            _surfaceEventSource.OnSurfaceGenerated -= HandleSurfaceGenerated;
+            _surfaceEventSource = null;
+        }
+        
+        if (gen == null) return;
         BuildChunks(gen);
-    }
-
-    private void TrySubscribeToSeasonChanges()
-    {
-        if (_subscribedToSeasonChanges) return;
-        ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
-        _subscribedToSeasonChanges = true;
-    }
-
-    private void TryUnsubscribeFromSeasonChanges()
-    {
-        if (!_subscribedToSeasonChanges) return;
-        ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
-        _subscribedToSeasonChanges = false;
     }
     
     #endregion
@@ -399,11 +363,7 @@ TrySubscribeToSurfaceReady(gen);
         // Initialize terrain overlays
         InitializeTerrainOverlays();
         
-        // Disable old renderer if present
-        if (disableOldRenderer)
-        {
-            DisableOldRenderer();
-        }
+        // (FlatMapTextureRenderer removed — HexMapChunkManager is the sole renderer)
         
         // DIAGNOSTIC: Log heightmap and displacement settings (respect GameManager toggle)
         if (ShouldRunDiagnostics())
@@ -722,7 +682,7 @@ TrySubscribeToSurfaceReady(gen);
             float elevation = 0f;
             if (tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile))
             {
-                elevation = Mathf.Clamp01(tile.renderElevation);
+                elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
             }
 
             pixels[i] = new Color(elevation, 0f, 0f, 1f);
@@ -1081,11 +1041,6 @@ TrySubscribeToSurfaceReady(gen);
         }
     }
     
-    private void DisableOldRenderer()
-    {
-        // FlatMapTextureRenderer removed - this is now a no-op
-        // HexMapChunkManager is the sole map renderer
-    }
     
     /// <summary>
     /// Create a MeshCollider covering the entire map for WorldPicker raycasts with proper UV support.
@@ -1909,10 +1864,7 @@ TrySubscribeToSurfaceReady(gen);
     
     private void OnDestroy()
     {
-        // Unsubscribe from events
-        TryUnsubscribeFromPlanetReady();
-        TryUnsubscribeFromSurfaceReady();
-        
+        // OnDisable handles event unsubscription; clean up overlay and chunks here
         if (overlayTileSystem != null)
         {
             overlayTileSystem.OnTileOwnerChanged -= HandleTileOwnerChanged;

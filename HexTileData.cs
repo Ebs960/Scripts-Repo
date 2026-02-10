@@ -14,8 +14,7 @@ public class HexTileData
 {
     // --- Core Map Properties (existing) ---
     public Biome biome;
-    public float elevation;        // 0–1, gameplay elevation (may have narrow range)
-    public float renderElevation;  // 0–1, normalized for heightmap/displacement (uses full 0-1 range for land)
+    public float elevation;        // World-space height offset from the flat plane (in world units). Directly used by heightmap, water surfaces, and unit placement.
     public ElevationTier elevationTier = ElevationTier.Flat;
     public bool isLand;
     public bool isLake;
