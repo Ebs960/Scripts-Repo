@@ -381,6 +381,9 @@ public class ResourceManager : MonoBehaviour
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 position = ts != null ? ts.GetTileCenterFromPlanet(tileIndex, planetIndex) : Vector3.zero;
 
+        // Retrieve tile data early so we can choose an appropriate parent before instantiation
+        var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
+
         // Use object pooling if available
         GameObject go = SimpleObjectPool.Instance != null
             ? SimpleObjectPool.Instance.Get(resource.prefab, position, Quaternion.identity)
@@ -391,7 +394,24 @@ public class ResourceManager : MonoBehaviour
         try
         {
             var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
-            if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
+            if (planetGen != null)
+            {
+                // Parent resources under the planet's visual layer for better scene organization.
+                // Prefer a dedicated resourcesRoot when present. Fallback to per-layer roots,
+                // then fall back to the planet GameObject itself.
+                Transform parent = null;
+                if (planetGen.resourcesRoot != null)
+                    parent = planetGen.resourcesRoot.transform;
+                else if (tileData != null && tileData.isLand && planetGen.surfaceRoot != null)
+                    parent = planetGen.surfaceRoot.transform;
+                else if (tileData != null && !tileData.isLand && planetGen.underwaterRoot != null)
+                    parent = planetGen.underwaterRoot.transform;
+                else
+                    parent = planetGen.transform;
+
+                if (parent != null)
+                    go.transform.SetParent(parent, true);
+            }
         }
         catch { }
 
@@ -402,7 +422,6 @@ public class ResourceManager : MonoBehaviour
         spawnedResources.Add(inst);
 
         // Update the tile data to reflect the new resource
-        var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
         if (tileData != null)
         {
             tileData.resource = resource;

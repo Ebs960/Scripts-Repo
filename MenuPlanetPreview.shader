@@ -15,6 +15,7 @@ Shader "Custom/MenuPlanetPreview"
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
             _AtmosphereColor("Atmosphere Color", Color) = (0.62,0.78,0.95,1)
             _AtmospherePower("Atmosphere Power", Range(0.5,6)) = 3.5
+            _AtmosphereRadius("Atmosphere Radius", Float) = 1.0
             _MapStyle("Map Style", Range(0, 1)) = 0.0
     }
 
@@ -62,10 +63,11 @@ Shader "Custom/MenuPlanetPreview"
                 float _JungleFactor;
                 float _SnowFactor;
                 float _MapStyle;  // 0 = normal, 1 = infernal/demonic
-                     float _DetailScale;
-                     float _DetailStrength;
-                     float4 _AtmosphereColor;
-                     float _AtmospherePower;
+                    float _DetailScale;
+                    float _DetailStrength;
+                    float4 _AtmosphereColor;
+                    float _AtmospherePower;
+                    float _AtmosphereRadius;
             CBUFFER_END
 
             // -----------------------------------------------------------------
@@ -537,7 +539,8 @@ Shader "Custom/MenuPlanetPreview"
                     //  Atmosphere scattering rim (simple analytic approach)
                     //  Stronger on limb (high fresnel) and modulated by temperature/hellBlend
                     // --------------------------------------------------------------
-                    float atmos = pow(fresnel, _AtmospherePower) * (1.0 - hellBlend);
+                    // Atmosphere strength/visible radius multiplier
+                    float atmos = pow(fresnel, _AtmospherePower) * (1.0 - hellBlend) * _AtmosphereRadius;
                     float3 atmosCol = _AtmosphereColor.rgb * atmos * 0.7;
                     finalColor = lerp(finalColor, finalColor + atmosCol, atmos * 0.9);
                 finalColor += frozenRimColor * frozenRimMask * 0.25;

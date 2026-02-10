@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Lake
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 14
+  biome: 13
   waterType: 2
   surfaceFamily: {fileID: 11400000, guid: 585db334d6051de4498e3edb2c65a586, type: 2}
   forcedVariant: -1

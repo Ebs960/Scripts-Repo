@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &466950285653567448
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1067298396880522597}
+  m_Layer: 6
+  m_Name: Resources Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1067298396880522597
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466950285653567448}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351839581991319769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1048475128305947683
 GameObject:
   m_ObjectHideFlags: 0
@@ -133,6 +164,7 @@ Transform:
   - {fileID: 4969945254994613023}
   - {fileID: 6931367162624303467}
   - {fileID: 7407095892055119772}
+  - {fileID: 1067298396880522597}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6434261854368368276
@@ -154,9 +186,11 @@ MonoBehaviour:
   surfaceRoot: {fileID: 1048475128305947683}
   underwaterRoot: {fileID: 2456195774341594989}
   atmosphereRoot: {fileID: 4916646554407244369}
+  resourcesRoot: {fileID: 466950285653567448}
   surfaceYOffset: 0
   underwaterYOffset: -2
   atmosphereYOffset: 20
+  atmosphereRadius: 1
   planetConfig: {fileID: 0}
   enableDiagnostics: 0
   debugDrawContinents: 0
@@ -177,24 +211,24 @@ MonoBehaviour:
   maxContinentHeightTilesLarge: 49
   seedPositionVariance: 0.231
   mountainElevationBoost: 1.45
-  elevationFreq: 0.9
+  elevationFreq: 0.65
   moistureFreq: 0.25
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.355
   latitudeExponent: 1.445
-  temperatureNoiseFrequency: 0.02
+  temperatureNoiseFrequency: 0.09
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.15
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 2
-  climateSmoothingStrength: 0.502
+  climateSmoothingStrength: 0.204
   mountainThreshold: 8
   hillThreshold: 5.37
   baseLandElevation: 2.07
   oceanElevation: 0
   seasElevation: 1
-  coastElevation: 2
+  coastElevation: 1.65
   hillElevationBoost: 0.58
   maxTotalElevation: 8.5
   billowHillWeight: 0.113
@@ -202,7 +236,7 @@ MonoBehaviour:
   enableRivers: 0
   minRiversPerContinent: 3
   maxRiversPerContinent: 5
-  riverDepth: 0.48
+  riverDepth: 0.7
   enableLakes: 1
   numberOfLakes: 8
   lakeMinRadiusTiles: 3
@@ -215,7 +249,7 @@ MonoBehaviour:
   coastSpurRadiusMin: 3
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
-  lakeDepth: 0.1554
+  lakeDepth: 0.507
   numberOfIslands: 8
   generateIslands: 1
   minIslandWidthTilesSmall: 1

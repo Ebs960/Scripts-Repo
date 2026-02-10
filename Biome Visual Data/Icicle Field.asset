@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Icicle Field
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 22
+  biome: 21
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f533e057d49e4049a1f2e3ffeb4c57a, type: 2}
   forcedVariant: -1

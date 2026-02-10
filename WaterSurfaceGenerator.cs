@@ -98,16 +98,17 @@ public class WaterSurfaceGenerator : MonoBehaviour
         Debug.Log($"[WaterSurfaceGenerator] Generating water surfaces: TileCount={tileCount} Resolution={grid.Width}x{grid.Height} SeaLevel={planetGen.SeaLevelWorldY}");
 
         int createdRegions = 0;
+        int createdLakes = 0;
+        int createdOceans = 0;
         bool[] visited = new bool[tileCount];
 
+        // Tile padding for ocean AABB quads (kept for ocean/seas regions)
         float tileWidth = grid.MapWidth / Mathf.Max(1, grid.Width);
         float tileHeight = grid.MapHeight / Mathf.Max(1, grid.Height);
         float padX = tileWidth * 0.5f;
         float padZ = tileHeight * 0.5f;
 
-        // Map wraps horizontally (X axis). Terrain chunks are teleported/ghosted by ±MapWidth.
-        // To keep water present across the wrap seam, we mirror each generated water surface
-        // to the left and right by ±MapWidth.
+        // Map wraps horizontally (X axis). Ghost copies are created at +/-MapWidth.
         float mapWidthWorld = grid.MapWidth;
 
         for (int i = 0; i < tileCount; i++)
@@ -123,15 +124,12 @@ public class WaterSurfaceGenerator : MonoBehaviour
             var region = FloodFillRegion(planetGen, grid, i, visited);
             if (region.Count == 0) continue;
 
-            var bounds = CalculateRegionBounds(grid, region, padX, padZ);
             bool regionIsLake = RegionIsLake(planetGen, region);
 
             float height;
             if (regionIsLake)
             {
                 // Lake water sits at the level of its lowest shore tile (the natural outlet).
-                // This ensures lake water is flat and at the correct terrain-relative height,
-                // rather than using the global ocean sea level.
                 height = ComputeLakeWaterHeight(planetGen, grid, region);
             }
             else
@@ -140,11 +138,28 @@ public class WaterSurfaceGenerator : MonoBehaviour
                 height = planetGen.SeaLevelWorldY;
             }
 
-            CreateWaterSurface(regionIsLake, bounds, height, mapWidthWorld, spawnedSurfaces.Count);
+            if (regionIsLake)
+            {
+                // Build a combined hex mesh from all lake tiles in this body.
+                // Each tile contributes a hexagon, so the water surface exactly matches
+                // the lake's tile footprint — no rectangular overshoot onto land.
+                Vector3 centroid = ComputeRegionCentroid(grid, region);
+                Mesh mesh = BuildCombinedHexMesh(grid, region, centroid);
+                CreateLakeWaterSurface(centroid, mesh, height, mapWidthWorld, spawnedSurfaces.Count);
+                createdLakes++;
+            }
+            else
+            {
+                // Ocean/seas: axis-aligned bounding box quad (appropriate for large bodies
+                // that fill map edges). The AABB naturally covers the rectangular border area.
+                var bounds = CalculateRegionBounds(grid, region, padX, padZ);
+                CreateOceanWaterSurface(bounds, height, mapWidthWorld, spawnedSurfaces.Count);
+                createdOceans++;
+            }
             createdRegions++;
         }
 
-        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Regions created={createdRegions} TotalSurfaces={spawnedSurfaces.Count}");
+        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Regions={createdRegions} (lakes={createdLakes}, oceans={createdOceans}) TotalSurfaces={spawnedSurfaces.Count}");
     }
 
     private void ClearSurfaces()
@@ -159,6 +174,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
         spawnedSurfaces.Clear();
     }
+
+    #region Tile Classification
 
     private bool IsWaterTile(PlanetGenerator planetGen, int tileIndex)
     {
@@ -206,6 +223,221 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return region;
     }
 
+    private static bool RegionIsLake(PlanetGenerator planetGen, List<int> region)
+    {
+        foreach (var index in region)
+        {
+            var tile = planetGen.GetHexTileData(index);
+            if (tile == null) continue;
+            // Only consider a region a lake if tiles are marked as lake. Rivers
+            // must not be treated as flat HDRP water surfaces.
+            if (tile.isLake)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    #endregion
+
+    #region Lake Water Surface (Per-Tile Hex Mesh)
+
+    /// <summary>
+    /// Compute the hex circumradius (center-to-corner distance) matching HexGrid.GenerateFlatGrid.
+    /// Used as fallback when the grid's precomputed tileCorners are unavailable.
+    /// </summary>
+    private static float ComputeHexSize(HexGrid grid)
+    {
+        float sX = grid.MapWidth / (grid.Width * Mathf.Sqrt(3f));
+        float sZ = grid.MapHeight / (1.5f * (grid.Height + 0.5f));
+        return Mathf.Max(0.001f, Mathf.Min(sX, sZ));
+    }
+
+    /// <summary>
+    /// Compute the centroid (average tile center) of a water region.
+    /// Used as the mesh origin for lake water surfaces so that the mesh
+    /// vertices are in a local space centered on the lake body.
+    /// </summary>
+    private static Vector3 ComputeRegionCentroid(HexGrid grid, List<int> region)
+    {
+        Vector3 sum = Vector3.zero;
+        foreach (int idx in region)
+        {
+            sum += grid.tileCenters[idx];
+        }
+        return region.Count > 0 ? sum / region.Count : Vector3.zero;
+    }
+
+    /// <summary>
+    /// Build a single combined mesh from all hex tiles in a lake region.
+    /// Each tile contributes a hexagon (center + 6 corners = 7 verts, 6 triangles).
+    /// Vertices are relative to the given centroid (the mesh origin).
+    /// Uses the grid's precomputed tileCorners when available for exact alignment
+    /// with the terrain hex geometry; falls back to recomputed corners otherwise.
+    /// </summary>
+    private static Mesh BuildCombinedHexMesh(HexGrid grid, List<int> region, Vector3 centroid)
+    {
+        bool useGridCorners = grid.tileCorners != null
+                              && grid.CornerVertices != null
+                              && grid.CornerVertices.Count > 0;
+
+        float hexSize = 0f;
+        if (!useGridCorners)
+        {
+            hexSize = ComputeHexSize(grid);
+        }
+
+        int vertsPerHex = 7; // center + 6 corners
+        int trisPerHex = 6;
+        int totalVerts = region.Count * vertsPerHex;
+        int totalIndices = region.Count * trisPerHex * 3;
+
+        var vertices = new Vector3[totalVerts];
+        var uvs = new Vector2[totalVerts];
+        var triangles = new int[totalIndices];
+
+        for (int h = 0; h < region.Count; h++)
+        {
+            int tileIdx = region[h];
+            Vector3 tileCenter = grid.tileCenters[tileIdx];
+
+            // Mesh-local position (relative to centroid, flat on XZ plane)
+            Vector3 localCenter = tileCenter - centroid;
+            localCenter.y = 0f;
+
+            int vBase = h * vertsPerHex;
+            int tBase = h * trisPerHex * 3;
+
+            // Center vertex
+            vertices[vBase] = localCenter;
+            uvs[vBase] = new Vector2(0.5f, 0.5f);
+
+            // 6 corner vertices
+            if (useGridCorners
+                && tileIdx < grid.tileCorners.Length
+                && grid.tileCorners[tileIdx] != null
+                && grid.tileCorners[tileIdx].Count == 6)
+            {
+                // Use precomputed corners from the grid (exact match with terrain)
+                var cornerIndices = grid.tileCorners[tileIdx];
+                for (int k = 0; k < 6; k++)
+                {
+                    Vector3 cornerWorld = grid.CornerVertices[cornerIndices[k]];
+                    Vector3 localCorner = cornerWorld - centroid;
+                    localCorner.y = 0f;
+                    vertices[vBase + 1 + k] = localCorner;
+
+                    // UV: unit circle mapping based on hex angle (pointy-top: -30 + 60k degrees)
+                    float angle = Mathf.Deg2Rad * (60f * k - 30f);
+                    uvs[vBase + 1 + k] = new Vector2(
+                        0.5f + 0.5f * Mathf.Cos(angle),
+                        0.5f + 0.5f * Mathf.Sin(angle));
+                }
+            }
+            else
+            {
+                // Fallback: recompute corners (pointy-top, same angles as HexGrid)
+                for (int k = 0; k < 6; k++)
+                {
+                    float angle = Mathf.Deg2Rad * (60f * k - 30f);
+                    Vector3 corner = localCenter + new Vector3(
+                        hexSize * Mathf.Cos(angle), 0f, hexSize * Mathf.Sin(angle));
+                    vertices[vBase + 1 + k] = corner;
+
+                    uvs[vBase + 1 + k] = new Vector2(
+                        0.5f + 0.5f * Mathf.Cos(angle),
+                        0.5f + 0.5f * Mathf.Sin(angle));
+                }
+            }
+
+            // 6 triangles (fan from center, counter-clockwise winding viewed from Y+)
+            for (int k = 0; k < 6; k++)
+            {
+                int next = (k + 1) % 6;
+                triangles[tBase + k * 3 + 0] = vBase;             // center
+                triangles[tBase + k * 3 + 1] = vBase + 1 + k;     // current corner
+                triangles[tBase + k * 3 + 2] = vBase + 1 + next;  // next corner
+            }
+        }
+
+        var mesh = new Mesh { name = "LakeHexMesh" };
+        if (totalVerts > 65535)
+        {
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        }
+        mesh.vertices = vertices;
+        mesh.uv = uvs;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
+
+    /// <summary>
+    /// Create a lake water surface using a combined hex mesh positioned at the lake centroid.
+    /// The mesh exactly matches the hex tile footprint of the lake body.
+    /// </summary>
+    private void CreateLakeWaterSurface(Vector3 centroid, Mesh mesh, float height, float mapWidthWorld, int regionIndex)
+    {
+        if (lakeSurfacePrefab == null)
+        {
+            Debug.LogWarning("[WaterSurfaceGenerator] Missing lake water surface prefab.");
+            return;
+        }
+
+        var instance = Instantiate(lakeSurfacePrefab.gameObject, transform, false);
+        instance.name = $"WaterSurface_Lake_{regionIndex}";
+
+        // Position at the centroid XZ with the computed water height Y.
+        // Convert from world space to this transform's local space so the
+        // surface is correct even if the map hierarchy is offset or rotated.
+        Vector3 worldPos = new Vector3(centroid.x, height, centroid.z);
+        Vector3 localPos = transform.InverseTransformPoint(worldPos);
+        instance.transform.localPosition = localPos;
+
+        Debug.Log($"[WaterSurfaceGenerator] Created lake surface idx={regionIndex} tiles={mesh.vertexCount / 7} height={height:F3} centroid=({centroid.x:F1}, {centroid.z:F1}) localPos={localPos}");
+
+        var meshFilter = instance.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+        {
+            meshFilter = instance.AddComponent<MeshFilter>();
+        }
+
+        var meshRenderer = instance.GetComponent<MeshRenderer>();
+        if (meshRenderer == null)
+        {
+            meshRenderer = instance.AddComponent<MeshRenderer>();
+        }
+
+        meshFilter.sharedMesh = mesh;
+        spawnedSurfaces.Add(instance);
+
+        // Ghost copies for horizontal world wrap (+/-MapWidth).
+        // Convert the world-space wrap offset to local space for correct placement
+        // even if WaterSurfaceGenerator is rotated or scaled.
+        if (mapWidthWorld > 0.001f)
+        {
+            Vector3 localWrapOffset = transform.InverseTransformVector(new Vector3(mapWidthWorld, 0f, 0f));
+
+            var left = Instantiate(instance, transform, false);
+            left.name = $"WaterSurface_Lake_{regionIndex}_GhostLeft";
+            left.transform.localPosition = localPos - localWrapOffset;
+            spawnedSurfaces.Add(left);
+
+            var right = Instantiate(instance, transform, false);
+            right.name = $"WaterSurface_Lake_{regionIndex}_GhostRight";
+            right.transform.localPosition = localPos + localWrapOffset;
+            spawnedSurfaces.Add(right);
+        }
+    }
+
+    #endregion
+
+    #region Ocean Water Surface (AABB Quad)
+
     private static Bounds CalculateRegionBounds(HexGrid grid, List<int> region, float padX, float padZ)
     {
         Vector3 min = new Vector3(float.MaxValue, 0f, float.MaxValue);
@@ -230,22 +462,101 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return new Bounds(center, size);
     }
 
-    private static bool RegionIsLake(PlanetGenerator planetGen, List<int> region)
+    /// <summary>
+    /// Create an ocean/seas water surface using an AABB quad.
+    /// Oceans are large bodies that fill map edges, so a rectangular quad is appropriate.
+    /// </summary>
+    private void CreateOceanWaterSurface(Bounds bounds, float height, float mapWidthWorld, int regionIndex)
     {
-        foreach (var index in region)
+        if (oceanSurfacePrefab == null)
         {
-            var tile = planetGen.GetHexTileData(index);
-            if (tile == null) continue;
-            // Only consider a region a lake if tiles are marked as lake. Rivers
-            // must not be treated as flat HDRP water surfaces.
-            if (tile.isLake)
-            {
-                return true;
-            }
+            Debug.LogWarning("[WaterSurfaceGenerator] Missing ocean water surface prefab.");
+            return;
         }
 
-        return false;
+        var instance = Instantiate(oceanSurfacePrefab.gameObject, transform, false);
+        instance.name = $"WaterSurface_Ocean_{regionIndex}";
+
+        // Convert world-space height to this transform's local Y.
+        float localY = transform.InverseTransformPoint(new Vector3(transform.position.x, height, transform.position.z)).y;
+        instance.transform.localPosition = new Vector3(0f, localY, 0f);
+
+        Debug.Log($"[WaterSurfaceGenerator] Created ocean surface idx={regionIndex} bounds={bounds.size} height={height}");
+
+        var meshFilter = instance.GetComponent<MeshFilter>();
+        if (meshFilter == null)
+        {
+            meshFilter = instance.AddComponent<MeshFilter>();
+        }
+
+        var meshRenderer = instance.GetComponent<MeshRenderer>();
+        if (meshRenderer == null)
+        {
+            meshRenderer = instance.AddComponent<MeshRenderer>();
+        }
+
+        meshFilter.sharedMesh = BuildQuadMesh(bounds);
+        spawnedSurfaces.Add(instance);
+
+        // Mirror to left/right so water exists across horizontal wrap seams.
+        if (mapWidthWorld > 0.001f)
+        {
+            var left = Instantiate(instance, transform, false);
+            left.name = $"WaterSurface_Ocean_{regionIndex}_GhostLeft";
+            left.transform.localPosition = new Vector3(-mapWidthWorld, localY, 0f);
+            spawnedSurfaces.Add(left);
+
+            var right = Instantiate(instance, transform, false);
+            right.name = $"WaterSurface_Ocean_{regionIndex}_GhostRight";
+            right.transform.localPosition = new Vector3(mapWidthWorld, localY, 0f);
+            spawnedSurfaces.Add(right);
+        }
     }
+
+    private static Mesh BuildQuadMesh(Bounds bounds)
+    {
+        var mesh = new Mesh
+        {
+            name = "WaterSurfaceRegion"
+        };
+
+        Vector3 min = bounds.min;
+        Vector3 max = bounds.max;
+
+        var vertices = new[]
+        {
+            new Vector3(min.x, 0f, min.z),
+            new Vector3(max.x, 0f, min.z),
+            new Vector3(max.x, 0f, max.z),
+            new Vector3(min.x, 0f, max.z)
+        };
+
+        var uvs = new[]
+        {
+            new Vector2(0f, 0f),
+            new Vector2(1f, 0f),
+            new Vector2(1f, 1f),
+            new Vector2(0f, 1f)
+        };
+
+        var triangles = new[]
+        {
+            0, 2, 1,
+            0, 3, 2
+        };
+
+        mesh.vertices = vertices;
+        mesh.uv = uvs;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
+
+    #endregion
+
+    #region Lake Water Height
 
     /// <summary>
     /// Compute the world-space Y height for a lake's water surface.
@@ -272,8 +583,8 @@ public class WaterSurfaceGenerator : MonoBehaviour
                 if (regionSet.Contains(n)) continue; // skip other lake tiles in this body
 
                 var td = planetGen.GetHexTileData(n);
-                // HexTileData is a struct — check isLand instead of null
-                if (!td.isLand) continue;
+                // HexTileData is a class — null means missing data
+                if (td == null || !td.isLand) continue;
                 // Only consider true land shore tiles (not coast/ocean/seas)
                 if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
 
@@ -285,7 +596,6 @@ public class WaterSurfaceGenerator : MonoBehaviour
         }
 
         // Get the ACTUAL displacement strength from HexMapChunkManager (what the shader uses).
-        // GameManager.terrainDisplacementStrength is a separate value that may not match.
         float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : 0f;
         float dispStrength = GetActualDisplacementStrength();
 
@@ -304,6 +614,7 @@ public class WaterSurfaceGenerator : MonoBehaviour
         foreach (int idx in region)
         {
             var td = planetGen.GetHexTileData(idx);
+            if (td == null) continue;
             sumElev += td.renderElevation;
             count++;
         }
@@ -352,93 +663,5 @@ public class WaterSurfaceGenerator : MonoBehaviour
         return 5f;
     }
 
-    private void CreateWaterSurface(bool isLake, Bounds bounds, float height, float mapWidthWorld, int regionIndex)
-    {
-        var prefab = isLake ? lakeSurfacePrefab : oceanSurfacePrefab;
-        if (prefab == null)
-        {
-            Debug.LogWarning("[WaterSurfaceGenerator] Missing water surface prefab.");
-            return;
-        }
-
-        var instance = Instantiate(prefab.gameObject, transform, false);
-        instance.name = $"WaterSurface_{regionIndex}";
-        // `height` is world-space (PlanetGenerator.SeaLevelWorldY). Convert to this transform's local space
-        // so we don't accidentally treat a world Y as a local Y when the map/planet hierarchy is offset/rotated.
-        float localY = transform.InverseTransformPoint(new Vector3(transform.position.x, height, transform.position.z)).y;
-        instance.transform.localPosition = new Vector3(0f, localY, 0f);
-
-        Debug.Log($"[WaterSurfaceGenerator] Created WaterSurface idx={regionIndex} isLake={isLake} bounds={bounds.size} height={height}");
-
-        var meshFilter = instance.GetComponent<MeshFilter>();
-        if (meshFilter == null)
-        {
-            meshFilter = instance.AddComponent<MeshFilter>();
-        }
-
-        var meshRenderer = instance.GetComponent<MeshRenderer>();
-        if (meshRenderer == null)
-        {
-            meshRenderer = instance.AddComponent<MeshRenderer>();
-        }
-
-        meshFilter.sharedMesh = BuildQuadMesh(bounds);
-        spawnedSurfaces.Add(instance);
-
-        // Mirror to left/right so water exists across horizontal wrap seams.
-        // This matches the chunk manager's world-wrap model (periodic repeat in X by MapWidth).
-        if (mapWidthWorld > 0.001f)
-        {
-            var left = Instantiate(instance, transform, false);
-            left.name = $"WaterSurface_{regionIndex}_GhostLeft";
-            left.transform.localPosition = new Vector3(-mapWidthWorld, localY, 0f);
-            spawnedSurfaces.Add(left);
-
-            var right = Instantiate(instance, transform, false);
-            right.name = $"WaterSurface_{regionIndex}_GhostRight";
-            right.transform.localPosition = new Vector3(mapWidthWorld, localY, 0f);
-            spawnedSurfaces.Add(right);
-        }
-    }
-
-    private static Mesh BuildQuadMesh(Bounds bounds)
-    {
-        var mesh = new Mesh
-        {
-            name = "WaterSurfaceRegion"
-        };
-
-        Vector3 min = bounds.min;
-        Vector3 max = bounds.max;
-
-        var vertices = new[]
-        {
-            new Vector3(min.x, 0f, min.z),
-            new Vector3(max.x, 0f, min.z),
-            new Vector3(max.x, 0f, max.z),
-            new Vector3(min.x, 0f, max.z)
-        };
-
-        var uvs = new[]
-        {
-            new Vector2(0f, 0f),
-            new Vector2(1f, 0f),
-            new Vector2(1f, 1f),
-            new Vector2(0f, 1f)
-        };
-
-        var triangles = new[]
-        {
-            0, 2, 1,
-            0, 3, 2
-        };
-
-        mesh.vertices = vertices;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        return mesh;
-    }
+    #endregion
 }

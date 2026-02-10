@@ -252,6 +252,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public GameObject underwaterRoot;
     [Tooltip("Root GameObject containing atmosphere visuals (clouds, banded gas giant renderer)")]
     public GameObject atmosphereRoot;
+    [Tooltip("Optional root GameObject to parent planet-specific runtime objects such as spawned resources")]
+    public GameObject resourcesRoot;
 
     [Header("Per-layer vertical offsets")]
     [Tooltip("Local Y offset applied to the Surface root when it is enabled (meters). Useful for small visual tweaks).")]
@@ -260,6 +262,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float underwaterYOffset = 0f;
     [Tooltip("Local Y offset applied to the Atmosphere root when it is enabled. Use positive values to expand atmosphere shells.")]
     public float atmosphereYOffset = 0f;
+    [Header("Atmosphere")]
+    [Tooltip("Local scale multiplier applied to the atmosphere root. Use this to control atmosphere radius/thickness.")]
+    public float atmosphereRadius = 1.0f;
     
     [Tooltip("Optional authoritative PlanetConfig ScriptableObject for this planet.")]
     public PlanetConfig planetConfig;
@@ -324,6 +329,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         layerManager.InitializeForPlanet(this, data);
+
+        // Apply atmosphere transform (scale/offset) to reflect the configured radius/offset
+        UpdateAtmosphereTransform();
+    }
+
+    /// <summary>
+    /// Set atmosphere radius (scale multiplier for the atmosphere root).
+    /// Call this at runtime to update the preview/main-menu planet atmosphere size.
+    /// </summary>
+    public void SetAtmosphereRadius(float radius)
+    {
+        atmosphereRadius = Mathf.Max(0.01f, radius);
+        UpdateAtmosphereTransform();
+    }
+
+    private void UpdateAtmosphereTransform()
+    {
+        if (atmosphereRoot == null) return;
+        try
+        {
+            atmosphereRoot.transform.localScale = Vector3.one * atmosphereRadius;
+            var lp = atmosphereRoot.transform.localPosition;
+            lp.y = atmosphereYOffset;
+            atmosphereRoot.transform.localPosition = lp;
+        }
+        catch { }
     }
 
     [Header("Diagnostics")]
@@ -511,10 +542,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int coastSpurRadiusMax = 3;
 
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
-    public int minLandTilesForCoastStamps = 120;
+    public int minLandTilesForCoastStamps = 24;
 
     [Header("Lake/River Render Depth")]
-    [Range(0f, 0.2f)]
+    [Range(0f, 1.55f)]
     [Tooltip("Depth reduction applied to lake render elevation (subtracts from lakeRenderElevation). Similar to how `riverDepth` lowers river tiles.")]
     public float lakeDepth = 0.05f;
 
@@ -655,6 +686,13 @@ public bool isIceWorldMapType = false; // Whether this is an ice world map type
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.ClearProgressBar();
 #endif
+
+    // Ensure there's a dedicated resources root to parent runtime-spawned objects.
+    if (resourcesRoot == null)
+    {
+        resourcesRoot = new GameObject("ResourcesRoot");
+        resourcesRoot.transform.SetParent(this.transform, false);
+    }
     }
     
     public int planetIndex = 0;

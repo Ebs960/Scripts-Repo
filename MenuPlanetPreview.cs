@@ -44,6 +44,8 @@ public class MenuPlanetPreview : MonoBehaviour
     [SerializeField] private Color atmosphereColor = new Color(0.62f, 0.78f, 0.95f, 1f);
     [Tooltip("Power/width of atmosphere rim (higher = tighter rim).")]
     [Range(0.5f,6f)] [SerializeField] private float atmospherePower = 3.5f;
+    [Tooltip("Radius/scale multiplier for the atmosphere rim/shell. 1 = default sphere size, >1 = larger atmosphere.")]
+    [Range(0.9f, 3f)] [SerializeField] private float atmosphereRadius = 1.05f;
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere used for preview. 0..4 (higher increases vertex count).")]
@@ -100,6 +102,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
     private static readonly int ID_AtmosColor    = Shader.PropertyToID("_AtmosphereColor");
     private static readonly int ID_AtmosPower    = Shader.PropertyToID("_AtmospherePower");
+    private static readonly int ID_AtmosRadius   = Shader.PropertyToID("_AtmosphereRadius");
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -197,6 +200,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_DetailStrength, detailStrength);
         materialInstance.SetColor(ID_AtmosColor, atmosphereColor);
         materialInstance.SetFloat(ID_AtmosPower, atmospherePower);
+        materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
     }
 
     // -----------------------------------------------------------------
@@ -267,6 +271,17 @@ public class MenuPlanetPreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Set the radius/scale of the atmosphere rim used by the preview shader.
+    /// This mirrors the value to the material so UI can control atmospheric thickness.
+    /// </summary>
+    public void SetAtmosphereRadius(float radius)
+    {
+        atmosphereRadius = Mathf.Clamp(radius, 0.1f, 10f);
+        if (materialInstance != null)
+            materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
+    }
+
     // -----------------------------------------------------------------
     //  Biome tinting and derived visual parameters
     // -----------------------------------------------------------------
@@ -303,6 +318,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_DetailStrength, detailStrength);
         materialInstance.SetColor(ID_AtmosColor, atmosphereColor);
         materialInstance.SetFloat(ID_AtmosPower, atmospherePower);
+        materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
     }
 
     // Replace the attached preview sphere mesh with a generated icosphere for higher visual quality
@@ -403,12 +419,18 @@ public class MenuPlanetPreview : MonoBehaviour
         // Create a simple quad and place it behind the preview sphere
         backgroundQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
         backgroundQuad.name = "MenuPlanetPreview_SpaceBackground";
-        backgroundQuad.transform.SetParent(previewRenderer.transform, false);
 
-        // Position it behind the sphere along local -Z, scaled to cover view
-        float size = Mathf.Max(previewRenderer.bounds.size.x, previewRenderer.bounds.size.y, previewRenderer.bounds.size.z) * 6f;
-        backgroundQuad.transform.localPosition = Vector3.back * (previewRenderer.bounds.extents.z + 1.5f);
-        backgroundQuad.transform.localRotation = Quaternion.identity;
+        // Detach the quad from the rotating preview so it doesn't inherit the sphere's rotation
+        backgroundQuad.transform.SetParent(this.transform, true);
+
+        // Compute a world-space position slightly behind the preview sphere from the camera's view
+        Vector3 center = previewRenderer.bounds.center;
+        float maxExtent = Mathf.Max(previewRenderer.bounds.size.x, previewRenderer.bounds.size.y, previewRenderer.bounds.size.z);
+        float size = maxExtent * 6f;
+        Vector3 viewDir = Camera.main != null ? (center - Camera.main.transform.position).normalized : previewRenderer.transform.forward;
+        float distance = maxExtent * 0.5f + 1.5f;
+        backgroundQuad.transform.position = center + viewDir * (distance + maxExtent * 0.5f);
+        backgroundQuad.transform.rotation = Quaternion.identity;
         backgroundQuad.transform.localScale = new Vector3(size, size, 1f);
 
         var quadRenderer = backgroundQuad.GetComponent<MeshRenderer>();
@@ -424,7 +446,7 @@ public class MenuPlanetPreview : MonoBehaviour
         // Keep the background quad facing the main camera if it exists
         if (backgroundQuad != null && Camera.main != null)
         {
-            backgroundQuad.transform.rotation = Quaternion.LookRotation(backgroundQuad.transform.position - Camera.main.transform.position);
+            backgroundQuad.transform.rotation = Quaternion.LookRotation(Camera.main.transform.position - backgroundQuad.transform.position);
         }
     }
 
