@@ -354,9 +354,21 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         int w = atlas.Length;
         if (_gpuAtlasTextureCache.TryGetValue(cacheKey, out var existing))
         {
-            if (existing.width == w) return existing;
-            Destroy(existing);
-            _gpuAtlasTextureCache.Remove(cacheKey);
+            // Guard against destroyed Unity objects surviving in the static cache
+            // (e.g. after scene reload — the C# reference persists but the native object is gone)
+            if (existing == null)
+            {
+                _gpuAtlasTextureCache.Remove(cacheKey);
+            }
+            else if (existing.width == w)
+            {
+                return existing;
+            }
+            else
+            {
+                Destroy(existing);
+                _gpuAtlasTextureCache.Remove(cacheKey);
+            }
         }
         var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false)
         {
@@ -443,6 +455,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     void Awake()
     {
+        // Flush all static caches on scene load. These survive scene transitions because
+        // they are static, but the Unity objects they reference (Texture2D, RenderTexture,
+        // ComputeBuffer) get destroyed when the scene unloads. Accessing a destroyed
+        // native object via a stale C# reference causes MissingReferenceException and
+        // kills the generation coroutine, freezing the game.
+        ClearAllStaticCaches();
+
         // Minimap color mode is centralized in MinimapColorProvider.
         // BiomeColorHelper is now a pure default palette helper (no provider lookup / no global mode).
         BiomeColorHelper.ClearCache();
@@ -697,27 +716,20 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         }
 
 
-        // PERFORMANCE: Unified generation loop with reduced yields
-        for (int planetIndex = 0; planetIndex < totalPlanets; planetIndex++)
+        // Only generate the minimap for the CURRENT planet to save memory.
+        // Other planets' minimaps are generated on-demand when the player switches to them.
+        // Previously this loop ran for ALL planets (up to 13), consuming ~78MB+ of LUTs,
+        // atlases, GPU buffers, and textures — causing out-of-memory on smaller systems.
+        int currentIdx = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
+        if (currentIdx < totalPlanets)
         {
-            string planetName = GetPlanetName(planetIndex);
-
-            // Planet
-            yield return StartCoroutine(GenerateBodyMinimapCoroutine(planetIndex, false, minimapResolution));
-
-            // Update progress (batched - only update every few planets to reduce UI overhead)
-            if (_loadingPanel != null && (planetIndex % 2 == 0 || planetIndex == totalPlanets - 1))
+            string planetName = GetPlanetName(currentIdx);
+            if (_loadingPanel != null)
             {
-                float progress = 0.8f + (0.1f * (float)(planetIndex + 1) / totalPlanets);
-                _loadingPanel.SetProgress(progress);
-                _loadingPanel.SetStatus($"Generated minimap for {planetName}...");
+                _loadingPanel.SetProgress(0.9f);
+                _loadingPanel.SetStatus($"Generating minimap for {planetName}...");
             }
-
-            // PERFORMANCE: Reduced yields - only yield every other planet for better throughput
-            if (planetIndex % 2 == 1)
-            {
-                yield return null;
-            }
+            yield return StartCoroutine(GenerateBodyMinimapCoroutine(currentIdx, false, minimapResolution));
         }
         
         _minimapsPreGenerated = true;
@@ -733,7 +745,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         BuildLayerDropdown();
         // Show the current planet's minimap
-        int currentIdx = _gameManager != null ? _gameManager.currentPlanetIndex : 0;
         ShowMinimapForPlanet(currentIdx);
     }
 
@@ -882,6 +893,50 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             if (kv.Value != null) Destroy(kv.Value);
         }
         _gpuAtlasTextureCache.Clear();
+    }
+
+    /// <summary>
+    /// Flush every static cache unconditionally. Called in Awake() so that stale
+    /// references from a previous scene/game session can never survive into a new one.
+    /// Unlike ClearMinimapCache, this also wipes LUT and tile-data caches.
+    /// </summary>
+    private void ClearAllStaticCaches()
+    {
+        // Safely destroy any surviving Unity objects before clearing
+        foreach (var kv in _gpuAtlasTextureCache)
+        {
+            if (kv.Value != null) Destroy(kv.Value);
+        }
+        _gpuAtlasTextureCache.Clear();
+
+        foreach (var kv in _gpuResultCache)
+        {
+            if (kv.Value != null)
+            {
+                kv.Value.Release();
+                Destroy(kv.Value);
+            }
+        }
+        _gpuResultCache.Clear();
+
+        foreach (var kv in _lutComputeBufferCache)
+        {
+            try { kv.Value?.Release(); kv.Value?.Dispose(); } catch { /* already disposed */ }
+        }
+        _lutComputeBufferCache.Clear();
+
+        foreach (var tex in _minimapTextures.Values)
+        {
+            if (tex == null) continue;
+            if (tex is RenderTexture rt) { rt.Release(); Destroy(rt); }
+            else Destroy(tex);
+        }
+        _minimapTextures.Clear();
+
+        _tileAtlasCache.Clear();
+        _bodyIndexLUT.Clear();
+        _cachedTileDataArrays.Clear();
+        _minimapsPreGenerated = false;
     }
 
     // ...existing code...

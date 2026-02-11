@@ -157,12 +157,11 @@ public class MainMenuManager : MonoBehaviour
     
     // Land mass preset values - revised for proper continent/island distinction
     private readonly LandPresetData[] landPresets = new[] {
-        new LandPresetData { name = "Archipelago", continents = 0, islands = 25, description = "Many small scattered islands" },
-        new LandPresetData { name = "Islands", continents = 2, islands = 15, description = "A few large islands with smaller ones" },
-        new LandPresetData { name = "Standard", continents = 4, islands = 9, description = "Balanced continents and islands" },
-        new LandPresetData { name = "Large Continents", continents = 6, islands = 5, description = "Multiple large continents" },
-        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, description = "One massive supercontinent" }
-        // Pangaea should produce a single massive landmass - ensure continents=1, islands=0
+        new LandPresetData { name = "Archipelago", continents = 0, islands = 25, continentSizeMultiplier = 1.0f, description = "Many small scattered islands" },
+        new LandPresetData { name = "Islands", continents = 2, islands = 15, continentSizeMultiplier = 1.0f, description = "A few large islands with smaller ones" },
+        new LandPresetData { name = "Standard", continents = 5, islands = 9, continentSizeMultiplier = 1.2f, description = "Balanced continents and islands" },
+        new LandPresetData { name = "Large Continents", continents = 7, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
+        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, continentSizeMultiplier = 3.5f, description = "One massive supercontinent" }
     };
 
     // Moisture preset values
@@ -195,6 +194,7 @@ public class MainMenuManager : MonoBehaviour
         public string name;
         public int continents;
         public int islands;
+        public float continentSizeMultiplier; // 1.0 = default sizes, >1 = larger continents
         public string description;
     }
 
@@ -946,6 +946,7 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.numberOfContinents = landPreset.continents;
         GameSetupData.numberOfIslands = landPreset.islands;
         GameSetupData.generateIslands = landPreset.islands > 0;
+        GameSetupData.continentSizeMultiplier = landPreset.continentSizeMultiplier;
 
         // Initialize game music with selected civilization
         if (MusicManager.Instance != null && selectedCivilization != null)

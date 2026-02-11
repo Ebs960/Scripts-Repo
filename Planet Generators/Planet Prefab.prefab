@@ -180,7 +180,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debugOwnershipGuard: 0
-  debugOwnershipGuardVerbose: 0
+  debugOwnershipGuardVerbose: 1
   gasGiantRenderer: {fileID: -5893155586537961453}
   terrainRenderer: {fileID: 0}
   surfaceRoot: {fileID: 1048475128305947683}
@@ -210,33 +210,35 @@ MonoBehaviour:
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
   seedPositionVariance: 0.471
-  mountainElevationBoost: 1.9
-  elevationFreq: 0.65
-  moistureFreq: 0.2
+  elevationExponent: 2
+  ridgeStrength: 0.5
+  hillNoiseCutoff: 0.5
+  mountainNoiseCutoff: 0.7
+  elevationFreq: 0.5
+  moistureFreq: 0.1
   moistureBias: 0
   temperatureBias: 0
-  latitudeInfluence: 0.355
-  latitudeExponent: 1.445
-  temperatureNoiseFrequency: 0.09
+  latitudeInfluence: 1
+  latitudeExponent: 1
+  temperatureNoiseFrequency: 0.1
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.15
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 2
   climateSmoothingStrength: 0.204
-  mountainThreshold: 12.69
-  hillThreshold: 9.15
-  baseLandElevation: 2.58
+  coastalMoistureBoost: 0.15
+  coastalMoistureRange: 8
+  mountainThreshold: 14
+  hillThreshold: 11.77
+  baseLandElevation: 5.5
   oceanElevation: 0
-  seasElevation: 1
-  coastElevation: 1.65
-  hillElevationBoost: 1.15
-  maxTotalElevation: 10
-  billowHillWeight: 0.113
-  ridgedMountainWeight: 0.224
+  seasElevation: 3
+  coastElevation: 3.9
+  maxTotalElevation: 15
   enableRivers: 0
   minRiversPerContinent: 3
   maxRiversPerContinent: 5
-  riverDepth: 1.2
+  riverDepth: 3
   enableLakes: 1
   numberOfLakes: 8
   lakeMinRadiusTiles: 12
@@ -249,7 +251,7 @@ MonoBehaviour:
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 3
   minLandTilesForCoastStamps: 120
-  lakeDepth: 1.2
+  lakeDepth: 2.92
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 1.55
   numberOfIslands: 8
@@ -416,24 +418,9 @@ MonoBehaviour:
       randomRotation: 1
     enableDecorations: 1
     globalScaleMultiplier: 1
+  planetType: 0
+  mapType: 0
   currentMapTypeName: 
-  isRainforestMapType: 0
-  isScorchedMapType: 0
-  isInfernalMapType: 0
-  isDemonicMapType: 0
-  isIceWorldMapType: 0
-  isMarsWorldType: 0
-  isVenusWorldType: 0
-  isMercuryWorldType: 0
-  isJupiterWorldType: 0
-  isSaturnWorldType: 0
-  isUranusWorldType: 0
-  isNeptuneWorldType: 0
-  isPlutoWorldType: 0
-  isTitanWorldType: 0
-  isEuropaWorldType: 0
-  isIoWorldType: 0
-  isLunaWorldType: 0
   allowOceans: 1
   allowIslands: 1
   landTilesGenerated: 0

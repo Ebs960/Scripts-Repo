@@ -95,6 +95,7 @@ public static class GameSetupData
     public static int continentMaxHeightTiles;
     public static int continentMinDistanceTiles;
     public static float continentConnectionChance = 0.1f;
+    public static float continentSizeMultiplier = 1.0f; // Applied to continent width/height from land preset
 
     // Stamp-based island sizing (radius in tiles)
     public static int islandMinRadiusTiles;
@@ -192,6 +193,7 @@ public static class GameSetupData
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
         continentMinDistanceTiles = 3;
         continentConnectionChance = 0.1f;
+        continentSizeMultiplier = 1.0f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
         islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);

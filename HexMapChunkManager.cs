@@ -135,6 +135,7 @@ public class HexMapChunkManager : MonoBehaviour
     
     // Event subscriptions
     private PlanetGenerator _surfaceEventSource;
+    private bool _subscribedToPlanetReady;
     
     // Public accessors (API compatible with FlatMapTextureRenderer)
     public HexGrid Grid => grid;
@@ -168,14 +169,19 @@ public class HexMapChunkManager : MonoBehaviour
     
     private void OnEnable()
     {
+        _subscribedToPlanetReady = false;
         if (preBuildOnPlanetReady && GameManager.Instance != null)
+        {
             GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+            _subscribedToPlanetReady = true;
+        }
         
         ClimateManager.OnPlanetSeasonChanged += HandlePlanetSeasonChanged;
     }
     
     private void OnDisable()
     {
+        _subscribedToPlanetReady = false;
         if (GameManager.Instance != null)
             GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
         
@@ -196,8 +202,9 @@ public class HexMapChunkManager : MonoBehaviour
             if (cam != null) cameraTransform = cam.transform;
         }
         
-        // If GameManager wasn't available during OnEnable, try subscribing now
-        if (preBuildOnPlanetReady && GameManager.Instance != null)
+        // If GameManager wasn't available during OnEnable, try subscribing now.
+        // Guard: only subscribe if OnEnable didn't already (avoids double-fire of BuildChunks).
+        if (preBuildOnPlanetReady && GameManager.Instance != null && !_subscribedToPlanetReady)
             GameManager.Instance.OnPlanetReady += HandlePlanetReady;
 
         _lastTransformPos = transform.position;

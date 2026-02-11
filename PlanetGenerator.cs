@@ -413,9 +413,21 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f, 0.8f)]
     public float seedPositionVariance = 0.1f; // Controls randomness in seed placement
     
-    [Range(0f, 5f)]
-    [Tooltip("Additional elevation boost for mountain tiles (added to their base elevation). Similar to `hillElevationBoost`.")]
-    public float mountainElevationBoost = 0.25f;
+    [Range(0.5f, 4f)]
+    [Tooltip("Power curve exponent for elevation distribution. Higher = mostly flat with rare peaks. Lower = more uniform elevation. 1.8 is a balanced default.")]
+    public float elevationExponent = 1.8f;
+    
+    [Range(0f, 1f)]
+    [Tooltip("Ridged noise strength for mountains. Blends sharp ridgeline character into high-elevation tiles. 0 = smooth hills everywhere, 0.4 = dramatic mountain ridges.")]
+    public float ridgeStrength = 0.35f;
+
+    [Header("Tier-Based Elevation")]
+    [Range(0f, 1f)]
+    [Tooltip("Normalized noise value (0-1) above which a land tile becomes a Hill. Lower = more hills.")]
+    public float hillNoiseCutoff = 0.5f;
+    [Range(0f, 1f)]
+    [Tooltip("Normalized noise value (0-1) above which a land tile becomes a Mountain. Lower = more mountains.")]
+    public float mountainNoiseCutoff = 0.7f;
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
     public float elevationFreq = 2f, moistureFreq = 4f;
@@ -457,23 +469,43 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0f,1f)]
     [SerializeField] public float climateSmoothingStrength = 0.45f;
 
-    // --- Elevation Features ---
+    [Header("Coastal Moisture")]
+    [Tooltip("Maximum moisture boost applied to tiles near the coast. Falls off linearly with distance from ocean.")]
+    [Range(0f, 0.4f)]
+    public float coastalMoistureBoost = 0.15f;
+    [Tooltip("How many tiles inland the coastal moisture boost reaches.")]
+    [Range(1, 20)]
+    public int coastalMoistureRange = 8;
+
+    // --- Elevation Tier Ranges ---
     // All elevation values are in WORLD-SPACE UNITS (height offset from the flat plane).
-    // A tile with elevation 3.5 means its terrain surface is 3.5 world units above flatY.
-    // Negative values are allowed (craters, deep ocean trenches).
-    [Header("Elevation Features")]
+    // The tier system assigns elevation based on classification:
+    //   Flat tiles  = flatElevationMin .. flatElevationMax (interpolated)
+    //   Hill tiles  = hillElevationMin .. hillElevationMax (interpolated)
+    //   Mountain tiles = mountainElevationMin .. mountainElevationMax (interpolated)
+    [Header("Tier Elevation Ranges")]
+    [Range(0f, 15f)]
+    [Tooltip("Lowest flat land elevation (world units). The lowest flat tiles sit here.")]
+    public float flatElevationMin = 5.0f;
+    [Range(0f, 15f)]
+    [Tooltip("Highest flat land elevation (world units). The highest flat tiles reach here.")]
+    public float flatElevationMax = 6.5f;
+
     [Range(0f, 20f)]
-    [Tooltip("Elevation (world units) above which tiles become mountains.")]
-    public float mountainThreshold = 5.0f;
+    [Tooltip("Lowest hill elevation (world units). The shortest hill starts here.")]
+    public float hillElevationMin = 7.0f;
     [Range(0f, 20f)]
-    [Tooltip("Elevation (world units) above which tiles become hills (if not already mountains).")]
-    public float hillThreshold = 3.5f;
-    
-    [Header("Elevation Range Settings")]
-    [Range(-5f, 10f)]
-    [Tooltip("Minimum land elevation in world units. Lowest land tiles sit at this height above the flat plane.")]
-    public float baseLandElevation = 0.5f;
-    
+    [Tooltip("Highest hill elevation (world units). The tallest hill reaches here.")]
+    public float hillElevationMax = 10.0f;
+
+    [Range(0f, 25f)]
+    [Tooltip("Lowest mountain elevation (world units). The shortest mountain starts here.")]
+    public float mountainElevationMin = 10.0f;
+    [Range(0f, 30f)]
+    [Tooltip("Highest mountain elevation (world units). The tallest peak reaches here.")]
+    public float mountainElevationMax = 15.0f;
+
+    [Header("Water Elevation")]
     [Range(-5f, 5f)]
     [Tooltip("Ocean floor elevation in world units (typically 0 = flat plane level).")]
     public float oceanElevation = 0f;
@@ -483,23 +515,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(-5f, 5f)]
     [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
     public float coastElevation = 0.3f;
-    
-    [Range(0f, 10f)]
-    [Tooltip("Additional elevation boost for hill tiles in world units (added to their base elevation).")]
-    public float hillElevationBoost = 0.4f;
-    
-    [Range(0f, 30f)]
-    [Tooltip("Maximum elevation any tile can reach in world units. This is the height of the tallest possible mountain peak.")]
-    public float maxTotalElevation = 6.0f;
-    
-    [Header("Experimental / Advanced")]
-    [Range(0f, 2f)]
-    [Tooltip("Billow noise weight for rolling hills. Higher = more rounded terrain.")]
-    public float billowHillWeight = 0.2f;
-    
-    [Range(0f, 2f)]
-    [Tooltip("Ridged noise weight for mountain spines. Higher = sharper peaks.")]
-    public float ridgedMountainWeight = 0.35f;
     
     // --- River Generation (Placeholder) ---
     [Header("River Generation")]
@@ -839,11 +854,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Configure noise sampler for this map's dimensions
         float mapWidth = grid.Width;
         float mapHeight = grid.Height;
-        noise.ConfigureForMapSize(mapWidth, mapHeight);
-        // Calculate noise frequencies for elevation
-        float elevBroadFreq = 1f / (mapWidth * 0.5f);
-        float elevRidgedFreq = 1f / (mapWidth * 0.3f);
-        float elevBillowFreq = 1f / (mapWidth * 0.4f);
+        // Single elevation frequency — scales with map width for consistent terrain scale
+        float elevFreqPeriodic = 1f / (mapWidth * 0.45f);
 
         // DIAGNOSTICS: report key settings and grid stats
         if (enableDiagnostics)
@@ -1240,22 +1252,80 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
         // (Stamping debug logs removed)
+        // Shape raw 0-1 noise with power curve + optional ridged character.
+        // Returns a shaped 0-1 value (NOT yet an elevation — tier assignment happens later).
+        float ShapeNoise(float rawNoise)
+        {
+            float shaped = Mathf.Pow(rawNoise, elevationExponent);
+            if (ridgeStrength > 0.001f)
+            {
+                // Ridged transform: creates sharp V-shaped ridgelines from smooth noise
+                float ridged = 2f * (0.5f - Mathf.Abs(0.5f - rawNoise));
+                ridged = Mathf.Pow(ridged, elevationExponent);
+                // Blend ridged character only into higher elevations (mountains get sharp, lowlands stay smooth)
+                float heightBlend = Mathf.Clamp01(shaped * 2f - 0.5f);
+                shaped = Mathf.Lerp(shaped, ridged, ridgeStrength * heightBlend);
+            }
+            return shaped;
+        }
+
+        // ---------- PRE-PASS: Compute shaped noise for every tile, then normalize ----------
+        // This guarantees the full 0-1 range is used regardless of FBm output limits,
+        // so hillNoiseCutoff / mountainNoiseCutoff work as intended.
+        float[] shapedNoisePerTile = new float[tileCount];
+        float noiseMin = float.MaxValue;
+        float noiseMax = float.MinValue;
+
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!isLandTile[i] && !isLakeTile[i]) continue; // ocean tiles stay 0
+            Vector2Int coord = tileCoords[i];
+            Vector2 tilePos = new Vector2(coord.x, coord.y);
+            float rawNoise = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, elevFreqPeriodic);
+            float shaped = ShapeNoise(rawNoise);
+            shapedNoisePerTile[i] = shaped;
+            if (shaped < noiseMin) noiseMin = shaped;
+            if (shaped > noiseMax) noiseMax = shaped;
+        }
+
+        // Normalize all land/lake noise to 0-1 so cutoffs are reliable
+        float noiseSpan = noiseMax - noiseMin;
+        if (noiseSpan < 0.001f) noiseSpan = 1f; // safety: avoid division by zero
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!isLandTile[i] && !isLakeTile[i]) continue;
+            shapedNoisePerTile[i] = (shapedNoisePerTile[i] - noiseMin) / noiseSpan;
+        }
+
+        Debug.Log($"[PlanetGenerator] Noise pre-pass: raw shaped range [{noiseMin:F4}..{noiseMax:F4}], normalized to [0..1]");
+
+        // Convert a normalized 0-1 noise value into a world-space elevation using
+        // the discrete tier system: Flat / Hill / Mountain.
+        float TierElevation(float normalizedNoise)
+        {
+            if (normalizedNoise >= mountainNoiseCutoff)
+            {
+                // Mountain tier: interpolate mountainElevationMin .. mountainElevationMax
+                float denom = 1f - mountainNoiseCutoff;
+                float t = denom > 0.001f ? (normalizedNoise - mountainNoiseCutoff) / denom : 0f;
+                return Mathf.Lerp(mountainElevationMin, mountainElevationMax, t);
+            }
+            if (normalizedNoise >= hillNoiseCutoff)
+            {
+                // Hill tier: interpolate hillElevationMin .. hillElevationMax
+                float hillDenom = mountainNoiseCutoff - hillNoiseCutoff;
+                float hillT = hillDenom > 0.001f ? (normalizedNoise - hillNoiseCutoff) / hillDenom : 0f;
+                return Mathf.Lerp(hillElevationMin, hillElevationMax, hillT);
+            }
+            // Flat tier: interpolate flatElevationMin .. flatElevationMax
+            float flatDenom = hillNoiseCutoff;
+            float flatT = flatDenom > 0.001f ? normalizedNoise / flatDenom : 0f;
+            return Mathf.Lerp(flatElevationMin, flatElevationMax, flatT);
+        }
+
         float ComputeLandElevationForIndex(int index)
         {
-            Vector2Int coord = tileCoords[index];
-            Vector2 tilePos = new Vector2(coord.x, coord.y);
-            Vector3 noisePoint = new Vector3(coord.x, 0f, coord.y) + noiseOffset;
-            float noiseElevation;
-            if (billowHillWeight > 0.01f) {
-                noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
-                    elevBroadFreq, elevRidgedFreq, elevBillowFreq,
-                    ridgedMountainWeight, billowHillWeight);
-            } else {
-                noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight,
-                    elevBroadFreq, elevRidgedFreq, ridgedMountainWeight);
-            }
-            float elevationRange = maxTotalElevation - baseLandElevation;
-            return baseLandElevation + (noiseElevation * elevationRange);
+            return TierElevation(shapedNoisePerTile[index]);
         }
 
         for (int lakeId = 0; lakeId < lakeCenters.Count; lakeId++)
@@ -1363,18 +1433,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             Vector2 tilePos = new Vector2(coord.x, coord.y);
             Vector3 noisePoint = new Vector3(coord.x, 0f, coord.y) + noiseOffset;
 
-            float noiseElevation;
-            if (billowHillWeight > 0.01f)
-            {
-                noiseElevation = noise.GetAdvancedElevationPeriodic(tilePos, mapWidth, mapHeight,
-                    elevBroadFreq, elevRidgedFreq, elevBillowFreq,
-                    ridgedMountainWeight, billowHillWeight);
-            }
-            else
-            {
-                noiseElevation = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight,
-                    elevBroadFreq, elevRidgedFreq, ridgedMountainWeight);
-            }
+            // Normalized shaped noise was pre-computed above; retrieve it for tier elevation.
+            float normalizedNoise = shapedNoisePerTile[i];
 
             // Sample climate
             float moisture;
@@ -1405,29 +1465,26 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             float temperature = noiseTemp + latEffect + temperatureBias;
             temperature = Mathf.Clamp01(temperature);
 
-            // Compute final elevation for this tile now (independent of biome assignment)
+            // Compute final elevation using discrete tier system
             float finalElevation;
             if (isLakeTile[i])
             {
-                // Lakes are depressions in the surrounding terrain — use the same
-                // noise-based elevation that land would have at this location, then
-                // subtract lakeDepth so the lake bed sits below the terrain surface.
-                // (Previously used a fixed lakeElevation, making ALL lakes identical height.)
-                float elevationRange = maxTotalElevation - baseLandElevation;
-                finalElevation = baseLandElevation + (noiseElevation * elevationRange) - lakeDepth;
+                // Lakes: compute what the land elevation WOULD be, then subtract lakeDepth
+                // so the lake bed sits below the surrounding terrain surface.
+                float landElev = TierElevation(normalizedNoise);
+                finalElevation = landElev - lakeDepth;
                 finalElevation = Mathf.Max(0f, finalElevation); // Don't go negative
             }
             else if (isLand)
             {
-                float elevationRange = maxTotalElevation - baseLandElevation;
-                finalElevation = baseLandElevation + (noiseElevation * elevationRange);
+                finalElevation = TierElevation(normalizedNoise);
             }
             else
             {
                 finalElevation = 0f;
             }
 
-            finalElevation = Mathf.Min(finalElevation, maxTotalElevation);
+            finalElevation = Mathf.Min(finalElevation, mountainElevationMax);
 
             sampledTemp[i] = temperature;
             sampledMoist[i] = moisture;
@@ -1485,6 +1542,51 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             yield return null;
         }
 
+        // --- Coastal moisture boost: BFS from ocean tiles, boost moisture near coasts ---
+        if (coastalMoistureBoost > 0.001f && coastalMoistureRange > 0)
+        {
+            int[] distFromCoast = new int[tileCount];
+            for (int i = 0; i < tileCount; i++) distFromCoast[i] = int.MaxValue;
+
+            var coastQueue = new Queue<int>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] && !isLakeTile[i]) // Ocean/seas tiles
+                {
+                    distFromCoast[i] = 0;
+                    coastQueue.Enqueue(i);
+                }
+            }
+
+            // BFS flood fill from all ocean tiles simultaneously
+            while (coastQueue.Count > 0)
+            {
+                int cur = coastQueue.Dequeue();
+                int nextDist = distFromCoast[cur] + 1;
+                if (nextDist > coastalMoistureRange) continue;
+                foreach (int n in grid.neighbors[cur])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (distFromCoast[n] <= nextDist) continue; // Already closer
+                    distFromCoast[n] = nextDist;
+                    coastQueue.Enqueue(n);
+                }
+            }
+
+            // Apply moisture boost — linear falloff from coast
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (distFromCoast[i] > 0 && distFromCoast[i] <= coastalMoistureRange)
+                {
+                    float t = 1f - (float)distFromCoast[i] / coastalMoistureRange;
+                    sampledMoist[i] = Mathf.Clamp01(sampledMoist[i] + coastalMoistureBoost * t);
+                }
+            }
+
+            if (enableDiagnostics)
+                Debug.Log($"[PlanetGenerator] Coastal moisture boost applied: boost={coastalMoistureBoost} range={coastalMoistureRange} tiles");
+        }
+
         // Second pass: assign biomes and build HexTileData using smoothed climate
         for (int i = 0; i < tileCount; i++)
         {
@@ -1507,29 +1609,21 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             {
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                if (finalElevation > mountainThreshold)
+                if (finalElevation >= mountainElevationMin)
                 {
                     if (biome != Biome.Glacier && biome != Biome.Arctic)
                     {
-                        // Mark tile as mountain (no enum member exists anymore)
                         isMountain = true;
-                        // Apply mountain boost so mountains sit noticeably above surrounding land
-                        finalElevation += mountainElevationBoost;
                     }
                 }
-                else if (finalElevation > hillThreshold)
+                else if (finalElevation >= hillElevationMin)
                 {
-                    // Prevent water/coast tiles from being hills. Only allow hills on true land biomes.
                     bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.River);
                     if (!biomeIsWater)
                     {
                         isHill = true;
-                        finalElevation += hillElevationBoost;
                     }
                 }
-
-                // Ensure elevation stays within configured maximum after applying boosts
-                finalElevation = Mathf.Min(finalElevation, maxTotalElevation);
                 // Track land elevation range for later normalization
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
@@ -1542,8 +1636,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             if (biome == Biome.Glacier)
             {
-                float elevationRange = maxTotalElevation - baseLandElevation;
-                finalElevation = baseLandElevation + (noise.GetElevationPeriodic(new Vector2(coord.x, coord.y), mapWidth, mapHeight, elevBroadFreq, elevRidgedFreq, ridgedMountainWeight) * elevationRange);
+                // Glaciers use the same tier-based elevation as land
+                finalElevation = TierElevation(shapedNoisePerTile[i]);
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
                 if (!landTileIndices.Contains(i)) landTileIndices.Add(i);
@@ -1559,8 +1653,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             var y = BiomeHelper.Yields(biome);
             int moveCost = BiomeHelper.GetMovementCost(biome);
             ElevationTier elevTier = ElevationTier.Flat;
-            if (finalElevation > mountainThreshold) elevTier = ElevationTier.Mountain;
-            else if (finalElevation > hillThreshold) elevTier = ElevationTier.Hill;
+            if (finalElevation >= mountainElevationMin) elevTier = ElevationTier.Mountain;
+            else if (finalElevation >= hillElevationMin) elevTier = ElevationTier.Hill;
 
             #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
             var td = new HexTileData
@@ -1660,11 +1754,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     hasWaterNeighbor = true; break;
                 }
             }
-            // Convert land tile to Coast if adjacent to Ocean/Seas (but NEVER Snow or mountain-flagged tiles)
-            if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i) && !data[i].isMountain) {
+            // Convert land tile to Coast if adjacent to Ocean/Seas (but NEVER Arctic/Glacier)
+            // Mountains and hills adjacent to water are demoted — coastline always forms.
+            if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i)) {
                 var td = data[i];
                 td.biome = Biome.Coast;
-                td.isLand = true; // Coast is technically land
+                td.isLand = true;
+                td.isHill = false;
+                td.isMountain = false;
+                td.elevationTier = ElevationTier.Flat;
                 data[i] = td;
                 baseData[i] = td;
             }
@@ -1698,42 +1796,50 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        // Convert Ocean tiles near Coast tiles into Seas
-        for (int i = 0; i < tileCount; i++) {
-            if (!data.ContainsKey(i)) continue;
-
-            // BIOME PROTECTION: Never modify Snow or Glacier
-            if (postProcessProtectedTiles.Contains(i)) continue;
-
-            Biome currentBiome = data[i].biome;
-
-            if (currentBiome == Biome.Ocean) { // Only process Ocean tiles
-                bool nearCoast = false;
-                foreach (int nIdx in grid.neighbors[i]) {
-                    if (coastTiles.Contains(nIdx)) {
-                        nearCoast = true;
-                        break;
-                    }
-                }
-
-                if (nearCoast) {
-                    var td = data[i];
-                    td.biome = Biome.Seas;
-                    data[i] = td;
-                    baseData[i] = td;
-                }
-            }
-
-            // BATCH YIELD
-            if (i > 0 && i % 500 == 0)
+        // Convert Ocean tiles near Coast into Seas — 3 rings deep.
+        // Pass 1: Ocean adjacent to Coast → Seas
+        // Pass 2-3: Ocean adjacent to existing Seas → Seas (extends 2 more tiles out)
+        HashSet<int> seasTiles = new HashSet<int>();
+        int seasRings = 3;
+        for (int ring = 0; ring < seasRings; ring++)
+        {
+            List<int> newSeas = new List<int>();
+            for (int i = 0; i < tileCount; i++)
             {
-                if (loadingPanelController != null)
+                if (!data.ContainsKey(i)) continue;
+                if (postProcessProtectedTiles.Contains(i)) continue;
+                if (data[i].biome != Biome.Ocean) continue;
+
+                bool nearShallow = false;
+                foreach (int nIdx in grid.neighbors[i])
                 {
-                    loadingPanelController.SetProgress(0.65f + (float)i / tileCount * 0.05f); // Progress 65% to 70%
-                    loadingPanelController.SetStatus("Defining shallow seas...");
+                    // First ring: adjacent to coast. Subsequent rings: adjacent to seas.
+                    if (ring == 0 && coastTiles.Contains(nIdx)) { nearShallow = true; break; }
+                    if (ring > 0 && seasTiles.Contains(nIdx)) { nearShallow = true; break; }
                 }
-                yield return null;
+
+                if (nearShallow)
+                {
+                    newSeas.Add(i);
+                }
             }
+
+            foreach (int idx in newSeas)
+            {
+                var td = data[idx];
+                td.biome = Biome.Seas;
+                data[idx] = td;
+                baseData[idx] = td;
+                seasTiles.Add(idx);
+            }
+
+            // Yield between rings
+            if (loadingPanelController != null)
+            {
+                loadingPanelController.SetProgress(0.65f + (float)(ring + 1) / seasRings * 0.05f);
+                loadingPanelController.SetStatus($"Defining shallow seas (ring {ring + 1}/{seasRings})...");
+            }
+            yield return null;
         }
 
         // ---------- 6.1 Set Fixed Coast Elevation (AFTER Coasts/Seas are determined) ----------
@@ -1764,6 +1870,60 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
+        // ---------- 6.2 Flatten land tiles within 2 tiles of coastal water ----------
+        // BFS from ocean/seas/coast tiles outward into land (NOT lakes or rivers).
+        // Any land tile within 2 hops of coastal water gets flattened to flatElevationMin.
+        // This creates a natural shoreline buffer — no hills or mountains right at the waterline.
+        {
+            int flattenRadius = 2;
+            int[] waterDist = new int[tileCount];
+            for (int i = 0; i < tileCount; i++) waterDist[i] = -1;
+
+            var bfsQueue = new Queue<int>();
+            // Seed BFS from ocean/seas/coast tiles only (exclude lakes and rivers)
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!data.ContainsKey(i)) continue;
+                Biome b = data[i].biome;
+                if (b == Biome.Ocean || b == Biome.Seas || b == Biome.Coast)
+                {
+                    waterDist[i] = 0;
+                    bfsQueue.Enqueue(i);
+                }
+            }
+
+            while (bfsQueue.Count > 0)
+            {
+                int cur = bfsQueue.Dequeue();
+                int nextDist = waterDist[cur] + 1;
+                if (nextDist > flattenRadius) continue;
+                foreach (int n in grid.neighbors[cur])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (waterDist[n] >= 0) continue; // already visited
+                    waterDist[n] = nextDist;
+                    bfsQueue.Enqueue(n);
+                }
+            }
+
+            // Flatten any land tile within the radius
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (waterDist[i] <= 0 || waterDist[i] > flattenRadius) continue;
+                if (!data.ContainsKey(i)) continue;
+                var td = data[i];
+                if (!td.isLand || td.isLake || td.isRiver) continue;
+                if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
+
+                td.elevation = flatElevationMin;
+                td.elevationTier = ElevationTier.Flat;
+                td.isHill = false;
+                td.isMountain = false;
+                data[i] = td;
+                baseData[i] = td;
+            }
+        }
+
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
@@ -1772,7 +1932,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // No normalization needed. The elevation field on each tile IS the world-space
         // height offset from the flat plane. The heightmap texture stores these values
         // directly (RHalf supports the full float range including negatives).
-        Debug.Log($"[PlanetGenerator] Elevation is world-space. ocean={oceanElevation:F2}, seas={seasElevation:F2}, coast={coastElevation:F2}, land={baseLandElevation:F2}-{maxTotalElevation:F2}");
+        Debug.Log($"[PlanetGenerator] Elevation is world-space. ocean={oceanElevation:F2}, seas={seasElevation:F2}, coast={coastElevation:F2}, flat={flatElevationMin:F2}-{flatElevationMax:F2}, hills={hillElevationMin:F2}-{hillElevationMax:F2}, mountains={mountainElevationMin:F2}-{mountainElevationMax:F2}");
 
         // Set authoritative sea level world Y for this planet.
         // With world-space elevation, sea level is simply flatY + coastElevation.
@@ -2416,6 +2576,95 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         else mapType = MapType.Standard;
     }
 
+    /// <summary>
+    /// Apply a terrain preset to configure elevation parameters.
+    /// Preset indices match the MainMenuManager dropdown:
+    ///   0=Flat, 1=Smooth, 2=Standard, 3=Mountainous, 4=Alpine
+    /// </summary>
+    public void ApplyTerrainPreset(int presetIndex)
+    {
+        // Tier system: noise cutoffs control what % of land tiles become hills/mountains.
+        // Elevation ranges: Flat=flatElevationMin..Max, Hills=hillElevationMin..Max,
+        // Mountains=mountainElevationMin..Max.
+        // elevationExponent further shapes the noise distribution (higher = more flat).
+        switch (presetIndex)
+        {
+            case 0: // Flat — vast plains, very rare hills, almost no mountains
+                elevationExponent = 1.8f;
+                hillNoiseCutoff = 0.75f;
+                mountainNoiseCutoff = 0.95f;
+                flatElevationMin = 5.0f;
+                flatElevationMax = 5.3f;
+                hillElevationMin = 7.0f;
+                hillElevationMax = 8.0f;
+                mountainElevationMin = 9.5f;
+                mountainElevationMax = 10.0f;
+                ridgeStrength = 0.0f;
+                break;
+            case 1: // Smooth — gentle rolling terrain, some hills, rare mountains
+                elevationExponent = 1.5f;
+                hillNoiseCutoff = 0.55f;
+                mountainNoiseCutoff = 0.85f;
+                flatElevationMin = 5.0f;
+                flatElevationMax = 6.5f;
+                hillElevationMin = 7.0f;
+                hillElevationMax = 10.0f;
+                mountainElevationMin = 10.0f;
+                mountainElevationMax = 13.0f;
+                ridgeStrength = 0.15f;
+                break;
+            case 2: // Standard — balanced mix
+                elevationExponent = 1.0f;
+                hillNoiseCutoff = 0.60f;
+                mountainNoiseCutoff = 0.85f;
+                flatElevationMin = 5.2f;
+                flatElevationMax = 5.7f;
+                hillElevationMin = 7.3f;
+                hillElevationMax = 8.2f;
+                mountainElevationMin = 9.0f;
+                mountainElevationMax = 11.5f;
+                ridgeStrength = 0.05f;
+                break;
+            case 3: // Mountainous — lots of hills, frequent mountains
+                elevationExponent = 1.0f;
+                hillNoiseCutoff = 0.25f;
+                mountainNoiseCutoff = 0.50f;
+                flatElevationMin = 5.0f;
+                flatElevationMax = 6.5f;
+                hillElevationMin = 7.0f;
+                hillElevationMax = 10.0f;
+                mountainElevationMin = 10.0f;
+                mountainElevationMax = 15.0f;
+                ridgeStrength = 0.50f;
+                break;
+            case 4: // Alpine — extremely mountainous, dramatic peaks
+                elevationExponent = 1.0f;
+                hillNoiseCutoff = 0.15f;
+                mountainNoiseCutoff = 0.35f;
+                flatElevationMin = 5.0f;
+                flatElevationMax = 6.5f;
+                hillElevationMin = 7.0f;
+                hillElevationMax = 10.0f;
+                mountainElevationMin = 10.0f;
+                mountainElevationMax = 15.0f;
+                ridgeStrength = 0.65f;
+                break;
+            default: // Fallback to Standard
+                elevationExponent = 1.2f;
+                hillNoiseCutoff = 0.40f;
+                mountainNoiseCutoff = 0.70f;
+                flatElevationMin = 5.0f;
+                flatElevationMax = 6.5f;
+                hillElevationMin = 7.0f;
+                hillElevationMax = 10.0f;
+                mountainElevationMin = 10.0f;
+                mountainElevationMax = 15.0f;
+                ridgeStrength = 0.35f;
+                break;
+        }
+        Debug.Log($"[PlanetGenerator] Applied terrain preset {presetIndex}: exponent={elevationExponent} hillCutoff={hillNoiseCutoff} mtnCutoff={mountainNoiseCutoff} flat={flatElevationMin}-{flatElevationMax} hills={hillElevationMin}-{hillElevationMax} mtns={mountainElevationMin}-{mountainElevationMax} ridge={ridgeStrength}");
+    }
+
     private Biome GetBiomeForTile(int tileIndex, bool isLand, float temperature, float moisture)
     {
         float northSouth = 0f;
@@ -2664,8 +2913,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Range (world units): {minElev:F3} to {maxElev:F3} (avg: {avgElev:F3})");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Elevation Tiers - Flat: {flatCount}, Hills: {hillCount}, Mountains: {mountainCount}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] Zero/Near-Zero Elevation Tiles: {zeroElevCount}");
-        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - baseLandElevation: {baseLandElevation}, maxTotalElevation: {maxTotalElevation}");
-        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - hillThreshold: {hillThreshold}, mountainThreshold: {mountainThreshold}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - flat: {flatElevationMin}-{flatElevationMax}, hills: {hillElevationMin}-{hillElevationMax}, mountains: {mountainElevationMin}-{mountainElevationMax}");
+        Debug.LogError($"[ELEVATION DIAGNOSTIC] Settings - hillNoiseCutoff: {hillNoiseCutoff}, mountainNoiseCutoff: {mountainNoiseCutoff}, exponent: {elevationExponent}");
         Debug.LogError($"[ELEVATION DIAGNOSTIC] ========================================");
     }
 

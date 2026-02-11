@@ -30,6 +30,9 @@ public class AddressableUnitLoader : MonoBehaviour
     // Track loading operations to prevent duplicate loads
     private Dictionary<string, AsyncOperationHandle<GameObject>> loadingOperations = new Dictionary<string, AsyncOperationHandle<GameObject>>();
 
+    // Keep completed handles so we can properly release them via Addressables
+    private Dictionary<string, AsyncOperationHandle<GameObject>> completedHandles = new Dictionary<string, AsyncOperationHandle<GameObject>>();
+
     private void Awake()
     {
         if (_instance == null)
@@ -112,6 +115,7 @@ public class AddressableUnitLoader : MonoBehaviour
             {
                 GameObject prefab = operation.Result;
                 loadedPrefabs[unitName] = prefab;
+                completedHandles[unitName] = operation; // keep handle for proper release
                 onComplete?.Invoke(prefab);
             }
             else
@@ -147,6 +151,7 @@ public class AddressableUnitLoader : MonoBehaviour
             {
                 GameObject prefab = handle.Result;
                 loadedPrefabs[unitName] = prefab;
+                completedHandles[unitName] = handle; // keep handle for proper release
                 return prefab;
             }
             else
@@ -176,11 +181,12 @@ public class AddressableUnitLoader : MonoBehaviour
     /// </summary>
     public void ReleaseUnit(string unitName)
     {
-        if (loadedPrefabs.TryGetValue(unitName, out GameObject prefab))
+        if (completedHandles.TryGetValue(unitName, out var handle) && handle.IsValid())
         {
-            loadedPrefabs.Remove(unitName);
-            Addressables.Release(prefab);
-}
+            Addressables.Release(handle);
+            completedHandles.Remove(unitName);
+        }
+        loadedPrefabs.Remove(unitName);
     }
 
     /// <summary>
@@ -188,19 +194,28 @@ public class AddressableUnitLoader : MonoBehaviour
     /// </summary>
     public void ReleaseAllUnits()
     {
-        int count = loadedPrefabs.Count;
-        
-        foreach (var prefab in loadedPrefabs.Values)
+        // Release via the stored operation handles (the correct Addressables pattern).
+        // Releasing the raw GameObject result instead of the handle causes
+        // "Addressables was not previously aware of" warnings.
+        foreach (var kvp in completedHandles)
         {
-            Addressables.Release(prefab);
+            if (kvp.Value.IsValid())
+            {
+                Addressables.Release(kvp.Value);
+            }
         }
-        
-        loadedPrefabs.Clear();
-        loadingOperations.Clear();
+        completedHandles.Clear();
 
-        // Force cleanup
-        Resources.UnloadUnusedAssets();
-        System.GC.Collect();
+        // Cancel any still-loading operations
+        foreach (var kvp in loadingOperations)
+        {
+            if (kvp.Value.IsValid())
+            {
+                Addressables.Release(kvp.Value);
+            }
+        }
+        loadingOperations.Clear();
+        loadedPrefabs.Clear();
 }
 
     /// <summary>

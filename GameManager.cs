@@ -416,6 +416,13 @@ public class GameManager : MonoBehaviour
                 break;
         }
 
+        // Apply continent size multiplier from land preset (e.g. Pangaea = 3.5x)
+        float sizeMul = GameSetupData.continentSizeMultiplier;
+        continentMinW = Mathf.RoundToInt(continentMinW * sizeMul);
+        continentMaxW = Mathf.RoundToInt(continentMaxW * sizeMul);
+        continentMinH = Mathf.RoundToInt(continentMinH * sizeMul);
+        continentMaxH = Mathf.RoundToInt(continentMaxH * sizeMul);
+
         GameSetupData.continentMinWidthTiles = continentMinW;
         GameSetupData.continentMaxWidthTiles = continentMaxW;
         GameSetupData.continentMinHeightTiles = continentMinH;
@@ -920,6 +927,7 @@ public class GameManager : MonoBehaviour
 
             // Configure planet generator with GameSetupData settings
             planetGenerator.SetMapTypeName(GameSetupData.mapTypeName);
+            planetGenerator.ApplyTerrainPreset(GameSetupData.selectedTerrainPreset);
 
             ApplyStampSettingsForMapSize(GameSetupData.mapSize);
 
@@ -966,8 +974,7 @@ public class GameManager : MonoBehaviour
             // DIAGNOSTIC: log what we applied to the generator (tile-based ranges)
             Debug.Log($"[GameManager][Diag] Applied GameSetupData to PlanetGenerator: continents={planetGenerator.numberOfContinents}, islands={planetGenerator.numberOfIslands}, generateIslands={planetGenerator.generateIslands}");
 
-            // Preserve tuning from the PlanetGenerator prefab so the generator's inspector remains the source of truth.
-            Debug.Log("[GameManager][Diag] Preserving PlanetGenerator prefab tuning; preset tuning overrides skipped.");
+            // Terrain preset applied above via ApplyTerrainPreset; other tuning preserved from prefab.
 
             // Ensure island/rivers/lakes flags and counts come from GameSetupData
             planetGenerator.generateIslands = GameSetupData.generateIslands;
@@ -1973,9 +1980,12 @@ public class GameManager : MonoBehaviour
     // Notify grid built
     OnPlanetGridBuilt?.Invoke(planetIndex);
 
-        // Only apply high-level GameSetupData overrides here. The `PlanetGenerator` prefab
-        // should remain authoritative for tuning parameters and tile-range presets.
-        generator.currentMapTypeName = GameSetupData.mapTypeName ?? "";
+        // Apply GameSetupData overrides. The prefab's Inspector values serve as the
+        // "Standard" baseline; ApplyTerrainPreset overwrites only the elevation knobs
+        // (exponent, maxElev, hill/mountain thresholds, ridgeStrength) to match the
+        // player's terrain-roughness dropdown selection.
+        generator.SetMapTypeName(GameSetupData.mapTypeName ?? "");
+        generator.ApplyTerrainPreset(GameSetupData.selectedTerrainPreset);
         // Biome logic (allowed to be influenced by presets)
         generator.moistureBias = GameSetupData.moistureBias;
         generator.temperatureBias = GameSetupData.temperatureBias;
@@ -1984,7 +1994,7 @@ public class GameManager : MonoBehaviour
         generator.numberOfIslands = GameSetupData.numberOfIslands;
         generator.generateIslands = GameSetupData.generateIslands;
 
-        Debug.Log($"[GameManager][Diag] Multi-planet apply: continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, generateIslands={generator.generateIslands} (preserving noise tuning on prefab)");
+        Debug.Log($"[GameManager][Diag] Multi-planet apply: preset={GameSetupData.selectedTerrainPreset}, continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, generateIslands={generator.generateIslands}");
 
         // Rivers & lakes (allowed preset-driven settings)
         // Water features must be gated by Underwater layer support.

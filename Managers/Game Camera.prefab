@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3498336275679532829}
   - component: {fileID: 8995800531324447607}
   - component: {fileID: 4014941082920207216}
-  - component: {fileID: -717824651070982176}
+  - component: {fileID: 2574990883171722082}
   m_Layer: 0
   m_Name: Game Camera
   m_TagString: MainCamera
@@ -81,7 +81,7 @@ Camera:
   m_TargetDisplay: 0
   m_TargetEye: 3
   m_HDR: 0
-  m_AllowMSAA: 1
+  m_AllowMSAA: 0
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
   m_OcclusionCulling: 1
@@ -154,7 +154,7 @@ MonoBehaviour:
   panSpeed: 80
   zoomSpeed: 40
   minHeight: 15
-  maxHeight: 60
+  maxHeight: 65
   minPitchAngle: 15
   maxPitchAngle: 75
   allowMouseDrag: 1
@@ -163,7 +163,7 @@ MonoBehaviour:
   wrapEnabled: 1
   chunkManager: {fileID: 0}
   wrapCenterX: 0
---- !u!114 &-717824651070982176
+--- !u!114 &2574990883171722082
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

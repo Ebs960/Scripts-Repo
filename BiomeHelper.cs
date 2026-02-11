@@ -182,18 +182,6 @@ public static class BiomeHelper {
         
         // URANUS - Complete temperature/moisture coverage
         if (planetType == PlanetType.Uranus) {
-            // Very cold regions
-            if (temperature < -0.4f) {
-                if (moisture > 0.7f) return Biome.UranusSurface;
-                return Biome.UranusSurface;
-            }
-            // Cold regions
-            if (temperature < -0.2f) {
-                if (moisture > 0.5f) return Biome.UranusSurface;
-                return Biome.UranusSurface;
-            }
-            // All other regions
-            if (moisture > 0.6f) return Biome.UranusSurface;
             return Biome.UranusSurface; // Default Uranus
         }
         
@@ -310,37 +298,39 @@ public static class BiomeHelper {
         }
 
         // === STANDARD EARTH BIOME LOGIC ===
+        // Temperature bands: Arctic <0.15, Cold 0.15-0.35, Temperate 0.35-0.55, Warm 0.55-0.75, Hot >0.75
         
-        // Hot climates
-        if (temperature > 0.8f) {
-            if (moisture < 0.4f) return Biome.Desert;
+        // Hot climates (>0.75)
+        if (temperature > 0.75f) {
+            if (moisture < 0.35f) return Biome.Desert;
             if (moisture < 0.5f) return Biome.Savannah;
             if (moisture < 0.8f) return Biome.Jungle;
-            return Biome.Swamp; // High moisture in hot climates creates swamp instead of rainforest in non-rainforest maps
+            return Biome.Swamp;
         }
 
-        // Warm climates
-        if (temperature > 0.7f) {
-            if (moisture < 0.3f) return Biome.Savannah;
-            if (moisture < 0.6f) return Biome.Plains;
-            return Biome.Jungle;
+        // Warm climates (0.55-0.75)
+        if (temperature > 0.55f) {
+            if (moisture < 0.25f) return Biome.Savannah;
+            if (moisture < 0.5f) return Biome.Plains;
+            if (moisture < 0.75f) return Biome.Jungle;
+            return Biome.Swamp;
         }
 
-        // Temperate climates
-        if (temperature > 0.4f) {
+        // Temperate climates (0.35-0.55)
+        if (temperature > 0.35f) {
             if (moisture < 0.3f) return Biome.Plains;
-            if (moisture < 0.6f) return Biome.Grassland;
+            if (moisture < 0.55f) return Biome.Grassland;
             if (moisture < 0.8f) return Biome.Forest;
             return Biome.Swamp;
         }
 
-        // Cold climates
+        // Cold climates (0.15-0.35)
         if (temperature > 0.15f) {
             if (moisture < 0.75f) return Biome.Tundra;
             return Biome.Swamp;
         }
 
-        // EARTH POLAR BIOMES ONLY (temperature <= 0.20f) - Should never be reached by other planets
+        // Arctic (<0.15)
         if (temperature <= 0.15f) {
             return Biome.Arctic;
         }

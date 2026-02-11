@@ -53,7 +53,7 @@ MonoBehaviour:
   chunksX: 9
   chunksZ: 4
   meshSubdivisionsPerChunk: 32
-  displacementStrength: 6.5
+  displacementStrength: 1
   flatY: 0
   globalSnowAmount: 0
   globalWetness: 0

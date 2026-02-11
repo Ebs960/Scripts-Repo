@@ -150,7 +150,70 @@ public class WaterSurfaceGenerator : MonoBehaviour
             createdOcean = true;
         }
 
-        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Lakes={createdLakes} Ocean={createdOcean} TotalSurfaces={spawnedSurfaces.Count}");
+        // --- River water surfaces (per connected river segment) ---
+        // Rivers are carved depressions that need water just like lakes.
+        // Flood-fill connected river tiles into segments, then build a hex mesh
+        // for each segment with water at the original terrain height (before riverDepth).
+        int createdRivers = 0;
+        bool[] riverVisited = new bool[tileCount];
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (riverVisited[i]) continue;
+            var tile = planetGen.GetHexTileData(i);
+            if (tile == null || !tile.isRiver) { riverVisited[i] = true; continue; }
+
+            // Flood-fill to collect the full connected river segment
+            var segment = new List<int>();
+            var queue = new Queue<int>();
+            queue.Enqueue(i);
+            riverVisited[i] = true;
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                segment.Add(current);
+                var neighbors = grid.neighbors[current];
+                if (neighbors == null) continue;
+                foreach (int n in neighbors)
+                {
+                    if (n < 0 || n >= tileCount || riverVisited[n]) continue;
+                    var nTile = planetGen.GetHexTileData(n);
+                    if (nTile != null && nTile.isRiver)
+                    {
+                        riverVisited[n] = true;
+                        queue.Enqueue(n);
+                    }
+                    else
+                    {
+                        riverVisited[n] = true; // mark non-river neighbors as visited too
+                    }
+                }
+            }
+
+            if (segment.Count == 0) continue;
+
+            // Water height: original terrain elevation before riverDepth was subtracted.
+            // tile.elevation = originalElevation - riverDepth, so water = tile.elevation + riverDepth.
+            // Use the average across the segment for a smooth water plane.
+            float riverDepth = planetGen.riverDepth;
+            float sumOrigElev = 0f;
+            foreach (int idx in segment)
+            {
+                var td = planetGen.GetHexTileData(idx);
+                if (td != null) sumOrigElev += td.elevation + riverDepth;
+            }
+            float avgOrigElev = sumOrigElev / segment.Count;
+
+            float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : 0f;
+            float dispScale = GetDisplacementScale();
+            float waterY = flatY + avgOrigElev * dispScale;
+
+            Vector3 centroid = ComputeRegionCentroid(grid, segment);
+            Mesh mesh = BuildCombinedHexMesh(grid, segment, centroid);
+            CreateLakeWaterSurface(centroid, mesh, waterY, spawnedSurfaces.Count);
+            createdRivers++;
+        }
+
+        Debug.Log($"[WaterSurfaceGenerator] Water generation complete. Lakes={createdLakes} Rivers={createdRivers} Ocean={createdOcean} TotalSurfaces={spawnedSurfaces.Count}");
     }
 
     private void ClearSurfaces()
@@ -391,6 +454,11 @@ public class WaterSurfaceGenerator : MonoBehaviour
         Vector3 localPos = transform.InverseTransformPoint(worldPos);
         instance.transform.localPosition = localPos;
 
+        // HDRP WaterSurface expects the mesh to face downward (-Y) for correct
+        // water rendering. Our hex mesh normals point +Y, so rotate 180° around
+        // the local X axis to flip the surface so water renders in the right direction.
+        instance.transform.localRotation = Quaternion.Euler(180f, 0f, 0f);
+
         Debug.Log($"[WaterSurfaceGenerator] Created lake surface idx={regionIndex} tiles={mesh.vertexCount / 7} height={height:F3} centroid=({centroid.x:F1}, {centroid.z:F1}) localPos={localPos}");
 
         var meshFilter = instance.GetComponent<MeshFilter>();
@@ -478,66 +546,35 @@ public class WaterSurfaceGenerator : MonoBehaviour
 
     /// <summary>
     /// Compute the world-space Y height for a lake's water surface.
-    /// With world-space elevation, this is simply: flatY + lowest shore tile elevation.
-    /// The water level equals the natural outlet height (lowest surrounding land).
+    /// The water level should be at the original terrain height BEFORE the lake
+    /// depth depression was carved. Since PlanetGenerator stores
+    ///   tile.elevation = originalElevation - lakeDepth
+    /// we recover the original height as tile.elevation + lakeDepth.
+    /// We average across all lake tiles in the region for a smooth water plane.
     /// </summary>
     private float ComputeLakeWaterHeight(PlanetGenerator planetGen, HexGrid grid, List<int> region)
     {
-        int tileCount = grid.TileCount;
-        float minShoreElev = float.MaxValue;
-
-        // Build a set for fast membership checks
-        var regionSet = new HashSet<int>(region);
-
-        foreach (int lakeIdx in region)
-        {
-            var neighbors = grid.neighbors[lakeIdx];
-            if (neighbors == null) continue;
-
-            foreach (int n in neighbors)
-            {
-                if (n < 0 || n >= tileCount) continue;
-                if (regionSet.Contains(n)) continue; // skip other lake tiles in this body
-
-                var td = planetGen.GetHexTileData(n);
-                if (td == null || !td.isLand) continue;
-                // Only consider true land shore tiles (not coast/ocean/seas)
-                if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
-
-                if (td.elevation < minShoreElev)
-                {
-                    minShoreElev = td.elevation;
-                }
-            }
-        }
-
         float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : 0f;
-        // Elevation is world-space, so multiply by displacementStrength (artistic scale, default 1.0)
         float dispScale = GetDisplacementScale();
+        float depth = planetGen.lakeDepth;
 
-        if (minShoreElev < float.MaxValue)
-        {
-            float waterY = flatY + minShoreElev * dispScale;
-            Debug.Log($"[WaterSurfaceGenerator] Lake water height: shoreElev={minShoreElev:F3} worldY={waterY:F3} (flatY={flatY:F3} scale={dispScale:F2})");
-            return waterY;
-        }
-
-        // Fallback: no shore tiles found — use average lake tile elevation + small offset
-        float sumElev = 0f;
+        // Average the original (pre-depression) elevation across all lake tiles
+        float sumOrigElev = 0f;
         int count = 0;
         foreach (int idx in region)
         {
             var td = planetGen.GetHexTileData(idx);
             if (td == null) continue;
-            sumElev += td.elevation;
+            // Recover the original terrain elevation before lakeDepth was subtracted
+            sumOrigElev += td.elevation + depth;
             count++;
         }
 
         if (count > 0)
         {
-            float avgElev = sumElev / count;
-            float waterY = flatY + (avgElev + 0.05f) * dispScale;
-            Debug.Log($"[WaterSurfaceGenerator] Lake water height from average (no shore): elev={avgElev:F3}+0.05 worldY={waterY:F3}");
+            float avgOrigElev = sumOrigElev / count;
+            float waterY = flatY + avgOrigElev * dispScale;
+            Debug.Log($"[WaterSurfaceGenerator] Lake water height: avgOrigElev={avgOrigElev:F3} (depth={depth:F2}) worldY={waterY:F3} (flatY={flatY:F3} scale={dispScale:F2})");
             return waterY;
         }
 
