@@ -377,17 +377,22 @@ public class ResourceManager : MonoBehaviour
     {
         if (resource == null) return;
 
-        // Get the position for the resource on the specified planet
+        // Get the TileSystem for this planet and compute a surface position for the resource
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 position = ts != null ? ts.GetTileCenterFromPlanet(tileIndex, planetIndex) : Vector3.zero;
+        Vector3 surfacePos = Vector3.zero;
+        if (ts != null)
+        {
+            // Use the surface-aware helper which takes tile elevation into account
+            surfacePos = ts.GetTileSurfacePosition(tileIndex, 0f);
+        }
 
         // Retrieve tile data early so we can choose an appropriate parent before instantiation
         var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
 
         // Use object pooling if available
         GameObject go = SimpleObjectPool.Instance != null
-            ? SimpleObjectPool.Instance.Get(resource.prefab, position, Quaternion.identity)
-            : Instantiate(resource.prefab, position, Quaternion.identity);
+            ? SimpleObjectPool.Instance.Get(resource.prefab, surfacePos, Quaternion.identity)
+            : Instantiate(resource.prefab, surfacePos, Quaternion.identity);
 
         // Keep hierarchy organized: parent spawned world objects under their planet generator.
         // (Do not change gameplay logic; this is purely scene organization.)
@@ -412,8 +417,36 @@ public class ResourceManager : MonoBehaviour
                 if (parent != null)
                     go.transform.SetParent(parent, true);
             }
-        }
-        catch { }
+
+            // Ensure the spawned object rests on the terrain surface regardless of prefab pivot.
+            // Align by renderer/collider bounds: move object up so its lowest visual/collider point equals the surface Y.
+            try
+            {
+                float surfaceY = surfacePos.y;
+                float lowest = float.MaxValue;
+                var rends = go.GetComponentsInChildren<Renderer>(true);
+                foreach (var r in rends)
+                {
+                    if (r == null) continue;
+                    lowest = Mathf.Min(lowest, r.bounds.min.y);
+                }
+                var cols = go.GetComponentsInChildren<Collider>(true);
+                foreach (var c in cols)
+                {
+                    if (c == null) continue;
+                    lowest = Mathf.Min(lowest, c.bounds.min.y);
+                }
+                if (lowest != float.MaxValue)
+                {
+                    float delta = surfaceY - lowest;
+                    if (Mathf.Abs(delta) > 0.0001f)
+                        go.transform.position = go.transform.position + new Vector3(0f, delta, 0f);
+                }
+            }
+            catch { }
+            }
+        
+        catch { 
 
         var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
         inst.data = resource;
@@ -432,7 +465,8 @@ public class ResourceManager : MonoBehaviour
                 var layer = tileData.isLand ? TileLayer.Surface : TileLayer.Underwater;
                 (TileOccupancyManager.GetForPlanet(inst.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, go, layer);
             }
-            catch { }
+            catch {}
         }
     }
+}
 }
