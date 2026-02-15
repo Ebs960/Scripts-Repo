@@ -63,8 +63,8 @@ MonoBehaviour:
   biomeBlendSharpness: 3.55
   cliffAlbedoTexture: {fileID: 2800000, guid: 8184ea15b50b2ae42b58018a8537f9f0, type: 3}
   cliffNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
-  cliffTiling: 4.6
-  cliffSlopeStart: 0.646
+  cliffTiling: 2.1
+  cliffSlopeStart: 0.526
   cliffSlopeEnd: 0.3
   cliffSmoothness: 0.3
   cliffMetallic: 0
@@ -98,6 +98,7 @@ MonoBehaviour:
   cliffMinHeightDelta: 0.25
   cliffBottomExtension: 0.4
   cliffInset: 0.089
+  debugWaterMeshCounts: 1
   preBuildOnPlanetReady: 1
   enableSeasonMasks: 0
 --- !u!114 &6515396151515733605

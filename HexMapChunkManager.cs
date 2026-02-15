@@ -175,6 +175,15 @@ public class HexMapChunkManager : MonoBehaviour
     // Continuous river mesh instance (lives under this manager)
     private GameObject _riverSurfaceObj;
     private Mesh _riverSurfaceMesh;
+    [Header("Diagnostics")]
+    [Tooltip("When enabled, logs counts of lake/river tiles and how many water meshes were created.")]
+    [SerializeField] private bool debugWaterMeshCounts = false;
+    // Diagnostic counters
+    private int diag_totalLakeTiles = 0;
+    private int diag_totalRiverTiles = 0;
+    private int diag_createdLakeMeshes = 0;   // number of chunk-level meshes that contained lake tiles
+    private int diag_createdRiverMeshes = 0;  // number of chunk-level meshes that contained river tiles (may be 0 if continuous)
+    private int diag_createdPerChunkWaterMeshes = 0; // total per-chunk water GameObjects created
 
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
@@ -524,6 +533,18 @@ public class HexMapChunkManager : MonoBehaviour
 
         // Build continuous river surface mesh (after heightmap + tile data exist)
         BuildContinuousRiverSurfaceMesh();
+        // Diagnostics: report how many lake/river tiles existed and how many meshes were actually created
+        if (debugWaterMeshCounts && ShouldRunDiagnostics())
+        {
+            int continuousMeshCount = (_riverSurfaceObj != null) ? 1 : 0;
+            int continuousMeshContainsLakes = (continuousMeshCount > 0 && continuousWaterIncludesLakes) ? 1 : 0;
+            int totalCreatedRiverMeshes = diag_createdRiverMeshes + (continuousMeshCount > 0 ? 1 : 0);
+            int totalCreatedLakeMeshes = diag_createdLakeMeshes + continuousMeshContainsLakes;
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Post-build summary: totalLakeTiles={diag_totalLakeTiles}, totalRiverTiles={diag_totalRiverTiles}");
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Per-chunk water meshes created={diag_createdPerChunkWaterMeshes} (chunks with lakeMeshes={diag_createdLakeMeshes}, chunks with riverMeshes={diag_createdRiverMeshes})");
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Continuous river mesh present={_riverSurfaceObj != null}, continuousIncludesLakes={continuousWaterIncludesLakes}");
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Total lake mesh instances={totalCreatedLakeMeshes}, total river mesh instances={totalCreatedRiverMeshes}");
+        }
         
         // Create picking collider for WorldPicker
         CreatePickingCollider();
@@ -1821,8 +1842,9 @@ public class HexMapChunkManager : MonoBehaviour
         var tileIndices = chunk.TileIndices;
         if (tileIndices == null || tileIndices.Count == 0) return;
 
-        // Collect water tiles in this chunk
+        // Collect water tiles in this chunk and tally per-type counts
         var waterTiles = new List<int>();
+        int chunkLakeCount = 0, chunkRiverCount = 0, chunkOceanCount = 0;
         foreach (int ti in tileIndices)
         {
             if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
@@ -1833,7 +1855,13 @@ public class HexMapChunkManager : MonoBehaviour
                 if (enableContinuousRiverSurface && td.waterType == TileWaterType.River) continue; // rivers rendered by continuous mesh
                 if (enableContinuousRiverSurface && continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake) continue; // lakes rendered by continuous mesh
             }
-            if (td.waterType != TileWaterType.None) waterTiles.Add(ti);
+            if (td.waterType != TileWaterType.None)
+            {
+                waterTiles.Add(ti);
+                if (td.waterType == TileWaterType.Lake) chunkLakeCount++;
+                else if (td.waterType == TileWaterType.River) chunkRiverCount++;
+                else if (td.waterType == TileWaterType.Ocean) chunkOceanCount++;
+            }
         }
         if (waterTiles.Count == 0) return;
 
@@ -2039,6 +2067,16 @@ public class HexMapChunkManager : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mr.allowOcclusionWhenDynamic = false;
+
+        // Register diagnostic counts for this chunk-level water mesh
+        if (debugWaterMeshCounts)
+        {
+            RegisterChunkWaterMeshCreated(chunkLakeCount, chunkRiverCount, chunkOceanCount);
+            if (ShouldRunDiagnostics())
+            {
+                Debug.Log($"[HexMapChunkManager][WaterDiag] Chunk({chunk.ChunkX},{chunk.ChunkZ}) water mesh created: lakes={chunkLakeCount}, rivers={chunkRiverCount}, oceans={chunkOceanCount}, verts={vertices.Count}, tris={triangles.Count/3}");
+            }
+        }
     }
 
     /// <summary>
@@ -2200,6 +2238,24 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (chunks == null || planetGenerator == null) return;
 
+        // Diagnostics: prepare counters for water mesh creation metrics
+        if (debugWaterMeshCounts && planetGenerator != null && planetGenerator.data != null)
+        {
+            diag_createdLakeMeshes = 0;
+            diag_createdRiverMeshes = 0;
+            diag_createdPerChunkWaterMeshes = 0;
+            diag_totalLakeTiles = 0;
+            diag_totalRiverTiles = 0;
+            foreach (var kvp in planetGenerator.data)
+            {
+                var td = kvp.Value;
+                if (td == null) continue;
+                if (td.waterType == TileWaterType.Lake) diag_totalLakeTiles++;
+                if (td.waterType == TileWaterType.River) diag_totalRiverTiles++;
+            }
+            if (ShouldRunDiagnostics()) Debug.Log($"[HexMapChunkManager][WaterDiag] Pre-build totals: lakeTiles={diag_totalLakeTiles}, riverTiles={diag_totalRiverTiles}");
+        }
+
         // Root-cause safeguard:
         // Ensure waterType is coherent with tile biome/flags before building meshes.
         // If a downstream system ever desyncs biome vs. waterType, chunk meshes will skip water tiles entirely.
@@ -2349,6 +2405,16 @@ public class HexMapChunkManager : MonoBehaviour
         int totalRepaired = fixedOcean + fixedLake + fixedRiver + clearedNonWater;
         // Always log this — it's the most important diagnostic for missing water.
         Debug.Log($"[HexMapChunkManager][WaterRepair] totalWaterTiles={totalWaterTiles}, waterBiomeButWaterTypeNone(pre)={waterBiomeButNone}, repaired: ocean={fixedOcean} lake={fixedLake} river={fixedRiver} clearedNonWater={clearedNonWater}");
+    }
+
+    /// <summary>
+    /// Register that a chunk-level water mesh was created and increment per-type counters.
+    /// </summary>
+    private void RegisterChunkWaterMeshCreated(int lakeCount, int riverCount, int oceanCount)
+    {
+        diag_createdPerChunkWaterMeshes++;
+        if (lakeCount > 0) diag_createdLakeMeshes++;
+        if (riverCount > 0) diag_createdRiverMeshes++;
     }
 
     /// <summary>
