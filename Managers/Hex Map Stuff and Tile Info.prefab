@@ -46,17 +46,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexMapChunkManager
   textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
-  terrainShader: {fileID: -6465566751694194690, guid: 15f3c6b4d6a9c894284b24aedcdbb772, type: 3}
+  terrainShader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   textureWidth: 2048
   textureHeight: 1024
-  chunksX: 9
-  chunksZ: 4
-  meshSubdivisionsPerChunk: 32
+  chunksX: 12
+  chunksZ: 6
+  meshSubdivisionsPerChunk: 72
   displacementStrength: 1
   flatY: 0
   globalSnowAmount: 0
   globalWetness: 0
+  triplanarTiling: 1.04
+  triplanarBlend: 9.2
+  biomeBlendRadius: 1.4
+  biomeBlendSharpness: 3.55
+  cliffAlbedoTexture: {fileID: 2800000, guid: 8184ea15b50b2ae42b58018a8537f9f0, type: 3}
+  cliffNormalTexture: {fileID: 2800000, guid: 2b7a4acb0e68a984e8d36a1290fa5eb9, type: 3}
+  cliffTiling: 4.6
+  cliffSlopeStart: 0.646
+  cliffSlopeEnd: 0.3
+  cliffSmoothness: 0.3
+  cliffMetallic: 0
   enableWrap: 1
   wrapBuffer: 0.35
   debugWrap: 0
@@ -64,8 +75,30 @@ MonoBehaviour:
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
+  waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
+  foamMaterial: {fileID: 2100000, guid: 8e5fce172a9c8b841943b2cf1ee627be, type: 2}
+  waterYOffset: 0.01
+  manualOceanWaterY: 4.7
+  useManualOceanWaterY: 1
+  enableWaterVolumeColumns: 1
+  waterVolumeDepth: 3
+  waterVolumeIncludeOcean: 0
+  waterVolumeStepEpsilon: 0.02
+  enableContinuousRiverSurface: 1
+  continuousWaterIncludesLakes: 1
+  riverSdfWidth: 1024
+  riverSdfHeight: 512
+  riverHalfWidthMultiplier: 0.75
+  lakeHalfWidthMultiplier: 1.3
+  riverSurfaceLift: 0.1
+  extrudeInlandWaterToVolume: 1
+  inlandWaterVolumeDepth: 8
+  enableCliffWalls: 0
+  cliffWallMaterial: {fileID: 2100000, guid: ad57983243b058a4b973a8f213409ea9, type: 2}
+  cliffMinHeightDelta: 0.25
+  cliffBottomExtension: 0.4
+  cliffInset: 0.089
   preBuildOnPlanetReady: 1
-  disableOldRenderer: 1
   enableSeasonMasks: 0
 --- !u!114 &6515396151515733605
 MonoBehaviour:
@@ -80,10 +113,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexGridOverlay
   showGrid: 1
-  gridColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.5}
-  lineWidth: 0.05
-  heightOffset: 4
+  gridColor: {r: 0, g: 0, b: 0, a: 0.85882354}
+  lineWidth: 0.01
+  heightOffset: 2.5
   lineMaterial: {fileID: 2100000, guid: 40861cf147703c74c8a7f49fd85d7052, type: 2}
-  maxHexesToRender: 10000
+  maxHexesToRender: 100000
   renderDistance: 500
   updateInterval: 0.1

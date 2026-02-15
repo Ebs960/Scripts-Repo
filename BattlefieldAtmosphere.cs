@@ -522,8 +522,8 @@ public class BattlefieldAtmosphere : MonoBehaviour
         switch (biome)
         {
             // Lush biomes - misty, green-tinted
-            case Biome.Forest:
-            case Biome.Jungle:
+            case Biome.Temperate:
+            case Biome.Tropical:
                 enableHeightFog = true;
                 groundFogDensity = 0.4f;
                 groundFogColor = new Color(0.7f, 0.8f, 0.7f, 1f);
@@ -546,7 +546,6 @@ public class BattlefieldAtmosphere : MonoBehaviour
                 
             // Plains - light haze
             case Biome.Plains:
-            case Biome.Grassland:
             case Biome.Savannah:
                 enableHeightFog = true;
                 groundFogDensity = 0.15f;

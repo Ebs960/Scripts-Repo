@@ -76,7 +76,8 @@ public static class PlanetTextureBaker
         ComputeShader computeShader,
         int width = 2048,
         int height = 2048,
-        bool convertToTexture2D = false)
+        bool convertToTexture2D = false,
+        int[] preBuiltLUT = null)
     {
         if (computeShader == null)
         {
@@ -89,7 +90,7 @@ public static class PlanetTextureBaker
         GPUBakeResult gpuResult;
         try
         {
-            gpuResult = BakeInternalGPU(planetGen, colorProvider, computeShader, width, height);
+            gpuResult = BakeInternalGPU(planetGen, colorProvider, computeShader, width, height, preBuiltLUT);
         }
         finally
         {
@@ -220,7 +221,8 @@ public static class PlanetTextureBaker
         MinimapColorProvider colorProvider,
         ComputeShader computeShader,
         int width,
-        int height)
+        int height,
+        int[] preBuiltLUT = null)
     {
         var res = new GPUBakeResult { width = width, height = height };
 
@@ -293,7 +295,8 @@ public static class PlanetTextureBaker
         res.tileColors = tileColors;
 
         // Build LUT: pixel -> tileIndex (CPU - this is spatial mapping, not visual)
-        var lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
+        // Use pre-built LUT if provided (avoids redundant synchronous rebuild during batched chunk building)
+        var lut = preBuiltLUT ?? EquirectLUTBuilder.BuildLUT(grid, width, height);
         res.lut = lut;
         if (lut == null || lut.Length != width * height)
         {

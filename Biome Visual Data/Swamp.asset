@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Swamp
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 10
+  biome: 9
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 21ce4f57bc6d7004b8fe20112011b9a2, type: 2}
   forcedVariant: -1
@@ -23,6 +23,6 @@ MonoBehaviour:
   tint: {r: 1, g: 1, b: 1, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.29
+  snowRetention: 0.157
   wetnessResponse: 0.472
   isWaterBiome: 0

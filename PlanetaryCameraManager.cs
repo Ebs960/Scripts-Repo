@@ -12,6 +12,10 @@ public class PlanetaryCameraManager : MonoBehaviour
     public float minHeight = 20f;
     public float maxHeight = 200f;
     
+    [Header("Rotation (Q/E)")]
+    [Tooltip("Yaw rotation speed in degrees per second when pressing Q or E.")]
+    public float rotateSpeed = 60f;
+
     [Header("Pitch Settings")]
     [Tooltip("Pitch angle when fully zoomed in (looking more forward).")]
     public float minPitchAngle = 30f;
@@ -33,6 +37,7 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     private Vector3 _focusPoint = Vector3.zero;
     private float _cameraHeight = 80f;
+    private float _cameraYaw = 0f; // degrees, rotates camera left/right around focus
     private Vector3? _lastMousePos = null;
 
     void Awake()
@@ -60,6 +65,9 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) panDirection.x += 1f;
         if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) panDirection.z += 1f;
         if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) panDirection.z -= 1f;
+
+        if (Input.GetKey(KeyCode.Q)) _cameraYaw -= rotateSpeed * dt;
+        if (Input.GetKey(KeyCode.E)) _cameraYaw += rotateSpeed * dt;
 
         if (panDirection.sqrMagnitude > 0f)
         {
@@ -117,13 +125,19 @@ public class PlanetaryCameraManager : MonoBehaviour
         // Interpolate pitch based on zoom level (zoomed in = lower pitch, zoomed out = higher pitch)
         float zoomT = Mathf.InverseLerp(minHeight, maxHeight, _cameraHeight);
         float pitchAngle = Mathf.Lerp(minPitchAngle, maxPitchAngle, zoomT);
-        
+
         float pitchRad = pitchAngle * Mathf.Deg2Rad;
         float horizontalDist = _cameraHeight / Mathf.Tan(pitchRad);
+
+        // Rotate camera around focus point (Y axis) using Q/E yaw
+        float yawRad = _cameraYaw * Mathf.Deg2Rad;
+        float offsetX = horizontalDist * Mathf.Sin(yawRad);
+        float offsetZ = -horizontalDist * Mathf.Cos(yawRad);
+
         Vector3 camPos = new Vector3(
-            _focusPoint.x,
+            _focusPoint.x + offsetX,
             _cameraHeight,
-            _focusPoint.z - horizontalDist
+            _focusPoint.z + offsetZ
         );
         transform.position = camPos;
         transform.rotation = Quaternion.LookRotation(_focusPoint - camPos, Vector3.up);

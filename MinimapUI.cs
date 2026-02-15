@@ -624,6 +624,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         if (!gameObject.activeInHierarchy) return;
         if (_gameManager == null) return;
 
+        // Don't trigger sync minimap generation during loading — PreGenerateAllMinimaps handles it.
+        // Without this guard, OnPlanetReady fires during planet generation, which calls
+        // ShowMinimapForPlanet → GenerateBodyMinimapImmediate → EnsureIndexLUTForBodySync,
+        // causing a full synchronous LUT build (500K+ calls) that stalls the main thread.
+        if (!_minimapsPreGenerated) return;
+
         // Ensure we show the CURRENT planet (the one the player is on)
         ShowMinimapForPlanet(_gameManager.currentPlanetIndex);
     }
@@ -1085,13 +1091,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         return biome switch
         {
             Biome.Ocean => new Color(0.2f, 0.4f, 0.8f, 1f),
-            Biome.Forest => new Color(0.2f, 0.6f, 0.2f, 1f),
+            Biome.Temperate => new Color(0.2f, 0.6f, 0.2f, 1f),
             Biome.Desert => new Color(0.8f, 0.7f, 0.3f, 1f),
             Biome.Plains => new Color(0.4f, 0.7f, 0.3f, 1f),
             Biome.Arctic => new Color(0.9f, 0.9f, 0.9f, 1f),
             Biome.Tundra => new Color(0.6f, 0.7f, 0.8f, 1f),
-            Biome.Jungle => new Color(0.1f, 0.5f, 0.1f, 1f),
-            Biome.Grassland => new Color(0.5f, 0.8f, 0.3f, 1f),
+            Biome.Tropical => new Color(0.1f, 0.5f, 0.1f, 1f),
             Biome.Swamp => new Color(0.3f, 0.5f, 0.4f, 1f),
             Biome.Savannah => new Color(0.7f, 0.6f, 0.3f, 1f),
             Biome.Coast => new Color(0.4f, 0.6f, 0.8f, 1f),

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Io Volcanic
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 39
+  biome: 38
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 8154c27c3c7e57f409ab20e9c224132e, type: 2}
   forcedVariant: -1

@@ -50,6 +50,19 @@ public class BiomeVisualDatabase : ScriptableObject
         else DestroyImmediate(obj, allowDestroyingAssets: false);
     }
 
+    // Utility used during profiling/diagnostics.
+    // Kept as a regular method (not a local function) to avoid CS8321 warnings when diagnostics are disabled.
+    private static string FormatBytes(long bytes)
+    {
+        const double KB = 1024.0;
+        const double MB = 1024.0 * 1024.0;
+        const double GB = 1024.0 * 1024.0 * 1024.0;
+        if (bytes >= GB) return $"{bytes / GB:0.00} GB";
+        if (bytes >= MB) return $"{bytes / MB:0.0} MB";
+        if (bytes >= KB) return $"{bytes / KB:0.0} KB";
+        return $"{bytes} B";
+    }
+
     // Surface library returned by BuildSurfaceLibrary()
     public class SurfaceLibrary
     {
@@ -103,17 +116,6 @@ public class BiomeVisualDatabase : ScriptableObject
     public SurfaceLibrary BuildSurfaceLibrary(int overrideWidth = 0, int overrideHeight = 0)
     {
         if (biomes == null) return null;
-
-        static string FormatBytes(long bytes)
-        {
-            const double KB = 1024.0;
-            const double MB = 1024.0 * 1024.0;
-            const double GB = 1024.0 * 1024.0 * 1024.0;
-            if (bytes >= GB) return $"{bytes / GB:0.00} GB";
-            if (bytes >= MB) return $"{bytes / MB:0.0} MB";
-            if (bytes >= KB) return $"{bytes / KB:0.0} KB";
-            return $"{bytes} B";
-        }
 
         // STRICT MODE (memory-first):
         // - We DO NOT support legacy per-biome Texture2D fields here.

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Titan Dunes
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 35
+  biome: 34
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 7f2ad27429079274d92be6a8a2ad4f65, type: 2}
   forcedVariant: -1

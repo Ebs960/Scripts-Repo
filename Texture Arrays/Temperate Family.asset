@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
-  m_Name: Forest Family
+  m_Name: Temperate Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: Forest Family
-  albedoArray: {fileID: 18700000, guid: ad97966f93a1a6348a39fd8419071d83, type: 3}
-  normalArray: {fileID: 18700000, guid: b53f29486d2422f46a9613f3ff562f4f, type: 3}
-  maskArray: {fileID: 18700000, guid: 16feb00721592e147a99b79622e63446, type: 3}
+  familyName: Grass Family
+  albedoArray: {fileID: 18700000, guid: d0b170398c45815479c37279cf8ff7ed, type: 3}
+  normalArray: {fileID: 18700000, guid: f673617c353309b46b541a075ead6855, type: 3}
+  maskArray: {fileID: 18700000, guid: e55c4b1e6f86d9642afd6f63842a37aa, type: 3}
   emissiveArray: {fileID: 18700000, guid: 9cfc93971bc323a40973579abfb2885a, type: 3}
   supportsEmission: 1
   defaultTiling: 1

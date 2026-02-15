@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
-  m_Name: Grass Family
+  m_Name: Tropical Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
-  familyName: Grass Family
-  albedoArray: {fileID: 18700000, guid: d0b170398c45815479c37279cf8ff7ed, type: 3}
-  normalArray: {fileID: 18700000, guid: f673617c353309b46b541a075ead6855, type: 3}
-  maskArray: {fileID: 18700000, guid: e55c4b1e6f86d9642afd6f63842a37aa, type: 3}
+  familyName: Tropical Family
+  albedoArray: {fileID: 18700000, guid: a56e55c4d27d4e643b0e61ce88418fb0, type: 3}
+  normalArray: {fileID: 18700000, guid: d81e18ec39baeea40871b502db7e0f5b, type: 3}
+  maskArray: {fileID: 18700000, guid: ecf87181619edb94fa525e2013f59018, type: 3}
   emissiveArray: {fileID: 18700000, guid: 9cfc93971bc323a40973579abfb2885a, type: 3}
   supportsEmission: 1
   defaultTiling: 1

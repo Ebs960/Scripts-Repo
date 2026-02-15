@@ -196,8 +196,8 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                   biome == Biome.Ashlands ||
                           biome == Biome.IoVolcanic;
         
-        bool needsFireflies = biome == Biome.Forest || biome == Biome.Swamp ||
-                     biome == Biome.Jungle;
+        bool needsFireflies = biome == Biome.Temperate || biome == Biome.Swamp ||
+                     biome == Biome.Tropical;
 
         bool needsSnowflakes = biome == Biome.Arctic || biome == Biome.Glacier ||
                   biome == Biome.IcicleField || biome == Biome.Tundra;
@@ -532,16 +532,16 @@ public class BattlefieldAmbientParticles : MonoBehaviour
     {
         switch (biome)
         {
-            // Forest biomes - pollen/spores
-                case Biome.Forest:
+            // Temperate biomes - pollen/spores
+                case Biome.Temperate:
                 particleCount = 300;
                 particleColor = new Color(1f, 1f, 0.8f, 0.4f);
                 particleSize = 0.03f;
                 driftSpeed = 0.1f;
                 break;
                 
-            // Jungle - dense spores
-            case Biome.Jungle:
+            // Tropical - dense spores
+            case Biome.Tropical:
                 particleCount = 500;
                 particleColor = new Color(0.9f, 1f, 0.7f, 0.5f);
                 particleSize = 0.04f;
@@ -585,9 +585,8 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 windInfluence = 0.5f;
                 break;
                 
-            // Plains/grassland - light dust
+            // Plains - light dust
             case Biome.Plains:
-            case Biome.Grassland:
             case Biome.Savannah:
                 particleCount = 150;
                 particleColor = new Color(1f, 1f, 0.9f, 0.25f);

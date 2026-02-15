@@ -215,7 +215,7 @@ public class GameManager : MonoBehaviour
         Volcanic,
         Gas_Giant,
         Barren,
-        Jungle,
+        Tropical,
         Tundra
     }
 
@@ -616,7 +616,12 @@ public class GameManager : MonoBehaviour
         public AncientRuinsManager ancientRuinsManager;
         public LoadingPanelController loadingPanelController;
         public PlanetaryCameraManager cameraManager;
+        public MinimapUI minimapUI;
+        public HexMapChunkManager hexMapChunkManager;
     }
+    
+    // Persistent cache of scene references to avoid repeated FindAnyObjectByType calls during loading
+    private ManagerCache _cachedManagers;
 
     // Add guard to prevent multiple FindCoreManagersInScene calls
     private bool _managersInitialized = false;
@@ -648,10 +653,13 @@ public class GameManager : MonoBehaviour
                 case AncientRuinsManager arm: cache.ancientRuinsManager = arm; break;
                 case LoadingPanelController lpc: cache.loadingPanelController = lpc; break;
                 case PlanetaryCameraManager pcm: cache.cameraManager = pcm; break;
+                case MinimapUI mui: cache.minimapUI = mui; break;
+                case HexMapChunkManager hmc: cache.hexMapChunkManager = hmc; break;
             }
         }
         
-        
+        // Store in persistent instance cache for later use
+        _cachedManagers = cache;
         return cache;
     }
 
@@ -909,7 +917,7 @@ public class GameManager : MonoBehaviour
 
             // Assign the loading panel controller if present (use cached reference)
             if (cachedLoadingPanel == null)
-                cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
+                cachedLoadingPanel = _cachedManagers.loadingPanelController;
             if (planetGenerator != null && cachedLoadingPanel != null)
             {
                 planetGenerator.SetLoadingPanel(cachedLoadingPanel);
@@ -1080,7 +1088,8 @@ public class GameManager : MonoBehaviour
         FindCoreManagersInScene();
 
         // Set references on UnitMovementController now that planet and managers exist
-        var unitMovementController = FindAnyObjectByType<UnitMovementController>();
+        // Uses cached reference from CacheAllManagerReferences() instead of expensive scene search
+        var unitMovementController = _cachedManagers.unitMovementController;
         if (unitMovementController != null)
         {
             if (planetGenerator != null)
@@ -1154,19 +1163,19 @@ public class GameManager : MonoBehaviour
         
 
         // Generate minimap now that the planet is ready
-        var minimapUI = FindAnyObjectByType<MinimapUI>();
-        
+        // Uses cached reference from CacheAllManagerReferences() instead of expensive scene search
+        var minimapUI = _cachedManagers.minimapUI;
+        if (minimapUI == null) minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
 
         // Single-planet water mesh generation removed; multi-planet flow handles water generation.
 
-        // Flat equirectangular surface map (presentation-only) — build it during loading so the game starts in surface view cleanly.
-        // Uses HexMapChunkManager (chunk-based with seamless wrap)
+        // REMOVED: Explicit Rebuild() call here was redundant.
+        // HexMapChunkManager.HandlePlanetReady (subscribed to OnPlanetReady) already calls BuildChunks()
+        // for the current planet. Calling Rebuild() here caused BuildChunks to run TWICE.
         UpdateLoadingProgress(0.75f, "Building surface map...");
-        var chunkManagerSingle = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        
-        if (chunkManagerSingle != null && planetGenerator != null)
+        var chunkManagerSingle = _cachedManagers.hexMapChunkManager;
+        if (chunkManagerSingle != null)
         {
-            chunkManagerSingle.Rebuild(planetGenerator);
             float oldFlatY = flatPlaneY;
             flatPlaneY = chunkManagerSingle.transform.position.y;
             Debug.Log($"[GameManager] flatPlaneY updated from ChunkManager (single): old={oldFlatY:F3} new={flatPlaneY:F3} chunkMgr='{chunkManagerSingle.gameObject.name}' pos={chunkManagerSingle.transform.position.ToString("F3")} rot={chunkManagerSingle.transform.rotation.eulerAngles.ToString("F1")}");
@@ -1218,8 +1227,8 @@ public class GameManager : MonoBehaviour
             Debug.LogError("CivilizationManager not found. Can't spawn civilizations.");
         }
 
-        // Spawn initial animals
-        var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+        // Spawn initial animals — uses cached reference
+        var animalManagerInstance = _cachedManagers.animalManager;
         if (animalManagerInstance != null)
         {
             if (planetGenerator != null)
@@ -1301,8 +1310,8 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // Set references on UnitMovementController now that planets and managers exist
-        var unitMovementController = FindAnyObjectByType<UnitMovementController>();
+        // Set references on UnitMovementController — uses cached reference
+        var unitMovementController = _cachedManagers.unitMovementController;
         if (unitMovementController != null)
         {
             var currentPlanet = GetCurrentPlanetGenerator();
@@ -1360,53 +1369,13 @@ public class GameManager : MonoBehaviour
         
 
         // Trigger minimap generation now that planets are ready
-        // Try multiple ways to find MinimapUI
-        var minimapUI = FindAnyObjectByType<MinimapUI>();
+        // Uses cached reference; falls back to scene search only if cache missed
+        var minimapUI = _cachedManagers.minimapUI;
+        if (minimapUI == null) minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
 
-        // Initialize water generators for all existing planet generators.
-        // WaterSurfaceGenerator.Initialize will subscribe to the planet's
-        // OnSurfaceGenerated event and will generate water when the surface
-        // becomes ready (or immediately if already ready). Do NOT call
-        // Generate() directly from GameManager (avoids ordering/race issues).
-        for (int pi = 0; pi < maxPlanets; pi++)
-        {
-            var pgen = GetPlanetGenerator(pi);
-            if (pgen == null) continue;
-            var waterGen = pgen.GetComponentInChildren<WaterSurfaceGenerator>();
-            if (waterGen != null)
-            {
-                waterGen.Initialize(pgen);
-            }
-        }
-        
-        
-        if (minimapUI == null)
-        {
-            // Try the newer first object method
-            minimapUI = FindFirstObjectByType<MinimapUI>();
-            
-        }
-        
-        if (minimapUI == null)
-        {
-            // Try including inactive objects
-            minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
-            
-        }
-        
-        
-        
-        // Debug: List all MinimapUI components in the scene
-        var allMinimapUIs = FindObjectsByType<MinimapUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        
-        if (allMinimapUIs != null)
-        {
-            for (int i = 0; i < allMinimapUIs.Length; i++)
-            {
-                var ui = allMinimapUIs[i];
-                
-            }
-        }
+        // DISABLED: Legacy WaterSurfaceGenerator is no longer needed.
+        // HexMapChunkManager.BuildAllWaterMeshes() now handles per-chunk water tiles
+        // (lakes, oceans, rivers) with proper wrapping support and foam edges.
         
         if (minimapUI != null)
         {
@@ -1437,15 +1406,15 @@ public class GameManager : MonoBehaviour
             UpdateLoadingProgress(0.80f, "Minimap generation skipped...");
         }
 
-        // Flat equirectangular surface map (presentation-only) — build it during loading for the current planet.
-        // Uses HexMapChunkManager (chunk-based with seamless wrap)
+        // REMOVED: Explicit Rebuild() call here was redundant.
+        // HexMapChunkManager.HandlePlanetReady (subscribed to OnPlanetReady) already calls BuildChunks()
+        // for the current planet. Calling Rebuild() here caused BuildChunks to run TWICE — wasting the
+        // entire first coroutine (batched LUT, biome maps, heightmap, meshes) and doubling init time.
+        // The flatPlaneY update now uses the cached chunk manager reference.
         UpdateLoadingProgress(0.82f, "Building surface map...");
-        var chunkManagerMulti = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        var genForFlat = GetCurrentPlanetGenerator();
-        
-        if (chunkManagerMulti != null && genForFlat != null)
+        var chunkManagerMulti = _cachedManagers.hexMapChunkManager;
+        if (chunkManagerMulti != null)
         {
-            chunkManagerMulti.Rebuild(genForFlat);
             float oldFlatY = flatPlaneY;
             flatPlaneY = chunkManagerMulti.transform.position.y;
             Debug.Log($"[GameManager] flatPlaneY updated from ChunkManager (multi): old={oldFlatY:F3} new={flatPlaneY:F3} chunkMgr='{chunkManagerMulti.gameObject.name}' pos={chunkManagerMulti.transform.position.ToString("F3")} rot={chunkManagerMulti.transform.rotation.eulerAngles.ToString("F1")}");
@@ -1674,8 +1643,8 @@ public class GameManager : MonoBehaviour
                 civilizationManager.SpawnCivilizations(playerCivData, 4, 2, 2);
             }
             
-            // Spawn animals on Earth (only once!)
-            var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+            // Spawn animals on Earth (only once!) — uses cached reference
+            var animalManagerInstance = _cachedManagers.animalManager;
             if (animalManagerInstance != null)
             {
                 
@@ -2337,7 +2306,9 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void UpdateLoadingProgress(float progress, string status)
     {
-        // Use cached reference for performance
+        // Use cached reference for performance; fall back to ManagerCache, then scene search
+        if (cachedLoadingPanel == null)
+            cachedLoadingPanel = _cachedManagers.loadingPanelController;
         if (cachedLoadingPanel == null)
             cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
         if (cachedLoadingPanel != null)
@@ -2352,7 +2323,9 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void HideLoadingPanel()
     {
-        // Use cached reference for performance
+        // Use cached reference for performance; fall back to ManagerCache, then scene search
+        if (cachedLoadingPanel == null)
+            cachedLoadingPanel = _cachedManagers.loadingPanelController;
         if (cachedLoadingPanel == null)
             cachedLoadingPanel = FindAnyObjectByType<LoadingPanelController>();
         if (cachedLoadingPanel != null)
@@ -2888,9 +2861,9 @@ CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
             Debug.LogError("CivilizationManager not found. Can't spawn civilizations.");
         }
 
-        // Animals
+        // Animals — uses cached reference
         UpdateLoadingProgress(0.85f, "Spawning wildlife...");
-var animalManagerInstance = FindAnyObjectByType<AnimalManager>();
+var animalManagerInstance = _cachedManagers.animalManager;
 if (animalManagerInstance != null)
         {
             animalManagerInstance.SpawnInitialAnimals();

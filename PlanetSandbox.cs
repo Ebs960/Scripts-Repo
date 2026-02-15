@@ -31,10 +31,13 @@ public class PlanetSandbox : MonoBehaviour
     [Tooltip("When true, build the full terrain chunks via the assigned HexMapChunkManager.")]
     public bool buildTerrainChunks = true;
     [Tooltip("When true, run the full PlanetGenerator surface generation (biomes, elevation, water) before baking/minimap/chunks.")]
-    public bool runFullSurfaceGeneration = false;
+    public bool runFullSurfaceGeneration = true;
 
     [Header("Behavior")]
     public bool autoGenerateOnStart = false;
+    [Header("Sandbox Options")]
+    [Tooltip("When true the sandbox will respect the PlanetGenerator's inspector values and won't overwrite them with GameSetupData defaults.")]
+    public bool respectGeneratorInspector = true;
 
     private void Start()
     {
@@ -45,45 +48,119 @@ public class PlanetSandbox : MonoBehaviour
     [ContextMenu("Generate")]
     public void Generate()
     {
-        if (hexGrid == null)
-        {
-            Debug.LogWarning("PlanetSandbox: HexGridComponent is not assigned. Cannot generate grid.");
-            return;
-        }
+        // -----------------------------------------------------------------------------------------
+        // IMPORTANT: Make PlanetSandbox behave like the NORMAL game flow.
+        //
+        // Normal flow (GameManager):
+        // 1) GameSetupData.InitializeDefaults() (Standard baseline) if needed
+        // 2) PlanetGenerator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height) using size preset
+        // 3) Apply GameSetupData → PlanetGenerator knobs (mapTypeName, terrain preset, land/water counts, biases)
+        // 4) Run PlanetGenerator.GenerateSurface()
+        // 5) HexMapChunkManager builds chunks from the generated PlanetGenerator
+        //
+        // This sandbox enforces Standard defaults every time you press Generate so results are predictable.
+        // -----------------------------------------------------------------------------------------
 
-        hexGrid.Generate(tilesX, tilesZ, mapWidth, mapHeight);
+        if (!respectGeneratorInspector)
+        {
+            GameSetupData.InitializeDefaults(); // Force Standard defaults (matches "Start Game" baseline)
+        }
 
         if (planetGenerator == null)
         {
             Debug.LogWarning("PlanetSandbox: PlanetGenerator is not assigned. Place your PlanetGenerator in scene and assign it.");
+            return;
+        }
+
+        // Local build sizing (used later by optional debug HexGridComponent)
+        int buildTilesX = tilesX;
+        int buildTilesZ = tilesZ;
+        float buildWidth = mapWidth;
+        float buildHeight = mapHeight;
+
+        // --- Build flat grid. If respecting the PlanetGenerator inspector, prefer the generator's existing grid
+        if (respectGeneratorInspector && planetGenerator.Grid != null && planetGenerator.Grid.IsBuilt)
+        {
+            Debug.Log($"PlanetSandbox: Using PlanetGenerator's existing grid. TileCount={planetGenerator.Grid.TileCount} Size={planetGenerator.Grid.Width}x{planetGenerator.Grid.Height} Map={planetGenerator.Grid.MapWidth}x{planetGenerator.Grid.MapHeight}");
+            buildTilesX = planetGenerator.Grid.Width;
+            buildTilesZ = planetGenerator.Grid.Height;
+            buildWidth = planetGenerator.Grid.MapWidth;
+            buildHeight = planetGenerator.Grid.MapHeight;
+        }
+        else if (respectGeneratorInspector)
+        {
+            // Respect inspector: use the sandbox's inspector fields (tilesX/mapWidth etc) to build a grid
+            planetGenerator.Grid.GenerateFlatGrid(tilesX, tilesZ, mapWidth, mapHeight);
+            Debug.Log($"PlanetSandbox: PlanetGenerator grid built from sandbox inspector values. IsBuilt={planetGenerator.Grid != null && planetGenerator.Grid.IsBuilt} TileCount={planetGenerator.Grid?.TileCount ?? 0} Size={planetGenerator.Grid?.Width}x{planetGenerator.Grid?.Height} Map={planetGenerator.Grid?.MapWidth}x{planetGenerator.Grid?.MapHeight}");
+            buildTilesX = tilesX;
+            buildTilesZ = tilesZ;
+            buildWidth = mapWidth;
+            buildHeight = mapHeight;
         }
         else
         {
-            // Inject the generated HexGrid into the PlanetGenerator so downstream builders
-            // (HexMapChunkManager, bakers) use the scene-prepared grid.
-            try
-            {
-                planetGenerator.SetGrid(hexGrid.grid);
-                Debug.Log("PlanetSandbox: Injected HexGrid into PlanetGenerator.");
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning("PlanetSandbox: Failed to inject grid into PlanetGenerator: " + ex.Message);
-            }
+            // Original behavior: enforce Standard GameSetupData defaults and derive grid from the size preset
+            var size = GameSetupData.mapSize; // InitializeDefaults sets this to Standard
+            GameManager.GetFlatMapSizeParams(size, out float stdWidth, out float stdHeight);
+            GameManager.GetFlatTileResolution(size, out int stdTilesX, out int stdTilesZ);
+
+            // Keep inspector fields in sync so you can see what Standard is using.
+            tilesX = stdTilesX;
+            tilesZ = stdTilesZ;
+            mapWidth = stdWidth;
+            mapHeight = stdHeight;
+
+            // Stamp sizing/min distances derived from size preset (mirrors GameManager.ApplyStampSettingsForMapSize)
+            ApplyStampSettingsForMapSize(size);
+
+            planetGenerator.Grid.GenerateFlatGrid(stdTilesX, stdTilesZ, stdWidth, stdHeight);
+            Debug.Log($"PlanetSandbox: PlanetGenerator grid built (Standard). IsBuilt={planetGenerator.Grid != null && planetGenerator.Grid.IsBuilt} TileCount={planetGenerator.Grid?.TileCount ?? 0} Size={planetGenerator.Grid?.Width}x{planetGenerator.Grid?.Height} Map={planetGenerator.Grid?.MapWidth}x{planetGenerator.Grid?.MapHeight}");
+            buildTilesX = stdTilesX;
+            buildTilesZ = stdTilesZ;
+            buildWidth = stdWidth;
+            buildHeight = stdHeight;
+        }
+
+        if (planetGenerator.Grid == null || !planetGenerator.Grid.IsBuilt || planetGenerator.Grid.TileCount <= 0)
+        {
+            Debug.LogError("PlanetSandbox: PlanetGenerator grid is not built. Aborting (this will produce flat/empty results).");
+            return;
+        }
+
+        // Optional: also build the standalone HexGridComponent (if assigned) for debugging/visual tools,
+        // but it is NOT the authoritative grid used by the generator pipeline.
+        if (hexGrid != null)
+        {
+            hexGrid.Generate(buildTilesX, buildTilesZ, buildWidth, buildHeight);
+            Debug.Log($"PlanetSandbox: HexGridComponent also generated (debug only). IsBuilt={hexGrid.grid != null && hexGrid.grid.IsBuilt} TileCount={hexGrid.grid?.TileCount ?? 0}");
+        }
+
+        // --- Optionally apply GameSetupData settings to the PlanetGenerator (mirrors GameManager) ---
+        if (!respectGeneratorInspector)
+        {
+            planetGenerator.SetMapTypeName(GameSetupData.mapTypeName ?? "");
+            planetGenerator.ApplyTerrainPreset(GameSetupData.selectedTerrainPreset);
+            planetGenerator.moistureBias = GameSetupData.moistureBias;
+            planetGenerator.temperatureBias = GameSetupData.temperatureBias;
+            planetGenerator.numberOfContinents = GameSetupData.numberOfContinents;
+            planetGenerator.numberOfIslands = GameSetupData.numberOfIslands;
+            planetGenerator.generateIslands = GameSetupData.generateIslands;
+
+            // In sandbox scenes there is typically no authoritative layer config; PlanetGenerator.HasLayer() falls back
+            // to "supported" in that case. This matches the normal flow's intent: don't block water features in legacy scenes.
+            planetGenerator.enableRivers = GameSetupData.enableRivers;
+            planetGenerator.enableLakes = GameSetupData.enableLakes;
+            planetGenerator.numberOfLakes = GameSetupData.enableLakes ? GameSetupData.numberOfLakes : 0;
+            planetGenerator.lakeMinRadiusTiles = GameSetupData.lakeMinRadiusTiles;
+            planetGenerator.lakeMaxRadiusTiles = GameSetupData.lakeMaxRadiusTiles;
+            planetGenerator.lakeMinDistanceFromCoast = GameSetupData.lakeMinDistanceFromCoast;
         }
 
         // If requested, run full surface generation first (this populates tiles/biomes/elevation)
         if (runFullSurfaceGeneration)
         {
-            if (planetGenerator == null)
-            {
-                Debug.LogWarning("PlanetSandbox: PlanetGenerator not assigned; cannot run full surface generation.");
-            }
-            else
-            {
-                StartCoroutine(GenerateSurfaceThenSteps());
-                return; // coroutine will continue with minimap / chunks when complete
-            }
+            StartCoroutine(GenerateSurfaceThenSteps());
+            return; // coroutine will continue with minimap / chunks when complete
         }
 
         // Optionally trigger minimap generation (LUT + tile atlas)
@@ -133,6 +210,69 @@ public class PlanetSandbox : MonoBehaviour
                 Debug.LogWarning("PlanetSandbox: Failed to call Rebuild() on HexMapChunkManager: " + ex.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// Mirror of the Standard sizing logic in GameManager.ApplyStampSettingsForMapSize (flat-only).
+    /// We keep this here so PlanetSandbox can reproduce the real pipeline without requiring a GameManager instance.
+    /// </summary>
+    private static void ApplyStampSettingsForMapSize(GameManager.MapSize size)
+    {
+        int continentMinW = GameSetupData.minContinentWidthTilesStandard;
+        int continentMaxW = GameSetupData.maxContinentWidthTilesStandard;
+        int continentMinH = GameSetupData.minContinentHeightTilesStandard;
+        int continentMaxH = GameSetupData.maxContinentHeightTilesStandard;
+        int islandMinW = GameSetupData.minIslandWidthTilesStandard;
+        int islandMaxW = GameSetupData.maxIslandWidthTilesStandard;
+        int islandMinH = GameSetupData.minIslandHeightTilesStandard;
+        int islandMaxH = GameSetupData.maxIslandHeightTilesStandard;
+
+        switch (size)
+        {
+            case GameManager.MapSize.Small:
+                continentMinW = GameSetupData.minContinentWidthTilesSmall;
+                continentMaxW = GameSetupData.maxContinentWidthTilesSmall;
+                continentMinH = GameSetupData.minContinentHeightTilesSmall;
+                continentMaxH = GameSetupData.maxContinentHeightTilesSmall;
+                islandMinW = GameSetupData.minIslandWidthTilesSmall;
+                islandMaxW = GameSetupData.maxIslandWidthTilesSmall;
+                islandMinH = GameSetupData.minIslandHeightTilesSmall;
+                islandMaxH = GameSetupData.maxIslandHeightTilesSmall;
+                break;
+            case GameManager.MapSize.Large:
+                continentMinW = GameSetupData.minContinentWidthTilesLarge;
+                continentMaxW = GameSetupData.maxContinentWidthTilesLarge;
+                continentMinH = GameSetupData.minContinentHeightTilesLarge;
+                continentMaxH = GameSetupData.maxContinentHeightTilesLarge;
+                islandMinW = GameSetupData.minIslandWidthTilesLarge;
+                islandMaxW = GameSetupData.maxIslandWidthTilesLarge;
+                islandMinH = GameSetupData.minIslandHeightTilesLarge;
+                islandMaxH = GameSetupData.maxIslandHeightTilesLarge;
+                break;
+        }
+
+        float sizeMul = GameSetupData.continentSizeMultiplier;
+        continentMinW = Mathf.RoundToInt(continentMinW * sizeMul);
+        continentMaxW = Mathf.RoundToInt(continentMaxW * sizeMul);
+        continentMinH = Mathf.RoundToInt(continentMinH * sizeMul);
+        continentMaxH = Mathf.RoundToInt(continentMaxH * sizeMul);
+
+        GameSetupData.continentMinWidthTiles = continentMinW;
+        GameSetupData.continentMaxWidthTiles = continentMaxW;
+        GameSetupData.continentMinHeightTiles = continentMinH;
+        GameSetupData.continentMaxHeightTiles = continentMaxH;
+
+        int autoMinDistance = Mathf.Max(2, Mathf.RoundToInt(Mathf.Min(continentMinW, continentMinH) * 0.35f));
+        GameSetupData.continentMinDistanceTiles = autoMinDistance;
+
+        int minIslandDim = Mathf.Min(islandMinW, islandMinH);
+        int maxIslandDim = Mathf.Max(islandMaxW, islandMaxH);
+        GameSetupData.islandMinRadiusTiles = Mathf.Max(1, minIslandDim / 2);
+        GameSetupData.islandMaxRadiusTiles = Mathf.Max(GameSetupData.islandMinRadiusTiles, maxIslandDim / 2);
+        GameSetupData.islandMinDistanceFromContinents = Mathf.Max(2, GameSetupData.islandMinRadiusTiles);
+
+        if (GameSetupData.lakeMinRadiusTiles <= 0) GameSetupData.lakeMinRadiusTiles = 3;
+        if (GameSetupData.lakeMaxRadiusTiles <= 0) GameSetupData.lakeMaxRadiusTiles = Mathf.Max(3, 12);
     }
 
     private IEnumerator GenerateSurfaceThenSteps()

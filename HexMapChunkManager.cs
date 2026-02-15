@@ -52,6 +52,43 @@ public class HexMapChunkManager : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float globalWetness = 0f;
     
+    [Header("Triplanar Settings")]
+    [Tooltip("Triplanar tiling scale — controls how large biome textures appear on terrain. Lower = larger textures.")]
+    [Range(0.01f, 5f)]
+    [SerializeField] private float triplanarTiling = 2f;
+    [Tooltip("Triplanar blend sharpness — higher values make the blend between projection axes sharper. Lower = smoother.")]
+    [Range(1f, 20f)]
+    [SerializeField] private float triplanarBlend = 6f;
+
+    [Header("Biome Blending (Shader)")]
+    [Tooltip("Biome transition sampling radius in texels of the biome index map. Higher = smoother/softer biome edges, but more texture reads.")]
+    [Range(0f, 16f)]
+    [SerializeField] private float biomeBlendRadius = 4f;
+    [Tooltip("Height-based blend sharpness when transitioning between biomes. Higher = crisper transitions, lower = smoother/muddier blends.")]
+    [Range(0.01f, 10f)]
+    [SerializeField] private float biomeBlendSharpness = 3f;
+
+    [Header("Cliff Overlay (Shader)")]
+    [Tooltip("Albedo texture for cliff/rock surfaces on steep slopes. Assign the Mountain texture here.")]
+    [SerializeField] private Texture2D cliffAlbedoTexture;
+    [Tooltip("Normal map for cliff surfaces (optional). Leave null for flat normals.")]
+    [SerializeField] private Texture2D cliffNormalTexture;
+    [Tooltip("Triplanar tiling scale for the cliff texture.")]
+    [Range(0.1f, 20f)]
+    [SerializeField] private float cliffTiling = 2.0f;
+    [Tooltip("Slope angle (in terms of normal.y) where cliff begins appearing. 1 = flat, 0 = vertical. Lower = steeper before cliff starts.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float cliffSlopeStart = 0.6f;
+    [Tooltip("Slope angle where cliff is fully visible. Must be less than Slope Start.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float cliffSlopeEnd = 0.3f;
+    [Tooltip("PBR smoothness for cliff surfaces.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float cliffSmoothness = 0.3f;
+    [Tooltip("PBR metallic for cliff surfaces.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float cliffMetallic = 0.0f;
+
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
     [Tooltip("Buffer zone before wrap triggers (fraction of column width).")]
@@ -79,9 +116,68 @@ public class HexMapChunkManager : MonoBehaviour
     // NOTE: Hex grid overlay was removed - shader graph doesn't support it.
     // To add hex grid, create a separate HexGridOverlay script using line renderers or decals.
     
+    [Header("Water Mesh System")]
+    [Tooltip("Material for chunk-based water tiles (lakes, ocean, rivers). Assign SG_WaterTile material.")]
+    [SerializeField] private Material waterMaterial;
+    [Tooltip("Material for foam edge strips along water-to-land boundaries. Assign SG_FoamEdge material.")]
+    [SerializeField] private Material foamMaterial;
+    [Tooltip("Small Y offset above the computed water surface to prevent z-fighting with terrain.")]
+    [SerializeField] private float waterYOffset = 0.01f;
+    [Tooltip("Manual world-space Y position for ocean water surface. Set this to sit just below your coastline terrain. Overrides the computed SeaLevelWorldY.")]
+    [SerializeField] private float manualOceanWaterY = 4.5f;
+    [Tooltip("When true, use manualOceanWaterY for ocean water height instead of PlanetGenerator.SeaLevelWorldY.")]
+    [SerializeField] private bool useManualOceanWaterY = true;
+
+    [Header("Water Volume Columns (Minecraft-like)")]
+    [Tooltip("When enabled, chunk water meshes include vertical side walls so water occupies visible 3D volume (like Minecraft columns).")]
+    [SerializeField] private bool enableWaterVolumeColumns = true;
+    [Tooltip("How far downward (world units) to extend water walls when bordering land (or missing neighbor).")]
+    [SerializeField] private float waterVolumeDepth = 10f;
+    [Tooltip("When false, only inland water (rivers/lakes) gets volume walls. Ocean remains a surface only (cheaper).")]
+    [SerializeField] private bool waterVolumeIncludeOcean = false;
+    [Tooltip("Minimum water height difference before we build a step wall between two water tiles.")]
+    [SerializeField] private float waterVolumeStepEpsilon = 0.02f;
+
+    [Header("Continuous River Surface (SDF / Marching Squares)")]
+    [Tooltip("When enabled, rivers are rendered as a continuous surface mesh (one mesh) built from an SDF and marching squares.\nThis disables per-tile river fans in the chunk water mesh to avoid double-rendering.")]
+    [SerializeField] private bool enableContinuousRiverSurface = true;
+    [Tooltip("When enabled, lakes are included in the same SDF/marching-squares surface so rivers can flow seamlessly into lakes.\nThis disables per-tile LAKE fans in the chunk water mesh to avoid double-rendering.")]
+    [SerializeField] private bool continuousWaterIncludesLakes = true;
+    [Tooltip("Resolution of the SDF field (higher = smoother rivers, more CPU time).")]
+    [SerializeField] private int riverSdfWidth = 512;
+    [Tooltip("Resolution of the SDF field (higher = smoother rivers, more CPU time).")]
+    [SerializeField] private int riverSdfHeight = 256;
+    [Tooltip("River half-width multiplier relative to hex size (computed from map).")]
+    [SerializeField] private float riverHalfWidthMultiplier = 0.55f;
+    [Tooltip("Lake half-width multiplier relative to hex size (computed from map). Usually larger than rivers.")]
+    [SerializeField] private float lakeHalfWidthMultiplier = 1.25f;
+    [Tooltip("Extra Y lift above sampled terrain height to avoid z-fighting.")]
+    [SerializeField] private float riverSurfaceLift = 0.02f;
+
+    [Header("Inland Water Volume (3D Fill)")]
+    [Tooltip("When enabled, the continuous inland water surface is extruded downward into a closed 3D mesh (top + walls + bottom) so rivers/lakes look filled in 3D space.")]
+    [SerializeField] private bool extrudeInlandWaterToVolume = true;
+    [Tooltip("How far downward (world units) to extrude the inland water mesh to create a filled volume.")]
+    [SerializeField] private float inlandWaterVolumeDepth = 12f;
+
+    [Header("Cliff Walls (Mesh)")]
+    [Tooltip("When enabled, builds vertical wall quads along edges where neighboring tiles have a large elevation step (Minecraft-like cliffs).\n\nNOTE: Cliff walls are built on CPU using tile elevation data, but terrain is displaced by the GPU shader via heightmap. This can cause cliffs to appear misaligned with the actual terrain surface. Consider disabling until a shader-aware cliff system is implemented.")]
+    [SerializeField] private bool enableCliffWalls = false;
+    [Tooltip("Material used for cliff wall meshes. If null, cliffs will not be rendered.")]
+    [SerializeField] private Material cliffWallMaterial;
+    [Tooltip("Minimum height difference (world units after displacementStrength) required to create a cliff wall.")]
+    [SerializeField] private float cliffMinHeightDelta = 1.25f;
+    [Tooltip("Extra amount to extend the cliff wall downward beyond the lower tile height to hide cracks.")]
+    [SerializeField] private float cliffBottomExtension = 0.25f;
+    [Tooltip("Small horizontal inset (world units) toward the higher tile to reduce z-fighting at the seam.")]
+    [SerializeField] private float cliffInset = 0.02f;
+
+    // Continuous river mesh instance (lives under this manager)
+    private GameObject _riverSurfaceObj;
+    private Mesh _riverSurfaceMesh;
+
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
-    [SerializeField] private bool disableOldRenderer = true;
 
     [Header("Season Masks")]
     [SerializeField] private bool enableSeasonMasks = false;
@@ -95,6 +191,13 @@ public class HexMapChunkManager : MonoBehaviour
     private Material sharedMaterial;
     private Texture2D biomeIndexMap;
     private Texture2D heightmapTexture;
+    // Heightmap diagnostics (computed during BuildHeightmap)
+    private float _heightmapMin = 0f;
+    private float _heightmapMax = 0f;
+    private int _heightmapNonZero = 0;
+    private int _heightmapInvalidLut = 0;
+    private int _heightmapMissingTileData = 0;
+    private Texture2D sliceToBiomeMap; // 1D texture: pixel[sliceIndex].r = biomeIndex (for shader tint/params lookup)
     private Texture2DArray biomeAlbedoArray;
     private Texture2DArray biomeNormalArray;
     private Texture2DArray biomeMaskArray;
@@ -137,6 +240,9 @@ public class HexMapChunkManager : MonoBehaviour
     private PlanetGenerator _surfaceEventSource;
     private bool _subscribedToPlanetReady;
     
+    // Coroutine tracking for async chunk building
+    private Coroutine _buildCoroutine;
+    
     // Public accessors (API compatible with FlatMapTextureRenderer)
     public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
@@ -154,6 +260,7 @@ public class HexMapChunkManager : MonoBehaviour
     public int LUTWidth => bakeResult.width;
     public int LUTHeight => bakeResult.height;
     public Material SharedMaterial => sharedMaterial;
+    public float FlatY => flatY;
     
     // Collider for WorldPicker (uses MeshCollider for proper UV support)
     private Collider pickingCollider;
@@ -282,6 +389,7 @@ public class HexMapChunkManager : MonoBehaviour
     /// <summary>
     /// Build all chunks for the given planet generator.
     /// Uses the same texture baking pipeline as FlatMapTextureRenderer.
+    /// Heavy work (LUT building, biome index map) is spread across multiple frames via coroutine.
     /// </summary>
     public void BuildChunks(PlanetGenerator planetGen)
     {
@@ -298,15 +406,42 @@ public class HexMapChunkManager : MonoBehaviour
             return;
         }
         
+        // Stop any in-progress build coroutine to avoid overlapping builds
+        if (_buildCoroutine != null)
+        {
+            StopCoroutine(_buildCoroutine);
+            _buildCoroutine = null;
+        }
+        
+        _buildCoroutine = StartCoroutine(BuildChunksCoroutine(planetGen));
+    }
+    
+    /// <summary>
+    /// Coroutine version of BuildChunks that spreads heavy work (LUT building, biome index map)
+    /// across multiple frames to avoid blocking the main thread during planet generation.
+    /// </summary>
+    private System.Collections.IEnumerator BuildChunksCoroutine(PlanetGenerator planetGen)
+    {
         // Clean up existing chunks
         DestroyAllChunks();
         
         this.planetGenerator = planetGen;
         this.grid = planetGen.Grid;
         
-        // Get map dimensions from GameManager
-        if (GameManager.Instance != null)
+        // Get map dimensions — prefer the grid's own dimensions (authoritative source)
+        // since the grid knows exactly how large it was built. GameManager preset values
+        // can be stale/mismatched if the grid was built with different dimensions.
+        float gridW = grid.MapWidth;
+        float gridH = grid.MapHeight;
+        
+        if (gridW > 0.001f && gridH > 0.001f)
         {
+            mapWidth = gridW;
+            mapHeight = gridH;
+        }
+        else if (GameManager.Instance != null)
+        {
+            // Fallback to GameManager if grid dimensions aren't set yet
             float gmW = GameManager.Instance.GetFlatMapWidth();
             float gmH = GameManager.Instance.GetFlatMapHeight();
             if (gmW > 0.001f && gmH > 0.001f)
@@ -315,17 +450,36 @@ public class HexMapChunkManager : MonoBehaviour
                 mapHeight = gmH;
             }
         }
+        
         if (mapWidth <= 0.001f || mapHeight <= 0.001f)
         {
-            mapWidth = Mathf.Max(mapWidth, grid.MapWidth);
-            mapHeight = Mathf.Max(mapHeight, grid.MapHeight);
+            Debug.LogError($"[HexMapChunkManager] Map dimensions are invalid! gridW={gridW}, gridH={gridH}, mapWidth={mapWidth}, mapHeight={mapHeight}");
+        }
+        else
+        {
+            Debug.Log($"[HexMapChunkManager] Map dimensions: {mapWidth}x{mapHeight} (grid={gridW}x{gridH}, GameManager={GameManager.Instance?.GetFlatMapWidth() ?? 0}x{GameManager.Instance?.GetFlatMapHeight() ?? 0})");
         }
         
         columnWidth = mapWidth / chunksX;
         
-        // Bake texture using PlanetTextureBaker (shared with minimap)
-        BakeTexture();
-        BuildBiomeVisualMaps();
+        // --- BATCHED: Build LUT across multiple frames (avoids 4M+ synchronous GetTileAtPosition calls) ---
+        int[] preBuiltLUT = null;
+        yield return StartCoroutine(EquirectLUTBuilder.BuildLUTBatched(
+            grid, textureWidth, textureHeight, 64,
+            lut => preBuiltLUT = lut));
+        
+        if (preBuiltLUT == null)
+        {
+            Debug.LogError("[HexMapChunkManager] Failed to build LUT in batched mode!");
+            _buildCoroutine = null;
+            yield break;
+        }
+        
+        // Bake texture using PlanetTextureBaker with pre-built LUT (GPU bake is fast; LUT was the bottleneck)
+        BakeTexture(preBuiltLUT);
+        
+        // --- BATCHED: Build biome visual maps with yielding for heavy texture operations ---
+        yield return StartCoroutine(BuildBiomeVisualMapsCoroutine());
 
         int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
@@ -335,7 +489,8 @@ public class HexMapChunkManager : MonoBehaviour
         if (bakeResult.texture == null)
         {
             Debug.LogError("[HexMapChunkManager] Failed to bake texture!");
-            return;
+            _buildCoroutine = null;
+            yield break;
         }
         
         // Create shared material
@@ -360,6 +515,15 @@ public class HexMapChunkManager : MonoBehaviour
         
         // Build all chunk meshes
         RefreshAllChunks();
+
+        // Build cliff wall meshes (after terrain meshes exist)
+        BuildAllCliffWalls();
+
+        // Build chunk-based water and foam meshes (after terrain meshes exist)
+        BuildAllWaterMeshes();
+
+        // Build continuous river surface mesh (after heightmap + tile data exist)
+        BuildContinuousRiverSurfaceMesh();
         
         // Create picking collider for WorldPicker
         CreatePickingCollider();
@@ -377,6 +541,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Heightmap Generated: {heightmapTexture != null}");
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] PlanetGen.HasGeneratedSurface: {(planetGenerator != null ? planetGenerator.HasGeneratedSurface : false)}  data.Count={(planetGenerator != null && planetGenerator.data != null ? planetGenerator.data.Count : 0)}");
+            Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Height range: {_heightmapMin:F4} .. {_heightmapMax:F4} (nonZeroPixels={_heightmapNonZero}, invalidLut={_heightmapInvalidLut}, missingTileData={_heightmapMissingTileData})");
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Displacement Strength: {displacementStrength} (Inspector value)");
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] Material _ElevationScale: {(sharedMaterial != null && sharedMaterial.HasProperty("_ElevationScale") ? sharedMaterial.GetFloat("_ElevationScale").ToString("F4") : "N/A")} ");
             if (sharedMaterial != null && !sharedMaterial.HasProperty("_ElevationScale"))
@@ -385,9 +551,11 @@ public class HexMapChunkManager : MonoBehaviour
             }
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
         }
+        
+        _buildCoroutine = null;
     }
     
-    private void BakeTexture()
+    private void BakeTexture(int[] preBuiltLUT = null)
     {
         // GPU-only baking (CPU path removed). Requires a compute shader.
         if (textureBakerComputeShader == null)
@@ -398,7 +566,8 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         // Note: GPU baker uses per-tile colors; for non-BiomeColors render modes this is an approximation.
-        bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, null, textureBakerComputeShader, textureWidth, textureHeight);
+        // Pass pre-built LUT when available to avoid redundant synchronous LUT rebuild.
+        bakeResult = PlanetTextureBaker.BakeGPU(planetGenerator, null, textureBakerComputeShader, textureWidth, textureHeight, false, preBuiltLUT);
     }
 
     private void BuildBiomeVisualMaps()
@@ -418,14 +587,63 @@ public class HexMapChunkManager : MonoBehaviour
         int width = textureWidth;
         int height = textureHeight;
 
-        bakeResult.lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
-        bakeResult.width = width;
-        bakeResult.height = height;
+        // Reuse the LUT already built by BakeTexture() / PlanetTextureBaker.BakeGPU() —
+        // don't rebuild it here (previously allocated another 16 MB duplicate).
+        if (bakeResult.lut == null || bakeResult.lut.Length != width * height)
+        {
+            // Fallback: only build if BakeTexture didn't produce one (shouldn't happen)
+            bakeResult.lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
+            bakeResult.width = width;
+            bakeResult.height = height;
+        }
 
         BuildBiomeLookup();
         BuildBiomeTextureArrays();
         BuildBiomeIndexMap(width, height);
         BuildHeightmap(width, height);
+    }
+
+    /// <summary>
+    /// Coroutine version of BuildBiomeVisualMaps that yields during heavy texture generation
+    /// (BuildBiomeIndexMap) to avoid blocking the main thread.
+    /// The synchronous BuildBiomeVisualMaps() is kept for RebakeTexture() and other immediate-use paths.
+    /// </summary>
+    private System.Collections.IEnumerator BuildBiomeVisualMapsCoroutine()
+    {
+        if (planetGenerator == null || grid == null || !grid.IsBuilt)
+        {
+            Debug.LogWarning("[HexMapChunkManager] Cannot build biome visuals: missing grid.");
+            yield break;
+        }
+
+        if (biomeVisualDatabase == null || biomeVisualDatabase.biomes == null || biomeVisualDatabase.biomes.Count == 0)
+        {
+            Debug.LogWarning("[HexMapChunkManager] Missing biome visual database. Terrain visuals will be incomplete.");
+            yield break;
+        }
+
+        int width = textureWidth;
+        int height = textureHeight;
+
+        // Reuse the LUT already built by BakeTexture() / PlanetTextureBaker.BakeGPU() —
+        // don't rebuild it here (previously allocated another 16 MB duplicate).
+        if (bakeResult.lut == null || bakeResult.lut.Length != width * height)
+        {
+            // Fallback: only build if BakeTexture didn't produce one (shouldn't happen)
+            bakeResult.lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
+            bakeResult.width = width;
+            bakeResult.height = height;
+        }
+
+        BuildBiomeLookup();
+        BuildBiomeTextureArrays();
+        yield return null; // Yield after texture array building (can be heavy)
+
+        // BATCHED: Build biome index map with yields between strips
+        yield return StartCoroutine(BuildBiomeIndexMapCoroutine(width, height));
+        
+        // BATCHED: Build heightmap with yields between strips
+        yield return StartCoroutine(BuildHeightmapCoroutine(width, height));
     }
 
     private void BuildBiomeLookup()
@@ -547,6 +765,34 @@ public class HexMapChunkManager : MonoBehaviour
             biomeAlbedoArray.wrapMode = TextureWrapMode.Repeat;
             biomeNormalArray.wrapMode = TextureWrapMode.Repeat;
             biomeMaskArray.wrapMode = TextureWrapMode.Repeat;
+            
+            // Build slice-to-biome reverse map: for each texture array slice, store which biome index owns it.
+            // This lets the shader look up per-biome tints/params from the slice index in _BiomeIndexMap.
+            int totalSlices = biomeAlbedoArray != null ? biomeAlbedoArray.depth : 1;
+            if (sliceToBiomeMap != null) DestroyImmediate(sliceToBiomeMap);
+            sliceToBiomeMap = new Texture2D(totalSlices, 1, TextureFormat.RFloat, false, true)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                name = "SliceToBiomeMap"
+            };
+            var slicePixels = new Color[totalSlices];
+            for (int bi = 0; bi < count; bi++)
+            {
+                if (biomeSurfaceMapArray == null || bi >= biomeSurfaceMapArray.Length) continue;
+                var map = biomeSurfaceMapArray[bi];
+                int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+                int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+                for (int v = 0; v < variantCount; v++)
+                {
+                    int si = startSlice + v;
+                    if (si >= 0 && si < totalSlices)
+                        slicePixels[si] = new Color(bi, 0, 0, 1);
+                }
+            }
+            sliceToBiomeMap.SetPixels(slicePixels);
+            sliceToBiomeMap.Apply(false, false);
+            
             return;
         }
 
@@ -592,70 +838,83 @@ public class HexMapChunkManager : MonoBehaviour
         int maxVal = 0;
 
         int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
-        var pixels = new Color[width * height];
-        for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
+
+        // MEMORY OPT: Process in row strips instead of one huge Color[width*height] (~67 MB for 2048x2048).
+        // Each strip is only width × rowsPerStrip Colors, keeping peak allocation under ~1 MB.
+        int rowsPerStrip = 64;
+        var stripPixels = new Color[width * rowsPerStrip];
+
+        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
         {
-            int tileIndex = bakeResult.lut[i];
-            if (tileIndex < 0)
+            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
+            int stripLen = width * rowsThisStrip;
+
+            for (int localIdx = 0; localIdx < stripLen; localIdx++)
             {
-                pixels[i] = new Color(0f, 0f, 0f, 1f);
-                continue;
-            }
-
-            if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
-            {
-                pixels[i] = new Color(0f, 0f, 0f, 1f);
-                continue;
-            }
-
-            var visual = biomeVisualDatabase.Get(tile.biome);
-            int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
-
-            // Convert biomeIndex -> surface slice index (startSlice + chosenVariant)
-            int sliceIndex = 0;
-            if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
-            {
-                var map = biomeSurfaceMapArray[biomeIndex];
-                int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
-                int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
-                int forcedVariant = Mathf.RoundToInt(map.w);
-
-                int chosenVariant = 0;
-                if (forcedVariant >= 0 && forcedVariant < variantCount)
+                int globalIdx = startRow * width + localIdx;
+                int tileIndex = bakeResult.lut[globalIdx];
+                if (tileIndex < 0)
                 {
-                    chosenVariant = forcedVariant;
+                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
+                    continue;
                 }
-                else
+
+                if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
                 {
-                    // Deterministic per-tile variant selection (stable across runs)
-                    unchecked
+                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
+                    continue;
+                }
+
+                var visual = biomeVisualDatabase.Get(tile.biome);
+                int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+
+                // Convert biomeIndex -> surface slice index (startSlice + chosenVariant)
+                int sliceIndex = 0;
+                if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
+                {
+                    var map = biomeSurfaceMapArray[biomeIndex];
+                    int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+                    int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+                    int forcedVariant = Mathf.RoundToInt(map.w);
+
+                    int chosenVariant = 0;
+                    if (forcedVariant >= 0 && forcedVariant < variantCount)
                     {
-                        int h = tileIndex * 1103515245 + 12345;
-                        chosenVariant = Mathf.Abs(h) % variantCount;
+                        chosenVariant = forcedVariant;
                     }
+                    else
+                    {
+                        // Deterministic per-tile variant selection (stable across runs)
+                        unchecked
+                        {
+                            int h = tileIndex * 1103515245 + 12345;
+                            chosenVariant = Mathf.Abs(h) % variantCount;
+                        }
+                    }
+
+                    sliceIndex = startSlice + chosenVariant;
                 }
 
-                sliceIndex = startSlice + chosenVariant;
-            }
-
-            if (maxSlice >= 0 && sliceIndex > maxSlice)
-            {
-                if (!warnedSliceOutOfRange)
+                if (maxSlice >= 0 && sliceIndex > maxSlice)
                 {
-                    Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
-                    warnedSliceOutOfRange = true;
+                    if (!warnedSliceOutOfRange)
+                    {
+                        Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
+                        warnedSliceOutOfRange = true;
+                    }
+                    sliceIndex = maxSlice;
                 }
-                sliceIndex = maxSlice;
+                if (sliceIndex < 0) sliceIndex = 0;
+
+                if (sliceIndex < minVal) minVal = sliceIndex;
+                if (sliceIndex > maxVal) maxVal = sliceIndex;
+
+                stripPixels[localIdx] = new Color(sliceIndex, 0f, 0f, 1f);
             }
-            if (sliceIndex < 0) sliceIndex = 0;
 
-            if (sliceIndex < minVal) minVal = sliceIndex;
-            if (sliceIndex > maxVal) maxVal = sliceIndex;
-
-            pixels[i] = new Color(sliceIndex, 0f, 0f, 1f);
+            biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
         }
 
-        biomeIndexMap.SetPixels(pixels);
         biomeIndexMap.Apply(false, false);
 
         if (ShouldRunDiagnostics())
@@ -665,9 +924,125 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Coroutine version of BuildBiomeIndexMap that yields between row strips to avoid blocking.
+    /// Each strip processes 64 rows then yields a frame, spreading ~4M pixel iterations across ~32 frames.
+    /// The synchronous BuildBiomeIndexMap() is kept for RebakeTexture() and other immediate-use paths.
+    /// </summary>
+    private System.Collections.IEnumerator BuildBiomeIndexMapCoroutine(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) yield break;
+
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        {
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "BiomeIndexMap"
+            };
+        }
+
+        bool warnedSliceOutOfRange = false;
+        int minVal = int.MaxValue;
+        int maxVal = 0;
+
+        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
+
+        int rowsPerStrip = 64;
+        var stripPixels = new Color[width * rowsPerStrip];
+
+        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
+        {
+            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
+            int stripLen = width * rowsThisStrip;
+
+            for (int localIdx = 0; localIdx < stripLen; localIdx++)
+            {
+                int globalIdx = startRow * width + localIdx;
+                int tileIndex = bakeResult.lut[globalIdx];
+                if (tileIndex < 0)
+                {
+                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
+                    continue;
+                }
+
+                if (!planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                {
+                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
+                    continue;
+                }
+
+                var visual = biomeVisualDatabase.Get(tile.biome);
+                int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+
+                int sliceIndex = 0;
+                if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
+                {
+                    var map = biomeSurfaceMapArray[biomeIndex];
+                    int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+                    int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+                    int forcedVariant = Mathf.RoundToInt(map.w);
+
+                    int chosenVariant = 0;
+                    if (forcedVariant >= 0 && forcedVariant < variantCount)
+                    {
+                        chosenVariant = forcedVariant;
+                    }
+                    else
+                    {
+                        unchecked
+                        {
+                            int h = tileIndex * 1103515245 + 12345;
+                            chosenVariant = Mathf.Abs(h) % variantCount;
+                        }
+                    }
+
+                    sliceIndex = startSlice + chosenVariant;
+                }
+
+                if (maxSlice >= 0 && sliceIndex > maxSlice)
+                {
+                    if (!warnedSliceOutOfRange)
+                    {
+                        Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
+                        warnedSliceOutOfRange = true;
+                    }
+                    sliceIndex = maxSlice;
+                }
+                if (sliceIndex < 0) sliceIndex = 0;
+
+                if (sliceIndex < minVal) minVal = sliceIndex;
+                if (sliceIndex > maxVal) maxVal = sliceIndex;
+
+                stripPixels[localIdx] = new Color(sliceIndex, 0f, 0f, 1f);
+            }
+
+            biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
+            
+            // Yield after each strip to spread work across frames
+            yield return null;
+        }
+
+        biomeIndexMap.Apply(false, false);
+
+        if (ShouldRunDiagnostics())
+        {
+            if (minVal == int.MaxValue) minVal = 0;
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RFloat) [batched].");
+        }
+    }
+
     private void BuildHeightmap(int width, int height)
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
+
+        // Diagnostics: track min/max range as we write.
+        _heightmapMin = float.MaxValue;
+        _heightmapMax = float.MinValue;
+        _heightmapNonZero = 0;
+        _heightmapInvalidLut = 0;
+        _heightmapMissingTileData = 0;
 
         // Use RHalf (16-bit float) instead of R8 (8-bit) for much better elevation precision.
         // R8 only provides 256 discrete height levels which causes visible stepping/terracing
@@ -682,21 +1057,116 @@ public class HexMapChunkManager : MonoBehaviour
             };
         }
 
-        var pixels = new Color[width * height];
-        for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
+        // MEMORY OPT: Process in row strips instead of one huge Color[width*height] (~67 MB for 2048x2048).
+        int rowsPerStrip = 64;
+        var stripPixels = new Color[width * rowsPerStrip];
+
+        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
         {
-            int tileIndex = bakeResult.lut[i];
-            float elevation = 0f;
-            if (tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tile))
+            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
+            int stripLen = width * rowsThisStrip;
+
+            for (int localIdx = 0; localIdx < stripLen; localIdx++)
             {
-                elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
+                int globalIdx = startRow * width + localIdx;
+                int tileIndex = bakeResult.lut[globalIdx];
+                float elevation = 0f;
+                if (tileIndex < 0)
+                {
+                    _heightmapInvalidLut++;
+                }
+                else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                {
+                    elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
+                }
+                else
+                {
+                    _heightmapMissingTileData++;
+                }
+
+                if (elevation != 0f) _heightmapNonZero++;
+                if (elevation < _heightmapMin) _heightmapMin = elevation;
+                if (elevation > _heightmapMax) _heightmapMax = elevation;
+                stripPixels[localIdx] = new Color(elevation, 0f, 0f, 1f);
             }
 
-            pixels[i] = new Color(elevation, 0f, 0f, 1f);
+            heightmapTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
         }
 
-        heightmapTexture.SetPixels(pixels);
         heightmapTexture.Apply(true, false);
+
+        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
+        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
+    }
+
+    /// <summary>
+    /// Coroutine version of BuildHeightmap that yields between row strips to avoid blocking.
+    /// Each strip processes 64 rows then yields a frame, spreading ~4M pixel iterations across ~32 frames.
+    /// The synchronous BuildHeightmap() is kept for RebakeTexture() and other immediate-use paths.
+    /// </summary>
+    private System.Collections.IEnumerator BuildHeightmapCoroutine(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) yield break;
+
+        // Diagnostics: track min/max range as we write.
+        _heightmapMin = float.MaxValue;
+        _heightmapMax = float.MinValue;
+        _heightmapNonZero = 0;
+        _heightmapInvalidLut = 0;
+        _heightmapMissingTileData = 0;
+
+        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
+        {
+            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "TerrainHeightmap"
+            };
+        }
+
+        int rowsPerStrip = 64;
+        var stripPixels = new Color[width * rowsPerStrip];
+
+        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
+        {
+            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
+            int stripLen = width * rowsThisStrip;
+
+            for (int localIdx = 0; localIdx < stripLen; localIdx++)
+            {
+                int globalIdx = startRow * width + localIdx;
+                int tileIndex = bakeResult.lut[globalIdx];
+                float elevation = 0f;
+                if (tileIndex < 0)
+                {
+                    _heightmapInvalidLut++;
+                }
+                else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
+                {
+                    elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
+                }
+                else
+                {
+                    _heightmapMissingTileData++;
+                }
+
+                if (elevation != 0f) _heightmapNonZero++;
+                if (elevation < _heightmapMin) _heightmapMin = elevation;
+                if (elevation > _heightmapMax) _heightmapMax = elevation;
+                stripPixels[localIdx] = new Color(elevation, 0f, 0f, 1f);
+            }
+
+            heightmapTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
+            
+            // Yield after each strip to spread work across frames
+            yield return null;
+        }
+
+        heightmapTexture.Apply(true, false);
+
+        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
+        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
     }
 
     private static Texture2D CreateFlatNormal()
@@ -778,9 +1248,69 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_MapWidth", mapWidth);
         sharedMaterial.SetFloat("_MapHeight", mapHeight);
 
-        // Provide biome count for shader UV-based lookups (if Shader Graph cannot texelFetch)
+        // Triplanar parameters
+        sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
+        sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
+
+        // Biome transition blending parameters (optional shader props; guard to avoid warnings if a different shader is assigned)
+        if (sharedMaterial.HasProperty("_BiomeBlendRadius"))
+            sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
+        if (sharedMaterial.HasProperty("_BiomeBlendSharpness"))
+            sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
+
+        // Cliff overlay parameters
+        if (sharedMaterial.HasProperty("_CliffTiling"))
+        {
+            if (cliffAlbedoTexture != null)
+                sharedMaterial.SetTexture("_CliffAlbedoMap", cliffAlbedoTexture);
+            if (cliffNormalTexture != null)
+                sharedMaterial.SetTexture("_CliffNormalMap", cliffNormalTexture);
+            sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
+            sharedMaterial.SetFloat("_CliffSlopeStart", cliffSlopeStart);
+            sharedMaterial.SetFloat("_CliffSlopeEnd", cliffSlopeEnd);
+            sharedMaterial.SetFloat("_CliffSmoothness", cliffSmoothness);
+            sharedMaterial.SetFloat("_CliffMetallic", cliffMetallic);
+        }
+
+        // Slice-to-biome reverse map (for per-biome tint/params lookup in shader)
+        if (sliceToBiomeMap != null)
+        {
+            sharedMaterial.SetTexture("_SliceToBiomeMap", sliceToBiomeMap);
+        }
+
+        // Provide biome count for shader UV-based lookups
         int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
+    }
+
+    private void OnValidate()
+    {
+        // Allow tuning in the Inspector even though the terrain material is created at runtime.
+        // (Unity calls OnValidate when serialized fields change in the Inspector, including in Play Mode.)
+        if (sharedMaterial == null) return;
+
+        if (sharedMaterial.HasProperty("_TriTiling"))
+            sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
+        if (sharedMaterial.HasProperty("_TriBlend"))
+            sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
+
+        if (sharedMaterial.HasProperty("_BiomeBlendRadius"))
+            sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
+        if (sharedMaterial.HasProperty("_BiomeBlendSharpness"))
+            sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
+
+        if (sharedMaterial.HasProperty("_CliffTiling"))
+        {
+            if (cliffAlbedoTexture != null)
+                sharedMaterial.SetTexture("_CliffAlbedoMap", cliffAlbedoTexture);
+            if (cliffNormalTexture != null)
+                sharedMaterial.SetTexture("_CliffNormalMap", cliffNormalTexture);
+            sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
+            sharedMaterial.SetFloat("_CliffSlopeStart", cliffSlopeStart);
+            sharedMaterial.SetFloat("_CliffSlopeEnd", cliffSlopeEnd);
+            sharedMaterial.SetFloat("_CliffSmoothness", cliffSmoothness);
+            sharedMaterial.SetFloat("_CliffMetallic", cliffMetallic);
+        }
     }
     
     private void CreateSharedMaterial()
@@ -849,11 +1379,14 @@ public class HexMapChunkManager : MonoBehaviour
         int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
         
-        // Create texture to encode tile indices
-        lutTexture = new Texture2D(width, height, TextureFormat.RGB24, false);
+        // Create texture to encode tile indices.
+        // IMPORTANT: Use linear color space (sRGB OFF), otherwise GPU sampling will gamma-transform
+        // the values and DecodeTileIndex() in the shader will never match the hovered tile index.
+        lutTexture = new Texture2D(width, height, TextureFormat.RGB24, false, true);
         lutTexture.filterMode = FilterMode.Point; // No interpolation!
         lutTexture.wrapMode = TextureWrapMode.Repeat;
         lutTexture.name = "TileIndexLUT";
+        lutTexture.anisoLevel = 0;
         
         Color[] pixels = new Color[width * height];
         for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
@@ -1237,6 +1770,1418 @@ public class HexMapChunkManager : MonoBehaviour
     }
     
     #endregion
+
+    #region Water Mesh System
+
+    /// <summary>
+    /// Compute hex circumradius (center-to-corner) matching HexGrid.GenerateFlatGrid().
+    /// </summary>
+    private float ComputeHexSize()
+    {
+        if (grid == null) return 1f;
+        float sX = grid.MapWidth / (grid.Width * Mathf.Sqrt(3f));
+        float sZ = grid.MapHeight / (1.5f * (grid.Height + 0.5f));
+        return Mathf.Max(0.001f, Mathf.Min(sX, sZ));
+    }
+
+    // Pre-computed hex corner unit offsets (pointy-top, angles -30 + 60k degrees)
+    private static readonly float[] HexCornerCos = new float[6];
+    private static readonly float[] HexCornerSin = new float[6];
+    private static bool _hexCornersInitialized = false;
+
+    private static void EnsureHexCorners()
+    {
+        if (_hexCornersInitialized) return;
+        for (int k = 0; k < 6; k++)
+        {
+            float angle = Mathf.Deg2Rad * (60f * k - 30f);
+            HexCornerCos[k] = Mathf.Cos(angle);
+            HexCornerSin[k] = Mathf.Sin(angle);
+        }
+        _hexCornersInitialized = true;
+    }
+
+    /// <summary>
+    /// Build a single combined water mesh for all water tiles in a chunk.
+    /// Creates a child GameObject "Water" under the chunk with MeshFilter + MeshRenderer.
+    /// Vertex colors encode flow direction (rg) and water type (a).
+    /// </summary>
+    public void BuildWaterMeshForChunk(HexMapChunk chunk)
+    {
+        if (chunk == null || planetGenerator == null || grid == null) return;
+        if (waterMaterial == null) return;
+
+        // Destroy existing water child if present
+        Transform existingWater = chunk.transform.Find("Water");
+        if (existingWater != null) DestroyImmediate(existingWater.gameObject);
+
+        EnsureHexCorners();
+        float s = ComputeHexSize();
+
+        var tileIndices = chunk.TileIndices;
+        if (tileIndices == null || tileIndices.Count == 0) return;
+
+        // Collect water tiles in this chunk
+        var waterTiles = new List<int>();
+        foreach (int ti in tileIndices)
+        {
+            if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
+            // If continuous river surface is enabled, we normally skip per-tile river/lake fans.
+            // BUT in Minecraft-like volume mode we want per-tile columns, so we keep them.
+            if (!enableWaterVolumeColumns)
+            {
+                if (enableContinuousRiverSurface && td.waterType == TileWaterType.River) continue; // rivers rendered by continuous mesh
+                if (enableContinuousRiverSurface && continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake) continue; // lakes rendered by continuous mesh
+            }
+            if (td.waterType != TileWaterType.None) waterTiles.Add(ti);
+        }
+        if (waterTiles.Count == 0) return;
+
+        // Build hex-fan top surface + optional volume side walls.
+        // Use Lists because wall verts/indices depend on neighbor relationships.
+        var vertices = new List<Vector3>(waterTiles.Count * 12);
+        var uvs = new List<Vector2>(waterTiles.Count * 12);
+        var colors = new List<Color>(waterTiles.Count * 12);
+        var normals = new List<Vector3>(waterTiles.Count * 12);
+        var triangles = new List<int>(waterTiles.Count * 24);
+
+        // Chunk transform places the mesh; vertices are in chunk-local space.
+        Vector3 chunkWorldPos = chunk.transform.position;
+
+        // Cache per-tile top vertex base index + water height so we can build walls in a second pass.
+        var baseVertByTile = new Dictionary<int, int>(waterTiles.Count);
+        var waterYByTile = new Dictionary<int, float>(waterTiles.Count);
+
+        int AddVert(Vector3 v, Vector2 uv, Color c)
+        {
+            int idx = vertices.Count;
+            vertices.Add(v);
+            uvs.Add(uv);
+            colors.Add(c);
+            normals.Add(Vector3.up); // will be recalculated; placeholder keeps array lengths consistent
+            return idx;
+        }
+
+        void AddTri(int a, int b, int c)
+        {
+            triangles.Add(a);
+            triangles.Add(b);
+            triangles.Add(c);
+        }
+
+        foreach (int tileIdx in waterTiles)
+        {
+            var td = planetGenerator.data[tileIdx];
+            Vector3 tileCenter = grid.tileCenters[tileIdx];
+
+            // Water world Y: use manual ocean water Y when enabled, otherwise computed sea level.
+            // Lakes/rivers fall back to per-tile waterElevation (scaled).
+            float waterWorldY;
+            if (td.waterType == TileWaterType.Ocean)
+            {
+                waterWorldY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset;
+            }
+            else
+            {
+                waterWorldY = flatY + td.waterElevation * displacementStrength + waterYOffset;
+            }
+
+            // Convert to chunk-local
+            Vector3 localCenter = new Vector3(
+                tileCenter.x - chunkWorldPos.x,
+                waterWorldY - chunkWorldPos.y,
+                tileCenter.z - chunkWorldPos.z
+            );
+
+            // Encode flow into vertex color
+            Color flowColor = new Color(
+                td.riverFlowDirXZ.x * 0.5f + 0.5f,
+                td.riverFlowDirXZ.y * 0.5f + 0.5f,
+                0f,
+                (float)td.waterType / 3f // None=0, Ocean=0.33, Lake=0.67, River=1.0
+            );
+
+            int baseVert = vertices.Count;
+            baseVertByTile[tileIdx] = baseVert;
+            waterYByTile[tileIdx] = waterWorldY;
+
+            // Center vertex
+            AddVert(localCenter, new Vector2(0.5f, 0.5f), flowColor);
+
+            // 6 corner vertices
+            for (int k = 0; k < 6; k++)
+            {
+                AddVert(
+                    localCenter + new Vector3(s * HexCornerCos[k], 0f, s * HexCornerSin[k]),
+                    new Vector2(HexCornerCos[k] * 0.5f + 0.5f, HexCornerSin[k] * 0.5f + 0.5f),
+                    flowColor
+                );
+            }
+
+            // 6 triangles (fan from center) — clockwise winding so faces point UP (toward camera)
+            for (int k = 0; k < 6; k++)
+            {
+                AddTri(
+                    baseVert,                    // center
+                    baseVert + 1 + (k + 1) % 6,  // corner k+1
+                    baseVert + 1 + k             // corner k
+                );
+            }
+        }
+
+        // Optional: build vertical side walls for a voxel-like filled look.
+        if (enableWaterVolumeColumns)
+        {
+            float depth = Mathf.Max(0.01f, waterVolumeDepth);
+
+            foreach (int tileIdx in waterTiles)
+            {
+                var td = planetGenerator.data[tileIdx];
+                if (!waterVolumeIncludeOcean && td.waterType == TileWaterType.Ocean) continue;
+
+                float waterWorldY = waterYByTile[tileIdx];
+                int baseVert = baseVertByTile[tileIdx];
+                var neighbors = grid.neighbors[tileIdx];
+
+                for (int edge = 0; edge < 6; edge++)
+                {
+                    int nbrIdx = -1;
+                    if (neighbors != null && edge < neighbors.Count) nbrIdx = neighbors[edge];
+
+                    bool nbrIsWater = false;
+                    float nbrWaterY = waterWorldY;
+
+                    if (nbrIdx >= 0 && nbrIdx < grid.TileCount && planetGenerator.data.TryGetValue(nbrIdx, out var nbrTd))
+                    {
+                        nbrIsWater = nbrTd.waterType != TileWaterType.None;
+                        if (nbrIsWater)
+                        {
+                            // Note: neighbor might not be in this chunk; compute its water height on the fly.
+                            if (nbrTd.waterType == TileWaterType.Ocean)
+                                nbrWaterY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset;
+                            else
+                                nbrWaterY = flatY + nbrTd.waterElevation * displacementStrength + waterYOffset;
+                        }
+                    }
+
+                    // Build wall if bordering land/empty, or if neighbor water is significantly lower (step).
+                    bool needWall = !nbrIsWater || (nbrWaterY < waterWorldY - waterVolumeStepEpsilon);
+                    if (!needWall) continue;
+
+                    float bottomWorldY = nbrIsWater ? nbrWaterY : (waterWorldY - depth);
+
+                    // Edge endpoints are corner edge and (edge+1)%6.
+                    int topA = baseVert + 1 + edge;
+                    int topB = baseVert + 1 + ((edge + 1) % 6);
+
+                    Vector3 vTopA = vertices[topA];
+                    Vector3 vTopB = vertices[topB];
+
+                    // Bottom verts (same XZ as top; lower Y)
+                    Vector3 vBotA = new Vector3(vTopA.x, bottomWorldY - chunkWorldPos.y, vTopA.z);
+                    Vector3 vBotB = new Vector3(vTopB.x, bottomWorldY - chunkWorldPos.y, vTopB.z);
+
+                    Color c = colors[topA];
+                    int botA = AddVert(vBotA, new Vector2(0f, 0f), c);
+                    int botB = AddVert(vBotB, new Vector2(1f, 0f), c);
+
+                    // Two triangles for the quad. Winding isn't critical with Cull Off, but keep consistent.
+                    AddTri(topA, topB, botB);
+                    AddTri(topA, botB, botA);
+                }
+            }
+        }
+
+        // Build mesh
+        var waterMesh = new Mesh();
+        waterMesh.name = $"Water_{chunk.ChunkX}_{chunk.ChunkZ}";
+        waterMesh.SetVertices(vertices);
+        waterMesh.SetUVs(0, uvs);
+        waterMesh.SetColors(colors);
+        // We'll recalc normals after triangles to ensure correctness even under mirrored parents
+        // (and because volume walls need proper normals).
+        // If this chunk's parent transform has a negative scale (mirroring),
+        // reverse triangle winding so faces remain front-facing after transform.
+        var triArr = triangles.ToArray();
+        float det = chunk.transform.lossyScale.x * chunk.transform.lossyScale.y * chunk.transform.lossyScale.z;
+        if (det < 0f)
+        {
+            for (int i = 0; i < triArr.Length; i += 3)
+            {
+                int tmp = triArr[i + 1];
+                triArr[i + 1] = triArr[i + 2];
+                triArr[i + 2] = tmp;
+            }
+        }
+
+        waterMesh.SetTriangles(triArr, 0);
+        waterMesh.RecalculateNormals();
+        waterMesh.RecalculateBounds();
+
+        // Expand bounds vertically for safety
+        var b = waterMesh.bounds;
+        b.Expand(new Vector3(0f, 10f, 0f));
+        waterMesh.bounds = b;
+
+        // Create child GameObject
+        GameObject waterObj = new GameObject("Water");
+        waterObj.transform.SetParent(chunk.transform, false);
+        waterObj.transform.localPosition = Vector3.zero;
+        waterObj.transform.localRotation = Quaternion.identity;
+        waterObj.transform.localScale = Vector3.one;
+        waterObj.layer = chunk.gameObject.layer;
+
+        var mf = waterObj.AddComponent<MeshFilter>();
+        mf.sharedMesh = waterMesh;
+
+        var mr = waterObj.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = waterMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        mr.allowOcclusionWhenDynamic = false;
+    }
+
+    /// <summary>
+    /// Build foam edge quads along water-to-land boundaries in a chunk.
+    /// Creates thin quad strips that straddle each shared edge between a water tile
+    /// and a non-water neighbor, with UV.v = 0 on water side, UV.v = 1 on land side.
+    /// </summary>
+    public void BuildFoamEdgeMeshForChunk(HexMapChunk chunk)
+    {
+        if (chunk == null || planetGenerator == null || grid == null) return;
+        if (foamMaterial == null) return;
+
+        // Destroy existing foam child if present
+        Transform existingFoam = chunk.transform.Find("Foam");
+        if (existingFoam != null) DestroyImmediate(existingFoam.gameObject);
+
+        EnsureHexCorners();
+        float s = ComputeHexSize();
+        float foamWidth = s * 0.15f; // foam strip extends 15% of hex size outward
+        float foamYLift = 0.01f;     // slight Y above water
+
+        var tileIndices = chunk.TileIndices;
+        if (tileIndices == null || tileIndices.Count == 0) return;
+
+        Vector3 chunkWorldPos = chunk.transform.position;
+
+        // Collect edge quads
+        var verts = new List<Vector3>();
+        var foamUVs = new List<Vector2>();
+        var foamNormals = new List<Vector3>();
+        var tris = new List<int>();
+
+        foreach (int tileIdx in tileIndices)
+        {
+            if (!planetGenerator.data.TryGetValue(tileIdx, out var td)) continue;
+            if (td.waterType == TileWaterType.None) continue;
+
+            Vector3 tileCenter = grid.tileCenters[tileIdx];
+                // Use manual ocean water Y for ocean foam edges as well.
+                float waterWorldY;
+                if (td.waterType == TileWaterType.Ocean)
+                {
+                    waterWorldY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset + foamYLift;
+                }
+                else
+                {
+                    waterWorldY = flatY + td.waterElevation * displacementStrength + waterYOffset + foamYLift;
+                }
+
+            var neighbors = grid.neighbors[tileIdx];
+            for (int edge = 0; edge < 6; edge++)
+            {
+                // Check if this edge's neighbor is NOT water
+                int nbrIdx = -1;
+                if (edge < neighbors.Count) nbrIdx = neighbors[edge];
+                if (nbrIdx < 0 || nbrIdx >= grid.TileCount) continue;
+
+                bool nbrIsWater = false;
+                if (planetGenerator.data.TryGetValue(nbrIdx, out var nbrTd))
+                {
+                    nbrIsWater = nbrTd.waterType != TileWaterType.None;
+                }
+                if (nbrIsWater) continue; // skip water-water edges
+
+                // Build quad along this edge
+                // Edge k is between corner k and corner (k+1)%6
+                Vector3 cornerA = tileCenter + new Vector3(s * HexCornerCos[edge], 0f, s * HexCornerSin[edge]);
+                Vector3 cornerB = tileCenter + new Vector3(s * HexCornerCos[(edge + 1) % 6], 0f, s * HexCornerSin[(edge + 1) % 6]);
+
+                // Edge midpoint direction (outward from center)
+                Vector3 edgeMid = (cornerA + cornerB) * 0.5f;
+                Vector3 outDir = (edgeMid - tileCenter);
+                outDir.y = 0f;
+                outDir.Normalize();
+
+                // Inner edge (water side)
+                Vector3 innerA = new Vector3(cornerA.x - chunkWorldPos.x, waterWorldY - chunkWorldPos.y, cornerA.z - chunkWorldPos.z);
+                Vector3 innerB = new Vector3(cornerB.x - chunkWorldPos.x, waterWorldY - chunkWorldPos.y, cornerB.z - chunkWorldPos.z);
+
+                // Outer edge (land side, pushed outward)
+                Vector3 outerA = innerA + new Vector3(outDir.x * foamWidth, 0f, outDir.z * foamWidth);
+                Vector3 outerB = innerB + new Vector3(outDir.x * foamWidth, 0f, outDir.z * foamWidth);
+
+                int baseIdx = verts.Count;
+                verts.Add(innerA); // 0 - water side A
+                verts.Add(innerB); // 1 - water side B
+                verts.Add(outerA); // 2 - land side A
+                verts.Add(outerB); // 3 - land side B
+
+                foamUVs.Add(new Vector2(0f, 0f)); // inner A
+                foamUVs.Add(new Vector2(1f, 0f)); // inner B
+                foamUVs.Add(new Vector2(0f, 1f)); // outer A
+                foamUVs.Add(new Vector2(1f, 1f)); // outer B
+
+                foamNormals.Add(Vector3.up);
+                foamNormals.Add(Vector3.up);
+                foamNormals.Add(Vector3.up);
+                foamNormals.Add(Vector3.up);
+
+                // Two triangles for the quad — clockwise winding so faces point UP (toward camera)
+                tris.Add(baseIdx);
+                tris.Add(baseIdx + 1);
+                tris.Add(baseIdx + 2);
+
+                tris.Add(baseIdx + 1);
+                tris.Add(baseIdx + 3);
+                tris.Add(baseIdx + 2);
+            }
+        }
+
+        if (verts.Count == 0) return;
+
+        var foamMesh = new Mesh();
+        foamMesh.name = $"Foam_{chunk.ChunkX}_{chunk.ChunkZ}";
+        foamMesh.SetVertices(verts);
+        foamMesh.SetUVs(0, foamUVs);
+        // We'll recalc normals after triangles to ensure correctness even under mirrored parents
+        var triArr = tris.ToArray();
+        float detFoam = chunk.transform.lossyScale.x * chunk.transform.lossyScale.y * chunk.transform.lossyScale.z;
+        if (detFoam < 0f)
+        {
+            for (int i = 0; i < triArr.Length; i += 3)
+            {
+                int tmp = triArr[i + 1];
+                triArr[i + 1] = triArr[i + 2];
+                triArr[i + 2] = tmp;
+            }
+        }
+        foamMesh.SetTriangles(triArr, 0);
+        foamMesh.RecalculateNormals();
+        foamMesh.RecalculateBounds();
+
+        var b = foamMesh.bounds;
+        b.Expand(new Vector3(0f, 10f, 0f));
+        foamMesh.bounds = b;
+
+        GameObject foamObj = new GameObject("Foam");
+        foamObj.transform.SetParent(chunk.transform, false);
+        foamObj.transform.localPosition = Vector3.zero;
+        foamObj.transform.localRotation = Quaternion.identity;
+        foamObj.transform.localScale = Vector3.one;
+        foamObj.layer = chunk.gameObject.layer;
+
+        var mf = foamObj.AddComponent<MeshFilter>();
+        mf.sharedMesh = foamMesh;
+
+        var mr = foamObj.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = foamMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        mr.allowOcclusionWhenDynamic = false;
+    }
+
+    /// <summary>
+    /// Build water and foam meshes for ALL chunks.
+    /// Called once during BuildChunks after terrain is ready.
+    /// </summary>
+    private void BuildAllWaterMeshes()
+    {
+        if (chunks == null || planetGenerator == null) return;
+
+        // Root-cause safeguard:
+        // Ensure waterType is coherent with tile biome/flags before building meshes.
+        // If a downstream system ever desyncs biome vs. waterType, chunk meshes will skip water tiles entirely.
+        RepairWaterMetadataFromBiome();
+
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                if (chunks[x, z] != null)
+                {
+                    BuildWaterMeshForChunk(chunks[x, z]);
+                    BuildFoamEdgeMeshForChunk(chunks[x, z]);
+                }
+            }
+        }
+
+        // Diagnostic: detect coast/seas/ocean tiles missing waterType (common cause of missing coast water)
+        if (ShouldRunDiagnostics() && planetGenerator != null && planetGenerator.data != null)
+        {
+            int coastBiome = 0, coastMissingWaterType = 0;
+            int riverTiles = 0, riverMissingWaterType = 0;
+            int lakeTiles = 0, lakeMissingWaterType = 0;
+            foreach (var kvp in planetGenerator.data)
+            {
+                var td = kvp.Value;
+                if (td.biome == Biome.Coast)
+                {
+                    coastBiome++;
+                    if (td.waterType == TileWaterType.None) coastMissingWaterType++;
+                }
+                if (td.biome == Biome.River || td.isRiver)
+                {
+                    riverTiles++;
+                    if (td.waterType == TileWaterType.None) riverMissingWaterType++;
+                }
+                if (td.biome == Biome.Lake || td.isLake)
+                {
+                    lakeTiles++;
+                    if (td.waterType == TileWaterType.None) lakeMissingWaterType++;
+                }
+            }
+            if (coastMissingWaterType > 0)
+            {
+                Debug.LogWarning($"[HexMapChunkManager][WaterDiag] Coast tiles missing waterType: {coastMissingWaterType}/{coastBiome}. These will not get coast water meshes.");
+            }
+            if (riverMissingWaterType > 0)
+            {
+                Debug.LogWarning($"[HexMapChunkManager][WaterDiag] River tiles missing waterType: {riverMissingWaterType}/{riverTiles}. These will not get river water meshes.");
+            }
+            if (lakeMissingWaterType > 0)
+            {
+                Debug.LogWarning($"[HexMapChunkManager][WaterDiag] Lake tiles missing waterType: {lakeMissingWaterType}/{lakeTiles}. These will not get lake water meshes.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ensure <see cref="HexTileData.waterType"/> is coherent with tile biome/flags.
+    /// This prevents water tiles from being skipped by the chunk water mesh builder.
+    /// 
+    /// IMPORTANT: HexTileData is a reference type (class). Modifying td.waterType directly
+    /// modifies the object in the dictionary without invalidating the enumerator. We must NOT
+    /// call planetGenerator.data[idx] = td (dictionary indexer set) during foreach iteration
+    /// because that increments the dictionary version and throws InvalidOperationException.
+    /// </summary>
+    private void RepairWaterMetadataFromBiome()
+    {
+        if (planetGenerator == null || planetGenerator.data == null) return;
+
+        int fixedOcean = 0, fixedRiver = 0, fixedLake = 0, clearedNonWater = 0;
+        int waterBiomeButNone = 0;
+        int totalWaterTiles = 0;
+
+        // HexTileData is a class — td IS the same object stored in the dictionary.
+        // Modifying td.waterType modifies the dictionary value directly (no need to re-assign).
+        foreach (var kvp in planetGenerator.data)
+        {
+            var td = kvp.Value;
+            if (td == null) continue;
+
+            bool biomeOcean = (td.biome == Biome.Ocean || td.biome == Biome.Seas || td.biome == Biome.Coast);
+            bool biomeLake = (td.biome == Biome.Lake);
+            bool biomeRiver = (td.biome == Biome.River);
+            bool flagLake = td.isLake;
+            bool flagRiver = td.isRiver;
+
+            bool isWaterBiome = biomeOcean || biomeLake || biomeRiver || flagLake || flagRiver;
+            if (isWaterBiome) totalWaterTiles++;
+            if (isWaterBiome && td.waterType == TileWaterType.None) waterBiomeButNone++;
+
+            if (biomeOcean)
+            {
+                if (td.waterType != TileWaterType.Ocean)
+                {
+                    td.waterType = TileWaterType.Ocean;
+                    td.isLake = false;
+                    td.isRiver = false;
+                    td.lakeId = -1;
+                    td.waterElevation = planetGenerator.coastElevation;
+                    td.riverFlowDirXZ = Vector2.zero;
+                    fixedOcean++;
+                }
+                continue;
+            }
+
+            if (biomeLake || flagLake)
+            {
+                if (td.waterType != TileWaterType.Lake)
+                {
+                    td.waterType = TileWaterType.Lake;
+                    td.isLake = true;
+                    td.isRiver = false;
+                    if (td.lakeId < 0) td.lakeId = -1;
+                    if (td.waterElevation == 0f) td.waterElevation = td.elevation;
+                    td.riverFlowDirXZ = Vector2.zero;
+                    fixedLake++;
+                }
+                continue;
+            }
+
+            if (biomeRiver || flagRiver)
+            {
+                if (td.waterType != TileWaterType.River)
+                {
+                    td.waterType = TileWaterType.River;
+                    td.isRiver = true;
+                    td.isLake = false;
+                    td.lakeId = -1;
+                    if (td.waterElevation == 0f) td.waterElevation = td.elevation;
+                    fixedRiver++;
+                }
+                continue;
+            }
+
+            // Non-water biomes should not carry a water surface classification.
+            if (td.waterType != TileWaterType.None)
+            {
+                td.waterType = TileWaterType.None;
+                td.lakeId = -1;
+                td.waterElevation = 0f;
+                td.riverFlowDirXZ = Vector2.zero;
+                clearedNonWater++;
+            }
+        }
+
+        int totalRepaired = fixedOcean + fixedLake + fixedRiver + clearedNonWater;
+        // Always log this — it's the most important diagnostic for missing water.
+        Debug.Log($"[HexMapChunkManager][WaterRepair] totalWaterTiles={totalWaterTiles}, waterBiomeButWaterTypeNone(pre)={waterBiomeButNone}, repaired: ocean={fixedOcean} lake={fixedLake} river={fixedRiver} clearedNonWater={clearedNonWater}");
+    }
+
+    /// <summary>
+    /// Build cliff wall meshes for ALL chunks.
+    /// Cliff walls are vertical quads along edges where two neighboring tiles have a large elevation step.
+    /// </summary>
+    private void BuildAllCliffWalls()
+    {
+        if (!enableCliffWalls) { DestroyAllCliffWalls(); return; }
+        if (chunks == null || planetGenerator == null || grid == null) return;
+        if (cliffWallMaterial == null) return;
+
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                if (chunks[x, z] != null)
+                    BuildCliffWallsForChunk(chunks[x, z]);
+            }
+        }
+    }
+
+    private void DestroyAllCliffWalls()
+    {
+        if (chunks == null) return;
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                var c = chunks[x, z];
+                if (c == null) continue;
+                Transform existing = c.transform.Find("CliffWalls");
+                if (existing != null) DestroyImmediate(existing.gameObject);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Build a single combined cliff wall mesh for a chunk.
+    /// Walls are created only from the higher tile toward the lower tile, so edges are not duplicated.
+    /// </summary>
+    private void BuildCliffWallsForChunk(HexMapChunk chunk)
+    {
+        if (chunk == null || planetGenerator == null || grid == null) return;
+        if (!enableCliffWalls) return;
+        if (cliffWallMaterial == null) return;
+
+        // Destroy existing cliff wall child if present
+        Transform existing = chunk.transform.Find("CliffWalls");
+        if (existing != null) DestroyImmediate(existing.gameObject);
+
+        EnsureHexCorners();
+        float s = ComputeHexSize();
+        float inset = Mathf.Max(0f, cliffInset);
+
+        var tileIndices = chunk.TileIndices;
+        if (tileIndices == null || tileIndices.Count == 0) return;
+
+        Vector3 chunkWorldPos = chunk.transform.position;
+        float minDelta = Mathf.Max(0.001f, cliffMinHeightDelta);
+        float bottomExt = Mathf.Max(0f, cliffBottomExtension);
+
+        var verts = new List<Vector3>();
+        var uvs = new List<Vector2>();
+        var tris = new List<int>();
+
+        void AddQuad(Vector3 topA, Vector3 topB, Vector3 botA, Vector3 botB)
+        {
+            int baseIdx = verts.Count;
+            verts.Add(topA);
+            verts.Add(topB);
+            verts.Add(botA);
+            verts.Add(botB);
+
+            uvs.Add(new Vector2(0f, 1f));
+            uvs.Add(new Vector2(1f, 1f));
+            uvs.Add(new Vector2(0f, 0f));
+            uvs.Add(new Vector2(1f, 0f));
+
+            // Two triangles (Cull mode depends on material; keep consistent winding).
+            tris.Add(baseIdx);
+            tris.Add(baseIdx + 1);
+            tris.Add(baseIdx + 2);
+            tris.Add(baseIdx + 1);
+            tris.Add(baseIdx + 3);
+            tris.Add(baseIdx + 2);
+        }
+
+        foreach (int tileIdx in tileIndices)
+        {
+            if (!planetGenerator.data.TryGetValue(tileIdx, out var td)) continue;
+            Vector3 tileCenter = grid.tileCenters[tileIdx];
+            float tileTopWorldY = flatY + td.elevation * displacementStrength;
+
+            var neighbors = grid.neighbors[tileIdx];
+            if (neighbors == null) continue;
+
+            for (int edge = 0; edge < 6; edge++)
+            {
+                int nbrIdx = (edge < neighbors.Count) ? neighbors[edge] : -1;
+                if (nbrIdx < 0 || nbrIdx >= grid.TileCount) continue;
+                if (!planetGenerator.data.TryGetValue(nbrIdx, out var nd)) continue;
+
+                float nbrTopWorldY = flatY + nd.elevation * displacementStrength;
+                float delta = tileTopWorldY - nbrTopWorldY;
+                if (delta < minDelta) continue; // only build from higher tile
+
+                // Edge endpoints in world space (XZ from hex corners, Y from each tile top)
+                Vector3 cornerAWorld = tileCenter + new Vector3(s * HexCornerCos[edge], 0f, s * HexCornerSin[edge]);
+                Vector3 cornerBWorld = tileCenter + new Vector3(s * HexCornerCos[(edge + 1) % 6], 0f, s * HexCornerSin[(edge + 1) % 6]);
+
+                // Inset toward tile center to avoid z-fighting with top surface at the seam
+                if (inset > 0f)
+                {
+                    Vector3 dirA = (tileCenter - cornerAWorld); dirA.y = 0f; float lenA = dirA.magnitude; if (lenA > 1e-5f) cornerAWorld += (dirA / lenA) * inset;
+                    Vector3 dirB = (tileCenter - cornerBWorld); dirB.y = 0f; float lenB = dirB.magnitude; if (lenB > 1e-5f) cornerBWorld += (dirB / lenB) * inset;
+                }
+
+                float bottomWorldY = nbrTopWorldY - bottomExt;
+
+                // Convert to chunk-local
+                Vector3 topALocal = new Vector3(cornerAWorld.x - chunkWorldPos.x, tileTopWorldY - chunkWorldPos.y, cornerAWorld.z - chunkWorldPos.z);
+                Vector3 topBLocal = new Vector3(cornerBWorld.x - chunkWorldPos.x, tileTopWorldY - chunkWorldPos.y, cornerBWorld.z - chunkWorldPos.z);
+                Vector3 botALocal = new Vector3(cornerAWorld.x - chunkWorldPos.x, bottomWorldY - chunkWorldPos.y, cornerAWorld.z - chunkWorldPos.z);
+                Vector3 botBLocal = new Vector3(cornerBWorld.x - chunkWorldPos.x, bottomWorldY - chunkWorldPos.y, cornerBWorld.z - chunkWorldPos.z);
+
+                AddQuad(topALocal, topBLocal, botALocal, botBLocal);
+            }
+        }
+
+        if (tris.Count < 3) return;
+
+        var m = new Mesh();
+        m.name = $"CliffWalls_{chunk.ChunkX}_{chunk.ChunkZ}";
+        m.SetVertices(verts);
+        m.SetUVs(0, uvs);
+
+        // Mirror-safe winding
+        var triArr = tris.ToArray();
+        float det = chunk.transform.lossyScale.x * chunk.transform.lossyScale.y * chunk.transform.lossyScale.z;
+        if (det < 0f)
+        {
+            for (int i = 0; i < triArr.Length; i += 3)
+            {
+                int tmp = triArr[i + 1];
+                triArr[i + 1] = triArr[i + 2];
+                triArr[i + 2] = tmp;
+            }
+        }
+        m.SetTriangles(triArr, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+
+        // Expand bounds vertically a bit
+        var b = m.bounds;
+        b.Expand(new Vector3(0f, 50f, 0f));
+        m.bounds = b;
+
+        GameObject obj = new GameObject("CliffWalls");
+        obj.transform.SetParent(chunk.transform, false);
+        obj.transform.localPosition = Vector3.zero;
+        obj.transform.localRotation = Quaternion.identity;
+        obj.transform.localScale = Vector3.one;
+        obj.layer = chunk.gameObject.layer;
+
+        var mf = obj.AddComponent<MeshFilter>();
+        mf.sharedMesh = m;
+        var mr = obj.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = cliffWallMaterial;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        mr.receiveShadows = true;
+        mr.allowOcclusionWhenDynamic = false;
+    }
+
+    // =====================================================================================
+    //  Continuous River Surface Mesh (SDF + Marching Squares)
+    // =====================================================================================
+    private void BuildContinuousRiverSurfaceMesh()
+    {
+        // If we're using Minecraft-like per-tile volume columns, don't also build the continuous SDF surface.
+        if (enableWaterVolumeColumns) { DestroyRiverSurface(); return; }
+        if (!enableContinuousRiverSurface) { DestroyRiverSurface(); return; }
+        if (planetGenerator == null || grid == null || !grid.IsBuilt) { DestroyRiverSurface(); return; }
+        if (waterMaterial == null || heightmapTexture == null || bakeResult.lut == null || bakeResult.lut.Length == 0) { DestroyRiverSurface(); return; }
+
+        int wCells = Mathf.Clamp(riverSdfWidth, 64, 4096);
+        int hCells = Mathf.Clamp(riverSdfHeight, 32, 4096);
+        int wPts = wCells + 1;
+        int hPts = hCells + 1;
+
+        float dx = mapWidth / wCells;
+        float dz = mapHeight / hCells;
+        float diag = Mathf.Sqrt(dx * dx + dz * dz);
+
+        EnsureHexCorners();
+        float hexSize = ComputeHexSize();
+        float isoRiver = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, riverHalfWidthMultiplier));
+        float isoLake = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, lakeHalfWidthMultiplier));
+        // Prevent sub-cell widths which alias into hairline strands at a given SDF resolution.
+        float minIso = Mathf.Max(dx, dz) * 1.5f;
+        isoRiver = Mathf.Max(isoRiver, minIso);
+        isoLake = Mathf.Max(isoLake, minIso);
+
+        // --- Build seed grids for rivers + lakes (plus some midpoints for rivers so they don't look dotted) ---
+        var seedRiver = new bool[wPts * hPts];
+        var seedLake = continuousWaterIncludesLakes ? new bool[wPts * hPts] : null;
+        var ownerRiver = new int[wPts * hPts];
+        for (int i = 0; i < ownerRiver.Length; i++) ownerRiver[i] = -1;
+        int[] ownerLake = null;
+        if (seedLake != null)
+        {
+            ownerLake = new int[wPts * hPts];
+            for (int i = 0; i < ownerLake.Length; i++) ownerLake[i] = -1;
+        }
+
+        // Helper: mark a seed at UV (0..1)
+        void MarkSeed(bool[] seed, int[] owner, float u, float v, int tileIndex)
+        {
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            int px = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int py = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            int idx = py * wPts + px;
+            seed[idx] = true;
+            if (owner != null && owner[idx] < 0) owner[idx] = tileIndex; // keep first owner
+        }
+
+        // Mark tile centers and some segment samples so rivers don't appear "dotted"
+        for (int ti = 0; ti < grid.TileCount; ti++)
+        {
+            if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
+            Vector3 c = grid.tileCenters[ti];
+            float u0 = (c.x / mapWidth) + 0.5f;
+            float v0 = (c.z / mapHeight) + 0.5f;
+
+            if (td.waterType == TileWaterType.River)
+            {
+                MarkSeed(seedRiver, ownerRiver, u0, v0, ti);
+
+                // Sample toward river neighbors for continuity
+                var nbrs = grid.neighbors[ti];
+                if (nbrs != null)
+                {
+                    foreach (int n in nbrs)
+                    {
+                        if (n < 0 || n >= grid.TileCount) continue;
+                        if (!planetGenerator.data.TryGetValue(n, out var nd) || nd.waterType != TileWaterType.River) continue;
+                        Vector3 nc = grid.tileCenters[n];
+                        // 2 samples along the segment
+                        for (int s = 1; s <= 2; s++)
+                        {
+                            float t = s / 3f;
+                            Vector3 p = Vector3.Lerp(c, nc, t);
+                            float uu = (p.x / mapWidth) + 0.5f;
+                            float vv = (p.z / mapHeight) + 0.5f;
+                            MarkSeed(seedRiver, ownerRiver, uu, vv, ti);
+                        }
+                    }
+                }
+            }
+            else if (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)
+            {
+                MarkSeed(seedLake, ownerLake, u0, v0, ti);
+            }
+        }
+
+        // If no inland-water seeds, remove mesh
+        bool anySeed = false;
+        for (int i = 0; i < seedRiver.Length; i++) { if (seedRiver[i]) { anySeed = true; break; } }
+        if (!anySeed && seedLake != null)
+            for (int i = 0; i < seedLake.Length; i++) { if (seedLake[i]) { anySeed = true; break; } }
+        if (!anySeed) { DestroyRiverSurface(); return; }
+
+        // --- Approximate Euclidean distance transform (2-pass chamfer) in WORLD units ---
+        float INF = 1e20f;
+        var distRiver = new float[wPts * hPts];
+        for (int i = 0; i < distRiver.Length; i++) distRiver[i] = seedRiver[i] ? 0f : INF;
+        float[] distLake = null;
+        if (seedLake != null)
+        {
+            distLake = new float[wPts * hPts];
+            for (int i = 0; i < distLake.Length; i++) distLake[i] = seedLake[i] ? 0f : INF;
+        }
+
+        void DistanceTransformInPlace(float[] distArr, int[] ownerArr)
+        {
+            // Forward pass
+            for (int y = 0; y < hPts; y++)
+            {
+                int row = y * wPts;
+                for (int x = 0; x < wPts; x++)
+                {
+                    int idx = row + x;
+                    float d = distArr[idx];
+                    int bestOwner = ownerArr != null ? ownerArr[idx] : -1;
+
+                    if (x > 0)
+                    {
+                        int n = idx - 1;
+                        float nd = distArr[n] + dx;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (y > 0)
+                    {
+                        int n = idx - wPts;
+                        float nd = distArr[n] + dz;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (x > 0 && y > 0)
+                    {
+                        int n = idx - wPts - 1;
+                        float nd = distArr[n] + diag;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (x < wPts - 1 && y > 0)
+                    {
+                        int n = idx - wPts + 1;
+                        float nd = distArr[n] + diag;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    distArr[idx] = d;
+                    if (ownerArr != null) ownerArr[idx] = bestOwner;
+                }
+            }
+            // Backward pass
+            for (int y = hPts - 1; y >= 0; y--)
+            {
+                int row = y * wPts;
+                for (int x = wPts - 1; x >= 0; x--)
+                {
+                    int idx = row + x;
+                    float d = distArr[idx];
+                    int bestOwner = ownerArr != null ? ownerArr[idx] : -1;
+
+                    if (x < wPts - 1)
+                    {
+                        int n = idx + 1;
+                        float nd = distArr[n] + dx;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (y < hPts - 1)
+                    {
+                        int n = idx + wPts;
+                        float nd = distArr[n] + dz;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (x < wPts - 1 && y < hPts - 1)
+                    {
+                        int n = idx + wPts + 1;
+                        float nd = distArr[n] + diag;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    if (x > 0 && y < hPts - 1)
+                    {
+                        int n = idx + wPts - 1;
+                        float nd = distArr[n] + diag;
+                        if (nd < d && (ownerArr == null || ownerArr[n] >= 0)) { d = nd; if (ownerArr != null) bestOwner = ownerArr[n]; }
+                    }
+                    distArr[idx] = d;
+                    if (ownerArr != null) ownerArr[idx] = bestOwner;
+                }
+            }
+        }
+
+        DistanceTransformInPlace(distRiver, ownerRiver);
+        if (distLake != null) DistanceTransformInPlace(distLake, ownerLake);
+
+        // Scalar field: f = min(distRiver - isoRiver, distLake - isoLake). Inside when f <= 0.
+        float FAt(int ix, int iy)
+        {
+            int idx = iy * wPts + ix;
+            float fR = distRiver[idx] - isoRiver;
+            if (distLake == null) return fR;
+            float fL = distLake[idx] - isoLake;
+            return Mathf.Min(fR, fL);
+        }
+
+        // --- Marching squares filled mesh for inside region (dist <= iso) ---
+        var verts = new System.Collections.Generic.List<Vector3>(65536);
+        var cols = new System.Collections.Generic.List<Color>(65536);
+        var norms = new System.Collections.Generic.List<Vector3>(65536);
+        var tris = new System.Collections.Generic.List<int>(131072);
+
+        int[] cornerVert = new int[wPts * hPts];
+        for (int i = 0; i < cornerVert.Length; i++) cornerVert[i] = -1;
+
+        int[] horizEdge = new int[wCells * (hCells + 1)];        // edge between (x,y) and (x+1,y)
+        int[] vertEdge = new int[(wCells + 1) * hCells];         // edge between (x,y) and (x,y+1)
+        for (int i = 0; i < horizEdge.Length; i++) horizEdge[i] = -1;
+        for (int i = 0; i < vertEdge.Length; i++) vertEdge[i] = -1;
+
+        int lutW = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutH = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
+        bool IsLakeAt(float u, float v)
+        {
+            if (distLake == null) return false;
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            int idx = iy * wPts + ix;
+            float fR = distRiver[idx] - isoRiver;
+            float fL = distLake[idx] - isoLake;
+            return fL <= fR;
+        }
+
+        Color SampleInlandWaterColor(float u, float v)
+        {
+            // IMPORTANT: Don't rely on the LUT for water-vs-land classification here.
+            // The inland mesh covers sub-tile points; the LUT can map those points to a nearby LAND tile,
+            // which makes lakes/rivers look "unfilled" or misaligned. Use the SDF to classify lake vs river.
+            if (IsLakeAt(u, v))
+                return new Color(0.5f, 0.5f, 0f, 2f / 3f); // lake alpha matches existing per-tile encoding
+
+            // River: pick flow direction from nearest propagated river seed tile.
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            int idx = iy * wPts + ix;
+            int tIndex = (ownerRiver != null) ? ownerRiver[idx] : -1;
+            if (tIndex >= 0 && planetGenerator.data.TryGetValue(tIndex, out var td) && td.waterType == TileWaterType.River)
+                return new Color(td.riverFlowDirXZ.x * 0.5f + 0.5f, td.riverFlowDirXZ.y * 0.5f + 0.5f, 0f, 1f);
+
+            return new Color(0.5f, 0.5f, 0f, 1f);
+        }
+
+        float SampleInlandWaterY(float u, float v)
+        {
+            // Prefer tile waterElevation so lakes stay flat and rivers stay coherent.
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            bool wantLake = IsLakeAt(u, v);
+            int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
+            int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
+            int idx = iy * wPts + ix;
+            int tIndex = -1;
+            if (wantLake && ownerLake != null) tIndex = ownerLake[idx];
+            else if (ownerRiver != null) tIndex = ownerRiver[idx];
+
+            float waterY;
+            if (tIndex >= 0 && planetGenerator.data.TryGetValue(tIndex, out var td) && (td.waterType == TileWaterType.River || td.waterType == TileWaterType.Lake))
+                waterY = flatY + td.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
+            else
+            {
+                // Fallback to hugging terrain
+                float elev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
+                waterY = flatY + elev * displacementStrength + waterYOffset + riverSurfaceLift;
+            }
+
+            // Ensure water is never below terrain: at boundaries the SDF extends water into
+            // cells where terrain (from heightmap bilinear) can be higher than tile water.
+            float terrainY = heightmapTexture != null
+                ? flatY + heightmapTexture.GetPixelBilinear(u, v).r * displacementStrength
+                : float.MinValue;
+            return terrainY > float.MinValue ? Mathf.Max(waterY, terrainY + 0.01f) : waterY;
+        }
+
+        int GetCorner(int x, int y)
+        {
+            int idx = y * wPts + x;
+            int vi = cornerVert[idx];
+            if (vi >= 0) return vi;
+
+            float u = (float)x / wCells;
+            float v = (float)y / hCells;
+            float wx = (u - 0.5f) * mapWidth;
+            float wz = (v - 0.5f) * mapHeight;
+            float wy = SampleInlandWaterY(u, v);
+
+            vi = verts.Count;
+            verts.Add(new Vector3(wx, wy, wz));
+            cols.Add(SampleInlandWaterColor(u, v));
+            norms.Add(Vector3.up);
+            cornerVert[idx] = vi;
+            return vi;
+        }
+
+        int GetHoriz(int x, int y) // between (x,y) and (x+1,y), x in [0..wCells-1], y in [0..hCells]
+        {
+            int ei = y * wCells + x;
+            int vi = horizEdge[ei];
+            if (vi >= 0) return vi;
+
+            float f0 = FAt(x, y);
+            float f1 = FAt(x + 1, y);
+            float t = (Mathf.Abs(f1 - f0) < 1e-6f) ? 0.5f : Mathf.Clamp01((0f - f0) / (f1 - f0));
+
+            float u = (x + t) / wCells;
+            float v = (float)y / hCells;
+            float wx = (u - 0.5f) * mapWidth;
+            float wz = (v - 0.5f) * mapHeight;
+            float wy = SampleInlandWaterY(u, v);
+
+            vi = verts.Count;
+            verts.Add(new Vector3(wx, wy, wz));
+            cols.Add(SampleInlandWaterColor(u, v));
+            norms.Add(Vector3.up);
+            horizEdge[ei] = vi;
+            return vi;
+        }
+
+        int GetVert(int x, int y) // between (x,y) and (x,y+1), x in [0..wCells], y in [0..hCells-1]
+        {
+            int ei = y * (wCells + 1) + x;
+            int vi = vertEdge[ei];
+            if (vi >= 0) return vi;
+
+            float f0 = FAt(x, y);
+            float f1 = FAt(x, y + 1);
+            float t = (Mathf.Abs(f1 - f0) < 1e-6f) ? 0.5f : Mathf.Clamp01((0f - f0) / (f1 - f0));
+
+            float u = (float)x / wCells;
+            float v = (y + t) / hCells;
+            float wx = (u - 0.5f) * mapWidth;
+            float wz = (v - 0.5f) * mapHeight;
+            float wy = SampleInlandWaterY(u, v);
+
+            vi = verts.Count;
+            verts.Add(new Vector3(wx, wy, wz));
+            cols.Add(SampleInlandWaterColor(u, v));
+            norms.Add(Vector3.up);
+            vertEdge[ei] = vi;
+            return vi;
+        }
+
+        void AddTri(int a, int b, int c3)
+        {
+            tris.Add(a);
+            tris.Add(b);
+            tris.Add(c3);
+        }
+
+        void AddPoly(params int[] poly)
+        {
+            if (poly == null || poly.Length < 3) return;
+            int a = poly[0];
+            for (int i = 1; i < poly.Length - 1; i++)
+            {
+                AddTri(a, poly[i], poly[i + 1]);
+            }
+        }
+
+        // Only needed for ambiguous cases (5/10) to avoid concave fan triangles.
+        int GetCenter(int x, int y)
+        {
+            float u = (x + 0.5f) / wCells;
+            float v = (y + 0.5f) / hCells;
+            float wx = (u - 0.5f) * mapWidth;
+            float wz = (v - 0.5f) * mapHeight;
+            float wy = SampleInlandWaterY(u, v);
+            int vi = verts.Count;
+            verts.Add(new Vector3(wx, wy, wz));
+            cols.Add(SampleInlandWaterColor(u, v));
+            norms.Add(Vector3.up);
+            return vi;
+        }
+
+        for (int y = 0; y < hCells; y++)
+        {
+            for (int x = 0; x < wCells; x++)
+            {
+                // Corners: BL, BR, TR, TL
+                float fBL = FAt(x, y);
+                float fBR = FAt(x + 1, y);
+                float fTR = FAt(x + 1, y + 1);
+                float fTL = FAt(x, y + 1);
+
+                bool inBL = fBL <= 0f;
+                bool inBR = fBR <= 0f;
+                bool inTR = fTR <= 0f;
+                bool inTL = fTL <= 0f;
+
+                int c = (inBL ? 1 : 0) | (inBR ? 2 : 0) | (inTR ? 4 : 0) | (inTL ? 8 : 0);
+                if (c == 0) continue;
+
+                int vBL = -1, vBR = -1, vTR = -1, vTL = -1;
+                if (inBL) vBL = GetCorner(x, y);
+                if (inBR) vBR = GetCorner(x + 1, y);
+                if (inTR) vTR = GetCorner(x + 1, y + 1);
+                if (inTL) vTL = GetCorner(x, y + 1);
+
+                int eB = -1, eR = -1, eT = -1, eL = -1;
+                if (inBL != inBR) eB = GetHoriz(x, y);
+                if (inBR != inTR) eR = GetVert(x + 1, y);
+                if (inTL != inTR) eT = GetHoriz(x, y + 1);
+                if (inBL != inTL) eL = GetVert(x, y);
+
+                // Saddle disambiguation (cases 5 and 10)
+                bool centerInside = false;
+                if (c == 5 || c == 10)
+                {
+                    float fC = (fBL + fBR + fTR + fTL) * 0.25f;
+                    centerInside = fC <= 0f;
+                }
+
+                switch (c)
+                {
+                    case 1:  AddPoly(vBL, eB, eL); break;
+                    case 2:  AddPoly(vBR, eR, eB); break;
+                    case 3:  AddPoly(vBL, vBR, eR, eL); break;
+                    case 4:  AddPoly(vTR, eT, eR); break;
+                    case 5:
+                        if (centerInside)
+                        {
+                            // Fill the connected hourglass using a center vertex to avoid concave fan triangles.
+                            int vC = GetCenter(x, y);
+                            AddTri(vBL, eB, vC);
+                            AddTri(vBL, vC, eL);
+                            AddTri(vC, eB, eR);
+                            AddTri(vC, eR, vTR);
+                            AddTri(vC, vTR, eT);
+                            AddTri(vC, eT, eL);
+                        }
+                        else { AddPoly(vBL, eB, eL); AddPoly(vTR, eT, eR); }
+                        break;
+                    case 6:  AddPoly(vBR, vTR, eT, eB); break;
+                    case 7:  AddPoly(vBL, vBR, vTR, eT, eL); break;
+                    case 8:  AddPoly(vTL, eL, eT); break;
+                    case 9:  AddPoly(vBL, eB, eT, vTL); break;
+                    case 10:
+                        if (centerInside)
+                        {
+                            int vC = GetCenter(x, y);
+                            AddTri(vBR, eR, vC);
+                            AddTri(vBR, vC, eB);
+                            AddTri(vC, eR, eT);
+                            AddTri(vC, eT, vTL);
+                            AddTri(vC, vTL, eL);
+                            AddTri(vC, eL, eB);
+                        }
+                        else { AddPoly(vBR, eR, eB); AddPoly(vTL, eL, eT); }
+                        break;
+                    case 11: AddPoly(vBL, vBR, eR, eT, vTL); break;
+                    case 12: AddPoly(vTL, vTR, eR, eL); break;
+                    case 13: AddPoly(vBL, eB, eR, vTR, vTL); break;
+                    case 14: AddPoly(vBR, vTR, vTL, eL, eB); break;
+                    case 15: AddPoly(GetCorner(x, y), GetCorner(x + 1, y), GetCorner(x + 1, y + 1), GetCorner(x, y + 1)); break;
+                }
+            }
+        }
+
+        if (tris.Count < 3)
+        {
+            DestroyRiverSurface();
+            return;
+        }
+
+        // Optionally extrude the top surface into a closed 3D volume (walls + bottom).
+        if (extrudeInlandWaterToVolume)
+        {
+            float depth = Mathf.Max(0.01f, inlandWaterVolumeDepth);
+
+            int nTop = verts.Count;
+            var v2 = new System.Collections.Generic.List<Vector3>(nTop * 2);
+            var c2 = new System.Collections.Generic.List<Color>(nTop * 2);
+            var t2 = new System.Collections.Generic.List<int>(tris.Count * 2 + 65536);
+
+            v2.AddRange(verts);
+            c2.AddRange(cols);
+
+            for (int i = 0; i < nTop; i++)
+            {
+                Vector3 p = verts[i];
+                v2.Add(new Vector3(p.x, p.y - depth, p.z));
+                c2.Add(cols[i]);
+            }
+
+            // Top faces
+            t2.AddRange(tris);
+
+            // Bottom faces (reverse winding)
+            for (int i = 0; i < tris.Count; i += 3)
+            {
+                int a = tris[i] + nTop;
+                int b = tris[i + 1] + nTop;
+                int c = tris[i + 2] + nTop;
+                t2.Add(a);
+                t2.Add(c);
+                t2.Add(b);
+            }
+
+            // Boundary edges -> side walls
+            ulong Key(int a, int b)
+            {
+                uint aa = (uint)Mathf.Min(a, b);
+                uint bb = (uint)Mathf.Max(a, b);
+                return ((ulong)aa << 32) | (ulong)bb;
+            }
+
+            var edgeCount = new System.Collections.Generic.Dictionary<ulong, int>(tris.Count);
+            var edgeDir = new System.Collections.Generic.Dictionary<ulong, Vector2Int>(tris.Count);
+
+            void AccEdge(int a, int b)
+            {
+                ulong k = Key(a, b);
+                if (edgeCount.TryGetValue(k, out int cnt)) edgeCount[k] = cnt + 1;
+                else edgeCount[k] = 1;
+                if (!edgeDir.ContainsKey(k)) edgeDir[k] = new Vector2Int(a, b); // keep one direction for wall build
+            }
+
+            for (int i = 0; i < tris.Count; i += 3)
+            {
+                int a = tris[i];
+                int b = tris[i + 1];
+                int c = tris[i + 2];
+                AccEdge(a, b);
+                AccEdge(b, c);
+                AccEdge(c, a);
+            }
+
+            foreach (var kvp in edgeCount)
+            {
+                if (kvp.Value != 1) continue; // interior edge
+                Vector2Int e = edgeDir[kvp.Key];
+                int a = e.x;
+                int b = e.y;
+                int a2 = a + nTop;
+                int b2 = b + nTop;
+
+                // Quad as two triangles. Cull is off on the water shader, so exact winding isn't critical,
+                // but we keep a consistent ordering for normal calculation.
+                t2.Add(a);
+                t2.Add(b);
+                t2.Add(b2);
+                t2.Add(a);
+                t2.Add(b2);
+                t2.Add(a2);
+            }
+
+            verts = v2;
+            cols = c2;
+            tris = t2;
+            norms = null; // we'll recalc for volume
+        }
+
+        EnsureRiverSurfaceObject();
+        if (_riverSurfaceMesh == null) _riverSurfaceMesh = new Mesh();
+        _riverSurfaceMesh.Clear();
+        _riverSurfaceMesh.name = extrudeInlandWaterToVolume ? "InlandWaterVolume" : "ContinuousRiverSurface";
+        _riverSurfaceMesh.SetVertices(verts);
+        _riverSurfaceMesh.SetColors(cols);
+        _riverSurfaceMesh.SetTriangles(tris, 0);
+        if (norms != null && norms.Count == verts.Count) _riverSurfaceMesh.SetNormals(norms);
+        else _riverSurfaceMesh.RecalculateNormals();
+        _riverSurfaceMesh.RecalculateBounds();
+
+        var mf = _riverSurfaceObj.GetComponent<MeshFilter>();
+        mf.sharedMesh = _riverSurfaceMesh;
+    }
+
+    private void EnsureRiverSurfaceObject()
+    {
+        if (_riverSurfaceObj == null)
+        {
+            string objName =
+                extrudeInlandWaterToVolume
+                    ? (continuousWaterIncludesLakes ? "InlandWaterVolume" : "RiverVolume")
+                    : (continuousWaterIncludesLakes ? "InlandWaterSurface" : "RiverSurface");
+
+            _riverSurfaceObj = new GameObject(objName);
+            _riverSurfaceObj.transform.SetParent(transform, false);
+            _riverSurfaceObj.transform.localPosition = Vector3.zero;
+            _riverSurfaceObj.transform.localRotation = Quaternion.identity;
+            _riverSurfaceObj.transform.localScale = Vector3.one;
+            _riverSurfaceObj.layer = gameObject.layer;
+
+            var mf = _riverSurfaceObj.AddComponent<MeshFilter>();
+            var mr = _riverSurfaceObj.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = waterMaterial; // same water shader; river-ness comes from vertexColor.a
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.allowOcclusionWhenDynamic = false;
+        }
+        else
+        {
+            string objName =
+                extrudeInlandWaterToVolume
+                    ? (continuousWaterIncludesLakes ? "InlandWaterVolume" : "RiverVolume")
+                    : (continuousWaterIncludesLakes ? "InlandWaterSurface" : "RiverSurface");
+
+            if (_riverSurfaceObj.name != objName) _riverSurfaceObj.name = objName;
+            var mr = _riverSurfaceObj.GetComponent<MeshRenderer>();
+            if (mr != null) mr.sharedMaterial = waterMaterial;
+        }
+    }
+
+    private void DestroyRiverSurface()
+    {
+        if (_riverSurfaceObj != null)
+        {
+            DestroyImmediate(_riverSurfaceObj);
+            _riverSurfaceObj = null;
+        }
+        if (_riverSurfaceMesh != null)
+        {
+            DestroyImmediate(_riverSurfaceMesh);
+            _riverSurfaceMesh = null;
+        }
+    }
+
+    /// <summary>
+    /// Copy a named child mesh (Water or Foam) from a source chunk to a ghost chunk.
+    /// Used by CreateGhostColumn to duplicate water surfaces for seamless wrap.
+    /// </summary>
+    private void CopyChildMeshToGhost(Transform sourceChunk, Transform ghostChunk, string childName, Material mat)
+    {
+        if (mat == null) return;
+        Transform sourceChild = sourceChunk.Find(childName);
+        if (sourceChild == null) return;
+
+        MeshFilter srcMF = sourceChild.GetComponent<MeshFilter>();
+        if (srcMF == null || srcMF.sharedMesh == null) return;
+
+        GameObject ghostChild = new GameObject(childName);
+        ghostChild.transform.SetParent(ghostChunk, false);
+        ghostChild.transform.localPosition = sourceChild.localPosition;
+        ghostChild.transform.localRotation = sourceChild.localRotation;
+        ghostChild.transform.localScale = sourceChild.localScale;
+        ghostChild.layer = sourceChild.gameObject.layer;
+
+        var mf = ghostChild.AddComponent<MeshFilter>();
+        mf.sharedMesh = srcMF.sharedMesh;
+
+        var mr = ghostChild.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = mat;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        mr.allowOcclusionWhenDynamic = false;
+    }
+
+    #endregion
     
     #region Column Wrapping
     
@@ -1334,6 +3279,10 @@ public class HexMapChunkManager : MonoBehaviour
             ghostChunk.transform.localRotation = Quaternion.identity;
             ghostChunk.transform.localScale = Vector3.one;
             ghostChunk.layer = sourceChunk.gameObject.layer;
+
+            // Copy Water and Foam child meshes for seamless water wrap
+            CopyChildMeshToGhost(sourceChunk.transform, ghostChunk.transform, "Water", waterMaterial);
+            CopyChildMeshToGhost(sourceChunk.transform, ghostChunk.transform, "Foam", foamMaterial);
         }
 
         if (debugWrapVerbose)
@@ -1690,6 +3639,33 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Rebuild water + foam meshes for the chunk containing <paramref name="tileIndex"/>.
+    /// Use this when a tile's water-ness changes (e.g. becomes Coast/Seas/Ocean/Lake/River) after the initial build.
+    /// </summary>
+    public void RebuildWaterForTile(int tileIndex)
+    {
+        if (chunks == null || planetGenerator == null) return;
+        if (!tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk) || chunk == null) return;
+
+        BuildWaterMeshForChunk(chunk);
+        BuildFoamEdgeMeshForChunk(chunk);
+        // Rivers are rendered as a single continuous mesh when enabled.
+        // Rebuild the whole river surface if a river tile changed (cheap at low SDF resolution).
+        if (enableContinuousRiverSurface)
+        {
+            try
+            {
+                if (planetGenerator.data.TryGetValue(tileIndex, out var td) &&
+                    (td.waterType == TileWaterType.River || (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)))
+                    BuildContinuousRiverSurfaceMesh();
+            }
+            catch { /* ignore */ }
+        }
+        // NOTE: Ghost columns copy Water/Foam at creation time; if you dynamically change coast/water at runtime
+        // near map edges, we may also need to refresh ghost meshes.
+    }
     
     /// <summary>
     /// Mark multiple tiles as changed.
@@ -1832,6 +3808,7 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_BiomeSurfaceMapTex", null);
             sharedMaterial.SetTexture("_BiomeEmissiveMapTex", null);
             sharedMaterial.SetTexture("_LUT", null);
+            sharedMaterial.SetTexture("_SliceToBiomeMap", null);
         }
 
         // Destroy Texture2DArray / Texture2D resources
@@ -1845,6 +3822,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeSurfaceMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeSurfaceMapTexture); biomeSurfaceMapTexture = null; }
         if (biomeEmissiveMapTexture != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveMapTexture); biomeEmissiveMapTexture = null; }
         if (lutTexture != null) { UnityEngine.Object.DestroyImmediate(lutTexture); lutTexture = null; }
+        if (sliceToBiomeMap != null) { UnityEngine.Object.DestroyImmediate(sliceToBiomeMap); sliceToBiomeMap = null; }
 
         // Release RenderTextures from bakeResult (if present)
         try

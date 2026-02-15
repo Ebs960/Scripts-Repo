@@ -159,9 +159,9 @@ public class MainMenuManager : MonoBehaviour
     private readonly LandPresetData[] landPresets = new[] {
         new LandPresetData { name = "Archipelago", continents = 0, islands = 25, continentSizeMultiplier = 1.0f, description = "Many small scattered islands" },
         new LandPresetData { name = "Islands", continents = 2, islands = 15, continentSizeMultiplier = 1.0f, description = "A few large islands with smaller ones" },
-        new LandPresetData { name = "Standard", continents = 5, islands = 9, continentSizeMultiplier = 1.2f, description = "Balanced continents and islands" },
-        new LandPresetData { name = "Large Continents", continents = 7, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
-        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, continentSizeMultiplier = 3.5f, description = "One massive supercontinent" }
+        new LandPresetData { name = "Standard", continents = 3, islands = 5, continentSizeMultiplier = 1.05f, description = "Balanced continents and islands" },
+        new LandPresetData { name = "Large Continents", continents = 4, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
+        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, continentSizeMultiplier = 7.5f, description = "One massive supercontinent" }
     };
 
     // Moisture preset values
@@ -178,7 +178,7 @@ public class MainMenuManager : MonoBehaviour
     private readonly (float hills, float mountains)[] terrainPresets = new[] {
         (0.4f, 0.6f),   // Smooth: few hills, almost no mountains
         (0.5f, 0.7f),   // Rolling: moderate hills, few mountains
-        (0.6f, 0.8f),   // Rocky: many hills, some mountains
+        (0.65f, 0.8f),   // Rocky: many hills, some mountains
         (0.7f, 0.85f),  // Mountainous: lots of hills and mountains
         (0.8f, 0.9f)    // Alpine: extremely mountainous
     };
@@ -903,9 +903,9 @@ public class MainMenuManager : MonoBehaviour
         // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea
         
         // Base lake counts by moisture (halved)
-        int[] baseLakeCounts = { 1, 2, 5, 7, 8, 9 };      // Desert=none, Oceanic=moderate
-        int[] minLakeSizes = { 1, 2, 2, 2, 3, 3 };        // Halved min sizes
-        int[] maxLakeSizes = { 2, 4, 2, 3, 6, 8 };        // Halved max sizes
+        int[] baseLakeCounts = { 1, 2, 3, 7, 8, 9 };      // Desert=none, Oceanic=moderate
+        int[] minLakeSizes = { 1, 1, 1, 1, 2, 3 };        // Halved min sizes
+        int[] maxLakeSizes = { 1, 1, 2, 2, 4, 5 };        // Halved max sizes
         
         // Land type multipliers for lake count (islands have less inland area)
         // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
@@ -936,8 +936,8 @@ public class MainMenuManager : MonoBehaviour
         GameSetupData.moistureBias = moistureSettings.bias;
 
         // Set temperatureBias and moistureBias for strong climate impact
-        float[] tempBiases = { -0.30f, -0.15f, 0f, 0.1f, 0.2f, 0.30f }; // Frozen to Scorching
-        float[] moistBiases = { -0.45f, -0.15f, 0f, 0.1f, 0.2f, 0.45f }; // Desert to Oceanic
+        float[] tempBiases = { -0.30f, -0.15f, 0.1f, 0.15f, 0.2f, 0.30f }; // Frozen to Scorching
+        float[] moistBiases = { -0.45f, -0.15f, -0.05f, 0.1f, 0.2f, 0.45f }; // Desert to Oceanic
         GameSetupData.temperatureBias = tempBiases[Mathf.Clamp(selectedClimatePreset, 0, tempBiases.Length-1)];
         GameSetupData.moistureBias += moistBiases[Mathf.Clamp(selectedMoisturePreset, 0, moistBiases.Length-1)];
         

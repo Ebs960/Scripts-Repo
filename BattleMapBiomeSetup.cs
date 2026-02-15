@@ -18,12 +18,11 @@ public class BattleMapBiomeSetup : MonoBehaviour
     [Tooltip("Which biomes to include in the battle map")]
         public Biome[] biomesToInclude = { 
         Biome.Plains, 
-        Biome.Forest, 
+        Biome.Temperate, 
         Biome.Desert, 
         Biome.Swamp,
             Biome.Arctic,
-        Biome.Grassland,
-        Biome.Jungle
+        Biome.Tropical
     };
     
     [ContextMenu("Copy Biome Settings from Planet Generator")]

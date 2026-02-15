@@ -169,7 +169,7 @@ public static class GameSetupData
         minContinentWidthTilesStandard = 21; maxContinentWidthTilesStandard = 39;
         minContinentHeightTilesStandard = 20; maxContinentHeightTilesStandard = 35;
 
-        minContinentWidthTilesLarge = 400; maxContinentWidthTilesLarge = 800;
+        minContinentWidthTilesLarge = 300; maxContinentWidthTilesLarge = 400;
         minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
 
         // Tile-based island sizing defaults (smaller than continents)
@@ -179,8 +179,8 @@ public static class GameSetupData
         minIslandWidthTilesStandard = 7; maxIslandWidthTilesStandard = 9;
         minIslandHeightTilesStandard = 7; maxIslandHeightTilesStandard = 11;
 
-        minIslandWidthTilesLarge = 40; maxIslandWidthTilesLarge = 120;
-        minIslandHeightTilesLarge = 20; maxIslandHeightTilesLarge = 60;
+        minIslandWidthTilesLarge = 5; maxIslandWidthTilesLarge = 6;
+        minIslandHeightTilesLarge = 2; maxIslandHeightTilesLarge = 3;
 
         // River defaults
         minRiversPerContinent = 1;
@@ -191,16 +191,16 @@ public static class GameSetupData
         continentMaxWidthTiles = maxContinentWidthTilesStandard;
         continentMinHeightTiles = minContinentHeightTilesStandard;
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
-        continentMinDistanceTiles = 3;
-        continentConnectionChance = 0.1f;
+        continentMinDistanceTiles = 5;
+        continentConnectionChance = 0.25f;
         continentSizeMultiplier = 1.0f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
         islandMaxRadiusTiles = Mathf.Max(islandMinRadiusTiles, maxIslandWidthTilesStandard / 2);
         islandMinDistanceFromContinents = 4;
 
-        lakeMinRadiusTiles = 2;
-        lakeMaxRadiusTiles = 5;
-        lakeMinDistanceFromCoast = 3;
+        lakeMinRadiusTiles = 1;
+        lakeMaxRadiusTiles = 2;
+        lakeMinDistanceFromCoast = 4;
     }
 }

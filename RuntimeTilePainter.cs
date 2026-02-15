@@ -18,7 +18,7 @@ public class RuntimeTilePainter : MonoBehaviour
     public HexMapChunkManager hexMapChunkManager;
 
     [Header("Paint")]
-    public Biome paintBiome = Biome.Grassland;
+    public Biome paintBiome = Biome.Temperate;
     public bool rebuildOnPaint = true;
 
     public TilePaintEvent onTilePainted = new TilePaintEvent();

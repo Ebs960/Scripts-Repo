@@ -96,7 +96,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
     private static readonly int ID_BiomeTint     = Shader.PropertyToID("_BiomeTint");
     private static readonly int ID_DesertFactor  = Shader.PropertyToID("_DesertFactor");
-    private static readonly int ID_JungleFactor  = Shader.PropertyToID("_JungleFactor");
+    private static readonly int ID_TropicalFactor = Shader.PropertyToID("_TropicalFactor");
     private static readonly int ID_SnowFactor    = Shader.PropertyToID("_SnowFactor");
     private static readonly int ID_DetailScale   = Shader.PropertyToID("_DetailScale");
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
@@ -302,15 +302,15 @@ public class MenuPlanetPreview : MonoBehaviour
 
         materialInstance.SetColor(ID_BiomeTint, finalTint);
 
-        // Desert and jungle amounts should drop as things get colder.
+        // Desert and tropical amounts should drop as things get colder.
         float desertFactor = Mathf.Clamp01(temperature * (1f - moisture) * 1.5f);
-        float jungleFactor = Mathf.Clamp01(moisture * temperature * 1.6f);
+        float tropicalFactor = Mathf.Clamp01(moisture * temperature * 1.6f);
 
         // Snow factor is primarily temperature-driven but reinforced by elevation
         float snowFactor = Mathf.Clamp01((1f - temperature) * elevation * 1.8f);
 
         materialInstance.SetFloat(ID_DesertFactor, desertFactor);
-        materialInstance.SetFloat(ID_JungleFactor, jungleFactor);
+        materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
         // Mirror detail/atmosphere props to shader so inspector updates apply immediately

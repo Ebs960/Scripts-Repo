@@ -884,7 +884,7 @@ public class GPUInstancedGrass : MonoBehaviour
     {
         switch (biome)
         {
-            case Biome.Grassland:
+            case Biome.Temperate:
                 grassColorBase = new Color(0.4f, 0.75f, 0.35f);
                 grassColorTip = new Color(0.55f, 0.85f, 0.45f);
                 grassColorDry = new Color(0.65f, 0.6f, 0.4f);
@@ -899,15 +899,7 @@ public class GPUInstancedGrass : MonoBehaviour
                 densityMultiplier = 1.2f;
                 break;
                 
-            case Biome.Forest:
-                grassColorBase = new Color(0.35f, 0.6f, 0.3f);
-                grassColorTip = new Color(0.45f, 0.7f, 0.4f);
-                grassColorDry = new Color(0.55f, 0.5f, 0.35f);
-                densityMultiplier = 1.0f;
-                maxHeight = 0.6f;
-                break;
-                
-            case Biome.Jungle:
+            case Biome.Tropical:
                 grassColorBase = new Color(0.3f, 0.65f, 0.35f);
                 grassColorTip = new Color(0.4f, 0.75f, 0.45f);
                 grassColorDry = new Color(0.45f, 0.55f, 0.35f);

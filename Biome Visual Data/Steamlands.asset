@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Steamlands
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 16
+  biome: 15
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 4d10154f6a0b2754992f1d7ebc3fe742, type: 2}
   forcedVariant: -1
@@ -23,6 +23,6 @@ MonoBehaviour:
   tint: {r: 1, g: 1, b: 1, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.084
+  snowRetention: 0
   wetnessResponse: 0.214
   isWaterBiome: 0

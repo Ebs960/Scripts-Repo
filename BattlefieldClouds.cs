@@ -703,7 +703,7 @@ public class BattlefieldClouds : MonoBehaviour
         switch (biome)
         {
             // Lush, humid biomes - more clouds
-            case Biome.Jungle:
+            case Biome.Tropical:
             case Biome.Swamp:
                 cloudDensity = 0.7f;
                 cloudColor = new Color(0.9f, 0.9f, 0.95f, 0.7f);
@@ -711,8 +711,7 @@ public class BattlefieldClouds : MonoBehaviour
                 break;
                 
             // Temperate biomes - moderate clouds
-            case Biome.Forest:
-            case Biome.Grassland:
+            case Biome.Temperate:
             case Biome.Plains:
                 cloudDensity = 0.5f;
                 cloudColor = new Color(1f, 1f, 1f, 0.6f);

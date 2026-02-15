@@ -395,9 +395,8 @@ public class BattleSceneVisuals : MonoBehaviour
                 break;
                 
                 
-            // === PLAINS/GRASSLAND BIOMES ===
+            // === PLAINS BIOMES ===
             case Biome.Plains:
-            case Biome.Grassland:
                 // Pleasant, neutral lighting
                 sunColor = new Color(1f, 0.96f, 0.88f);
                 sunIntensity = 1.2f;
@@ -408,9 +407,9 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.1f;
                 break;
                 
-            // === FOREST/JUNGLE BIOMES ===
-            case Biome.Forest:
-                // Dappled forest lighting
+            // === TEMPERATE/TROPICAL BIOMES ===
+            case Biome.Temperate:
+                // Dappled temperate lighting
                 sunColor = new Color(1f, 0.98f, 0.9f);
                 sunIntensity = 1.1f;
                 skyColor = new Color(0.4f, 0.6f, 0.8f);
@@ -422,8 +421,8 @@ public class BattleSceneVisuals : MonoBehaviour
                 contrast = 0.1f;
                 break;
                 
-            case Biome.Jungle:
-                // Dense, humid jungle lighting
+            case Biome.Tropical:
+                // Dense, humid tropical lighting
                 sunColor = new Color(0.95f, 1f, 0.9f);
                 sunIntensity = 1.0f;
                 skyColor = new Color(0.35f, 0.55f, 0.7f);

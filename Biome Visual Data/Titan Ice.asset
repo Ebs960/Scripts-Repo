@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Titan Ice
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 36
+  biome: 35
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f2b52ef11c5b234a97da2f06f3baf89, type: 2}
   forcedVariant: -1

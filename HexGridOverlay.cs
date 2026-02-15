@@ -18,8 +18,8 @@ public class HexGridOverlay : MonoBehaviour
     [Tooltip("Width of the hex grid lines")]
     [SerializeField, Range(0.01f, 0.5f)] private float lineWidth = 0.05f;
     
-    [Tooltip("Height offset above terrain to avoid z-fighting")]
-    [SerializeField] private float heightOffset = 0.1f;
+    [Tooltip("Height offset above terrain surface to avoid z-fighting")]
+    [SerializeField] private float heightOffset = 0.3f;
     
     [Tooltip("Material for line renderers (optional - will create default if null)")]
     [SerializeField] private Material lineMaterial;
@@ -37,7 +37,13 @@ public class HexGridOverlay : MonoBehaviour
     // References
     private HexGrid grid;
     private PlanetGenerator planetGenerator;
+    private HexMapChunkManager chunkManager;
     private Camera mainCamera;
+    
+    // Terrain height sampling
+    private float displacementStrength = 1f;
+    private float flatY = 0f;
+    private Texture2D heightmapTexture;
     
     // Line renderer pool
     private List<LineRenderer> lineRendererPool = new List<LineRenderer>();
@@ -62,6 +68,7 @@ public class HexGridOverlay : MonoBehaviour
     void Start()
     {
         mainCamera = Camera.main;
+        Debug.Log($"[HexGridOverlay] Start() — showGrid={showGrid}, mainCamera={(mainCamera != null ? mainCamera.name : "NULL")}, gameObject={gameObject.name}, active={gameObject.activeInHierarchy}");
         
         // Create parent for line renderers
         lineRendererParent = new GameObject("HexGridLines").transform;
@@ -73,18 +80,59 @@ public class HexGridOverlay : MonoBehaviour
         if (lineMaterial == null)
         {
             lineMaterial = CreateDefaultLineMaterial();
+            Debug.Log($"[HexGridOverlay] Created default line material: shader={lineMaterial?.shader?.name ?? "NULL"}, color={lineMaterial?.color}");
+        }
+        else
+        {
+            Debug.Log($"[HexGridOverlay] Using assigned material: {lineMaterial.name}, shader={lineMaterial.shader?.name ?? "NULL"}");
         }
         
         // Try to find references
         FindReferences();
         
+        Debug.Log($"[HexGridOverlay] After FindReferences — grid={(grid != null ? $"found (TileCount={grid.TileCount}, Width={grid.Width}, MapWidth={grid.MapWidth})" : "NULL")}, planetGenerator={(planetGenerator != null ? planetGenerator.name : "NULL")}");
+        
         // Initial visibility
         lineRendererParent.gameObject.SetActive(showGrid);
+        
+        if (!showGrid)
+        {
+            Debug.LogWarning("[HexGridOverlay] showGrid is FALSE — grid lines are hidden by default. Call SetGridVisible(true) or enable 'Show Grid' in the Inspector to display them.");
+        }
     }
+    
+    // Debug: track whether we've logged the "first frame" info yet
+    private bool _loggedFirstUpdate = false;
+    private int _updateCallCount = 0;
     
     void Update()
     {
-        if (!showGrid || grid == null) return;
+        _updateCallCount++;
+        
+        if (!showGrid)
+        {
+            if (!_loggedFirstUpdate)
+            {
+                Debug.LogWarning("[HexGridOverlay] Update skipped: showGrid is FALSE");
+                _loggedFirstUpdate = true;
+            }
+            return;
+        }
+        
+        if (grid == null)
+        {
+            // Retry finding references periodically
+            if (_updateCallCount % 60 == 0)
+            {
+                Debug.LogWarning("[HexGridOverlay] Update skipped: grid is NULL — retrying FindReferences...");
+                FindReferences();
+                if (grid != null)
+                {
+                    Debug.Log($"[HexGridOverlay] Grid found on retry! TileCount={grid.TileCount}, Width={grid.Width}");
+                }
+            }
+            return;
+        }
         
         // Throttle updates
         if (updateInterval > 0 && Time.time - lastUpdateTime < updateInterval) return;
@@ -98,6 +146,7 @@ public class HexGridOverlay : MonoBehaviour
     /// </summary>
     public void SetGridVisible(bool visible)
     {
+        Debug.Log($"[HexGridOverlay] SetGridVisible({visible}) called — was showGrid={showGrid}, grid={(grid != null ? "OK" : "NULL")}");
         showGrid = visible;
         if (lineRendererParent != null)
         {
@@ -107,6 +156,13 @@ public class HexGridOverlay : MonoBehaviour
         if (visible && grid == null)
         {
             FindReferences();
+        }
+        
+        // Reset first-update logging so we get fresh diagnostics when toggled on
+        if (visible)
+        {
+            _loggedFirstGridUpdate = false;
+            _loggedFirstUpdate = false;
         }
     }
     
@@ -130,15 +186,35 @@ public class HexGridOverlay : MonoBehaviour
     private void FindReferences()
     {
         // Find HexMapChunkManager
-        var chunkManager = GetComponent<HexMapChunkManager>();
         if (chunkManager == null)
         {
-            chunkManager = GetComponentInParent<HexMapChunkManager>();
+            chunkManager = GetComponent<HexMapChunkManager>();
+            if (chunkManager == null)
+            {
+                chunkManager = GetComponentInParent<HexMapChunkManager>();
+            }
         }
         
         if (chunkManager != null)
         {
             grid = chunkManager.Grid;
+            displacementStrength = chunkManager.DisplacementStrength;
+            // Try to pull the runtime heightmap directly from the shared terrain material.
+            // This lets the grid follow the *same bilinear-smoothed heightmap* that the shader uses.
+            // Without this, edges look "weird" because the terrain slopes at tile boundaries while
+            // the overlay lines sit at a constant height per tile.
+            if (chunkManager.SharedMaterial != null && chunkManager.SharedMaterial.HasProperty("_Heightmap"))
+            {
+                heightmapTexture = chunkManager.SharedMaterial.GetTexture("_Heightmap") as Texture2D;
+            }
+            Debug.Log($"[HexGridOverlay] FindReferences — Found HexMapChunkManager on '{chunkManager.gameObject.name}', " +
+                $"Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL (chunk manager has no grid yet)")}, " +
+                $"displacementStrength={displacementStrength}");
+        }
+        else
+        {
+            Debug.LogWarning($"[HexGridOverlay] FindReferences — HexMapChunkManager NOT found on '{gameObject.name}' or parents. " +
+                $"Hierarchy: {GetHierarchyPath(transform)}");
         }
         
         // Find PlanetGenerator
@@ -154,13 +230,43 @@ public class HexGridOverlay : MonoBehaviour
         if (planetGenerator != null && grid == null)
         {
             grid = planetGenerator.Grid;
+            Debug.Log($"[HexGridOverlay] FindReferences — Using PlanetGenerator '{planetGenerator.name}', Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL")}");
+        }
+        
+        if (grid == null)
+        {
+            Debug.LogWarning("[HexGridOverlay] FindReferences — Could NOT find a valid HexGrid from either HexMapChunkManager or PlanetGenerator. Grid lines will not render until grid is available.");
         }
     }
+    
+    /// <summary>
+    /// Helper to print the transform hierarchy for debugging
+    /// </summary>
+    private static string GetHierarchyPath(Transform t)
+    {
+        string path = t.name;
+        while (t.parent != null)
+        {
+            t = t.parent;
+            path = t.name + " > " + path;
+        }
+        return path;
+    }
+    
+    // Debug: only log detailed update info once
+    private bool _loggedFirstGridUpdate = false;
     
     private void UpdateGridLines()
     {
         if (mainCamera == null) mainCamera = Camera.main;
-        if (mainCamera == null || grid == null) return;
+        if (mainCamera == null || grid == null)
+        {
+            if (!_loggedFirstGridUpdate)
+            {
+                Debug.LogWarning($"[HexGridOverlay] UpdateGridLines bail — mainCamera={(mainCamera != null ? "OK" : "NULL")}, grid={(grid != null ? "OK" : "NULL")}");
+            }
+            return;
+        }
         
         Vector3 camPos = mainCamera.transform.position;
         float renderDistSq = renderDistance * renderDistance;
@@ -174,6 +280,15 @@ public class HexGridOverlay : MonoBehaviour
         // Calculate hex radius from grid
         float hexRadius = CalculateHexRadius();
         
+        int tilesInRange = 0;
+        int edgesDrawn = 0;
+        
+        // Pre-fetch neighbor data availability
+        bool hasNeighborData = grid.neighbors != null && grid.neighbors.Length == grid.TileCount;
+        
+        // Cache transform for UV conversion
+        Transform mapTransform = (chunkManager != null) ? chunkManager.transform : transform;
+
         for (int i = 0; i < tileCount; i++)
         {
             Vector3 tileCenter = grid.tileCenters[i];
@@ -182,8 +297,55 @@ public class HexGridOverlay : MonoBehaviour
             float distSq = (tileCenter - camPos).sqrMagnitude;
             if (distSq > renderDistSq) continue;
             
-            // Draw hex outline
-            DrawHexOutline(tileCenter, hexRadius);
+            tilesInRange++;
+            
+            // Base height for this tile.
+            // If we can sample the runtime heightmap (preferred), do it per-point (corners).
+            // Otherwise fall back to the tile's stored elevation (center) which can mismatch at edges.
+            float tileElevation = 0f;
+            if (planetGenerator != null)
+            {
+                HexTileData tileData = planetGenerator.GetHexTileData(i);
+                if (tileData != null) tileElevation = tileData.elevation;
+            }
+            float visualYCenter = flatY + tileElevation * displacementStrength + heightOffset;
+            
+            // (old per-corner height sampling removed) We'll render simple flat hexagons per-tile below.
+            
+            // Simpler rendering: draw a closed hexagon per tile using shared corner positions when available.
+            LineRenderer lr = GetOrCreateLineRenderer();
+            lr.loop = true;
+
+            if (grid.tileCorners != null && grid.tileCorners.Length == grid.TileCount &&
+                grid.CornerVertices != null && grid.CornerVertices.Count > 0 && grid.tileCorners[i] != null && grid.tileCorners[i].Count >= 6)
+            {
+                lr.positionCount = 6;
+                for (int c = 0; c < 6; c++)
+                {
+                    int cornerIdx = grid.tileCorners[i][c];
+                    Vector3 cornerPos = grid.CornerVertices[cornerIdx];
+                    cornerPos.y = visualYCenter; // flat Y across tile for consistent outlines
+                    lr.SetPosition(c, cornerPos);
+                }
+                lr.enabled = true;
+                edgesDrawn += 6;
+            }
+            else
+            {
+                // Fallback: compute around center (flat Y)
+                lr.positionCount = 6;
+                for (int c = 0; c < 6; c++)
+                {
+                    Vector3 cornerWorld = new Vector3(
+                        tileCenter.x + HEX_CORNERS[c].x * hexRadius,
+                        visualYCenter,
+                        tileCenter.z + HEX_CORNERS[c].y * hexRadius
+                    );
+                    lr.SetPosition(c, cornerWorld);
+                }
+                lr.enabled = true;
+                edgesDrawn += 6;
+            }
         }
         
         // Disable unused line renderers
@@ -191,26 +353,53 @@ public class HexGridOverlay : MonoBehaviour
         {
             lineRendererPool[i].enabled = false;
         }
+        
+        // Log first successful update with detailed info
+        if (!_loggedFirstGridUpdate)
+        {
+            _loggedFirstGridUpdate = true;
+            
+            // Sample a tile center to check positions
+            Vector3 sampleCenter = tileCount > 0 ? grid.tileCenters[0] : Vector3.zero;
+            
+            Debug.Log($"[HexGridOverlay] === FIRST GRID UPDATE ===\n" +
+                $"  Total tiles: {grid.TileCount}, Cap: {maxHexesToRender}, Checked: {tileCount}\n" +
+                $"  Tiles in range: {tilesInRange}, Edges drawn: {edgesDrawn}\n" +
+                $"  Active LineRenderers: {activeLineRenderers}, Pool size: {lineRendererPool.Count}\n" +
+                $"  Hex radius: {hexRadius:F4}, hasNeighborData: {hasNeighborData}\n" +
+                $"  Camera pos: {camPos}, Render distance: {renderDistance}\n" +
+                $"  Sample tile[0] center: {sampleCenter}\n" +
+                $"  Distance from cam to tile[0]: {Vector3.Distance(camPos, sampleCenter):F1}\n" +
+                $"  lineWidth: {lineWidth}, gridColor: {gridColor}\n" +
+                $"  Material: {(lineMaterial != null ? lineMaterial.shader.name : "NULL")}\n" +
+                $"  displacementStrength: {displacementStrength}, flatY: {flatY}\n" +
+                $"  Parent active: {lineRendererParent?.gameObject.activeInHierarchy}");
+            
+            if (tilesInRange == 0)
+            {
+                Debug.LogWarning($"[HexGridOverlay] NO TILES IN RANGE! Camera is at {camPos} but tiles are around {sampleCenter}. " +
+                    $"Distance={Vector3.Distance(camPos, sampleCenter):F1} > renderDistance={renderDistance}. " +
+                    $"Try increasing renderDistance or check if camera and grid are in the same coordinate space.");
+            }
+            
+            if (hexRadius < 0.01f)
+            {
+                Debug.LogWarning($"[HexGridOverlay] Hex radius is extremely small ({hexRadius:F6}). Grid may not be visible. " +
+                    $"MapWidth={grid.MapWidth}, gridWidth={grid.Width}");
+            }
+        }
     }
     
-    private void DrawHexOutline(Vector3 center, float radius)
+    /// <summary>
+    /// Draw a single edge segment between two corner positions.
+    /// Uses one LineRenderer per edge to avoid doubled lines on shared hex borders.
+    /// </summary>
+    private void DrawEdge(Vector3 from, Vector3 to)
     {
         LineRenderer lr = GetOrCreateLineRenderer();
-        
-        // Set positions for hex outline (7 points to close the loop)
-        Vector3[] positions = new Vector3[7];
-        for (int i = 0; i < 6; i++)
-        {
-            positions[i] = center + new Vector3(
-                HEX_CORNERS[i].x * radius,
-                heightOffset,
-                HEX_CORNERS[i].y * radius
-            );
-        }
-        positions[6] = positions[0]; // Close the loop
-        
-        lr.positionCount = 7;
-        lr.SetPositions(positions);
+        lr.positionCount = 2;
+        lr.SetPosition(0, from);
+        lr.SetPosition(1, to);
         lr.enabled = true;
     }
     
@@ -282,10 +471,46 @@ public class HexGridOverlay : MonoBehaviour
         if (shader == null) shader = Shader.Find("Unlit/Color");
         if (shader == null) shader = Shader.Find("Sprites/Default");
         
+        if (shader == null)
+        {
+            Debug.LogError("[HexGridOverlay] Could not find ANY shader for line material! Grid lines will not render.");
+            return null;
+        }
+        
+        Debug.Log($"[HexGridOverlay] Creating default material with shader: {shader.name}");
+        
         Material mat = new Material(shader);
-        mat.color = gridColor;
-        mat.SetFloat("_ZWrite", 0);
-        mat.renderQueue = 3000; // Transparent queue
+        
+        // Set color using the correct property for each shader pipeline
+        // HDRP/Unlit uses _UnlitColor, URP/Unlit uses _BaseColor, Unlit/Color uses _Color
+        if (shader.name.Contains("HDRP"))
+        {
+            mat.SetColor("_UnlitColor", gridColor);
+            // HDRP needs surface type set to Transparent for alpha
+            if (mat.HasProperty("_SurfaceType"))
+                mat.SetFloat("_SurfaceType", 1); // 1 = Transparent
+            if (mat.HasProperty("_BlendMode"))
+                mat.SetFloat("_BlendMode", 0); // 0 = Alpha
+            // Render on top to avoid z-fighting with terrain
+            mat.renderQueue = 3100;
+            Debug.Log($"[HexGridOverlay] Configured HDRP/Unlit material — _UnlitColor={gridColor}");
+        }
+        else if (shader.name.Contains("Universal"))
+        {
+            mat.SetColor("_BaseColor", gridColor);
+            if (mat.HasProperty("_Surface"))
+                mat.SetFloat("_Surface", 1); // Transparent
+            mat.SetFloat("_ZWrite", 0);
+            mat.renderQueue = 3100;
+            Debug.Log($"[HexGridOverlay] Configured URP/Unlit material — _BaseColor={gridColor}");
+        }
+        else
+        {
+            // Unlit/Color or Sprites/Default
+            mat.color = gridColor;
+            mat.renderQueue = 3100;
+            Debug.Log($"[HexGridOverlay] Configured fallback material — color={gridColor}");
+        }
         
         return mat;
     }

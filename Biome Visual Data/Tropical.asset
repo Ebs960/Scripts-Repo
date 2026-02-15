@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
-  m_Name: Grassland
+  m_Name: Tropical
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
-  biome: 9
-  surfaceFamily: {fileID: 11400000, guid: 2687477c49eb8b446a38c89dc2335a9e, type: 2}
+  biome: 6
+  surfaceFamily: {fileID: 11400000, guid: 18d30b3a8dca2434482c348de25e9c32, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}
   maskMap: {fileID: 0}
   tiling: 1
-  tint: {r: 1, g: 1, b: 1, a: 1}
+  tint: {r: 0.51760083, g: 0.98490566, b: 0.33263788, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.6
-  wetnessResponse: 0.6
+  snowRetention: 0.112
+  wetnessResponse: 0.803
   isWaterBiome: 0

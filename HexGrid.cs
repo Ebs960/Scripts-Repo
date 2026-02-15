@@ -13,6 +13,7 @@ public class HexGrid
     public List<int>[] neighbors;            // Neighbor indices for each tile
     public List<int>[] tileCorners;          // For each tile: list of indices (into CornerVertices) for corners (polygon, sorted)
     public List<Vector3> CornerVertices { get; private set; }  // List of all corner positions
+    private Dictionary<long, int> cornerLookup; // quantized XZ -> index
     public int Width { get; private set; }
     public int Height { get; private set; }
     public float MapWidth { get; private set; }
@@ -39,6 +40,7 @@ public class HexGrid
         neighbors       = new List<int>[tileCount];
         tileCorners     = new List<int>[tileCount];
         CornerVertices  = new List<Vector3>();
+        cornerLookup = new Dictionary<long, int>();
 
         // Pointy-top hex sizing
         float sX = MapWidth / (Width * Mathf.Sqrt(3f));
@@ -113,8 +115,17 @@ public class HexGrid
 
     private int AddCorner(Vector3 corner)
     {
+        // Quantize X,Z to avoid floating point duplicates. Keep 1e-4 precision (~0.1mm at world scale).
+        int qx = Mathf.RoundToInt(corner.x * 10000f);
+        int qz = Mathf.RoundToInt(corner.z * 10000f);
+        long key = ((long)qx << 32) ^ (uint)qz;
+        if (cornerLookup.TryGetValue(key, out int existing))
+            return existing;
+
         CornerVertices.Add(corner);
-        return CornerVertices.Count - 1;
+        int idx = CornerVertices.Count - 1;
+        cornerLookup[key] = idx;
+        return idx;
     }
 
     public int GetTileAtPosition(Vector3 position)
@@ -136,6 +147,20 @@ public class HexGrid
         float minZ = -MapHeight * 0.5f;
         float offsetX = minX + w * 0.5f;
         float offsetZ = minZ + s;
+
+        // IMPORTANT:
+        // The generated hex grid does NOT fully occupy the entire [-MapHeight/2 .. +MapHeight/2] rectangle.
+        // There is a small top margin inherent to the pointy-top layout math.
+        //
+        // If we clamp row for out-of-range Z, the LUT/picking will "smear" the last valid row upward,
+        // producing the exact symptom you reported: very long/distorted tiles near the north edge,
+        // and the highlighter reporting the same tile index across that stretched region.
+        //
+        // Fix: treat positions beyond the actual hex coverage as "no tile" (-1) instead of clamping.
+        float minZCorner = minZ;
+        float maxZCorner = minZ + ((Height - 1) * h + 2f * s); // last row center + corner extent
+        if (position.z < minZCorner || position.z > maxZCorner)
+            return -1;
 
         float lx = position.x - offsetX;
         float lz = position.z - offsetZ;
@@ -177,7 +202,9 @@ public class HexGrid
         int col = q + ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
         // wrap horizontally
         col = ((col % Width) + Width) % Width;
-        row = Mathf.Clamp(row, 0, Height - 1);
+        // Do NOT clamp row: out-of-range means "no tile" (prevents polar smearing)
+        if (row < 0 || row >= Height)
+            return -1;
         int idx = row * Width + col;
         if (idx >= 0 && idx < tileCenters.Length) return idx;
         Debug.LogWarning($"[HexGrid] Computed tile out of range. q={q} r={r} col={col} row={row} idx={idx} Width={Width} Height={Height} TileCount={tileCenters.Length}");

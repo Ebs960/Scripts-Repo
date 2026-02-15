@@ -139,7 +139,6 @@ GameObject:
   - component: {fileID: 3081038926846228259}
   - component: {fileID: -5893155586537961453}
   - component: {fileID: -5750504008650881166}
-  - component: {fileID: 90253933363781833}
   - component: {fileID: 5887581935907441457}
   m_Layer: 6
   m_Name: Planet Prefab
@@ -209,49 +208,56 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.471
-  elevationExponent: 2
-  ridgeStrength: 0.5
-  hillNoiseCutoff: 0.5
-  mountainNoiseCutoff: 0.7
-  elevationFreq: 0.5
-  moistureFreq: 0.1
+  seedPositionVariance: 0.335
+  useFractalContinentStamp: 1
+  continentEdgeNoiseFrequency: 0.03
+  continentEdgeNoiseStrength: 0.55
+  continentEdgeNoiseMaskStart: 0.55
+  continentThresholdBias: 0
+  elevationExponent: 1.07
+  ridgeStrength: 0.103
+  hillNoiseCutoff: 0.714
+  mountainNoiseCutoff: 0.808
+  elevationFreq: 3
+  moistureFreq: 0.045
   moistureBias: 0
   temperatureBias: 0
-  latitudeInfluence: 1
-  latitudeExponent: 1
-  temperatureNoiseFrequency: 0.1
+  latitudeInfluence: 0.766
+  latitudeExponent: 1.15
+  temperatureNoiseFrequency: 0.15
   temperatureDetailMultiplier: 2
-  temperatureDetailStrength: 0.15
+  temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 2
-  climateSmoothingStrength: 0.204
-  coastalMoistureBoost: 0.15
-  coastalMoistureRange: 8
-  mountainThreshold: 14
-  hillThreshold: 11.77
-  baseLandElevation: 5.5
+  climateSmoothingPasses: 3
+  climateSmoothingStrength: 0.196
+  coastalMoistureBoost: 0.119
+  coastalMoistureRange: 3
+  flatElevationMin: 5
+  flatElevationMax: 5.47
+  hillElevationMin: 6.5
+  hillElevationMax: 7.1
+  mountainElevationMin: 8.9
+  mountainElevationMax: 9.5
   oceanElevation: 0
   seasElevation: 3
   coastElevation: 3.9
-  maxTotalElevation: 15
-  enableRivers: 0
-  minRiversPerContinent: 3
-  maxRiversPerContinent: 5
-  riverDepth: 3
+  enableRivers: 1
+  minRiversPerContinent: 1
+  maxRiversPerContinent: 1
+  riverDepth: 0.9
   enableLakes: 1
-  numberOfLakes: 8
-  lakeMinRadiusTiles: 12
-  lakeMaxRadiusTiles: 12
-  lakeMinDistanceFromCoast: 4
-  coastBiteCount: 11
+  numberOfLakes: 2
+  lakeMinRadiusTiles: 2
+  lakeMaxRadiusTiles: 3
+  lakeMinDistanceFromCoast: 6
+  coastBiteCount: 9
   coastBiteRadiusMin: 1
   coastBiteRadiusMax: 2
-  coastSpurCount: 4
+  coastSpurCount: 20
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 3
   minLandTilesForCoastStamps: 120
-  lakeDepth: 2.92
+  lakeDepth: 0.9
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 1.55
   numberOfIslands: 8
@@ -271,151 +277,7 @@ MonoBehaviour:
   generateIslandChains: 1
   islandsPerChain: 3
   decorationManager:
-    biomeDecorations:
-    - biome: 5
-      decorationPrefabs:
-      - {fileID: 5715431555359567883, guid: 3e415b9e41fc0fc42a43f4c2288ef5b5, type: 3}
-      - {fileID: 775350760059989336, guid: e30e2f18db6b39d4683b66afd4a5a450, type: 3}
-      - {fileID: 4420624231065746693, guid: b1be47f734b04ed42b50a63f59230da4, type: 3}
-      - {fileID: 2072027742752075045, guid: 3b17f970a767b76458bf9e27ee55edb1, type: 3}
-      spawnChance: 1
-      minDecorations: 3
-      maxDecorations: 9
-      minDistanceFromCenter: 0.192
-      maxDistanceFromCenter: 0.534
-      scaleMultiplier: 0
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 31
-      decorationPrefabs:
-      - {fileID: 3021269433761367290, guid: c1aa4768eb2570042a52eaf1bd080b87, type: 3}
-      - {fileID: 2762941736355349345, guid: fa1f67b5c0bbbcc4fba17a6ce8834f3e, type: 3}
-      - {fileID: 4576329218756661725, guid: 6ef36284a778b9441bbfb5f96438ce34, type: 3}
-      - {fileID: 2732420507932821058, guid: d2b6de4ef632c2f49ad38840c3f0c01d, type: 3}
-      spawnChance: 1
-      minDecorations: 3
-      maxDecorations: 9
-      minDistanceFromCenter: 0.192
-      maxDistanceFromCenter: 0.653
-      scaleMultiplier: 0
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 10
-      decorationPrefabs:
-      - {fileID: 2097433367991603148, guid: 75db6019ec08e9c458864f70e8286427, type: 3}
-      - {fileID: 262517846094804394, guid: c4a957758fa72174988c4adcaf425341, type: 3}
-      - {fileID: 3893334088454115399, guid: 3722d0137bc1fd148b8d9fe7204a27c4, type: 3}
-      - {fileID: 1050074039934176600, guid: e0f9bd1f9a306ad4ea2d25ec9314bd29, type: 3}
-      spawnChance: 1
-      minDecorations: 6
-      maxDecorations: 11
-      minDistanceFromCenter: 0.148
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 0
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 4
-      decorationPrefabs:
-      - {fileID: 7181419839899416018, guid: a9a23c6e400fa614b9243d2e87a4e61f, type: 3}
-      - {fileID: 5337829209080920567, guid: a0897e4e948ffd641abe594c4a358a59, type: 3}
-      spawnChance: 1
-      minDecorations: 6
-      maxDecorations: 12
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 30
-      decorationPrefabs:
-      - {fileID: 1050074039934176600, guid: e0f9bd1f9a306ad4ea2d25ec9314bd29, type: 3}
-      spawnChance: 1
-      minDecorations: 3
-      maxDecorations: 5
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 2
-      decorationPrefabs:
-      - {fileID: 4765364194085272615, guid: 0cbdc828f6f292e4cb6b5d05fa1152fb, type: 3}
-      - {fileID: 43313407307955955, guid: 40d23679a7161964e9ec8f746294f649, type: 3}
-      - {fileID: 148166790036271842, guid: 84d97f7d1efbc244190b572993c2df2e, type: 3}
-      spawnChance: 1
-      minDecorations: 2
-      maxDecorations: 3
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 3
-      decorationPrefabs:
-      - {fileID: 631246904361392278, guid: 7da2fbccefcba814d81b226e585fc872, type: 3}
-      - {fileID: 4172946779998441590, guid: ac67d0f9294c4704d8cf846b62af1c9b, type: 3}
-      - {fileID: 2097433367991603148, guid: 75db6019ec08e9c458864f70e8286427, type: 3}
-      spawnChance: 1
-      minDecorations: 2
-      maxDecorations: 3
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 28
-      decorationPrefabs:
-      - {fileID: 1934129064774525428, guid: 41140391c653065448435339dd308efe, type: 3}
-      - {fileID: 1486322097090235530, guid: ce276eab9bc4b604082d341f26aeb016, type: 3}
-      - {fileID: 6261417497461265607, guid: 1d74cdbba60d27045a837ce06ca73d36, type: 3}
-      spawnChance: 1
-      minDecorations: 2
-      maxDecorations: 3
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 12
-      decorationPrefabs:
-      - {fileID: 8210539703208218797, guid: bfcfd9fc1af6d144d94960ccbbb82340, type: 3}
-      - {fileID: 1529942069240098874, guid: 2200a3c7b838f304f95d4f1c9bb67817, type: 3}
-      - {fileID: 2964524500777903165, guid: 939e0103b4a66b444ae9d6ec11adff8c, type: 3}
-      - {fileID: 3601518973238773690, guid: 16aeaa3c9b20289459c27b21eaa7d200, type: 3}
-      spawnChance: 1
-      minDecorations: 3
-      maxDecorations: 6
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 9
-      decorationPrefabs:
-      - {fileID: 3601518973238773690, guid: 16aeaa3c9b20289459c27b21eaa7d200, type: 3}
-      - {fileID: 560329789326634434, guid: 382baac7c6e7625499b7c04a7453f936, type: 3}
-      - {fileID: 7113745836601215694, guid: 1b669d5b0d141fa46b91e584a947b7bd, type: 3}
-      spawnChance: 1
-      minDecorations: 2
-      maxDecorations: 3
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
-    - biome: 12
-      decorationPrefabs:
-      - {fileID: 1663886740036296841, guid: 4046aacf426624342908d45eb3ace6a3, type: 3}
-      - {fileID: 6559243613880866920, guid: 3dcc39b1d1a135f4a834741939575dc3, type: 3}
-      - {fileID: 5181754048688525795, guid: 42e2414c1303d0c44a9128c504fc13c0, type: 3}
-      spawnChance: 1
-      minDecorations: 6
-      maxDecorations: 10
-      minDistanceFromCenter: 0.124
-      maxDistanceFromCenter: 0.755
-      scaleMultiplier: 8
-      scaleVariation: 0.055
-      randomRotation: 1
+    biomeDecorations: []
     enableDecorations: 1
     globalScaleMultiplier: 1
   planetType: 0
@@ -532,22 +394,6 @@ MonoBehaviour:
   blendDistance: 0
   weight: 1
   sharedProfile: {fileID: 11400000, guid: ab0c50d17e744304f87d51a38c189a9b, type: 2}
---- !u!114 &90253933363781833
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5948921737104557089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 39d53021cf2e77841947e6ab284caee2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WaterSurfaceGenerator
-  biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
-  oceanSurfacePrefab: {fileID: 7206017743671402131, guid: 64d208c167009ad40a1fbbbb7c3473bd, type: 3}
-  lakeSurfacePrefab: {fileID: 5353522929808825505, guid: 9776e4d57f046da4eba4f7db7562cfeb, type: 3}
-  enableDiagnostics: 1
 --- !u!114 &5887581935907441457
 MonoBehaviour:
   m_ObjectHideFlags: 0

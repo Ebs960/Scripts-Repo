@@ -37,7 +37,12 @@ public enum MapType
 }
 
 public enum Biome {
-    Ocean, Coast, Desert, Savannah, Plains, Forest, Jungle, Glacier, Tundra, Grassland, Swamp, Seas,
+    Ocean, Coast, Desert, Savannah, Plains,
+    Temperate,  // Was Forest - now covers all temperate-zone biomes (merged Grassland + Forest)
+    Tropical,   // Was Jungle - now covers all tropical-zone biomes
+    Glacier, Tundra,
+    // 9 intentionally skipped (was Grassland, now merged into Temperate)
+    Swamp, Seas,
     River,
     Lake,       // Inland freshwater body
     MoonDunes,
@@ -106,7 +111,7 @@ public static class BiomeHelper {
         float northSouth = 0f, float eastWest = 0f)
     {
         if (!isLand) {
-            if (temperature <= 0.10f) return Biome.Glacier;
+            if (temperature <= 0.035f) return Biome.Glacier;
             return Biome.Ocean;
         }
         
@@ -300,38 +305,29 @@ public static class BiomeHelper {
         // === STANDARD EARTH BIOME LOGIC ===
         // Temperature bands: Arctic <0.15, Cold 0.15-0.35, Temperate 0.35-0.55, Warm 0.55-0.75, Hot >0.75
         
-        // Hot climates (>0.75)
-        if (temperature > 0.75f) {
-            if (moisture < 0.35f) return Biome.Desert;
-            if (moisture < 0.5f) return Biome.Savannah;
-            if (moisture < 0.8f) return Biome.Jungle;
-            return Biome.Swamp;
-        }
-
-        // Warm climates (0.55-0.75)
-        if (temperature > 0.55f) {
-            if (moisture < 0.25f) return Biome.Savannah;
-            if (moisture < 0.5f) return Biome.Plains;
-            if (moisture < 0.75f) return Biome.Jungle;
+        // Hot climates (>0.85)
+        if (temperature > 0.85f) {
+            if (moisture < 0.25f) return Biome.Desert;
+            if (moisture < 0.60f) return Biome.Savannah;
+            if (moisture < 0.90f) return Biome.Tropical;
             return Biome.Swamp;
         }
 
         // Temperate climates (0.35-0.55)
-        if (temperature > 0.35f) {
+        if (temperature > 0.45f) {
             if (moisture < 0.3f) return Biome.Plains;
-            if (moisture < 0.55f) return Biome.Grassland;
-            if (moisture < 0.8f) return Biome.Forest;
+            if (moisture < 0.90f) return Biome.Temperate;
             return Biome.Swamp;
         }
 
-        // Cold climates (0.15-0.35)
-        if (temperature > 0.15f) {
-            if (moisture < 0.75f) return Biome.Tundra;
-            return Biome.Swamp;
+        // Cold climates (0.10-0.45)
+        if (temperature > 0.10f) {
+            if (moisture < 0.85f) return Biome.Tundra;
+            return Biome.Plains;
         }
 
         // Arctic (<0.15)
-        if (temperature <= 0.15f) {
+        if (temperature <= 0.10f) {
             return Biome.Arctic;
         }
 
@@ -364,11 +360,10 @@ public static class BiomeHelper {
         Biome.Desert => new YieldValues { food = 0, prod = 1, gold = 0, sci = 2, cult = 1 },
         Biome.Savannah => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 },
         Biome.Plains => new YieldValues { food = 3, prod = 1, gold = 0, sci = 0, cult = 0 },
-        Biome.Forest => new YieldValues { food = 1, prod = 2, gold = 0, sci = 1, cult = 1 },
-        Biome.Jungle => new YieldValues { food = 2, prod = 0, gold = 0, sci = 2, cult = 1 },
+        Biome.Temperate => new YieldValues { food = 2, prod = 1, gold = 0, sci = 0, cult = 1 },
+        Biome.Tropical => new YieldValues { food = 2, prod = 0, gold = 0, sci = 2, cult = 1 },
         Biome.Glacier => new YieldValues { food = 0, prod = 0, gold = 1, sci = 2, cult = 1 },
         Biome.Tundra => new YieldValues { food = 1, prod = 1, gold = 0, sci = 1, cult = 1 },
-        Biome.Grassland => new YieldValues { food = 1, prod = 2, gold = 0, sci = 0, cult = 1 },
         Biome.Swamp => new YieldValues { food = 2, prod = 0, gold = 0, sci = 1, cult = 2 },
         Biome.River => new YieldValues { food = 1, prod = 0, gold = 1, sci = 1, cult = 1 },
         Biome.Lake => new YieldValues { food = 3, prod = 0, gold = 1, sci = 0, cult = 2 },
@@ -421,8 +416,7 @@ public static class BiomeHelper {
     public static Biome GetTemperateBiome(float moisture)
     {
         if (moisture > 0.8f) return Biome.Swamp;
-        if (moisture > 0.6f) return Biome.Forest;
-        if (moisture > 0.45f) return Biome.Grassland;
+        if (moisture > 0.40f) return Biome.Temperate;
         return Biome.Plains;
     }
     
@@ -430,8 +424,8 @@ public static class BiomeHelper {
     /// Returns the defensive bonus for a given biome.
     /// </summary>
     public static int GetDefenseBonus(Biome biome) => biome switch {
-        Biome.Forest => 1,
-        Biome.Jungle => 2,
+        Biome.Temperate => 1,
+        Biome.Tropical => 2,
         Biome.Volcanic => 4,
         Biome.Steamlands => 2,
         Biome.Ashlands => 1,
@@ -476,14 +470,13 @@ public static class BiomeHelper {
     /// </summary>
     public static int GetMovementCost(Biome biome) => biome switch {
         Biome.Plains => 1,
-        Biome.Grassland => 1,
         Biome.Desert => 1,
         Biome.Tundra => 1,
         Biome.Savannah => 1,
         Biome.Coast => 1,
 
-        Biome.Forest => 2,
-        Biome.Jungle => 2,
+        Biome.Temperate => 2,
+        Biome.Tropical => 2,
         Biome.Swamp => 3,
 
         Biome.Ocean => 1,
@@ -618,7 +611,6 @@ public static class BiomeHelper {
         switch (biome)
         {
             case Biome.Plains:
-            case Biome.Grassland:
             case Biome.Savannah:
                 return BiomeTerrainSettings.CreatePlains();
 
@@ -631,8 +623,8 @@ public static class BiomeHelper {
             case Biome.PlutoCryo:
                 return BiomeTerrainSettings.CreateMountain();
 
-            case Biome.Forest:
-            case Biome.Jungle:
+            case Biome.Temperate:
+            case Biome.Tropical:
                 return BiomeTerrainSettings.CreateForest();
 
             case Biome.Swamp:

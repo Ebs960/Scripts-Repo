@@ -901,8 +901,8 @@ GenerateTerrainWithVista();
     {
         return primaryBattleBiome switch
         {
-            Biome.Forest => 1500f,
-            Biome.Jungle => 2000f,
+            Biome.Temperate => 1500f,
+            Biome.Tropical => 2000f,
             Biome.Plains => 800f,
             Biome.Desert => 500f,
             _ => 1000f
@@ -916,8 +916,8 @@ GenerateTerrainWithVista();
     {
         return primaryBattleBiome switch
         {
-            Biome.Forest => 250f,
-            Biome.Jungle => 350f,
+            Biome.Temperate => 250f,
+            Biome.Tropical => 350f,
             _ => 200f
         };
     }
@@ -929,8 +929,8 @@ GenerateTerrainWithVista();
     {
         return primaryBattleBiome switch
         {
-            Biome.Forest => 200,
-            Biome.Jungle => 300,
+            Biome.Temperate => 200,
+            Biome.Tropical => 300,
             Biome.Plains => 100,
             Biome.Desert => 50,
             _ => 150
@@ -1971,7 +1971,7 @@ break;
     {
         return biome switch
         {
-            Biome.Forest or Biome.Jungle => TerrainType.Forest,
+            Biome.Temperate or Biome.Tropical => TerrainType.Forest,
             Biome.Swamp => TerrainType.Swamp,
             Biome.Ocean or Biome.Seas => TerrainType.Water,
             _ => TerrainType.Plains
@@ -1980,7 +1980,7 @@ break;
 
     private bool ShouldHaveCover(Biome biome)
     {
-        return biome == Biome.Forest || biome == Biome.Jungle || biome == Biome.Swamp;
+        return biome == Biome.Temperate || biome == Biome.Tropical || biome == Biome.Swamp;
     }
 
     private bool IsBiomeImpassable(Biome biome)
@@ -1992,7 +1992,7 @@ break;
     {
         float chance = biome switch
         {
-            Biome.Forest or Biome.Jungle => 0.3f,
+            Biome.Temperate or Biome.Tropical => 0.3f,
             Biome.Swamp => 0.15f,
             Biome.Desert => 0.1f,
             _ => 0.05f

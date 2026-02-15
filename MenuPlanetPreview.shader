@@ -9,7 +9,7 @@ Shader "Custom/MenuPlanetPreview"
         _Elevation("Elevation", Range(0, 1)) = 0.3
             _BiomeTint("Biome Tint", Color) = (0.33,0.6,0.26,1)
             _DesertFactor("Desert Factor", Range(0,1)) = 0.0
-            _JungleFactor("Jungle Factor", Range(0,1)) = 0.0
+            _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
@@ -60,7 +60,7 @@ Shader "Custom/MenuPlanetPreview"
                 float _Elevation;
                 float4 _BiomeTint;
                 float _DesertFactor;
-                float _JungleFactor;
+                float _TropicalFactor;
                 float _SnowFactor;
                 float _MapStyle;  // 0 = normal, 1 = infernal/demonic
                     float _DetailScale;
@@ -293,22 +293,22 @@ Shader "Custom/MenuPlanetPreview"
                 float3 landColor  = GetLandColor(_Temperature, _Moisture);
                 float3 oceanColor = GetOceanColor(_Temperature);
 
-                // Apply biome tint + desert/jungle overlays driven by CPU-side factors
-                // Desert pushes colors toward sandy tones, jungle towards darker saturated green
+                // Apply biome tint + desert/tropical overlays driven by CPU-side factors
+                // Desert pushes colors toward sandy tones, tropical towards darker saturated green
                 float desertAmt = saturate(_DesertFactor);
-                float jungleAmt = saturate(_JungleFactor);
+                float tropicalAmt = saturate(_TropicalFactor);
                     // Suppress biome overlays on infernal/demonic worlds
                     float hellBlend = saturate(infernal + demonic);
                     desertAmt *= (1.0 - hellBlend);
-                    jungleAmt *= (1.0 - hellBlend);
+                    tropicalAmt *= (1.0 - hellBlend);
 
-                // Desert tint (sandy) and jungle tint (deep green)
+                // Desert tint (sandy) and tropical tint (deep green)
                 float3 desertTint = float3(0.85, 0.70, 0.45);
-                float3 jungleTint = float3(0.08, 0.45, 0.12);
+                float3 tropicalTint = float3(0.08, 0.45, 0.12);
 
-                // Blend landColor toward desert/jungle based on their amounts
+                // Blend landColor toward desert/tropical based on their amounts
                 landColor = lerp(landColor, desertTint, desertAmt * 0.9);
-                landColor = lerp(landColor, jungleTint, jungleAmt * 0.9);
+                landColor = lerp(landColor, tropicalTint, tropicalAmt * 0.9);
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
@@ -321,7 +321,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
                 // Subtly mix in the overall biome tint color (from C# computed blend)
-                landColor = lerp(landColor, _BiomeTint.rgb, saturate((desertAmt + jungleAmt) * 0.5 + 0.15));
+                landColor = lerp(landColor, _BiomeTint.rgb, saturate((desertAmt + tropicalAmt) * 0.5 + 0.15));
 
                 // Elevation shading
                 float3 highlandColor = lerp(landColor, float3(0.55, 0.50, 0.42), 0.6);

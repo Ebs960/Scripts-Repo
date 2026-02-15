@@ -9,6 +9,18 @@ public enum Season
     Winter
 }
 
+/// <summary>
+/// Water type for the chunk-based water mesh system.
+/// Determines whether a tile has a water surface and what kind.
+/// </summary>
+public enum TileWaterType : byte
+{
+    None = 0,
+    Ocean = 1,
+    Lake = 2,
+    River = 3
+}
+
 [Serializable]
 public class HexTileData
 {
@@ -26,6 +38,16 @@ public class HexTileData
     public bool isMoonTile; // Preserving existing property
     public float temperature; // Per-tile temperature, set during map generation
     public float moisture; // Per-tile moisture, set during map generation
+
+    // --- Water Surface Metadata (chunk-based water mesh system) ---
+    /// <summary>Type of water on this tile (None, Ocean, Lake, River).</summary>
+    public TileWaterType waterType = TileWaterType.None;
+    /// <summary>Connected lake body ID. -1 if not a lake tile.</summary>
+    public int lakeId = -1;
+    /// <summary>Pre-displacement water surface elevation (world units above flat plane). Used by water mesh builder.</summary>
+    public float waterElevation = 0f;
+    /// <summary>Normalized XZ flow direction for rivers (used by water shader for UV scrolling).</summary>
+    public Vector2 riverFlowDirXZ = Vector2.zero;
 
     
     // --- Ownership & Control ---
