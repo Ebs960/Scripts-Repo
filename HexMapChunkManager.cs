@@ -59,36 +59,21 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Triplanar blend sharpness — higher values make the blend between projection axes sharper. Lower = smoother.")]
     [Range(1f, 20f)]
     [SerializeField] private float triplanarBlend = 6f;
-
-    [Header("Biome Blending (Shader)")]
-    [Tooltip("Biome transition sampling radius in texels of the biome index map. Higher = smoother/softer biome edges, but more texture reads.")]
+    
+    [Header("Normals & Biome Blending")]
+    [Tooltip("Strength multiplier for sampled normals from biome normal array")]
+    [Range(0.01f, 5f)]
+    [SerializeField] private float normalStrength = 1.0f;
+    [Tooltip("Radius (in texels) used when sampling normals/heightmap for normal computation")]
+    [Range(1f, 12f)]
+    [SerializeField] private float normalSampleRadius = 4f;
+    [Tooltip("Radius (in texels) used for biome blending between neighboring biome slices")]
     [Range(0f, 16f)]
     [SerializeField] private float biomeBlendRadius = 4f;
-    [Tooltip("Height-based blend sharpness when transitioning between biomes. Higher = crisper transitions, lower = smoother/muddier blends.")]
+    [Tooltip("Blend sharpness used when blending biome surfaces by height")]
     [Range(0.01f, 10f)]
     [SerializeField] private float biomeBlendSharpness = 3f;
-
-    [Header("Cliff Overlay (Shader)")]
-    [Tooltip("Albedo texture for cliff/rock surfaces on steep slopes. Assign the Mountain texture here.")]
-    [SerializeField] private Texture2D cliffAlbedoTexture;
-    [Tooltip("Normal map for cliff surfaces (optional). Leave null for flat normals.")]
-    [SerializeField] private Texture2D cliffNormalTexture;
-    [Tooltip("Triplanar tiling scale for the cliff texture.")]
-    [Range(0.1f, 20f)]
-    [SerializeField] private float cliffTiling = 2.0f;
-    [Tooltip("Slope angle (in terms of normal.y) where cliff begins appearing. 1 = flat, 0 = vertical. Lower = steeper before cliff starts.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float cliffSlopeStart = 0.6f;
-    [Tooltip("Slope angle where cliff is fully visible. Must be less than Slope Start.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float cliffSlopeEnd = 0.3f;
-    [Tooltip("PBR smoothness for cliff surfaces.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float cliffSmoothness = 0.3f;
-    [Tooltip("PBR metallic for cliff surfaces.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float cliffMetallic = 0.0f;
-
+    
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
     [Tooltip("Buffer zone before wrap triggers (fraction of column width).")]
@@ -109,6 +94,8 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool logTransformChainOnBuild = true;
     [Tooltip("Logs whenever this manager's transform changes at runtime (position/rotation/scale).")]
     [SerializeField] private bool debugTransformChanges = false;
+    [Tooltip("When enabled, logs detailed water/SDF diagnostics: pre-build tile counts, SDF seed counts, per-chunk mesh stats, post-build summary. Helps diagnose gaps or missing water.")]
+    [SerializeField] private bool debugWaterVerbose = false;
     private Vector3 _lastTransformPos;
     private Quaternion _lastTransformRot;
     private Vector3 _lastTransformScale;
@@ -119,14 +106,18 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("Water Mesh System")]
     [Tooltip("Material for chunk-based water tiles (lakes, ocean, rivers). Assign SG_WaterTile material.")]
     [SerializeField] private Material waterMaterial;
-    [Tooltip("Material for foam edge strips along water-to-land boundaries. Assign SG_FoamEdge material.")]
-    [SerializeField] private Material foamMaterial;
     [Tooltip("Small Y offset above the computed water surface to prevent z-fighting with terrain.")]
     [SerializeField] private float waterYOffset = 0.01f;
     [Tooltip("Manual world-space Y position for ocean water surface. Set this to sit just below your coastline terrain. Overrides the computed SeaLevelWorldY.")]
     [SerializeField] private float manualOceanWaterY = 4.5f;
     [Tooltip("When true, use manualOceanWaterY for ocean water height instead of PlanetGenerator.SeaLevelWorldY.")]
     [SerializeField] private bool useManualOceanWaterY = true;
+
+    [Header("Ocean Plane (Fast, Water Everywhere)")]
+    [Tooltip("When enabled, renders the ocean as one cheap plane mesh at sea level (low memory). Disable this if you want SDF-only water.")]
+    [SerializeField] private bool enableOceanPlane = false;
+    [Tooltip("Extra padding (in hex radii) beyond the grid extents for the ocean plane.")]
+    [SerializeField] private float oceanPlanePaddingHex = 2f;
 
     [Header("Water Volume Columns (Minecraft-like)")]
     [Tooltip("When enabled, chunk water meshes include vertical side walls so water occupies visible 3D volume (like Minecraft columns).")]
@@ -138,19 +129,23 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Minimum water height difference before we build a step wall between two water tiles.")]
     [SerializeField] private float waterVolumeStepEpsilon = 0.02f;
 
-    [Header("Continuous River Surface (SDF / Marching Squares)")]
-    [Tooltip("When enabled, rivers are rendered as a continuous surface mesh (one mesh) built from an SDF and marching squares.\nThis disables per-tile river fans in the chunk water mesh to avoid double-rendering.")]
+    [Header("Unified SDF Water Surface (All Water Types)")]
+    [Tooltip("When enabled, ALL water (ocean, rivers, lakes) is rendered as one gap-free SDF/marching-squares mesh.\nThis replaces per-tile hex fan water entirely.")]
     [SerializeField] private bool enableContinuousRiverSurface = true;
-    [Tooltip("When enabled, lakes are included in the same SDF/marching-squares surface so rivers can flow seamlessly into lakes.\nThis disables per-tile LAKE fans in the chunk water mesh to avoid double-rendering.")]
+    [Tooltip("Legacy toggle — kept for compatibility. When false, lakes fall back to per-tile hex fans.")]
     [SerializeField] private bool continuousWaterIncludesLakes = true;
-    [Tooltip("Resolution of the SDF field (higher = smoother rivers, more CPU time).")]
+    [Tooltip("When enabled, ocean tiles are also included in the unified SDF water mesh (gap-free ocean).\nWARNING: This can create a massive mesh (and memory spikes) on big maps. Prefer OceanPlane unless you explicitly want SDF-only water.")]
+    [SerializeField] private bool continuousWaterIncludesOcean = true;
+    [Tooltip("Resolution of the SDF field (higher = smoother edges, more CPU time).")]
     [SerializeField] private int riverSdfWidth = 512;
-    [Tooltip("Resolution of the SDF field (higher = smoother rivers, more CPU time).")]
+    [Tooltip("Resolution of the SDF field (higher = smoother edges, more CPU time).")]
     [SerializeField] private int riverSdfHeight = 256;
     [Tooltip("River half-width multiplier relative to hex size (computed from map).")]
     [SerializeField] private float riverHalfWidthMultiplier = 0.55f;
     [Tooltip("Lake half-width multiplier relative to hex size (computed from map). Usually larger than rivers.")]
     [SerializeField] private float lakeHalfWidthMultiplier = 1.25f;
+    [Tooltip("Ocean half-width multiplier relative to hex size. Should be >= 1 to fully cover hex tiles.")]
+    [SerializeField] private float oceanHalfWidthMultiplier = 1.25f;
     [Tooltip("Extra Y lift above sampled terrain height to avoid z-fighting.")]
     [SerializeField] private float riverSurfaceLift = 0.02f;
 
@@ -161,7 +156,7 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float inlandWaterVolumeDepth = 12f;
 
     [Header("Cliff Walls (Mesh)")]
-    [Tooltip("When enabled, builds vertical wall quads along edges where neighboring tiles have a large elevation step (Minecraft-like cliffs).\n\nNOTE: Cliff walls are built on CPU using tile elevation data, but terrain is displaced by the GPU shader via heightmap. This can cause cliffs to appear misaligned with the actual terrain surface. Consider disabling until a shader-aware cliff system is implemented.")]
+    [Tooltip("When enabled, builds vertical wall quads along edges where neighboring tiles have a large elevation step (Minecraft-like cliffs).")]
     [SerializeField] private bool enableCliffWalls = false;
     [Tooltip("Material used for cliff wall meshes. If null, cliffs will not be rendered.")]
     [SerializeField] private Material cliffWallMaterial;
@@ -175,18 +170,11 @@ public class HexMapChunkManager : MonoBehaviour
     // Continuous river mesh instance (lives under this manager)
     private GameObject _riverSurfaceObj;
     private Mesh _riverSurfaceMesh;
-    [Header("Diagnostics")]
-    [Tooltip("When enabled, logs counts of lake/river tiles and how many water meshes were created.")]
-    [SerializeField] private bool debugWaterMeshCounts = false;
-    // Diagnostic counters
-    private int diag_totalLakeTiles = 0;
-    private int diag_totalRiverTiles = 0;
-    private int diag_createdLakeMeshes = 0;   // number of chunk-level meshes that contained lake tiles
-    private int diag_createdRiverMeshes = 0;  // number of chunk-level meshes that contained river tiles (may be 0 if continuous)
-    private int diag_createdPerChunkWaterMeshes = 0; // total per-chunk water GameObjects created
 
     [Header("Auto-Build")]
     [SerializeField] private bool preBuildOnPlanetReady = true;
+    [Tooltip("Chunks processed per frame during batched build (higher = faster total time but more frame spikes).")]
+    [SerializeField] private int chunksPerBatch = 4;
 
     [Header("Season Masks")]
     [SerializeField] private bool enableSeasonMasks = false;
@@ -522,29 +510,20 @@ public class HexMapChunkManager : MonoBehaviour
         // Initialize per-chunk season masks
         UpdateSeasonMasksForCurrentSeason();
         
-        // Build all chunk meshes
-        RefreshAllChunks();
+        // Build all chunk meshes (batched)
+        yield return StartCoroutine(RefreshAllChunksCoroutine());
 
-        // Build cliff wall meshes (after terrain meshes exist)
-        BuildAllCliffWalls();
+        // Build cliff wall meshes (batched)
+        yield return StartCoroutine(BuildAllCliffWallsCoroutine());
 
-        // Build chunk-based water and foam meshes (after terrain meshes exist)
-        BuildAllWaterMeshes();
+        // Build chunk-based water and foam meshes (batched)
+        yield return StartCoroutine(BuildAllWaterMeshesCoroutine());
 
-        // Build continuous river surface mesh (after heightmap + tile data exist)
-        BuildContinuousRiverSurfaceMesh();
-        // Diagnostics: report how many lake/river tiles existed and how many meshes were actually created
-        if (debugWaterMeshCounts && ShouldRunDiagnostics())
-        {
-            int continuousMeshCount = (_riverSurfaceObj != null) ? 1 : 0;
-            int continuousMeshContainsLakes = (continuousMeshCount > 0 && continuousWaterIncludesLakes) ? 1 : 0;
-            int totalCreatedRiverMeshes = diag_createdRiverMeshes + (continuousMeshCount > 0 ? 1 : 0);
-            int totalCreatedLakeMeshes = diag_createdLakeMeshes + continuousMeshContainsLakes;
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Post-build summary: totalLakeTiles={diag_totalLakeTiles}, totalRiverTiles={diag_totalRiverTiles}");
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Per-chunk water meshes created={diag_createdPerChunkWaterMeshes} (chunks with lakeMeshes={diag_createdLakeMeshes}, chunks with riverMeshes={diag_createdRiverMeshes})");
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Continuous river mesh present={_riverSurfaceObj != null}, continuousIncludesLakes={continuousWaterIncludesLakes}");
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Total lake mesh instances={totalCreatedLakeMeshes}, total river mesh instances={totalCreatedRiverMeshes}");
-        }
+        // Build continuous SDF water mesh (batched)
+        yield return StartCoroutine(BuildContinuousRiverSurfaceMeshCoroutine());
+
+        // Build cheap ocean plane last (ensures "water everywhere" even if SDF is inland-only)
+        BuildOceanPlane();
         
         // Create picking collider for WorldPicker
         CreatePickingCollider();
@@ -1269,30 +1248,16 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_MapWidth", mapWidth);
         sharedMaterial.SetFloat("_MapHeight", mapHeight);
 
+        // Normal sampling and biome blending parameters
+        sharedMaterial.SetFloat("_NormalStrength", normalStrength);
+        sharedMaterial.SetFloat("_NormalSampleRadius", normalSampleRadius);
+        sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
+        sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
+
         // Triplanar parameters
         sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
         sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
-
-        // Biome transition blending parameters (optional shader props; guard to avoid warnings if a different shader is assigned)
-        if (sharedMaterial.HasProperty("_BiomeBlendRadius"))
-            sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
-        if (sharedMaterial.HasProperty("_BiomeBlendSharpness"))
-            sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
-
-        // Cliff overlay parameters
-        if (sharedMaterial.HasProperty("_CliffTiling"))
-        {
-            if (cliffAlbedoTexture != null)
-                sharedMaterial.SetTexture("_CliffAlbedoMap", cliffAlbedoTexture);
-            if (cliffNormalTexture != null)
-                sharedMaterial.SetTexture("_CliffNormalMap", cliffNormalTexture);
-            sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
-            sharedMaterial.SetFloat("_CliffSlopeStart", cliffSlopeStart);
-            sharedMaterial.SetFloat("_CliffSlopeEnd", cliffSlopeEnd);
-            sharedMaterial.SetFloat("_CliffSmoothness", cliffSmoothness);
-            sharedMaterial.SetFloat("_CliffMetallic", cliffMetallic);
-        }
-
+        
         // Slice-to-biome reverse map (for per-biome tint/params lookup in shader)
         if (sliceToBiomeMap != null)
         {
@@ -1302,36 +1267,6 @@ public class HexMapChunkManager : MonoBehaviour
         // Provide biome count for shader UV-based lookups
         int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
-    }
-
-    private void OnValidate()
-    {
-        // Allow tuning in the Inspector even though the terrain material is created at runtime.
-        // (Unity calls OnValidate when serialized fields change in the Inspector, including in Play Mode.)
-        if (sharedMaterial == null) return;
-
-        if (sharedMaterial.HasProperty("_TriTiling"))
-            sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
-        if (sharedMaterial.HasProperty("_TriBlend"))
-            sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
-
-        if (sharedMaterial.HasProperty("_BiomeBlendRadius"))
-            sharedMaterial.SetFloat("_BiomeBlendRadius", biomeBlendRadius);
-        if (sharedMaterial.HasProperty("_BiomeBlendSharpness"))
-            sharedMaterial.SetFloat("_BiomeBlendSharpness", biomeBlendSharpness);
-
-        if (sharedMaterial.HasProperty("_CliffTiling"))
-        {
-            if (cliffAlbedoTexture != null)
-                sharedMaterial.SetTexture("_CliffAlbedoMap", cliffAlbedoTexture);
-            if (cliffNormalTexture != null)
-                sharedMaterial.SetTexture("_CliffNormalMap", cliffNormalTexture);
-            sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
-            sharedMaterial.SetFloat("_CliffSlopeStart", cliffSlopeStart);
-            sharedMaterial.SetFloat("_CliffSlopeEnd", cliffSlopeEnd);
-            sharedMaterial.SetFloat("_CliffSmoothness", cliffSmoothness);
-            sharedMaterial.SetFloat("_CliffMetallic", cliffMetallic);
-        }
     }
     
     private void CreateSharedMaterial()
@@ -1827,8 +1762,9 @@ public class HexMapChunkManager : MonoBehaviour
     /// Creates a child GameObject "Water" under the chunk with MeshFilter + MeshRenderer.
     /// Vertex colors encode flow direction (rg) and water type (a).
     /// </summary>
-    public void BuildWaterMeshForChunk(HexMapChunk chunk)
+    public void BuildWaterMeshForChunk(HexMapChunk chunk, out int lakes, out int rivers, out int oceans)
     {
+        lakes = rivers = oceans = 0;
         if (chunk == null || planetGenerator == null || grid == null) return;
         if (waterMaterial == null) return;
 
@@ -1842,28 +1778,29 @@ public class HexMapChunkManager : MonoBehaviour
         var tileIndices = chunk.TileIndices;
         if (tileIndices == null || tileIndices.Count == 0) return;
 
-        // Collect water tiles in this chunk and tally per-type counts
+        // Collect water tiles in this chunk
         var waterTiles = new List<int>();
-        int chunkLakeCount = 0, chunkRiverCount = 0, chunkOceanCount = 0;
         foreach (int ti in tileIndices)
         {
             if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
-            // If continuous river surface is enabled, we normally skip per-tile river/lake fans.
-            // BUT in Minecraft-like volume mode we want per-tile columns, so we keep them.
-            if (!enableWaterVolumeColumns)
-            {
-                if (enableContinuousRiverSurface && td.waterType == TileWaterType.River) continue; // rivers rendered by continuous mesh
-                if (enableContinuousRiverSurface && continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake) continue; // lakes rendered by continuous mesh
-            }
-            if (td.waterType != TileWaterType.None)
-            {
-                waterTiles.Add(ti);
-                if (td.waterType == TileWaterType.Lake) chunkLakeCount++;
-                else if (td.waterType == TileWaterType.River) chunkRiverCount++;
-                else if (td.waterType == TileWaterType.Ocean) chunkOceanCount++;
-            }
+            if (td.waterType == TileWaterType.None) continue;
+            // When the unified SDF water mesh handles a water type, skip it here to avoid double-rendering.
+            if (enableContinuousRiverSurface && td.waterType == TileWaterType.River) continue;
+            if (enableContinuousRiverSurface && continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake) continue;
+            // When we render ocean via the cheap ocean plane, skip per-tile ocean to avoid double-rendering.
+            if (enableOceanPlane && td.waterType == TileWaterType.Ocean) continue;
+            if (enableContinuousRiverSurface && continuousWaterIncludesOcean && td.waterType == TileWaterType.Ocean) continue;
+            waterTiles.Add(ti);
         }
         if (waterTiles.Count == 0) return;
+
+        foreach (int ti in waterTiles)
+        {
+            var wt = planetGenerator.data[ti].waterType;
+            if (wt == TileWaterType.Lake) lakes++;
+            else if (wt == TileWaterType.River) rivers++;
+            else if (wt == TileWaterType.Ocean) oceans++;
+        }
 
         // Build hex-fan top surface + optional volume side walls.
         // Use Lists because wall verts/indices depend on neighbor relationships.
@@ -2067,218 +2004,57 @@ public class HexMapChunkManager : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mr.allowOcclusionWhenDynamic = false;
-
-        // Register diagnostic counts for this chunk-level water mesh
-        if (debugWaterMeshCounts)
-        {
-            RegisterChunkWaterMeshCreated(chunkLakeCount, chunkRiverCount, chunkOceanCount);
-            if (ShouldRunDiagnostics())
-            {
-                Debug.Log($"[HexMapChunkManager][WaterDiag] Chunk({chunk.ChunkX},{chunk.ChunkZ}) water mesh created: lakes={chunkLakeCount}, rivers={chunkRiverCount}, oceans={chunkOceanCount}, verts={vertices.Count}, tris={triangles.Count/3}");
-            }
-        }
     }
 
     /// <summary>
-    /// Build foam edge quads along water-to-land boundaries in a chunk.
-    /// Creates thin quad strips that straddle each shared edge between a water tile
-    /// and a non-water neighbor, with UV.v = 0 on water side, UV.v = 1 on land side.
-    /// </summary>
-    public void BuildFoamEdgeMeshForChunk(HexMapChunk chunk)
-    {
-        if (chunk == null || planetGenerator == null || grid == null) return;
-        if (foamMaterial == null) return;
-
-        // Destroy existing foam child if present
-        Transform existingFoam = chunk.transform.Find("Foam");
-        if (existingFoam != null) DestroyImmediate(existingFoam.gameObject);
-
-        EnsureHexCorners();
-        float s = ComputeHexSize();
-        float foamWidth = s * 0.15f; // foam strip extends 15% of hex size outward
-        float foamYLift = 0.01f;     // slight Y above water
-
-        var tileIndices = chunk.TileIndices;
-        if (tileIndices == null || tileIndices.Count == 0) return;
-
-        Vector3 chunkWorldPos = chunk.transform.position;
-
-        // Collect edge quads
-        var verts = new List<Vector3>();
-        var foamUVs = new List<Vector2>();
-        var foamNormals = new List<Vector3>();
-        var tris = new List<int>();
-
-        foreach (int tileIdx in tileIndices)
-        {
-            if (!planetGenerator.data.TryGetValue(tileIdx, out var td)) continue;
-            if (td.waterType == TileWaterType.None) continue;
-
-            Vector3 tileCenter = grid.tileCenters[tileIdx];
-                // Use manual ocean water Y for ocean foam edges as well.
-                float waterWorldY;
-                if (td.waterType == TileWaterType.Ocean)
-                {
-                    waterWorldY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset + foamYLift;
-                }
-                else
-                {
-                    waterWorldY = flatY + td.waterElevation * displacementStrength + waterYOffset + foamYLift;
-                }
-
-            var neighbors = grid.neighbors[tileIdx];
-            for (int edge = 0; edge < 6; edge++)
-            {
-                // Check if this edge's neighbor is NOT water
-                int nbrIdx = -1;
-                if (edge < neighbors.Count) nbrIdx = neighbors[edge];
-                if (nbrIdx < 0 || nbrIdx >= grid.TileCount) continue;
-
-                bool nbrIsWater = false;
-                if (planetGenerator.data.TryGetValue(nbrIdx, out var nbrTd))
-                {
-                    nbrIsWater = nbrTd.waterType != TileWaterType.None;
-                }
-                if (nbrIsWater) continue; // skip water-water edges
-
-                // Build quad along this edge
-                // Edge k is between corner k and corner (k+1)%6
-                Vector3 cornerA = tileCenter + new Vector3(s * HexCornerCos[edge], 0f, s * HexCornerSin[edge]);
-                Vector3 cornerB = tileCenter + new Vector3(s * HexCornerCos[(edge + 1) % 6], 0f, s * HexCornerSin[(edge + 1) % 6]);
-
-                // Edge midpoint direction (outward from center)
-                Vector3 edgeMid = (cornerA + cornerB) * 0.5f;
-                Vector3 outDir = (edgeMid - tileCenter);
-                outDir.y = 0f;
-                outDir.Normalize();
-
-                // Inner edge (water side)
-                Vector3 innerA = new Vector3(cornerA.x - chunkWorldPos.x, waterWorldY - chunkWorldPos.y, cornerA.z - chunkWorldPos.z);
-                Vector3 innerB = new Vector3(cornerB.x - chunkWorldPos.x, waterWorldY - chunkWorldPos.y, cornerB.z - chunkWorldPos.z);
-
-                // Outer edge (land side, pushed outward)
-                Vector3 outerA = innerA + new Vector3(outDir.x * foamWidth, 0f, outDir.z * foamWidth);
-                Vector3 outerB = innerB + new Vector3(outDir.x * foamWidth, 0f, outDir.z * foamWidth);
-
-                int baseIdx = verts.Count;
-                verts.Add(innerA); // 0 - water side A
-                verts.Add(innerB); // 1 - water side B
-                verts.Add(outerA); // 2 - land side A
-                verts.Add(outerB); // 3 - land side B
-
-                foamUVs.Add(new Vector2(0f, 0f)); // inner A
-                foamUVs.Add(new Vector2(1f, 0f)); // inner B
-                foamUVs.Add(new Vector2(0f, 1f)); // outer A
-                foamUVs.Add(new Vector2(1f, 1f)); // outer B
-
-                foamNormals.Add(Vector3.up);
-                foamNormals.Add(Vector3.up);
-                foamNormals.Add(Vector3.up);
-                foamNormals.Add(Vector3.up);
-
-                // Two triangles for the quad — clockwise winding so faces point UP (toward camera)
-                tris.Add(baseIdx);
-                tris.Add(baseIdx + 1);
-                tris.Add(baseIdx + 2);
-
-                tris.Add(baseIdx + 1);
-                tris.Add(baseIdx + 3);
-                tris.Add(baseIdx + 2);
-            }
-        }
-
-        if (verts.Count == 0) return;
-
-        var foamMesh = new Mesh();
-        foamMesh.name = $"Foam_{chunk.ChunkX}_{chunk.ChunkZ}";
-        foamMesh.SetVertices(verts);
-        foamMesh.SetUVs(0, foamUVs);
-        // We'll recalc normals after triangles to ensure correctness even under mirrored parents
-        var triArr = tris.ToArray();
-        float detFoam = chunk.transform.lossyScale.x * chunk.transform.lossyScale.y * chunk.transform.lossyScale.z;
-        if (detFoam < 0f)
-        {
-            for (int i = 0; i < triArr.Length; i += 3)
-            {
-                int tmp = triArr[i + 1];
-                triArr[i + 1] = triArr[i + 2];
-                triArr[i + 2] = tmp;
-            }
-        }
-        foamMesh.SetTriangles(triArr, 0);
-        foamMesh.RecalculateNormals();
-        foamMesh.RecalculateBounds();
-
-        var b = foamMesh.bounds;
-        b.Expand(new Vector3(0f, 10f, 0f));
-        foamMesh.bounds = b;
-
-        GameObject foamObj = new GameObject("Foam");
-        foamObj.transform.SetParent(chunk.transform, false);
-        foamObj.transform.localPosition = Vector3.zero;
-        foamObj.transform.localRotation = Quaternion.identity;
-        foamObj.transform.localScale = Vector3.one;
-        foamObj.layer = chunk.gameObject.layer;
-
-        var mf = foamObj.AddComponent<MeshFilter>();
-        mf.sharedMesh = foamMesh;
-
-        var mr = foamObj.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = foamMaterial;
-        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        mr.receiveShadows = false;
-        mr.allowOcclusionWhenDynamic = false;
-    }
-
-    /// <summary>
-    /// Build water and foam meshes for ALL chunks.
+    /// Build water and foam meshes for ALL chunks (batched).
     /// Called once during BuildChunks after terrain is ready.
     /// </summary>
-    private void BuildAllWaterMeshes()
+    private System.Collections.IEnumerator BuildAllWaterMeshesCoroutine()
     {
-        if (chunks == null || planetGenerator == null) return;
+        if (chunks == null || planetGenerator == null) yield break;
 
-        // Diagnostics: prepare counters for water mesh creation metrics
-        if (debugWaterMeshCounts && planetGenerator != null && planetGenerator.data != null)
+        // Pre-build: count water tiles by type (helps diagnose mismatches)
+        int lakeTiles = 0, riverTiles = 0, oceanTiles = 0, totalWater = 0;
+        if (planetGenerator.data != null)
         {
-            diag_createdLakeMeshes = 0;
-            diag_createdRiverMeshes = 0;
-            diag_createdPerChunkWaterMeshes = 0;
-            diag_totalLakeTiles = 0;
-            diag_totalRiverTiles = 0;
             foreach (var kvp in planetGenerator.data)
             {
-                var td = kvp.Value;
-                if (td == null) continue;
-                if (td.waterType == TileWaterType.Lake) diag_totalLakeTiles++;
-                if (td.waterType == TileWaterType.River) diag_totalRiverTiles++;
+                var wt = kvp.Value.waterType;
+                if (wt == TileWaterType.None) continue;
+                totalWater++;
+                if (wt == TileWaterType.Lake) lakeTiles++;
+                else if (wt == TileWaterType.River) riverTiles++;
+                else if (wt == TileWaterType.Ocean) oceanTiles++;
             }
-            if (ShouldRunDiagnostics()) Debug.Log($"[HexMapChunkManager][WaterDiag] Pre-build totals: lakeTiles={diag_totalLakeTiles}, riverTiles={diag_totalRiverTiles}");
         }
+        if (ShouldRunDiagnostics() || debugWaterVerbose)
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Pre-build totals: ocean={oceanTiles}, lake={lakeTiles}, river={riverTiles}, totalWater={totalWater}");
 
-        // Root-cause safeguard:
-        // Ensure waterType is coherent with tile biome/flags before building meshes.
-        // If a downstream system ever desyncs biome vs. waterType, chunk meshes will skip water tiles entirely.
-        RepairWaterMetadataFromBiome();
-
+        int batchSize = Mathf.Max(1, chunksPerBatch);
+        int count = 0;
         for (int x = 0; x < chunksX; x++)
         {
             for (int z = 0; z < chunksZ; z++)
             {
                 if (chunks[x, z] != null)
                 {
-                    BuildWaterMeshForChunk(chunks[x, z]);
-                    BuildFoamEdgeMeshForChunk(chunks[x, z]);
+                    BuildWaterMeshForChunk(chunks[x, z], out int lakes, out int rivers, out int oceans);
+                    if (debugWaterVerbose && (lakes + rivers + oceans) > 0)
+                        Debug.Log($"[HexMapChunkManager][WaterDiag] Chunk({x},{z}) per-tile mesh: lakes={lakes}, rivers={rivers}, oceans={oceans}");
+                    count++;
+                    if (count >= batchSize) { count = 0; yield return null; }
                 }
             }
         }
+
+        if (ShouldRunDiagnostics() || debugWaterVerbose)
+            Debug.Log($"[HexMapChunkManager][WaterDiag] Post-build: per-tile water meshes done (SDF unified mesh handles ocean/river/lake when enabled)");
 
         // Diagnostic: detect coast/seas/ocean tiles missing waterType (common cause of missing coast water)
         if (ShouldRunDiagnostics() && planetGenerator != null && planetGenerator.data != null)
         {
             int coastBiome = 0, coastMissingWaterType = 0;
-            int riverTiles = 0, riverMissingWaterType = 0;
-            int lakeTiles = 0, lakeMissingWaterType = 0;
             foreach (var kvp in planetGenerator.data)
             {
                 var td = kvp.Value;
@@ -2287,134 +2063,12 @@ public class HexMapChunkManager : MonoBehaviour
                     coastBiome++;
                     if (td.waterType == TileWaterType.None) coastMissingWaterType++;
                 }
-                if (td.biome == Biome.River || td.isRiver)
-                {
-                    riverTiles++;
-                    if (td.waterType == TileWaterType.None) riverMissingWaterType++;
-                }
-                if (td.biome == Biome.Lake || td.isLake)
-                {
-                    lakeTiles++;
-                    if (td.waterType == TileWaterType.None) lakeMissingWaterType++;
-                }
             }
             if (coastMissingWaterType > 0)
             {
                 Debug.LogWarning($"[HexMapChunkManager][WaterDiag] Coast tiles missing waterType: {coastMissingWaterType}/{coastBiome}. These will not get coast water meshes.");
             }
-            if (riverMissingWaterType > 0)
-            {
-                Debug.LogWarning($"[HexMapChunkManager][WaterDiag] River tiles missing waterType: {riverMissingWaterType}/{riverTiles}. These will not get river water meshes.");
-            }
-            if (lakeMissingWaterType > 0)
-            {
-                Debug.LogWarning($"[HexMapChunkManager][WaterDiag] Lake tiles missing waterType: {lakeMissingWaterType}/{lakeTiles}. These will not get lake water meshes.");
-            }
         }
-    }
-
-    /// <summary>
-    /// Ensure <see cref="HexTileData.waterType"/> is coherent with tile biome/flags.
-    /// This prevents water tiles from being skipped by the chunk water mesh builder.
-    /// 
-    /// IMPORTANT: HexTileData is a reference type (class). Modifying td.waterType directly
-    /// modifies the object in the dictionary without invalidating the enumerator. We must NOT
-    /// call planetGenerator.data[idx] = td (dictionary indexer set) during foreach iteration
-    /// because that increments the dictionary version and throws InvalidOperationException.
-    /// </summary>
-    private void RepairWaterMetadataFromBiome()
-    {
-        if (planetGenerator == null || planetGenerator.data == null) return;
-
-        int fixedOcean = 0, fixedRiver = 0, fixedLake = 0, clearedNonWater = 0;
-        int waterBiomeButNone = 0;
-        int totalWaterTiles = 0;
-
-        // HexTileData is a class — td IS the same object stored in the dictionary.
-        // Modifying td.waterType modifies the dictionary value directly (no need to re-assign).
-        foreach (var kvp in planetGenerator.data)
-        {
-            var td = kvp.Value;
-            if (td == null) continue;
-
-            bool biomeOcean = (td.biome == Biome.Ocean || td.biome == Biome.Seas || td.biome == Biome.Coast);
-            bool biomeLake = (td.biome == Biome.Lake);
-            bool biomeRiver = (td.biome == Biome.River);
-            bool flagLake = td.isLake;
-            bool flagRiver = td.isRiver;
-
-            bool isWaterBiome = biomeOcean || biomeLake || biomeRiver || flagLake || flagRiver;
-            if (isWaterBiome) totalWaterTiles++;
-            if (isWaterBiome && td.waterType == TileWaterType.None) waterBiomeButNone++;
-
-            if (biomeOcean)
-            {
-                if (td.waterType != TileWaterType.Ocean)
-                {
-                    td.waterType = TileWaterType.Ocean;
-                    td.isLake = false;
-                    td.isRiver = false;
-                    td.lakeId = -1;
-                    td.waterElevation = planetGenerator.coastElevation;
-                    td.riverFlowDirXZ = Vector2.zero;
-                    fixedOcean++;
-                }
-                continue;
-            }
-
-            if (biomeLake || flagLake)
-            {
-                if (td.waterType != TileWaterType.Lake)
-                {
-                    td.waterType = TileWaterType.Lake;
-                    td.isLake = true;
-                    td.isRiver = false;
-                    if (td.lakeId < 0) td.lakeId = -1;
-                    if (td.waterElevation == 0f) td.waterElevation = td.elevation;
-                    td.riverFlowDirXZ = Vector2.zero;
-                    fixedLake++;
-                }
-                continue;
-            }
-
-            if (biomeRiver || flagRiver)
-            {
-                if (td.waterType != TileWaterType.River)
-                {
-                    td.waterType = TileWaterType.River;
-                    td.isRiver = true;
-                    td.isLake = false;
-                    td.lakeId = -1;
-                    if (td.waterElevation == 0f) td.waterElevation = td.elevation;
-                    fixedRiver++;
-                }
-                continue;
-            }
-
-            // Non-water biomes should not carry a water surface classification.
-            if (td.waterType != TileWaterType.None)
-            {
-                td.waterType = TileWaterType.None;
-                td.lakeId = -1;
-                td.waterElevation = 0f;
-                td.riverFlowDirXZ = Vector2.zero;
-                clearedNonWater++;
-            }
-        }
-
-        int totalRepaired = fixedOcean + fixedLake + fixedRiver + clearedNonWater;
-        // Always log this — it's the most important diagnostic for missing water.
-        Debug.Log($"[HexMapChunkManager][WaterRepair] totalWaterTiles={totalWaterTiles}, waterBiomeButWaterTypeNone(pre)={waterBiomeButNone}, repaired: ocean={fixedOcean} lake={fixedLake} river={fixedRiver} clearedNonWater={clearedNonWater}");
-    }
-
-    /// <summary>
-    /// Register that a chunk-level water mesh was created and increment per-type counters.
-    /// </summary>
-    private void RegisterChunkWaterMeshCreated(int lakeCount, int riverCount, int oceanCount)
-    {
-        diag_createdPerChunkWaterMeshes++;
-        if (lakeCount > 0) diag_createdLakeMeshes++;
-        if (riverCount > 0) diag_createdRiverMeshes++;
     }
 
     /// <summary>
@@ -2448,6 +2102,28 @@ public class HexMapChunkManager : MonoBehaviour
                 if (c == null) continue;
                 Transform existing = c.transform.Find("CliffWalls");
                 if (existing != null) DestroyImmediate(existing.gameObject);
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator BuildAllCliffWallsCoroutine()
+    {
+        if (!enableCliffWalls) { DestroyAllCliffWalls(); yield break; }
+        if (chunks == null || planetGenerator == null || grid == null) yield break;
+        if (cliffWallMaterial == null) yield break;
+
+        int batchSize = Mathf.Max(1, chunksPerBatch);
+        int count = 0;
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                if (chunks[x, z] != null)
+                {
+                    BuildCliffWallsForChunk(chunks[x, z]);
+                    count++;
+                    if (count >= batchSize) { count = 0; yield return null; }
+                }
             }
         }
     }
@@ -2590,37 +2266,61 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     // =====================================================================================
-    //  Continuous River Surface Mesh (SDF + Marching Squares)
+    //  Continuous River Surface Mesh (SDF + Marching Squares) — batched coroutine
     // =====================================================================================
-    private void BuildContinuousRiverSurfaceMesh()
+    private System.Collections.IEnumerator BuildContinuousRiverSurfaceMeshCoroutine()
     {
-        // If we're using Minecraft-like per-tile volume columns, don't also build the continuous SDF surface.
-        if (enableWaterVolumeColumns) { DestroyRiverSurface(); return; }
-        if (!enableContinuousRiverSurface) { DestroyRiverSurface(); return; }
-        if (planetGenerator == null || grid == null || !grid.IsBuilt) { DestroyRiverSurface(); return; }
-        if (waterMaterial == null || heightmapTexture == null || bakeResult.lut == null || bakeResult.lut.Length == 0) { DestroyRiverSurface(); return; }
+        if (!enableContinuousRiverSurface) { DestroyRiverSurface(); if (debugWaterVerbose) Debug.Log("[HexMapChunkManager][SDF] Skipped: enableContinuousRiverSurface=false"); yield break; }
+        if (planetGenerator == null || grid == null || !grid.IsBuilt) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] Skipped: missing planetGenerator, grid, or grid not built"); yield break; }
+        if (waterMaterial == null || heightmapTexture == null || bakeResult.lut == null || bakeResult.lut.Length == 0) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] Skipped: missing waterMaterial, heightmapTexture, or LUT"); yield break; }
 
         int wCells = Mathf.Clamp(riverSdfWidth, 64, 4096);
         int hCells = Mathf.Clamp(riverSdfHeight, 32, 4096);
         int wPts = wCells + 1;
         int hPts = hCells + 1;
 
-        float dx = mapWidth / wCells;
-        float dz = mapHeight / hCells;
-        float diag = Mathf.Sqrt(dx * dx + dz * dz);
+        // Use actual grid extents (world space) instead of assuming the map is centered at origin.
+        // This prevents the unified mesh from collapsing into a strip when the grid/manager is offset.
+        float minX = float.PositiveInfinity, maxX = float.NegativeInfinity;
+        float minZ = float.PositiveInfinity, maxZ = float.NegativeInfinity;
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            Vector3 c = grid.tileCenters[i];
+            if (c.x < minX) minX = c.x;
+            if (c.x > maxX) maxX = c.x;
+            if (c.z < minZ) minZ = c.z;
+            if (c.z > maxZ) maxZ = c.z;
+        }
 
         EnsureHexCorners();
         float hexSize = ComputeHexSize();
+        minX -= hexSize; maxX += hexSize;
+        minZ -= hexSize; maxZ += hexSize;
+        float worldW = Mathf.Max(0.001f, maxX - minX);
+        float worldH = Mathf.Max(0.001f, maxZ - minZ);
+        Vector3 mgrPos = transform.position;
+
+        float dx = worldW / wCells;
+        float dz = worldH / hCells;
+        float diag = Mathf.Sqrt(dx * dx + dz * dz);
+
+        // EnsureHexCorners + hexSize already computed above
         float isoRiver = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, riverHalfWidthMultiplier));
         float isoLake = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, lakeHalfWidthMultiplier));
+        float isoOcean = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, oceanHalfWidthMultiplier));
         // Prevent sub-cell widths which alias into hairline strands at a given SDF resolution.
         float minIso = Mathf.Max(dx, dz) * 1.5f;
         isoRiver = Mathf.Max(isoRiver, minIso);
         isoLake = Mathf.Max(isoLake, minIso);
+        isoOcean = Mathf.Max(isoOcean, minIso);
 
-        // --- Build seed grids for rivers + lakes (plus some midpoints for rivers so they don't look dotted) ---
+        if (debugWaterVerbose)
+            Debug.Log($"[HexMapChunkManager][SDF] Iso values: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, hexSize={hexSize:F3}, grid={wCells}x{hCells}");
+
+        // --- Build seed grids for rivers, lakes, and ocean ---
         var seedRiver = new bool[wPts * hPts];
         var seedLake = continuousWaterIncludesLakes ? new bool[wPts * hPts] : null;
+        var seedOcean = continuousWaterIncludesOcean ? new bool[wPts * hPts] : null;
         var ownerRiver = new int[wPts * hPts];
         for (int i = 0; i < ownerRiver.Length; i++) ownerRiver[i] = -1;
         int[] ownerLake = null;
@@ -2628,6 +2328,12 @@ public class HexMapChunkManager : MonoBehaviour
         {
             ownerLake = new int[wPts * hPts];
             for (int i = 0; i < ownerLake.Length; i++) ownerLake[i] = -1;
+        }
+        int[] ownerOcean = null;
+        if (seedOcean != null)
+        {
+            ownerOcean = new int[wPts * hPts];
+            for (int i = 0; i < ownerOcean.Length; i++) ownerOcean[i] = -1;
         }
 
         // Helper: mark a seed at UV (0..1)
@@ -2647,8 +2353,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             if (!planetGenerator.data.TryGetValue(ti, out var td)) continue;
             Vector3 c = grid.tileCenters[ti];
-            float u0 = (c.x / mapWidth) + 0.5f;
-            float v0 = (c.z / mapHeight) + 0.5f;
+            float u0 = (c.x - minX) / worldW;
+            float v0 = (c.z - minZ) / worldH;
 
             if (td.waterType == TileWaterType.River)
             {
@@ -2668,8 +2374,8 @@ public class HexMapChunkManager : MonoBehaviour
                         {
                             float t = s / 3f;
                             Vector3 p = Vector3.Lerp(c, nc, t);
-                            float uu = (p.x / mapWidth) + 0.5f;
-                            float vv = (p.z / mapHeight) + 0.5f;
+                            float uu = (p.x - minX) / worldW;
+                            float vv = (p.z - minZ) / worldH;
                             MarkSeed(seedRiver, ownerRiver, uu, vv, ti);
                         }
                     }
@@ -2677,16 +2383,41 @@ public class HexMapChunkManager : MonoBehaviour
             }
             else if (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)
             {
+                // Lakes: seed center + corners so the lake area fills the whole hex reliably.
                 MarkSeed(seedLake, ownerLake, u0, v0, ti);
+                for (int k = 0; k < 6; k++)
+                {
+                    Vector3 p = c + new Vector3(hexSize * HexCornerCos[k], 0f, hexSize * HexCornerSin[k]);
+                    float uu = (p.x - minX) / worldW;
+                    float vv = (p.z - minZ) / worldH;
+                    MarkSeed(seedLake, ownerLake, uu, vv, ti);
+                }
+            }
+            else if (continuousWaterIncludesOcean && td.waterType == TileWaterType.Ocean)
+            {
+                // Ocean: seed center + corners so the SDF fully covers each ocean hex (prevents holes between tile centers).
+                MarkSeed(seedOcean, ownerOcean, u0, v0, ti);
+                for (int k = 0; k < 6; k++)
+                {
+                    Vector3 p = c + new Vector3(hexSize * HexCornerCos[k], 0f, hexSize * HexCornerSin[k]);
+                    float uu = (p.x - minX) / worldW;
+                    float vv = (p.z - minZ) / worldH;
+                    MarkSeed(seedOcean, ownerOcean, uu, vv, ti);
+                }
             }
         }
 
-        // If no inland-water seeds, remove mesh
-        bool anySeed = false;
-        for (int i = 0; i < seedRiver.Length; i++) { if (seedRiver[i]) { anySeed = true; break; } }
-        if (!anySeed && seedLake != null)
-            for (int i = 0; i < seedLake.Length; i++) { if (seedLake[i]) { anySeed = true; break; } }
-        if (!anySeed) { DestroyRiverSurface(); return; }
+        // If no water seeds at all, remove mesh
+        int seedRiverCount = 0, seedLakeCount = 0, seedOceanCount = 0;
+        for (int i = 0; i < seedRiver.Length; i++) if (seedRiver[i]) seedRiverCount++;
+        if (seedLake != null) for (int i = 0; i < seedLake.Length; i++) if (seedLake[i]) seedLakeCount++;
+        if (seedOcean != null) for (int i = 0; i < seedOcean.Length; i++) if (seedOcean[i]) seedOceanCount++;
+        bool anySeed = seedRiverCount > 0 || seedLakeCount > 0 || seedOceanCount > 0;
+
+        if (ShouldRunDiagnostics() || debugWaterVerbose)
+            Debug.Log($"[HexMapChunkManager][SDF] Seed counts: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
+
+        if (!anySeed) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] No water seeds — unified water mesh not built. Check waterType on tiles."); yield break; }
 
         // --- Approximate Euclidean distance transform (2-pass chamfer) in WORLD units ---
         float INF = 1e20f;
@@ -2697,6 +2428,12 @@ public class HexMapChunkManager : MonoBehaviour
         {
             distLake = new float[wPts * hPts];
             for (int i = 0; i < distLake.Length; i++) distLake[i] = seedLake[i] ? 0f : INF;
+        }
+        float[] distOcean = null;
+        if (seedOcean != null)
+        {
+            distOcean = new float[wPts * hPts];
+            for (int i = 0; i < distOcean.Length; i++) distOcean[i] = seedOcean[i] ? 0f : INF;
         }
 
         void DistanceTransformInPlace(float[] distArr, int[] ownerArr)
@@ -2781,15 +2518,30 @@ public class HexMapChunkManager : MonoBehaviour
 
         DistanceTransformInPlace(distRiver, ownerRiver);
         if (distLake != null) DistanceTransformInPlace(distLake, ownerLake);
+        if (distOcean != null) DistanceTransformInPlace(distOcean, ownerOcean);
+        yield return null; // Yield after distance transform (heavy)
 
-        // Scalar field: f = min(distRiver - isoRiver, distLake - isoLake). Inside when f <= 0.
+        // Scalar field: f = min(distRiver - isoRiver, distLake - isoLake, distOcean - isoOcean). Inside when f <= 0.
         float FAt(int ix, int iy)
         {
             int idx = iy * wPts + ix;
+            float f = distRiver[idx] - isoRiver;
+            if (distLake != null) f = Mathf.Min(f, distLake[idx] - isoLake);
+            if (distOcean != null) f = Mathf.Min(f, distOcean[idx] - isoOcean);
+            return f;
+        }
+
+        // Helper: classify which water type "wins" at a grid point (closest SDF).
+        // 0 = river, 1 = lake, 2 = ocean
+        int WaterTypeAt(int ix, int iy)
+        {
+            int idx = iy * wPts + ix;
             float fR = distRiver[idx] - isoRiver;
-            if (distLake == null) return fR;
-            float fL = distLake[idx] - isoLake;
-            return Mathf.Min(fR, fL);
+            float best = fR;
+            int type = 0;
+            if (distLake != null) { float fL = distLake[idx] - isoLake; if (fL < best) { best = fL; type = 1; } }
+            if (distOcean != null) { float fO = distOcean[idx] - isoOcean; if (fO < best) { best = fO; type = 2; } }
+            return type;
         }
 
         // --- Marching squares filled mesh for inside region (dist <= iso) ---
@@ -2809,26 +2561,26 @@ public class HexMapChunkManager : MonoBehaviour
         int lutW = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutH = bakeResult.height > 0 ? bakeResult.height : textureHeight;
 
-        bool IsLakeAt(float u, float v)
+        // Classify the water type at a UV using the SDF (not the LUT).
+        // Returns: 0=river, 1=lake, 2=ocean
+        int ClassifyWaterAt(float u, float v)
         {
-            if (distLake == null) return false;
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
             int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
             int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
-            int idx = iy * wPts + ix;
-            float fR = distRiver[idx] - isoRiver;
-            float fL = distLake[idx] - isoLake;
-            return fL <= fR;
+            return WaterTypeAt(ix, iy);
         }
 
-        Color SampleInlandWaterColor(float u, float v)
+        Color SampleWaterColor(float u, float v)
         {
-            // IMPORTANT: Don't rely on the LUT for water-vs-land classification here.
-            // The inland mesh covers sub-tile points; the LUT can map those points to a nearby LAND tile,
-            // which makes lakes/rivers look "unfilled" or misaligned. Use the SDF to classify lake vs river.
-            if (IsLakeAt(u, v))
-                return new Color(0.5f, 0.5f, 0f, 2f / 3f); // lake alpha matches existing per-tile encoding
+            int wType = ClassifyWaterAt(u, v);
+
+            if (wType == 1) // lake
+                return new Color(0.5f, 0.5f, 0f, 2f / 3f);
+
+            if (wType == 2) // ocean — encode as ocean alpha (1/3)
+                return new Color(0.5f, 0.5f, 0f, 1f / 3f);
 
             // River: pick flow direction from nearest propagated river seed tile.
             u = Mathf.Repeat(u, 1f);
@@ -2843,35 +2595,29 @@ public class HexMapChunkManager : MonoBehaviour
             return new Color(0.5f, 0.5f, 0f, 1f);
         }
 
-        float SampleInlandWaterY(float u, float v)
+        float SampleWaterY(float u, float v)
         {
-            // Prefer tile waterElevation so lakes stay flat and rivers stay coherent.
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
-            bool wantLake = IsLakeAt(u, v);
+            int wType = ClassifyWaterAt(u, v);
             int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
             int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
             int idx = iy * wPts + ix;
+
+            if (wType == 2) // ocean — flat at sea level
+                return (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset + riverSurfaceLift;
+
+            // Lake or river: use propagated owner tile for waterElevation
             int tIndex = -1;
-            if (wantLake && ownerLake != null) tIndex = ownerLake[idx];
+            if (wType == 1 && ownerLake != null) tIndex = ownerLake[idx];
             else if (ownerRiver != null) tIndex = ownerRiver[idx];
 
-            float waterY;
             if (tIndex >= 0 && planetGenerator.data.TryGetValue(tIndex, out var td) && (td.waterType == TileWaterType.River || td.waterType == TileWaterType.Lake))
-                waterY = flatY + td.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
-            else
-            {
-                // Fallback to hugging terrain
-                float elev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
-                waterY = flatY + elev * displacementStrength + waterYOffset + riverSurfaceLift;
-            }
+                return flatY + td.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
 
-            // Ensure water is never below terrain: at boundaries the SDF extends water into
-            // cells where terrain (from heightmap bilinear) can be higher than tile water.
-            float terrainY = heightmapTexture != null
-                ? flatY + heightmapTexture.GetPixelBilinear(u, v).r * displacementStrength
-                : float.MinValue;
-            return terrainY > float.MinValue ? Mathf.Max(waterY, terrainY + 0.01f) : waterY;
+            // Fallback to hugging terrain
+            float elev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
+            return flatY + elev * displacementStrength + waterYOffset + riverSurfaceLift;
         }
 
         int GetCorner(int x, int y)
@@ -2882,13 +2628,13 @@ public class HexMapChunkManager : MonoBehaviour
 
             float u = (float)x / wCells;
             float v = (float)y / hCells;
-            float wx = (u - 0.5f) * mapWidth;
-            float wz = (v - 0.5f) * mapHeight;
-            float wy = SampleInlandWaterY(u, v);
+            float wx = minX + u * worldW;
+            float wz = minZ + v * worldH;
+            float wy = SampleWaterY(u, v);
 
             vi = verts.Count;
-            verts.Add(new Vector3(wx, wy, wz));
-            cols.Add(SampleInlandWaterColor(u, v));
+            verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
+            cols.Add(SampleWaterColor(u, v));
             norms.Add(Vector3.up);
             cornerVert[idx] = vi;
             return vi;
@@ -2906,13 +2652,13 @@ public class HexMapChunkManager : MonoBehaviour
 
             float u = (x + t) / wCells;
             float v = (float)y / hCells;
-            float wx = (u - 0.5f) * mapWidth;
-            float wz = (v - 0.5f) * mapHeight;
-            float wy = SampleInlandWaterY(u, v);
+            float wx = minX + u * worldW;
+            float wz = minZ + v * worldH;
+            float wy = SampleWaterY(u, v);
 
             vi = verts.Count;
-            verts.Add(new Vector3(wx, wy, wz));
-            cols.Add(SampleInlandWaterColor(u, v));
+            verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
+            cols.Add(SampleWaterColor(u, v));
             norms.Add(Vector3.up);
             horizEdge[ei] = vi;
             return vi;
@@ -2930,13 +2676,13 @@ public class HexMapChunkManager : MonoBehaviour
 
             float u = (float)x / wCells;
             float v = (y + t) / hCells;
-            float wx = (u - 0.5f) * mapWidth;
-            float wz = (v - 0.5f) * mapHeight;
-            float wy = SampleInlandWaterY(u, v);
+            float wx = minX + u * worldW;
+            float wz = minZ + v * worldH;
+            float wy = SampleWaterY(u, v);
 
             vi = verts.Count;
-            verts.Add(new Vector3(wx, wy, wz));
-            cols.Add(SampleInlandWaterColor(u, v));
+            verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
+            cols.Add(SampleWaterColor(u, v));
             norms.Add(Vector3.up);
             vertEdge[ei] = vi;
             return vi;
@@ -2964,18 +2710,22 @@ public class HexMapChunkManager : MonoBehaviour
         {
             float u = (x + 0.5f) / wCells;
             float v = (y + 0.5f) / hCells;
-            float wx = (u - 0.5f) * mapWidth;
-            float wz = (v - 0.5f) * mapHeight;
-            float wy = SampleInlandWaterY(u, v);
+            float wx = minX + u * worldW;
+            float wz = minZ + v * worldH;
+            float wy = SampleWaterY(u, v);
             int vi = verts.Count;
-            verts.Add(new Vector3(wx, wy, wz));
-            cols.Add(SampleInlandWaterColor(u, v));
+            verts.Add(new Vector3(wx - mgrPos.x, wy - mgrPos.y, wz - mgrPos.z));
+            cols.Add(SampleWaterColor(u, v));
             norms.Add(Vector3.up);
             return vi;
         }
 
+        const int marchingSquaresRowsPerBatch = 32;
         for (int y = 0; y < hCells; y++)
         {
+            if (y > 0 && y % marchingSquaresRowsPerBatch == 0)
+                yield return null; // Batch marching squares to avoid frame freeze
+
             for (int x = 0; x < wCells; x++)
             {
                 // Corners: BL, BR, TR, TL
@@ -3061,8 +2811,10 @@ public class HexMapChunkManager : MonoBehaviour
         if (tris.Count < 3)
         {
             DestroyRiverSurface();
-            return;
+            Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}) — unified water mesh not built. Check iso values or seed distribution.");
+            yield break;
         }
+        yield return null; // Yield before extrusion (can be heavy)
 
         // Optionally extrude the top surface into a closed 3D volume (walls + bottom).
         if (extrudeInlandWaterToVolume)
@@ -3155,7 +2907,7 @@ public class HexMapChunkManager : MonoBehaviour
         EnsureRiverSurfaceObject();
         if (_riverSurfaceMesh == null) _riverSurfaceMesh = new Mesh();
         _riverSurfaceMesh.Clear();
-        _riverSurfaceMesh.name = extrudeInlandWaterToVolume ? "InlandWaterVolume" : "ContinuousRiverSurface";
+        _riverSurfaceMesh.name = extrudeInlandWaterToVolume ? "UnifiedWaterVolume" : "UnifiedWaterSurface";
         _riverSurfaceMesh.SetVertices(verts);
         _riverSurfaceMesh.SetColors(cols);
         _riverSurfaceMesh.SetTriangles(tris, 0);
@@ -3165,17 +2917,21 @@ public class HexMapChunkManager : MonoBehaviour
 
         var mf = _riverSurfaceObj.GetComponent<MeshFilter>();
         mf.sharedMesh = _riverSurfaceMesh;
+
+        if (ShouldRunDiagnostics() || debugWaterVerbose)
+            Debug.Log($"[HexMapChunkManager][SDF] Unified water mesh built: verts={verts.Count}, tris={tris.Count / 3}, extruded={extrudeInlandWaterToVolume}");
+
+        // Ensure ghosts are updated immediately after rebuild.
+        if (enableWrap)
+            UpdateGlobalWaterGhostPositions(_riverSurfaceObj.transform.localPosition.x);
     }
 
     private void EnsureRiverSurfaceObject()
     {
+        string objName = extrudeInlandWaterToVolume ? "UnifiedWaterVolume" : "UnifiedWaterSurface";
+
         if (_riverSurfaceObj == null)
         {
-            string objName =
-                extrudeInlandWaterToVolume
-                    ? (continuousWaterIncludesLakes ? "InlandWaterVolume" : "RiverVolume")
-                    : (continuousWaterIncludesLakes ? "InlandWaterSurface" : "RiverSurface");
-
             _riverSurfaceObj = new GameObject(objName);
             _riverSurfaceObj.transform.SetParent(transform, false);
             _riverSurfaceObj.transform.localPosition = Vector3.zero;
@@ -3185,18 +2941,13 @@ public class HexMapChunkManager : MonoBehaviour
 
             var mf = _riverSurfaceObj.AddComponent<MeshFilter>();
             var mr = _riverSurfaceObj.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = waterMaterial; // same water shader; river-ness comes from vertexColor.a
+            mr.sharedMaterial = waterMaterial;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mr.allowOcclusionWhenDynamic = false;
         }
         else
         {
-            string objName =
-                extrudeInlandWaterToVolume
-                    ? (continuousWaterIncludesLakes ? "InlandWaterVolume" : "RiverVolume")
-                    : (continuousWaterIncludesLakes ? "InlandWaterSurface" : "RiverSurface");
-
             if (_riverSurfaceObj.name != objName) _riverSurfaceObj.name = objName;
             var mr = _riverSurfaceObj.GetComponent<MeshRenderer>();
             if (mr != null) mr.sharedMaterial = waterMaterial;
@@ -3210,10 +2961,187 @@ public class HexMapChunkManager : MonoBehaviour
             DestroyImmediate(_riverSurfaceObj);
             _riverSurfaceObj = null;
         }
+        if (_riverSurfaceGhostL != null) { DestroyImmediate(_riverSurfaceGhostL); _riverSurfaceGhostL = null; }
+        if (_riverSurfaceGhostR != null) { DestroyImmediate(_riverSurfaceGhostR); _riverSurfaceGhostR = null; }
         if (_riverSurfaceMesh != null)
         {
             DestroyImmediate(_riverSurfaceMesh);
             _riverSurfaceMesh = null;
+        }
+    }
+
+    // =====================================================================================
+    //  Ocean Plane (fast, low-memory, always present)
+    // =====================================================================================
+    private GameObject _oceanPlaneObj;
+    private Mesh _oceanPlaneMesh;
+    private GameObject _oceanPlaneGhostL;
+    private GameObject _oceanPlaneGhostR;
+
+    private GameObject _riverSurfaceGhostL;
+    private GameObject _riverSurfaceGhostR;
+
+    private static GameObject EnsureGhostMeshObject(GameObject source, ref GameObject ghostObj, string ghostName, Transform parent, int layer)
+    {
+        if (source == null) return null;
+        if (ghostObj == null)
+        {
+            ghostObj = new GameObject(ghostName);
+            ghostObj.transform.SetParent(parent, false);
+            ghostObj.transform.localPosition = Vector3.zero;
+            ghostObj.transform.localRotation = Quaternion.identity;
+            ghostObj.transform.localScale = Vector3.one;
+            ghostObj.layer = layer;
+
+            ghostObj.AddComponent<MeshFilter>();
+            ghostObj.AddComponent<MeshRenderer>();
+        }
+
+        var srcMF = source.GetComponent<MeshFilter>();
+        var srcMR = source.GetComponent<MeshRenderer>();
+        var dstMF = ghostObj.GetComponent<MeshFilter>();
+        var dstMR = ghostObj.GetComponent<MeshRenderer>();
+        if (srcMF != null && dstMF != null) dstMF.sharedMesh = srcMF.sharedMesh;
+        if (srcMR != null && dstMR != null)
+        {
+            dstMR.sharedMaterial = srcMR.sharedMaterial;
+            dstMR.shadowCastingMode = srcMR.shadowCastingMode;
+            dstMR.receiveShadows = srcMR.receiveShadows;
+            dstMR.allowOcclusionWhenDynamic = srcMR.allowOcclusionWhenDynamic;
+        }
+
+        return ghostObj;
+    }
+
+    private void UpdateGlobalWaterGhostPositions(float baseOffsetX)
+    {
+        if (!enableWrap) return;
+        if (mapWidth <= 0.001f) return;
+
+        float leftX = baseOffsetX - mapWidth;
+        float rightX = baseOffsetX + mapWidth;
+
+        if (_oceanPlaneObj != null)
+        {
+            EnsureGhostMeshObject(_oceanPlaneObj, ref _oceanPlaneGhostL, "OceanPlane_GhostL", transform, gameObject.layer);
+            EnsureGhostMeshObject(_oceanPlaneObj, ref _oceanPlaneGhostR, "OceanPlane_GhostR", transform, gameObject.layer);
+            if (_oceanPlaneGhostL != null)
+            {
+                var lp = _oceanPlaneGhostL.transform.localPosition;
+                _oceanPlaneGhostL.transform.localPosition = new Vector3(leftX, lp.y, lp.z);
+            }
+            if (_oceanPlaneGhostR != null)
+            {
+                var lp = _oceanPlaneGhostR.transform.localPosition;
+                _oceanPlaneGhostR.transform.localPosition = new Vector3(rightX, lp.y, lp.z);
+            }
+        }
+
+        if (_riverSurfaceObj != null)
+        {
+            EnsureGhostMeshObject(_riverSurfaceObj, ref _riverSurfaceGhostL, _riverSurfaceObj.name + "_GhostL", transform, gameObject.layer);
+            EnsureGhostMeshObject(_riverSurfaceObj, ref _riverSurfaceGhostR, _riverSurfaceObj.name + "_GhostR", transform, gameObject.layer);
+            if (_riverSurfaceGhostL != null)
+            {
+                var lp = _riverSurfaceGhostL.transform.localPosition;
+                _riverSurfaceGhostL.transform.localPosition = new Vector3(leftX, lp.y, lp.z);
+            }
+            if (_riverSurfaceGhostR != null)
+            {
+                var lp = _riverSurfaceGhostR.transform.localPosition;
+                _riverSurfaceGhostR.transform.localPosition = new Vector3(rightX, lp.y, lp.z);
+            }
+        }
+    }
+
+    private void BuildOceanPlane()
+    {
+        if (!enableOceanPlane || waterMaterial == null || grid == null || !grid.IsBuilt)
+        {
+            DestroyOceanPlane();
+            return;
+        }
+
+        // Compute extents from tile centers
+        float minX = float.PositiveInfinity, maxX = float.NegativeInfinity;
+        float minZ = float.PositiveInfinity, maxZ = float.NegativeInfinity;
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            Vector3 c = grid.tileCenters[i];
+            if (c.x < minX) minX = c.x;
+            if (c.x > maxX) maxX = c.x;
+            if (c.z < minZ) minZ = c.z;
+            if (c.z > maxZ) maxZ = c.z;
+        }
+
+        float hexSize = ComputeHexSize();
+        float pad = Mathf.Max(0f, oceanPlanePaddingHex) * hexSize;
+        minX -= pad; maxX += pad;
+        minZ -= pad; maxZ += pad;
+
+        float y = (useManualOceanWaterY ? manualOceanWaterY : (planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f)) + waterYOffset;
+        Vector3 mgrPos = transform.position;
+
+        // Ensure object
+        if (_oceanPlaneObj == null)
+        {
+            _oceanPlaneObj = new GameObject("OceanPlane");
+            _oceanPlaneObj.transform.SetParent(transform, false);
+            _oceanPlaneObj.transform.localPosition = Vector3.zero;
+            _oceanPlaneObj.transform.localRotation = Quaternion.identity;
+            _oceanPlaneObj.transform.localScale = Vector3.one;
+            _oceanPlaneObj.layer = gameObject.layer;
+
+            _oceanPlaneObj.AddComponent<MeshFilter>();
+            var mr = _oceanPlaneObj.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = waterMaterial;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.allowOcclusionWhenDynamic = false;
+        }
+
+        if (_oceanPlaneMesh == null) _oceanPlaneMesh = new Mesh();
+        _oceanPlaneMesh.name = "OceanPlane";
+        _oceanPlaneMesh.Clear();
+
+        // 4 verts, 2 tris
+        Vector3 v0 = new Vector3(minX - mgrPos.x, y - mgrPos.y, minZ - mgrPos.z);
+        Vector3 v1 = new Vector3(maxX - mgrPos.x, y - mgrPos.y, minZ - mgrPos.z);
+        Vector3 v2 = new Vector3(maxX - mgrPos.x, y - mgrPos.y, maxZ - mgrPos.z);
+        Vector3 v3 = new Vector3(minX - mgrPos.x, y - mgrPos.y, maxZ - mgrPos.z);
+
+        _oceanPlaneMesh.SetVertices(new System.Collections.Generic.List<Vector3> { v0, v1, v2, v3 });
+        _oceanPlaneMesh.SetUVs(0, new System.Collections.Generic.List<Vector2> {
+            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f)
+        });
+        // Encode as Ocean in vertexColor.a (1/3)
+        Color cOcean = new Color(0.5f, 0.5f, 0f, 1f / 3f);
+        _oceanPlaneMesh.SetColors(new System.Collections.Generic.List<Color> { cOcean, cOcean, cOcean, cOcean });
+        _oceanPlaneMesh.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+        _oceanPlaneMesh.RecalculateNormals();
+        _oceanPlaneMesh.RecalculateBounds();
+
+        var mf = _oceanPlaneObj.GetComponent<MeshFilter>();
+        mf.sharedMesh = _oceanPlaneMesh;
+
+        // Ensure ghosts are updated immediately after build.
+        if (enableWrap)
+            UpdateGlobalWaterGhostPositions(_oceanPlaneObj.transform.localPosition.x);
+    }
+
+    private void DestroyOceanPlane()
+    {
+        if (_oceanPlaneObj != null)
+        {
+            DestroyImmediate(_oceanPlaneObj);
+            _oceanPlaneObj = null;
+        }
+        if (_oceanPlaneGhostL != null) { DestroyImmediate(_oceanPlaneGhostL); _oceanPlaneGhostL = null; }
+        if (_oceanPlaneGhostR != null) { DestroyImmediate(_oceanPlaneGhostR); _oceanPlaneGhostR = null; }
+        if (_oceanPlaneMesh != null)
+        {
+            DestroyImmediate(_oceanPlaneMesh);
+            _oceanPlaneMesh = null;
         }
     }
 
@@ -3346,9 +3274,8 @@ public class HexMapChunkManager : MonoBehaviour
             ghostChunk.transform.localScale = Vector3.one;
             ghostChunk.layer = sourceChunk.gameObject.layer;
 
-            // Copy Water and Foam child meshes for seamless water wrap
+            // Copy Water child mesh for seamless water wrap
             CopyChildMeshToGhost(sourceChunk.transform, ghostChunk.transform, "Water", waterMaterial);
-            CopyChildMeshToGhost(sourceChunk.transform, ghostChunk.transform, "Foam", foamMaterial);
         }
 
         if (debugWrapVerbose)
@@ -3467,6 +3394,43 @@ public class HexMapChunkManager : MonoBehaviour
         
         // Update ghost columns to match
         UpdateGhostColumns();
+
+        // Keep global (non-chunk) water meshes aligned with wrap period
+        UpdateGlobalWaterWrap(cameraX);
+    }
+
+    // Global water meshes (UnifiedWaterVolume/Surface, OceanPlane) are not parented to columns,
+    // so they must be shifted by whole map widths to stay aligned with the teleported columns.
+    private int _globalWaterWrapOffset = int.MinValue;
+    private void UpdateGlobalWaterWrap(float cameraXLocal)
+    {
+        if (!enableWrap) return;
+        if (mapWidth <= 0.001f) return;
+
+        float halfMap = mapWidth * 0.5f;
+        int desired = Mathf.FloorToInt((cameraXLocal + halfMap) / mapWidth);
+        if (desired == _globalWaterWrapOffset) return;
+        _globalWaterWrapOffset = desired;
+
+        float offsetX = desired * mapWidth;
+
+        if (_oceanPlaneObj != null)
+        {
+            var lp = _oceanPlaneObj.transform.localPosition;
+            _oceanPlaneObj.transform.localPosition = new Vector3(offsetX, lp.y, lp.z);
+        }
+
+        if (_riverSurfaceObj != null)
+        {
+            var lp = _riverSurfaceObj.transform.localPosition;
+            _riverSurfaceObj.transform.localPosition = new Vector3(offsetX, lp.y, lp.z);
+        }
+
+        // Maintain ±mapWidth ghost copies so water stays visible across seam.
+        UpdateGlobalWaterGhostPositions(offsetX);
+
+        if (debugWrap)
+            Debug.Log($"[HexMapChunkManager][WRAP] GlobalWater offset={offsetX:F3} (period={desired}) camX={cameraXLocal:F3} mapW={mapWidth:F3}");
     }
 
     private void LogTransformDiagnostics()
@@ -3605,7 +3569,24 @@ public class HexMapChunkManager : MonoBehaviour
     public void RefreshAllChunks()
     {
         if (chunks == null) return;
-        
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                if (chunks[x, z] != null)
+                    chunks[x, z].ForceRefresh();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Batched version: refresh chunks with yield every N chunks to avoid frame freeze.
+    /// </summary>
+    private System.Collections.IEnumerator RefreshAllChunksCoroutine()
+    {
+        if (chunks == null) yield break;
+        int batchSize = Mathf.Max(1, chunksPerBatch);
+        int count = 0;
         for (int x = 0; x < chunksX; x++)
         {
             for (int z = 0; z < chunksZ; z++)
@@ -3613,6 +3594,8 @@ public class HexMapChunkManager : MonoBehaviour
                 if (chunks[x, z] != null)
                 {
                     chunks[x, z].ForceRefresh();
+                    count++;
+                    if (count >= batchSize) { count = 0; yield return null; }
                 }
             }
         }
@@ -3715,8 +3698,8 @@ public class HexMapChunkManager : MonoBehaviour
         if (chunks == null || planetGenerator == null) return;
         if (!tileToChunk.TryGetValue(tileIndex, out HexMapChunk chunk) || chunk == null) return;
 
-        BuildWaterMeshForChunk(chunk);
-        BuildFoamEdgeMeshForChunk(chunk);
+        BuildWaterMeshForChunk(chunk, out _, out _, out _);
+        // Foam removed
         // Rivers are rendered as a single continuous mesh when enabled.
         // Rebuild the whole river surface if a river tile changed (cheap at low SDF resolution).
         if (enableContinuousRiverSurface)
@@ -3724,8 +3707,10 @@ public class HexMapChunkManager : MonoBehaviour
             try
             {
                 if (planetGenerator.data.TryGetValue(tileIndex, out var td) &&
-                    (td.waterType == TileWaterType.River || (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)))
-                    BuildContinuousRiverSurfaceMesh();
+                    (td.waterType == TileWaterType.River
+                     || (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)
+                     || (continuousWaterIncludesOcean && td.waterType == TileWaterType.Ocean)))
+                    StartCoroutine(BuildContinuousRiverSurfaceMeshCoroutine());
             }
             catch { /* ignore */ }
         }

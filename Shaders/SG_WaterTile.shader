@@ -28,7 +28,7 @@ Shader "Custom/SG_WaterTile"
         _CausticsIntensity ("Caustics Intensity", Range(0, 2)) = 0.6
 
         [Header(Transparency)]
-        _AlphaBase ("Base Alpha", Range(0, 1)) = 0.85
+        _AlphaBase ("Base Alpha", Range(0, 1)) = 0.45
     }
 
     SubShader
@@ -125,15 +125,12 @@ Shader "Custom/SG_WaterTile"
                 // Decode flow direction from vertex color (rg: 0..1 -> -1..1)
                 float2 flowDir = input.vertexColor.rg * 2.0 - 1.0;
 
-                // Water type from alpha:
-                // - per-tile water mesh encodes: Ocean=0.33, Lake=0.67, River=1.0
-                // - continuous inland mesh uses the same convention
-                // Use a smooth factor so river→lake transitions don't hard-step when triangles interpolate alpha.
-                float waterTypeAlpha = input.vertexColor.a;
-                float riverFactor = smoothstep(0.85, 0.95, waterTypeAlpha);
-
-                // Flow offset for rivers
-                float2 flowOffset = flowDir * (_FlowSpeed * _Time.y * riverFactor);
+                // Root fix: DO NOT use vertexColor.a (water type alpha) for anything.
+                // All water types share the same transparency; remove type-based branching.
+                float dirLen2 = dot(flowDir, flowDir);
+                float2 dirN = (dirLen2 > 1e-4) ? normalize(flowDir) : float2(0.0, 0.0);
+                float flowFactor = (dirLen2 > 1e-4) ? 1.0 : 0.0; // zero dir => still water
+                float2 flowOffset = dirN * (_FlowSpeed * _Time.y * flowFactor);
 
                 // Scroll UVs for two normal maps
                 float2 worldUV = input.positionWS.xz * 0.1; // world-space tiling
@@ -179,7 +176,9 @@ Shader "Custom/SG_WaterTile"
                 float causticsAtten = (1.0 - fresnel * 0.7);
                 color.rgb += caustics * _CausticsIntensity * causticsAtten * _ShallowColor.rgb;
 
-                color.a = _AlphaBase;
+                // Uniform alpha for all water types (material-driven).
+                // NOTE: We intentionally do NOT use vertexColor.a (water type) here.
+                color.a = saturate(_AlphaBase);
 
                 return color;
             }

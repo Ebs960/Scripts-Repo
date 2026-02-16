@@ -145,7 +145,7 @@ Material:
     - _ATDistance: 1
     - _AddPrecomputedVelocity: 0
     - _AlbedoAffectEmissive: 0
-    - _AlphaBase: 0.813
+    - _AlphaBase: 0.499
     - _AlphaCutoff: 0.5
     - _AlphaCutoffEnable: 0
     - _AlphaCutoffPostpass: 0.5
@@ -186,8 +186,8 @@ Material:
     - _EnableFogOnTransparent: 1
     - _EnableGeometricSpecularAA: 0
     - _EnergyConservingSpecularColor: 1
-    - _FlowSpeed: 0.39
-    - _FresnelPower: 3.09
+    - _FlowSpeed: 0.28
+    - _FresnelPower: 3.91
     - _HeightAmplitude: 0.02
     - _HeightCenter: 0.5
     - _HeightMapParametrization: 0
@@ -208,7 +208,7 @@ Material:
     - _MetallicRemapMin: 0
     - _NormalMapSpace: 0
     - _NormalScale: 1
-    - _NormalStrength: 0.19
+    - _NormalStrength: 0.8
     - _ObjectSpaceUVMapping: 0
     - _ObjectSpaceUVMappingEmissive: 0
     - _OpaqueCullMode: 2
@@ -257,8 +257,8 @@ Material:
     - _UVEmissive: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
-    - _WaveAmplitude: 0.0074
-    - _WaveFrequency: 1.06
+    - _WaveAmplitude: 0.0417
+    - _WaveFrequency: 4.52
     - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
     - _ZTestTransparent: 4
@@ -266,7 +266,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _DeepColor: {r: 0.049999952, g: 0.14999992, b: 0.3499999, a: 1}
+    - _DeepColor: {r: 0.15166242, g: 0.4217217, b: 0.6754716, a: 1}
     - _DiffusionProfileAsset: {r: 0, g: 0, b: 0, a: 0}
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
@@ -274,8 +274,8 @@ Material:
     - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
-    - _ScrollSpeedA: {r: 0.1, g: 0.02, b: 0, a: 0}
-    - _ScrollSpeedB: {r: -0.02, g: 0.05, b: 0, a: 0}
+    - _ScrollSpeedA: {r: 0.4, g: 0.1, b: 0, a: 0}
+    - _ScrollSpeedB: {r: -0.02, g: 0.1, b: 0, a: 0}
     - _ShallowColor: {r: 0.19362764, g: 0.56339926, b: 0.9245283, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _ThicknessRemap: {r: 0, g: 1, b: 0, a: 0}

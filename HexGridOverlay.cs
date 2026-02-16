@@ -49,6 +49,8 @@ public class HexGridOverlay : MonoBehaviour
     private List<LineRenderer> lineRendererPool = new List<LineRenderer>();
     private int activeLineRenderers = 0;
     private Transform lineRendererParent;
+    // Track last-known show state so inspector/runtime changes update the parent active state
+    private bool _lastShowGridState = false;
     
     // Timing
     private float lastUpdateTime;
@@ -94,6 +96,7 @@ public class HexGridOverlay : MonoBehaviour
         
         // Initial visibility
         lineRendererParent.gameObject.SetActive(showGrid);
+        _lastShowGridState = showGrid;
         
         if (!showGrid)
         {
@@ -108,7 +111,12 @@ public class HexGridOverlay : MonoBehaviour
     void Update()
     {
         _updateCallCount++;
-        
+        // React to runtime/inspector changes when toggled in Play mode or inspector
+        if (_lastShowGridState != showGrid)
+        {
+            SetGridVisible(showGrid);
+        }
+
         if (!showGrid)
         {
             if (!_loggedFirstUpdate)
@@ -163,6 +171,23 @@ public class HexGridOverlay : MonoBehaviour
         {
             _loggedFirstGridUpdate = false;
             _loggedFirstUpdate = false;
+        }
+        _lastShowGridState = showGrid;
+    }
+    
+    void OnValidate()
+    {
+        // Editor inspector toggle: update parent GameObject active state immediately when possible.
+        if (lineRendererParent == null)
+        {
+            var child = transform.Find("HexGridLines");
+            if (child != null) lineRendererParent = child;
+        }
+
+        if (lineRendererParent != null)
+        {
+            lineRendererParent.gameObject.SetActive(showGrid);
+            _lastShowGridState = showGrid;
         }
     }
     

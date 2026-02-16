@@ -78,15 +78,6 @@ Shader "Custom/BiomeTerrainHDRP"
         _BiomeBlendRadius ("Biome Blend Radius (texels)", Range(0, 16)) = 4.0
         _BiomeBlendSharpness ("Height Blend Sharpness", Range(0.01, 10)) = 3.0
 
-        [Header(Cliff Overlay)]
-        _CliffAlbedoMap ("Cliff Albedo", 2D) = "gray" {}
-        _CliffNormalMap ("Cliff Normal", 2D) = "bump" {}
-        _CliffTiling ("Cliff Tiling", Range(0.1, 20)) = 2.0
-        _CliffSlopeStart ("Cliff Slope Start (flat=1, vertical=0)", Range(0, 1)) = 0.6
-        _CliffSlopeEnd ("Cliff Slope End (fully cliff)", Range(0, 1)) = 0.3
-        _CliffSmoothness ("Cliff Smoothness", Range(0, 1)) = 0.3
-        _CliffMetallic ("Cliff Metallic", Range(0, 1)) = 0.0
-
         [Header(Snow Detail)]
         _SnowNormalStrength ("Snow Normal Strength", Range(0, 2)) = 0.5
         _SnowNormalTiling ("Snow Normal Tiling", Range(0.1, 20)) = 5.0
@@ -126,8 +117,6 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D(_SliceToBiomeMap);     SAMPLER(sampler_SliceToBiomeMap);
     TEXTURE2D(_DetailAlbedoMap);     SAMPLER(sampler_DetailAlbedoMap);
     TEXTURE2D(_DetailNormalMap);     SAMPLER(sampler_DetailNormalMap);
-    TEXTURE2D(_CliffAlbedoMap);      SAMPLER(sampler_CliffAlbedoMap);
-    TEXTURE2D(_CliffNormalMap);      SAMPLER(sampler_CliffNormalMap);
 
     // ===================== Uniforms =====================
 
@@ -175,13 +164,6 @@ Shader "Custom/BiomeTerrainHDRP"
     float _TessellationFactor;
     float _TessellationFadeStart;
     float _TessellationFadeEnd;
-
-    // Cliff overlay
-    float _CliffTiling;
-    float _CliffSlopeStart;
-    float _CliffSlopeEnd;
-    float _CliffSmoothness;
-    float _CliffMetallic;
 
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeTints[64];
@@ -297,32 +279,6 @@ Shader "Custom/BiomeTerrainHDRP"
         float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xz * tiling, sliceIndex));
         float3 tnZ = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xy * tiling, sliceIndex));
 
-        float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
-        float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
-        float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
-
-        return normalize(nX.zyx * weights.x + nY.xzy * weights.y + nZ.xyz * weights.z);
-    }
-
-    // ===================== Triplanar Sampling for Regular Texture2D (Cliff Overlay) =====================
-
-    float4 TriplanarSample2D(TEXTURE2D_PARAM(tex, samp),
-        float3 worldPos, float3 weights, float tiling)
-    {
-        float4 sX = SAMPLE_TEXTURE2D(tex, samp, worldPos.zy * tiling);
-        float4 sY = SAMPLE_TEXTURE2D(tex, samp, worldPos.xz * tiling);
-        float4 sZ = SAMPLE_TEXTURE2D(tex, samp, worldPos.xy * tiling);
-        return sX * weights.x + sY * weights.y + sZ * weights.z;
-    }
-
-    float3 TriplanarSampleNormal2D(TEXTURE2D_PARAM(tex, samp),
-        float3 worldPos, float3 worldNormal, float3 weights, float tiling)
-    {
-        float3 tnX = UnpackNormal(SAMPLE_TEXTURE2D(tex, samp, worldPos.zy * tiling));
-        float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D(tex, samp, worldPos.xz * tiling));
-        float3 tnZ = UnpackNormal(SAMPLE_TEXTURE2D(tex, samp, worldPos.xy * tiling));
-
-        // Whiteout blending (same as SampleNormalTriplanar)
         float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
         float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
         float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
@@ -746,40 +702,6 @@ Shader "Custom/BiomeTerrainHDRP"
                 float metallic = mask.r;
                 float ao = mask.g;
                 float smoothness = mask.a;
-
-                // ==========================================================
-                // CLIFF OVERLAY (slope-based)
-                // Steep slopes show a rock/cliff texture instead of the biome texture.
-                // Uses displacedNormal.y: 1 = flat ground, 0 = vertical wall.
-                // ==========================================================
-                float slopeY = displacedNormal.y; // 1 = flat, 0 = vertical
-                // cliffMask is 0 on flat ground, ramps to 1 on steep slopes
-                float cliffMask = 1.0 - smoothstep(_CliffSlopeEnd, _CliffSlopeStart, slopeY);
-
-                // Retrieve water biome flag (biomeParams.w) before the cliff section
-                // so we can exclude water tiles from cliff overlay.
-                float isWaterBiomeCliff = biomeParams.w;
-                cliffMask *= (1.0 - isWaterBiomeCliff);
-
-                if (cliffMask > 0.001)
-                {
-                    // Triplanar sample cliff albedo
-                    float3 cliffAlb = TriplanarSample2D(
-                        TEXTURE2D_ARGS(_CliffAlbedoMap, sampler_CliffAlbedoMap),
-                        worldPos, triWeights, _CliffTiling).rgb;
-
-                    // Triplanar sample cliff normal
-                    float3 cliffNrm = TriplanarSampleNormal2D(
-                        TEXTURE2D_ARGS(_CliffNormalMap, sampler_CliffNormalMap),
-                        worldPos, displacedNormal, triWeights, _CliffTiling);
-
-                    // Blend cliff over biome
-                    albedo = lerp(albedo, cliffAlb, cliffMask);
-                    normalWS = normalize(lerp(normalWS, cliffNrm, cliffMask));
-                    metallic = lerp(metallic, _CliffMetallic, cliffMask);
-                    smoothness = lerp(smoothness, _CliffSmoothness, cliffMask);
-                    ao = lerp(ao, 1.0, cliffMask); // cliff AO = 1 (no cavity data)
-                }
 
                 // ==========================================================
                 // MICRO-DETAIL LAYER (#5)

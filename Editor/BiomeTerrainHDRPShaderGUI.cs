@@ -160,23 +160,6 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel--;
         }
 
-        // ===================== Cliff Overlay =====================
-        if (Foldout("CliffOverlay", "Cliff Overlay (Slope-Based)", false))
-        {
-            EditorGUI.indentLevel++;
-
-            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Albedo"), Find(properties, "_CliffAlbedoMap"));
-            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Normal"), Find(properties, "_CliffNormalMap"));
-            materialEditor.ShaderProperty(Find(properties, "_CliffTiling"), "Cliff Tiling");
-            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeStart"), "Slope Start (flat=1, vertical=0)");
-            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeEnd"), "Slope End (fully cliff)");
-            materialEditor.ShaderProperty(Find(properties, "_CliffSmoothness"), "Cliff Smoothness");
-            materialEditor.ShaderProperty(Find(properties, "_CliffMetallic"), "Cliff Metallic");
-            EditorGUILayout.HelpBox("Steep slopes blend in the cliff texture using the displaced normal. Slope Start = angle where cliff begins appearing, Slope End = angle where cliff is fully visible. Both are in terms of normal.y (1 = flat, 0 = vertical).", MessageType.None);
-
-            EditorGUI.indentLevel--;
-        }
-
         // ===================== Micro Detail =====================
         if (Foldout("MicroDetail", "Micro Detail", false))
         {

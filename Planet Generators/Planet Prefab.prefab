@@ -179,7 +179,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debugOwnershipGuard: 0
-  debugOwnershipGuardVerbose: 1
+  debugOwnershipGuardVerbose: 0
   gasGiantRenderer: {fileID: -5893155586537961453}
   terrainRenderer: {fileID: 0}
   surfaceRoot: {fileID: 1048475128305947683}
@@ -196,6 +196,9 @@ MonoBehaviour:
   randomSeed: 1
   seed: 12345
   numberOfContinents: 8
+  continentNoiseEnabled: 1
+  continentNoiseFrequency: 0.036
+  continentNoiseAmplitude: 0.517
   minContinentWidthTilesSmall: 13
   maxContinentWidthTilesSmall: 22
   minContinentHeightTilesSmall: 11
@@ -208,43 +211,38 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.335
-  useFractalContinentStamp: 1
-  continentEdgeNoiseFrequency: 0.03
-  continentEdgeNoiseStrength: 0.55
-  continentEdgeNoiseMaskStart: 0.55
-  continentThresholdBias: 0
+  seedPositionVariance: 0.406
   elevationExponent: 1.07
-  ridgeStrength: 0.103
-  hillNoiseCutoff: 0.714
-  mountainNoiseCutoff: 0.808
-  elevationFreq: 3
-  moistureFreq: 0.045
+  ridgeStrength: 0.069
+  hillNoiseCutoff: 0.645
+  mountainNoiseCutoff: 0.855
+  elevationFreq: 1
+  moistureFreq: 0.06
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.766
   latitudeExponent: 1.15
-  temperatureNoiseFrequency: 0.15
+  temperatureNoiseFrequency: 0.19
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 3
-  climateSmoothingStrength: 0.196
+  climateSmoothingStrength: 0.057
   coastalMoistureBoost: 0.119
-  coastalMoistureRange: 3
+  coastalMoistureRange: 2
   flatElevationMin: 5
   flatElevationMax: 5.47
-  hillElevationMin: 6.5
-  hillElevationMax: 7.1
-  mountainElevationMin: 8.9
-  mountainElevationMax: 9.5
+  hillElevationMin: 8.1
+  hillElevationMax: 9.5
+  mountainElevationMin: 13.5
+  mountainElevationMax: 17.8
   oceanElevation: 0
   seasElevation: 3
   coastElevation: 3.9
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
-  riverDepth: 0.9
+  riverDepth: 1.59
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
@@ -259,7 +257,7 @@ MonoBehaviour:
   minLandTilesForCoastStamps: 120
   lakeDepth: 0.9
   seaLevelMatchCoast: 1
-  manualSeaLevelWorldY: 1.55
+  manualSeaLevelWorldY: 4.6
   numberOfIslands: 8
   generateIslands: 1
   minIslandWidthTilesSmall: 1

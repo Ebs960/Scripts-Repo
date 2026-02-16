@@ -386,6 +386,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     private List<ContinentData> continents;
 
+    [Header("Continent Noise (Fractal Coastlines)")]
+    [Tooltip("Enable low-frequency fractal noise to perturb continent edges for more realistic coastlines.")]
+    [SerializeField] private bool continentNoiseEnabled = true;
+    [Tooltip("Base frequency for continent-edge noise (lower = larger features).")]
+    [SerializeField, Range(0.0005f, 0.05f)] private float continentNoiseFrequency = 0.005f;
+    [Tooltip("Amplitude of continent-edge perturbation (0 = perfect ellipses, 1 = strong fractal carving).")]
+    [SerializeField, Range(0f, 1f)] private float continentNoiseAmplitude = 0.35f;
+
 
     // Continent sizing now uses raw tile counts (configured per-map-size)
 
@@ -419,22 +427,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Maximum random offset applied to deterministic seed positions (0 = no offset, higher = more variance).")]
     [Range(0f, 0.8f)]
     public float seedPositionVariance = 0.1f; // Controls randomness in seed placement
-
-    [Header("Continent Shape (Fractal Coastlines)")]
-    [Tooltip("When enabled, continent stamps use noise-warped falloff instead of a perfect ellipse, producing more fractal/realistic coastlines.")]
-    [SerializeField] private bool useFractalContinentStamp = true;
-    [Tooltip("Noise frequency used to perturb continent edges (wrap-safe). Higher = more jagged detail.")]
-    [Range(0.0005f, 0.25f)]
-    [SerializeField] private float continentEdgeNoiseFrequency = 0.03f;
-    [Tooltip("How strongly noise perturbs the continent edge. 0 = perfect ellipse, higher = more bays/peninsulas.")]
-    [Range(0f, 1.5f)]
-    [SerializeField] private float continentEdgeNoiseStrength = 0.55f;
-    [Tooltip("Noise only affects the outer portion of the stamp. 0 = affects entire continent (can punch holes), 1 = affects only the very edge.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float continentEdgeNoiseMaskStart = 0.55f;
-    [Tooltip("Optional small bias to make continents slightly larger (>0) or smaller (<0) after noise is applied.")]
-    [Range(-0.5f, 0.5f)]
-    [SerializeField] private float continentThresholdBias = 0.0f;
     
     [Range(0.5f, 4f)]
     [Tooltip("Power curve exponent for elevation distribution. Higher = mostly flat with rare peaks. Lower = more uniform elevation. 1.8 is a balanced default.")]
@@ -936,29 +928,24 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 Vector2Int coord = tileCoords[i];
                 float dx = WrappedDelta(coord.x, continent.center.x, tilesX) / halfW;
                 float dy = (coord.y - continent.center.y) / halfH;
-                float d = Mathf.Sqrt(dx * dx + dy * dy); // 0 at center, ~1 at ellipse boundary
-                if (!useFractalContinentStamp)
-                {
-                    if (d <= 1f) isLandTile[i] = true;
-                    continue;
+                float distSq = dx * dx + dy * dy;
+                if (continentNoiseEnabled && noise != null) {
+                    // Sample low-frequency wrap-safe noise to perturb the local ellipse radius
+                    Vector2 tilePos = new Vector2(coord.x, coord.y);
+                    float n = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, continentNoiseFrequency); // 0..1
+                    // Convert to [-1..1], scale by amplitude and add to radius multiplier
+                    float perturb = (n * 2f - 1f) * continentNoiseAmplitude;
+                    float radiusScale = 1f + perturb; // can shrink or expand ellipse locally
+                    radiusScale = Mathf.Max(0.2f, radiusScale);
+                    if (distSq <= radiusScale * radiusScale) {
+                        isLandTile[i] = true;
+                    }
                 }
-
-                // Base falloff: positive inside ellipse, negative outside.
-                float baseField = 1f - d;
-
-                // Edge mask: keep interior stable (avoid "punching holes") and focus detail near coast.
-                // Mask ramps from 0..1 between [continentEdgeNoiseMaskStart .. 1.0] (relative to ellipse radius).
-                float edgeMask = NoiseSampler.SmootherStep(continentEdgeNoiseMaskStart, 1.0f, d);
-
-                // Wrap-safe noise in 0..1, remap to [-1..1].
-                float n01 = noise != null
-                    ? noise.GetElevationPeriodic(new Vector2(coord.x, coord.y), mapWidth, mapHeight, continentEdgeNoiseFrequency)
-                    : 0.5f;
-                float n = (n01 - 0.5f) * 2f;
-
-                // Final field: ellipse falloff + edge noise perturbation.
-                float field = baseField + (n * continentEdgeNoiseStrength * edgeMask) + continentThresholdBias;
-                if (field > 0f) isLandTile[i] = true;
+                else {
+                    if (distSq <= 1f) {
+                        isLandTile[i] = true;
+                    }
+                }
             }
         }
 
@@ -2716,10 +2703,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 mountainNoiseCutoff = 0.95f;
                 flatElevationMin = 5.3f;
                 flatElevationMax = 5.7f;
-                hillElevationMin = 6.6f;
-                hillElevationMax = 7.4f;
-                mountainElevationMin = 8.5f;
-                mountainElevationMax = 9.0f;
+                hillElevationMin = 6.5f;
+                hillElevationMax = 7.0f;
+                mountainElevationMin = 9.5f;
+                mountainElevationMax = 10.0f;
                 ridgeStrength = 0.0f;
                 break;
             case 1: // Smooth — gentle rolling terrain, some hills, rare mountains
@@ -2735,16 +2722,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 ridgeStrength = 0.15f;
                 break;
             case 2: // Standard — balanced mix
-                elevationExponent = 1.1f;
-                hillNoiseCutoff = 0.60f;
-                mountainNoiseCutoff = 0.92f;
-                flatElevationMin = 5.1f;
-                flatElevationMax = 5.60f;
-                hillElevationMin = 6.5f;
-                hillElevationMax = 7.0f;
-                mountainElevationMin = 9.0f;
-                mountainElevationMax = 9.6f;
-                ridgeStrength = 0.01f;
+                elevationExponent = 1.0f;
+                hillNoiseCutoff = 0.55f;
+                mountainNoiseCutoff = 0.93f;
+                flatElevationMin = 5.05f;
+                flatElevationMax = 5.25f;
+                hillElevationMin = 8.2f;
+                hillElevationMax = 8.7f;
+                mountainElevationMin = 10.0f;
+                mountainElevationMax = 11.0f;
+                ridgeStrength = 0.1f;
                 break;
             case 3: // Mountainous — lots of hills, frequent mountains
                 elevationExponent = 1.0f;
@@ -3002,32 +2989,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     {
         if (tileData == null || hexGrid == null || tileCount <= 0) return;
 
-        // IMPORTANT:
-        // We treat biome as the authoritative "what this tile is" for rendering,
-        // but several systems historically relied on boolean flags (isLake/isRiver).
-        // If any code path ever sets td.biome without also synchronizing the flags,
-        // waterType can silently become inconsistent, leading to "missing every other tile" water.
-        // So, in this method we accept EITHER signal and we also re-sync the flags when stamping metadata.
-        bool IsLakeLike(HexTileData td) => td != null && (td.isLake || td.biome == Biome.Lake);
-        bool IsRiverLike(HexTileData td) => td != null && (td.isRiver || td.biome == Biome.River);
-
-        // Quick diagnostic: detect desync between biome and isLake/isRiver flags.
-        if (enableDiagnostics)
-        {
-            int lakeBiomeFlagMismatch = 0;
-            int riverBiomeFlagMismatch = 0;
-            for (int i = 0; i < tileCount; i++)
-            {
-                if (!tileData.TryGetValue(i, out var td)) continue;
-                if (td.biome == Biome.Lake && !td.isLake) lakeBiomeFlagMismatch++;
-                if (td.biome == Biome.River && !td.isRiver) riverBiomeFlagMismatch++;
-            }
-            if (lakeBiomeFlagMismatch > 0 || riverBiomeFlagMismatch > 0)
-            {
-                Debug.LogWarning($"[PlanetGenerator][WaterMeta] Detected biome/flag mismatch before stamping: lakeBiomeButIsLakeFalse={lakeBiomeFlagMismatch}, riverBiomeButIsRiverFalse={riverBiomeFlagMismatch}. Water metadata will treat biome OR flags as water and re-sync flags while stamping.");
-            }
-        }
-
         // --- Pass 1: Ocean tiles ---
         float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : transform.position.y;
         // Ocean water elevation = coastElevation (shared sea level for all ocean/seas/coast tiles)
@@ -3055,7 +3016,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             if (visitedLake[i]) continue;
             if (!tileData.TryGetValue(i, out var seed)) continue;
-            if (!IsLakeLike(seed)) continue;
+            if (!seed.isLake) continue;
 
             // Flood-fill this connected lake body
             var lakeBody = new List<int>();
@@ -3071,20 +3032,77 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 {
                     if (n < 0 || n >= tileCount || visitedLake[n]) continue;
                     if (!tileData.TryGetValue(n, out var ntd)) continue;
-                    if (!IsLakeLike(ntd)) continue;
+                    if (!ntd.isLake) continue;
                     visitedLake[n] = true;
                     queue.Enqueue(n);
                 }
             }
 
-            // Water surface must sit above the highest point in the lake bed,
-            // otherwise water renders below terrain and is invisible.
-            float maxBed = float.MinValue;
+            // Find the lowest adjacent land elevation (spill rim)
+            float spillElevation = float.MaxValue;
             foreach (int lakeIdx in lakeBody)
             {
-                if (tileData[lakeIdx].elevation > maxBed) maxBed = tileData[lakeIdx].elevation;
+                foreach (int n in hexGrid.neighbors[lakeIdx])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!tileData.TryGetValue(n, out var ntd)) continue;
+                    if (ntd.isLake) continue; // skip other lake tiles
+                    if (ntd.isLand && ntd.elevation < spillElevation)
+                    {
+                        spillElevation = ntd.elevation;
+                    }
+                }
             }
-            float waterElev = maxBed + Mathf.Max(0.01f, lakeDepth * 0.7f);
+
+            // Also check non-land, non-lake neighbors (e.g. ocean/coast) for the spill rim,
+            // since lakes near the coast would otherwise find no rim at all.
+            float waterElev;
+            float maxBed = float.MinValue;
+            float minBed = float.MaxValue;
+            foreach (int lakeIdx in lakeBody)
+            {
+                float e = tileData[lakeIdx].elevation;
+                if (e > maxBed) maxBed = e;
+                if (e < minBed) minBed = e;
+            }
+            if (spillElevation < float.MaxValue * 0.5f)
+            {
+                // Water sits just barely below the spill rim for a full-looking lake
+                waterElev = spillElevation - 0.005f;
+
+                // CRITICAL: ensure the carved lake bed actually sits BELOW the water surface.
+                // If lakeDepth is too small relative to local terrain variation, it's possible for a "lake"
+                // to end up higher than its spill rim. That would make water appear missing (below terrain).
+                // Fix at the cause by carving this entire lake body down so maxBed <= waterElev - margin.
+                float margin = Mathf.Max(0.02f, lakeDepth * 0.25f);
+                if (maxBed > waterElev - margin)
+                {
+                    float carveDelta = maxBed - (waterElev - margin);
+                    for (int j = 0; j < lakeBody.Count; j++)
+                    {
+                        int lakeIdx = lakeBody[j];
+                        var tdAdj = tileData[lakeIdx];
+                        tdAdj.elevation = Mathf.Max(0f, tdAdj.elevation - carveDelta);
+                        tileData[lakeIdx] = tdAdj;
+                    }
+                    // Recompute bed range for diagnostics / downstream logic
+                    maxBed = float.MinValue;
+                    minBed = float.MaxValue;
+                    foreach (int lakeIdx in lakeBody)
+                    {
+                        float e = tileData[lakeIdx].elevation;
+                        if (e > maxBed) maxBed = e;
+                        if (e < minBed) minBed = e;
+                    }
+                }
+            }
+            else
+            {
+                // Fallback: no land rim found (lake may border only ocean/coast).
+                // Use the highest lake-bed elevation plus a visible offset so the water
+                // surface is clearly above the carved lake bed.
+                waterElev = maxBed + lakeDepth * 0.9f;
+            }
 
             // Stamp metadata on every tile in this lake body
             int lid = nextLakeId++;
@@ -3092,16 +3110,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             {
                 var td2 = tileData[lakeIdx];
                 td2.waterType = TileWaterType.Lake;
-                // Keep boolean flags coherent with biome/water classification.
-                td2.isLake = true;
-                td2.isRiver = false;
                 td2.lakeId = lid;
                 td2.waterElevation = waterElev;
                 td2.riverFlowDirXZ = Vector2.zero;
                 tileData[lakeIdx] = td2;
             }
             
-            Debug.Log($"[PlanetGenerator] Lake {lid}: tiles={lakeBody.Count} maxBed={maxBed:F3} waterElev={waterElev:F3} bedRange=[{lakeBody.Min(t => tileData[t].elevation):F3}..{lakeBody.Max(t => tileData[t].elevation):F3}]");
+            Debug.Log($"[PlanetGenerator] Lake {lid}: tiles={lakeBody.Count} spillRim={spillElevation:F3} waterElev={waterElev:F3} bedRange=[{minBed:F3}..{maxBed:F3}]");
         }
 
         // --- Pass 3: River tiles — water height + flow direction ---
@@ -3115,15 +3130,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         for (int i = 0; i < tileCount; i++)
         {
             if (!tileData.TryGetValue(i, out var td)) continue;
-            if (!IsRiverLike(td)) continue;
+            if (!td.isRiver) continue;
 
             td.waterType = TileWaterType.River;
-            // Keep boolean flags coherent with biome/water classification.
-            td.isRiver = true;
-            td.isLake = false;
             td.lakeId = -1;
             // River surface sits above the carved river bed
-            td.waterElevation = td.elevation + (riverDepth * 0.90f);
+            td.waterElevation = td.elevation + (riverDepth * 0.75f);
 
             // Flow direction: toward the neighboring river tile with the lowest elevation.
             Vector3 myCenter = hexGrid.tileCenters[i];
