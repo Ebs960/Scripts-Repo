@@ -27,6 +27,12 @@ public class HexTileData
     // --- Core Map Properties (existing) ---
     public Biome biome;
     public float elevation;        // World-space height offset from the flat plane (in world units). Directly used by heightmap, water surfaces, and unit placement.
+    /// <summary>
+    /// Original elevation sampled from noise/tier system when the tile was first created.
+    /// This is preserved so renderers can choose to use the pre-water/carve elevation
+    /// when desired (prevents neighbor water carving from pulling adjacent land down).
+    /// </summary>
+    public float originalElevation = 0f;
     public ElevationTier elevationTier = ElevationTier.Flat;
     public bool isLand;
     public bool isLake;

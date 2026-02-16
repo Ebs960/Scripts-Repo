@@ -499,35 +499,35 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     //   Hill tiles  = hillElevationMin .. hillElevationMax (interpolated)
     //   Mountain tiles = mountainElevationMin .. mountainElevationMax (interpolated)
     [Header("Tier Elevation Ranges")]
-    [Range(0f, 15f)]
+    [Range(0f, 25f)]
     [Tooltip("Lowest flat land elevation (world units). The lowest flat tiles sit here.")]
     public float flatElevationMin = 5.0f;
-    [Range(0f, 15f)]
+    [Range(0f, 25f)]
     [Tooltip("Highest flat land elevation (world units). The highest flat tiles reach here.")]
     public float flatElevationMax = 6.5f;
 
-    [Range(0f, 20f)]
+    [Range(0f, 25f)]
     [Tooltip("Lowest hill elevation (world units). The shortest hill starts here.")]
     public float hillElevationMin = 7.0f;
-    [Range(0f, 20f)]
+    [Range(0f, 25f)]
     [Tooltip("Highest hill elevation (world units). The tallest hill reaches here.")]
     public float hillElevationMax = 10.0f;
 
     [Range(0f, 25f)]
     [Tooltip("Lowest mountain elevation (world units). The shortest mountain starts here.")]
     public float mountainElevationMin = 10.0f;
-    [Range(0f, 30f)]
+    [Range(0f, 25f)]
     [Tooltip("Highest mountain elevation (world units). The tallest peak reaches here.")]
     public float mountainElevationMax = 15.0f;
 
     [Header("Water Elevation")]
-    [Range(-5f, 5f)]
+    [Range(-5f, 30f)]
     [Tooltip("Ocean floor elevation in world units (typically 0 = flat plane level).")]
     public float oceanElevation = 0f;
-    [Range(-5f, 5f)]
+    [Range(-5f, 30f)]
     [Tooltip("Shallow seas elevation in world units.")]
     public float seasElevation = 0.15f;
-    [Range(-5f, 5f)]
+    [Range(-5f, 30f)]
     [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
     public float coastElevation = 0.3f;
     
@@ -575,6 +575,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
     public int minLandTilesForCoastStamps = 24;
+
+    [Tooltip("How many tiles out from Coast should be considered shallow Seas (rings). Default 3.")]
+    [Range(1, 6)]
+    public int shallowSeasRings = 3;
 
     [Header("Lake Depth")]
     [Range(0f, 5f)]
@@ -1703,6 +1707,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 isHill = isHill,
                 isMountain = isMountain,
                 elevation = finalElevation,
+                originalElevation = finalElevation,
                 elevationTier = elevTier,
                 temperature = temperature,
                 moisture = moisture,
@@ -1835,7 +1840,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Pass 1: Ocean adjacent to Coast → Seas
         // Pass 2-3: Ocean adjacent to existing Seas → Seas (extends 2 more tiles out)
         HashSet<int> seasTiles = new HashSet<int>();
-        int seasRings = 3;
+        int seasRings = Mathf.Max(1, shallowSeasRings);
         for (int ring = 0; ring < seasRings; ring++)
         {
             List<int> newSeas = new List<int>();
@@ -2722,16 +2727,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 ridgeStrength = 0.15f;
                 break;
             case 2: // Standard — balanced mix
-                elevationExponent = 1.0f;
-                hillNoiseCutoff = 0.55f;
+                elevationExponent = 1.01f;
+                hillNoiseCutoff = 0.54f;
                 mountainNoiseCutoff = 0.93f;
-                flatElevationMin = 5.05f;
-                flatElevationMax = 5.25f;
-                hillElevationMin = 8.2f;
-                hillElevationMax = 8.7f;
-                mountainElevationMin = 10.0f;
-                mountainElevationMax = 11.0f;
-                ridgeStrength = 0.1f;
+                flatElevationMin = 8.05f;
+                flatElevationMax = 8.5f;
+                hillElevationMin = 10.0f;
+                hillElevationMax = 10.5f;
+                mountainElevationMin = 12.0f;
+                mountainElevationMax = 14.0f;
+                ridgeStrength = 0.05f;
                 break;
             case 3: // Mountainous — lots of hills, frequent mountains
                 elevationExponent = 1.0f;

@@ -55,12 +55,13 @@ MonoBehaviour:
   meshSubdivisionsPerChunk: 54
   displacementStrength: 1.05
   flatY: 0
+  preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
   globalWetness: 0
   triplanarTiling: 0.81
-  triplanarBlend: 7.6
-  normalStrength: 1.05
-  normalSampleRadius: 3.53
+  triplanarBlend: 10
+  normalStrength: 0.6
+  normalSampleRadius: 6.1
   biomeBlendRadius: 0.63
   biomeBlendSharpness: 4.51
   enableWrap: 1
@@ -70,10 +71,10 @@ MonoBehaviour:
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
-  debugWaterVerbose: 1
+  debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.02
-  manualOceanWaterY: 4.55
+  manualOceanWaterY: 7.5
   useManualOceanWaterY: 1
   enableOceanPlane: 0
   oceanPlanePaddingHex: 2
@@ -100,6 +101,8 @@ MonoBehaviour:
   preBuildOnPlanetReady: 1
   chunksPerBatch: 3
   enableSeasonMasks: 0
+  cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
+  cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0

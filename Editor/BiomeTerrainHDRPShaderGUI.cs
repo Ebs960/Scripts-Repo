@@ -203,6 +203,16 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel--;
         }
 
+        // ===================== Material Modifiers =====================
+        if (Foldout("MaterialModifiers", "Material Modifiers", true))
+        {
+            EditorGUI.indentLevel++;
+            materialEditor.ShaderProperty(Find(properties, "_MetallicMultiplier"), "Global Metallic Multiplier");
+            materialEditor.ShaderProperty(Find(properties, "_AOIntensity"), "Global AO Intensity");
+            materialEditor.ShaderProperty(Find(properties, "_SmoothnessMultiplier"), "Global Smoothness Multiplier");
+            EditorGUI.indentLevel--;
+        }
+
         // ===================== Overlays =====================
         if (Foldout("Overlays", "Overlays", false))
         {

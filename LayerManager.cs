@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 using static GameManager;
 
@@ -27,6 +28,19 @@ public class LayerManager : MonoBehaviour
     [Tooltip("If not assigned, will use PlanetGenerator.underwaterRoot.")]
     [FormerlySerializedAs("underwaterRoot")]
     [SerializeField] private GameObject underwaterRootOverride;
+
+    [Header("Camera Switching")]
+    [Tooltip("When enabled, LayerManager will switch between the surface and underwater camera when the active layer changes.")]
+    [SerializeField] private bool switchCameraOnLayerChange = true;
+    [Tooltip("Optional camera used for Surface view. If not assigned, Camera.main will be used when switching back.")]
+    [SerializeField] private Camera surfaceCameraOverride;
+    [Tooltip("Optional camera used for Underwater view. Assign a separate camera with underwater post-processing/settings.")]
+    [SerializeField] private Camera underwaterCameraOverride;
+    [Header("Post-Processing Volumes")]
+    [Tooltip("Optional global Volume used for Surface view. Assign a Volume with your surface post-processing profile.")]
+    [SerializeField] private Volume surfaceVolumeOverride;
+    [Tooltip("Optional global Volume used for Underwater view. Assign a Volume with underwater color/fog/caustics profile.")]
+    [SerializeField] private Volume underwaterVolumeOverride;
 
     [Tooltip("If not assigned, will use PlanetGenerator.atmosphereRoot.")]
     [FormerlySerializedAs("atmosphereRoot")]
@@ -238,6 +252,45 @@ public class LayerManager : MonoBehaviour
                 volumeSpawner.SetVolumetricsEnabled(shouldShowGasGiant);
             }
         }
+
+        // Optional camera switching: enable the underwater camera when underwater view is active
+        if (switchCameraOnLayerChange)
+        {
+            Camera surfCam = surfaceCameraOverride != null ? surfaceCameraOverride : Camera.main;
+
+            // If we have an explicit underwater camera, prefer toggling cameras.
+            if (underwaterCameraOverride != null)
+            {
+                // Avoid disabling the same camera if the user mistakenly assigned the same reference
+                if (surfCam != null && surfCam != underwaterCameraOverride)
+                {
+                    surfCam.enabled = !underwaterVisible;
+                }
+                underwaterCameraOverride.enabled = underwaterVisible;
+            }
+            else if (surfCam != null)
+            {
+                // No underwater camera provided: optionally tweak main camera settings here in future.
+                surfCam.enabled = true; // always keep surface camera enabled if no underwater camera exists
+            }
+        }
+
+        // Toggle post-processing volumes if provided (use weight + enabled for smooth blending if desired)
+        if (surfaceVolumeOverride != null || underwaterVolumeOverride != null)
+        {
+            // Simple hard switch: enable the active volume and disable the other
+            if (underwaterVolumeOverride != null)
+            {
+                underwaterVolumeOverride.enabled = underwaterVisible;
+                underwaterVolumeOverride.weight = underwaterVisible ? 1f : 0f;
+            }
+            if (surfaceVolumeOverride != null)
+            {
+                bool surfActive = !underwaterVisible;
+                surfaceVolumeOverride.enabled = surfActive;
+                surfaceVolumeOverride.weight = surfActive ? 1f : 0f;
+            }
+        }
     }
 
     private void ResolveReferencesIfNeeded()
@@ -245,6 +298,36 @@ public class LayerManager : MonoBehaviour
         if (planetGenerator == null) planetGenerator = GetComponent<PlanetGenerator>();
         if (terrainRendererOverride == null && planetGenerator != null && planetGenerator.terrainRenderer != null)
             terrainRendererOverride = planetGenerator.terrainRenderer;
+        // Auto-assign surface camera from Camera.main when available (editor-friendly)
+        if (surfaceCameraOverride == null)
+        {
+            try { surfaceCameraOverride = Camera.main; } catch { }
+        }
+
+        // Auto-find an underwater camera by name or by containing the word "Underwater"
+        if (underwaterCameraOverride == null)
+        {
+            GameObject go = GameObject.Find("UnderwaterCamera");
+            if (go != null) underwaterCameraOverride = go.GetComponent<Camera>();
+            else
+            {
+                foreach (var cam in Camera.allCameras)
+                {
+                    if (cam == null) continue;
+                    if (cam.name.IndexOf("Underwater", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        underwaterCameraOverride = cam;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnValidate()
+    {
+        // Keep inspector friendly: try to auto-resolve common references while editing.
+        ResolveReferencesIfNeeded();
     }
 
     private string GetPlanetNameForLogs()

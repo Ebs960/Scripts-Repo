@@ -140,6 +140,7 @@ GameObject:
   - component: {fileID: -5893155586537961453}
   - component: {fileID: -5750504008650881166}
   - component: {fileID: 5887581935907441457}
+  - component: {fileID: 1628660839884279765}
   m_Layer: 6
   m_Name: Planet Prefab
   m_TagString: Untagged
@@ -216,7 +217,7 @@ MonoBehaviour:
   ridgeStrength: 0.069
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 1
+  elevationFreq: 2
   moistureFreq: 0.06
   moistureBias: 0
   temperatureBias: 0
@@ -237,8 +238,8 @@ MonoBehaviour:
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
   oceanElevation: 0
-  seasElevation: 3
-  coastElevation: 3.9
+  seasElevation: 4
+  coastElevation: 6.5
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
@@ -255,7 +256,8 @@ MonoBehaviour:
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 3
   minLandTilesForCoastStamps: 120
-  lakeDepth: 0.9
+  shallowSeasRings: 3
+  lakeDepth: 1.22
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 4.6
   numberOfIslands: 8
@@ -407,8 +409,30 @@ MonoBehaviour:
   planetGenerator: {fileID: 6434261854368368276}
   surfaceRootOverride: {fileID: 0}
   underwaterRootOverride: {fileID: 0}
+  switchCameraOnLayerChange: 1
+  surfaceCameraOverride: {fileID: 0}
+  underwaterCameraOverride: {fileID: 0}
+  surfaceVolumeOverride: {fileID: 0}
+  underwaterVolumeOverride: {fileID: 1628660839884279765}
   atmosphereRootOverride: {fileID: 0}
   gasGiantRendererOverride: {fileID: -5893155586537961453}
   gasGiantVolumeSpawnerOverride: {fileID: 1909149276891878161}
   terrainRendererOverride: {fileID: 0}
-  logLayerChanges: 0
+  logLayerChanges: 1
+--- !u!114 &1628660839884279765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5948921737104557089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: e50e0aec5883eff4f83dfef2583672ed, type: 2}

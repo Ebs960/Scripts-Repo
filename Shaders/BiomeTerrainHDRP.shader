@@ -34,6 +34,9 @@ Shader "Custom/BiomeTerrainHDRP"
         [Header(Global Modifiers)]
         _GlobalSnowAmount ("Global Snow Amount", Range(0, 1)) = 0
         _GlobalWetness ("Global Wetness", Range(0, 1)) = 0
+        _MetallicMultiplier ("Global Metallic Multiplier", Range(0, 2)) = 1.0
+        _AOIntensity ("Global AO Intensity", Range(0, 2)) = 1.0
+        _SmoothnessMultiplier ("Global Smoothness Multiplier", Range(0, 2)) = 1.0
         _SnowColor ("Snow Color", Color) = (0.92, 0.93, 0.96, 1)
         _SnowSmoothness ("Snow Smoothness", Range(0, 1)) = 0.3
 
@@ -92,6 +95,20 @@ Shader "Custom/BiomeTerrainHDRP"
         _TessellationFactor ("Tessellation Factor", Range(1, 64)) = 8.0
         _TessellationFadeStart ("Tessellation Fade Start", Range(0, 200)) = 10.0
         _TessellationFadeEnd ("Tessellation Fade End", Range(0, 500)) = 100.0
+        
+        [Header(Cliff Overlay)]
+        _CliffAlbedoArray ("Cliff Albedo Array", 2DArray) = "" {}
+        _CliffNormalArray ("Cliff Normal Array", 2DArray) = "" {}
+        // Preview fallbacks (regular 2D textures) - visible in older Unity inspectors
+        _CliffAlbedoPreview ("Cliff Albedo Preview (fallback)", 2D) = "white" {}
+        _CliffNormalPreview ("Cliff Normal Preview (fallback)", 2D) = "bump" {}
+        _CliffTiling ("Cliff Tiling", Range(0.1, 200)) = 12.0
+        _CliffStrength ("Cliff Strength", Range(0,1)) = 1.0
+        _CliffSlopeThreshold ("Cliff Slope Threshold", Range(0,1)) = 0.5
+        _CliffSlopeBlend ("Cliff Slope Blend", Range(0,1)) = 0.2
+        _CliffStepThreshold ("Cliff Step Threshold (texel units)", Range(0,1)) = 0.15
+        _CliffStepBlend ("Cliff Step Blend (texel units)", Range(0,1)) = 0.08
+        _CliffSliceCount ("Cliff Slice Count", Float) = 1
     }
 
     HLSLINCLUDE
@@ -106,6 +123,10 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D_ARRAY(_BiomeNormalArray);    SAMPLER(sampler_BiomeNormalArray);
     TEXTURE2D_ARRAY(_BiomeMaskArray);      SAMPLER(sampler_BiomeMaskArray);
     TEXTURE2D_ARRAY(_SurfaceEmissiveArray);SAMPLER(sampler_SurfaceEmissiveArray);
+    TEXTURE2D_ARRAY(_CliffAlbedoArray);    SAMPLER(sampler_CliffAlbedoArray);
+    TEXTURE2D_ARRAY(_CliffNormalArray);    SAMPLER(sampler_CliffNormalArray);
+    TEXTURE2D(_CliffAlbedoPreview);        SAMPLER(sampler_CliffAlbedoPreview);
+    TEXTURE2D(_CliffNormalPreview);        SAMPLER(sampler_CliffNormalPreview);
 
     TEXTURE2D(_BiomeIndexMap);       SAMPLER(sampler_BiomeIndexMap);
     TEXTURE2D(_Heightmap);           SAMPLER(sampler_Heightmap);
@@ -132,6 +153,9 @@ Shader "Custom/BiomeTerrainHDRP"
     float _BiomeCount;
     float _GlobalSnowAmount;
     float _GlobalWetness;
+    float _MetallicMultiplier;
+    float _AOIntensity;
+    float _SmoothnessMultiplier;
     float4 _SnowColor;
     float _SnowSmoothness;
     float _EnableFog;
@@ -161,6 +185,13 @@ Shader "Custom/BiomeTerrainHDRP"
     float _SnowSparkleStrength;
     float _TriplanarLODStart;
     float _TriplanarLODEnd;
+    float _CliffTiling;
+    float _CliffStrength;
+    float _CliffSlopeThreshold;
+    float _CliffSlopeBlend;
+    float _CliffStepThreshold;
+    float _CliffStepBlend;
+    float _CliffSliceCount;
     float _TessellationFactor;
     float _TessellationFadeStart;
     float _TessellationFadeEnd;
@@ -698,10 +729,57 @@ Shader "Custom/BiomeTerrainHDRP"
                     biomeParams = primary.biomeParams;
                 }
 
+                // ==========================================================
+                // CLIFF OVERLAY: combine slope-based and tile-step detection
+                //  - slope-based: preserves previous slope behavior
+                //  - step-based: detects abrupt per-texel elevation jumps (tile sides)
+                // ==========================================================
+                if (_CliffStrength > 0.001 && _CliffSliceCount >= 1.0)
+                {
+                    // slope-based component (existing)
+                    float slope = saturate(1.0 - displacedNormal.y);
+                    float slopeBlend = smoothstep(_CliffSlopeThreshold - _CliffSlopeBlend, _CliffSlopeThreshold + _CliffSlopeBlend, slope);
+
+                    // step-based component: sample immediate neighbors in heightmap (texel offsets)
+                    float2 texel = _Heightmap_TexelSize.xy;
+                    float hC = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
+                    float hL = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv - float2(texel.x, 0), 0).r;
+                    float hR = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv + float2(texel.x, 0), 0).r;
+                    float hD = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv - float2(0, texel.y), 0).r;
+                    float hU = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv + float2(0, texel.y), 0).r;
+
+                    float sL = saturate((hC - hL - _CliffStepThreshold) / max(_CliffStepBlend, 1e-5));
+                    float sR = saturate((hC - hR - _CliffStepThreshold) / max(_CliffStepBlend, 1e-5));
+                    float sD = saturate((hC - hD - _CliffStepThreshold) / max(_CliffStepBlend, 1e-5));
+                    float sU = saturate((hC - hU - _CliffStepThreshold) / max(_CliffStepBlend, 1e-5));
+
+                    // strongest step among neighbors
+                    float stepMask = max(max(sL, sR), max(sU, sD));
+
+                    // combined blend (scale by global cliff strength)
+                    float cliffBlend = max(slopeBlend, stepMask) * _CliffStrength;
+
+                    if (cliffBlend > 0.001)
+                    {
+                        // pick a variant slice deterministically from worldPos
+                        float hash = frac(sin(dot(worldPos.xz, float2(12.9898,78.233))) * 43758.5453);
+                        float sliceF = floor(hash * max(1.0, _CliffSliceCount - 1.0) + 0.5);
+
+                        // Sample cliff albedo and normal using triplanar/hex helpers
+                        float4 cliffAlb = SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray), worldPos, triWeights, sliceF, _CliffTiling, camDist);
+                        float3 cliffNorm = SampleBiomeNormal(TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray), worldPos, normalWS, triWeights, sliceF, _CliffTiling, camDist);
+
+                        // For step edges, prefer darker, more vertical look: lerp by cliffBlend
+                        albedo = lerp(albedo, cliffAlb.rgb, cliffBlend);
+                        normalWS = normalize(lerp(normalWS, cliffNorm, cliffBlend));
+                        mask.a = lerp(mask.a, max(0.05, mask.a * 0.3), cliffBlend);
+                    }
+                }
+
                 // Unpack mask: R=Metallic, G=AO, B=Height (used above), A=Smoothness
-                float metallic = mask.r;
-                float ao = mask.g;
-                float smoothness = mask.a;
+                float metallic = saturate(mask.r * _MetallicMultiplier);
+                float ao = saturate(mask.g * _AOIntensity);
+                float smoothness = saturate(mask.a * _SmoothnessMultiplier);
 
                 // ==========================================================
                 // MICRO-DETAIL LAYER (#5)

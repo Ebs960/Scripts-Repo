@@ -836,8 +836,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 483, y: -32}
-  m_SizeDelta: {x: 570, y: 570}
+  m_AnchoredPosition: {x: 550, y: -18}
+  m_SizeDelta: {x: 500, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3643405636174247924
 CanvasRenderer:
@@ -1192,7 +1192,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 489, y: 304}
+  m_AnchoredPosition: {x: 546, y: 304}
   m_SizeDelta: {x: 450, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &774011027701739445
@@ -5415,7 +5415,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.0000104904175, y: -0.000061035156}
+  m_AnchoredPosition: {x: -0.000036627054, y: -0.0008544922}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &6984598164392376406
@@ -5437,12 +5437,12 @@ MonoBehaviour:
     m_Bottom: 0
   m_ChildAlignment: 0
   m_Spacing: 0
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 1
-  m_ChildControlHeight: 1
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildForceExpandWidth: 0
+  m_ChildForceExpandHeight: 0
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 1
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 0
 --- !u!114 &1809026290714113805
 MonoBehaviour:
@@ -5459,8 +5459,8 @@ MonoBehaviour:
   m_IgnoreLayout: 0
   m_MinWidth: -1
   m_MinHeight: -1
-  m_PreferredWidth: 250
-  m_PreferredHeight: 200
+  m_PreferredWidth: 190
+  m_PreferredHeight: 150
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -6746,7 +6746,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 2769365586919723661}
   m_Direction: 2
   m_Value: 1
-  m_Size: 1
+  m_Size: 0.99999803
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -9749,7 +9749,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 6226451380819058572}
   m_Direction: 2
   m_Value: 1
-  m_Size: 1
+  m_Size: 0.9999982
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -11967,6 +11967,81 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 28}
   m_Pivot: {x: 0.5, y: 1}
+--- !u!1 &6221348433598368151
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9130735551597993138}
+  - component: {fileID: 6983229837389810674}
+  - component: {fileID: 2009942451267038464}
+  m_Layer: 5
+  m_Name: Leader Description Background
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &9130735551597993138
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6221348433598368151}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7165469208371401794}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -13, y: -48}
+  m_SizeDelta: {x: 600, y: 700}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &6983229837389810674
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6221348433598368151}
+  m_CullTransparentMesh: 1
+--- !u!114 &2009942451267038464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6221348433598368151}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.14901961, g: 0.19607843, b: 0.38039216, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &6229603870836106850
 GameObject:
   m_ObjectHideFlags: 0
@@ -15383,21 +15458,21 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: cfd03b25a4fd0e642acade55b8a4237d, type: 3}
   - mapTypeName: Infernal Uplands
     sprite: {fileID: 21300000, guid: 8e0c038af8d596346ab5dec25457496a, type: 3}
-  - mapTypeName: Jungle Continental Rise
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 24df6bb0cf1b21c41a199607ef1e4661, type: 3}
-  - mapTypeName: Jungle Crags
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 012cd99bec145ce46a62c42881d05402, type: 3}
-  - mapTypeName: Jungle Crest
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: cdf5331d2e1356d4e8044494187a9526, type: 3}
-  - mapTypeName: Jungle Flats
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 0f74e7e6eaca90e439c736f1cf777f3e, type: 3}
-  - mapTypeName: Jungle Lakes
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 6e8b7a052f83ec54b85de8b73f034796, type: 3}
-  - mapTypeName: Jungle Seas
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: b2a5a064d7abf984e8e4aa57df03f1a8, type: 3}
-  - mapTypeName: Jungle Steppes
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 8664955687fdc2048807f42afe549bd2, type: 3}
-  - mapTypeName: Jungle Uplands
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 9b326dc0ec3b91b46b08246d9823c2b5, type: 3}
   - mapTypeName: Majestic Arctic Vastness
     sprite: {fileID: 21300000, guid: 80f19b9a5528a6a4bb311e1d16780060, type: 3}
@@ -15651,7 +15726,7 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: 4e19949957713ce499c7cda6f3b131d2, type: 3}
   - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: 57dabf8ed1c063744a0d3785915319dd, type: 3}
-  - mapTypeName: Stony Jungle Dominion
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: bfd284a9e7e12e74fbd19d5bbe7b3cb5, type: 3}
   - mapTypeName: Stony Rainforest Dominion
     sprite: {fileID: 21300000, guid: 1ea51d3bf68b1754ca66dfd52a4c3214, type: 3}
@@ -15673,7 +15748,7 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: ee4364f283d5dc541b1cc7dfe2dffe48, type: 3}
   - mapTypeName: Sweeping Infernal Dominion
     sprite: {fileID: 21300000, guid: 476d6fdf987de8d4a90b46f2c7f2fe9a, type: 3}
-  - mapTypeName: Sweeping Jungle Dominion
+  - mapTypeName: Ancient Demonic Heartland
     sprite: {fileID: 21300000, guid: b57ef60d88831374a80dfe03f4ea1bfb, type: 3}
   - mapTypeName: Sweeping Misty Dominion
     sprite: {fileID: 21300000, guid: 819ec9a44531c744a89cbd0df0ce5197, type: 3}
@@ -16523,8 +16598,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -9, y: -48}
-  m_SizeDelta: {x: 400, y: 700}
+  m_AnchoredPosition: {x: -13, y: -48}
+  m_SizeDelta: {x: 600, y: 650}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5588675161857045452
 CanvasRenderer:
@@ -16585,8 +16660,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 26
-  m_fontSizeBase: 26
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 15
@@ -16939,7 +17014,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.00001001358, y: -0.000061035156}
+  m_AnchoredPosition: {x: -0.000033169985, y: -0.0009765625}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &3571628235980658287
@@ -16983,8 +17058,8 @@ MonoBehaviour:
   m_IgnoreLayout: 0
   m_MinWidth: -1
   m_MinHeight: -1
-  m_PreferredWidth: 300
-  m_PreferredHeight: 200
+  m_PreferredWidth: 150
+  m_PreferredHeight: 170
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -17077,7 +17152,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -529, y: -51}
-  m_SizeDelta: {x: 600, y: 700}
+  m_SizeDelta: {x: 400, y: 700}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2031246067353590279
 CanvasRenderer:
@@ -17100,7 +17175,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0}
+  m_Color: {r: 0.14901961, g: 0.19607843, b: 0.38039216, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -18955,6 +19030,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9121654290450439768}
+  - {fileID: 9130735551597993138}
   - {fileID: 6649256756382122471}
   - {fileID: 2133351792148101213}
   - {fileID: 8779629426851821551}

@@ -45,12 +45,29 @@ public class HexMapChunkManager : MonoBehaviour
     [Range(0.1f, 10f)]
     [SerializeField] private float displacementStrength = 1.0f;
     [SerializeField] private float flatY = 0f;
+    
+    [Header("Rendering Options")]
+    [Tooltip("When true, preserve land tile elevations adjacent to lakes/rivers by using the original pre-water elevation for rendering.")]
+    [SerializeField] private bool preserveLandElevationNearFreshwater = true;
 
     [Header("Biome Visual Modifiers")]
     [Range(0f, 1f)]
     [SerializeField] private float globalSnowAmount = 0f;
     [Range(0f, 1f)]
     [SerializeField] private float globalWetness = 0f;
+    [Header("Material Channel Multipliers")]
+    [Range(0f, 2f)]
+    [SerializeField]
+    [Tooltip("Multiplier applied to metallic channel from biome mask")]
+    private float metallicMultiplier = 1.0f;
+    [Range(0f, 2f)]
+    [SerializeField]
+    [Tooltip("Multiplier applied to AO channel from biome mask")]
+    private float aoIntensity = 1.0f;
+    [Range(0f, 2f)]
+    [SerializeField]
+    [Tooltip("Multiplier applied to smoothness channel from biome mask")]
+    private float smoothnessMultiplier = 1.0f;
     
     [Header("Triplanar Settings")]
     [Tooltip("Triplanar tiling scale — controls how large biome textures appear on terrain. Lower = larger textures.")]
@@ -199,6 +216,34 @@ public class HexMapChunkManager : MonoBehaviour
     private Texture2DArray biomeNormalArray;
     private Texture2DArray biomeMaskArray;
     private Texture2DArray biomeEmissiveArray;
+    [SerializeField]
+    [Tooltip("Optional texture array used for cliff/alpine surfaces. Assign a Texture2DArray with multiple cliff variants.")]
+    private Texture2DArray cliffAlbedoArray;
+    [SerializeField]
+    [Tooltip("Optional detail normal array for cliffs. Assign a Texture2DArray matching `cliffAlbedoArray` depth.")]
+    private Texture2DArray cliffNormalArray;
+    
+    [Header("Cliff Settings")]
+    [SerializeField]
+    [Range(0.1f, 200f)]
+    private float cliffTiling = 12f;
+    [SerializeField]
+    [Range(0f, 1f)]
+    private float cliffStrength = 1f;
+    [SerializeField]
+    [Range(0f, 1f)]
+    private float cliffSlopeThreshold = 0.5f;
+    [SerializeField]
+    [Range(0f, 1f)]
+    private float cliffSlopeBlend = 0.2f;
+    [SerializeField]
+    [Range(0f, 1f)]
+    [Tooltip("Tile-step threshold (in normalized heightmap units). If center - neighbor > this, it is considered a step.")]
+    private float cliffStepThreshold = 0.15f;
+    [SerializeField]
+    [Range(0f, 1f)]
+    [Tooltip("How quickly the step mask falls off (in normalized heightmap units).")]
+    private float cliffStepBlend = 0.08f;
     // Mapping from biome -> surface start/variant counts: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
     private Vector4[] biomeSurfaceMapArray;
     private Texture2D biomeSurfaceMapTexture;
@@ -1077,7 +1122,7 @@ public class HexMapChunkManager : MonoBehaviour
                 }
                 else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
                 {
-                    elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
+                    elevation = GetRenderedElevation(tileIndex); // Use rendered elevation (may preserve pre-water elevation)
                 }
                 else
                 {
@@ -1144,7 +1189,7 @@ public class HexMapChunkManager : MonoBehaviour
                 }
                 else if (planetGenerator.data.TryGetValue(tileIndex, out var tile))
                 {
-                    elevation = tile.elevation; // World-space height offset — stored directly in RHalf (no clamping needed)
+                    elevation = GetRenderedElevation(tileIndex); // World-space height offset — may preserve original elevation near freshwater
                 }
                 else
                 {
@@ -1212,7 +1257,15 @@ public class HexMapChunkManager : MonoBehaviour
         {
             sharedMaterial.SetTexture("_BiomeMaskArray", biomeMaskArray);
         }
-
+        if (cliffAlbedoArray != null)
+        {
+            sharedMaterial.SetTexture("_CliffAlbedoArray", cliffAlbedoArray);
+        }
+        if (cliffNormalArray != null)
+        {
+            sharedMaterial.SetTexture("_CliffNormalArray", cliffNormalArray);
+        }
+        
         if (biomeTintArray != null)
         {
             sharedMaterial.SetVectorArray("_BiomeTints", biomeTintArray);
@@ -1245,8 +1298,21 @@ public class HexMapChunkManager : MonoBehaviour
 
         sharedMaterial.SetFloat("_GlobalSnowAmount", globalSnowAmount);
         sharedMaterial.SetFloat("_GlobalWetness", globalWetness);
+        sharedMaterial.SetFloat("_MetallicMultiplier", metallicMultiplier);
+        sharedMaterial.SetFloat("_AOIntensity", aoIntensity);
+        sharedMaterial.SetFloat("_SmoothnessMultiplier", smoothnessMultiplier);
         sharedMaterial.SetFloat("_MapWidth", mapWidth);
         sharedMaterial.SetFloat("_MapHeight", mapHeight);
+
+        // Cliff params
+        sharedMaterial.SetFloat("_CliffTiling", cliffTiling);
+        sharedMaterial.SetFloat("_CliffStrength", cliffStrength);
+        sharedMaterial.SetFloat("_CliffSlopeThreshold", cliffSlopeThreshold);
+        sharedMaterial.SetFloat("_CliffSlopeBlend", cliffSlopeBlend);
+        sharedMaterial.SetFloat("_CliffStepThreshold", cliffStepThreshold);
+        sharedMaterial.SetFloat("_CliffStepBlend", cliffStepBlend);
+        float cliffSlices = (cliffAlbedoArray != null) ? Mathf.Max(1, cliffAlbedoArray.depth) : 1;
+        sharedMaterial.SetFloat("_CliffSliceCount", cliffSlices);
 
         // Normal sampling and biome blending parameters
         sharedMaterial.SetFloat("_NormalStrength", normalStrength);
@@ -1267,6 +1333,40 @@ public class HexMapChunkManager : MonoBehaviour
         // Provide biome count for shader UV-based lookups
         int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
+    }
+    
+    /// <summary>
+    /// Returns the elevation that should be used for rendering for a given tile.
+    /// When `preserveLandElevationNearFreshwater` is enabled, land tiles that are
+    /// adjacent to lakes or rivers will use their `originalElevation` instead of
+    /// the possibly-carved `elevation` value. Otherwise returns the current elevation.
+    /// </summary>
+    private float GetRenderedElevation(int tileIndex)
+    {
+        if (planetGenerator == null) return 0f;
+        if (!planetGenerator.data.TryGetValue(tileIndex, out var td)) return 0f;
+        if (!preserveLandElevationNearFreshwater) return td.elevation;
+
+        if (td.isLand)
+        {
+            var nbrs = grid.neighbors[tileIndex];
+            if (nbrs != null)
+            {
+                foreach (int n in nbrs)
+                {
+                    if (n < 0 || n >= grid.TileCount) continue;
+                    if (planetGenerator.data.TryGetValue(n, out var nt))
+                    {
+                        if (nt.isLake || nt.isRiver)
+                        {
+                            return td.originalElevation;
+                        }
+                    }
+                }
+            }
+        }
+
+        return td.elevation;
     }
     
     private void CreateSharedMaterial()
@@ -2179,22 +2279,22 @@ public class HexMapChunkManager : MonoBehaviour
             tris.Add(baseIdx + 2);
         }
 
-        foreach (int tileIdx in tileIndices)
+            foreach (int tileIdx in tileIndices)
         {
             if (!planetGenerator.data.TryGetValue(tileIdx, out var td)) continue;
             Vector3 tileCenter = grid.tileCenters[tileIdx];
-            float tileTopWorldY = flatY + td.elevation * displacementStrength;
+                float tileTopWorldY = flatY + GetRenderedElevation(tileIdx) * displacementStrength;
 
             var neighbors = grid.neighbors[tileIdx];
             if (neighbors == null) continue;
 
-            for (int edge = 0; edge < 6; edge++)
+                for (int edge = 0; edge < 6; edge++)
             {
                 int nbrIdx = (edge < neighbors.Count) ? neighbors[edge] : -1;
                 if (nbrIdx < 0 || nbrIdx >= grid.TileCount) continue;
                 if (!planetGenerator.data.TryGetValue(nbrIdx, out var nd)) continue;
 
-                float nbrTopWorldY = flatY + nd.elevation * displacementStrength;
+                float nbrTopWorldY = flatY + GetRenderedElevation(nbrIdx) * displacementStrength;
                 float delta = tileTopWorldY - nbrTopWorldY;
                 if (delta < minDelta) continue; // only build from higher tile
 
@@ -3860,6 +3960,8 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_BiomeEmissiveMapTex", null);
             sharedMaterial.SetTexture("_LUT", null);
             sharedMaterial.SetTexture("_SliceToBiomeMap", null);
+            sharedMaterial.SetTexture("_CliffAlbedoArray", null);
+            sharedMaterial.SetTexture("_CliffNormalArray", null);
         }
 
         // Destroy Texture2DArray / Texture2D resources
@@ -3867,6 +3969,9 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeNormalArray != null) { UnityEngine.Object.DestroyImmediate(biomeNormalArray); biomeNormalArray = null; }
         if (biomeMaskArray != null) { UnityEngine.Object.DestroyImmediate(biomeMaskArray); biomeMaskArray = null; }
         if (biomeEmissiveArray != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveArray); biomeEmissiveArray = null; }
+
+        if (cliffAlbedoArray != null) { UnityEngine.Object.DestroyImmediate(cliffAlbedoArray); cliffAlbedoArray = null; }
+        if (cliffNormalArray != null) { UnityEngine.Object.DestroyImmediate(cliffNormalArray); cliffNormalArray = null; }
 
         if (biomeIndexMap != null) { UnityEngine.Object.DestroyImmediate(biomeIndexMap); biomeIndexMap = null; }
         if (heightmapTexture != null) { UnityEngine.Object.DestroyImmediate(heightmapTexture); heightmapTexture = null; }
