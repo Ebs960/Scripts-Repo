@@ -95,13 +95,14 @@ public class LayerManager : MonoBehaviour
             }
         }
 
-        // Default visibility MUST match legacy behavior:
-        // - Surface: enabled when supported
-        // - Underwater: enabled when supported
+        // Default visibility:
+        // - Surface: enabled when supported (keep legacy behavior)
+        // - Underwater: disabled by default to avoid auto-switching camera at startup
+        //   (enable explicitly via UI or code when user requests underwater view)
         // - Atmosphere: disabled by default (user toggles via UI)
         // - Mantle/Orbit: not currently visualized by roots (default hidden)
         _visible[PlanetLayerType.Surface] = IsLayerSupported(PlanetLayerType.Surface);
-        _visible[PlanetLayerType.Underwater] = IsLayerSupported(PlanetLayerType.Underwater);
+        _visible[PlanetLayerType.Underwater] = false;
         _visible[PlanetLayerType.Atmosphere] = false;
         _visible[PlanetLayerType.Mantle] = false;
         _visible[PlanetLayerType.Orbit] = false;

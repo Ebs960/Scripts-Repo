@@ -228,9 +228,9 @@ MonoBehaviour:
   temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 3
-  climateSmoothingStrength: 0.057
+  climateSmoothingStrength: 0.218
   coastalMoistureBoost: 0.119
-  coastalMoistureRange: 2
+  coastalMoistureRange: 3
   flatElevationMin: 5
   flatElevationMax: 5.47
   hillElevationMin: 8.1
@@ -238,8 +238,8 @@ MonoBehaviour:
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
   oceanElevation: 0
-  seasElevation: 4
-  coastElevation: 6
+  seasElevation: 3
+  coastElevation: 5.5
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
@@ -252,9 +252,9 @@ MonoBehaviour:
   coastBiteCount: 9
   coastBiteRadiusMin: 1
   coastBiteRadiusMax: 2
-  coastSpurCount: 20
-  coastSpurRadiusMin: 2
-  coastSpurRadiusMax: 3
+  coastSpurCount: 26
+  coastSpurRadiusMin: 3
+  coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
   shallowSeasRings: 3
   lakeDepth: 1.22
@@ -409,9 +409,6 @@ MonoBehaviour:
   planetGenerator: {fileID: 6434261854368368276}
   surfaceRootOverride: {fileID: 0}
   underwaterRootOverride: {fileID: 0}
-  switchCameraOnLayerChange: 1
-  surfaceCameraOverride: {fileID: 0}
-  underwaterCameraOverride: {fileID: 0}
   surfaceVolumeOverride: {fileID: 0}
   underwaterVolumeOverride: {fileID: 1628660839884279765}
   atmosphereRootOverride: {fileID: 0}

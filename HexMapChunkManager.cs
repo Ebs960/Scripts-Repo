@@ -1715,10 +1715,12 @@ public class HexMapChunkManager : MonoBehaviour
             worldPicker.flatMapCollider = pickingCollider;
             worldPicker.mapWidth = mapWidth;
             worldPicker.mapHeight = mapHeight;
+            worldPicker.heightmapTexture = heightmapTexture;
+            worldPicker.elevationScale = displacementStrength;
             // Ensure a camera is assigned for picking. If the scene doesn't tag MainCamera (common in HDRP setups),
             // WorldPicker will still fall back to any available camera, but assigning here reduces ambiguity.
             if (worldPicker.targetCamera == null) worldPicker.targetCamera = Camera.main != null ? Camera.main : FindAnyObjectByType<Camera>();
-            Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, collider={(pickingCollider != null ? "assigned" : "null")}, mapSize={mapWidth}x{mapHeight}");
+            Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, collider={(pickingCollider != null ? "assigned" : "null")}, mapSize={mapWidth}x{mapHeight}, heightmap={(heightmapTexture != null ? "assigned" : "null")}, elevScale={displacementStrength}");
         }
         else
         {

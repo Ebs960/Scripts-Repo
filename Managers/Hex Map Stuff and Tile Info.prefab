@@ -50,21 +50,21 @@ MonoBehaviour:
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   textureWidth: 1024
   textureHeight: 1024
-  chunksX: 10
-  chunksZ: 5
-  meshSubdivisionsPerChunk: 54
-  displacementStrength: 1.025
+  chunksX: 8
+  chunksZ: 4
+  meshSubdivisionsPerChunk: 32
+  displacementStrength: 1.05
   flatY: 0
   preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
   globalWetness: 0
   metallicMultiplier: 1
-  aoIntensity: 1.4
+  aoIntensity: 1.31
   smoothnessMultiplier: 1.11
   triplanarTiling: 0.81
-  triplanarBlend: 10
-  normalStrength: 0.6
-  normalSampleRadius: 6.1
+  triplanarBlend: 7.6
+  normalStrength: 1
+  normalSampleRadius: 7.5
   biomeBlendRadius: 0.63
   biomeBlendSharpness: 4.51
   enableWrap: 1
@@ -77,7 +77,7 @@ MonoBehaviour:
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.02
-  manualOceanWaterY: 6.5
+  manualOceanWaterY: 5.1
   useManualOceanWaterY: 1
   enableOceanPlane: 0
   oceanPlanePaddingHex: 2
@@ -90,28 +90,28 @@ MonoBehaviour:
   continuousWaterIncludesOcean: 1
   riverSdfWidth: 256
   riverSdfHeight: 128
-  riverHalfWidthMultiplier: 0.75
-  lakeHalfWidthMultiplier: 1.2
-  oceanHalfWidthMultiplier: 1.2
+  riverHalfWidthMultiplier: 0.3
+  lakeHalfWidthMultiplier: 1
+  oceanHalfWidthMultiplier: 0.9
   riverSurfaceLift: 0.06
   extrudeInlandWaterToVolume: 1
-  inlandWaterVolumeDepth: 4
+  inlandWaterVolumeDepth: 2
   enableCliffWalls: 0
   cliffWallMaterial: {fileID: 2100000, guid: ad57983243b058a4b973a8f213409ea9, type: 2}
-  cliffMinHeightDelta: 0.25
-  cliffBottomExtension: 0.4
+  cliffMinHeightDelta: 0.8
+  cliffBottomExtension: 0.2
   cliffInset: 0.089
   preBuildOnPlanetReady: 1
-  chunksPerBatch: 3
+  chunksPerBatch: 4
   enableSeasonMasks: 0
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
-  cliffTiling: 1
-  cliffStrength: 0.87
-  cliffSlopeThreshold: 0.5
-  cliffSlopeBlend: 0.2
-  cliffStepThreshold: 0.15
-  cliffStepBlend: 0.08
+  cliffTiling: 0.25
+  cliffStrength: 0.452
+  cliffSlopeThreshold: 0.95
+  cliffSlopeBlend: 0.547
+  cliffStepThreshold: 0.55
+  cliffStepBlend: 0.541
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0

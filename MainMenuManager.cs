@@ -159,7 +159,7 @@ public class MainMenuManager : MonoBehaviour
     private readonly LandPresetData[] landPresets = new[] {
         new LandPresetData { name = "Archipelago", continents = 0, islands = 25, continentSizeMultiplier = 1.0f, description = "Many small scattered islands" },
         new LandPresetData { name = "Islands", continents = 2, islands = 15, continentSizeMultiplier = 1.0f, description = "A few large islands with smaller ones" },
-        new LandPresetData { name = "Standard", continents = 3, islands = 5, continentSizeMultiplier = 1.05f, description = "Balanced continents and islands" },
+        new LandPresetData { name = "Standard", continents = 4, islands = 8, continentSizeMultiplier = 1.05f, description = "Balanced continents and islands" },
         new LandPresetData { name = "Large Continents", continents = 4, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
         new LandPresetData { name = "Pangaea", continents = 1, islands = 5, continentSizeMultiplier = 7.5f, description = "One massive supercontinent" }
     };

@@ -168,7 +168,7 @@ MonoBehaviour:
   underwaterTargetPitchAngle: 45
   underwaterMoveSpeed: 40
   underwaterMinHeight: 2
-  underwaterMaxHeight: 6
+  underwaterMaxHeight: 7
 --- !u!114 &2574990883171722082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -188,7 +188,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   volumeAnchorOverride: {fileID: 0}
-  antialiasing: 3
+  antialiasing: 1
   SMAAQuality: 2
   dithering: 0
   stopNaNs: 0
