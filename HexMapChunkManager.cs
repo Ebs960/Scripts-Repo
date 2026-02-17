@@ -90,6 +90,25 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Blend sharpness used when blending biome surfaces by height")]
     [Range(0.01f, 10f)]
     [SerializeField] private float biomeBlendSharpness = 3f;
+
+    [Header("Micro Detail (Detail Maps)")]
+    [Tooltip("Detail albedo (tileable) sampled on top of biome albedo")]
+    [SerializeField] private Texture2D detailAlbedoMap = null;
+    [Tooltip("Detail normal map (tangent-space). Mark as Normal Map in importer")]
+    [SerializeField] private Texture2D detailNormalMap = null;
+    [Tooltip("Tiling for the detail textures (independent of triplanar tiling)")]
+    [Range(1f, 100f)]
+    [SerializeField] private float detailTiling = 20f;
+    [Tooltip("Strength of detail albedo modulation")]
+    [Range(0f, 1f)]
+    [SerializeField] private float detailStrength = 0.3f;
+    [Tooltip("Strength of detail normal perturbation")]
+    [Range(0f, 2f)]
+    [SerializeField] private float detailNormalStrength = 0.5f;
+    [Tooltip("Camera distance where detail begins to fade (meters)")]
+    [SerializeField] private float detailFadeStart = 5f;
+    [Tooltip("Camera distance where detail is fully faded out (meters)")]
+    [SerializeField] private float detailFadeEnd = 50f;
     
     [Header("Wrap Settings")]
     [SerializeField] private bool enableWrap = true;
@@ -1323,6 +1342,16 @@ public class HexMapChunkManager : MonoBehaviour
         // Triplanar parameters
         sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
         sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
+        // Detail maps (micro-detail)
+        if (detailAlbedoMap != null)
+            sharedMaterial.SetTexture("_DetailAlbedoMap", detailAlbedoMap);
+        if (detailNormalMap != null)
+            sharedMaterial.SetTexture("_DetailNormalMap", detailNormalMap);
+        sharedMaterial.SetFloat("_DetailTiling", detailTiling);
+        sharedMaterial.SetFloat("_DetailStrength", detailStrength);
+        sharedMaterial.SetFloat("_DetailNormalStrength", detailNormalStrength);
+        sharedMaterial.SetFloat("_DetailFadeStart", detailFadeStart);
+        sharedMaterial.SetFloat("_DetailFadeEnd", detailFadeEnd);
         
         // Slice-to-biome reverse map (for per-biome tint/params lookup in shader)
         if (sliceToBiomeMap != null)

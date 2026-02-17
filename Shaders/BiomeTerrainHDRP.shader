@@ -247,9 +247,14 @@ Shader "Custom/BiomeTerrainHDRP"
         // Use raw triangle weights (anti-tiling removed).
         float wSum = w1 + w2 + w3;
 
-        float4 s1 = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv1, sliceIndex) * w1;
-        float4 s2 = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv2, sliceIndex) * w2;
-        float4 s3 = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv3, sliceIndex) * w3;
+        // Use gradient-aware sampling to provide correct LOD selection and avoid swimming/seams
+        float2 ddx1 = ddx(uv1); float2 ddy1 = ddy(uv1);
+        float2 ddx2 = ddx(uv2); float2 ddy2 = ddy(uv2);
+        float2 ddx3 = ddx(uv3); float2 ddy3 = ddy(uv3);
+
+        float4 s1 = tex.SampleGrad(samp, float3(uv1, sliceIndex), ddx1, ddy1) * w1;
+        float4 s2 = tex.SampleGrad(samp, float3(uv2, sliceIndex), ddx2, ddy2) * w2;
+        float4 s3 = tex.SampleGrad(samp, float3(uv3, sliceIndex), ddx3, ddy3) * w3;
 
         return (s1 + s2 + s3) / wSum;
     }
@@ -268,9 +273,14 @@ Shader "Custom/BiomeTerrainHDRP"
         // Use raw triangle weights (anti-tiling removed).
         float wSum = w1 + w2 + w3;
 
-        float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv1, sliceIndex));
-        float3 n2 = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv2, sliceIndex));
-        float3 n3 = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv3, sliceIndex));
+        // Gradient-aware sampling for normals too
+        float2 ddx1 = ddx(uv1); float2 ddy1 = ddy(uv1);
+        float2 ddx2 = ddx(uv2); float2 ddy2 = ddy(uv2);
+        float2 ddx3 = ddx(uv3); float2 ddy3 = ddy(uv3);
+
+        float3 n1 = UnpackNormal(tex.SampleGrad(samp, float3(uv1, sliceIndex), ddx1, ddy1));
+        float3 n2 = UnpackNormal(tex.SampleGrad(samp, float3(uv2, sliceIndex), ddx2, ddy2));
+        float3 n3 = UnpackNormal(tex.SampleGrad(samp, float3(uv3, sliceIndex), ddx3, ddy3));
 
         return normalize((n1 * w1 + n2 * w2 + n3 * w3) / wSum);
     }
@@ -289,9 +299,19 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 SampleArrayTriplanar(TEXTURE2D_ARRAY_PARAM(tex, samp),
         float3 worldPos, float3 weights, float sliceIndex, float tiling)
     {
-        float4 sX = SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.zy * tiling, sliceIndex);
-        float4 sY = SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xz * tiling, sliceIndex);
-        float4 sZ = SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xy * tiling, sliceIndex);
+        // Use gradient-aware sampling for each projection to avoid incorrect LOD selection
+        float2 ux = worldPos.zy * tiling;
+        float2 uy = worldPos.xz * tiling;
+        float2 uz = worldPos.xy * tiling;
+
+        float2 ddxUx = ddx(ux); float2 ddyUx = ddy(ux);
+        float2 ddxUy = ddx(uy); float2 ddyUy = ddy(uy);
+        float2 ddxUz = ddx(uz); float2 ddyUz = ddy(uz);
+
+        float4 sX = tex.SampleGrad(samp, float3(ux, sliceIndex), ddxUx, ddyUx);
+        float4 sY = tex.SampleGrad(samp, float3(uy, sliceIndex), ddxUy, ddyUy);
+        float4 sZ = tex.SampleGrad(samp, float3(uz, sliceIndex), ddxUz, ddyUz);
+
         return sX * weights.x + sY * weights.y + sZ * weights.z;
     }
 
@@ -299,15 +319,27 @@ Shader "Custom/BiomeTerrainHDRP"
     float3 SampleNormalTriplanar(TEXTURE2D_ARRAY_PARAM(tex, samp),
         float3 worldPos, float3 worldNormal, float3 weights, float sliceIndex, float tiling)
     {
-        float3 tnX = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.zy * tiling, sliceIndex));
-        float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xz * tiling, sliceIndex));
-        float3 tnZ = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, worldPos.xy * tiling, sliceIndex));
+        // Compute projected UVs and their derivatives
+        float2 ux = worldPos.zy * tiling;
+        float2 uy = worldPos.xz * tiling;
+        float2 uz = worldPos.xy * tiling;
 
+        float2 ddxUx = ddx(ux); float2 ddyUx = ddy(ux);
+        float2 ddxUy = ddx(uy); float2 ddyUy = ddy(uy);
+        float2 ddxUz = ddx(uz); float2 ddyUz = ddy(uz);
+
+        float3 tnX = UnpackNormal(tex.SampleGrad(samp, float3(ux, sliceIndex), ddxUx, ddyUx));
+        float3 tnY = UnpackNormal(tex.SampleGrad(samp, float3(uy, sliceIndex), ddxUy, ddyUy));
+        float3 tnZ = UnpackNormal(tex.SampleGrad(samp, float3(uz, sliceIndex), ddxUz, ddyUz));
+
+        // Reorient sampled tangent-space normals into projection-space using worldNormal as bias
         float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
         float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
         float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
 
-        return normalize(nX.zyx * weights.x + nY.xzy * weights.y + nZ.xyz * weights.z);
+        // Blend and renormalize
+        float3 blended = nX.zyx * weights.x + nY.xzy * weights.y + nZ.xyz * weights.z;
+        return normalize(blended);
     }
 
     // ===================== Distance-Adaptive Sampling (#4 + #6) =====================
@@ -660,10 +692,11 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Find secondary biome for blending
                 float secondarySlice = centerSlice;
                 int diffCount = 0;
-                if (sliceR != centerSlice) { secondarySlice = sliceR; diffCount++; }
-                if (sliceL != centerSlice) { if (diffCount == 0) secondarySlice = sliceL; diffCount++; }
-                if (sliceU != centerSlice) { if (diffCount == 0) secondarySlice = sliceU; diffCount++; }
-                if (sliceD != centerSlice) { if (diffCount == 0) secondarySlice = sliceD; diffCount++; }
+                float2 neighborOffset = float2(0.0, 0.0);
+                if (sliceR != centerSlice) { secondarySlice = sliceR; neighborOffset = float2(biomeStep.x, 0); diffCount++; }
+                if (sliceL != centerSlice) { if (diffCount == 0) { secondarySlice = sliceL; neighborOffset = float2(-biomeStep.x, 0); } diffCount++; }
+                if (sliceU != centerSlice) { if (diffCount == 0) { secondarySlice = sliceU; neighborOffset = float2(0, biomeStep.y); } diffCount++; }
+                if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
 
                 // Sample primary biome
                 BiomeSample primary = SampleFullBiome(centerSlice, worldPos, displacedNormal, triWeights, camDist);
@@ -679,9 +712,9 @@ Shader "Custom/BiomeTerrainHDRP"
                 {
                     BiomeSample secondary = SampleFullBiome(secondarySlice, worldPos, displacedNormal, triWeights, camDist);
 
-                    // Use mask.b (height channel, #7) for height-based blend
-                    float hPrimary = primary.mask.b;
-                    float hSecondary = secondary.mask.b;
+                    // Use generated global _Heightmap for height-based blend (sample center and neighbor)
+                    float hPrimary = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
+                    float hSecondary = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv + neighborOffset, 0).r;
 
                     // Spatial blend from neighbor count + height-weighted modulation
                     float spatialBlend = (float)diffCount / 4.0;

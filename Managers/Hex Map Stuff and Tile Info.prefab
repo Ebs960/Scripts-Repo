@@ -67,6 +67,13 @@ MonoBehaviour:
   normalSampleRadius: 7.5
   biomeBlendRadius: 0.63
   biomeBlendSharpness: 4.51
+  detailAlbedoMap: {fileID: 2800000, guid: 2b1b4885129772345a1a3a355e1214e0, type: 3}
+  detailNormalMap: {fileID: 2800000, guid: c21bd1927c78740498ddbc06e9171da8, type: 3}
+  detailTiling: 20
+  detailStrength: 0.3
+  detailNormalStrength: 0.5
+  detailFadeStart: 5
+  detailFadeEnd: 50
   enableWrap: 1
   wrapBuffer: 0.35
   debugWrap: 0
