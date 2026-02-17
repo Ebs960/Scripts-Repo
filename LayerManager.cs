@@ -29,13 +29,6 @@ public class LayerManager : MonoBehaviour
     [FormerlySerializedAs("underwaterRoot")]
     [SerializeField] private GameObject underwaterRootOverride;
 
-    [Header("Camera Switching")]
-    [Tooltip("When enabled, LayerManager will switch between the surface and underwater camera when the active layer changes.")]
-    [SerializeField] private bool switchCameraOnLayerChange = true;
-    [Tooltip("Optional camera used for Surface view. If not assigned, Camera.main will be used when switching back.")]
-    [SerializeField] private Camera surfaceCameraOverride;
-    [Tooltip("Optional camera used for Underwater view. Assign a separate camera with underwater post-processing/settings.")]
-    [SerializeField] private Camera underwaterCameraOverride;
     [Header("Post-Processing Volumes")]
     [Tooltip("Optional global Volume used for Surface view. Assign a Volume with your surface post-processing profile.")]
     [SerializeField] private Volume surfaceVolumeOverride;
@@ -66,6 +59,7 @@ public class LayerManager : MonoBehaviour
     private bool _lastGasGiantEnabled = false;
     private bool _warnedMissingPlanetGenerator = false;
     private readonly HashSet<PlanetLayerType> _warnedUnsupportedLayer = new HashSet<PlanetLayerType>();
+    private bool _lastUnderwaterVisible = false;
 
     public event Action<PlanetLayerType, bool> OnLayerVisibilityChanged;
 
@@ -254,26 +248,30 @@ public class LayerManager : MonoBehaviour
         }
 
         // Optional camera switching: enable the underwater camera when underwater view is active
-        if (switchCameraOnLayerChange)
+        // Single-camera mode: if underwater visibility changed, tell the PlanetaryCameraManager to transition.
+        var camManager = FindAnyObjectByType<PlanetaryCameraManager>();
+        if (camManager != null)
         {
-            Camera surfCam = surfaceCameraOverride != null ? surfaceCameraOverride : Camera.main;
-
-            // If we have an explicit underwater camera, prefer toggling cameras.
-            if (underwaterCameraOverride != null)
+            if (underwaterVisible && !_lastUnderwaterVisible)
             {
-                // Avoid disabling the same camera if the user mistakenly assigned the same reference
-                if (surfCam != null && surfCam != underwaterCameraOverride)
+                // Find nearest ocean tile and move camera toward it
+                var oceanPoint = FindNearestOceanPoint();
+                if (oceanPoint.HasValue)
                 {
-                    surfCam.enabled = !underwaterVisible;
+                    camManager.TransitionToUnderwater(oceanPoint.Value, camManager.underwaterMoveSpeed);
                 }
-                underwaterCameraOverride.enabled = underwaterVisible;
+                else
+                {
+                    // Fallback: use current focus point if no ocean found
+                    camManager.TransitionToUnderwater(camManager.FocusPoint, camManager.underwaterMoveSpeed);
+                }
             }
-            else if (surfCam != null)
+            else if (!underwaterVisible && _lastUnderwaterVisible)
             {
-                // No underwater camera provided: optionally tweak main camera settings here in future.
-                surfCam.enabled = true; // always keep surface camera enabled if no underwater camera exists
+                camManager.TransitionToSurface();
             }
         }
+        _lastUnderwaterVisible = underwaterVisible;
 
         // Toggle post-processing volumes if provided (use weight + enabled for smooth blending if desired)
         if (surfaceVolumeOverride != null || underwaterVolumeOverride != null)
@@ -298,30 +296,7 @@ public class LayerManager : MonoBehaviour
         if (planetGenerator == null) planetGenerator = GetComponent<PlanetGenerator>();
         if (terrainRendererOverride == null && planetGenerator != null && planetGenerator.terrainRenderer != null)
             terrainRendererOverride = planetGenerator.terrainRenderer;
-        // Auto-assign surface camera from Camera.main when available (editor-friendly)
-        if (surfaceCameraOverride == null)
-        {
-            try { surfaceCameraOverride = Camera.main; } catch { }
-        }
-
-        // Auto-find an underwater camera by name or by containing the word "Underwater"
-        if (underwaterCameraOverride == null)
-        {
-            GameObject go = GameObject.Find("UnderwaterCamera");
-            if (go != null) underwaterCameraOverride = go.GetComponent<Camera>();
-            else
-            {
-                foreach (var cam in Camera.allCameras)
-                {
-                    if (cam == null) continue;
-                    if (cam.name.IndexOf("Underwater", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        underwaterCameraOverride = cam;
-                        break;
-                    }
-                }
-            }
-        }
+        // No camera overrides: LayerManager uses the single camera transition path.
     }
 
     private void OnValidate()
@@ -336,6 +311,47 @@ public class LayerManager : MonoBehaviour
         if (planetGenerator.planetConfig != null && !string.IsNullOrEmpty(planetGenerator.planetConfig.planetName))
             return planetGenerator.planetConfig.planetName;
         return planetGenerator.name;
+    }
+
+    /// <summary>
+    /// Find the nearest ocean tile world position to the current camera position.
+    /// Returns null if no ocean tile or grid available.
+    /// </summary>
+    private Vector3? FindNearestOceanPoint()
+    {
+        if (planetGenerator == null || planetGenerator.Grid == null) return null;
+        var grid = planetGenerator.Grid;
+        if (grid.tileCenters == null || grid.TileCount <= 0) return null;
+
+        var ts = TileSystem.GetForPlanet(planetGenerator.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        Vector3 refPoint = Vector3.zero;
+        if (Camera.main != null) refPoint = Camera.main.transform.position;
+
+        int bestIdx = -1;
+        float bestDist = float.MaxValue;
+        int tileCount = Mathf.Min(grid.TileCount, grid.tileCenters.Length);
+        for (int i = 0; i < tileCount; i++)
+        {
+            var td = ts.GetTileData(i);
+            if (td == null) continue;
+            if (td.waterType != TileWaterType.Ocean) continue;
+            Vector3 center = grid.tileCenters[i];
+            float d = (new Vector3(center.x, 0f, center.z) - new Vector3(refPoint.x, 0f, refPoint.z)).sqrMagnitude;
+            if (d < bestDist)
+            {
+                bestDist = d;
+                bestIdx = i;
+            }
+        }
+
+        if (bestIdx >= 0)
+        {
+            var c = grid.tileCenters[bestIdx];
+            return new Vector3(c.x, 0f, c.z);
+        }
+        return null;
     }
 }
 

@@ -40,16 +40,142 @@ public class PlanetaryCameraManager : MonoBehaviour
     private float _cameraYaw = 0f; // degrees, rotates camera left/right around focus
     private Vector3? _lastMousePos = null;
 
+    [Header("Underwater Transition")]
+    [Tooltip("Target camera height when fully in underwater mode.")]
+    public float underwaterTargetHeight = 30f;
+    [Tooltip("Target pitch angle (degrees) when underwater.")]
+    public float underwaterTargetPitchAngle = 40f;
+    [Tooltip("Speed (units/sec) the camera moves when swooping to the ocean.")]
+    public float underwaterMoveSpeed = 40f;
+    [Tooltip("Minimum allowed camera height while underwater.")]
+    public float underwaterMinHeight = 10f;
+    [Tooltip("Maximum allowed camera height while underwater.")]
+    public float underwaterMaxHeight = 80f;
+
+    // Runtime state
+    private Coroutine _transitionCoroutine = null;
+    private bool _isInUnderwaterMode = false;
+    private float _savedSurfaceHeight;
+    private float _savedSurfacePitchMin;
+    private float _savedSurfacePitchMax;
+    private float _savedSurfaceMinHeight;
+    private float _savedSurfaceMaxHeight;
+
     void Awake()
     {
         _cameraHeight = Mathf.Clamp(_cameraHeight, minHeight, maxHeight);
     }
+
+    public bool IsInUnderwaterMode => _isInUnderwaterMode;
 
     // Expose focus point for helpers like FlatMapWrapCamera
     public Vector3 FocusPoint
     {
         get => _focusPoint;
         set => _focusPoint = new Vector3(value.x, 0f, value.z);
+    }
+
+    /// <summary>
+    /// Smoothly move the camera to focus on a world point (XZ) and adjust height/pitch to underwater presets.
+    /// This physically moves the single camera; there is no camera switching.
+    /// </summary>
+    public void TransitionToUnderwater(Vector3 oceanWorldPoint, float maxMoveSpeed = -1f)
+    {
+        if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
+        _savedSurfaceHeight = _cameraHeight;
+        _savedSurfacePitchMin = minPitchAngle;
+        _savedSurfacePitchMax = maxPitchAngle;
+        _savedSurfaceMinHeight = minHeight;
+        _savedSurfaceMaxHeight = maxHeight;
+
+        if (maxMoveSpeed <= 0f) maxMoveSpeed = underwaterMoveSpeed;
+        _transitionCoroutine = StartCoroutine(UnderwaterTransitionCoroutine(oceanWorldPoint, maxMoveSpeed));
+    }
+
+    /// <summary>
+    /// Return camera to saved surface presets.
+    /// </summary>
+    public void TransitionToSurface(float duration = 0.6f)
+    {
+        if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
+        _transitionCoroutine = StartCoroutine(SurfaceTransitionCoroutine(duration));
+    }
+
+    private System.Collections.IEnumerator UnderwaterTransitionCoroutine(Vector3 oceanWorldPoint, float moveSpeed)
+    {
+        _isInUnderwaterMode = true;
+
+        Vector3 startFocus = _focusPoint;
+        Vector3 targetFocus = new Vector3(oceanWorldPoint.x, 0f, oceanWorldPoint.z);
+
+        float startHeight = _cameraHeight;
+        // Constrain target height to underwater-specific limits and switch min/max constraints
+        float targetHeight = Mathf.Clamp(underwaterTargetHeight, underwaterMinHeight, underwaterMaxHeight);
+        // Temporarily apply underwater min/max so UpdateCameraPosition uses them
+        minHeight = underwaterMinHeight;
+        maxHeight = underwaterMaxHeight;
+
+        float elapsed = 0f;
+        float maxDist = Vector3.Distance(startFocus, targetFocus);
+        // move until focus nearly at target and height close
+        while (Vector3.Distance(_focusPoint, targetFocus) > 0.1f || Mathf.Abs(_cameraHeight - targetHeight) > 0.1f)
+        {
+            // Move focus toward target at constant speed
+            Vector3 dir = (targetFocus - _focusPoint);
+            float step = moveSpeed * Time.deltaTime;
+            if (dir.sqrMagnitude <= step * step)
+                _focusPoint = targetFocus;
+            else
+                _focusPoint += dir.normalized * step;
+
+            // Smooth height lerp
+            _cameraHeight = Mathf.MoveTowards(_cameraHeight, targetHeight, moveSpeed * Time.deltaTime);
+
+            // Adjust pitch target range to underwater preset gradually
+            minPitchAngle = Mathf.MoveTowards(minPitchAngle, underwaterTargetPitchAngle, 30f * Time.deltaTime);
+            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, underwaterTargetPitchAngle, 30f * Time.deltaTime);
+
+            UpdateCameraPosition();
+            yield return null;
+        }
+
+        // ensure final values
+        _focusPoint = targetFocus;
+        _cameraHeight = targetHeight;
+        minPitchAngle = underwaterTargetPitchAngle;
+        maxPitchAngle = underwaterTargetPitchAngle;
+        UpdateCameraPosition();
+
+        _transitionCoroutine = null;
+    }
+
+    private System.Collections.IEnumerator SurfaceTransitionCoroutine(float duration)
+    {
+        float startHeight = _cameraHeight;
+        float targetHeight = Mathf.Clamp(_savedSurfaceHeight, minHeight, maxHeight);
+        float startMinPitch = minPitchAngle;
+        float startMaxPitch = maxPitchAngle;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            _cameraHeight = Mathf.Lerp(startHeight, targetHeight, t);
+            minPitchAngle = Mathf.Lerp(startMinPitch, _savedSurfacePitchMin, t);
+            maxPitchAngle = Mathf.Lerp(startMaxPitch, _savedSurfacePitchMax, t);
+            UpdateCameraPosition();
+            yield return null;
+        }
+
+        _cameraHeight = targetHeight;
+        minPitchAngle = _savedSurfacePitchMin;
+        maxPitchAngle = _savedSurfacePitchMax;
+        // Restore saved surface min/max height constraints
+        minHeight = _savedSurfaceMinHeight;
+        maxHeight = _savedSurfaceMaxHeight;
+        _isInUnderwaterMode = false;
+        _transitionCoroutine = null;
     }
 
     void HandleInput()

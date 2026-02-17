@@ -47,7 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WorldPicker
   targetCamera: {fileID: 0}
   flatMapCollider: {fileID: 0}
-  lutWidth: 2048
+  lutWidth: 1024
   lutHeight: 1024
   lut: 
   mapWidth: 360
@@ -72,4 +72,4 @@ MonoBehaviour:
   pulseSpeed: 2
   pulseMin: 0.2
   pulseMax: 0.4
-  enablePulse: 0
+  enablePulse: 1

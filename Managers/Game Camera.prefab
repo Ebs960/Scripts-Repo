@@ -164,6 +164,11 @@ MonoBehaviour:
   wrapEnabled: 1
   chunkManager: {fileID: 0}
   wrapCenterX: 0
+  underwaterTargetHeight: 5
+  underwaterTargetPitchAngle: 45
+  underwaterMoveSpeed: 40
+  underwaterMinHeight: 2
+  underwaterMaxHeight: 6
 --- !u!114 &2574990883171722082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,7 +188,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   volumeAnchorOverride: {fileID: 0}
-  antialiasing: 0
+  antialiasing: 3
   SMAAQuality: 2
   dithering: 0
   stopNaNs: 0

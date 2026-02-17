@@ -239,7 +239,7 @@ MonoBehaviour:
   mountainElevationMax: 17.8
   oceanElevation: 0
   seasElevation: 4
-  coastElevation: 6.5
+  coastElevation: 6
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// GPU-based UV/LUT picker for texture-planet mode.
@@ -25,6 +26,15 @@ public class WorldPicker : MonoBehaviour
     [Header("Debug")]
     public bool debugLog = false;
 
+    // GPU picker runtime objects (GPU picking is the single path)
+    private RenderTexture pickerRT;
+    private Texture2D lutTexture;
+    private Shader pickerReplacementShader;
+
+    // Async readback state (one-frame latency)
+    private int lastReadTileIndex = -1; // most recent completed result
+    private bool hasPendingRequest = false;
+
     /// <summary>
     /// Pick a tile index from screen position using UV-based LUT lookup.
     /// This replaces per-tile collider picking with GPU-accelerated LUT lookup.
@@ -47,56 +57,133 @@ public class WorldPicker : MonoBehaviour
             if (debugLog) Debug.LogWarning("[WorldPicker] LUT is null or empty");
             return false;
         }
-
-        var ray = targetCamera.ScreenPointToRay(screenPos);
-        if (flatMapCollider == null) 
+        // GPU picking (pixel-perfect). We render the scene into an offscreen RT using a replacement
+        // shader that samples the LUT. We then request an async readback of the pixel at the
+        // cursor position and return the last completed readback result (one-frame latency).
+        EnsureGPUPickerSetup();
+        if (pickerReplacementShader == null || lutTexture == null)
         {
-            if (debugLog) Debug.LogWarning("[WorldPicker] flatMapCollider is null");
+            if (debugLog) Debug.LogError("[WorldPicker] GPU picker not set up (missing shader or LUT texture).");
             return false;
         }
 
-        // Raycast against the flat map collider
-        if (!flatMapCollider.Raycast(ray, out var hit, 50000f))
-            return false;
-
-        hitWorldPos = hit.point;
-        
-        // Get UV coordinates - try textureCoord first, fall back to world position calculation
-        Vector2 uv = hit.textureCoord;
-        
-        // If textureCoord returns (0,0), it might not be working - use world position fallback
-        if (uv.sqrMagnitude < 0.0001f && mapWidth > 0 && mapHeight > 0)
+        int rtW = Mathf.Max(1, targetCamera.pixelWidth);
+        int rtH = Mathf.Max(1, targetCamera.pixelHeight);
+        if (pickerRT == null || pickerRT.width != rtW || pickerRT.height != rtH)
         {
-            // Calculate UV from world position (assuming map centered at origin)
-            // Transform hit point to collider's local space
-            Vector3 localHit = flatMapCollider.transform.InverseTransformPoint(hit.point);
-            uv.x = (localHit.x / mapWidth) + 0.5f;
-            uv.y = (localHit.z / mapHeight) + 0.5f;
-            
-            if (debugLog) Debug.Log($"[WorldPicker] Using world position fallback: localHit={localHit}, uv={uv}");
+            if (pickerRT != null) pickerRT.Release();
+            pickerRT = new RenderTexture(rtW, rtH, 16, RenderTextureFormat.ARGB32);
+            pickerRT.Create();
         }
 
-        // Wrap U for horizontal repeat; clamp V
-        uv.x = Mathf.Repeat(uv.x, 1f);
-        uv.y = Mathf.Clamp01(uv.y);
+        // Temporarily render the target camera into the picker RT using the replacement shader.
+        RenderTexture prevRT = targetCamera.targetTexture;
+        targetCamera.targetTexture = pickerRT;
 
-        // Convert UV to pixel coordinates
-        int x = Mathf.Clamp(Mathf.FloorToInt(uv.x * lutWidth), 0, lutWidth - 1);
-        int y = Mathf.Clamp(Mathf.FloorToInt(uv.y * lutHeight), 0, lutHeight - 1);
-        int pixelIndex = y * lutWidth + x;
-
-        // Bounds check
-        if (pixelIndex < 0 || pixelIndex >= lut.Length)
+        try
         {
-            if (debugLog) Debug.LogWarning($"[WorldPicker] Pixel index {pixelIndex} out of bounds (lut.Length={lut.Length})");
+            targetCamera.RenderWithShader(pickerReplacementShader, "");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[WorldPicker] Exception while rendering replacement shader: {ex}");
+            targetCamera.targetTexture = prevRT;
             return false;
         }
 
-        // Lookup tile index from LUT
-        tileIndex = lut[pixelIndex];
-        
-        if (debugLog && tileIndex >= 0) Debug.Log($"[WorldPicker] Picked tile {tileIndex} at uv={uv}, pixel=({x},{y})");
+        targetCamera.targetTexture = prevRT;
 
+        // Pixel coordinates inside RT
+        int px = Mathf.Clamp(Mathf.FloorToInt(screenPos.x * (rtW / (float)targetCamera.pixelWidth)), 0, rtW - 1);
+        int py = Mathf.Clamp(Mathf.FloorToInt(screenPos.y * (rtH / (float)targetCamera.pixelHeight)), 0, rtH - 1);
+
+        // Issue an async readback for the RT. Capture px,py and rt dims for decoding in callback.
+        int capturePx = px;
+        int capturePy = py;
+        int captureW = rtW;
+        int captureH = rtH;
+        hasPendingRequest = true;
+        AsyncGPUReadback.Request(pickerRT, 0, request =>
+        {
+            hasPendingRequest = false;
+            if (request.hasError)
+            {
+                if (debugLog) Debug.LogError("[WorldPicker] AsyncGPUReadback request error.");
+                return;
+            }
+
+            var data = request.GetData<Color32>();
+            int idxPos = capturePy * captureW + capturePx;
+            if (idxPos < 0 || idxPos >= data.Length)
+            {
+                if (debugLog) Debug.LogWarning($"[WorldPicker] Readback index out of range: {idxPos} (len={data.Length})");
+                return;
+            }
+
+            Color32 rc = data[idxPos];
+            Color rcf = new Color(rc.r / 255f, rc.g / 255f, rc.b / 255f, rc.a / 255f);
+            int decoded = DecodeRGBA32ToInt(rcf);
+            lastReadTileIndex = decoded;
+            if (debugLog) Debug.Log($"[WorldPicker][Async] completed px={capturePx} py={capturePy} color={rc} tileIndex={decoded}");
+        });
+
+        // Return the last completed readback result (one-frame latency). hitWorldPos is not available from GPU pass.
+        tileIndex = lastReadTileIndex;
+        if (debugLog) Debug.Log($"[WorldPicker] Returning lastReadTileIndex={lastReadTileIndex} (one-frame latency)");
         return tileIndex >= 0;
+    }
+
+    private void EnsureGPUPickerSetup()
+    {
+        if (pickerReplacementShader == null)
+        {
+            pickerReplacementShader = Shader.Find("Hidden/TileIndexPicker");
+            if (pickerReplacementShader == null)
+            {
+                Debug.LogError("[WorldPicker] Replacement shader 'Hidden/TileIndexPicker' not found. GPU picking disabled.");
+                return;
+            }
+        }
+
+        // Build or update the LUT texture on GPU
+        if (lutTexture == null || lutTexture.width != lutWidth || lutTexture.height != lutHeight)
+        {
+            if (lut == null || lut.Length == 0)
+            {
+                Debug.LogError("[WorldPicker] LUT data missing when building LUT texture.");
+                return;
+            }
+
+            lutTexture = new Texture2D(lutWidth, lutHeight, TextureFormat.RGBA32, false);
+            lutTexture.filterMode = FilterMode.Point;
+            lutTexture.wrapMode = TextureWrapMode.Repeat;
+            var colors = new Color32[lutWidth * lutHeight];
+            for (int i = 0; i < lut.Length && i < colors.Length; i++)
+            {
+                int v = lut[i];
+                byte r = (byte)(v & 0xFF);
+                byte g = (byte)((v >> 8) & 0xFF);
+                byte b = (byte)((v >> 16) & 0xFF);
+                byte a = (byte)((v >> 24) & 0xFF);
+                colors[i] = new Color32(r, g, b, a);
+            }
+            lutTexture.SetPixels32(colors);
+            lutTexture.Apply(false, false);
+
+            // expose to shader as global
+            Shader.SetGlobalTexture("_TileIndexLUT", lutTexture);
+        }
+    }
+
+    private static int DecodeRGBA32ToInt(Color c)
+    {
+        int r = Mathf.RoundToInt(c.r * 255f) & 0xFF;
+        int g = Mathf.RoundToInt(c.g * 255f) & 0xFF;
+        int b = Mathf.RoundToInt(c.b * 255f) & 0xFF;
+        int a = Mathf.RoundToInt(c.a * 255f) & 0xFF;
+        int val = r | (g << 8) | (b << 16) | (a << 24);
+        // treat 0 as invalid
+        if (val == 0) return -1;
+        return val;
     }
 }

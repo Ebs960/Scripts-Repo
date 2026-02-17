@@ -74,8 +74,7 @@ Shader "Custom/BiomeTerrainHDRP"
         _DetailFadeStart ("Detail Fade Start Distance", Range(0, 200)) = 5.0
         _DetailFadeEnd ("Detail Fade End Distance", Range(0, 500)) = 50.0
 
-        [Header(Anti Tiling)]
-        _AntiTileStrength ("Anti-Tile Strength", Range(0, 1)) = 1.0
+        
 
         [Header(Biome Blending)]
         _BiomeBlendRadius ("Biome Blend Radius (texels)", Range(0, 16)) = 4.0
@@ -177,7 +176,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _DetailNormalStrength;
     float _DetailFadeStart;
     float _DetailFadeEnd;
-    float _AntiTileStrength;
+    
     float _BiomeBlendRadius;
     float _BiomeBlendSharpness;
     float _SnowNormalStrength;
@@ -245,10 +244,7 @@ Shader "Custom/BiomeTerrainHDRP"
         float2 uv2 = uv + HexHash(v2);
         float2 uv3 = uv + HexHash(v3);
 
-        float exponent = lerp(1.0, 7.0, _AntiTileStrength);
-        w1 = pow(w1, exponent);
-        w2 = pow(w2, exponent);
-        w3 = pow(w3, exponent);
+        // Use raw triangle weights (anti-tiling removed).
         float wSum = w1 + w2 + w3;
 
         float4 s1 = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv1, sliceIndex) * w1;
@@ -269,10 +265,7 @@ Shader "Custom/BiomeTerrainHDRP"
         float2 uv2 = uv + HexHash(v2);
         float2 uv3 = uv + HexHash(v3);
 
-        float exponent = lerp(1.0, 7.0, _AntiTileStrength);
-        w1 = pow(w1, exponent);
-        w2 = pow(w2, exponent);
-        w3 = pow(w3, exponent);
+        // Use raw triangle weights (anti-tiling removed).
         float wSum = w1 + w2 + w3;
 
         float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uv1, sliceIndex));
@@ -331,21 +324,11 @@ Shader "Custom/BiomeTerrainHDRP"
         if (lodBlend >= 0.999)
             return SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex);
 
-        float4 fullResult;
-        if (_AntiTileStrength > 0.01)
-        {
-            // Hex-tiled triplanar (9 samples: 3 axes x 3 hex cells)
-            float4 sX = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
-            float4 sY = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
-            float4 sZ = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
-            fullResult = sX * triWeights.x + sY * triWeights.y + sZ * triWeights.z;
-        }
-        else
-        {
-            // Standard triplanar (3 samples)
-            fullResult = SampleArrayTriplanar(TEXTURE2D_ARRAY_ARGS(tex, samp),
-                worldPos, triWeights, sliceIndex, tiling);
-        }
+        // Hex-tiled triplanar (9 samples: 3 axes x 3 hex cells)
+        float4 sX = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
+        float4 sY = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
+        float4 sZ = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
+        float4 fullResult = sX * triWeights.x + sY * triWeights.y + sZ * triWeights.z;
 
         // Blend toward Y-only at distance
         if (lodBlend > 0.001)
@@ -373,24 +356,15 @@ Shader "Custom/BiomeTerrainHDRP"
             return normalize(nY.xzy);
         }
 
-        float3 fullResult;
-        if (_AntiTileStrength > 0.01)
-        {
-            // Hex-tiled triplanar normals with whiteout reorientation
-            float3 tnX = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
-            float3 tnY = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
-            float3 tnZ = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
+        // Hex-tiled triplanar normals with whiteout reorientation
+        float3 tnX = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
+        float3 tnY = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
+        float3 tnZ = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
 
-            float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
-            float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
-            float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
-            fullResult = normalize(nX.zyx * triWeights.x + nY.xzy * triWeights.y + nZ.xyz * triWeights.z);
-        }
-        else
-        {
-            fullResult = SampleNormalTriplanar(TEXTURE2D_ARRAY_ARGS(tex, samp),
-                worldPos, worldNormal, triWeights, sliceIndex, tiling);
-        }
+        float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
+        float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
+        float3 nZ = float3(tnZ.xy + worldNormal.xy, abs(worldNormal.z));
+        float3 fullResult = normalize(nX.zyx * triWeights.x + nY.xzy * triWeights.y + nZ.xyz * triWeights.z);
 
         if (lodBlend > 0.001)
         {
