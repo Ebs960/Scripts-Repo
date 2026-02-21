@@ -636,6 +636,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Modern decoration system for spawning biome-specific decorations")]
     public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
 
+    [Header("Stamping Performance")]
+    [Tooltip("Number of tile iterations to process before yielding during stamping passes (higher = faster but larger spikes).")]
+    [SerializeField]
+    private int stampingBatchSize = 4096;
+
     [Header("Planet & Map Type")]
     [Tooltip("Which celestial body this planet represents. Controls biome assignment rules.")]
     public PlanetType planetType = PlanetType.Earth;
@@ -925,52 +930,72 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return delta;
         }
 
-        void StampEllipse(ContinentData continent) {
+        System.Collections.IEnumerator StampEllipseBatched(ContinentData continent)
+        {
             float halfW = Mathf.Max(0.5f, continent.widthTiles * 0.5f);
             float halfH = Mathf.Max(0.5f, continent.heightTiles * 0.5f);
-            for (int i = 0; i < tileCount; i++) {
+            int counter = 0;
+            int batch = Mathf.Max(1, stampingBatchSize);
+            for (int i = 0; i < tileCount; i++)
+            {
                 Vector2Int coord = tileCoords[i];
                 float dx = WrappedDelta(coord.x, continent.center.x, tilesX) / halfW;
                 float dy = (coord.y - continent.center.y) / halfH;
                 float distSq = dx * dx + dy * dy;
-                if (continentNoiseEnabled && noise != null) {
-                    // Sample low-frequency wrap-safe noise to perturb the local ellipse radius
+                if (continentNoiseEnabled && noise != null)
+                {
                     Vector2 tilePos = new Vector2(coord.x, coord.y);
-                    float n = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, continentNoiseFrequency); // 0..1
-                    // Convert to [-1..1], scale by amplitude and add to radius multiplier
+                    float n = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, continentNoiseFrequency);
                     float perturb = (n * 2f - 1f) * continentNoiseAmplitude;
-                    float radiusScale = 1f + perturb; // can shrink or expand ellipse locally
+                    float radiusScale = 1f + perturb;
                     radiusScale = Mathf.Max(0.2f, radiusScale);
-                    if (distSq <= radiusScale * radiusScale) {
+                    if (distSq <= radiusScale * radiusScale)
+                    {
                         isLandTile[i] = true;
                     }
                 }
-                else {
-                    if (distSq <= 1f) {
+                else
+                {
+                    if (distSq <= 1f)
+                    {
                         isLandTile[i] = true;
                     }
                 }
+
+                counter++;
+                if (counter >= batch) { counter = 0; yield return null; }
             }
         }
 
-        void StampCircle(Vector2Int center, int radius, bool makeLand, bool makeLake) {
+        System.Collections.IEnumerator StampCircleBatched(Vector2Int center, int radius, bool makeLand, bool makeLake)
+        {
             int maxRadius = Mathf.Max(0, radius);
-            for (int i = 0; i < tileCount; i++) {
+            int counter = 0;
+            int batch = Mathf.Max(1, stampingBatchSize);
+            for (int i = 0; i < tileCount; i++)
+            {
                 int dist = HexDistanceWrapped(tileCoords[i], center, tilesX);
-                if (dist <= maxRadius) {
-                    if (makeLand) {
+                if (dist <= maxRadius)
+                {
+                    if (makeLand)
+                    {
                         isLandTile[i] = true;
                     }
-                    if (makeLake) {
+                    if (makeLake)
+                    {
                         isLandTile[i] = false;
                         isLakeTile[i] = true;
                     }
                 }
+
+                counter++;
+                if (counter >= batch) { counter = 0; yield return null; }
             }
         }
 
-        foreach (var continent in continentDataList) {
-            StampEllipse(continent);
+        foreach (var continent in continentDataList)
+        {
+            yield return StartCoroutine(StampEllipseBatched(continent));
         }
 
         // ---------- 2.5. Generate Islands (Stamping) ---------
@@ -992,7 +1017,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (HasLandWithinDistance(idx, islandMinDistance, isLandTile)) continue;
 
                 int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
-                StampCircle(tileCoords[idx], radius, true, false);
+                yield return StartCoroutine(StampCircleBatched(tileCoords[idx], radius, true, false));
                 islandsStamped++;
             }
 
@@ -1004,7 +1029,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     int idx = islandRand.Next(0, tileCount);
                     if (isLandTile[idx]) continue;
                     int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
-                    StampCircle(tileCoords[idx], radius, true, false);
+                    yield return StartCoroutine(StampCircleBatched(tileCoords[idx], radius, true, false));
                     islandsStamped++;
                 }
             }
@@ -1015,7 +1040,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // ---------- 2.75. Coastal irregularity passes (bays & peninsulas) ----------
         // compute current land count (islands/stamps applied so far)
         int _currentLandCount = 0;
-        for (int _i = 0; _i < tileCount; _i++) if (isLandTile[_i]) _currentLandCount++;
+        int _countYieldCounter = 0;
+        for (int _i = 0; _i < tileCount; _i++)
+        {
+            if (isLandTile[_i]) _currentLandCount++;
+            _countYieldCounter++;
+            if (_countYieldCounter >= stampingBatchSize) { _countYieldCounter = 0; yield return null; }
+        }
         if (_currentLandCount >= minLandTilesForCoastStamps)
         {
             System.Random coastRand = new System.Random(unchecked((int)(seed ^ 0xBEEF)));
@@ -1023,6 +1054,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             // Build coast candidate lists
             List<int> coastLandCandidates = new List<int>();
             List<int> coastWaterCandidates = new List<int>();
+            int coastYieldCounter = 0;
             for (int i = 0; i < tileCount; i++) {
                 bool anyWaterNeighbor = false;
                 foreach (int n in grid.neighbors[i]) {
@@ -1031,6 +1063,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
                 if (isLandTile[i] && anyWaterNeighbor) coastLandCandidates.Add(i);
                 if (!isLandTile[i] && anyWaterNeighbor) coastWaterCandidates.Add(i);
+                coastYieldCounter++;
+                if (coastYieldCounter >= stampingBatchSize) { coastYieldCounter = 0; yield return null; }
             }
 
             int ApplyWalkInland(int startIdx, int steps) {
@@ -1080,11 +1114,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 for (int t = 0; t < tileCount; t++) {
                     int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
                     if (dist <= r && isLandTile[t]) removed++;
+                    if ((t & 2047) == 0) yield return null; // yield periodically during heavy per-tile checks
                 }
                 if (removed == 0) continue;
                 if ((float)removed / Mathf.Max(1, _currentLandCount) > 0.15f) continue; // don't remove >15% of land
 
-                StampCircle(tileCoords[centerIdx], r, false, false);
+                yield return StartCoroutine(StampCircleBatched(tileCoords[centerIdx], r, false, false));
             }
 
             // Apply spurs (add small land peninsulas)
@@ -1100,6 +1135,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 for (int t = 0; t < tileCount; t++) {
                     int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
                     if (dist <= r && !isLandTile[t]) added.Add(t);
+                    if ((t & 2047) == 0) yield return null;
                 }
                 if (added.Count == 0) continue;
                 bool connects = false;
@@ -1109,7 +1145,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
                 if (!connects) continue;
 
-                StampCircle(tileCoords[centerIdx], r, true, false);
+                yield return StartCoroutine(StampCircleBatched(tileCoords[centerIdx], r, true, false));
             }
         }
 
@@ -1123,6 +1159,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             int lakeMinDistance = Mathf.Max(0, lakeMinDistanceFromCoast);
 
             List<int> lakeCoastTiles = new List<int>();
+            int lakeCoastYield = 0;
             for (int i = 0; i < tileCount; i++) {
                 if (!isLandTile[i]) continue;
                 bool adjacentToOcean = false;
@@ -1133,6 +1170,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     }
                 }
                 if (adjacentToOcean) lakeCoastTiles.Add(i);
+                lakeCoastYield++;
+                if (lakeCoastYield >= stampingBatchSize) { lakeCoastYield = 0; yield return null; }
             }
 
             List<int> candidateCenters = new List<int>();
@@ -1280,7 +1319,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             for (int i = 0; i < tileCount; i++)
             {
                 if (!isLandTile[i]) continue;
-                StampCircle(tileCoords[i], fallbackRadius, false, true);
+                yield return StartCoroutine(StampCircleBatched(tileCoords[i], fallbackRadius, false, true));
                 lakeCenters.Add(tileCoords[i]);
                 lakesStamped++;
                 break;
@@ -2727,11 +2766,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 ridgeStrength = 0.15f;
                 break;
             case 2: // Standard — balanced mix
-                elevationExponent = 1.01f;
+                elevationExponent = 1.0f;
                 hillNoiseCutoff = 0.61f;
                 mountainNoiseCutoff = 0.93f;
-                flatElevationMin = 7.3f;
-                flatElevationMax = 7.6f;
+                flatElevationMin = 6.3f;
+                flatElevationMax = 6.6f;
                 hillElevationMin = 8.5f;
                 hillElevationMax = 9.0f;
                 mountainElevationMin = 11.0f;
@@ -2743,8 +2782,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 hillNoiseCutoff = 0.25f;
                 mountainNoiseCutoff = 0.50f;
                 flatElevationMin = 5.0f;
-                flatElevationMax = 6.5f;
-                hillElevationMin = 7.0f;
+                flatElevationMax = 6.0f;
+                hillElevationMin = 7.5f;
                 hillElevationMax = 10.0f;
                 mountainElevationMin = 10.0f;
                 mountainElevationMax = 15.0f;

@@ -182,6 +182,19 @@ public class GameManager : MonoBehaviour
         return ts;
     }
 
+    private System.Collections.IEnumerator WaitUntilTileSystemReadyAndSpawn(int planetIndex, AnimalManager animalManager)
+    {
+        if (animalManager == null) yield break;
+        // Wait until TileSystem for the given planet exists and reports ready.
+        while (true)
+        {
+            var ts = TileSystem.GetForPlanet(planetIndex);
+            if (ts != null && ts.IsReady()) break;
+            yield return null;
+        }
+        animalManager.SpawnInitialAnimals();
+    }
+
     [Header("Game State")]
     public bool gameInProgress = false;
     
@@ -363,7 +376,7 @@ public class GameManager : MonoBehaviour
         switch (size)
         {
             case MapSize.Small: tilesX = 96; tilesZ = 48; break;
-            case MapSize.Standard: tilesX = 148; tilesZ = 74; break;
+            case MapSize.Standard: tilesX = 120; tilesZ = 60; break;
             case MapSize.Large: tilesX = 256; tilesZ = 128; break;
             default: tilesX = 148; tilesZ = 74; break;
         }
@@ -375,7 +388,7 @@ public class GameManager : MonoBehaviour
         switch (size)
         {
             case MapSize.Small: width = 384f; height = 192f; break;
-            case MapSize.Standard: width = 592f; height = 296f; break;
+            case MapSize.Standard: width = 500f; height = 250f; break;
             case MapSize.Large: width = 1024f; height = 514f; break;
             default: width = 592f; height = 296f; break;
         }
@@ -863,6 +876,8 @@ public class GameManager : MonoBehaviour
                 Debug.LogError("GameManager: AnimalManager not found and no prefab assigned!");
             }
         }
+        // Ensure the persistent cache and public reference reflect the created/found manager
+        _cachedManagers.animalManager = animalManager;
 
         // Find or create AncientRuinsManager
         var ancientRuinsManager = foundManagers.ancientRuinsManager;
@@ -1183,20 +1198,21 @@ public class GameManager : MonoBehaviour
 
         if (minimapUI != null)
         {
-            
             UpdateLoadingProgress(0.8f, "Generating minimaps...");
-            
-            // Start minimap generation
+
+            // Start minimap generation and time it
+            Debug.Log("[GameManager] Starting minimap generation...");
+            float mmStart = Time.realtimeSinceStartup;
             minimapUI.StartMinimapGeneration();
-            
-            
+
             // Wait for minimaps to be pre-generated
             while (!minimapUI.MinimapsPreGenerated)
             {
                 yield return null;
             }
-            
-            
+            float mmElapsed = Time.realtimeSinceStartup - mmStart;
+            Debug.Log($"[GameManager] Minimap generation completed in {mmElapsed:F3}s");
+
             UpdateLoadingProgress(0.9f, "Minimaps complete...");
         }
         else
@@ -1218,22 +1234,28 @@ public class GameManager : MonoBehaviour
                 numberOfCivilizations,
                 numberOfCityStates,
                 numberOfTribes);
-
-            // REMOVED: Music initialization moved to end of CivilizationManager.SpawnCivilizations()
-            // This ensures all civs are fully spawned before music tracks are initialized
         }
         else
         {
             Debug.LogError("CivilizationManager not found. Can't spawn civilizations.");
         }
 
-        // Spawn initial animals — uses cached reference
+        // Spawn initial animals — uses cached reference. Wait for TileSystem if necessary.
         var animalManagerInstance = _cachedManagers.animalManager;
         if (animalManagerInstance != null)
         {
             if (planetGenerator != null)
             {
-                animalManagerInstance.SpawnInitialAnimals();
+                int pIndex = planetGenerator.planetIndex;
+                var ts = TileSystem.GetForPlanet(pIndex);
+                if (ts == null || !ts.IsReady())
+                {
+                    StartCoroutine(WaitUntilTileSystemReadyAndSpawn(pIndex, animalManagerInstance));
+                }
+                else
+                {
+                    animalManagerInstance.SpawnInitialAnimals();
+                }
             }
             else
             {
@@ -1373,9 +1395,7 @@ public class GameManager : MonoBehaviour
         var minimapUI = _cachedManagers.minimapUI;
         if (minimapUI == null) minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
 
-        // DISABLED: Legacy WaterSurfaceGenerator is no longer needed.
-        // HexMapChunkManager.BuildAllWaterMeshes() now handles per-chunk water tiles
-        // (lakes, oceans, rivers) with proper wrapping support and foam edges.
+
         
         if (minimapUI != null)
         {
@@ -1643,12 +1663,20 @@ public class GameManager : MonoBehaviour
                 civilizationManager.SpawnCivilizations(playerCivData, 4, 2, 2);
             }
             
-            // Spawn animals on Earth (only once!) — uses cached reference
+            // Spawn animals on Earth (only once!) — uses cached reference. Wait for TileSystem readiness.
             var animalManagerInstance = _cachedManagers.animalManager;
             if (animalManagerInstance != null)
             {
-                
-                animalManagerInstance.SpawnInitialAnimals();
+                int pIndex = 0;
+                var ts = TileSystem.GetForPlanet(pIndex);
+                if (ts == null || !ts.IsReady())
+                {
+                    StartCoroutine(WaitUntilTileSystemReadyAndSpawn(pIndex, animalManagerInstance));
+                }
+                else
+                {
+                    animalManagerInstance.SpawnInitialAnimals();
+                }
             }
         }
         else
@@ -1741,7 +1769,7 @@ public class GameManager : MonoBehaviour
     {
         return bodyName switch
         {
-            "Earth" => MapSize.Large,
+            "Earth" => MapSize.Standard,
             "Mars" => MapSize.Standard,
             "Venus" => MapSize.Standard,
             "Mercury" => MapSize.Small,
@@ -2865,8 +2893,17 @@ CivData playerCivData = GameSetupData.selectedPlayerCivilizationData;
         UpdateLoadingProgress(0.85f, "Spawning wildlife...");
 var animalManagerInstance = _cachedManagers.animalManager;
 if (animalManagerInstance != null)
-        {
-            animalManagerInstance.SpawnInitialAnimals();
+{
+    int pIndex = 0;
+    var ts = TileSystem.GetForPlanet(pIndex);
+    if (ts == null || !ts.IsReady())
+    {
+        StartCoroutine(WaitUntilTileSystemReadyAndSpawn(pIndex, animalManagerInstance));
+    }
+    else
+    {
+        animalManagerInstance.SpawnInitialAnimals();
+    }
 }
         else
         {

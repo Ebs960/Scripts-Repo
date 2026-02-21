@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -18,6 +19,11 @@ public class AnimalManager : MonoBehaviour
 
     [Header("Configure each animal type here")]
     public AnimalSpawnRule[] spawnRules;
+    [Header("Debug")]
+    [Tooltip("Enable verbose logging for animal spawning decisions")]
+    public bool debugSpawning = false;
+    // Track which planets have had initial animals spawned
+    private readonly HashSet<int> spawnedPlanetIndices = new HashSet<int>();
     
     // Track animals that were recently attacked (for prey behavior)
     private Dictionary<CombatUnit, int> recentlyAttackedAnimals = new Dictionary<CombatUnit, int>();
@@ -27,6 +33,8 @@ public class AnimalManager : MonoBehaviour
     private Dictionary<CombatUnit, int> animalMovePoints = new Dictionary<CombatUnit, int>();
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
+    // Track whether we've subscribed to TurnManager.OnNeutralTurn
+    private bool _subscribedToTurnManager = false;
 
     void Awake()
     {
@@ -36,17 +44,34 @@ public class AnimalManager : MonoBehaviour
 
     void OnEnable()
     {
-        if (TurnManager.Instance != null)
-        {
-            TurnManager.Instance.OnNeutralTurn += HandleNeutralTurn;
-        }
+        TrySubscribeToTurnManager();
+        GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGenerated;
     }
 
     void OnDisable()
     {
-        if (TurnManager.Instance != null)
+        if (_subscribedToTurnManager && TurnManager.Instance != null)
         {
             TurnManager.Instance.OnNeutralTurn -= HandleNeutralTurn;
+            _subscribedToTurnManager = false;
+        }
+        GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGenerated;
+    }
+
+    void Update()
+    {
+        // If TurnManager wasn't available at OnEnable time, attempt to subscribe until successful.
+        if (!_subscribedToTurnManager)
+            TrySubscribeToTurnManager();
+    }
+
+    private void TrySubscribeToTurnManager()
+    {
+        if (_subscribedToTurnManager) return;
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnNeutralTurn += HandleNeutralTurn;
+            _subscribedToTurnManager = true;
         }
     }
 
@@ -56,20 +81,132 @@ public class AnimalManager : MonoBehaviour
         ProcessTurn();
     }
 
+    // Backwards-compatible entry: spawns on the current planet
     public void SpawnInitialAnimals()
     {
-int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        SpawnInitialAnimalsOnPlanet(pIndex);
+    }
+
+    // New per-planet spawn entrypoint. Idempotent per planet.
+    public void SpawnInitialAnimalsOnPlanet(int pIndex)
+    {
+        if (spawnedPlanetIndices.Contains(pIndex))
+        {
+            if (debugSpawning) Debug.Log($"[AnimalManager] Initial animals already spawned for planet {pIndex}");
+            return;
+        }
+
+        int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
         float[] multipliers = { 0f, 0.25f, 0.5f, 1f, 2f, 3f };
         float mult = multipliers[Mathf.Clamp(prevalence, 0, multipliers.Length - 1)];
-if (mult == 0f) return;
+        if (debugSpawning) Debug.Log($"[AnimalManager] SpawnInitialAnimalsOnPlanet p={pIndex} prevalence={prevalence} multiplier={mult}");
+        if (mult == 0f) return;
+
+        // Start coroutine-based batched spawning to avoid frame hitches
+        StartCoroutine(SpawnInitialAnimalsOnPlanetCoroutine(pIndex, mult));
+    }
+
+    [Header("Spawn Batching")]
+    [Tooltip("How many animals to spawn per batch/frame")]
+    public int animalSpawnBatchSize = 50;
+    [Tooltip("Frames to wait between batches (0 = yield 1 frame)")]
+    public int animalSpawnFramesBetweenBatches = 0;
+
+    private IEnumerator SpawnInitialAnimalsOnPlanetCoroutine(int pIndex, float mult)
+    {
+        if (spawnedPlanetIndices.Contains(pIndex)) yield break;
+        int processed = 0;
 
         foreach (var rule in spawnRules)
         {
             int count = Mathf.CeilToInt(rule.initialCount * mult);
             if (count < 1 && mult > 0f) count = 1;
-            for (int i = 0; i < count; i++)
-                TrySpawn(rule);
+
+            // Build candidate list once for this rule (avoid rescanning the map per spawn)
+            var candidates = new List<int>();
+            var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
+            int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+            if (ts == null || !ts.IsReady())
+            {
+                Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals.");
+                if (debugSpawning) Debug.LogWarning($"[AnimalManager] TileSystem null or not ready for planet {pIndex}");
+                continue;
+            }
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                var tile = ts.GetTileData(i);
+                if (tile == null) continue;
+
+                bool isWaterTile = !tile.isLand;
+                if (isWaterTile)
+                {
+                    bool allowsWater = rule.allowedBiomes != null && (
+                        System.Array.Exists(rule.allowedBiomes, b => b == Biome.Ocean || b == Biome.Seas || b == Biome.Lake || b == Biome.River)
+                    );
+                    if (!allowsWater) continue;
+                }
+
+                if (rule.allowedBiomes != null && rule.allowedBiomes.Length > 0)
+                {
+                    bool biomeAllowed = System.Array.Exists(rule.allowedBiomes, b => b == tile.biome);
+                    if (!biomeAllowed) continue;
+                }
+
+                candidates.Add(i);
+            }
+
+            if (debugSpawning) Debug.Log($"[AnimalManager] Found {candidates.Count} candidate tiles for rule {rule?.unitData?.unitName}");
+            if (candidates.Count == 0) continue;
+
+            // Sample up to `count` unique tiles without replacement
+            if (count >= candidates.Count)
+            {
+                foreach (var chosenIndex in candidates)
+                {
+                    SpawnAnimalAtTile(rule, pIndex, chosenIndex);
+                    processed++;
+                    if (processed >= animalSpawnBatchSize)
+                    {
+                        processed = 0;
+                        if (animalSpawnFramesBetweenBatches > 0)
+                            for (int f = 0; f < animalSpawnFramesBetweenBatches; f++)
+                                yield return null;
+                        else
+                            yield return null;
+                    }
+                }
+            }
+            else
+            {
+                // Partial sample: do a Fisher-Yates style partial shuffle
+                for (int s = 0; s < count; s++)
+                {
+                    int r = Random.Range(s, candidates.Count);
+                    int tmp = candidates[s]; candidates[s] = candidates[r]; candidates[r] = tmp;
+                }
+                for (int s = 0; s < count; s++)
+                {
+                    int chosenIndex = candidates[s];
+                    SpawnAnimalAtTile(rule, pIndex, chosenIndex);
+                    processed++;
+                    if (processed >= animalSpawnBatchSize)
+                    {
+                        processed = 0;
+                        if (animalSpawnFramesBetweenBatches > 0)
+                            for (int f = 0; f < animalSpawnFramesBetweenBatches; f++)
+                                yield return null;
+                        else
+                            yield return null;
+                    }
+                }
+            }
         }
+
+        spawnedPlanetIndices.Add(pIndex);
+        yield break;
     }
 
     /// <summary>
@@ -199,6 +336,39 @@ if (mult == 0f) return;
             for (int i = 0; i < toSpawn; i++)
                 TrySpawn(rule);
         }
+    }
+
+    // Handle GameManager planet-ready event to spawn animals per-planet (idempotent)
+    private void HandlePlanetFullyGenerated(PlanetGenerator generator)
+    {
+        if (generator == null) return;
+        int planetIndex = generator.planetIndex;
+        if (spawnedPlanetIndices.Contains(planetIndex)) return;
+
+        var ts = TileSystem.GetForPlanet(planetIndex);
+        if (ts == null || !ts.IsReady())
+        {
+            if (debugSpawning) Debug.Log($"[AnimalManager] TileSystem not ready for planet {planetIndex}; deferring animal spawn.");
+            StartCoroutine(WaitForTileSystemAndSpawn(generator));
+            return;
+        }
+
+        SpawnInitialAnimalsOnPlanet(planetIndex);
+    }
+
+    private IEnumerator WaitForTileSystemAndSpawn(PlanetGenerator generator)
+    {
+        int planetIndex = generator != null ? generator.planetIndex : 0;
+        var ts = TileSystem.GetForPlanet(planetIndex);
+        while (ts == null || !ts.IsReady())
+        {
+            ts = TileSystem.GetForPlanet(planetIndex);
+            yield return null;
+        }
+
+        if (generator == null || spawnedPlanetIndices.Contains(planetIndex)) yield break;
+
+        SpawnInitialAnimalsOnPlanet(planetIndex);
     }
 
     void MoveAllAnimals()
@@ -390,30 +560,32 @@ return true;
         return false;
     }
 
-    void TrySpawn(AnimalSpawnRule rule)
+    void TrySpawn(AnimalSpawnRule rule, int pIndex = -1)
     {
         var candidates = new List<int>();
-        // Multi-planet: spawn on the currently active planet.
-        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (debugSpawning) Debug.Log($"[AnimalManager] TrySpawn for rule={rule?.unitData?.unitName ?? "<null>"} planet={pIndex}");
+        // Determine target planet (default to current)
+        if (pIndex < 0) pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+        if (debugSpawning) Debug.Log($"[AnimalManager] PlanetIndex={pIndex} tileCount={tileCount}");
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady())
         {
             Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals.");
+            if (debugSpawning) Debug.LogWarning($"[AnimalManager] TileSystem null or not ready for planet {pIndex}");
             return;
         }
 
         for (int i = 0; i < tileCount; i++)
         {
             var tile = ts.GetTileData(i);
-            if (tile == null) continue;
-
-            // If allowedBiomes specified, require match
-            if (rule.allowedBiomes != null && rule.allowedBiomes.Length > 0)
+            if (tile == null)
             {
-                if (!rule.allowedBiomes.Contains(tile.biome)) continue;
+                if (debugSpawning) Debug.Log($"[AnimalManager] Skipping tile {i}: tile data null");
+                continue;
             }
+
 
             // Preserve previous behavior: skip tiles that are not land unless the allowedBiomes includes water biomes
             bool isWaterTile = !tile.isLand;
@@ -423,13 +595,23 @@ return true;
                 bool allowsWater = rule.allowedBiomes != null && (
                     System.Array.Exists(rule.allowedBiomes, b => b == Biome.Ocean || b == Biome.Seas || b == Biome.Lake || b == Biome.River)
                 );
-                if (!allowsWater) continue;
+                if (!allowsWater)
+                {
+                    if (debugSpawning) Debug.Log($"[AnimalManager] Skipping tile {i}: water tile and rule does not allow water");
+                    continue;
+                }
             }
 
             candidates.Add(i);
         }
 
-        if (candidates.Count == 0) return;
+        if (debugSpawning) Debug.Log($"[AnimalManager] Found {candidates.Count} candidate tiles for rule {rule?.unitData?.unitName}");
+
+        if (candidates.Count == 0)
+        {
+            if (debugSpawning) Debug.LogWarning($"[AnimalManager] No candidate tiles to spawn for {rule?.unitData?.unitName}");
+            return;
+        }
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
         // Flat-only positioning for animal spawning (use surface position for proper terrain height)
@@ -468,6 +650,7 @@ return true;
         try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         activeAnimals.Add(unit);
+        if (debugSpawning) Debug.Log($"[AnimalManager] Spawned {rule?.unitData?.unitName ?? "<unknown>"} at tile {chosenIndex} on planet {pIndex}");
         unit.OnDeath += () =>
         {
             activeAnimals.Remove(unit);
@@ -475,6 +658,56 @@ return true;
             animalMovePoints.Remove(unit);
             UnitRegistry.Unregister(unit.gameObject);
         };
+    }
+
+    // Instantiate and register an animal at the specified tile index (shared helper)
+    private void SpawnAnimalAtTile(AnimalSpawnRule rule, int pIndex, int chosenIndex)
+    {
+        var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        Vector3 pos = ts.GetTileSurfacePosition(chosenIndex);
+
+        var animalPrefab = rule.unitData.GetPrefab();
+        if (animalPrefab == null)
+        {
+            Debug.LogError($"[AnimalManager] Cannot spawn animal {rule.unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
+            return;
+        }
+
+        var go = Instantiate(animalPrefab, pos, Quaternion.identity);
+        if (planet != null) go.transform.SetParent(planet.transform, true);
+        var unit = go.GetComponent<CombatUnit>();
+        if (unit == null)
+        {
+            Debug.LogError($"[AnimalManager] Spawned prefab for {rule.unitData.unitName} is missing CombatUnit component.");
+            Destroy(go);
+            return;
+        }
+
+        unit.Initialize(rule.unitData, null);
+        unit.planetIndex = pIndex;
+        unit.currentTileIndex = chosenIndex;
+
+        var chosenTile = ts.GetTileData(chosenIndex);
+        var spawnLayer = UnitLayerRules.GetSpawnLayerForUnit(unit, chosenTile);
+        if (!LayerConversion.TryToTileLayer(spawnLayer, out var occLayer)) occLayer = TileLayer.Surface;
+        unit.currentLayer = occLayer;
+        unit.PositionUnitOnSurface(null, chosenIndex);
+
+        try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
+
+        activeAnimals.Add(unit);
+        unit.OnDeath += () =>
+        {
+            activeAnimals.Remove(unit);
+            recentlyAttackedAnimals.Remove(unit);
+            animalMovePoints.Remove(unit);
+            UnitRegistry.Unregister(unit.gameObject);
+        };
+
+        if (debugSpawning) Debug.Log($"[AnimalManager] Spawned {rule?.unitData?.unitName ?? "<unknown>"} at tile {chosenIndex} on planet {pIndex}");
     }
     
     /// <summary>

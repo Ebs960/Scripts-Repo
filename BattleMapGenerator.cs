@@ -58,6 +58,9 @@ public class BattleMapGenerator : MonoBehaviour
     [Tooltip("Maximum number of decorations to spawn on the battle map (0 = unlimited, but may cause memory issues)")]
     [Range(0, 200)]
     public int maxDecorations = 50;
+    [Tooltip("Attempts per frame when placing decorations (higher = faster but more frame spikes)")]
+    [SerializeField]
+    private int decorationAttemptsPerBatch = 64;
     
     // NOTE: Grass is rendered using GPUInstancedGrass component for high performance.
     // This replaces Unity's Terrain Detail system which was unreliable.
@@ -169,7 +172,7 @@ GenerateTerrainWithCustomSystem();
 }
         }
         
-        AddBiomeDecorations();
+        StartCoroutine(AddBiomeDecorationsCoroutine());
         CreateSpawnPoints(attackerUnits, defenderUnits);
         
         // IMPROVED: Bake NavMesh at runtime after map generation
@@ -1430,6 +1433,56 @@ int successfulPlacements = 0;
             }
         }
 }
+
+    /// <summary>
+    /// Batched coroutine version of AddBiomeDecorations to spread placement across frames.
+    /// </summary>
+    private System.Collections.IEnumerator AddBiomeDecorationsCoroutine()
+    {
+        // Calculate decoration count but limit to maximum to prevent memory issues
+        int decorationCount = Mathf.RoundToInt(mapSize * mapSize * obstacleDensity / 100f);
+        if (maxDecorations > 0)
+        {
+            decorationCount = Mathf.Min(decorationCount, maxDecorations);
+        }
+
+        int successfulPlacements = 0;
+        int maxAttempts = decorationCount * 3; // Try up to 3x to find valid positions
+        int attempts = 0;
+
+        int batch = Mathf.Max(1, decorationAttemptsPerBatch);
+
+        while (successfulPlacements < decorationCount && attempts < maxAttempts)
+        {
+            attempts++;
+
+            // Random position on the map
+            Vector3 position = new Vector3(
+                UnityEngine.Random.Range(-mapSize / 2f, mapSize / 2f),
+                0f,
+                UnityEngine.Random.Range(-mapSize / 2f, mapSize / 2f)
+            );
+
+            float terrainHeight = GetTerrainHeightAtPosition(position);
+            if (terrainHeight == float.MinValue) continue;
+            position.y = terrainHeight;
+
+            Biome biome = primaryBattleBiome;
+
+            if (ShouldSpawnObstacle(biome))
+            {
+                if (SpawnBiomeDecoration(position, biome))
+                {
+                    successfulPlacements++;
+                }
+            }
+
+            if ((attempts % batch) == 0)
+            {
+                yield return null;
+            }
+        }
+    }
     
     /// <summary>
     /// Get terrain height at a position using raycasting (works with MapMagic terrain and fallback mesh)

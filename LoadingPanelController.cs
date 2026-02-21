@@ -269,6 +269,7 @@ ShowAllGameUI();
     /// </summary>
     private void HideAllGameUI()
     {
+        float hideStart = Time.realtimeSinceStartup;
         hiddenUIElements.Clear();
         originalUIStates.Clear();
         
@@ -348,6 +349,9 @@ ShowAllGameUI();
             if (transportUI != null)
                 StoreAndHideUIElement(transportUI.gameObject);
         }
+            float hideElapsed = Time.realtimeSinceStartup - hideStart;
+            int hiddenCount = hiddenUIElements.Count;
+            Debug.Log($"[LoadingPanel] HideAllGameUI completed: hidden={hiddenCount}, took={hideElapsed:F3}s");
 }
     
     /// <summary>
@@ -355,13 +359,14 @@ ShowAllGameUI();
     /// </summary>
     private void ShowAllGameUI()
     {
+        float showStart = Time.realtimeSinceStartup;
         // Double-check that minimap generation is complete before showing UI
         var minimapUI = FindFirstObjectByType<MinimapUI>();
         if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
         {
-return;
+            return;
         }
-        
+
         foreach (var uiElement in hiddenUIElements)
         {
             if (uiElement != null && originalUIStates.TryGetValue(uiElement, out bool originalState))
@@ -369,8 +374,11 @@ return;
                 uiElement.SetActive(originalState);
             }
         }
-hiddenUIElements.Clear();
+        int restoredCount = hiddenUIElements.Count;
+        hiddenUIElements.Clear();
         originalUIStates.Clear();
+        float showElapsed = Time.realtimeSinceStartup - showStart;
+        Debug.Log($"[LoadingPanel] ShowAllGameUI completed: restored={restoredCount}, took={showElapsed:F3}s");
         
         // Trigger any UI systems that were waiting for loading to complete
         TriggerDeferredUIInitialization();
@@ -418,11 +426,14 @@ MusicManager.Instance.InitializeMusicTracks();
         
         if (minimapUI != null)
         {
-// Wait until minimap generation is done
+            Debug.Log("[LoadingPanel] Waiting for MinimapUI.MinimapsPreGenerated...");
+            float mmStart = Time.realtimeSinceStartup;
             while (!minimapUI.MinimapsPreGenerated)
             {
                 yield return null;
             }
+            float mmElapsed = Time.realtimeSinceStartup - mmStart;
+            Debug.Log($"[LoadingPanel] Minimap pre-generation finished after {mmElapsed:F3}s");
 }
         
         // Now show all the UI

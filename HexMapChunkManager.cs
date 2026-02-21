@@ -211,6 +211,11 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool preBuildOnPlanetReady = true;
     [Tooltip("Chunks processed per frame during batched build (higher = faster total time but more frame spikes).")]
     [SerializeField] private int chunksPerBatch = 4;
+    [Tooltip("Tiles processed per frame when assigning tiles to chunks (higher = faster but more frame spikes).")]
+    [SerializeField] private int tilesPerBatch = 2048;
+    [Header("Profiling")]
+    [Tooltip("When true, logs timing breakdowns for chunk build phases (useful for identifying hotspots).")]
+    [SerializeField] private bool enableBuildProfiling = false;
 
     [Header("Season Masks")]
     [SerializeField] private bool enableSeasonMasks = false;
@@ -525,6 +530,8 @@ public class HexMapChunkManager : MonoBehaviour
         
         // --- BATCHED: Build LUT across multiple frames (avoids 4M+ synchronous GetTileAtPosition calls) ---
         int[] preBuiltLUT = null;
+        float buildStartTime = enableBuildProfiling ? Time.realtimeSinceStartup : 0f;
+        float lastPhaseTime = buildStartTime;
         yield return StartCoroutine(EquirectLUTBuilder.BuildLUTBatched(
             grid, textureWidth, textureHeight, 64,
             lut => preBuiltLUT = lut));
@@ -535,12 +542,26 @@ public class HexMapChunkManager : MonoBehaviour
             _buildCoroutine = null;
             yield break;
         }
-        
+
+        if (enableBuildProfiling)
+        {
+            float now = Time.realtimeSinceStartup;
+            Debug.Log($"[HexMapChunkManager][Profile] LUT build: {(now - lastPhaseTime) * 1000f:F2} ms");
+            lastPhaseTime = now;
+        }
+
         // Bake texture using PlanetTextureBaker with pre-built LUT (GPU bake is fast; LUT was the bottleneck)
         BakeTexture(preBuiltLUT);
         
         // --- BATCHED: Build biome visual maps with yielding for heavy texture operations ---
         yield return StartCoroutine(BuildBiomeVisualMapsCoroutine());
+
+        if (enableBuildProfiling)
+        {
+            float now = Time.realtimeSinceStartup;
+            Debug.Log($"[HexMapChunkManager][Profile] Biome visuals: {(now - lastPhaseTime) * 1000f:F2} ms");
+            lastPhaseTime = now;
+        }
 
         int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
@@ -565,11 +586,18 @@ public class HexMapChunkManager : MonoBehaviour
         // Create column parents for wrap teleportation
         CreateColumnParents();
         
-        // Create chunks
-        CreateChunks();
-        
-        // Assign tiles to chunks
-        AssignTilesToChunks();
+        // Create chunks (batched)
+        yield return StartCoroutine(CreateChunksCoroutine());
+
+        // Assign tiles to chunks (batched)
+        yield return StartCoroutine(AssignTilesToChunksCoroutine());
+
+        if (enableBuildProfiling)
+        {
+            float now = Time.realtimeSinceStartup;
+            Debug.Log($"[HexMapChunkManager][Profile] Create+Assign chunks: {(now - lastPhaseTime) * 1000f:F2} ms");
+            lastPhaseTime = now;
+        }
 
         // Initialize per-chunk season masks
         UpdateSeasonMasksForCurrentSeason();
@@ -616,6 +644,12 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.LogError($"[HEIGHTMAP DIAGNOSTIC] ========================================");
         }
         
+        if (enableBuildProfiling)
+        {
+            float now = Time.realtimeSinceStartup;
+            Debug.Log($"[HexMapChunkManager][Profile] Total BuildChunks: {(now - buildStartTime) * 1000f:F2} ms");
+        }
+
         _buildCoroutine = null;
     }
     
@@ -1473,18 +1507,32 @@ public class HexMapChunkManager : MonoBehaviour
         lutTexture.name = "TileIndexLUT";
         lutTexture.anisoLevel = 0;
         
-        Color[] pixels = new Color[width * height];
-        for (int i = 0; i < bakeResult.lut.Length && i < pixels.Length; i++)
+        int rowsPerStrip = 64;
+        var stripPixels = new Color[width * rowsPerStrip];
+
+        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
         {
-            int tileIndex = bakeResult.lut[i];
-            // Encode tile index in RGB: R + G*256 + B*65536
-            float r = (tileIndex % 256) / 255f;
-            float g = ((tileIndex / 256) % 256) / 255f;
-            float b = ((tileIndex / 65536) % 256) / 255f;
-            pixels[i] = new Color(r, g, b, 1f);
+            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
+            int stripLen = width * rowsThisStrip;
+
+            for (int localIdx = 0; localIdx < stripLen; localIdx++)
+            {
+                int globalIdx = startRow * width + localIdx;
+                if (globalIdx >= bakeResult.lut.Length)
+                {
+                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
+                    continue;
+                }
+                int tileIndex = bakeResult.lut[globalIdx];
+                float r = (tileIndex % 256) / 255f;
+                float g = ((tileIndex / 256) % 256) / 255f;
+                float b = ((tileIndex / 65536) % 256) / 255f;
+                stripPixels[localIdx] = new Color(r, g, b, 1f);
+            }
+
+            lutTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
         }
-        
-        lutTexture.SetPixels(pixels);
+
         lutTexture.Apply();
         
         // Apply to material
@@ -1560,6 +1608,58 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Batched version of CreateChunks to spread GameObject/Component creation across frames.
+    /// </summary>
+    private System.Collections.IEnumerator CreateChunksCoroutine()
+    {
+        chunks = new HexMapChunk[chunksX, chunksZ];
+        
+        float chunkWidth = mapWidth / chunksX;
+        float chunkHeight = mapHeight / chunksZ;
+        int batchSize = Mathf.Max(1, chunksPerBatch);
+        int count = 0;
+        
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                // Calculate chunk bounds in world space
+                float minX = -mapWidth * 0.5f + x * chunkWidth;
+                float maxX = minX + chunkWidth;
+                float minZ = -mapHeight * 0.5f + z * chunkHeight;
+                float maxZ = minZ + chunkHeight;
+                
+                // Calculate UV region for this chunk
+                float uMin = (float)x / chunksX;
+                float uMax = (float)(x + 1) / chunksX;
+                float vMin = (float)z / chunksZ;
+                float vMax = (float)(z + 1) / chunksZ;
+                
+                // Create chunk
+                GameObject chunkObj = new GameObject($"Chunk_{x}_{z}");
+                chunkObj.transform.SetParent(columnParents[x]);
+                chunkObj.transform.localPosition = new Vector3(0f, 0f, (-mapHeight * 0.5f) + (z * chunkHeight));
+                chunkObj.transform.localRotation = Quaternion.identity;
+                chunkObj.transform.localScale = Vector3.one;
+                
+                HexMapChunk chunk = chunkObj.AddComponent<HexMapChunk>();
+                chunk.Initialize(this, x, z, x);
+
+                // Bounds are in the CHUNK'S LOCAL MESH SPACE.
+                // The chunk transform handles placement in the map.
+                chunk.SetBounds(0f, chunkWidth, 0f, chunkHeight);
+                chunk.SetUVRegion(new Vector2(uMin, vMin), new Vector2(uMax, vMax));
+                chunk.SetMaterial(sharedMaterial);
+                
+                chunks[x, z] = chunk;
+
+                count++;
+                if (count >= batchSize) { count = 0; yield return null; }
+            }
+        }
+    }
     
     private void AssignTilesToChunks()
     {
@@ -1598,6 +1698,55 @@ public class HexMapChunkManager : MonoBehaviour
         foreach (var kvp in chunkTiles)
         {
             chunks[kvp.Key.Item1, kvp.Key.Item2].SetTileIndices(kvp.Value);
+        }
+    }
+
+    /// <summary>
+    /// Batched version of AssignTilesToChunks that yields every N tiles to avoid frame hiccups on large maps.
+    /// </summary>
+    private System.Collections.IEnumerator AssignTilesToChunksCoroutine()
+    {
+        tileToChunk.Clear();
+        
+        if (grid == null) yield break;
+        
+        float chunkWidth = mapWidth / chunksX;
+        float chunkHeight = mapHeight / chunksZ;
+        
+        // Group tiles by chunk
+        var chunkTiles = new Dictionary<(int, int), List<int>>();
+        int batchSize = Mathf.Max(1, tilesPerBatch);
+        int count = 0;
+
+        for (int i = 0; i < grid.TileCount; i++)
+        {
+            Vector3 tilePos = grid.tileCenters[i];
+            
+            // Calculate which chunk this tile belongs to
+            float normalizedX = (tilePos.x + mapWidth * 0.5f) / mapWidth;
+            float normalizedZ = (tilePos.z + mapHeight * 0.5f) / mapHeight;
+            
+            int chunkX = Mathf.Clamp(Mathf.FloorToInt(normalizedX * chunksX), 0, chunksX - 1);
+            int chunkZ = Mathf.Clamp(Mathf.FloorToInt(normalizedZ * chunksZ), 0, chunksZ - 1);
+            
+            var key = (chunkX, chunkZ);
+            if (!chunkTiles.ContainsKey(key))
+            {
+                chunkTiles[key] = new List<int>();
+            }
+            chunkTiles[key].Add(i);
+            
+            tileToChunk[i] = chunks[chunkX, chunkZ];
+
+            count++;
+            if (count >= batchSize) { count = 0; yield return null; }
+        }
+
+        // Assign to chunks (small number of chunks, do synchronously)
+        foreach (var kvp in chunkTiles)
+        {
+            chunks[kvp.Key.Item1, kvp.Key.Item2].SetTileIndices(kvp.Value);
+            yield return null; // yield between chunk assignments to be safe
         }
     }
     

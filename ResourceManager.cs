@@ -135,6 +135,10 @@ public class ResourceManager : MonoBehaviour
         if (TurnManager.Instance != null)
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
 
+        // Spawn batching settings (tweak in inspector)
+        resourceSpawnBatchSize = Mathf.Max(1, resourceSpawnBatchSize);
+        resourceSpawnFramesBetweenBatches = Mathf.Max(0, resourceSpawnFramesBetweenBatches);
+
         _isInitialized = true;
     }
     
@@ -201,7 +205,7 @@ public class ResourceManager : MonoBehaviour
                 {
                     continue;
                 }
-                SpawnResourcesOnPlanet(planetGen, planetIndex);
+                StartCoroutine(SpawnResourcesOnPlanetCoroutine(planetGen, planetIndex));
                 spawnedPlanetIndices.Add(planetIndex);
             }
             return;
@@ -215,21 +219,33 @@ public class ResourceManager : MonoBehaviour
         }
         if (!spawnedPlanetIndices.Contains(0))
         {
-            SpawnResourcesOnPlanet(planetGenerator, 0);
+            StartCoroutine(SpawnResourcesOnPlanetCoroutine(planetGenerator, 0));
             spawnedPlanetIndices.Add(0);
         }
         
     }
     
+    // Backwards-compatible wrapper: start the per-planet spawn coroutine.
+    private void SpawnResourcesOnPlanet(PlanetGenerator planetGen, int planetIndex)
+    {
+        if (planetGen == null) return;
+        StartCoroutine(SpawnResourcesOnPlanetCoroutine(planetGen, planetIndex));
+    }
+    
     /// <summary>
     /// Spawn resources on a specific planet
     /// </summary>
-    private void SpawnResourcesOnPlanet(PlanetGenerator planetGen, int planetIndex)
+    private int resourceSpawnBatchSize = 200;
+    private int resourceSpawnFramesBetweenBatches = 0;
+
+    private IEnumerator SpawnResourcesOnPlanetCoroutine(PlanetGenerator planetGen, int planetIndex)
     {
+        if (planetGen == null || planetGen.Grid == null) yield break;
         var planetGrid = planetGen.Grid;
         int tileCount = planetGrid.TileCount;
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
 
+        int processed = 0;
         for (int idx = 0; idx < tileCount; idx++)
         {
             // Get tile data specifically from this planet
@@ -239,7 +255,7 @@ public class ResourceManager : MonoBehaviour
             foreach (var rd in resourceTypes)
             {
                 if (rd == null) continue; // Safety check
-                
+
                 // skip if biome not allowed
                 bool biomeAllowed = false;
                 foreach (var b in rd.allowedBiomes)
@@ -250,8 +266,21 @@ public class ResourceManager : MonoBehaviour
                 {
                     SpawnResourceInstance(rd, idx, planetIndex);
                 }
+
+                processed++;
+                if (processed >= resourceSpawnBatchSize)
+                {
+                    processed = 0;
+                    if (resourceSpawnFramesBetweenBatches > 0)
+                        for (int f = 0; f < resourceSpawnFramesBetweenBatches; f++)
+                            yield return null;
+                    else
+                        yield return null;
+                }
             }
         }
+
+        yield break;
     }
 
     // Load resources from Resources folder if not set in inspector

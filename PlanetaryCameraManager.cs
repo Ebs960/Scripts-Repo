@@ -115,7 +115,6 @@ public class PlanetaryCameraManager : MonoBehaviour
         minHeight = underwaterMinHeight;
         maxHeight = underwaterMaxHeight;
 
-        float elapsed = 0f;
         float maxDist = Vector3.Distance(startFocus, targetFocus);
         // move until focus nearly at target and height close
         while (Vector3.Distance(_focusPoint, targetFocus) > 0.1f || Mathf.Abs(_cameraHeight - targetHeight) > 0.1f)

@@ -48,8 +48,8 @@ MonoBehaviour:
   textureBakerComputeShader: {fileID: 7200000, guid: b6915252207a56742aa43fad923b7a64, type: 3}
   terrainShader: {fileID: 4800000, guid: 043f744da00c93742a01b34d66211f51, type: 3}
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
-  textureWidth: 1024
-  textureHeight: 1024
+  textureWidth: 2048
+  textureHeight: 2048
   chunksX: 8
   chunksZ: 4
   meshSubdivisionsPerChunk: 32
@@ -72,7 +72,7 @@ MonoBehaviour:
   detailTiling: 1
   detailStrength: 0.9
   detailNormalStrength: 1.65
-  detailFadeStart: 40
+  detailFadeStart: 35
   detailFadeEnd: 80
   enableWrap: 1
   wrapBuffer: 0.35
@@ -113,11 +113,11 @@ MonoBehaviour:
   enableSeasonMasks: 0
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
-  cliffTiling: 0.25
+  cliffTiling: 0.1
   cliffStrength: 0.452
   cliffSlopeThreshold: 0.95
-  cliffSlopeBlend: 0.547
-  cliffStepThreshold: 0.44
+  cliffSlopeBlend: 0.623
+  cliffStepThreshold: 0.301
   cliffStepBlend: 0.541
 --- !u!114 &6515396151515733605
 MonoBehaviour:

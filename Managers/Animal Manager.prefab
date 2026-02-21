@@ -47,31 +47,24 @@ MonoBehaviour:
   spawnRules:
   - unitData: {fileID: 11400000, guid: cace335e8947a2541999b4036e6beedd, type: 2}
     initialCount: 2
-    spawnRate: 2
-    maxCount: 25
-    allowedBiomes: 040000001e000000030000000a000000
-  - unitData: {fileID: 11400000, guid: 92f67b8ac6e8cd6419033fe19c304add, type: 2}
-    initialCount: 4
-    spawnRate: 2
-    maxCount: 17
-    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
-  - unitData: {fileID: 11400000, guid: b55b6436c1222ba42893f8881c2164c3, type: 2}
-    initialCount: 8
-    spawnRate: 2
-    maxCount: 30
-    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
-  - unitData: {fileID: 11400000, guid: 5571e81397a508843a27aadf863bbd51, type: 2}
-    initialCount: 3
-    spawnRate: 3
-    maxCount: 40
-    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
-  - unitData: {fileID: 11400000, guid: cb5f6325b7f612240afec3401ae65710, type: 2}
-    initialCount: 5
     spawnRate: 1
     maxCount: 10
-    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
-  - unitData: {fileID: 11400000, guid: e53b1330c0b943849975be332b1d8835, type: 2}
+    allowedBiomes: 0400000003000000
+  - unitData: {fileID: 11400000, guid: b55b6436c1222ba42893f8881c2164c3, type: 2}
     initialCount: 3
-    spawnRate: 2
-    maxCount: 40
-    allowedBiomes: 040000001e000000030000000a0000000c00000009000000070000001d0000001f00000005000000
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 0400000003000000090000000600000005000000
+  - unitData: {fileID: 11400000, guid: cb5f6325b7f612240afec3401ae65710, type: 2}
+    initialCount: 2
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 1300000008000000
+  - unitData: {fileID: 11400000, guid: e53b1330c0b943849975be332b1d8835, type: 2}
+    initialCount: 2
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 040000000500000008000000
+  debugSpawning: 1
+  animalSpawnBatchSize: 10
+  animalSpawnFramesBetweenBatches: 0

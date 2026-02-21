@@ -198,8 +198,8 @@ MonoBehaviour:
   seed: 12345
   numberOfContinents: 8
   continentNoiseEnabled: 1
-  continentNoiseFrequency: 0.036
-  continentNoiseAmplitude: 0.517
+  continentNoiseFrequency: 0.0121
+  continentNoiseAmplitude: 0.796
   minContinentWidthTilesSmall: 13
   maxContinentWidthTilesSmall: 22
   minContinentHeightTilesSmall: 11
@@ -227,7 +227,7 @@ MonoBehaviour:
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 3
+  climateSmoothingPasses: 6
   climateSmoothingStrength: 0.218
   coastalMoistureBoost: 0.119
   coastalMoistureRange: 3

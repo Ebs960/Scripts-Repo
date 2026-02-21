@@ -372,10 +372,18 @@ public class CombatUnit : BaseUnit
 
         UpdateEquipmentVisuals();
 
-        // Subscribe to events
-        GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
-        GameEventManager.Instance.OnCombatStarted += HandleCombatStarted;
-        GameEventManager.Instance.OnDamageApplied += HandleDamageApplied;
+        // Subscribe to events (defensive: GameEventManager may not be initialized during generation)
+        if (GameEventManager.Instance != null)
+        {
+            GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+            GameEventManager.Instance.OnCombatStarted += HandleCombatStarted;
+            GameEventManager.Instance.OnDamageApplied += HandleDamageApplied;
+        }
+        else
+        {
+            // Defer subscription until GameEventManager exists to avoid NullReferenceException during large generation sequences
+            StartCoroutine(DeferredSubscribeToGameEventManager());
+        }
 
         // Instantiate and initialize the unit label
         if (unitLabelPrefab != null && unitLabelInstance == null)
@@ -397,6 +405,20 @@ public class CombatUnit : BaseUnit
         }
         // Subscribe to health change for label update
         OnHealthChanged += UpdateUnitLabelHealth;
+    }
+
+    private System.Collections.IEnumerator DeferredSubscribeToGameEventManager()
+    {
+        while (GameEventManager.Instance == null)
+            yield return null;
+
+        try
+        {
+            GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+            GameEventManager.Instance.OnCombatStarted += HandleCombatStarted;
+            GameEventManager.Instance.OnDamageApplied += HandleDamageApplied;
+        }
+        catch { }
     }
 
     // Base stats, equipment bonuses, and ability modifiers are inherited from BaseUnit or overridden above.

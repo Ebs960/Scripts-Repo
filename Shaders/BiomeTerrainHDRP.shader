@@ -647,7 +647,15 @@ Shader "Custom/BiomeTerrainHDRP"
                     TEXTURE2D_ARRAY_ARGS(_BiomeMaskArray, sampler_BiomeMaskArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist);
 
-                s.albedo = albedoRaw.rgb * biomeTint.rgb;
+                // Overlay blend: preserves substrate texture contrast while applying
+                // strong biome tints (grayscale substrate × saturated color).
+                // Below 0.5 gray: 2*base*tint (darkens). Above 0.5: 1-2*(1-base)*(1-tint) (lightens).
+                float3 base = albedoRaw.rgb;
+                float3 tint = biomeTint.rgb;
+                float3 overlayR = (base < 0.5)
+                    ? 2.0 * base * tint
+                    : 1.0 - 2.0 * (1.0 - base) * (1.0 - tint);
+                s.albedo = overlayR;
 
                 // Emissive
                 float4 emissiveParams = SAMPLE_TEXTURE2D_LOD(_BiomeEmissiveMapTex, sampler_BiomeEmissiveMapTex,

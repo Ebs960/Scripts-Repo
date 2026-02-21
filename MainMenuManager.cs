@@ -904,8 +904,8 @@ public class MainMenuManager : MonoBehaviour
         
         // Base lake counts by moisture (halved)
         int[] baseLakeCounts = { 1, 2, 3, 7, 8, 9 };      // Desert=none, Oceanic=moderate
-        int[] minLakeSizes = { 1, 1, 1, 1, 2, 3 };        // Halved min sizes
-        int[] maxLakeSizes = { 1, 1, 2, 2, 4, 5 };        // Halved max sizes
+        int[] minLakeSizes = { 1, 1, 1, 1, 2, 3 };       
+        int[] maxLakeSizes = { 1, 1, 2, 2, 4, 5 };        
         
         // Land type multipliers for lake count (islands have less inland area)
         // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
