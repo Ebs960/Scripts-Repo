@@ -212,17 +212,17 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.406
+  seedPositionVariance: 0.525
   elevationExponent: 1.07
-  ridgeStrength: 0.069
+  ridgeStrength: 0.116
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 2
-  moistureFreq: 0.06
+  elevationFreq: 0.42
+  moistureFreq: 0.09
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.766
-  latitudeExponent: 1.15
+  latitudeExponent: 1.23
   temperatureNoiseFrequency: 0.19
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
@@ -280,6 +280,7 @@ MonoBehaviour:
     biomeDecorations: []
     enableDecorations: 1
     globalScaleMultiplier: 1
+  stampingBatchSize: 4096
   planetType: 0
   mapType: 0
   currentMapTypeName: 

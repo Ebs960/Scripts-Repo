@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Tropical
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   biome: 6
-  surfaceFamily: {fileID: 11400000, guid: 18d30b3a8dca2434482c348de25e9c32, type: 2}
+  waterType: 0
+  surfaceFamily: {fileID: 11400000, guid: d2536777d4fb9fb4a9dbe9989a33da67, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}

@@ -394,6 +394,41 @@ public abstract class BaseUnit : MonoBehaviour
 
     protected virtual void OnDestroy()
     {
+        // DIAGNOSTIC (animal-only): animals are currently being destroyed immediately after spawn.
+        // Log a stack trace so we can identify the true destroy caller.
+        try
+        {
+            var cu = this as CombatUnit;
+            if (cu != null &&
+                cu.data != null &&
+                cu.data.unitType == CombatCategory.Animal &&
+                AnimalManager.Instance != null &&
+                AnimalManager.Instance.debugSpawning)
+            {
+                string sceneName = gameObject != null && gameObject.scene.IsValid() ? gameObject.scene.name : "<invalid>";
+                string parentName = transform != null && transform.parent != null ? transform.parent.name : "<none>";
+                string compDump = "";
+                try
+                {
+                    int id = gameObject != null ? gameObject.GetInstanceID() : 0;
+                    if (id != 0 && AnimalManager.Instance.TryGetSpawnComponentDump(id, out var dump))
+                    {
+                        compDump = "\n" + dump;
+                        AnimalManager.Instance.ClearSpawnComponentDump(id);
+                    }
+                }
+                catch { }
+                Debug.LogWarning(
+                    $"[BaseUnit][AnimalDestroyDiag] Animal OnDestroy: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
+                    $"scene={sceneName} frame={Time.frameCount} time={Time.time:F3} " +
+                    $"planetIndex={planetIndex} tile={currentTileIndex} layer={currentLayer} ownerNull={(owner==null)} parent={parentName}\n" +
+                    $"StackTrace:\n{System.Environment.StackTrace}" +
+                    compDump
+                );
+            }
+        }
+        catch { }
+
         // Clean up equipment GameObjects
         foreach (var item in equippedItemObjects.Values)
         {
@@ -716,6 +751,25 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool ApplyDamage(int damageAmount)
     {
+        // DIAGNOSTIC (animal-only): determine whether animals are being killed via damage.
+        try
+        {
+            var cu = this as CombatUnit;
+            if (cu != null &&
+                cu.data != null &&
+                cu.data.unitType == CombatCategory.Animal &&
+                AnimalManager.Instance != null &&
+                AnimalManager.Instance.debugSpawning)
+            {
+                Debug.LogWarning(
+                    $"[BaseUnit][AnimalDamageDiag] ApplyDamage called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
+                    $"damage={damageAmount} hpBefore={currentHealth} maxHP={MaxHealth} frame={Time.frameCount} time={Time.time:F3}\n" +
+                    $"StackTrace:\n{System.Environment.StackTrace}"
+                );
+            }
+        }
+        catch { }
+
         if (animator != null && HasParameter(animator, hitHash))
             animator.SetTrigger(hitHash);
 
@@ -764,6 +818,25 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     protected virtual void Die()
     {
+        // DIAGNOSTIC (animal-only): if animals are dying, this stack trace will include the real caller chain.
+        try
+        {
+            var cu = this as CombatUnit;
+            if (cu != null &&
+                cu.data != null &&
+                cu.data.unitType == CombatCategory.Animal &&
+                AnimalManager.Instance != null &&
+                AnimalManager.Instance.debugSpawning)
+            {
+                Debug.LogWarning(
+                    $"[BaseUnit][AnimalDieDiag] Die called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
+                    $"hp={currentHealth}/{MaxHealth} frame={Time.frameCount} time={Time.time:F3}\n" +
+                    $"StackTrace:\n{System.Environment.StackTrace}"
+                );
+            }
+        }
+        catch { }
+
         if (animator != null && HasParameter(animator, deathHash))
             animator.SetTrigger(deathHash);
 

@@ -136,8 +136,8 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
 
             if (!includeObjectBreakdown) return;
 
-            // Major object type breakdown
-            SummarizeType<Texture2DArray>("Texture2DArray");
+            // Major object type breakdown (log every Texture2DArray to identify what's loaded)
+            SummarizeType<Texture2DArray>("Texture2DArray", logEachItem: true);
             SummarizeType<RenderTexture>("RenderTexture");
             SummarizeType<Texture2D>("Texture2D");
             SummarizeType<Mesh>("Mesh");
@@ -151,45 +151,51 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         }
     }
 
-    private static void SummarizeType<T>(string typeName) where T : UnityEngine.Object
+    private static void SummarizeType<T>(string typeName, bool logEachItem = false) where T : UnityEngine.Object
     {
         var objs = Resources.FindObjectsOfTypeAll<T>();
         long total = 0;
         int count = 0;
+        var items = logEachItem ? new List<(string name, string path, string source, long bytes)>() : null;
 
         foreach (var o in objs)
         {
             if (o == null) continue;
-            // Filter to project assets (Assets/ or Packages/) OR allow named runtime objects
-            bool include = false;
+
+            string assetPath = "";
+            string source = "unknown";
 #if UNITY_EDITOR
-            string path = AssetDatabase.GetAssetPath(o);
-            if (!string.IsNullOrEmpty(path) && (path.StartsWith("Assets/") || path.StartsWith("Packages/")))
-            {
-                include = true;
-            }
+            assetPath = AssetDatabase.GetAssetPath(o);
 #endif
-            if (!include)
+            if (!string.IsNullOrEmpty(assetPath))
             {
-                // Allow runtime-created textures if they contain common game prefixes
-                var n = o.name ?? string.Empty;
-                if (n.IndexOf("biome", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("planet", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("minimap", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("tile", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    n.IndexOf("biometexturearray", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    include = true;
-                }
+                if (assetPath.StartsWith("Assets/")) source = "project";
+                else if (assetPath.StartsWith("Packages/")) source = "package";
+                else source = "other";
+            }
+            else
+            {
+                source = "runtime";
             }
 
-            if (!include) continue;
-
+            long bytes = Profiler.GetRuntimeMemorySizeLong(o);
             count++;
-            total += Profiler.GetRuntimeMemorySizeLong(o);
+            total += bytes;
+
+            if (items != null)
+                items.Add((o.name ?? "(unnamed)", assetPath, source, bytes));
         }
 
         Debug.Log($"[Memory] {typeName}: count={count} runtimeMem≈{FormatBytes(total)}");
+
+        if (items != null)
+        {
+            items.Sort((a, b) => b.bytes.CompareTo(a.bytes));
+            foreach (var item in items)
+            {
+                Debug.Log($"[Memory]   {typeName} '{item.name}' ≈ {FormatBytes(item.bytes)} [{item.source}] {item.path}");
+            }
+        }
     }
 
     private static void LogTopNTextures()

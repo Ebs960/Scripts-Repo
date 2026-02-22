@@ -54,6 +54,9 @@ public class HexGridOverlay : MonoBehaviour
     
     // Timing
     private float lastUpdateTime;
+
+    // Event subscription
+    private bool _subscribedToPlanetReady = false;
     
     // Hex geometry constants (pointy-top hex)
     private static readonly float SQRT3 = Mathf.Sqrt(3f);
@@ -89,10 +92,17 @@ public class HexGridOverlay : MonoBehaviour
             Debug.Log($"[HexGridOverlay] Using assigned material: {lineMaterial.name}, shader={lineMaterial.shader?.name ?? "NULL"}");
         }
         
-        // Try to find references
-        FindReferences();
-        
+        // Try to find references silently at startup (avoid noisy warnings while systems initialize)
+        FindReferences(silent: true);
+
         Debug.Log($"[HexGridOverlay] After FindReferences — grid={(grid != null ? $"found (TileCount={grid.TileCount}, Width={grid.Width}, MapWidth={grid.MapWidth})" : "NULL")}, planetGenerator={(planetGenerator != null ? planetGenerator.name : "NULL")}");
+
+        // Subscribe to GameManager planet-ready event so we can acquire the grid when it's available.
+        if (GameManager.Instance != null && !_subscribedToPlanetReady)
+        {
+            GameManager.Instance.OnPlanetReady += HandlePlanetReady;
+            _subscribedToPlanetReady = true;
+        }
         
         // Initial visibility
         lineRendererParent.gameObject.SetActive(showGrid);
@@ -163,7 +173,7 @@ public class HexGridOverlay : MonoBehaviour
         
         if (visible && grid == null)
         {
-            FindReferences();
+            FindReferences(silent: false);
         }
         
         // Reset first-update logging so we get fresh diagnostics when toggled on
@@ -208,7 +218,7 @@ public class HexGridOverlay : MonoBehaviour
     /// </summary>
     public bool IsGridVisible => showGrid;
     
-    private void FindReferences()
+    private void FindReferences(bool silent = false)
     {
         // Find HexMapChunkManager
         if (chunkManager == null)
@@ -232,14 +242,16 @@ public class HexGridOverlay : MonoBehaviour
             {
                 heightmapTexture = chunkManager.SharedMaterial.GetTexture("_Heightmap") as Texture2D;
             }
-            Debug.Log($"[HexGridOverlay] FindReferences — Found HexMapChunkManager on '{chunkManager.gameObject.name}', " +
-                $"Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL (chunk manager has no grid yet)")}, " +
-                $"displacementStrength={displacementStrength}");
+            if (!silent)
+                Debug.Log($"[HexGridOverlay] FindReferences — Found HexMapChunkManager on '{chunkManager.gameObject.name}', " +
+                    $"Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL (chunk manager has no grid yet)")}, " +
+                    $"displacementStrength={displacementStrength}");
         }
         else
         {
-            Debug.LogWarning($"[HexGridOverlay] FindReferences — HexMapChunkManager NOT found on '{gameObject.name}' or parents. " +
-                $"Hierarchy: {GetHierarchyPath(transform)}");
+            if (!silent)
+                Debug.LogWarning($"[HexGridOverlay] FindReferences — HexMapChunkManager NOT found on '{gameObject.name}' or parents. " +
+                    $"Hierarchy: {GetHierarchyPath(transform)}");
         }
         
         // Find PlanetGenerator
@@ -258,9 +270,22 @@ public class HexGridOverlay : MonoBehaviour
             Debug.Log($"[HexGridOverlay] FindReferences — Using PlanetGenerator '{planetGenerator.name}', Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL")}");
         }
         
-        if (grid == null)
+        if (grid == null && !silent)
         {
             Debug.LogWarning("[HexGridOverlay] FindReferences — Could NOT find a valid HexGrid from either HexMapChunkManager or PlanetGenerator. Grid lines will not render until grid is available.");
+        }
+    }
+
+    private void HandlePlanetReady(int planetIndex)
+    {
+        // When a planet becomes ready, try to find the grid (this will pick up HexMapChunkManager or PlanetGenerator)
+        FindReferences(silent: false);
+        if (grid != null)
+        {
+            Debug.Log($"[HexGridOverlay] HandlePlanetReady — acquired grid (TileCount={grid.TileCount}).");
+            // Reset logging flags so first-update diagnostics run again when grid becomes available
+            _loggedFirstGridUpdate = false;
+            _loggedFirstUpdate = false;
         }
     }
     
@@ -555,6 +580,21 @@ public class HexGridOverlay : MonoBehaviour
         if (lineMaterial != null && lineMaterial.name.Contains("Instance"))
         {
             Destroy(lineMaterial);
+        }
+        // Unsubscribe from GameManager event
+        if (GameManager.Instance != null && _subscribedToPlanetReady)
+        {
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+            _subscribedToPlanetReady = false;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (GameManager.Instance != null && _subscribedToPlanetReady)
+        {
+            GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+            _subscribedToPlanetReady = false;
         }
     }
 }

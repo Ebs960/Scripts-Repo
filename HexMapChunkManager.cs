@@ -1,6 +1,72 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+
+/// <summary>
+/// Burst job that fills a BiomeIndexMap texture (RFloat) from a pre-computed tile-to-slice lookup.
+/// Each pixel reads the LUT for its tile index, then looks up the slice in a flat array.
+/// </summary>
+[BurstCompile]
+struct FillBiomeIndexMapJob : IJobParallelFor
+{
+    [ReadOnly] public NativeArray<int> lut;
+    [ReadOnly] public NativeArray<int> tileSliceIndex;
+    public NativeArray<float> pixels;
+
+    public void Execute(int i)
+    {
+        int tileIndex = lut[i];
+        if (tileIndex >= 0 && tileIndex < tileSliceIndex.Length)
+            pixels[i] = (float)tileSliceIndex[tileIndex];
+        else
+            pixels[i] = 0f;
+    }
+}
+
+/// <summary>
+/// Burst job that fills a Heightmap texture (RHalf) from a pre-computed tile-to-elevation lookup.
+/// Writes raw half-float bits so the output can go directly to SetPixelData.
+/// </summary>
+[BurstCompile]
+struct FillHeightmapJob : IJobParallelFor
+{
+    [ReadOnly] public NativeArray<int> lut;
+    [ReadOnly] public NativeArray<float> tileElevation;
+    public NativeArray<ushort> pixels;
+
+    public void Execute(int i)
+    {
+        int tileIndex = lut[i];
+        float elevation = 0f;
+        if (tileIndex >= 0 && tileIndex < tileElevation.Length)
+            elevation = tileElevation[tileIndex];
+        pixels[i] = (ushort)math.f32tof16(elevation);
+    }
+}
+
+/// <summary>
+/// Burst job that encodes a tile-index LUT into an RGB24 texture (3 bytes per pixel).
+/// </summary>
+[BurstCompile]
+struct EncodeLUTTextureJob : IJobParallelFor
+{
+    [ReadOnly] public NativeArray<int> lut;
+    [NativeDisableParallelForRestriction]
+    public NativeArray<byte> pixels;
+
+    public void Execute(int i)
+    {
+        int tileIndex = lut[i];
+        int offset = i * 3;
+        pixels[offset]     = (byte)(tileIndex & 0xFF);
+        pixels[offset + 1] = (byte)((tileIndex >> 8) & 0xFF);
+        pixels[offset + 2] = (byte)((tileIndex >> 16) & 0xFF);
+    }
+}
 
 /// <summary>
 /// Manages all hex map chunks and handles seamless world wrapping.
@@ -528,17 +594,15 @@ public class HexMapChunkManager : MonoBehaviour
         
         columnWidth = mapWidth / chunksX;
         
-        // --- BATCHED: Build LUT across multiple frames (avoids 4M+ synchronous GetTileAtPosition calls) ---
-        int[] preBuiltLUT = null;
+        // --- BURST: Build LUT using Burst-compiled parallel job (all CPU cores) ---
         float buildStartTime = enableBuildProfiling ? Time.realtimeSinceStartup : 0f;
         float lastPhaseTime = buildStartTime;
-        yield return StartCoroutine(EquirectLUTBuilder.BuildLUTBatched(
-            grid, textureWidth, textureHeight, 64,
-            lut => preBuiltLUT = lut));
+        int[] preBuiltLUT = EquirectLUTBuilder.BuildLUTBurst(grid, textureWidth, textureHeight);
+        yield return null;
         
         if (preBuiltLUT == null)
         {
-            Debug.LogError("[HexMapChunkManager] Failed to build LUT in batched mode!");
+            Debug.LogError("[HexMapChunkManager] Failed to build LUT via Burst!");
             _buildCoroutine = null;
             yield break;
         }
@@ -546,7 +610,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (enableBuildProfiling)
         {
             float now = Time.realtimeSinceStartup;
-            Debug.Log($"[HexMapChunkManager][Profile] LUT build: {(now - lastPhaseTime) * 1000f:F2} ms");
+            Debug.Log($"[HexMapChunkManager][Profile] LUT build (Burst): {(now - lastPhaseTime) * 1000f:F2} ms");
             lastPhaseTime = now;
         }
 
@@ -702,9 +766,8 @@ public class HexMapChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Coroutine version of BuildBiomeVisualMaps that yields during heavy texture generation
-    /// (BuildBiomeIndexMap) to avoid blocking the main thread.
-    /// The synchronous BuildBiomeVisualMaps() is kept for RebakeTexture() and other immediate-use paths.
+    /// Coroutine version of BuildBiomeVisualMaps that uses Burst jobs for heavy texture generation
+    /// (BiomeIndexMap and Heightmap) instead of per-pixel coroutine strips.
     /// </summary>
     private System.Collections.IEnumerator BuildBiomeVisualMapsCoroutine()
     {
@@ -723,11 +786,8 @@ public class HexMapChunkManager : MonoBehaviour
         int width = textureWidth;
         int height = textureHeight;
 
-        // Reuse the LUT already built by BakeTexture() / PlanetTextureBaker.BakeGPU() —
-        // don't rebuild it here (previously allocated another 16 MB duplicate).
         if (bakeResult.lut == null || bakeResult.lut.Length != width * height)
         {
-            // Fallback: only build if BakeTexture didn't produce one (shouldn't happen)
             bakeResult.lut = EquirectLUTBuilder.BuildLUT(grid, width, height);
             bakeResult.width = width;
             bakeResult.height = height;
@@ -735,13 +795,15 @@ public class HexMapChunkManager : MonoBehaviour
 
         BuildBiomeLookup();
         BuildBiomeTextureArrays();
-        yield return null; // Yield after texture array building (can be heavy)
+        yield return null;
 
-        // BATCHED: Build biome index map with yields between strips
-        yield return StartCoroutine(BuildBiomeIndexMapCoroutine(width, height));
-        
-        // BATCHED: Build heightmap with yields between strips
-        yield return StartCoroutine(BuildHeightmapCoroutine(width, height));
+        // BURST: Build biome index map via parallel job
+        BuildBiomeIndexMapBurst(width, height);
+        yield return null;
+
+        // BURST: Build heightmap via parallel job
+        BuildHeightmapBurst(width, height);
+        yield return null;
     }
 
     private void BuildBiomeLookup()
@@ -1267,6 +1329,174 @@ public class HexMapChunkManager : MonoBehaviour
         if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
     }
 
+    // =====================================================================================
+    //  Burst-accelerated BiomeIndexMap and Heightmap builders
+    // =====================================================================================
+
+    /// <summary>
+    /// Pre-compute a flat array mapping tileIndex -> surface slice index.
+    /// Doing this once over ~tens of thousands of tiles eliminates millions of
+    /// Dictionary.TryGetValue + biome resolution calls in the per-pixel loop.
+    /// </summary>
+    private int[] PrecomputeTileSliceIndices()
+    {
+        int tileCount = grid.TileCount;
+        var result = new int[tileCount];
+        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
+
+        for (int ti = 0; ti < tileCount; ti++)
+        {
+            if (!planetGenerator.data.TryGetValue(ti, out var tile))
+            {
+                result[ti] = 0;
+                continue;
+            }
+
+            var visual = biomeVisualDatabase.Get(tile.biome);
+            int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+
+            int sliceIndex = 0;
+            if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
+            {
+                var map = biomeSurfaceMapArray[biomeIndex];
+                int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+                int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+                int forcedVariant = Mathf.RoundToInt(map.w);
+
+                int chosenVariant = 0;
+                if (forcedVariant >= 0 && forcedVariant < variantCount)
+                {
+                    chosenVariant = forcedVariant;
+                }
+                else
+                {
+                    unchecked
+                    {
+                        int h = ti * 1103515245 + 12345;
+                        chosenVariant = Mathf.Abs(h) % variantCount;
+                    }
+                }
+                sliceIndex = startSlice + chosenVariant;
+            }
+
+            if (maxSlice >= 0 && sliceIndex > maxSlice) sliceIndex = maxSlice;
+            if (sliceIndex < 0) sliceIndex = 0;
+            result[ti] = sliceIndex;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Pre-compute a flat array mapping tileIndex -> rendered elevation.
+    /// Eliminates per-pixel dictionary lookups and neighbor iteration in the heightmap loop.
+    /// </summary>
+    private float[] PrecomputeTileElevations()
+    {
+        int tileCount = grid.TileCount;
+        var result = new float[tileCount];
+        for (int ti = 0; ti < tileCount; ti++)
+            result[ti] = GetRenderedElevation(ti);
+        return result;
+    }
+
+    /// <summary>
+    /// Build the BiomeIndexMap texture using a Burst-compiled parallel job.
+    /// Replaces the strip-based coroutine with a single parallel pass over all pixels.
+    /// </summary>
+    private void BuildBiomeIndexMapBurst(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
+
+        if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
+        {
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "BiomeIndexMap"
+            };
+        }
+
+        int pixelCount = width * height;
+        var tileSlice = PrecomputeTileSliceIndices();
+
+        var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
+        var sliceNative = new NativeArray<int>(tileSlice, Allocator.TempJob);
+        var pixelsNative = new NativeArray<float>(pixelCount, Allocator.TempJob);
+
+        new FillBiomeIndexMapJob
+        {
+            lut = lutNative,
+            tileSliceIndex = sliceNative,
+            pixels = pixelsNative,
+        }.Schedule(pixelCount, 4096).Complete();
+
+        biomeIndexMap.SetPixelData(pixelsNative, 0);
+        biomeIndexMap.Apply(false, false);
+
+        pixelsNative.Dispose();
+        sliceNative.Dispose();
+        lutNative.Dispose();
+    }
+
+    /// <summary>
+    /// Build the Heightmap texture using a Burst-compiled parallel job.
+    /// Writes half-float data directly — no intermediate Color[] allocation.
+    /// </summary>
+    private void BuildHeightmapBurst(int width, int height)
+    {
+        if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
+
+        _heightmapMin = float.MaxValue;
+        _heightmapMax = float.MinValue;
+        _heightmapNonZero = 0;
+        _heightmapInvalidLut = 0;
+        _heightmapMissingTileData = 0;
+
+        if (heightmapTexture == null || heightmapTexture.width != width || heightmapTexture.height != height)
+        {
+            heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Repeat,
+                name = "TerrainHeightmap"
+            };
+        }
+
+        int pixelCount = width * height;
+        var tileElev = PrecomputeTileElevations();
+
+        // Track min/max from the pre-computed array (avoids doing it in the Burst job)
+        for (int ti = 0; ti < tileElev.Length; ti++)
+        {
+            float e = tileElev[ti];
+            if (e != 0f) _heightmapNonZero++;
+            if (e < _heightmapMin) _heightmapMin = e;
+            if (e > _heightmapMax) _heightmapMax = e;
+        }
+        if (_heightmapMin == float.MaxValue) _heightmapMin = 0f;
+        if (_heightmapMax == float.MinValue) _heightmapMax = 0f;
+
+        var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
+        var elevNative = new NativeArray<float>(tileElev, Allocator.TempJob);
+        var pixelsNative = new NativeArray<ushort>(pixelCount, Allocator.TempJob);
+
+        new FillHeightmapJob
+        {
+            lut = lutNative,
+            tileElevation = elevNative,
+            pixels = pixelsNative,
+        }.Schedule(pixelCount, 4096).Complete();
+
+        heightmapTexture.SetPixelData(pixelsNative, 0);
+        heightmapTexture.Apply(true, false);
+
+        pixelsNative.Dispose();
+        elevNative.Dispose();
+        lutNative.Dispose();
+    }
+
     private static Texture2D CreateFlatNormal()
     {
         var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
@@ -1393,9 +1623,14 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_SliceToBiomeMap", sliceToBiomeMap);
         }
 
-        // Provide biome count for shader UV-based lookups
+        // Provide biome count and total slice count for shader UV-based lookups.
+        // _BiomeCount = number of biomes (indexes into _BiomeTints[] / _BiomeParams[] / _BiomeEmissiveMapTex).
+        // _TotalSlices = number of texture array slices (indexes into _SliceToBiomeMap).
+        // These differ when multiple biomes share the same surface family.
         int biomeCount = (biomeTintArray != null) ? biomeTintArray.Length : 0;
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
+        int totalSlices = (biomeAlbedoArray != null) ? biomeAlbedoArray.depth : 1;
+        sharedMaterial.SetFloat("_TotalSlices", (float)totalSlices);
     }
     
     /// <summary>
@@ -1489,58 +1724,43 @@ public class HexMapChunkManager : MonoBehaviour
     
     /// <summary>
     /// Create a texture from the LUT array for shader-based tile highlighting.
+    /// Uses a Burst job to encode tile indices as RGB24 bytes, then SetPixelData.
     /// </summary>
     private Texture2D lutTexture;
     private void CreateAndApplyLUTTexture()
     {
         if (bakeResult.lut == null || bakeResult.lut.Length == 0) return;
-        
+
         int width = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int height = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-        
-        // Create texture to encode tile indices.
-        // IMPORTANT: Use linear color space (sRGB OFF), otherwise GPU sampling will gamma-transform
-        // the values and DecodeTileIndex() in the shader will never match the hovered tile index.
+
         lutTexture = new Texture2D(width, height, TextureFormat.RGB24, false, true);
-        lutTexture.filterMode = FilterMode.Point; // No interpolation!
+        lutTexture.filterMode = FilterMode.Point;
         lutTexture.wrapMode = TextureWrapMode.Repeat;
         lutTexture.name = "TileIndexLUT";
         lutTexture.anisoLevel = 0;
-        
-        int rowsPerStrip = 64;
-        var stripPixels = new Color[width * rowsPerStrip];
 
-        for (int startRow = 0; startRow < height; startRow += rowsPerStrip)
+        int pixelCount = width * height;
+        var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
+        var pixelsNative = new NativeArray<byte>(pixelCount * 3, Allocator.TempJob);
+
+        new EncodeLUTTextureJob
         {
-            int rowsThisStrip = Mathf.Min(rowsPerStrip, height - startRow);
-            int stripLen = width * rowsThisStrip;
+            lut = lutNative,
+            pixels = pixelsNative,
+        }.Schedule(pixelCount, 4096).Complete();
 
-            for (int localIdx = 0; localIdx < stripLen; localIdx++)
-            {
-                int globalIdx = startRow * width + localIdx;
-                if (globalIdx >= bakeResult.lut.Length)
-                {
-                    stripPixels[localIdx] = new Color(0f, 0f, 0f, 1f);
-                    continue;
-                }
-                int tileIndex = bakeResult.lut[globalIdx];
-                float r = (tileIndex % 256) / 255f;
-                float g = ((tileIndex / 256) % 256) / 255f;
-                float b = ((tileIndex / 65536) % 256) / 255f;
-                stripPixels[localIdx] = new Color(r, g, b, 1f);
-            }
+        lutTexture.SetPixelData(pixelsNative, 0);
+        lutTexture.Apply(false, false);
 
-            lutTexture.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
-        }
+        pixelsNative.Dispose();
+        lutNative.Dispose();
 
-        lutTexture.Apply();
-        
-        // Apply to material
         if (sharedMaterial != null)
         {
             sharedMaterial.SetTexture("_LUT", lutTexture);
         }
-}
+    }
     
     // Hex grid methods removed - shader graph doesn't support these properties.
     // To implement hex grid, create a separate HexGridOverlay component.
@@ -3094,7 +3314,21 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}) — unified water mesh not built. Check iso values or seed distribution.");
             yield break;
         }
-        yield return null; // Yield before extrusion (can be heavy)
+        // Release SDF grid arrays — marching squares is done, only the vert/tri lists matter now.
+        seedRiver = null;
+        seedLake = null;
+        seedOcean = null;
+        distRiver = null;
+        distLake = null;
+        distOcean = null;
+        ownerRiver = null;
+        ownerLake = null;
+        ownerOcean = null;
+        cornerVert = null;
+        horizEdge = null;
+        vertEdge = null;
+
+        yield return null;
 
         // Optionally extrude the top surface into a closed 3D volume (walls + bottom).
         if (extrudeInlandWaterToVolume)

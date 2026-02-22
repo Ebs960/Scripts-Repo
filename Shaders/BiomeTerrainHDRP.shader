@@ -19,17 +19,18 @@ Shader "Custom/BiomeTerrainHDRP"
 
         [Header(Displacement)]
         _ElevationScale ("Elevation Scale", Range(0.1, 20)) = 1.0
-        _NormalStrength ("Normal Strength", Range(0.01, 5)) = 1.0
-        _NormalSampleRadius ("Normal Sample Radius (texels)", Range(1, 12)) = 4
+        _NormalStrength ("Normal Strength", Range(0.01, 20)) = 1.0
+        _NormalSampleRadius ("Normal Sample Radius (texels)", Range(1, 50)) = 4
 
         [Header(Triplanar)]
         _TriTiling ("Triplanar Tiling", Range(0.01, 5)) = 1.15
-        _TriBlend ("Triplanar Blend Sharpness", Range(1, 20)) = 5.0
+        _TriBlend ("Triplanar Blend Sharpness", Range(1, 50)) = 5.0
 
         [Header(Map Dimensions)]
         _MapWidth ("Map Width", Float) = 100
         _MapHeight ("Map Height", Float) = 100
         _BiomeCount ("Biome Count", Float) = 32
+        _TotalSlices ("Total Texture Slices", Float) = 32
 
         [Header(Global Modifiers)]
         _GlobalSnowAmount ("Global Snow Amount", Range(0, 1)) = 0
@@ -69,8 +70,8 @@ Shader "Custom/BiomeTerrainHDRP"
         _DetailAlbedoMap ("Detail Albedo Map", 2D) = "gray" {}
         _DetailNormalMap ("Detail Normal Map", 2D) = "bump" {}
         _DetailTiling ("Detail Tiling", Range(1, 100)) = 20.0
-        _DetailStrength ("Detail Albedo Strength", Range(0, 1)) = 0.3
-        _DetailNormalStrength ("Detail Normal Strength", Range(0, 2)) = 0.5
+        _DetailStrength ("Detail Albedo Strength", Range(0, 10)) = 0.3
+        _DetailNormalStrength ("Detail Normal Strength", Range(0, 20)) = 0.5
         _DetailFadeStart ("Detail Fade Start Distance", Range(0, 200)) = 5.0
         _DetailFadeEnd ("Detail Fade End Distance", Range(0, 500)) = 50.0
 
@@ -102,11 +103,11 @@ Shader "Custom/BiomeTerrainHDRP"
         _CliffAlbedoPreview ("Cliff Albedo Preview (fallback)", 2D) = "white" {}
         _CliffNormalPreview ("Cliff Normal Preview (fallback)", 2D) = "bump" {}
         _CliffTiling ("Cliff Tiling", Range(0.1, 200)) = 12.0
-        _CliffStrength ("Cliff Strength", Range(0,1)) = 1.0
+        _CliffStrength ("Cliff Strength", Range(0,10)) = 1.0
         _CliffSlopeThreshold ("Cliff Slope Threshold", Range(0,1)) = 0.5
-        _CliffSlopeBlend ("Cliff Slope Blend", Range(0,1)) = 0.2
+        _CliffSlopeBlend ("Cliff Slope Blend", Range(0,10)) = 0.2
         _CliffStepThreshold ("Cliff Step Threshold (texel units)", Range(0,1)) = 0.15
-        _CliffStepBlend ("Cliff Step Blend (texel units)", Range(0,1)) = 0.08
+        _CliffStepBlend ("Cliff Step Blend (texel units)", Range(0,10)) = 0.08
         _CliffSliceCount ("Cliff Slice Count", Float) = 1
     }
 
@@ -150,6 +151,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _MapWidth;
     float _MapHeight;
     float _BiomeCount;
+    float _TotalSlices;
     float _GlobalSnowAmount;
     float _GlobalWetness;
     float _MetallicMultiplier;
@@ -346,7 +348,7 @@ Shader "Custom/BiomeTerrainHDRP"
     // Blends between hex-tiled triplanar (close) and single Y-planar (far)
 
     float4 SampleBiomeTexture(TEXTURE2D_ARRAY_PARAM(tex, samp),
-        float3 worldPos, float3 triWeights, float sliceIndex, float tiling, float camDist)
+        float3 worldPos, float3 triWeights, float sliceIndex, float tiling, float camDist, float2 mapUV)
     {
         float lodBlend = saturate((camDist - _TriplanarLODStart) /
             max(_TriplanarLODEnd - _TriplanarLODStart, 0.01));
@@ -356,16 +358,23 @@ Shader "Custom/BiomeTerrainHDRP"
         if (lodBlend >= 0.999)
             return SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex);
 
+        // Compute a per-tile hash (using the biome index map UV) so large hex-cells
+        // don't end up repeating identically across neighboring map tiles when
+        // triplanar tiling is small. This biases the per-axis sample UVs by a
+        // deterministic tile-local offset.
+        float2 tileIdx = floor(mapUV / max(_BiomeIndexMap_TexelSize.xy, 1e-6));
+        float2 tileHash = HexHash(tileIdx);
+
         // Hex-tiled triplanar (9 samples: 3 axes x 3 hex cells)
-        float4 sX = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
-        float4 sY = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
-        float4 sZ = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
+        float4 sX = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling + tileHash, sliceIndex);
+        float4 sY = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY + tileHash, sliceIndex);
+        float4 sZ = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling + tileHash, sliceIndex);
         float4 fullResult = sX * triWeights.x + sY * triWeights.y + sZ * triWeights.z;
 
         // Blend toward Y-only at distance
         if (lodBlend > 0.001)
         {
-            float4 yOnly = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex);
+            float4 yOnly = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY + tileHash, sliceIndex);
             return lerp(fullResult, yOnly, lodBlend);
         }
         return fullResult;
@@ -374,7 +383,7 @@ Shader "Custom/BiomeTerrainHDRP"
     // Distance-adaptive normal sampling with hex tiling and whiteout blending
     float3 SampleBiomeNormal(TEXTURE2D_ARRAY_PARAM(tex, samp),
         float3 worldPos, float3 worldNormal, float3 triWeights,
-        float sliceIndex, float tiling, float camDist)
+        float sliceIndex, float tiling, float camDist, float2 mapUV)
     {
         float lodBlend = saturate((camDist - _TriplanarLODStart) /
             max(_TriplanarLODEnd - _TriplanarLODStart, 0.01));
@@ -388,10 +397,14 @@ Shader "Custom/BiomeTerrainHDRP"
             return normalize(nY.xzy);
         }
 
+        // Per-tile hash to offset hex sampling similarly to albedo sampling.
+        float2 tileIdx = floor(mapUV / max(_BiomeIndexMap_TexelSize.xy, 1e-6));
+        float2 tileHash = HexHash(tileIdx);
+
         // Hex-tiled triplanar normals with whiteout reorientation
-        float3 tnX = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling, sliceIndex);
-        float3 tnY = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY, sliceIndex);
-        float3 tnZ = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling, sliceIndex);
+        float3 tnX = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.zy * tiling + tileHash, sliceIndex);
+        float3 tnY = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), uvY + tileHash, sliceIndex);
+        float3 tnZ = SampleNormalHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling + tileHash, sliceIndex);
 
         float3 nX = float3(tnX.xy + worldNormal.zy, abs(worldNormal.x));
         float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
@@ -410,9 +423,9 @@ Shader "Custom/BiomeTerrainHDRP"
 
     // ===================== Shared Helpers =====================
 
-    int GetBiomeIndexFromSlice(float sliceIndex, float totalSlices)
+    int GetBiomeIndexFromSlice(float sliceIndex)
     {
-        float u = (sliceIndex + 0.5) / max(totalSlices, 1.0);
+        float u = (sliceIndex + 0.5) / max(_TotalSlices, 1.0);
         return (int)(SAMPLE_TEXTURE2D_LOD(_SliceToBiomeMap, sampler_SliceToBiomeMap, float2(u, 0.5), 0).r + 0.5);
     }
 
@@ -625,10 +638,10 @@ Shader "Custom/BiomeTerrainHDRP"
             };
 
             BiomeSample SampleFullBiome(float sliceIndex, float3 worldPos,
-                float3 displacedNormal, float3 triWeights, float camDist)
+                float3 displacedNormal, float3 triWeights, float camDist, float2 mapUV)
             {
                 BiomeSample s;
-                int biomeIdx = GetBiomeIndexFromSlice(sliceIndex, max(_BiomeCount, 1.0));
+                int biomeIdx = GetBiomeIndexFromSlice(sliceIndex);
                 biomeIdx = clamp(biomeIdx, 0, 63);
 
                 float4 biomeTint = _BiomeTints[biomeIdx];
@@ -639,13 +652,13 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Distance-adaptive hex-tiled triplanar sampling (#4, #6)
                 float4 albedoRaw = SampleBiomeTexture(
                     TEXTURE2D_ARRAY_ARGS(_BiomeAlbedoArray, sampler_BiomeAlbedoArray),
-                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist);
+                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 s.normalWS = SampleBiomeNormal(
                     TEXTURE2D_ARRAY_ARGS(_BiomeNormalArray, sampler_BiomeNormalArray),
-                    worldPos, displacedNormal, triWeights, sliceIndex, effectiveTiling, camDist);
+                    worldPos, displacedNormal, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 s.mask = SampleBiomeTexture(
                     TEXTURE2D_ARRAY_ARGS(_BiomeMaskArray, sampler_BiomeMaskArray),
-                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist);
+                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
 
                 // Overlay blend: preserves substrate texture contrast while applying
                 // strong biome tints (grayscale substrate × saturated color).
@@ -659,10 +672,10 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // Emissive
                 float4 emissiveParams = SAMPLE_TEXTURE2D_LOD(_BiomeEmissiveMapTex, sampler_BiomeEmissiveMapTex,
-                    float2((sliceIndex + 0.5) / max(_BiomeCount, 1.0), 0.5), 0);
+                    float2((biomeIdx + 0.5) / max(_BiomeCount, 1.0), 0.5), 0);
                 float4 emissiveTex = SampleBiomeTexture(
                     TEXTURE2D_ARRAY_ARGS(_SurfaceEmissiveArray, sampler_SurfaceEmissiveArray),
-                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist);
+                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 s.emission = emissiveTex.rgb * emissiveParams.rgb * emissiveParams.a;
 
                 return s;
@@ -675,7 +688,12 @@ Shader "Custom/BiomeTerrainHDRP"
                 float2 uv = input.uv;
                 float3 worldPos = input.positionWS;
                 float3 V = normalize(input.viewDirWS);
-                float camDist = distance(worldPos, _WorldSpaceCameraPos);
+                // Use camera-forward distance: how far the sampled world point
+                // lies along the camera view ray. This ties fades strictly to
+                // the camera position/direction rather than any map-center or
+                // other artifacts.
+                float camDist = dot((_WorldSpaceCameraPos - worldPos), V);
+                camDist = abs(camDist);
 
                 // --- Displaced normal from heightmap ---
                 float3 displacedNormal = ComputeDisplacedNormal(uv);
@@ -707,7 +725,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
 
                 // Sample primary biome
-                BiomeSample primary = SampleFullBiome(centerSlice, worldPos, displacedNormal, triWeights, camDist);
+                BiomeSample primary = SampleFullBiome(centerSlice, worldPos, displacedNormal, triWeights, camDist, uv);
 
                 float3 albedo;
                 float3 normalWS;
@@ -718,7 +736,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Height-based biome blending at boundaries (#3, #7: mask.b = height)
                 if (diffCount > 0 && secondarySlice != centerSlice && _BiomeBlendRadius > 0.01)
                 {
-                    BiomeSample secondary = SampleFullBiome(secondarySlice, worldPos, displacedNormal, triWeights, camDist);
+                    BiomeSample secondary = SampleFullBiome(secondarySlice, worldPos, displacedNormal, triWeights, camDist, uv);
 
                     // Use generated global _Heightmap for height-based blend (sample center and neighbor)
                     float hPrimary = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;
@@ -781,8 +799,8 @@ Shader "Custom/BiomeTerrainHDRP"
                         float sliceF = floor(hash * max(1.0, _CliffSliceCount - 1.0) + 0.5);
 
                         // Sample cliff albedo and normal using triplanar/hex helpers
-                        float4 cliffAlb = SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray), worldPos, triWeights, sliceF, _CliffTiling, camDist);
-                        float3 cliffNorm = SampleBiomeNormal(TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray), worldPos, normalWS, triWeights, sliceF, _CliffTiling, camDist);
+                        float4 cliffAlb = SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_CliffAlbedoArray, sampler_CliffAlbedoArray), worldPos, triWeights, sliceF, _CliffTiling, camDist, uv);
+                        float3 cliffNorm = SampleBiomeNormal(TEXTURE2D_ARRAY_ARGS(_CliffNormalArray, sampler_CliffNormalArray), worldPos, normalWS, triWeights, sliceF, _CliffTiling, camDist, uv);
 
                         // For step edges, prefer darker, more vertical look: lerp by cliffBlend
                         albedo = lerp(albedo, cliffAlb.rgb, cliffBlend);

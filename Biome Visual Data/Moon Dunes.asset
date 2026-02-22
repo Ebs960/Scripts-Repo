@@ -20,7 +20,7 @@ MonoBehaviour:
   normal: {fileID: 0}
   maskMap: {fileID: 0}
   tiling: 1
-  tint: {r: 0.3207547, g: 0.3207547, b: 0.3207547, a: 1}
+  tint: {r: 0.20754719, g: 0.20754719, b: 0.20754719, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
   snowRetention: 0

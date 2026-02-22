@@ -50,28 +50,28 @@ MonoBehaviour:
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   textureWidth: 2048
   textureHeight: 2048
-  chunksX: 8
-  chunksZ: 4
-  meshSubdivisionsPerChunk: 32
-  displacementStrength: 1
+  chunksX: 6
+  chunksZ: 3
+  meshSubdivisionsPerChunk: 72
+  displacementStrength: 1.05
   flatY: 0
   preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
   globalWetness: 0
   metallicMultiplier: 1
   aoIntensity: 1.31
-  smoothnessMultiplier: 1.11
+  smoothnessMultiplier: 0.92
   triplanarTiling: 0.81
   triplanarBlend: 7.6
-  normalStrength: 1
-  normalSampleRadius: 7.5
-  biomeBlendRadius: 0.63
+  normalStrength: 5
+  normalSampleRadius: 1
+  biomeBlendRadius: 1.65
   biomeBlendSharpness: 4.51
   detailAlbedoMap: {fileID: 2800000, guid: 2b1b4885129772345a1a3a355e1214e0, type: 3}
   detailNormalMap: {fileID: 2800000, guid: c21bd1927c78740498ddbc06e9171da8, type: 3}
   detailTiling: 1
-  detailStrength: 0.9
-  detailNormalStrength: 1.65
+  detailStrength: 1
+  detailNormalStrength: 2
   detailFadeStart: 35
   detailFadeEnd: 80
   enableWrap: 1
@@ -83,7 +83,7 @@ MonoBehaviour:
   debugTransformChanges: 0
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
-  waterYOffset: 0.02
+  waterYOffset: 0.01
   manualOceanWaterY: 5.1
   useManualOceanWaterY: 1
   enableOceanPlane: 0
@@ -95,9 +95,9 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 256
-  riverSdfHeight: 128
-  riverHalfWidthMultiplier: 0.3
+  riverSdfWidth: 512
+  riverSdfHeight: 256
+  riverHalfWidthMultiplier: 0.6
   lakeHalfWidthMultiplier: 0.9
   oceanHalfWidthMultiplier: 0.9
   riverSurfaceLift: 0.06
@@ -110,15 +110,17 @@ MonoBehaviour:
   cliffInset: 0.089
   preBuildOnPlanetReady: 1
   chunksPerBatch: 4
+  tilesPerBatch: 2048
+  enableBuildProfiling: 0
   enableSeasonMasks: 0
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
   cliffTiling: 0.1
-  cliffStrength: 0.452
-  cliffSlopeThreshold: 0.95
-  cliffSlopeBlend: 0.623
-  cliffStepThreshold: 0.301
-  cliffStepBlend: 0.541
+  cliffStrength: 0.565
+  cliffSlopeThreshold: 0.81
+  cliffSlopeBlend: 0.046
+  cliffStepThreshold: 0.2
+  cliffStepBlend: 0.132
 --- !u!114 &6515396151515733605
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -131,7 +133,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa2a4457109e68f4ba0ebe96fddf0c24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexGridOverlay
-  showGrid: 1
+  showGrid: 0
   gridColor: {r: 0, g: 0, b: 0, a: 0.85882354}
   lineWidth: 0.01
   heightOffset: 2.5

@@ -192,7 +192,7 @@ public class GameManager : MonoBehaviour
             if (ts != null && ts.IsReady()) break;
             yield return null;
         }
-        animalManager.SpawnInitialAnimals();
+        animalManager.SpawnInitialAnimalsOnPlanet(planetIndex);
     }
 
     [Header("Game State")]
@@ -1675,7 +1675,7 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    animalManagerInstance.SpawnInitialAnimals();
+                    animalManagerInstance.SpawnInitialAnimalsOnPlanet(pIndex);
                 }
             }
         }

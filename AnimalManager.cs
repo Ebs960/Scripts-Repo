@@ -33,6 +33,9 @@ public class AnimalManager : MonoBehaviour
     private Dictionary<CombatUnit, int> animalMovePoints = new Dictionary<CombatUnit, int>();
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
+
+    // Diagnostics: store spawn-time component dumps by instance id so OnDestroy can report what was attached.
+    private readonly Dictionary<int, string> _spawnComponentDumpById = new Dictionary<int, string>(256);
     // Track whether we've subscribed to TurnManager.OnNeutralTurn
     private bool _subscribedToTurnManager = false;
 
@@ -45,7 +48,9 @@ public class AnimalManager : MonoBehaviour
     void OnEnable()
     {
         TrySubscribeToTurnManager();
-        GameManager.OnPlanetFullyGenerated += HandlePlanetFullyGenerated;
+        // Animals are spawned by GameManager during the dedicated spawning phase
+        // (SpawnCivsAndAnimalsOnAllPlanets) to avoid early-generation spawns being wiped out
+        // and then incorrectly blocked by the "already spawned" guard.
     }
 
     void OnDisable()
@@ -55,7 +60,6 @@ public class AnimalManager : MonoBehaviour
             TurnManager.Instance.OnNeutralTurn -= HandleNeutralTurn;
             _subscribedToTurnManager = false;
         }
-        GameManager.OnPlanetFullyGenerated -= HandlePlanetFullyGenerated;
     }
 
     void Update()
@@ -93,8 +97,18 @@ public class AnimalManager : MonoBehaviour
     {
         if (spawnedPlanetIndices.Contains(pIndex))
         {
-            if (debugSpawning) Debug.Log($"[AnimalManager] Initial animals already spawned for planet {pIndex}");
-            return;
+            // IMPORTANT: the "spawned" flag must not block respawn if animals were later destroyed/never persisted.
+            // We treat the planet as spawned only if at least one live animal can be found.
+            if (!HasAnyLiveAnimalsOnPlanet(pIndex))
+            {
+                Debug.LogWarning($"[AnimalManager] Planet {pIndex} marked spawned but no live animals found; forcing respawn.");
+                spawnedPlanetIndices.Remove(pIndex);
+            }
+            else
+            {
+                if (debugSpawning) Debug.Log($"[AnimalManager] Initial animals already spawned for planet {pIndex}");
+                return;
+            }
         }
 
         int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
@@ -105,6 +119,34 @@ public class AnimalManager : MonoBehaviour
 
         // Start coroutine-based batched spawning to avoid frame hitches
         StartCoroutine(SpawnInitialAnimalsOnPlanetCoroutine(pIndex, mult));
+    }
+
+    private bool HasAnyLiveAnimalsOnPlanet(int pIndex)
+    {
+        // Check manager-tracked list first
+        for (int i = 0; i < activeAnimals.Count; i++)
+        {
+            var a = activeAnimals[i];
+            if (a == null) continue;
+            if (a.data == null) continue;
+            if (a.data.unitType != CombatCategory.Animal) continue;
+            if (a.planetIndex != pIndex) continue;
+            if (a.gameObject == null) continue;
+            return true;
+        }
+
+        // Fallback: check global registry in case activeAnimals desynced
+        foreach (var u in UnitRegistry.GetCombatUnits())
+        {
+            if (u == null) continue;
+            if (u.data == null) continue;
+            if (u.data.unitType != CombatCategory.Animal) continue;
+            if (u.planetIndex != pIndex) continue;
+            if (u.gameObject == null) continue;
+            return true;
+        }
+
+        return false;
     }
 
     [Header("Spawn Batching")]
@@ -343,7 +385,19 @@ public class AnimalManager : MonoBehaviour
     {
         if (generator == null) return;
         int planetIndex = generator.planetIndex;
-        if (spawnedPlanetIndices.Contains(planetIndex)) return;
+        if (spawnedPlanetIndices.Contains(planetIndex))
+        {
+            // Same rule as SpawnInitialAnimalsOnPlanet: allow respawn if animals don't actually exist.
+            if (!HasAnyLiveAnimalsOnPlanet(planetIndex))
+            {
+                Debug.LogWarning($"[AnimalManager] Planet {planetIndex} marked spawned on fully-generated event but no live animals found; forcing respawn.");
+                spawnedPlanetIndices.Remove(planetIndex);
+            }
+            else
+            {
+                return;
+            }
+        }
 
         var ts = TileSystem.GetForPlanet(planetIndex);
         if (ts == null || !ts.IsReady())
@@ -614,50 +668,7 @@ return true;
         }
 
         int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        // Flat-only positioning for animal spawning (use surface position for proper terrain height)
-        Vector3 pos = ts.GetTileSurfacePosition(chosenIndex);
-
-        var animalPrefab = rule.unitData.GetPrefab();
-        if (animalPrefab == null)
-        {
-            Debug.LogError($"[AnimalManager] Cannot spawn animal {rule.unitData.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
-            return;
-        }
-        
-        var go = Instantiate(animalPrefab, pos, Quaternion.identity);
-        // Keep hierarchy organized: parent spawned animals under their planet generator.
-        // (Do not change gameplay logic; this is purely scene organization.)
-        if (planet != null) go.transform.SetParent(planet.transform, true);
-        var unit = go.GetComponent<CombatUnit>();
-        if (unit == null)
-        {
-            Debug.LogError($"[AnimalManager] Spawned prefab for {rule.unitData.unitName} is missing CombatUnit component.");
-            Destroy(go);
-            return;
-        }
-        unit.Initialize(rule.unitData, null);
-        unit.planetIndex = pIndex;
-        unit.currentTileIndex = chosenIndex;
-        // Determine layer (centralized rules) and convert to occupancy layer
-        var chosenTile = ts.GetTileData(chosenIndex);
-        var spawnLayer = UnitLayerRules.GetSpawnLayerForUnit(unit, chosenTile);
-        if (!LayerConversion.TryToTileLayer(spawnLayer, out var occLayer)) occLayer = TileLayer.Surface;
-        unit.currentLayer = occLayer;
-        // Ensure upright orientation on flat map
-        unit.PositionUnitOnSurface(null, chosenIndex);
-
-        // Register occupancy explicitly
-        try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
-
-        activeAnimals.Add(unit);
-        if (debugSpawning) Debug.Log($"[AnimalManager] Spawned {rule?.unitData?.unitName ?? "<unknown>"} at tile {chosenIndex} on planet {pIndex}");
-        unit.OnDeath += () =>
-        {
-            activeAnimals.Remove(unit);
-            recentlyAttackedAnimals.Remove(unit);
-            animalMovePoints.Remove(unit);
-            UnitRegistry.Unregister(unit.gameObject);
-        };
+        SpawnAnimalAtTile(rule, pIndex, chosenIndex);
     }
 
     // Instantiate and register an animal at the specified tile index (shared helper)
@@ -667,7 +678,9 @@ return true;
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null) return;
 
-        Vector3 pos = ts.GetTileSurfacePosition(chosenIndex);
+        // Match ResourceManager placement: surface-aware position (includes tile elevation)
+        Vector3 surfacePos = ts.GetTileSurfacePosition(chosenIndex, 0f);
+        var tileData = ts != null ? ts.GetTileDataFromPlanet(chosenIndex, pIndex) : null;
 
         var animalPrefab = rule.unitData.GetPrefab();
         if (animalPrefab == null)
@@ -676,8 +689,29 @@ return true;
             return;
         }
 
-        var go = Instantiate(animalPrefab, pos, Quaternion.identity);
-        if (planet != null) go.transform.SetParent(planet.transform, true);
+        var go = Instantiate(animalPrefab, surfacePos, Quaternion.identity);
+
+        // Match ResourceManager hierarchy parenting rules: prefer dedicated roots when present.
+        try
+        {
+            if (planet != null)
+            {
+                Transform parent = null;
+                if (planet.resourcesRoot != null)
+                    parent = planet.resourcesRoot.transform;
+                else if (tileData != null && tileData.isLand && planet.surfaceRoot != null)
+                    parent = planet.surfaceRoot.transform;
+                else if (tileData != null && !tileData.isLand && planet.underwaterRoot != null)
+                    parent = planet.underwaterRoot.transform;
+                else
+                    parent = planet.transform;
+
+                if (parent != null)
+                    go.transform.SetParent(parent, true);
+            }
+        }
+        catch { }
+
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -698,7 +732,90 @@ return true;
 
         try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
+        // Match ResourceManager: ensure prefab pivot/bounds sit on the terrain surface.
+        // This prevents "spawned but invisible" cases where the model is buried below the terrain.
+        try
+        {
+            float surfaceY = surfacePos.y;
+            float lowest = float.MaxValue;
+            var rends = unit.gameObject.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in rends)
+            {
+                if (r == null) continue;
+                lowest = Mathf.Min(lowest, r.bounds.min.y);
+            }
+            var cols = unit.gameObject.GetComponentsInChildren<Collider>(true);
+            foreach (var c in cols)
+            {
+                if (c == null) continue;
+                lowest = Mathf.Min(lowest, c.bounds.min.y);
+            }
+            if (lowest != float.MaxValue)
+            {
+                float delta = surfaceY - lowest;
+                if (Mathf.Abs(delta) > 0.0001f)
+                    unit.transform.position = unit.transform.position + new Vector3(0f, delta, 0f);
+            }
+        }
+        catch { }
+
         activeAnimals.Add(unit);
+        // Ensure registry contains the instance and emit diagnostics to help track disappearing animals
+        try { UnitRegistry.Register(unit.gameObject); } catch { }
+        unit.gameObject.SetActive(true);
+        if (debugSpawning)
+        {
+            // Capture component list early (helps identify self-destruct scripts on the prefab).
+            try
+            {
+                int id = unit.gameObject.GetInstanceID();
+                var mbs = unit.gameObject.GetComponentsInChildren<MonoBehaviour>(true);
+                var sb = new System.Text.StringBuilder(512);
+                sb.AppendLine($"Components on '{unit.gameObject.name}' (id={id}):");
+                if (mbs != null)
+                {
+                    for (int i = 0; i < mbs.Length; i++)
+                    {
+                        var mb = mbs[i];
+                        if (mb == null) { sb.AppendLine($"  [{i}] <missing script>"); continue; }
+                        sb.AppendLine($"  [{i}] {mb.GetType().FullName} enabled={mb.enabled}");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine("  <none>");
+                }
+                _spawnComponentDumpById[id] = sb.ToString();
+            }
+            catch { }
+
+            string parentName = unit.transform.parent != null ? unit.transform.parent.name : "<none>";
+            bool parentActiveSelf = unit.transform.parent != null ? unit.transform.parent.gameObject.activeSelf : false;
+            string sceneName = unit.gameObject.scene.IsValid() ? unit.gameObject.scene.name : "<invalid>";
+            string layerName = LayerMask.LayerToName(unit.gameObject.layer);
+            if (string.IsNullOrEmpty(layerName)) layerName = unit.gameObject.layer.ToString();
+            var rends = unit.gameObject.GetComponentsInChildren<Renderer>(true);
+            int rendererCount = rends != null ? rends.Length : 0;
+            string rend0 = "<none>";
+            if (rends != null && rends.Length > 0 && rends[0] != null)
+            {
+                var b = rends[0].bounds;
+                rend0 = $"{rends[0].GetType().Name} enabled={rends[0].enabled} min={b.min.ToString("F2")} max={b.max.ToString("F2")}";
+            }
+            Debug.Log(
+                $"[AnimalManager] Spawn diagnostics: id={unit.gameObject.GetInstanceID()} " +
+                $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
+                $"scene={sceneName} layer={layerName} " +
+                $"hp={unit.currentHealth}/{unit.MaxHealth} " +
+                $"pos={unit.transform.position.ToString("F2")} scale={unit.transform.lossyScale.ToString("F3")} " +
+                $"parent={parentName} parentActiveSelf={parentActiveSelf} " +
+                $"registryHas={(UnitRegistry.GetObject(unit.gameObject.GetInstanceID()) != null)} " +
+                $"renderers={rendererCount} rend0={rend0}"
+            );
+
+            // Verify the object still exists after a couple frames (catches immediate cleanup/disable).
+            StartCoroutine(VerifySpawnedAnimal(unit, pIndex, chosenIndex));
+        }
         unit.OnDeath += () =>
         {
             activeAnimals.Remove(unit);
@@ -708,6 +825,43 @@ return true;
         };
 
         if (debugSpawning) Debug.Log($"[AnimalManager] Spawned {rule?.unitData?.unitName ?? "<unknown>"} at tile {chosenIndex} on planet {pIndex}");
+    }
+
+    private IEnumerator VerifySpawnedAnimal(CombatUnit unit, int pIndex, int tileIndex)
+    {
+        // 1 frame later
+        yield return null;
+        if (unit == null || unit.gameObject == null)
+        {
+            Debug.LogWarning($"[AnimalManager] VerifySpawn: animal destroyed after 1 frame (planet={pIndex} tile={tileIndex})");
+            yield break;
+        }
+        Debug.Log(
+            $"[AnimalManager] VerifySpawn(1f): id={unit.gameObject.GetInstanceID()} " +
+            $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
+            $"pos={unit.transform.position.ToString("F2")} parent={(unit.transform.parent != null ? unit.transform.parent.name : "<none>")}"
+        );
+
+        // 10 more frames later
+        for (int i = 0; i < 10; i++) yield return null;
+        if (unit == null || unit.gameObject == null)
+        {
+            Debug.LogWarning($"[AnimalManager] VerifySpawn: animal destroyed after ~11 frames (planet={pIndex} tile={tileIndex})");
+            yield break;
+        }
+        Debug.Log(
+            $"[AnimalManager] VerifySpawn(11f): id={unit.gameObject.GetInstanceID()} " +
+            $"activeSelf={unit.gameObject.activeSelf} activeInHierarchy={unit.gameObject.activeInHierarchy} " +
+            $"pos={unit.transform.position.ToString("F2")} parent={(unit.transform.parent != null ? unit.transform.parent.name : "<none>")}"
+        );
+    }
+
+    internal bool TryGetSpawnComponentDump(int instanceId, out string dump) => _spawnComponentDumpById.TryGetValue(instanceId, out dump);
+
+    internal void ClearSpawnComponentDump(int instanceId)
+    {
+        if (_spawnComponentDumpById.ContainsKey(instanceId))
+            _spawnComponentDumpById.Remove(instanceId);
     }
     
     /// <summary>

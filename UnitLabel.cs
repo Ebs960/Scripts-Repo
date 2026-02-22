@@ -80,7 +80,7 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
 
     void LateUpdate()
     {
-        if (target == null) { Destroy(gameObject); return; }
+        if (target == null) return;
         if (mainCam == null) mainCam = Camera.main;
         if (mainCam == null) return; // Still no camera, can't do anything.
 

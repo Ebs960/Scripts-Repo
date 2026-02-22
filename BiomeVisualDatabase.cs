@@ -394,8 +394,32 @@ public class BiomeVisualDatabase : ScriptableObject
 
         _surfaceLibraryCacheByDb[dbId] = new CachedSurfaceLibrary { signature = signature, library = lib };
 
-        // Diagnostics: memory logging removed to reduce editor log noise.
+        // Unload source SurfaceFamilyData Texture2DArrays from GPU memory.
+        // After Graphics.CopyTexture, the flattened output arrays contain all the data the shader needs.
+        // The source arrays are Unity asset references that stay loaded by default, doubling VRAM usage.
+        UnloadSourceFamilyArrays(families);
 
         return lib;
+    }
+
+    /// <summary>
+    /// After BuildSurfaceLibrary copies slices into flattened arrays, the per-family source
+    /// Texture2DArrays are no longer needed at runtime. Unload them to reclaim VRAM.
+    /// Uses Resources.UnloadAsset which releases the GPU copy while keeping the asset reference
+    /// valid (Unity will reload from disk if accessed again, e.g. in a subsequent BuildSurfaceLibrary call).
+    /// </summary>
+    private void UnloadSourceFamilyArrays(List<SurfaceFamilyData> families)
+    {
+        int unloaded = 0;
+        foreach (var sf in families)
+        {
+            if (sf == null) continue;
+            if (sf.albedoArray != null) { Resources.UnloadAsset(sf.albedoArray); unloaded++; }
+            if (sf.normalArray != null) { Resources.UnloadAsset(sf.normalArray); unloaded++; }
+            if (sf.maskArray != null) { Resources.UnloadAsset(sf.maskArray); unloaded++; }
+            if (sf.emissiveArray != null) { Resources.UnloadAsset(sf.emissiveArray); unloaded++; }
+        }
+        if (unloaded > 0)
+            Debug.Log($"[BiomeVisualDatabase] Unloaded {unloaded} source Texture2DArrays from {families.Count} families to reclaim VRAM.");
     }
 }

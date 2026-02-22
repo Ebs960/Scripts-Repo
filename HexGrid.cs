@@ -2,6 +2,25 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
+/// Blittable snapshot of the hex-grid math constants needed by Burst jobs.
+/// Created once via <see cref="HexGrid.GetLookupData"/> and passed by value to jobs.
+/// </summary>
+public struct HexGridLookupData
+{
+    public int gridWidth;
+    public int gridHeight;
+    public int tileCount;
+    public float s;
+    public float offsetX;
+    public float offsetZ;
+    public float minZCorner;
+    public float maxZCorner;
+    public float sqrt3over3_div_s;
+    public float inv3_div_s;
+    public float twothirds_div_s;
+}
+
+/// <summary>
 /// Generates a flat, rectangular hex grid with horizontal wrap.
 /// Tile centers live on the XZ plane.
 /// </summary>
@@ -30,6 +49,8 @@ public class HexGrid
     /// <param name="mapHeight">World-space height (Z extent)</param>
     public void GenerateFlatGrid(int tilesX, int tilesZ, float mapWidth, float mapHeight)
     {
+        _lookupValid = false;
+
         Width = Mathf.Max(1, tilesX);
         Height = Mathf.Max(1, tilesZ);
         MapWidth = Mathf.Max(0.001f, mapWidth);
@@ -128,6 +149,10 @@ public class HexGrid
         return idx;
     }
 
+    // Cached lookup constants — populated once in GenerateFlatGrid(), used by GetTileAtPosition().
+    private HexGridLookupData _lookup;
+    private bool _lookupValid;
+
     public int GetTileAtPosition(Vector3 position)
     {
         if (Width <= 0 || Height <= 0 || tileCenters == null)
@@ -136,40 +161,21 @@ public class HexGrid
             return -1;
         }
 
-        // Use axial conversion for pointy-top hexes
-        float sX = MapWidth / (Width * Mathf.Sqrt(3f));
-        float sZ = MapHeight / (1.5f * (Height + 0.5f));
-        float s = Mathf.Max(0.001f, Mathf.Min(sX, sZ));
-        float w = Mathf.Sqrt(3f) * s;
-        float h = 1.5f * s;
+        if (!_lookupValid)
+        {
+            _lookup = GetLookupData();
+            _lookupValid = true;
+        }
 
-        float minX = -MapWidth * 0.5f;
-        float minZ = -MapHeight * 0.5f;
-        float offsetX = minX + w * 0.5f;
-        float offsetZ = minZ + s;
-
-        // IMPORTANT:
-        // The generated hex grid does NOT fully occupy the entire [-MapHeight/2 .. +MapHeight/2] rectangle.
-        // There is a small top margin inherent to the pointy-top layout math.
-        //
-        // If we clamp row for out-of-range Z, the LUT/picking will "smear" the last valid row upward,
-        // producing the exact symptom you reported: very long/distorted tiles near the north edge,
-        // and the highlighter reporting the same tile index across that stretched region.
-        //
-        // Fix: treat positions beyond the actual hex coverage as "no tile" (-1) instead of clamping.
-        float minZCorner = minZ;
-        float maxZCorner = minZ + ((Height - 1) * h + 2f * s); // last row center + corner extent
-        if (position.z < minZCorner || position.z > maxZCorner)
+        if (position.z < _lookup.minZCorner || position.z > _lookup.maxZCorner)
             return -1;
 
-        float lx = position.x - offsetX;
-        float lz = position.z - offsetZ;
+        float lx = position.x - _lookup.offsetX;
+        float lz = position.z - _lookup.offsetZ;
 
-        // axial q,r
-        float qf = (Mathf.Sqrt(3f) / 3f * lx - 1f / 3f * lz) / s;
-        float rf = (2f / 3f * lz) / s;
+        float qf = _lookup.sqrt3over3_div_s * lx - _lookup.inv3_div_s * lz;
+        float rf = _lookup.twothirds_div_s * lz;
 
-        // cube rounding
         float xf = qf;
         float zf = rf;
         float yf = -xf - zf;
@@ -181,34 +187,51 @@ public class HexGrid
         float yDiff = Mathf.Abs(yi - yf);
         float zDiff = Mathf.Abs(zi - zf);
         if (xDiff > yDiff && xDiff > zDiff)
-        {
             xi = -yi - zi;
-        }
         else if (yDiff > zDiff)
-        {
             yi = -xi - zi;
-        }
         else
-        {
             zi = -xi - yi;
-        }
 
-        // axial from cube
-        int q = xi;
-        int r = zi;
-
-        // even-r offset conversion
-        int row = r;
-        int col = q + ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
-        // wrap horizontally
+        int row = zi;
+        int col = xi + ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
         col = ((col % Width) + Width) % Width;
-        // Do NOT clamp row: out-of-range means "no tile" (prevents polar smearing)
         if (row < 0 || row >= Height)
             return -1;
         int idx = row * Width + col;
         if (idx >= 0 && idx < tileCenters.Length) return idx;
-        Debug.LogWarning($"[HexGrid] Computed tile out of range. q={q} r={r} col={col} row={row} idx={idx} Width={Width} Height={Height} TileCount={tileCenters.Length}");
+        Debug.LogWarning($"[HexGrid] Computed tile out of range. q={xi} r={zi} col={col} row={row} idx={idx} Width={Width} Height={Height} TileCount={tileCenters.Length}");
         return -1;
+    }
+
+    /// <summary>
+    /// Returns a blittable struct containing all pre-computed constants needed by Burst jobs
+    /// to replicate GetTileAtPosition without any managed references.
+    /// </summary>
+    public HexGridLookupData GetLookupData()
+    {
+        float sX = MapWidth / (Width * Mathf.Sqrt(3f));
+        float sZ = MapHeight / (1.5f * (Height + 0.5f));
+        float s = Mathf.Max(0.001f, Mathf.Min(sX, sZ));
+        float w = Mathf.Sqrt(3f) * s;
+        float h = 1.5f * s;
+        float minX = -MapWidth * 0.5f;
+        float minZ = -MapHeight * 0.5f;
+
+        return new HexGridLookupData
+        {
+            gridWidth = Width,
+            gridHeight = Height,
+            tileCount = Width * Height,
+            s = s,
+            offsetX = minX + w * 0.5f,
+            offsetZ = minZ + s,
+            minZCorner = minZ,
+            maxZCorner = minZ + ((Height - 1) * h + 2f * s),
+            sqrt3over3_div_s = 1.7320508f / (3f * s),
+            inv3_div_s = 1f / (3f * s),
+            twothirds_div_s = 2f / (3f * s),
+        };
     }
 
     // Corner helper APIs were removed as part of spherical-era cleanup; reintroduce if needed by mesh/UI systems.
