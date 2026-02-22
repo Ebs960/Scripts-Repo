@@ -176,6 +176,23 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel--;
         }
 
+        // ===================== Cliffs =====================
+        if (Foldout("Cliffs", "Cliffs", false))
+        {
+            EditorGUI.indentLevel++;
+
+            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Albedo Array"), Find(properties, "_CliffAlbedoArray"));
+            materialEditor.TexturePropertySingleLine(new GUIContent("Cliff Normal Array"), Find(properties, "_CliffNormalArray"));
+            materialEditor.ShaderProperty(Find(properties, "_CliffTiling"), "Cliff Tiling");
+            materialEditor.ShaderProperty(Find(properties, "_CliffStrength"), "Cliff Strength");
+            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeThreshold"), "Slope Threshold");
+            materialEditor.ShaderProperty(Find(properties, "_CliffSlopeBlend"), "Slope Blend");
+            materialEditor.ShaderProperty(Find(properties, "_CliffStepThreshold"), "Step Threshold");
+            materialEditor.ShaderProperty(Find(properties, "_CliffStepBlend"), "Step Blend");
+
+            EditorGUI.indentLevel--;
+        }
+
         // ===================== Snow / Wetness =====================
         if (Foldout("SnowWet", "Snow / Wetness", false))
         {
