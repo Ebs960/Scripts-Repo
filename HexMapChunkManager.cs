@@ -170,10 +170,10 @@ public class HexMapChunkManager : MonoBehaviour
     [Range(1f, 100f)]
     [SerializeField] private float detailTiling = 20f;
     [Tooltip("Strength of detail albedo modulation")]
-    [Range(0f, 1f)]
+    [Range(0f, 10f)]
     [SerializeField] private float detailStrength = 0.3f;
     [Tooltip("Strength of detail normal perturbation")]
-    [Range(0f, 2f)]
+    [Range(0f, 10f)]
     [SerializeField] private float detailNormalStrength = 0.5f;
     [Tooltip("Camera distance where detail begins to fade (meters)")]
     [SerializeField] private float detailFadeStart = 5f;
@@ -260,18 +260,6 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool extrudeInlandWaterToVolume = true;
     [Tooltip("How far downward (world units) to extrude the inland water mesh to create a filled volume.")]
     [SerializeField] private float inlandWaterVolumeDepth = 12f;
-
-    [Header("Cliff Walls (Mesh)")]
-    [Tooltip("When enabled, builds vertical wall quads along edges where neighboring tiles have a large elevation step (Minecraft-like cliffs).")]
-    [SerializeField] private bool enableCliffWalls = false;
-    [Tooltip("Material used for cliff wall meshes. If null, cliffs will not be rendered.")]
-    [SerializeField] private Material cliffWallMaterial;
-    [Tooltip("Minimum height difference (world units after displacementStrength) required to create a cliff wall.")]
-    [SerializeField] private float cliffMinHeightDelta = 1.25f;
-    [Tooltip("Extra amount to extend the cliff wall downward beyond the lower tile height to hide cracks.")]
-    [SerializeField] private float cliffBottomExtension = 0.25f;
-    [Tooltip("Small horizontal inset (world units) toward the higher tile to reduce z-fighting at the seam.")]
-    [SerializeField] private float cliffInset = 0.02f;
 
     // Continuous river mesh instance (lives under this manager)
     private GameObject _riverSurfaceObj;
@@ -710,9 +698,6 @@ public class HexMapChunkManager : MonoBehaviour
         
         // Build all chunk meshes (batched)
         yield return StartCoroutine(RefreshAllChunksCoroutine());
-
-        // Build cliff wall meshes (batched)
-        yield return StartCoroutine(BuildAllCliffWallsCoroutine());
 
         // Build chunk-based water and foam meshes (batched)
         yield return StartCoroutine(BuildAllWaterMeshesCoroutine());
@@ -2622,200 +2607,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Build cliff wall meshes for ALL chunks.
-    /// Cliff walls are vertical quads along edges where two neighboring tiles have a large elevation step.
-    /// </summary>
-    private void BuildAllCliffWalls()
-    {
-        if (!enableCliffWalls) { DestroyAllCliffWalls(); return; }
-        if (chunks == null || planetGenerator == null || grid == null) return;
-        if (cliffWallMaterial == null) return;
-
-        for (int x = 0; x < chunksX; x++)
-        {
-            for (int z = 0; z < chunksZ; z++)
-            {
-                if (chunks[x, z] != null)
-                    BuildCliffWallsForChunk(chunks[x, z]);
-            }
-        }
-    }
-
-    private void DestroyAllCliffWalls()
-    {
-        if (chunks == null) return;
-        for (int x = 0; x < chunksX; x++)
-        {
-            for (int z = 0; z < chunksZ; z++)
-            {
-                var c = chunks[x, z];
-                if (c == null) continue;
-                Transform existing = c.transform.Find("CliffWalls");
-                if (existing != null) DestroyImmediate(existing.gameObject);
-            }
-        }
-    }
-
-    private System.Collections.IEnumerator BuildAllCliffWallsCoroutine()
-    {
-        if (!enableCliffWalls) { DestroyAllCliffWalls(); yield break; }
-        if (chunks == null || planetGenerator == null || grid == null) yield break;
-        if (cliffWallMaterial == null) yield break;
-
-        int batchSize = Mathf.Max(1, chunksPerBatch);
-        int count = 0;
-        for (int x = 0; x < chunksX; x++)
-        {
-            for (int z = 0; z < chunksZ; z++)
-            {
-                if (chunks[x, z] != null)
-                {
-                    BuildCliffWallsForChunk(chunks[x, z]);
-                    count++;
-                    if (count >= batchSize) { count = 0; yield return null; }
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Build a single combined cliff wall mesh for a chunk.
-    /// Walls are created only from the higher tile toward the lower tile, so edges are not duplicated.
-    /// </summary>
-    private void BuildCliffWallsForChunk(HexMapChunk chunk)
-    {
-        if (chunk == null || planetGenerator == null || grid == null) return;
-        if (!enableCliffWalls) return;
-        if (cliffWallMaterial == null) return;
-
-        // Destroy existing cliff wall child if present
-        Transform existing = chunk.transform.Find("CliffWalls");
-        if (existing != null) DestroyImmediate(existing.gameObject);
-
-        EnsureHexCorners();
-        float s = ComputeHexSize();
-        float inset = Mathf.Max(0f, cliffInset);
-
-        var tileIndices = chunk.TileIndices;
-        if (tileIndices == null || tileIndices.Count == 0) return;
-
-        Vector3 chunkWorldPos = chunk.transform.position;
-        float minDelta = Mathf.Max(0.001f, cliffMinHeightDelta);
-        float bottomExt = Mathf.Max(0f, cliffBottomExtension);
-
-        var verts = new List<Vector3>();
-        var uvs = new List<Vector2>();
-        var tris = new List<int>();
-
-        void AddQuad(Vector3 topA, Vector3 topB, Vector3 botA, Vector3 botB)
-        {
-            int baseIdx = verts.Count;
-            verts.Add(topA);
-            verts.Add(topB);
-            verts.Add(botA);
-            verts.Add(botB);
-
-            uvs.Add(new Vector2(0f, 1f));
-            uvs.Add(new Vector2(1f, 1f));
-            uvs.Add(new Vector2(0f, 0f));
-            uvs.Add(new Vector2(1f, 0f));
-
-            // Two triangles (Cull mode depends on material; keep consistent winding).
-            tris.Add(baseIdx);
-            tris.Add(baseIdx + 1);
-            tris.Add(baseIdx + 2);
-            tris.Add(baseIdx + 1);
-            tris.Add(baseIdx + 3);
-            tris.Add(baseIdx + 2);
-        }
-
-            foreach (int tileIdx in tileIndices)
-        {
-            if (!planetGenerator.data.TryGetValue(tileIdx, out var td)) continue;
-            Vector3 tileCenter = grid.tileCenters[tileIdx];
-                float tileTopWorldY = flatY + GetRenderedElevation(tileIdx) * displacementStrength;
-
-            var neighbors = grid.neighbors[tileIdx];
-            if (neighbors == null) continue;
-
-                for (int edge = 0; edge < 6; edge++)
-            {
-                int nbrIdx = (edge < neighbors.Count) ? neighbors[edge] : -1;
-                if (nbrIdx < 0 || nbrIdx >= grid.TileCount) continue;
-                if (!planetGenerator.data.TryGetValue(nbrIdx, out var nd)) continue;
-
-                float nbrTopWorldY = flatY + GetRenderedElevation(nbrIdx) * displacementStrength;
-                float delta = tileTopWorldY - nbrTopWorldY;
-                if (delta < minDelta) continue; // only build from higher tile
-
-                // Edge endpoints in world space (XZ from hex corners, Y from each tile top)
-                Vector3 cornerAWorld = tileCenter + new Vector3(s * HexCornerCos[edge], 0f, s * HexCornerSin[edge]);
-                Vector3 cornerBWorld = tileCenter + new Vector3(s * HexCornerCos[(edge + 1) % 6], 0f, s * HexCornerSin[(edge + 1) % 6]);
-
-                // Inset toward tile center to avoid z-fighting with top surface at the seam
-                if (inset > 0f)
-                {
-                    Vector3 dirA = (tileCenter - cornerAWorld); dirA.y = 0f; float lenA = dirA.magnitude; if (lenA > 1e-5f) cornerAWorld += (dirA / lenA) * inset;
-                    Vector3 dirB = (tileCenter - cornerBWorld); dirB.y = 0f; float lenB = dirB.magnitude; if (lenB > 1e-5f) cornerBWorld += (dirB / lenB) * inset;
-                }
-
-                float bottomWorldY = nbrTopWorldY - bottomExt;
-
-                // Convert to chunk-local
-                Vector3 topALocal = new Vector3(cornerAWorld.x - chunkWorldPos.x, tileTopWorldY - chunkWorldPos.y, cornerAWorld.z - chunkWorldPos.z);
-                Vector3 topBLocal = new Vector3(cornerBWorld.x - chunkWorldPos.x, tileTopWorldY - chunkWorldPos.y, cornerBWorld.z - chunkWorldPos.z);
-                Vector3 botALocal = new Vector3(cornerAWorld.x - chunkWorldPos.x, bottomWorldY - chunkWorldPos.y, cornerAWorld.z - chunkWorldPos.z);
-                Vector3 botBLocal = new Vector3(cornerBWorld.x - chunkWorldPos.x, bottomWorldY - chunkWorldPos.y, cornerBWorld.z - chunkWorldPos.z);
-
-                AddQuad(topALocal, topBLocal, botALocal, botBLocal);
-            }
-        }
-
-        if (tris.Count < 3) return;
-
-        var m = new Mesh();
-        m.name = $"CliffWalls_{chunk.ChunkX}_{chunk.ChunkZ}";
-        m.SetVertices(verts);
-        m.SetUVs(0, uvs);
-
-        // Mirror-safe winding
-        var triArr = tris.ToArray();
-        float det = chunk.transform.lossyScale.x * chunk.transform.lossyScale.y * chunk.transform.lossyScale.z;
-        if (det < 0f)
-        {
-            for (int i = 0; i < triArr.Length; i += 3)
-            {
-                int tmp = triArr[i + 1];
-                triArr[i + 1] = triArr[i + 2];
-                triArr[i + 2] = tmp;
-            }
-        }
-        m.SetTriangles(triArr, 0);
-        m.RecalculateNormals();
-        m.RecalculateBounds();
-
-        // Expand bounds vertically a bit
-        var b = m.bounds;
-        b.Expand(new Vector3(0f, 50f, 0f));
-        m.bounds = b;
-
-        GameObject obj = new GameObject("CliffWalls");
-        obj.transform.SetParent(chunk.transform, false);
-        obj.transform.localPosition = Vector3.zero;
-        obj.transform.localRotation = Quaternion.identity;
-        obj.transform.localScale = Vector3.one;
-        obj.layer = chunk.gameObject.layer;
-
-        var mf = obj.AddComponent<MeshFilter>();
-        mf.sharedMesh = m;
-        var mr = obj.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = cliffWallMaterial;
-        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-        mr.receiveShadows = true;
-        mr.allowOcclusionWhenDynamic = false;
-    }
-
+    
     // =====================================================================================
     //  Continuous River Surface Mesh (SDF + Marching Squares) — batched coroutine
     // =====================================================================================
@@ -4436,8 +4228,10 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeMaskArray != null) { UnityEngine.Object.DestroyImmediate(biomeMaskArray); biomeMaskArray = null; }
         if (biomeEmissiveArray != null) { UnityEngine.Object.DestroyImmediate(biomeEmissiveArray); biomeEmissiveArray = null; }
 
-        if (cliffAlbedoArray != null) { UnityEngine.Object.DestroyImmediate(cliffAlbedoArray); cliffAlbedoArray = null; }
-        if (cliffNormalArray != null) { UnityEngine.Object.DestroyImmediate(cliffNormalArray); cliffNormalArray = null; }
+        // IMPORTANT:
+        // Cliff arrays are typically assigned in the inspector as project assets (serialized fields).
+        // Destroying them here breaks cliffs at runtime after any rebuild/unload cycle.
+        // We only clear the material bindings above; we do NOT destroy or null the serialized refs.
 
         if (biomeIndexMap != null) { UnityEngine.Object.DestroyImmediate(biomeIndexMap); biomeIndexMap = null; }
         if (heightmapTexture != null) { UnityEngine.Object.DestroyImmediate(heightmapTexture); heightmapTexture = null; }

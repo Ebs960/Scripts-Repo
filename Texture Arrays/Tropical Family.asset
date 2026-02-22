@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Tropical Family
   m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
   familyName: Tropical Family
-  albedoArray: {fileID: 18700000, guid: a56e55c4d27d4e643b0e61ce88418fb0, type: 3}
-  normalArray: {fileID: 18700000, guid: d81e18ec39baeea40871b502db7e0f5b, type: 3}
-  maskArray: {fileID: 18700000, guid: ecf87181619edb94fa525e2013f59018, type: 3}
-  heightArray: {fileID: 18700000, guid: c25ad4fe30dd2b5419ccd7d09b3f93bf, type: 3}
+  albedoArray: {fileID: 18700000, guid: 85d164770d7a75044b38f4c63743108d, type: 3}
+  normalArray: {fileID: 18700000, guid: e5f8467f45aff2648a4fb7125a3038fb, type: 3}
+  maskArray: {fileID: 18700000, guid: affa257c8cdc23f4ba35d67d4533d19c, type: 3}
+  heightArray: {fileID: 18700000, guid: 7225b3ee65524c44cbff2562176f3cec, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

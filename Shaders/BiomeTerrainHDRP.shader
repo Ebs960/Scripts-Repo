@@ -53,6 +53,12 @@ Shader "Custom/BiomeTerrainHDRP"
         [Header(Per Biome Lookup)]
         _SliceToBiomeMap ("Slice To Biome Map", 2D) = "black" {}
 
+        [Header(Hex Grid Overlay)]
+        _ShowHexGrid ("Show Hex Grid", Float) = 0
+        _HexGridColor ("Hex Grid Color", Color) = (0, 0, 0, 1)
+        _HexGridWidth ("Hex Grid Width (texels)", Range(0.1, 8)) = 1.0
+        _HexGridFadeDistance ("Hex Grid Fade Distance", Range(0, 1000)) = 200
+
         [Header(Lighting Fallback)]
         _SunDir ("Sun Direction (normalized)", Vector) = (0.3, -0.8, 0.5, 0)
         _SunColor ("Sun Color", Color) = (1, 0.95, 0.85, 1)
@@ -200,6 +206,10 @@ Shader "Custom/BiomeTerrainHDRP"
     float _TessellationFactor;
     float _TessellationFadeStart;
     float _TessellationFadeEnd;
+    float _ShowHexGrid;
+    float4 _HexGridColor;
+    float _HexGridWidth;
+    float _HexGridFadeDistance;
 
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeTints[64];
@@ -984,6 +994,38 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // Combine with AO
                 float3 finalColor = (diffuse + specular + ambient) * ao + emission;
+
+                // ==========================================================
+                // HEX GRID OVERLAY (simple biome-edge detection)
+                // Samples the biome index map and darkens/tints edges between
+                // neighboring biome slices. Controlled by material properties.
+                // ==========================================================
+                if (_ShowHexGrid > 0.5)
+                {
+                    // center and 4-neighbors
+                    float center = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0).r);
+                    float2 bstep = _BiomeIndexMap_TexelSize.xy;
+                    float r = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv + float2(bstep.x, 0), 0).r);
+                    float l = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv - float2(bstep.x, 0), 0).r);
+                    float u = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv + float2(0, bstep.y), 0).r);
+                    float d = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv - float2(0, bstep.y), 0).r);
+
+                    float edgeCount = 0.0;
+                    edgeCount += (abs(center - r) > 0.5) ? 1.0 : 0.0;
+                    edgeCount += (abs(center - l) > 0.5) ? 1.0 : 0.0;
+                    edgeCount += (abs(center - u) > 0.5) ? 1.0 : 0.0;
+                    edgeCount += (abs(center - d) > 0.5) ? 1.0 : 0.0;
+
+                    // fade by camera distance
+                    float fade = 1.0;
+                    if (_HexGridFadeDistance > 0.01)
+                        fade = saturate(1.0 - camDist / _HexGridFadeDistance);
+
+                    float mask = saturate(edgeCount) * fade * _ShowHexGrid;
+
+                    // apply color tint where edges found
+                    finalColor = lerp(finalColor, _HexGridColor.rgb, mask * _HexGridColor.a);
+                }
 
                 return float4(finalColor, 1.0);
             }

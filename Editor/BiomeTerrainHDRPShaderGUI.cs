@@ -245,6 +245,13 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             materialEditor.ShaderProperty(Find(properties, "_EnableOwnership"), "Enable Ownership Overlay");
             materialEditor.ShaderProperty(Find(properties, "_OwnershipAlpha"), "Ownership Alpha");
 
+            EditorGUILayout.Space(4);
+            Header("Hex Grid Overlay");
+            materialEditor.ShaderProperty(Find(properties, "_ShowHexGrid"), "Show Hex Grid");
+            materialEditor.ColorProperty(Find(properties, "_HexGridColor"), "Hex Grid Color");
+            materialEditor.ShaderProperty(Find(properties, "_HexGridWidth"), "Hex Grid Width (texels)");
+            materialEditor.ShaderProperty(Find(properties, "_HexGridFadeDistance"), "Hex Grid Fade Distance");
+
             EditorGUI.indentLevel--;
         }
 

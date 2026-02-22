@@ -257,9 +257,9 @@ MonoBehaviour:
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
   shallowSeasRings: 3
-  lakeDepth: 1.22
+  lakeDepth: 0.96
   seaLevelMatchCoast: 1
-  manualSeaLevelWorldY: 4.6
+  manualSeaLevelWorldY: 5.87
   numberOfIslands: 8
   generateIslands: 1
   minIslandWidthTilesSmall: 1

@@ -38,6 +38,14 @@ public class WorldPicker : MonoBehaviour
     [Tooltip("Maximum raycast distance for picking")]
     public float maxRaycastDistance = 10000f;
 
+    [Header("Displacement-Aware Picking")]
+    [Tooltip("Iterations used to solve ray vs displaced heightfield. Higher = more accurate, slightly more CPU.")]
+    [Range(0, 12)]
+    public int displacementSolveIterations = 6;
+    [Tooltip("Stop iterating early once UV stabilizes within this threshold.")]
+    [Range(0.000001f, 0.01f)]
+    public float displacementUvEpsilon = 0.0005f;
+
     // Cache to avoid redundant raycasts when mouse hasn't moved
     private int lastScreenPx = -1;
     private int lastScreenPy = -1;
@@ -98,11 +106,10 @@ public class WorldPicker : MonoBehaviour
 
         hitWorldPos = hit.point;
 
-        // Convert world hit point to UV coordinates.
-        // The collider mesh spans [-mapWidth/2, mapWidth/2] x [-mapHeight/2, mapHeight/2] in local space.
-        Vector3 localPos = flatMapCollider.transform.InverseTransformPoint(hit.point);
-        float u = (localPos.x / mapWidth) + 0.5f;
-        float v = (localPos.z / mapHeight) + 0.5f;
+        // Convert hit point to UV coordinates.
+        // Prefer hit.textureCoord (mesh UVs) to avoid mismatches due to transform scaling.
+        float u = hit.textureCoord.x;
+        float v = hit.textureCoord.y;
 
         // Wrap U horizontally (cylindrical map), clamp V vertically
         u = Mathf.Repeat(u, 1f);
@@ -118,39 +125,58 @@ public class WorldPicker : MonoBehaviour
             tileIndex = lut[pixelIndex];
         }
 
-        // --- Height correction for angled camera views ---
-        // The flat picking collider doesn't account for shader-based terrain displacement,
-        // so at angled views the ray hits the plane "ahead" of where the elevated terrain
-        // appears visually. Sample the exact same heightmap the shader uses, multiply by
-        // the same _ElevationScale, and re-intersect the ray at the corrected height.
-        if (heightmapTexture != null)
+        // --- Displacement-aware correction (matches shader vertex displacement) ---
+        // The map is a heightfield: y = baseY + height(u,v)*elevationScale, with x/z mapped linearly to u/v.
+        // To pick the exact visible tile at angled views, solve for the ray parameter t such that:
+        //   ray(t).y == baseY + height(uv(ray(t))).r * elevationScale
+        // We do a short fixed-point iteration: infer Y from height(u,v), intersect ray with that Y-plane,
+        // recompute u/v from the new x/z, repeat until stable.
+        if (heightmapTexture != null && displacementSolveIterations > 0)
         {
-            float rawElevation = heightmapTexture.GetPixelBilinear(u, v).r;
-            float worldDisplacement = rawElevation * elevationScale;
-
-            if (Mathf.Abs(worldDisplacement) > 0.01f)
+            float baseY = flatMapCollider.transform.position.y;
+            float dirY = ray.direction.y;
+            if (Mathf.Abs(dirY) > 1e-6f)
             {
-                float correctedY = flatMapCollider.transform.position.y + worldDisplacement;
-                Plane elevatedPlane = new Plane(Vector3.up, new Vector3(0f, correctedY, 0f));
-                if (elevatedPlane.Raycast(ray, out float correctedDist))
+                float prevU = u;
+                float prevV = v;
+                Vector3 correctedHit = hitWorldPos;
+
+                int iters = Mathf.Clamp(displacementSolveIterations, 1, 12);
+                for (int i = 0; i < iters; i++)
                 {
-                    Vector3 correctedHit = ray.GetPoint(correctedDist);
+                    float rawElevation = heightmapTexture.GetPixelBilinear(u, v).r;
+                    float correctedY = baseY + rawElevation * elevationScale;
+
+                    float correctedDist = (correctedY - ray.origin.y) / dirY;
+                    if (correctedDist <= 0f || float.IsNaN(correctedDist) || float.IsInfinity(correctedDist))
+                        break;
+
+                    correctedHit = ray.GetPoint(correctedDist);
+
+                    // Convert corrected hit point back to UVs on the underlying flat quad mapping.
+                    // Collider local X/Z span [-mapWidth/2, +mapWidth/2] and [-mapHeight/2, +mapHeight/2].
                     Vector3 correctedLocal = flatMapCollider.transform.InverseTransformPoint(correctedHit);
-                    float cu = (correctedLocal.x / mapWidth) + 0.5f;
-                    float cv = (correctedLocal.z / mapHeight) + 0.5f;
-                    cu = Mathf.Repeat(cu, 1f);
-                    cv = Mathf.Clamp01(cv);
-                    int cpx = Mathf.Clamp(Mathf.FloorToInt(cu * lutWidth), 0, lutWidth - 1);
-                    int cpy = Mathf.Clamp(Mathf.FloorToInt(cv * lutHeight), 0, lutHeight - 1);
-                    int cpixelIndex = cpy * lutWidth + cpx;
-                    if (cpixelIndex >= 0 && cpixelIndex < lut.Length)
+                    u = Mathf.Repeat((correctedLocal.x / mapWidth) + 0.5f, 1f);
+                    v = Mathf.Clamp01((correctedLocal.z / mapHeight) + 0.5f);
+
+                    if (Mathf.Abs(u - prevU) <= displacementUvEpsilon && Mathf.Abs(v - prevV) <= displacementUvEpsilon)
+                        break;
+
+                    prevU = u;
+                    prevV = v;
+                }
+
+                // Recompute LUT lookup from corrected UVs
+                int cpx = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
+                int cpy = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
+                int cpixelIndex = cpy * lutWidth + cpx;
+                if (cpixelIndex >= 0 && cpixelIndex < lut.Length)
+                {
+                    int correctedTileIndex = lut[cpixelIndex];
+                    if (correctedTileIndex >= 0)
                     {
-                        int correctedTileIndex = lut[cpixelIndex];
-                        if (correctedTileIndex >= 0)
-                        {
-                            tileIndex = correctedTileIndex;
-                            hitWorldPos = correctedHit;
-                        }
+                        tileIndex = correctedTileIndex;
+                        hitWorldPos = correctedHit;
                     }
                 }
             }
