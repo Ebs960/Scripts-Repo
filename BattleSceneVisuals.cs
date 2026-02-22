@@ -756,21 +756,7 @@ public class BattleSceneVisuals : MonoBehaviour
                 bloomIntensity = 0.35f;
                 break;
                 
-            case Biome.IoVolcanic:
-            case Biome.IoSulfur:
-                // Io's volcanic hellscape
-                sunColor = new Color(1f, 0.8f, 0.5f);
-                sunIntensity = 1.0f;
-                skyColor = new Color(0.3f, 0.25f, 0.15f);
-                groundColor = new Color(0.6f, 0.5f, 0.2f); // Sulfur yellow
-                fogColor = new Color(0.5f, 0.4f, 0.2f);
-                fogStartDistance = 40f;
-                fogEndDistance = 250f;
-                saturation = 0.25f;
-                contrast = 0.2f;
-                bloomIntensity = 0.55f;
-                break;
-                
+
             // ==================== DEFAULT ====================
             default:
                 // Neutral Earth-like lighting

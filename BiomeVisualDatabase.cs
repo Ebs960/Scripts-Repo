@@ -36,10 +36,12 @@ public class BiomeVisualDatabase : ScriptableObject
         DestroyUnityObject(lib.albedoArray);
         DestroyUnityObject(lib.normalArray);
         DestroyUnityObject(lib.maskArray);
+        DestroyUnityObject(lib.heightArray);
         DestroyUnityObject(lib.emissiveArray);
         lib.albedoArray = null;
         lib.normalArray = null;
         lib.maskArray = null;
+        lib.heightArray = null;
         lib.emissiveArray = null;
     }
 
@@ -69,6 +71,7 @@ public class BiomeVisualDatabase : ScriptableObject
         public Texture2DArray albedoArray;
         public Texture2DArray normalArray;
         public Texture2DArray maskArray;
+        public Texture2DArray heightArray;
         public Texture2DArray emissiveArray;
 
         // per-surface
@@ -223,11 +226,24 @@ public class BiomeVisualDatabase : ScriptableObject
             emissiveFmt = firstFamily.emissiveArray.format;
             emissiveMipCount = firstFamily.emissiveArray.mipmapCount;
         }
+        bool includeHeight = false;
+        TextureFormat heightFmt = TextureFormat.RHalf;
+        int heightMipCount = 0;
+        if (firstFamily.heightArray != null)
+        {
+            includeHeight = true;
+            heightFmt = firstFamily.heightArray.format;
+            heightMipCount = firstFamily.heightArray.mipmapCount;
+        }
 
         // If any other family has emissive, include it and enforce consistency.
         foreach (var f in families)
         {
             if (f != null && f.emissiveArray != null) { includeEmissive = true; break; }
+        }
+        foreach (var f in families)
+        {
+            if (f != null && f.heightArray != null) { includeHeight = true; break; }
         }
 
         // Calculate total slices + validate families
@@ -277,6 +293,7 @@ public class BiomeVisualDatabase : ScriptableObject
             CheckArray("albedo", sf.albedoArray, albedoFmt, albedoMipCount);
             CheckArray("normal", sf.normalArray, normalFmt, normalMipCount);
             CheckArray("mask", sf.maskArray, maskFmt, maskMipCount);
+            if (includeHeight) CheckArray("height", sf.heightArray, heightFmt, heightMipCount);
 
             if (includeEmissive)
             {
@@ -336,21 +353,28 @@ public class BiomeVisualDatabase : ScriptableObject
         bool hasMipsN = normalMipCount > 1;
         bool hasMipsM = maskMipCount > 1;
         bool hasMipsE = includeEmissive && emissiveMipCount > 1;
+        bool hasMipsH = includeHeight && heightMipCount > 1;
 
         var albedoArray = new Texture2DArray(targetW, targetH, total, albedoFmt, hasMipsA, linear: false);
         var normalArray = new Texture2DArray(targetW, targetH, total, normalFmt, hasMipsN, linear: true);
         var maskArray = new Texture2DArray(targetW, targetH, total, maskFmt, hasMipsM, linear: true);
         Texture2DArray emissiveArray = null;
+        Texture2DArray heightArray = null;
         if (includeEmissive)
         {
             // Emissive can be compressed or half; we preserve whatever format is in the source family assets.
             emissiveArray = new Texture2DArray(targetW, targetH, total, emissiveFmt, hasMipsE, linear: true);
+        }
+        if (includeHeight)
+        {
+            heightArray = new Texture2DArray(targetW, targetH, total, heightFmt, hasMipsH, linear: true);
         }
 
         albedoArray.wrapMode = TextureWrapMode.Repeat;
         normalArray.wrapMode = TextureWrapMode.Repeat;
         maskArray.wrapMode = TextureWrapMode.Repeat;
         if (emissiveArray != null) emissiveArray.wrapMode = TextureWrapMode.Repeat;
+        if (heightArray != null) heightArray.wrapMode = TextureWrapMode.Repeat;
 
         int writeSlice = 0;
         var surfaceStart = new int[families.Count];
@@ -375,6 +399,11 @@ public class BiomeVisualDatabase : ScriptableObject
                     for (int mip = 0; mip < emissiveMipCount; mip++)
                         Graphics.CopyTexture(sf.emissiveArray, v, mip, emissiveArray, writeSlice, mip);
                 }
+                if (includeHeight && heightArray != null)
+                {
+                    for (int mip = 0; mip < heightMipCount; mip++)
+                        Graphics.CopyTexture(sf.heightArray, v, mip, heightArray, writeSlice, mip);
+                }
                 writeSlice++;
             }
         }
@@ -384,6 +413,7 @@ public class BiomeVisualDatabase : ScriptableObject
             albedoArray = albedoArray,
             normalArray = normalArray,
             maskArray = maskArray,
+            heightArray = heightArray,
             emissiveArray = emissiveArray,
             totalSlices = writeSlice,
             surfaceStartSlice = surfaceStart,
@@ -417,6 +447,7 @@ public class BiomeVisualDatabase : ScriptableObject
             if (sf.albedoArray != null) { Resources.UnloadAsset(sf.albedoArray); unloaded++; }
             if (sf.normalArray != null) { Resources.UnloadAsset(sf.normalArray); unloaded++; }
             if (sf.maskArray != null) { Resources.UnloadAsset(sf.maskArray); unloaded++; }
+            if (sf.heightArray != null) { Resources.UnloadAsset(sf.heightArray); unloaded++; }
             if (sf.emissiveArray != null) { Resources.UnloadAsset(sf.emissiveArray); unloaded++; }
         }
         if (unloaded > 0)

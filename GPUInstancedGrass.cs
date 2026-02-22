@@ -952,7 +952,6 @@ public class GPUInstancedGrass : MonoBehaviour
             case Biome.Ocean:
             case Biome.Volcanic:
             case Biome.VenusLava:
-            case Biome.IoVolcanic:
             case Biome.MartianRegolith:
             case Biome.MartianDunes:
             case Biome.MartianPolarIce:

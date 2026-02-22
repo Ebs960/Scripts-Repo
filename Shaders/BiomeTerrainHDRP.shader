@@ -7,6 +7,7 @@ Shader "Custom/BiomeTerrainHDRP"
         _BiomeNormalArray ("Biome Normal Array", 2DArray) = "" {}
         _BiomeMaskArray ("Biome Mask Array", 2DArray) = "" {}
         _SurfaceEmissiveArray ("Surface Emissive Array", 2DArray) = "" {}
+        _BiomeHeightArray ("Biome Height Array", 2DArray) = "" {}
 
         [Header(Index and Height Maps)]
         _BiomeIndexMap ("Biome Index Map (RFloat slice index)", 2D) = "black" {}
@@ -74,6 +75,7 @@ Shader "Custom/BiomeTerrainHDRP"
         _DetailNormalStrength ("Detail Normal Strength", Range(0, 20)) = 0.5
         _DetailFadeStart ("Detail Fade Start Distance", Range(0, 200)) = 5.0
         _DetailFadeEnd ("Detail Fade End Distance", Range(0, 500)) = 50.0
+        _SurfaceHeightScale ("Surface Height Scale", Range(0, 2)) = 0.05
 
         
 
@@ -123,6 +125,7 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D_ARRAY(_BiomeNormalArray);    SAMPLER(sampler_BiomeNormalArray);
     TEXTURE2D_ARRAY(_BiomeMaskArray);      SAMPLER(sampler_BiomeMaskArray);
     TEXTURE2D_ARRAY(_SurfaceEmissiveArray);SAMPLER(sampler_SurfaceEmissiveArray);
+    TEXTURE2D_ARRAY(_BiomeHeightArray);    SAMPLER(sampler_BiomeHeightArray);
     TEXTURE2D_ARRAY(_CliffAlbedoArray);    SAMPLER(sampler_CliffAlbedoArray);
     TEXTURE2D_ARRAY(_CliffNormalArray);    SAMPLER(sampler_CliffNormalArray);
     TEXTURE2D(_CliffAlbedoPreview);        SAMPLER(sampler_CliffAlbedoPreview);
@@ -193,6 +196,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float _CliffStepThreshold;
     float _CliffStepBlend;
     float _CliffSliceCount;
+    float _SurfaceHeightScale;
     float _TessellationFactor;
     float _TessellationFadeStart;
     float _TessellationFadeEnd;
@@ -200,6 +204,7 @@ Shader "Custom/BiomeTerrainHDRP"
     // Per-biome arrays (set via SetVectorArray from C#, max 64 biomes)
     float4 _BiomeTints[64];
     float4 _BiomeParams[64];
+    // per-slice height will be read from _BiomeHeightArray if present
 
     // ===================== Hash Functions for Hex Tiling (#4) =====================
 
@@ -639,6 +644,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float4 mask; // R=metallic, G=AO, B=height, A=smoothness
                 float3 emission;
                 float4 biomeParams; // x=tiling, y=snowRetention, z=wetnessResponse, w=isWaterBiome
+                float height;
             };
 
             BiomeSample SampleFullBiome(float sliceIndex, float3 worldPos,
@@ -681,6 +687,12 @@ Shader "Custom/BiomeTerrainHDRP"
                     TEXTURE2D_ARRAY_ARGS(_SurfaceEmissiveArray, sampler_SurfaceEmissiveArray),
                     worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
                 s.emission = emissiveTex.rgb * emissiveParams.rgb * emissiveParams.a;
+
+                // Optional per-surface height (single-channel in R). If the family provided
+                // a height Texture2DArray, sample it the same way as other surface textures.
+                float4 heightTex = SampleBiomeTexture(TEXTURE2D_ARRAY_ARGS(_BiomeHeightArray, sampler_BiomeHeightArray),
+                    worldPos, triWeights, sliceIndex, effectiveTiling, camDist, mapUV);
+                s.height = heightTex.r;
 
                 return s;
             }
@@ -736,6 +748,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float4 mask;
                 float3 emission;
                 float4 biomeParams;
+                float blendedHeight = 0.0;
 
                 // Height-based biome blending at boundaries (#3, #7: mask.b = height)
                 if (diffCount > 0 && secondarySlice != centerSlice && _BiomeBlendRadius > 0.01)
@@ -756,6 +769,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     mask = lerp(primary.mask, secondary.mask, blend);
                     emission = lerp(primary.emission, secondary.emission, blend);
                     biomeParams = lerp(primary.biomeParams, secondary.biomeParams, blend);
+                    float blendedHeight = lerp(primary.height, secondary.height, blend);
                 }
                 else
                 {
@@ -764,6 +778,7 @@ Shader "Custom/BiomeTerrainHDRP"
                     mask = primary.mask;
                     emission = primary.emission;
                     biomeParams = primary.biomeParams;
+                    float blendedHeight = primary.height;
                 }
 
                 // ==========================================================
@@ -835,7 +850,9 @@ Shader "Custom/BiomeTerrainHDRP"
                     albedo *= detailMod;
 
                     // Blend detail normal into surface normal
-                    float dnStr = _DetailNormalStrength * detailFade;
+                    // Modulate detail normal strength by blended per-surface height so
+                    // surfaces with more height show stronger micro-relief.
+                    float dnStr = _DetailNormalStrength * detailFade * (1.0 + blendedHeight * _SurfaceHeightScale);
                     normalWS = normalize(float3(
                         normalWS.x + detailNorm.x * dnStr,
                         normalWS.y,

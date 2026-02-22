@@ -97,6 +97,10 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private int textureWidth = 2048;
     [Tooltip("Height of biome texture arrays (used for shader arrays and baking). Use 2048 for 2048x2048 RGBA32 arrays.")]
     [SerializeField] private int textureHeight = 2048;
+    [Tooltip("Anisotropic level to apply to the runtime generated heightmap texture.")]
+    [SerializeField]
+    [Range(0,16)]
+    private int heightmapAnisoLevel = 4;
     
     [Header("Chunk Settings")]
     [Tooltip("Number of chunk columns (X axis). More columns = finer wrap granularity.")]
@@ -295,6 +299,14 @@ public class HexMapChunkManager : MonoBehaviour
     private Material sharedMaterial;
     private Texture2D biomeIndexMap;
     private Texture2D heightmapTexture;
+    // Cached inspector-backed runtime values for change detection
+    private int _lastHeightmapAnisoLevel = -1;
+    private float _lastCliffTiling = -1f;
+    private float _lastCliffStrength = -1f;
+    private float _lastCliffSlopeThreshold = -1f;
+    private float _lastCliffSlopeBlend = -1f;
+    private float _lastCliffStepThreshold = -1f;
+    private float _lastCliffStepBlend = -1f;
     // Heightmap diagnostics (computed during BuildHeightmap)
     private float _heightmapMin = 0f;
     private float _heightmapMax = 0f;
@@ -306,6 +318,7 @@ public class HexMapChunkManager : MonoBehaviour
     private Texture2DArray biomeNormalArray;
     private Texture2DArray biomeMaskArray;
     private Texture2DArray biomeEmissiveArray;
+    private Texture2DArray biomeHeightArray;
     [SerializeField]
     [Tooltip("Optional texture array used for cliff/alpine surfaces. Assign a Texture2DArray with multiple cliff variants.")]
     private Texture2DArray cliffAlbedoArray;
@@ -470,6 +483,35 @@ public class HexMapChunkManager : MonoBehaviour
         if (enableWrap && cameraTransform != null && chunks != null)
         {
             UpdateColumnWrapping();
+        }
+
+        // Detect changes made in the inspector at runtime and apply them immediately.
+        bool applied = false;
+
+        if (_lastHeightmapAnisoLevel != heightmapAnisoLevel)
+        {
+            _lastHeightmapAnisoLevel = heightmapAnisoLevel;
+            if (heightmapTexture != null)
+            {
+                heightmapTexture.anisoLevel = heightmapAnisoLevel;
+            }
+            applied = true;
+        }
+
+        if (_lastCliffTiling != cliffTiling || _lastCliffStrength != cliffStrength || _lastCliffSlopeThreshold != cliffSlopeThreshold || _lastCliffSlopeBlend != cliffSlopeBlend || _lastCliffStepThreshold != cliffStepThreshold || _lastCliffStepBlend != cliffStepBlend)
+        {
+            _lastCliffTiling = cliffTiling;
+            _lastCliffStrength = cliffStrength;
+            _lastCliffSlopeThreshold = cliffSlopeThreshold;
+            _lastCliffSlopeBlend = cliffSlopeBlend;
+            _lastCliffStepThreshold = cliffStepThreshold;
+            _lastCliffStepBlend = cliffStepBlend;
+            applied = true;
+        }
+
+        if (applied)
+        {
+            ApplyBiomeMaterialSettings();
         }
     }
     
@@ -836,6 +878,7 @@ public class HexMapChunkManager : MonoBehaviour
             biomeNormalArray = lib.normalArray;
             biomeMaskArray = lib.maskArray;
                 biomeEmissiveArray = lib.emissiveArray;
+            biomeHeightArray = lib.heightArray;
 
             // Build per-biome mapping vector: x = startSlice, y = variantCount, z = surfaceIndex, w = forcedVariant
             biomeSurfaceMapArray = new Vector4[count];
@@ -1211,7 +1254,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
-                filterMode = FilterMode.Bilinear,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = heightmapAnisoLevel,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -1279,7 +1323,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
-                filterMode = FilterMode.Bilinear,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = heightmapAnisoLevel,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -1458,7 +1503,8 @@ public class HexMapChunkManager : MonoBehaviour
         {
             heightmapTexture = new Texture2D(width, height, TextureFormat.RHalf, true, true)
             {
-                filterMode = FilterMode.Bilinear,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = heightmapAnisoLevel,
                 wrapMode = TextureWrapMode.Repeat,
                 name = "TerrainHeightmap"
             };
@@ -1572,6 +1618,11 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeEmissiveArray != null)
         {
             sharedMaterial.SetTexture("_SurfaceEmissiveArray", biomeEmissiveArray);
+        }
+
+        if (biomeHeightArray != null)
+        {
+            sharedMaterial.SetTexture("_BiomeHeightArray", biomeHeightArray);
         }
 
         if (biomeEmissiveMapTexture != null)
@@ -4368,6 +4419,7 @@ public class HexMapChunkManager : MonoBehaviour
             sharedMaterial.SetTexture("_BiomeNormalArray", null);
             sharedMaterial.SetTexture("_BiomeMaskArray", null);
             sharedMaterial.SetTexture("_SurfaceEmissiveArray", null);
+            sharedMaterial.SetTexture("_BiomeHeightArray", null);
             sharedMaterial.SetTexture("_BiomeIndexMap", null);
             sharedMaterial.SetTexture("_Heightmap", null);
             sharedMaterial.SetTexture("_BiomeSurfaceMapTex", null);

@@ -193,8 +193,7 @@ public class BattlefieldAmbientParticles : MonoBehaviour
     {
         // Determine if we need secondary particles
         bool needsEmbers = biome == Biome.Volcanic || biome == Biome.Hellscape || 
-                  biome == Biome.Ashlands ||
-                          biome == Biome.IoVolcanic;
+              biome == Biome.Ashlands;
         
         bool needsFireflies = biome == Biome.Temperate || biome == Biome.Swamp ||
                      biome == Biome.Tropical;
@@ -651,7 +650,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                             case Biome.MoonDunes:
                             case Biome.MercuryPlains:
                             case Biome.EuropaIce:
-                            case Biome.IoVolcanic:
                             case Biome.PlutoCryo:
                 particleCount = 0;
                 break;
@@ -663,12 +661,6 @@ public class BattlefieldAmbientParticles : MonoBehaviour
                 particleCount = 400;
                 particleColor = new Color(0.9f, 0.6f, 0.3f, 0.4f);
                 particleSize = 0.06f;
-                break;
-                
-            // Io - sulfur particles
-            case Biome.IoSulfur:
-                particleCount = 200;
-                particleColor = new Color(0.9f, 0.9f, 0.3f, 0.4f);
                 break;
                 
             default:

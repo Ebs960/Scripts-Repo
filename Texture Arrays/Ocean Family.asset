@@ -16,6 +16,7 @@ MonoBehaviour:
   albedoArray: {fileID: 18700000, guid: ef112ba3450a55244b22ef096e8b1e85, type: 3}
   normalArray: {fileID: 18700000, guid: 017a7ba7b6b2bcd4fa8f575f1791a5b2, type: 3}
   maskArray: {fileID: 18700000, guid: 0244cf4a6a083bd488dc395f60150e2f, type: 3}
+  heightArray: {fileID: 18700000, guid: 91dcd4d094d64f3459e33c670439eb26, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1

@@ -10,6 +10,8 @@ public class SurfaceFamilyData : ScriptableObject
     public Texture2DArray albedoArray;
     public Texture2DArray normalArray;
     public Texture2DArray maskArray;
+    // Optional per-variant height/displacement maps (single-channel, RHalf recommended)
+    public Texture2DArray heightArray;
 
     [Header("Emissive (optional)")]
     public Texture2DArray emissiveArray;

@@ -819,8 +819,6 @@ public class BattlefieldClouds : MonoBehaviour
             case Biome.MercurianIce:
             case Biome.EuropaIce:
             case Biome.EuropaRidges:
-            case Biome.IoVolcanic:
-            case Biome.IoSulfur:
             case Biome.PlutoCryo:
                 cloudDensity = 0f; // No atmosphere
                 break;

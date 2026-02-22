@@ -1521,7 +1521,7 @@ public class GameManager : MonoBehaviour
                 "Luna",
                 "Mars", "Venus", "Mercury",
                 "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
-                "Io", "Europa", "Titan"
+                "Europa", "Titan"
             };
             totalPlanets = realBodies.Count;
         }
@@ -1544,7 +1544,7 @@ public class GameManager : MonoBehaviour
                 planetIndex = i,
                 planetName = name,
                 planetType = GetPlanetType(name),
-                celestialBodyType = (name == "Luna" || name == "Io" || name == "Europa" || name == "Titan")
+                celestialBodyType = (name == "Luna" || name == "Europa" || name == "Titan")
                     ? CelestialBodyType.Moon
                     : CelestialBodyType.Planet,
                 planetSize = GetPlanetSize(name),
@@ -1723,8 +1723,6 @@ public class GameManager : MonoBehaviour
                 return new Vector3(baseSpacing * 6, 0, 0);
                 
             // Jupiter's moons - positioned around Jupiter
-            case "Io":
-                return new Vector3(baseSpacing * 2 + moonDistance, 0, moonDistance);
             case "Europa":
                 return new Vector3(baseSpacing * 2 - moonDistance, 0, moonDistance);
                 
@@ -1755,7 +1753,6 @@ public class GameManager : MonoBehaviour
             "Uranus" => PlanetType.Ice,
             "Neptune" => PlanetType.Ice,
             "Pluto" => PlanetType.Ice,
-            "Io" => PlanetType.Volcanic,
             "Europa" => PlanetType.Ice,
             "Titan" => PlanetType.Tundra,
             _ => PlanetType.Terran
@@ -1779,7 +1776,7 @@ public class GameManager : MonoBehaviour
             "Neptune" => MapSize.Standard,
             "Pluto" => MapSize.Small,
             // Moons are generally smaller
-            "Luna" or "Io" or "Europa" or "Titan" => MapSize.Small,
+            "Luna" or "Europa" or "Titan" => MapSize.Small,
             _ => MapSize.Standard
         };
     }
@@ -1802,7 +1799,7 @@ public class GameManager : MonoBehaviour
             "Pluto" => 39.5f,
             // Moons have same distance as their parent planet
             "Luna" => 1.0f, // Earth's distance
-            "Io" or "Europa" => 5.2f, // Jupiter's distance
+            "Europa" => 5.2f, // Jupiter's distance
             "Titan" => 9.5f, // Saturn's distance
             _ => 1.0f
         };
@@ -1826,7 +1823,6 @@ public class GameManager : MonoBehaviour
             "Pluto" => 90560f,
             // Moons orbit their parent planet, not the sun
             "Luna" => 27.32f,
-            "Io" => 1.77f,
             "Europa" => 3.55f,
             "Titan" => 15.95f,
             _ => 365f
@@ -1850,7 +1846,6 @@ public class GameManager : MonoBehaviour
             "Neptune" => -200f,
             "Pluto" => -230f,
             "Luna" => -20f,
-            "Io" => -130f,
             "Europa" => -160f,
             "Titan" => -179f,
             _ => 15f
@@ -1874,7 +1869,7 @@ public class GameManager : MonoBehaviour
             "Uranus" => "The ice giant - a tilted world of methane clouds and faint rings",
             "Neptune" => "The windy planet - a deep blue ice giant with the fastest winds in the solar system",
             "Pluto" => "The dwarf planet - a distant, frozen world at the edge of the solar system",
-            "Io" => "Jupiter's volcanic moon - the most geologically active body in the solar system",
+            
             "Europa" => "Jupiter's ice moon - hiding a subsurface ocean beneath its frozen crust",
             "Titan" => "Saturn's largest moon - shrouded in thick atmosphere with hydrocarbon lakes",
             _ => "A mysterious world waiting to be explored"

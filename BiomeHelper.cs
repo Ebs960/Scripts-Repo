@@ -21,7 +21,6 @@ public enum PlanetType
     Pluto,
     Titan,
     Europa,
-    Io,
     Luna
 }
 
@@ -65,7 +64,6 @@ public enum Biome {
     PlutoCryo,
     TitanLakes, TitanDunes, TitanIce,
     EuropaIce, EuropaRidges,
-    IoVolcanic, IoSulfur,
     
     Any
 }
@@ -247,22 +245,7 @@ public static class BiomeHelper {
             return Biome.EuropaRidges; // Default Europa
         }
         
-        // IO - Complete temperature/moisture coverage
-        if (planetType == PlanetType.Io) {
-            // Cold regions
-            if (temperature < -0.3f) {
-                if (moisture < 0.2f) return Biome.IoSulfur;
-                return Biome.IoVolcanic;
-            }
-            // Moderate regions
-            if (temperature < 0.0f) {
-                if (moisture > 0.2f) return Biome.IoVolcanic;
-                return Biome.IoSulfur;
-            }
-            // All other regions
-            if (moisture > 0.3f) return Biome.IoVolcanic;
-            return Biome.IoSulfur; // Default Io
-        }
+        // IO removed: no Io-specific biomes
         
         // LUNA - Just Moon Dunes for now
         if (planetType == PlanetType.Luna) {
@@ -274,10 +257,10 @@ public static class BiomeHelper {
         // ICE WORLD: Exclusive biomes
         if (mapType == MapType.IceWorld)
         {
-            if (temperature < 0.25f && moisture > 0.7f)
+            if (temperature < 0.25f) 
                 return Biome.IcicleField; // Wettest, coldest mapped to IcicleField
-            if (temperature < 0.25f && moisture > 0.45f)
-                return Biome.IcicleField; // Drier, cold = IcicleField
+            if (temperature < 0.4f && moisture > 0.15f)
+                return Biome.Arctic; // Drier, cold = Arctic
             // fallback to normal cold/frozen logic below
         }
 
@@ -305,29 +288,29 @@ public static class BiomeHelper {
         // === STANDARD EARTH BIOME LOGIC ===
         // Temperature bands: Arctic <0.15, Cold 0.15-0.35, Temperate 0.35-0.55, Warm 0.55-0.75, Hot >0.75
         
-        // Hot climates (>0.85)
-        if (temperature > 0.85f) {
-            if (moisture < 0.25f) return Biome.Desert;
-            if (moisture < 0.60f) return Biome.Savannah;
-            if (moisture < 0.90f) return Biome.Tropical;
+        // Hot climates (>0.82)
+        if (temperature > 0.82f) {
+            if (moisture < 0.35f) return Biome.Desert;
+            if (moisture < 0.49f) return Biome.Savannah;
+            if (moisture < 0.78f) return Biome.Tropical;
             return Biome.Swamp;
         }
 
-        // Temperate climates (0.35-0.55)
-        if (temperature > 0.45f) {
-            if (moisture < 0.3f) return Biome.Plains;
-            if (moisture < 0.90f) return Biome.Temperate;
+        // Temperate climates (0.45-0.55)
+        if (temperature > 0.52f) {
+            if (moisture < 0.35f) return Biome.Plains;
+            if (moisture < 0.81f) return Biome.Temperate;
             return Biome.Swamp;
         }
 
-        // Cold climates (0.10-0.45)
-        if (temperature > 0.10f) {
+        // Cold climates (0.20-0.45)
+        if (temperature > 0.23f) {
             if (moisture < 0.85f) return Biome.Tundra;
             return Biome.Plains;
         }
 
-        // Arctic (<0.15)
-        if (temperature <= 0.10f) {
+       
+        if (temperature <= 0.14f) {
             return Biome.Arctic;
         }
 
@@ -342,7 +325,7 @@ public static class BiomeHelper {
         if (assignedBiome == Biome.Glacier || assignedBiome == Biome.Tundra || assignedBiome == Biome.Arctic)
         {
             if (planetType == PlanetType.Venus || planetType == PlanetType.Mercury ||
-                planetType == PlanetType.Saturn || planetType == PlanetType.Io ||
+                planetType == PlanetType.Saturn ||
                 planetType == PlanetType.Luna)
             {
                 UnityEngine.Debug.LogWarning($"[BiomeHelper] WARNING: {planetType} incorrectly assigned {assignedBiome} biome!");
@@ -406,8 +389,6 @@ public static class BiomeHelper {
         Biome.TitanIce => new YieldValues { food = 1, prod = 1, gold = 1, sci = 2, cult = 0 },
         Biome.EuropaIce => new YieldValues { food = 2, prod = 1, gold = 1, sci = 3, cult = 0 },
         Biome.EuropaRidges => new YieldValues { food = 1, prod = 2, gold = 2, sci = 4, cult = 0 },
-        Biome.IoVolcanic => new YieldValues { food = 0, prod = 6, gold = 3, sci = 2, cult = 0 },
-        Biome.IoSulfur => new YieldValues { food = 0, prod = 3, gold = 4, sci = 1, cult = 0 },
 
         _ => new YieldValues { food = 1, prod = 1, gold = 1, sci = 1, cult = 1 }
     };
@@ -459,8 +440,6 @@ public static class BiomeHelper {
         Biome.TitanIce => 0,
         Biome.EuropaRidges => 2,
         Biome.EuropaIce => 0,
-        Biome.IoVolcanic => 0,
-        Biome.IoSulfur => 0,
 
         _ => 0
     };
@@ -515,8 +494,6 @@ public static class BiomeHelper {
         Biome.TitanIce => 2,
         Biome.EuropaIce => 1,
         Biome.EuropaRidges => 3,
-        Biome.IoVolcanic => 4,
-        Biome.IoSulfur => 2,
 
         _ => 1
     };
@@ -567,8 +544,6 @@ public static class BiomeHelper {
             Biome.UranusSurface => true,
             Biome.NeptuneSurface => true,
             Biome.PlutoCryo => true,
-            Biome.IoVolcanic => true,
-            Biome.IoSulfur => true,
 
             _ => false
         };
@@ -595,8 +570,6 @@ public static class BiomeHelper {
             Biome.UranusSurface => 0.25f,
             Biome.NeptuneSurface => 0.15f,
             Biome.PlutoCryo => 0.20f,
-            Biome.IoVolcanic => 0.60f,
-            Biome.IoSulfur => 0.20f,
 
             _ => 0f
         };
@@ -647,7 +620,6 @@ public static class BiomeHelper {
 
             case Biome.Volcanic:
             case Biome.VenusLava:
-            case Biome.IoVolcanic:
                 return BiomeTerrainSettings.CreateVolcanic();
 
             case Biome.MoonDunes:

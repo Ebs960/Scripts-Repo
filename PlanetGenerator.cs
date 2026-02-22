@@ -2767,13 +2767,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 break;
             case 2: // Standard — balanced mix
                 elevationExponent = 1.0f;
-                hillNoiseCutoff = 0.61f;
-                mountainNoiseCutoff = 0.93f;
-                flatElevationMin = 6.3f;
-                flatElevationMax = 6.6f;
+                hillNoiseCutoff = 0.52f;
+                mountainNoiseCutoff = 0.90f;
+                flatElevationMin = 6.35f;
+                flatElevationMax = 7.25f;
                 hillElevationMin = 8.5f;
-                hillElevationMax = 9.0f;
-                mountainElevationMin = 11.0f;
+                hillElevationMax = 11.0f;
+                mountainElevationMin = 11.5f;
                 mountainElevationMax = 12.5f;
                 ridgeStrength = 0.05f;
                 break;

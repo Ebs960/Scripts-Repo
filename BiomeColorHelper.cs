@@ -56,8 +56,6 @@ public static class BiomeColorHelper
         { Biome.TitanIce, new Color(0.78f, 0.88f, 0.94f) },
         { Biome.EuropaIce, new Color(0.94f, 0.97f, 1.00f) },
         { Biome.EuropaRidges, new Color(0.78f, 0.86f, 0.92f) },
-        { Biome.IoVolcanic, new Color(0.96f, 0.60f, 0.12f) },
-        { Biome.IoSulfur, new Color(0.97f, 0.86f, 0.10f) },
         { Biome.Any, new Color(0.62f, 0.62f, 0.62f) }
     };
 

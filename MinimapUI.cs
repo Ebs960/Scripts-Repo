@@ -1129,9 +1129,6 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             Biome.EuropaIce => new Color(0.9f, 0.9f, 1.0f, 1f),
             Biome.EuropaRidges => new Color(0.8f, 0.8f, 0.9f, 1f),
             
-            Biome.IoVolcanic => new Color(0.9f, 0.3f, 0.1f, 1f),
-            Biome.IoSulfur => new Color(0.9f, 0.8f, 0.2f, 1f),
-            
             Biome.MoonDunes => new Color(0.7f, 0.7f, 0.7f, 1f),
             
             _ => new Color(0.5f, 0.5f, 0.5f, 1f)
