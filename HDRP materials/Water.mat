@@ -187,7 +187,7 @@ Material:
     - _EnableGeometricSpecularAA: 0
     - _EnergyConservingSpecularColor: 1
     - _FlowSpeed: 0.28
-    - _FresnelPower: 4.8
+    - _FresnelPower: 2.84
     - _HeightAmplitude: 0.02
     - _HeightCenter: 0.5
     - _HeightMapParametrization: 0

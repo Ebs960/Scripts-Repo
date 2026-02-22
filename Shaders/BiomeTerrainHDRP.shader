@@ -460,7 +460,11 @@ Shader "Custom/BiomeTerrainHDRP"
     // Distance-adaptive tessellation factor
     float CalcTessellationFactor(float3 positionWS)
     {
-        float dist = distance(positionWS, _WorldSpaceCameraPos);
+        // HDRP often uses camera-relative rendering for "world space" positions.
+        // For world-anchored texturing / distances we must operate in absolute WS,
+        // otherwise textures appear to "swim" as the camera moves.
+        float3 absPosWS = GetAbsolutePositionWS(positionWS);
+        float dist = distance(absPosWS, _WorldSpaceCameraPos);
         float f = 1.0 - saturate((dist - _TessellationFadeStart) /
             max(_TessellationFadeEnd - _TessellationFadeStart, 0.01));
         return max(f * _TessellationFactor, 1.0);
@@ -686,14 +690,14 @@ Shader "Custom/BiomeTerrainHDRP"
             float4 frag(Varyings input) : SV_Target
             {
                 float2 uv = input.uv;
-                float3 worldPos = input.positionWS;
-                float3 V = normalize(input.viewDirWS);
+                // Convert to absolute WS so triplanar UVs are world-anchored (no camera swimming).
+                float3 worldPos = GetAbsolutePositionWS(input.positionWS);
+                float3 V = normalize(_WorldSpaceCameraPos - worldPos);
                 // Use camera-forward distance: how far the sampled world point
                 // lies along the camera view ray. This ties fades strictly to
                 // the camera position/direction rather than any map-center or
                 // other artifacts.
-                float camDist = dot((_WorldSpaceCameraPos - worldPos), V);
-                camDist = abs(camDist);
+                float camDist = distance(_WorldSpaceCameraPos, worldPos);
 
                 // --- Displaced normal from heightmap ---
                 float3 displacedNormal = ComputeDisplacedNormal(uv);
