@@ -26,6 +26,7 @@ Shader "Custom/BiomeTerrainHDRP"
         [Header(Triplanar)]
         _TriTiling ("Triplanar Tiling", Range(0.01, 5)) = 1.15
         _TriBlend ("Triplanar Blend Sharpness", Range(1, 50)) = 5.0
+        _UseTriplanar ("Use Triplanar", Float) = 1
 
         [Header(Map Dimensions)]
         _MapWidth ("Map Width", Float) = 100
@@ -157,6 +158,7 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 _BiomeIndexMap_TexelSize;
     float _TriTiling;
     float _TriBlend;
+    float _UseTriplanar;
     float _MapWidth;
     float _MapHeight;
     float _BiomeCount;
@@ -365,8 +367,8 @@ Shader "Custom/BiomeTerrainHDRP"
     float4 SampleBiomeTexture(TEXTURE2D_ARRAY_PARAM(tex, samp),
         float3 worldPos, float3 triWeights, float sliceIndex, float tiling, float camDist, float2 mapUV)
     {
-        float lodBlend = saturate((camDist - _TriplanarLODStart) /
-            max(_TriplanarLODEnd - _TriplanarLODStart, 0.01));
+        float denom = _TriplanarLODEnd - _TriplanarLODStart;
+        float lodBlend = (denom <= 0.001) ? 0.0 : saturate((camDist - _TriplanarLODStart) / max(denom, 0.01));
         float2 uvY = worldPos.xz * tiling;
 
         // Far distance: single Y-axis planar sample (1 sample)
@@ -386,13 +388,17 @@ Shader "Custom/BiomeTerrainHDRP"
         float4 sZ = SampleHexTiled(TEXTURE2D_ARRAY_ARGS(tex, samp), worldPos.xy * tiling + tileHash, sliceIndex);
         float4 fullResult = sX * triWeights.x + sY * triWeights.y + sZ * triWeights.z;
 
-        // Blend toward Y-only at distance
-        if (lodBlend > 0.001)
-        {
-            float4 yOnly = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY + tileHash, sliceIndex);
-            return lerp(fullResult, yOnly, lodBlend);
-        }
-        return fullResult;
+            // If triplanar disabled, always use Y-only planar
+            if (_UseTriplanar < 0.5)
+                return SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex);
+
+            // Blend toward Y-only at distance
+            if (lodBlend > 0.001)
+            {
+                float4 yOnly = SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY + tileHash, sliceIndex);
+                return lerp(fullResult, yOnly, lodBlend);
+            }
+            return fullResult;
     }
 
     // Distance-adaptive normal sampling with hex tiling and whiteout blending
@@ -400,9 +406,17 @@ Shader "Custom/BiomeTerrainHDRP"
         float3 worldPos, float3 worldNormal, float3 triWeights,
         float sliceIndex, float tiling, float camDist, float2 mapUV)
     {
-        float lodBlend = saturate((camDist - _TriplanarLODStart) /
-            max(_TriplanarLODEnd - _TriplanarLODStart, 0.01));
+        float denom = _TriplanarLODEnd - _TriplanarLODStart;
+        float lodBlend = (denom <= 0.001) ? 0.0 : saturate((camDist - _TriplanarLODStart) / max(denom, 0.01));
         float2 uvY = worldPos.xz * tiling;
+
+        // If triplanar disabled, always use Y-only planar normal
+        if (_UseTriplanar < 0.5)
+        {
+            float3 tnY = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(tex, samp, uvY, sliceIndex));
+            float3 nY = float3(tnY.xy + worldNormal.xz, abs(worldNormal.y));
+            return normalize(nY.xzy);
+        }
 
         // Far distance: single Y-axis normal
         if (lodBlend >= 0.999)

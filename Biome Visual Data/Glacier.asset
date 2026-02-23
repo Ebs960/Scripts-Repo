@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Glacier
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   biome: 7
+  waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f2b52ef11c5b234a97da2f06f3baf89, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}
   maskMap: {fileID: 0}
-  tiling: 1
+  tiling: 2.5
   tint: {r: 1, g: 1, b: 1, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0

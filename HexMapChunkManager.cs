@@ -146,6 +146,9 @@ public class HexMapChunkManager : MonoBehaviour
     [Tooltip("Triplanar blend sharpness — higher values make the blend between projection axes sharper. Lower = smoother.")]
     [Range(1f, 20f)]
     [SerializeField] private float triplanarBlend = 6f;
+    [SerializeField]
+    [Tooltip("When true, use triplanar/hex-tiled sampling; when false, use simple Y-planar sampling.")]
+    private bool useTriplanar = true;
     
     [Header("Normals & Biome Blending")]
     [Tooltip("Strength multiplier for sampled normals from biome normal array")]
@@ -289,6 +292,7 @@ public class HexMapChunkManager : MonoBehaviour
     private Texture2D heightmapTexture;
     // Cached inspector-backed runtime values for change detection
     private int _lastHeightmapAnisoLevel = -1;
+    private bool _lastUseTriplanar = true;
     private float _lastCliffTiling = -1f;
     private float _lastCliffStrength = -1f;
     private float _lastCliffSlopeThreshold = -1f;
@@ -483,6 +487,12 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 heightmapTexture.anisoLevel = heightmapAnisoLevel;
             }
+            applied = true;
+        }
+
+        if (_lastUseTriplanar != useTriplanar)
+        {
+            _lastUseTriplanar = useTriplanar;
             applied = true;
         }
 
@@ -941,7 +951,11 @@ public class HexMapChunkManager : MonoBehaviour
                 if (entry != null)
                 {
                     biomeTintArray[i] = entry.tint;
-                    biomeParamsArray[i] = new Vector4(entry.tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
+                    // Tiling fallback: if biome.tiling is <= 0, use the SurfaceFamily defaultTiling (explicit fallback).
+                    float tiling = entry.tiling;
+                    if (tiling <= 0f && entry.surfaceFamily != null)
+                        tiling = entry.surfaceFamily.defaultTiling;
+                    biomeParamsArray[i] = new Vector4(tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
                 }
                 else
                 {
@@ -1642,6 +1656,7 @@ public class HexMapChunkManager : MonoBehaviour
         // Triplanar parameters
         sharedMaterial.SetFloat("_TriTiling", triplanarTiling);
         sharedMaterial.SetFloat("_TriBlend", triplanarBlend);
+        sharedMaterial.SetFloat("_UseTriplanar", useTriplanar ? 1f : 0f);
         // Detail maps (micro-detail)
         if (detailAlbedoMap != null)
             sharedMaterial.SetTexture("_DetailAlbedoMap", detailAlbedoMap);
@@ -2652,7 +2667,10 @@ public class HexMapChunkManager : MonoBehaviour
         float isoLake = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, lakeHalfWidthMultiplier));
         float isoOcean = Mathf.Max(0.05f, hexSize * Mathf.Max(0.01f, oceanHalfWidthMultiplier));
         // Prevent sub-cell widths which alias into hairline strands at a given SDF resolution.
-        float minIso = Mathf.Max(dx, dz) * 1.5f;
+        // Use a smaller multiplier so coarse-resolution inflation is reduced, and
+        // also rely on seeding multiple grid cells around each tile center so
+        // the iso behaves consistently when resolution changes.
+        float minIso = Mathf.Max(dx, dz) * 0.5f;
         isoRiver = Mathf.Max(isoRiver, minIso);
         isoLake = Mathf.Max(isoLake, minIso);
         isoOcean = Mathf.Max(isoOcean, minIso);
@@ -2686,9 +2704,27 @@ public class HexMapChunkManager : MonoBehaviour
             v = Mathf.Clamp01(v);
             int px = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
             int py = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
-            int idx = py * wPts + px;
-            seed[idx] = true;
-            if (owner != null && owner[idx] < 0) owner[idx] = tileIndex; // keep first owner
+
+            // Compute a radius in grid cells that covers the world-space iso radius.
+            // This makes seeding resolution-independent: increasing SDF resolution
+            // simply increases the number of seeded cells rather than changing
+            // whether anything is seeded at all.
+            int radius = 0;
+            float minCell = Mathf.Min(dx, dz);
+            if (minCell > 0f)
+                radius = Mathf.CeilToInt(isoRiver / minCell);
+
+            for (int oy = py - radius; oy <= py + radius; oy++)
+            {
+                if (oy < 0 || oy > hPts - 1) continue;
+                for (int ox = px - radius; ox <= px + radius; ox++)
+                {
+                    if (ox < 0 || ox > wPts - 1) continue;
+                    int idx = oy * wPts + ox;
+                    seed[idx] = true;
+                    if (owner != null && owner[idx] < 0) owner[idx] = tileIndex; // keep first owner
+                }
+            }
         }
 
         // Mark tile centers and some segment samples so rivers don't appear "dotted"
@@ -3153,6 +3189,10 @@ public class HexMapChunkManager : MonoBehaviour
 
         if (tris.Count < 3)
         {
+            if (ShouldRunDiagnostics() || debugWaterVerbose)
+            {
+                Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}). iso: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, minIso={minIso:F4}, dx={dx:F4}, dz={dz:F4}, cells={wCells}x{hCells}, seeds: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
+            }
             DestroyRiverSurface();
             Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}) — unified water mesh not built. Check iso values or seed distribution.");
             yield break;
@@ -3276,7 +3316,7 @@ public class HexMapChunkManager : MonoBehaviour
         mf.sharedMesh = _riverSurfaceMesh;
 
         if (ShouldRunDiagnostics() || debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][SDF] Unified water mesh built: verts={verts.Count}, tris={tris.Count / 3}, extruded={extrudeInlandWaterToVolume}");
+            Debug.Log($"[HexMapChunkManager][SDF] Unified water mesh built: verts={verts.Count}, tris={tris.Count / 3}, extruded={extrudeInlandWaterToVolume}, iso: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, cells={wCells}x{hCells}, seeds: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
 
         // Ensure ghosts are updated immediately after rebuild.
         if (enableWrap)

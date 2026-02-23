@@ -129,6 +129,7 @@ public sealed class BiomeTerrainHDRPShaderGUI : ShaderGUI
             EditorGUI.indentLevel++;
             materialEditor.ShaderProperty(Find(properties, "_TriTiling"), "Global Tiling");
             materialEditor.ShaderProperty(Find(properties, "_TriBlend"), "Blend Sharpness");
+            materialEditor.ShaderProperty(Find(properties, "_UseTriplanar"), "Use Triplanar");
 
             var lodStart = Find(properties, "_TriplanarLODStart");
             var lodEnd = Find(properties, "_TriplanarLODEnd");

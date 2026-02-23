@@ -19,7 +19,7 @@ MonoBehaviour:
   albedo: {fileID: 0}
   normal: {fileID: 0}
   maskMap: {fileID: 0}
-  tiling: 1
+  tiling: 4
   tint: {r: 0.51760083, g: 0.98490566, b: 0.33263788, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0

@@ -50,11 +50,11 @@ MonoBehaviour:
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   textureWidth: 2048
   textureHeight: 2048
-  heightmapAnisoLevel: 8
+  heightmapAnisoLevel: 4
   chunksX: 6
   chunksZ: 3
   meshSubdivisionsPerChunk: 72
-  displacementStrength: 1.03
+  displacementStrength: 1
   flatY: 0
   preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
@@ -62,9 +62,10 @@ MonoBehaviour:
   metallicMultiplier: 1
   aoIntensity: 1.31
   smoothnessMultiplier: 0.92
-  triplanarTiling: 0.42
-  triplanarBlend: 13.8
-  normalStrength: 2.5
+  triplanarTiling: 0.01
+  triplanarBlend: 1
+  useTriplanar: 0
+  normalStrength: 2
   normalSampleRadius: 1
   biomeBlendRadius: 0.7
   biomeBlendSharpness: 4.51
@@ -72,7 +73,7 @@ MonoBehaviour:
   detailNormalMap: {fileID: 2800000, guid: c21bd1927c78740498ddbc06e9171da8, type: 3}
   detailTiling: 29
   detailStrength: 1
-  detailNormalStrength: 2.5
+  detailNormalStrength: 2
   detailFadeStart: 22
   detailFadeEnd: 145
   enableWrap: 1
@@ -82,7 +83,7 @@ MonoBehaviour:
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
-  debugWaterVerbose: 0
+  debugWaterVerbose: 1
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
   manualOceanWaterY: 6
@@ -98,17 +99,12 @@ MonoBehaviour:
   continuousWaterIncludesOcean: 1
   riverSdfWidth: 1024
   riverSdfHeight: 512
-  riverHalfWidthMultiplier: 1
-  lakeHalfWidthMultiplier: 1
-  oceanHalfWidthMultiplier: 1
+  riverHalfWidthMultiplier: 1.5
+  lakeHalfWidthMultiplier: 1.5
+  oceanHalfWidthMultiplier: 1.5
   riverSurfaceLift: 0.01
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
-  enableCliffWalls: 0
-  cliffWallMaterial: {fileID: 2100000, guid: ad57983243b058a4b973a8f213409ea9, type: 2}
-  cliffMinHeightDelta: 0.8
-  cliffBottomExtension: 0.2
-  cliffInset: 0.089
   preBuildOnPlanetReady: 1
   chunksPerBatch: 4
   tilesPerBatch: 2048
@@ -116,11 +112,11 @@ MonoBehaviour:
   enableSeasonMasks: 0
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
-  cliffTiling: 1
+  cliffTiling: 31
   cliffStrength: 0.9
-  cliffSlopeThreshold: 0
+  cliffSlopeThreshold: 0.2
   cliffSlopeBlend: 0
-  cliffStepThreshold: 0
+  cliffStepThreshold: 0.1
   cliffStepBlend: 0
 --- !u!114 &6515396151515733605
 MonoBehaviour:
