@@ -155,9 +155,31 @@ public class ImprovementManager : MonoBehaviour
         if (td == null) return false;
         
         // Basic terrain checks
-        if (!td.isLand) return false;
-        if (data.allowedBiomes.Length > 0 && 
-            System.Array.IndexOf(data.allowedBiomes, td.biome) < 0) return false;
+        if (data.isOrbitalImprovement)
+        {
+            // Orbital improvements: validate against surface biome below
+            if (data.allowedBiomes != null && data.allowedBiomes.Length > 0 &&
+                System.Array.IndexOf(data.allowedBiomes, td.biome) < 0 &&
+                System.Array.IndexOf(data.allowedBiomes, Biome.Any) < 0)
+                return false;
+        }
+        else if (data.isUnderwaterImprovement)
+        {
+            // Underwater improvements: tile must be a water tile with a valid underwaterBiome
+            if (td.isLand) return false;
+            if (td.underwaterBiome == Biome.Ocean && (data.allowedUnderwaterBiomes == null || data.allowedUnderwaterBiomes.Length == 0))
+                return false; // plain ocean floor, and no explicit allowance
+            if (data.allowedUnderwaterBiomes != null && data.allowedUnderwaterBiomes.Length > 0 &&
+                System.Array.IndexOf(data.allowedUnderwaterBiomes, td.underwaterBiome) < 0)
+                return false;
+        }
+        else
+        {
+            // Standard land improvements
+            if (!td.isLand) return false;
+            if (data.allowedBiomes != null && data.allowedBiomes.Length > 0 && 
+                System.Array.IndexOf(data.allowedBiomes, td.biome) < 0) return false;
+        }
         
         // Territory control checks
         bool isOwnedByBuilder = td.owner == owner;

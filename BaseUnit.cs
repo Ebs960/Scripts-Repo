@@ -751,6 +751,7 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool ApplyDamage(int damageAmount)
     {
+
         // DIAGNOSTIC (animal-only): determine whether animals are being killed via damage.
         try
         {
@@ -799,6 +800,15 @@ public abstract class BaseUnit : MonoBehaviour
             meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(MeleeEngageDuration));
         }
         return ApplyDamage(damageAmount);
+    }
+
+    /// <summary>
+    /// Heal this unit by the specified amount, capped at MaxHealth.
+    /// </summary>
+    public virtual void Heal(int amount)
+    {
+        if (amount <= 0) return;
+        currentHealth = Mathf.Min(currentHealth + amount, MaxHealth);
     }
 
     protected System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
@@ -945,6 +955,112 @@ public abstract class BaseUnit : MonoBehaviour
         transform.position = surface + Vector3.up * 4f;
 
         UpdateWalkingState(false);
+
+        // Entering orbit consumes the unit's turn
+        var cu2 = this as CombatUnit;
+        if (cu2 != null) cu2.ConsumeAction();
+    }
+
+    /// <summary>
+    /// Land this unit from orbit back to the surface layer.
+    /// Consumes movement points equal to CombatUnitData.orbitExitCost.
+    /// If requiresSpaceportToLand is true, the target tile must have a spaceport improvement.
+    /// </summary>
+    public virtual void ExitOrbit(int landingTileIndex = -1)
+    {
+        if (currentLayer != TileLayer.Orbit)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} is not in orbit — cannot exit orbit.");
+            return;
+        }
+
+        // Default: land on the tile we're currently orbiting
+        if (landingTileIndex < 0) landingTileIndex = currentTileIndex;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} ExitOrbit: TileSystem missing.");
+            return;
+        }
+
+        // Spaceport requirement check
+        var cu = this as CombatUnit;
+        if (cu != null && cu.data != null && cu.data.requiresSpaceportToLand)
+        {
+            var tile = ts.GetTileData(landingTileIndex);
+            bool hasSpaceport = tile != null && tile.improvement != null
+                && tile.improvement.improvementName.Contains("Spaceport");
+            if (!hasSpaceport)
+            {
+                Debug.LogWarning($"[BaseUnit] {name} requires a Spaceport to land. Tile {landingTileIndex} has none.");
+                return;
+            }
+        }
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null)
+        {
+            Debug.LogWarning($"[BaseUnit] {name} ExitOrbit: TileOccupancyManager missing.");
+            return;
+        }
+
+        // Check that the surface tile is not already occupied by another unit
+        var surfaceOccupant = occ.GetOccupantObject(landingTileIndex, TileLayer.Surface);
+        if (surfaceOccupant != null && surfaceOccupant.GetInstanceID() != gameObject.GetInstanceID())
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot land: surface tile {landingTileIndex} is occupied by {surfaceOccupant.name}.");
+            return;
+        }
+
+        // Clear orbit occupancy, set surface occupancy
+        try
+        {
+            occ.ClearOccupant(currentTileIndex, TileLayer.Orbit);
+        }
+        catch { }
+
+        currentTileIndex = landingTileIndex;
+        currentLayer = TileLayer.Surface;
+        occ.SetOccupant(landingTileIndex, gameObject, TileLayer.Surface);
+
+        // Position back on terrain surface
+        PositionUnitOnSurface(landingTileIndex);
+        UpdateWalkingState(false);
+
+        // Exiting orbit consumes the unit's turn
+        var cu2 = this as CombatUnit;
+        if (cu2 != null) cu2.ConsumeAction();
+
+        Debug.Log($"[BaseUnit] {name} has landed from orbit on tile {landingTileIndex}.");
+    }
+
+    /// <summary>
+    /// Whether this unit is currently in orbit.
+    /// </summary>
+    public bool IsInOrbit => currentLayer == TileLayer.Orbit;
+
+    /// <summary>
+    /// Collect per-turn orbit yields (science, gold) for this unit.
+    /// Call once per turn for units in orbit. Returns zero yields if not in orbit.
+    /// </summary>
+    public virtual YieldValues CollectOrbitYields()
+    {
+        if (!IsInOrbit) return default;
+
+        var cu = this as CombatUnit;
+        if (cu == null || cu.data == null) return default;
+
+        // Get surface biome under this orbital position
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        Biome surfaceBiome = Biome.Ocean; // fallback
+        if (ts != null)
+        {
+            var tile = ts.GetTileData(currentTileIndex);
+            if (tile != null) surfaceBiome = tile.biome;
+        }
+
+        return BiomeHelper.GetOrbitYields(surfaceBiome, cu.data.orbitSciencePerTurn, cu.data.orbitGoldPerTurn);
     }
 
     /// <summary>
@@ -952,7 +1068,7 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual void MoveTo(int targetTileIndex)
     {
-        var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex);
+        var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
         if (path == null || path.Count == 0) return;
 
         StopAllCoroutines();

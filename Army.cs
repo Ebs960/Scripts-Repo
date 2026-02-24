@@ -49,12 +49,6 @@ public class Army : MonoBehaviour
     public int totalHealth;
     [Tooltip("Current health of all units")]
     public int currentHealth;
-    [Tooltip("Total soldier count across all units")]
-    public int totalSoldierCount;
-    [Tooltip("Maximum soldier count across all units")]
-    public int maxSoldierCount;
-    [Tooltip("Average morale of all units")]
-    public int averageMorale;
     
     [Header("Visual Representation")]
     [Tooltip("Visual representation of the army on campaign map (optional)")]
@@ -195,9 +189,6 @@ return true;
         totalDefense = 0;
         totalHealth = 0;
         currentHealth = 0;
-        totalSoldierCount = 0;
-        maxSoldierCount = 0;
-        int moraleSum = 0;
         int count = 0;
         
         foreach (var unit in units)
@@ -208,20 +199,14 @@ return true;
             totalDefense += unit.CurrentDefense;
             totalHealth += unit.MaxHealth;
             currentHealth += unit.currentHealth;
-            totalSoldierCount += unit.soldierCount;
-            maxSoldierCount += unit.maxSoldierCount;
-            moraleSum += unit.currentMorale;
             count++;
         }
-        
-        averageMorale = count > 0 ? moraleSum / count : 0;
         
         // Apply leadership bonus if general exists
         if (general != null && leadershipBonus > 1.0f)
         {
             totalAttack = Mathf.RoundToInt(totalAttack * leadershipBonus);
             totalDefense = Mathf.RoundToInt(totalDefense * leadershipBonus);
-            averageMorale = Mathf.RoundToInt(averageMorale * leadershipBonus);
         }
         
         // Apply equipment bonuses from all units
@@ -229,13 +214,11 @@ return true;
         totalAttack += equipmentBonuses.attackAdd;
         totalDefense += equipmentBonuses.defenseAdd;
         totalHealth += equipmentBonuses.healthAdd;
-        averageMorale += equipmentBonuses.moraleAdd;
         
         // Apply percentage bonuses
         totalAttack = Mathf.RoundToInt(totalAttack * (1f + equipmentBonuses.attackPct));
         totalDefense = Mathf.RoundToInt(totalDefense * (1f + equipmentBonuses.defensePct));
         totalHealth = Mathf.RoundToInt(totalHealth * (1f + equipmentBonuses.healthPct));
-        averageMorale = Mathf.RoundToInt(averageMorale * (1f + equipmentBonuses.moralePct));
         
         // Also apply tech/culture army bonuses to stats
         if (owner != null)
@@ -244,12 +227,10 @@ return true;
             totalAttack += armyBonuses.attackAdd;
             totalDefense += armyBonuses.defenseAdd;
             totalHealth += armyBonuses.healthAdd;
-            averageMorale += armyBonuses.moraleAdd;
             
             totalAttack = Mathf.RoundToInt(totalAttack * (1f + armyBonuses.attackPct));
             totalDefense = Mathf.RoundToInt(totalDefense * (1f + armyBonuses.defensePct));
             totalHealth = Mathf.RoundToInt(totalHealth * (1f + armyBonuses.healthPct));
-            averageMorale = Mathf.RoundToInt(averageMorale * (1f + armyBonuses.moralePct));
         }
     }
     
@@ -269,7 +250,7 @@ return true;
         foreach (var unit in units)
         {
             if (unit == null) continue;
-            float effectiveSpeed = unit.EffectiveMoveSpeed;
+            float effectiveSpeed = unit.moveSpeed;
             if (effectiveSpeed < slowestSpeed)
             {
                 slowestSpeed = effectiveSpeed;

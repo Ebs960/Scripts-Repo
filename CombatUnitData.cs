@@ -28,8 +28,6 @@ public enum AnimalBehaviorType
     Prey        // Avoids civilization units but fights back when recently attacked
 }
 
-public enum FormationShape { Square, Circle, Wedge }
-
 [CreateAssetMenu(fileName = "NewCombatUnitData", menuName = "Data/Combat Unit Data")]
 public class CombatUnitData : ScriptableObject
 {
@@ -99,12 +97,6 @@ public class CombatUnitData : ScriptableObject
         return string.IsNullOrEmpty(addressableAddress) ? unitName : addressableAddress;
     }
 
-    [Header("Formation")]
-    // Formation member prefab must be marked as Addressable. Loaded on-demand via Addressables.
-    [Range(1, 100)] public int formationSize = 9;
-    public FormationShape formationShape = FormationShape.Square;
-    [Range(0.5f, 5f)] public float formationSpacing = 1.5f;
-
     [Header("Category & Deployment")]
     public bool requiresAirport;
     public bool requiresSpaceport;
@@ -123,6 +115,33 @@ public class CombatUnitData : ScriptableObject
     public float spaceAUPerTurn = 0f;
     [Tooltip("Multiplier on default speed model (higher = faster). Used when AU/turn is 0.")]
     public float spaceSpeedMultiplier = 1.0f;
+
+    [Header("Orbit Mechanics")]
+    [Tooltip("Movement points consumed when entering orbit from surface.")]
+    [Range(1, 10)]
+    public int orbitEntryCost = 2;
+    [Tooltip("Movement points consumed when landing from orbit to surface.")]
+    [Range(1, 10)]
+    public int orbitExitCost = 1;
+    [Tooltip("Movement cost per tile while moving in orbit (usually 1 — no terrain friction in space).")]
+    [Range(1, 5)]
+    public int orbitMovementCost = 1;
+    [Tooltip("Whether this unit requires a spaceport on the tile to land (exit orbit). Spaceships typically do NOT.")]
+    public bool requiresSpaceportToLand = false;
+    [Tooltip("Whether this unit can bombard surface tiles from orbit. Reduces damage by bombardmentDamageMult.")]
+    public bool canBombardSurface = false;
+    [Tooltip("Damage multiplier when bombarding surface from orbit (0.3 = 30% of normal attack).")]
+    [Range(0.05f, 1f)]
+    public float bombardmentDamageMult = 0.3f;
+    [Tooltip("Extra vision range granted while in orbit (added on top of sightRange).")]
+    [Range(0, 10)]
+    public int orbitVisionBonus = 3;
+    [Tooltip("Science generated per turn while orbiting a tile (planetary scanning).")]
+    [Range(0, 10)]
+    public int orbitSciencePerTurn = 1;
+    [Tooltip("Gold generated per turn while orbiting a tile (satellite relay / comms).")]
+    [Range(0, 10)]
+    public int orbitGoldPerTurn = 0;
     
     [Header("Transport Capabilities")]
     [Tooltip("Whether this unit can transport other units")]
@@ -148,38 +167,6 @@ public class CombatUnitData : ScriptableObject
     public bool canAttackUnderwater = false;
     [Tooltip("Whether this unit can perform a counter-attack when attacked")]
     public bool canCounterAttack = false;
-    [Tooltip("Base morale for the unit")]
-    public int baseMorale = 100;
-    [Tooltip("Morale lost per HP lost")]
-    public int moraleLostPerHealth = 1;
-    [Tooltip("Morale gained when killing an enemy unit")]
-    public int moraleGainOnKill = 10;
-    [Tooltip("Charge bonus multiplier for melee attacks (only applies when charging). Higher values = more charge damage. Cavalry units typically have higher values (1.5-2.0), infantry lower (1.2-1.5).")]
-    [Range(1.0f, 3.0f)]
-    public float chargeBonusMultiplier = 1.5f;
-    
-    [Header("Fatigue System")]
-    [Tooltip("Rate at which fatigue increases per second while moving (0-100 scale)")]
-    [Range(0f, 10f)]
-    public float fatigueRateMoving = 0.25f; // Tired after 400 seconds of continuous movement
-    [Tooltip("Rate at which fatigue increases per second while fighting (0-100 scale)")]
-    [Range(0f, 20f)]
-    public float fatigueRateFighting = 0.5f; // Tired after 200 seconds of continuous fighting
-    [Tooltip("Rate at which fatigue recovers per second while resting (0-100 scale)")]
-    [Range(0f, 20f)]
-    public float fatigueRecoveryRate = 10f; // Full recovery in 10 seconds
-    [Tooltip("Attack penalty at 100% fatigue (0.5 = 50% attack damage)")]
-    [Range(0f, 1f)]
-    public float fatigueAttackPenalty = 0.5f;
-    [Tooltip("Defense penalty at 100% fatigue (0.5 = 50% defense)")]
-    [Range(0f, 1f)]
-    public float fatigueDefensePenalty = 0.5f;
-    [Tooltip("Speed penalty at 100% fatigue (0.5 = 50% move speed)")]
-    [Range(0f, 1f)]
-    public float fatigueSpeedPenalty = 0.5f;
-    [Tooltip("Fatigue gained instantly when executing a charge attack")]
-    [Range(0f, 50f)]
-    public float chargeInstantFatigue = 25f; // Cavalry get more tired from charges
     
     [Header("Ammunition System (Ranged Units)")]
     [Tooltip("Is this a ranged unit that uses ammunition?")]

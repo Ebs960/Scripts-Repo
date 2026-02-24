@@ -563,6 +563,14 @@ public class Civilization : MonoBehaviour
                 addCul  += yields.culture;
                 addFai  += yields.faith;
                 addPol  += yields.policy;
+
+                // Orbit yields: satellites/spaceships in orbit generate science & gold
+                if (u.IsInOrbit)
+                {
+                    var orbitYields = u.CollectOrbitYields();
+                    addSci  += orbitYields.sci;
+                    addGold += orbitYields.gold;
+                }
             }
 
             // Apply global civ yield modifiers to these additions as well

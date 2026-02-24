@@ -148,7 +148,17 @@ public class ImprovementData : ScriptableObject
 
     [Header("Location Requirements")]
     public Biome[] allowedBiomes;
+    [Tooltip("Which underwater floor biomes this improvement can be placed on (checked against HexTileData.underwaterBiome). Leave empty to disallow underwater placement.")]
+    public Biome[] allowedUnderwaterBiomes;
     public ResourceData[] requiredResources;
+
+    [Header("Underwater")]
+    [Tooltip("If true, this improvement is placed on the ocean floor (underwater layer). Bypasses the isLand check and validates against underwaterBiome instead.")]
+    public bool isUnderwaterImprovement = false;
+
+    [Header("Orbital")]
+    [Tooltip("If true, this improvement is built in the orbit layer above a tile. Uses allowedBiomes to check the surface biome below. Requires the building unit to be in orbit or a spaceport on the tile.")]
+    public bool isOrbitalImprovement = false;
 
     [Header("Yield Bonus (per turn)")]
     public int foodPerTurn;

@@ -318,7 +318,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 float oy = (hash & 0xFF) / 255f;
                 float sampleU = Mathf.Repeat(0.5f + ox, 1f);
                 float sampleV = Mathf.Repeat(0.5f + oy, 1f);
-                baseColor = GetDefaultBiomeColour(tileData.biome);
+
+                // When viewing the Underwater layer, show underwaterBiome colors for ocean tiles
+                if (layer == TileLayer.Underwater && tileData.IsUnderwaterTile)
+                    baseColor = GetDefaultBiomeColour(tileData.underwaterBiome);
+                else
+                    baseColor = GetDefaultBiomeColour(tileData.biome);
             }
 
             // If there is an occupant on this layer, tint/highlight the tile so the minimap shows units/resources/improvements

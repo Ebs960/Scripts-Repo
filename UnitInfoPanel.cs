@@ -203,9 +203,9 @@ unitInfoPanel.SetActive(true);
         attackText.text = $"Attack: {currentCombatUnit.CurrentAttack}";
         defenseText.text = $"Defense: {currentCombatUnit.CurrentDefense}";
         healthText.text = $"Health: {currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
-        if (movePointsText != null) movePointsText.text = $"Soldiers: {currentCombatUnit.soldierCount}/{currentCombatUnit.maxSoldierCount} | Fatigue: {Mathf.RoundToInt(currentCombatUnit.currentFatigue)}%";
+        if (movePointsText != null) movePointsText.text = $"Move Speed: {currentCombatUnit.moveSpeed:F1}";
         rangeText.text = $"Range: {currentCombatUnit.CurrentRange}";
-        moraleText.text = $"Morale: {currentCombatUnit.currentMorale}";
+        if (moraleText != null) moraleText.text = $"Ammo: {currentCombatUnit.currentAmmo}/{currentCombatUnit.data.maxAmmo}";
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -279,13 +279,13 @@ unitInfoPanel.SetActive(true);
         movePointsText.text = $"Move Points: {army.currentMovePoints}/{army.baseMovePoints}";
         attackText.text = $"Total Attack: {army.totalAttack}";
         defenseText.text = $"Total Defense: {army.totalDefense}";
-        moraleText.text = $"Average Morale: {army.averageMorale}";
+        moraleText.text = $"Total Health: {army.currentHealth}/{army.totalHealth}";
         
         // Optional: Show unit count in levelText
         if (levelText != null)
         {
             levelText.gameObject.SetActive(true);
-            levelText.text = $"Units: {army.units.Count}/{army.maxUnits} | Soldiers: {army.totalSoldierCount}/{army.maxSoldierCount}";
+            levelText.text = $"Units: {army.units.Count}/{army.maxUnits}";
         }
         
         // Hide worker-specific buttons for armies

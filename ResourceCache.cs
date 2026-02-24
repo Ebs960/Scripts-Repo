@@ -62,33 +62,6 @@ public static class ResourceCache
     }
     
     /// <summary>
-    /// Initialize only essential resources for BattleTestSimple menu phase.
-    /// OPTIMIZATION: Does NOT load combat units (with icons) until battle starts.
-    /// Units are loaded on-demand when GetAllCombatUnits() is called.
-    /// </summary>
-    public static void InitializeBattleTestResources()
-    {
-        Initialize();
-        // MEMORY OPTIMIZATION: Only load civs and projectiles for menu
-        // Combat units (with large icons) are loaded on-demand when battle starts
-        EnsureCivDatasLoaded();
-        EnsureProjectilesLoaded();
-        // NOTE: Units are loaded lazily via GetAllCombatUnits() when needed
-    }
-    
-    /// <summary>
-    /// Initialize all battle resources including combat units.
-    /// Call this when battle actually starts, not during menu.
-    /// </summary>
-    public static void InitializeBattleResources()
-    {
-        Initialize();
-        EnsureCombatUnitsLoaded();
-        EnsureCivDatasLoaded();
-        EnsureProjectilesLoaded();
-    }
-    
-    /// <summary>
     /// Clear the cache and unload prefab references to free memory
     /// </summary>
     public static void Clear()

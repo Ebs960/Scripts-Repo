@@ -14,9 +14,15 @@ public class DistrictData : ScriptableObject
     public int goldCost;
     public TechData requiredTech;
     public Biome[] allowedBiomes;
+    [Tooltip("Which underwater floor biomes this district can be placed on (checked against HexTileData.underwaterBiome). Leave empty to disallow underwater placement.")]
+    public Biome[] allowedUnderwaterBiomes;
     public bool requiresRiver;
     public bool requiresCoastal;
     public bool requiresMountainAdjacent;
+
+    [Header("Underwater")]
+    [Tooltip("If true, this district is placed on the ocean floor. Bypasses isLand and validates against underwaterBiome.")]
+    public bool isUnderwaterDistrict = false;
     
     [Header("District Specific")]
     public bool isHolySite;

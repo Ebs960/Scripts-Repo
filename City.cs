@@ -728,9 +728,25 @@ if (UIManager.Instance != null)
         var occObj = TileOccupancyManager.GetOccupantObjectForTileWithFallback(tileIndex, TileLayer.Surface);
         if (tileData.HasDistrict || tileData.HasImprovement || occObj != null) return false;
             
-        // Check if tile is not land
-        if (!tileData.isLand)
-            return false;
+        // Land / underwater check
+        if (district.isUnderwaterDistrict)
+        {
+            // Underwater districts require a water tile with a valid underwaterBiome
+            if (tileData.isLand) return false;
+            if (district.allowedUnderwaterBiomes != null && district.allowedUnderwaterBiomes.Length > 0)
+            {
+                bool validUw = false;
+                foreach (var ub in district.allowedUnderwaterBiomes)
+                    if (tileData.underwaterBiome == ub) { validUw = true; break; }
+                if (!validUw) return false;
+            }
+        }
+        else
+        {
+            // Standard land districts
+            if (!tileData.isLand)
+                return false;
+        }
             
         // Check if tile is within territory radius
         var cityPos = ts.GetTileCenterFlat(centerTileIndex);
@@ -1483,6 +1499,24 @@ Destroy(oldTuple.instance);
                 if (maybe != null)
                 {
                     total += selector(maybe);
+
+                    // Underwater biome bonus yields: when an ocean tile has a non-default
+                    // underwaterBiome AND an underwater improvement or district, grant the
+                    // difference between the underwater-floor yields and the surface Ocean yields.
+                    if (maybe.IsUnderwaterTile && (maybe.HasUnderwaterImprovement || maybe.HasUnderwaterDistrict))
+                    {
+                        var uwYields = BiomeHelper.Yields(maybe.underwaterBiome);
+                        var surfYields = BiomeHelper.Yields(maybe.biome);
+                        var uwTile = new HexTileData
+                        {
+                            food = Mathf.Max(0, uwYields.food - surfYields.food),
+                            production = Mathf.Max(0, uwYields.prod - surfYields.prod),
+                            gold = Mathf.Max(0, uwYields.gold - surfYields.gold),
+                            science = Mathf.Max(0, uwYields.sci - surfYields.sci),
+                            culture = Mathf.Max(0, uwYields.cult - surfYields.cult)
+                        };
+                        total += selector(uwTile);
+                    }
                     
                     // Add yields from improvements on this tile
                     // Only add yield if the improvement is owned by this city's owner

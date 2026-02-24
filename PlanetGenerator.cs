@@ -530,6 +530,26 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(-5f, 30f)]
     [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
     public float coastElevation = 0.3f;
+
+    [Header("Underwater Biomes (Ocean Floor)")]
+    [Tooltip("Extra downward elevation offset for trench tiles (negative value, world units).")]
+    [Range(-10f, 0f)]
+    public float trenchDepthBonus = -3f;
+    [Tooltip("Minimum tile distance from any coast/land for a tile to be eligible as Trench.")]
+    [Range(3, 20)]
+    public int trenchMinDistanceFromCoast = 6;
+    [Tooltip("Probability that an eligible deep-ocean tile becomes Trench (noise-based).")]
+    [Range(0f, 1f)]
+    public float trenchChance = 0.15f;
+    [Tooltip("Minimum tile distance from coast for AbyssalPlains eligibility.")]
+    [Range(1, 20)]
+    public int abyssalMinDistanceFromCoast = 3;
+    [Tooltip("Maximum tile distance from coast for AbyssalPlains eligibility.")]
+    [Range(1, 20)]
+    public int abyssalMaxDistanceFromCoast = 8;
+    [Tooltip("Probability that an eligible ocean tile becomes AbyssalPlains (noise-based).")]
+    [Range(0f, 1f)]
+    public float abyssalChance = 0.35f;
     
     // --- River Generation (Placeholder) ---
     [Header("River Generation")]
@@ -576,9 +596,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
     public int minLandTilesForCoastStamps = 24;
 
-    [Tooltip("How many tiles out from Coast should be considered shallow Seas (rings). Default 3.")]
+    [Tooltip("How many tiles out from Coast should be considered shallow Seas (rings). Default 2.")]
     [Range(1, 6)]
-    public int shallowSeasRings = 3;
+    public int shallowSeasRings = 2;
 
     [Header("Lake Depth")]
     [Range(0f, 5f)]
@@ -2002,6 +2022,95 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 baseData[i] = td;
             }
         }
+
+        // ---------- 6.3 Underwater Biome Assignment (ocean floor: AbyssalPlains / Trench) ----------
+        // BFS from coast/land tiles to compute distance-from-coast for every ocean tile.
+        // Then assign underwater biomes based on distance + temperature + noise.
+        // Surface biome stays Ocean/Seas — only underwaterBiome changes (drives floor texture).
+        {
+            int[] coastDist = new int[tileCount];
+            for (int i = 0; i < tileCount; i++) coastDist[i] = -1;
+
+            var coastBfs = new Queue<int>();
+            // Seed BFS from all land + coast tiles
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!data.ContainsKey(i)) continue;
+                var td = data[i];
+                if (td.isLand || td.biome == Biome.Coast)
+                {
+                    coastDist[i] = 0;
+                    coastBfs.Enqueue(i);
+                }
+            }
+
+            // BFS outward through ocean tiles
+            while (coastBfs.Count > 0)
+            {
+                int cur = coastBfs.Dequeue();
+                int nextDist = coastDist[cur] + 1;
+                foreach (int n in grid.neighbors[cur])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (coastDist[n] >= 0) continue; // already visited
+                    coastDist[n] = nextDist;
+                    coastBfs.Enqueue(n);
+                }
+            }
+
+            int abyssalCount = 0, trenchCount = 0;
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!data.ContainsKey(i)) continue;
+                var td = data[i];
+                // Only assign underwater biomes to Ocean tiles (not Seas/Coast/Lake/River)
+                if (td.biome != Biome.Ocean) continue;
+
+                int dist = coastDist[i];
+                if (dist < 0) dist = 999; // unreachable = treat as very far
+
+                // Deterministic per-tile noise using tile index hash
+                float noise;
+                unchecked
+                {
+                    int h = i * 1103515245 + 12345;
+                    noise = (float)((uint)h % 10000) / 10000f;
+                }
+
+                // Delegate biome decision to BiomeHelper (centralized rules)
+                Biome underwaterResult = BiomeHelper.GetUnderwaterBiome(
+                    dist, td.temperature, noise,
+                    abyssalMinDistanceFromCoast, abyssalMaxDistanceFromCoast, abyssalChance,
+                    trenchMinDistanceFromCoast, trenchChance);
+
+                if (underwaterResult == Biome.AbyssalPlains)
+                {
+                    td.underwaterBiome = Biome.AbyssalPlains;
+                    data[i] = td;
+                    baseData[i] = td;
+                    abyssalCount++;
+                }
+                else if (underwaterResult == Biome.Trench)
+                {
+                    td.underwaterBiome = Biome.Trench;
+                    td.trenchDepth = trenchDepthBonus;
+                    td.elevation += trenchDepthBonus;
+                    data[i] = td;
+                    baseData[i] = td;
+                    trenchCount++;
+                }
+                // else: underwaterBiome stays default (Biome.Ocean) — standard ocean floor
+            }
+
+            Debug.Log($"[PlanetGenerator] Underwater biome pass: {abyssalCount} AbyssalPlains tiles, {trenchCount} Trench tiles (abyssalDist={abyssalMinDistanceFromCoast}-{abyssalMaxDistanceFromCoast}, trenchMinDist={trenchMinDistanceFromCoast})");
+        }
+
+        if (loadingPanelController != null)
+        {
+            loadingPanelController.SetProgress(0.76f);
+            loadingPanelController.SetStatus("Assigning underwater biomes...");
+        }
+        yield return null;
 
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)

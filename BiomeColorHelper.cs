@@ -56,6 +56,9 @@ public static class BiomeColorHelper
         { Biome.TitanIce, new Color(0.78f, 0.88f, 0.94f) },
         { Biome.EuropaIce, new Color(0.94f, 0.97f, 1.00f) },
         { Biome.EuropaRidges, new Color(0.78f, 0.86f, 0.92f) },
+        // Underwater Floor Biomes
+        { Biome.AbyssalPlains, new Color(0.08f, 0.18f, 0.35f) },  // dark blue-grey
+        { Biome.Trench, new Color(0.01f, 0.10f, 0.30f) },          // very dark navy
         { Biome.Any, new Color(0.62f, 0.62f, 0.62f) }
     };
 

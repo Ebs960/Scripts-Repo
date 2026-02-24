@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
   biome: 3
   waterType: 0
-  surfaceFamily: {fileID: 11400000, guid: 2687477c49eb8b446a38c89dc2335a9e, type: 2}
+  surfaceFamily: {fileID: 11400000, guid: f54ca6dc879f0564883d973b5e82b5db, type: 2}
   forcedVariant: -1
   albedo: {fileID: 0}
   normal: {fileID: 0}

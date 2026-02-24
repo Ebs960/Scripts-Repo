@@ -256,10 +256,24 @@ public class ResourceManager : MonoBehaviour
             {
                 if (rd == null) continue; // Safety check
 
-                // skip if biome not allowed
+                // skip if biome not allowed (check surface biome AND underwater floor biome)
                 bool biomeAllowed = false;
-                foreach (var b in rd.allowedBiomes)
-                    if (b == tileData.biome) { biomeAllowed = true; break; }
+                if (rd.allowedBiomes != null)
+                    foreach (var b in rd.allowedBiomes)
+                        if (b == tileData.biome) { biomeAllowed = true; break; }
+                // For ocean tiles, also check the underwater floor biome
+                if (!biomeAllowed && rd.allowedUnderwaterBiomes != null && rd.allowedUnderwaterBiomes.Length > 0
+                    && tileData.underwaterBiome != Biome.Ocean && tileData.underwaterBiome != tileData.biome)
+                {
+                    foreach (var ub in rd.allowedUnderwaterBiomes)
+                        if (ub == tileData.underwaterBiome) { biomeAllowed = true; break; }
+                }
+                // Orbital resources: check surface biome below (allowedBiomes) but spawn at orbit layer
+                if (!biomeAllowed && rd.isOrbitalResource && rd.allowedBiomes != null)
+                {
+                    foreach (var b in rd.allowedBiomes)
+                        if (b == tileData.biome || b == Biome.Any) { biomeAllowed = true; break; }
+                }
                 if (!biomeAllowed) continue;
 
                 if (Random.value <= rd.spawnChance)
@@ -415,6 +429,12 @@ public class ResourceManager : MonoBehaviour
             surfacePos = ts.GetTileSurfacePosition(tileIndex, 0f);
         }
 
+        // Orbital resources float above the surface at orbit height (+4Y, matching BaseUnit.EnterOrbit)
+        if (resource.isOrbitalResource)
+        {
+            surfacePos.y += 4f;
+        }
+
         // Retrieve tile data early so we can choose an appropriate parent before instantiation
         var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
 
@@ -488,10 +508,16 @@ public class ResourceManager : MonoBehaviour
         {
             tileData.resource = resource;
             ts?.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
-            // Register resource occupancy: surface or underwater
+            // Register resource occupancy: surface, underwater, or orbit
             try
             {
-                var layer = tileData.isLand ? TileLayer.Surface : TileLayer.Underwater;
+                TileLayer layer;
+                if (resource.isOrbitalResource)
+                    layer = TileLayer.Orbit;
+                else if (tileData.isLand)
+                    layer = TileLayer.Surface;
+                else
+                    layer = TileLayer.Underwater;
                 (TileOccupancyManager.GetForPlanet(inst.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, go, layer);
             }
             catch {}

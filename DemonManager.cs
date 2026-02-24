@@ -372,8 +372,7 @@ public class DemonManager : MonoBehaviour
             {
                 if (civArmy != null && civArmy.owner != null)
                 {
-                    // Trigger battle!
-InitiateBattleWithArmy(army, civArmy);
+                    // TODO: Implement Civ5-style tile combat with demon armies
                     return;
                 }
             }
@@ -388,49 +387,6 @@ InitiateBattleWithArmy(army, civArmy);
                 AttackWorker(army, worker);
             }
         }
-    }
-
-    /// <summary>
-    /// Initiate real-time battle between demon army and civilization army
-    /// </summary>
-    private void InitiateBattleWithArmy(DemonArmy demonArmy, Army civArmy)
-    {
-        if (BattleTestSimple.Instance == null)
-        {
-            Debug.LogError("[DemonManager] BattleTestSimple not available for demon battle");
-            return;
-        }
-        
-        // Prepare demon units for battle
-        var demonUnitsForBattle = new List<CombatUnit>();
-        foreach (var unit in demonArmy.units)
-        {
-            if (unit != null)
-            {
-                unit.gameObject.SetActive(true);
-                unit.InitializeForBattle(true); // Demons are attackers
-                demonUnitsForBattle.Add(unit);
-            }
-        }
-        
-        // Prepare civilization units for battle
-        var civUnitsForBattle = civArmy.GetBattleUnits();
-        foreach (var unit in civUnitsForBattle)
-        {
-            if (unit != null)
-            {
-                unit.gameObject.SetActive(true);
-                unit.InitializeForBattle(false); // Civ units are defenders
-            }
-        }
-        
-        if (demonUnitsForBattle.Count == 0 || civUnitsForBattle.Count == 0)
-        {
-            Debug.LogWarning("[DemonManager] Cannot start battle - one side has no units");
-            return;
-        }
-// Start battle - demons have no civilization, so pass null for attacker
-        BattleTestSimple.Instance.StartBattle(null, civArmy.owner, demonUnitsForBattle, civUnitsForBattle);
     }
 
     /// <summary>

@@ -72,7 +72,7 @@ public class ArmyInfoPanel : MonoBehaviour
 
         if (soldierCountText != null)
         {
-            soldierCountText.text = army.totalSoldierCount.ToString();
+            soldierCountText.text = army.currentHealth + " / " + army.totalHealth;
         }
 
         if (movePointsText != null)
@@ -154,7 +154,7 @@ public class ArmyInfoPanel : MonoBehaviour
                 nameTMP.text = unit.data != null ? unit.data.unitName : unit.UnitName;
 
             if (countTMP != null)
-                countTMP.text = $"{unit.soldierCount} / {unit.maxSoldierCount}";
+                countTMP.text = $"{unit.currentHealth} / {unit.MaxHealth}";
 
             if (iconImg != null && unit.data != null)
                 iconImg.sprite = unit.data.icon;

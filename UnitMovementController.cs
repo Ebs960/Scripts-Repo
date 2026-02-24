@@ -78,12 +78,13 @@ public class UnitMovementController : MonoBehaviour
     /// <summary>
     /// Finds a path (list of tile indices) from start to end using A*, considering each tile's movement cost.
     /// Flat-map only; uses TileSystem for neighbors and costs.
+    /// When a unit is in orbit, uses flat orbit movement cost and skips terrain restrictions.
     /// Returns null if unreachable.
     /// </summary>
-    public List<int> FindPath(int startIndex, int endIndex)
+    public List<int> FindPath(int startIndex, int endIndex, BaseUnit unit = null)
     {
         // Multi-planet: FindPath without unit context uses the current planet.
-        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady())
         {
@@ -98,6 +99,16 @@ public class UnitMovementController : MonoBehaviour
         {
             Debug.LogWarning($"[UnitMovementController] Pathfinding error: Tiles invalid. Start: {startIndex}, End: {endIndex}");
             return null;
+        }
+
+        // Determine if this is orbit-layer pathfinding
+        bool isOrbit = unit != null && unit.currentLayer == TileLayer.Orbit;
+        int orbitCost = BiomeHelper.DefaultOrbitMovementCost;
+        if (isOrbit)
+        {
+            var cu = unit as CombatUnit;
+            if (cu != null && cu.data != null)
+                orbitCost = cu.data.orbitMovementCost;
         }
 
         PathNode startNode = new PathNode(startIndex);
@@ -140,8 +151,17 @@ public class UnitMovementController : MonoBehaviour
                 var neighborTileData = ts.GetTileData(neighborIndex);
                 if (neighborTileData == null) continue; // Skip invalid tiles
 
-                int moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
-                if (moveCost >= 99) continue; // Unpassable
+                int moveCost;
+                if (isOrbit)
+                {
+                    // Orbit: flat cost, no terrain restrictions (all tiles traversable)
+                    moveCost = orbitCost;
+                }
+                else
+                {
+                    moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
+                    if (moveCost >= 99) continue; // Unpassable
+                }
 
                 float tentativeGCost = currentNode.gCost + moveCost;
 
@@ -205,14 +225,9 @@ public class UnitMovementController : MonoBehaviour
         int previousTileIndex = currentTileIndex;
         
         // Set unit to moving state
-        // Check if unit is in battle (CombatUnit-specific) - if so, don't override battle movement
         if (combatUnit != null)
         {
-            // Only set movement if not in battle (battle movement takes precedence)
-            if (!combatUnit.IsInBattle)
-            {
-                combatUnit.isMoving = true; // This will automatically update IsWalking animator parameter
-            }
+            combatUnit.isMoving = true; // This will automatically update IsWalking animator parameter
         }
         else
         {
@@ -229,9 +244,18 @@ public class UnitMovementController : MonoBehaviour
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
             var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
             
-            // Get movement cost for this step (tile-aware: improvements may alter cost)
+            // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
             var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
-            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, workerUnit) : 1;
+            int movementCost;
+            if (unit.currentLayer == TileLayer.Orbit)
+            {
+                var orbitCu = combatUnit;
+                movementCost = (orbitCu != null && orbitCu.data != null) ? orbitCu.data.orbitMovementCost : BiomeHelper.DefaultOrbitMovementCost;
+            }
+            else
+            {
+                movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, workerUnit) : 1;
+            }
             
             // Deduct movement points for workers (they still use turn-based movement)
             if (workerUnit != null)
@@ -253,9 +277,13 @@ unit.UpdateWalkingState(false);
                 workerUnit.DeductMovePoints(movementCost);
             }
             
-            // Calculate planar positions on the flat map (using surface position for terrain height)
+            // Calculate planar positions on the flat map (orbit units stay elevated above surface)
             Vector3 startPosition = unitTransform.position;
             Vector3 endPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : startPosition;
+            if (unit.currentLayer == TileLayer.Orbit)
+            {
+                endPosition += Vector3.up * 4f; // Match orbit height from EnterOrbit()
+            }
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);
             if (journeyLength < 0.001f) continue;
@@ -285,7 +313,15 @@ unit.UpdateWalkingState(false);
             }
             
             // Snap to final position and orientation on flat map
-            PositionUnitOnSurface(unitTransform, targetTileIndex);
+            if (unit.currentLayer == TileLayer.Orbit)
+            {
+                // Keep orbit height — don't snap to terrain surface
+                unitTransform.position = endPosition;
+            }
+            else
+            {
+                PositionUnitOnSurface(unitTransform, targetTileIndex);
+            }
             
             // Update current tile and occupancy using BaseUnit properties
             unit.currentTileIndex = targetTileIndex;
@@ -324,14 +360,9 @@ unit.UpdateWalkingState(false);
         }
         
         // Set unit back to idle state
-        // Check if unit is in battle - if so, don't override battle movement
         if (combatUnit != null)
         {
-            // Only set movement if not in battle (battle movement takes precedence)
-            if (!combatUnit.IsInBattle)
-            {
-                combatUnit.isMoving = false; // This will automatically update IsWalking animator parameter
-            }
+            combatUnit.isMoving = false; // This will automatically update IsWalking animator parameter
         }
         else
         {

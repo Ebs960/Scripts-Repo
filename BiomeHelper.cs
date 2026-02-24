@@ -64,6 +64,10 @@ public enum Biome {
     PlutoCryo,
     TitanLakes, TitanDunes, TitanIce,
     EuropaIce, EuropaRidges,
+
+    // Underwater Floor Biomes (ocean tiles only — surface biome stays Ocean for gameplay)
+    AbyssalPlains,  // Flat, featureless deep ocean floor
+    Trench,         // Deep ocean floor far from land
     
     Any
 }
@@ -101,6 +105,41 @@ public static class BiomeHelper {
     public static bool IsHill(float elevation, float hillThreshold, float mountainThreshold)
     {
         return elevation >= hillThreshold && elevation < mountainThreshold;
+    }
+
+    /// <summary>
+    /// Determine the underwater floor biome for an Ocean tile based on distance from coast,
+    /// temperature, and a per-tile noise value. Returns Biome.Ocean if no special underwater
+    /// biome qualifies (i.e. standard ocean floor).
+    /// </summary>
+    /// <param name="distanceFromCoast">BFS tile distance from nearest coast/land. 0 = coast tile itself.</param>
+    /// <param name="temperature">Tile temperature (0-1 normalized).</param>
+    /// <param name="noise">Deterministic per-tile noise value (0-1) used for probability checks.</param>
+    /// <param name="abyssalMaxDistance">Max tile distance from coast for AbyssalPlains eligibility.</param>
+    /// <param name="abyssalMinDistance">Min tile distance from coast for AbyssalPlains eligibility.</param>
+    /// <param name="abyssalChance">Probability threshold for AbyssalPlains (noise must be below this).</param>
+    /// <param name="trenchMinDistance">Min tile distance from coast for Trench eligibility.</param>
+    /// <param name="trenchChance">Probability threshold for Trench (noise must be below this).</param>
+    public static Biome GetUnderwaterBiome(
+        int distanceFromCoast, float temperature, float noise,
+        int abyssalMinDistance = 3, int abyssalMaxDistance = 8, float abyssalChance = 0.35f,
+        int trenchMinDistance = 6, float trenchChance = 0.15f)
+    {
+        // AbyssalPlains: mid-range ocean floor, flat and featureless
+        if (distanceFromCoast >= abyssalMinDistance && distanceFromCoast <= abyssalMaxDistance
+            && noise < abyssalChance)
+        {
+            return Biome.AbyssalPlains;
+        }
+
+        // Trench: far from coast, deep ocean
+        if (distanceFromCoast >= trenchMinDistance && noise < trenchChance)
+        {
+            return Biome.Trench;
+        }
+
+        // Standard ocean floor
+        return Biome.Ocean;
     }
 
     public static Biome GetBiome(bool isLand, float temperature, float moisture,
@@ -290,27 +329,26 @@ public static class BiomeHelper {
         
         // Hot climates (>0.82)
         if (temperature > 0.82f) {
-            if (moisture < 0.35f) return Biome.Desert;
-            if (moisture < 0.49f) return Biome.Savannah;
-            if (moisture < 0.78f) return Biome.Tropical;
+            if (moisture < 0.39f) return Biome.Desert;
+            if (moisture < 0.50f) return Biome.Savannah;
+            if (moisture < 0.89f) return Biome.Tropical;
             return Biome.Swamp;
         }
 
         // Temperate climates (0.45-0.55)
         if (temperature > 0.52f) {
             if (moisture < 0.35f) return Biome.Plains;
-            if (moisture < 0.81f) return Biome.Temperate;
+            if (moisture < 0.819) return Biome.Temperate;
             return Biome.Swamp;
         }
 
         // Cold climates (0.20-0.45)
         if (temperature > 0.23f) {
-            if (moisture < 0.85f) return Biome.Tundra;
-            return Biome.Plains;
+            return Biome.Tundra;
         }
 
        
-        if (temperature <= 0.14f) {
+        if (temperature <= 0.11f) {
             return Biome.Arctic;
         }
 
@@ -390,6 +428,10 @@ public static class BiomeHelper {
         Biome.EuropaIce => new YieldValues { food = 2, prod = 1, gold = 1, sci = 3, cult = 0 },
         Biome.EuropaRidges => new YieldValues { food = 1, prod = 2, gold = 2, sci = 4, cult = 0 },
 
+        // Underwater Floor Biomes
+        Biome.AbyssalPlains => new YieldValues { food = 0, prod = 1, gold = 2, sci = 3, cult = 0 },
+        Biome.Trench => new YieldValues { food = 0, prod = 2, gold = 3, sci = 3, cult = 0 },
+
         _ => new YieldValues { food = 1, prod = 1, gold = 1, sci = 1, cult = 1 }
     };
 
@@ -440,6 +482,10 @@ public static class BiomeHelper {
         Biome.TitanIce => 0,
         Biome.EuropaRidges => 2,
         Biome.EuropaIce => 0,
+
+        // Underwater Floor Biomes
+        Biome.AbyssalPlains => 0,
+        Biome.Trench => 0,
 
         _ => 0
     };
@@ -495,6 +541,10 @@ public static class BiomeHelper {
         Biome.EuropaIce => 1,
         Biome.EuropaRidges => 3,
 
+        // Underwater Floor Biomes
+        Biome.AbyssalPlains => 2,
+        Biome.Trench => 3,
+
         _ => 1
     };
     
@@ -545,6 +595,9 @@ public static class BiomeHelper {
             Biome.NeptuneSurface => true,
             Biome.PlutoCryo => true,
 
+            // Underwater Floor Biomes
+            Biome.Trench => true,  // crushing deep-sea pressure
+
             _ => false
         };
     }
@@ -571,68 +624,74 @@ public static class BiomeHelper {
             Biome.NeptuneSurface => 0.15f,
             Biome.PlutoCryo => 0.20f,
 
+            // Underwater Floor Biomes
+            Biome.Trench => 0.10f,
+
             _ => 0f
         };
     }
 
+    // ─────────── ORBIT LAYER HELPERS ───────────
+
     /// <summary>
-    /// Get biome-specific terrain settings used by the battle map generator and (optionally) Vista graphs.
-    /// This reuses the existing BiomeTerrainSettings from BattleTerrainNoiseSystem so we don't duplicate config.
+    /// Movement cost for a unit moving tile-to-tile while in orbit.
+    /// Orbit has no terrain friction — all tiles cost the same.
+    /// Individual unit data may override via CombatUnitData.orbitMovementCost.
     /// </summary>
-    public static BiomeTerrainSettings GetTerrainSettings(Biome biome)
+    public const int DefaultOrbitMovementCost = 1;
+
+    /// <summary>
+    /// Defense bonus for units in orbit. No terrain cover in space.
+    /// </summary>
+    public const int OrbitDefenseBonus = 0;
+
+    /// <summary>
+    /// Returns true if a unit on the given layer is considered "in orbit".
+    /// </summary>
+    public static bool IsOrbitLayer(TileLayer layer)
     {
-        switch (biome)
+        return layer == TileLayer.Orbit;
+    }
+
+    /// <summary>
+    /// Returns per-turn yield bonuses generated by a unit orbiting a tile.
+    /// Science comes from scanning the surface; gold from satellite relay/comms.
+    /// Values are driven by CombatUnitData; this helper computes biome-based modifiers.
+    /// </summary>
+    /// <param name="surfaceBiome">The surface biome of the tile being orbited.</param>
+    /// <param name="baseScience">Base science from CombatUnitData.orbitSciencePerTurn.</param>
+    /// <param name="baseGold">Base gold from CombatUnitData.orbitGoldPerTurn.</param>
+    public static YieldValues GetOrbitYields(Biome surfaceBiome, int baseScience = 1, int baseGold = 0)
+    {
+        // Bonus science for scanning scientifically interesting biomes
+        int sciBonus = surfaceBiome switch
         {
-            case Biome.Plains:
-            case Biome.Savannah:
-                return BiomeTerrainSettings.CreatePlains();
+            Biome.Volcanic      => 1,
+            Biome.VenusLava     => 1,
+            Biome.Trench        => 1,
+            Biome.AbyssalPlains => 1,
+            Biome.EuropaRidges  => 1,
+            Biome.JovianClouds  => 1,
+            Biome.PlutoCryo     => 1,
+            _ => 0
+        };
 
-            case Biome.Desert:
-            case Biome.Scorched:
-            case Biome.Ashlands:
-                return BiomeTerrainSettings.CreateDesert();
+        // Bonus gold for orbiting high-value trade/resource biomes
+        int goldBonus = surfaceBiome switch
+        {
+            Biome.Coast    => 1,
+            Biome.Savannah => 1,
+            Biome.Plains   => 1,
+            _ => 0
+        };
 
-            // Mountain terrain is determined by elevation; PlutoCryo remains mountain-like
-            case Biome.PlutoCryo:
-                return BiomeTerrainSettings.CreateMountain();
-
-            case Biome.Temperate:
-            case Biome.Tropical:
-                return BiomeTerrainSettings.CreateForest();
-
-            case Biome.Swamp:
-                return BiomeTerrainSettings.CreateSwamp();
-
-            case Biome.Glacier:
-            case Biome.Arctic:
-            case Biome.IcicleField:
-            case Biome.MartianPolarIce:
-            case Biome.MercurianIce:
-            case Biome.EuropaIce:
-                return BiomeTerrainSettings.CreateIce();
-
-            case Biome.Ocean:
-            case Biome.Seas:
-            case Biome.Coast:
-            case Biome.Lake:
-            case Biome.TitanLakes:
-                return BiomeTerrainSettings.CreateOcean();
-
-            case Biome.Volcanic:
-            case Biome.VenusLava:
-                return BiomeTerrainSettings.CreateVolcanic();
-
-            case Biome.MoonDunes:
-            case Biome.MartianRegolith:
-            case Biome.MartianDunes:
-            case Biome.MercuryPlains:
-                return BiomeTerrainSettings.CreateMoon();
-
-            case Biome.VenusianPlains:
-                return BiomeTerrainSettings.CreateVenus();
-
-            default:
-                return BiomeTerrainSettings.CreatePlains();
-        }
+        return new YieldValues
+        {
+            food = 0,
+            prod = 0,
+            gold = baseGold + goldBonus,
+            sci  = baseScience + sciBonus,
+            cult = 0
+        };
     }
 }

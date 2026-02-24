@@ -38,6 +38,11 @@ public class PlanetaryCameraManager : MonoBehaviour
     private Vector3 _focusPoint = Vector3.zero;
     private float _cameraHeight = 80f;
     private float _cameraYaw = 0f; // degrees, rotates camera left/right around focus
+
+    /// <summary>
+    /// Current camera height (read-only). Used by OrbitSkyboxController for space transition.
+    /// </summary>
+    public float CameraHeight => _cameraHeight;
     private Vector3? _lastMousePos = null;
 
     [Header("Underwater Transition")]

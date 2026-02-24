@@ -302,7 +302,15 @@ public class UnitVisionManager : MonoBehaviour
         var combatUnit = unit as CombatUnit;
         if (combatUnit != null && combatUnit.data != null)
         {
-            return combatUnit.data.sightRange;
+            int range = combatUnit.data.sightRange;
+
+            // Orbit vision bonus: units in orbit see much further (planetary scanning)
+            if (unit.IsInOrbit)
+            {
+                range += combatUnit.data.orbitVisionBonus;
+            }
+
+            return range;
         }
         
         // Try WorkerUnit

@@ -98,21 +98,21 @@ public class UnitReinforcementManager : MonoBehaviour
     public void ApplyReinforcement(CombatUnit unit)
     {
         if (unit == null || unit.data == null) return;
-        if (unit.soldierCount >= unit.maxSoldierCount) return; // Already at max
+        if (unit.currentHealth >= unit.MaxHealth) return; // Already at max
         
         // Determine reinforcement rate based on location
         float reinforcementRate = unit.isGarrisonedInCity 
             ? reinforcementRateInCity 
             : reinforcementRateOutsideCity;
         
-        // Calculate reinforcement amount (percentage of max)
-        int reinforcementAmount = Mathf.RoundToInt(unit.maxSoldierCount * (reinforcementRate / 100f));
+        // Calculate healing amount (percentage of max HP)
+        int healAmount = Mathf.RoundToInt(unit.MaxHealth * (reinforcementRate / 100f));
         
-        // Apply reinforcement
-        int oldCount = unit.soldierCount;
-        unit.soldierCount = Mathf.Min(unit.soldierCount + reinforcementAmount, unit.maxSoldierCount);
+        // Apply healing
+        int oldHealth = unit.currentHealth;
+        unit.Heal(healAmount);
         
-        if (unit.soldierCount > oldCount)
+        if (unit.currentHealth > oldHealth)
         {
 }
     }

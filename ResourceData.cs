@@ -13,11 +13,15 @@ public class ResourceData : ScriptableObject
     public GameObject prefab;
 
     [Header("Spawn Rules")]
-    [Tooltip("Which biomes this resource can appear on")]
+    [Tooltip("Which biomes this resource can appear on (surface biome check)")]
     public Biome[] allowedBiomes;
+    [Tooltip("Which underwater floor biomes this resource can appear on (checked against HexTileData.underwaterBiome). Leave empty to skip underwater spawning.")]
+    public Biome[] allowedUnderwaterBiomes;
     [Tooltip("Chance (0–1) that this resource spawns on a valid tile")]
     public float spawnChance;
-
+    [Header("Orbital")]
+    [Tooltip("If true, this resource spawns in the orbit layer above a tile instead of on the surface. Uses allowedBiomes to check the surface biome below.")]
+    public bool isOrbitalResource = false;
     [Header("Per-Turn Yields (per owned node)")]
     public int foodPerTurn;
     public int productionPerTurn;

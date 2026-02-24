@@ -1397,6 +1397,17 @@ public class HexMapChunkManager : MonoBehaviour
             }
 
             var visual = biomeVisualDatabase.Get(tile.biome);
+
+            // Underwater biome texture swap: if this tile has a non-default underwater biome
+            // (AbyssalPlains, Trench, etc.), render that biome's texture on the ocean floor instead
+            // of the surface biome (Ocean) texture. The surface biome stays Ocean for gameplay.
+            if (tile.underwaterBiome != Biome.Ocean && tile.underwaterBiome != tile.biome)
+            {
+                var underwaterVisual = biomeVisualDatabase.Get(tile.underwaterBiome);
+                if (underwaterVisual != null && underwaterVisual.surfaceFamily != null)
+                    visual = underwaterVisual;
+            }
+
             int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
 
             int sliceIndex = 0;

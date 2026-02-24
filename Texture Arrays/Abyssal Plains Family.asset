@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
+  m_Name: Abyssal Plains Family
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
+  familyName: Abyssal Plains Family
+  albedoArray: {fileID: 18700000, guid: 301dc70393270e04fbc67b45ace91a56, type: 3}
+  normalArray: {fileID: 18700000, guid: 3c3af6f4fbda2664e87cf8ad7210a23d, type: 3}
+  maskArray: {fileID: 18700000, guid: 1cb6432dd4b078b42af28dd99bd06ac9, type: 3}
+  heightArray: {fileID: 18700000, guid: 4f59be5b88b4e6945b1bf9ab812c6292, type: 3}
+  emissiveArray: {fileID: 0}
+  supportsEmission: 0
+  defaultTiling: 1
+  defaultTint: {r: 1, g: 1, b: 1, a: 1}
+  normalStrength: 1
+  roughnessOffset: 0

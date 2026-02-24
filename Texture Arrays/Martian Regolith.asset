@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a17215aeee41adf4f92b425f858ecc4c, type: 3}
+  m_Name: Martian Regolith
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceFamilyData
+  familyName: Martian Regolith Family
+  albedoArray: {fileID: 18700000, guid: 2585e2415e0468a488ff0f73429a9d08, type: 3}
+  normalArray: {fileID: 18700000, guid: 5af416f46eb3643409f4fab102316507, type: 3}
+  maskArray: {fileID: 18700000, guid: 271c0657b89fd6e44bc6019e07ee7792, type: 3}
+  heightArray: {fileID: 18700000, guid: acf8eb4622fe0e74bb788168300d30f9, type: 3}
+  emissiveArray: {fileID: 0}
+  supportsEmission: 0
+  defaultTiling: 1
+  defaultTint: {r: 1, g: 1, b: 1, a: 1}
+  normalStrength: 1
+  roughnessOffset: 0

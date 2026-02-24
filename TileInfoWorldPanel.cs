@@ -131,7 +131,16 @@ public class TileInfoWorldPanel : MonoBehaviour
 
     private void UpdateContent(HexTileData tileData)
     {
-        if (biomeText != null) biomeText.text = FormatBiomeName(tileData.biome);
+        if (biomeText != null)
+        {
+            string biomeName = FormatBiomeName(tileData.biome);
+            // Show underwater floor biome if different from default ocean
+            if (tileData.underwaterBiome != Biome.Ocean && tileData.underwaterBiome != tileData.biome)
+            {
+                biomeName += $" ({FormatBiomeName(tileData.underwaterBiome)} Floor)";
+            }
+            biomeText.text = biomeName;
+        }
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
 
         string elevInfo = $"Elev: {tileData.elevation:F2}m\nHill: {(tileData.isHill ? "Yes" : "No")}\nMountain: {(tileData.isMountain ? "Yes" : "No")}";

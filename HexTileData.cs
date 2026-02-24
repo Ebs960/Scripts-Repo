@@ -45,6 +45,17 @@ public class HexTileData
     public float temperature; // Per-tile temperature, set during map generation
     public float moisture; // Per-tile moisture, set during map generation
 
+    // --- Underwater Biome (ocean floor visual identity) ---
+    /// <summary>
+    /// The underwater floor biome for this tile (only meaningful when biome is Ocean/Seas).
+    /// The surface biome stays Ocean/Seas for gameplay (ship rules, movement costs, etc.).
+    /// This field drives which texture the terrain renders on the ocean floor beneath the water surface.
+    /// Defaults to Biome.Ocean (standard ocean floor texture). AbyssalPlains/Trench override the floor visual.
+    /// </summary>
+    public Biome underwaterBiome = Biome.Ocean;
+    /// <summary>Extra downward elevation offset applied to trench tiles (negative value, world units).</summary>
+    public float trenchDepth = 0f;
+
     // --- Water Surface Metadata (chunk-based water mesh system) ---
     /// <summary>Type of water on this tile (None, Ocean, Lake, River).</summary>
     public TileWaterType waterType = TileWaterType.None;
@@ -122,6 +133,27 @@ public class HexTileData
     public bool HasCity => controllingCity != null;
     public bool HasDistrict => district != null;
     public bool HasHolySite => HasDistrict && district.isHolySite;
+
+    /// <summary>
+    /// True when this tile is an ocean/seas tile that has a meaningful underwater floor biome
+    /// (AbyssalPlains, Trench, etc.) distinct from the plain Ocean default.
+    /// </summary>
+    public bool IsUnderwaterTile => !isLand && underwaterBiome != Biome.Ocean && underwaterBiome != biome;
+
+    /// <summary>
+    /// True when this ocean tile has an underwater improvement (e.g. Fishing Net, Deep Sea Mine).
+    /// </summary>
+    public bool HasUnderwaterImprovement => HasImprovement && improvement is ImprovementData imp && imp.isUnderwaterImprovement;
+
+    /// <summary>
+    /// True when this tile has an orbital improvement (e.g. Space Station, Satellite Array).
+    /// </summary>
+    public bool HasOrbitalImprovement => HasImprovement && improvement is ImprovementData imp2 && imp2.isOrbitalImprovement;
+
+    /// <summary>
+    /// True when this ocean tile has an underwater district (e.g. Marine Research Station).
+    /// </summary>
+    public bool HasUnderwaterDistrict => HasDistrict && district is DistrictData dist && dist.isUnderwaterDistrict;
     public bool HasReligion
     {
         get
