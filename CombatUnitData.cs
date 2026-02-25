@@ -128,20 +128,11 @@ public class CombatUnitData : ScriptableObject
     public int orbitMovementCost = 1;
     [Tooltip("Whether this unit requires a spaceport on the tile to land (exit orbit). Spaceships typically do NOT.")]
     public bool requiresSpaceportToLand = false;
-    [Tooltip("Whether this unit can bombard surface tiles from orbit. Reduces damage by bombardmentDamageMult.")]
+    [Tooltip("Whether this unit can bombard surface tiles from orbit.")]
     public bool canBombardSurface = false;
-    [Tooltip("Damage multiplier when bombarding surface from orbit (0.3 = 30% of normal attack).")]
-    [Range(0.05f, 1f)]
-    public float bombardmentDamageMult = 0.3f;
     [Tooltip("Extra vision range granted while in orbit (added on top of sightRange).")]
     [Range(0, 10)]
     public int orbitVisionBonus = 3;
-    [Tooltip("Science generated per turn while orbiting a tile (planetary scanning).")]
-    [Range(0, 10)]
-    public int orbitSciencePerTurn = 1;
-    [Tooltip("Gold generated per turn while orbiting a tile (satellite relay / comms).")]
-    [Range(0, 10)]
-    public int orbitGoldPerTurn = 0;
     
     [Header("Transport Capabilities")]
     [Tooltip("Whether this unit can transport other units")]

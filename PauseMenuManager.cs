@@ -81,12 +81,52 @@ public class PauseMenuManager : MonoBehaviour
     public bool isAutosave; // Mark if this is an autosave
     // Persisted manager/job state
     public List<ImprovementManager.JobAssignmentSaveData> jobAssignments;
+
+    // ===== UNIT STATE =====
+    public List<CombatUnitSaveData> combatUnits;
+    public List<WorkerUnitSaveData> workerUnits;
         
         public GameSaveData()
         {
             dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             isAutosave = false;
         }
+    }
+
+    /// <summary>
+    /// Serializable snapshot of a single CombatUnit for save/load.
+    /// </summary>
+    [Serializable]
+    public class CombatUnitSaveData
+    {
+        public string unitDataName;   // CombatUnitData.unitName — used to look up the SO
+        public int ownerCivIndex;     // index in CivilizationManager.GetAllCivs()
+        public int currentTileIndex;
+        public int planetIndex;
+        public int currentLayer;      // TileLayer as int
+        public int currentHealth;
+        public int experience;
+        public int level;
+        public int currentAmmo;
+        public bool hasActedThisTurn;
+        public float posX, posY, posZ;
+    }
+
+    /// <summary>
+    /// Serializable snapshot of a single WorkerUnit for save/load.
+    /// </summary>
+    [Serializable]
+    public class WorkerUnitSaveData
+    {
+        public string unitDataName;   // WorkerUnitData.unitName
+        public int ownerCivIndex;
+        public int currentTileIndex;
+        public int planetIndex;
+        public int currentLayer;
+        public int currentHealth;
+        public int currentWorkPoints;
+        public int currentMovePoints;
+        public float posX, posY, posZ;
     }
 
     [Serializable]
@@ -493,6 +533,75 @@ HideSaveLoadUI();
         {
             Debug.LogWarning($"Failed to export job assignments: {e.Message}");
             saveData.jobAssignments = null;
+        }
+
+        // ===== Serialize all units across all civilizations =====
+        try
+        {
+            saveData.combatUnits = new List<CombatUnitSaveData>();
+            saveData.workerUnits = new List<WorkerUnitSaveData>();
+
+            if (CivilizationManager.Instance != null)
+            {
+                var allCivs = CivilizationManager.Instance.GetAllCivs();
+                for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
+                {
+                    var civ = allCivs[civIdx];
+                    if (civ == null) continue;
+
+                    // Combat units
+                    if (civ.combatUnits != null)
+                    {
+                        foreach (var unit in civ.combatUnits)
+                        {
+                            if (unit == null || unit.data == null) continue;
+                            saveData.combatUnits.Add(new CombatUnitSaveData
+                            {
+                                unitDataName = unit.data.unitName,
+                                ownerCivIndex = civIdx,
+                                currentTileIndex = unit.currentTileIndex,
+                                planetIndex = unit.planetIndex,
+                                currentLayer = (int)unit.currentLayer,
+                                currentHealth = unit.currentHealth,
+                                experience = unit.experience,
+                                level = unit.level,
+                                currentAmmo = unit.currentAmmo,
+                                hasActedThisTurn = unit.hasActedThisTurn,
+                                posX = unit.transform.position.x,
+                                posY = unit.transform.position.y,
+                                posZ = unit.transform.position.z,
+                            });
+                        }
+                    }
+
+                    // Worker units
+                    if (civ.workerUnits != null)
+                    {
+                        foreach (var worker in civ.workerUnits)
+                        {
+                            if (worker == null || worker.data == null) continue;
+                            saveData.workerUnits.Add(new WorkerUnitSaveData
+                            {
+                                unitDataName = worker.data.unitName,
+                                ownerCivIndex = civIdx,
+                                currentTileIndex = worker.currentTileIndex,
+                                planetIndex = worker.planetIndex,
+                                currentLayer = (int)worker.currentLayer,
+                                currentHealth = worker.currentHealth,
+                                currentWorkPoints = worker.currentWorkPoints,
+                                currentMovePoints = worker.currentMovePoints,
+                                posX = worker.transform.position.x,
+                                posY = worker.transform.position.y,
+                                posZ = worker.transform.position.z,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to serialize unit state: {e.Message}");
         }
 
         return saveData;

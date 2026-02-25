@@ -564,12 +564,21 @@ public class Civilization : MonoBehaviour
                 addFai  += yields.faith;
                 addPol  += yields.policy;
 
-                // Orbit yields: satellites/spaceships in orbit generate science & gold
+                // Orbit yields: units in orbit collect yields from the tile they orbit over
                 if (u.IsInOrbit)
                 {
-                    var orbitYields = u.CollectOrbitYields();
-                    addSci  += orbitYields.sci;
-                    addGold += orbitYields.gold;
+                    var ts = TileSystem.GetForPlanet(u.planetIndex) ?? TileSystem.Instance;
+                    var tileData = ts != null ? ts.GetTileData(u.currentTileIndex) : null;
+                    if (tileData != null)
+                    {
+                        var tileYield = tileData.GetTotalYield();
+                        addFood += tileYield.Food;
+                        addGold += tileYield.Gold;
+                        addSci  += tileYield.Science;
+                        addCul  += tileYield.Culture;
+                        addFai  += tileYield.Faith;
+                        addPol  += tileYield.Policy;
+                    }
                 }
             }
 

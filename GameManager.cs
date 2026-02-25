@@ -2449,6 +2449,63 @@ public class GameManager : MonoBehaviour
             {
                 saveData.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
             }
+
+            // ===== Serialize all units across all civilizations =====
+            saveData.combatUnits = new System.Collections.Generic.List<PauseMenuManager.CombatUnitSaveData>();
+            saveData.workerUnits = new System.Collections.Generic.List<PauseMenuManager.WorkerUnitSaveData>();
+            if (civilizationManager != null)
+            {
+                var allCivs = civilizationManager.GetAllCivs();
+                for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
+                {
+                    var civ = allCivs[civIdx];
+                    if (civ == null) continue;
+                    if (civ.combatUnits != null)
+                    {
+                        foreach (var unit in civ.combatUnits)
+                        {
+                            if (unit == null || unit.data == null) continue;
+                            saveData.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
+                            {
+                                unitDataName = unit.data.unitName,
+                                ownerCivIndex = civIdx,
+                                currentTileIndex = unit.currentTileIndex,
+                                planetIndex = unit.planetIndex,
+                                currentLayer = (int)unit.currentLayer,
+                                currentHealth = unit.currentHealth,
+                                experience = unit.experience,
+                                level = unit.level,
+                                currentAmmo = unit.currentAmmo,
+                                hasActedThisTurn = unit.hasActedThisTurn,
+                                posX = unit.transform.position.x,
+                                posY = unit.transform.position.y,
+                                posZ = unit.transform.position.z,
+                            });
+                        }
+                    }
+                    if (civ.workerUnits != null)
+                    {
+                        foreach (var worker in civ.workerUnits)
+                        {
+                            if (worker == null || worker.data == null) continue;
+                            saveData.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
+                            {
+                                unitDataName = worker.data.unitName,
+                                ownerCivIndex = civIdx,
+                                currentTileIndex = worker.currentTileIndex,
+                                planetIndex = worker.planetIndex,
+                                currentLayer = (int)worker.currentLayer,
+                                currentHealth = worker.currentHealth,
+                                currentWorkPoints = worker.currentWorkPoints,
+                                currentMovePoints = worker.currentMovePoints,
+                                posX = worker.transform.position.x,
+                                posY = worker.transform.position.y,
+                                posZ = worker.transform.position.z,
+                            });
+                        }
+                    }
+                }
+            }
             
             // Override save name if provided
             if (!string.IsNullOrEmpty(saveName))
@@ -2612,7 +2669,144 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // ===== Restore units from save data =====
+        yield return null;
+        try
+        {
+            RestoreUnitsFromSaveData(saveData);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore units from save data: {e.Message}\n{e.StackTrace}");
+        }
+
         
+    }
+
+    /// <summary>
+    /// Restore all combat and worker units from serialized save data.
+    /// </summary>
+    private void RestoreUnitsFromSaveData(PauseMenuManager.GameSaveData saveData)
+    {
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null) return;
+
+        // Look-up tables for unit data SOs
+        var combatUnitDataLookup = new System.Collections.Generic.Dictionary<string, CombatUnitData>();
+        foreach (var ud in ResourceCache.GetAllCombatUnits())
+        {
+            if (ud != null && !string.IsNullOrEmpty(ud.unitName))
+                combatUnitDataLookup[ud.unitName] = ud;
+        }
+
+        var workerUnitDataLookup = new System.Collections.Generic.Dictionary<string, WorkerUnitData>();
+        foreach (var wd in ResourceCache.GetAllWorkerUnits())
+        {
+            if (wd != null && !string.IsNullOrEmpty(wd.unitName))
+                workerUnitDataLookup[wd.unitName] = wd;
+        }
+
+        // Restore combat units
+        if (saveData.combatUnits != null)
+        {
+            foreach (var usd in saveData.combatUnits)
+            {
+                if (usd == null) continue;
+                if (!combatUnitDataLookup.TryGetValue(usd.unitDataName, out var unitData))
+                {
+                    Debug.LogWarning($"[SaveLoad] CombatUnitData '{usd.unitDataName}' not found in ResourceCache, skipping.");
+                    continue;
+                }
+                if (usd.ownerCivIndex < 0 || usd.ownerCivIndex >= allCivs.Count)
+                {
+                    Debug.LogWarning($"[SaveLoad] Invalid ownerCivIndex {usd.ownerCivIndex} for unit '{usd.unitDataName}', skipping.");
+                    continue;
+                }
+                var civ = allCivs[usd.ownerCivIndex];
+
+                var prefab = unitData.GetPrefab();
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"[SaveLoad] Prefab not found for '{usd.unitDataName}', skipping.");
+                    continue;
+                }
+
+                var ts = TileSystem.GetForPlanet(usd.planetIndex) ?? TileSystem.Instance;
+                Vector3 spawnPos = ts != null ? ts.GetTileCenterFlat(usd.currentTileIndex) : new Vector3(usd.posX, usd.posY, usd.posZ);
+
+                var go = Instantiate(prefab, spawnPos, Quaternion.identity);
+                var pg = GetPlanetGenerator(usd.planetIndex) ?? GetCurrentPlanetGenerator();
+                if (pg != null) go.transform.SetParent(pg.transform, true);
+
+                var unit = go.GetComponent<CombatUnit>();
+                if (unit == null)
+                {
+                    Debug.LogWarning($"[SaveLoad] Spawned prefab for '{usd.unitDataName}' has no CombatUnit component, skipping.");
+                    Destroy(go);
+                    continue;
+                }
+
+                unit.Initialize(unitData, civ);
+                unit.planetIndex = usd.planetIndex;
+                unit.currentTileIndex = usd.currentTileIndex;
+                unit.RestoreState(usd.currentHealth, usd.experience, usd.level, usd.currentAmmo,
+                                  usd.hasActedThisTurn, (TileLayer)usd.currentLayer);
+
+                if (!civ.combatUnits.Contains(unit))
+                    civ.combatUnits.Add(unit);
+            }
+        }
+
+        // Restore worker units
+        if (saveData.workerUnits != null)
+        {
+            foreach (var wsd in saveData.workerUnits)
+            {
+                if (wsd == null) continue;
+                if (!workerUnitDataLookup.TryGetValue(wsd.unitDataName, out var workerData))
+                {
+                    Debug.LogWarning($"[SaveLoad] WorkerUnitData '{wsd.unitDataName}' not found in ResourceCache, skipping.");
+                    continue;
+                }
+                if (wsd.ownerCivIndex < 0 || wsd.ownerCivIndex >= allCivs.Count)
+                {
+                    Debug.LogWarning($"[SaveLoad] Invalid ownerCivIndex {wsd.ownerCivIndex} for worker '{wsd.unitDataName}', skipping.");
+                    continue;
+                }
+                var civ = allCivs[wsd.ownerCivIndex];
+
+                if (workerData.prefab == null)
+                {
+                    Debug.LogWarning($"[SaveLoad] Prefab not found for worker '{wsd.unitDataName}', skipping.");
+                    continue;
+                }
+
+                var ts = TileSystem.GetForPlanet(wsd.planetIndex) ?? TileSystem.Instance;
+                Vector3 spawnPos = ts != null ? ts.GetTileCenterFlat(wsd.currentTileIndex) : new Vector3(wsd.posX, wsd.posY, wsd.posZ);
+
+                var go = Instantiate(workerData.prefab, spawnPos, Quaternion.identity);
+                var pg = GetPlanetGenerator(wsd.planetIndex) ?? GetCurrentPlanetGenerator();
+                if (pg != null) go.transform.SetParent(pg.transform, true);
+
+                var worker = go.GetComponent<WorkerUnit>();
+                if (worker == null)
+                {
+                    Debug.LogWarning($"[SaveLoad] Spawned prefab for worker '{wsd.unitDataName}' has no WorkerUnit component, skipping.");
+                    Destroy(go);
+                    continue;
+                }
+
+                worker.Initialize(workerData, civ, wsd.currentTileIndex);
+                worker.planetIndex = wsd.planetIndex;
+                worker.RestoreState(wsd.currentHealth, wsd.currentWorkPoints, wsd.currentMovePoints,
+                                    (TileLayer)wsd.currentLayer);
+
+                if (!civ.workerUnits.Contains(worker))
+                    civ.workerUnits.Add(worker);
+            }
+        }
+
+        Debug.Log($"[SaveLoad] Restored {saveData.combatUnits?.Count ?? 0} combat units and {saveData.workerUnits?.Count ?? 0} worker units.");
     }
 
     // --- Global UI Audio System ---

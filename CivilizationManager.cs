@@ -325,10 +325,132 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     private void PerformMilitaryDecisions(Civilization civ)
     {
-        // Placeholder for military AI decisions
-        // - Unit movement
-        // - Attack decisions
-        // - Defensive positioning
+        if (civ == null || civ.combatUnits == null) return;
+
+        foreach (var unit in civ.combatUnits)
+        {
+            if (unit == null || unit.data == null) continue;
+            if (unit.hasActedThisTurn) continue;
+
+            // --- Orbit AI for spaceship units ---
+            if (unit.CanEnterOrbit() && !unit.IsInOrbit)
+            {
+                // Spaceship on surface with nothing to do: enter orbit to collect yields
+                bool hasNearbyThreat = HasEnemyNearby(civ, unit, unit.CurrentRange + 2);
+                if (!hasNearbyThreat)
+                {
+                    unit.EnterOrbit(unit.currentTileIndex);
+                    unit.ConsumeAction();
+                    continue;
+                }
+            }
+
+            if (unit.IsInOrbit)
+            {
+                // In orbit: try to bombard a nearby enemy if capable
+                if (unit.CanBombardSurface)
+                {
+                    CombatUnit bestTarget = FindBestBombardTarget(civ, unit);
+                    if (bestTarget != null && unit.CanAttack(bestTarget))
+                    {
+                        unit.Attack(bestTarget);
+                        continue;
+                    }
+                }
+                // Otherwise stay in orbit (yields collected automatically via BeginTurn)
+                continue;
+            }
+
+            // --- Basic surface combat AI ---
+            // Attack any enemy in range
+            CombatUnit surfaceTarget = FindBestAttackTarget(civ, unit);
+            if (surfaceTarget != null && unit.CanAttack(surfaceTarget))
+            {
+                unit.Attack(surfaceTarget);
+                continue;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check if there is an enemy combat unit within a given tile range of a unit.
+    /// </summary>
+    private bool HasEnemyNearby(Civilization owner, CombatUnit unit, int range)
+    {
+        var allCivs = GetAllCivs();
+        foreach (var otherCiv in allCivs)
+        {
+            if (otherCiv == owner) continue;
+            if (otherCiv.combatUnits == null) continue;
+            foreach (var enemy in otherCiv.combatUnits)
+            {
+                if (enemy == null) continue;
+                float dist = Vector3.Distance(unit.transform.position, enemy.transform.position);
+                if (dist <= range * 2f) // approximate tile distance
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Find the best enemy target in range for bombardment from orbit.
+    /// </summary>
+    private CombatUnit FindBestBombardTarget(Civilization owner, CombatUnit attacker)
+    {
+        CombatUnit best = null;
+        float bestScore = float.MinValue;
+
+        var allCivs = GetAllCivs();
+        foreach (var otherCiv in allCivs)
+        {
+            if (otherCiv == owner) continue;
+            if (otherCiv.combatUnits == null) continue;
+            foreach (var enemy in otherCiv.combatUnits)
+            {
+                if (enemy == null || enemy.IsInOrbit) continue; // only bombard surface units
+                if (!attacker.CanAttack(enemy)) continue;
+
+                // Prefer low-health targets
+                float score = (float)(enemy.MaxHealth - enemy.currentHealth) + enemy.CurrentAttack;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = enemy;
+                }
+            }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Find the best enemy target in attack range for a surface unit.
+    /// </summary>
+    private CombatUnit FindBestAttackTarget(Civilization owner, CombatUnit attacker)
+    {
+        CombatUnit best = null;
+        float bestScore = float.MinValue;
+
+        var allCivs = GetAllCivs();
+        foreach (var otherCiv in allCivs)
+        {
+            if (otherCiv == owner) continue;
+            if (otherCiv.combatUnits == null) continue;
+            foreach (var enemy in otherCiv.combatUnits)
+            {
+                if (enemy == null) continue;
+                if (!attacker.CanAttack(enemy)) continue;
+
+                // Prefer low-health, high-value targets
+                float score = (float)(enemy.MaxHealth - enemy.currentHealth) + enemy.CurrentAttack * 0.5f;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = enemy;
+                }
+            }
+        }
+        return best;
     }
     
     /// <summary>

@@ -25,6 +25,10 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
     [SerializeField] private Button forageButton; // new forage action for workers
+    [Header("Orbit Controls")]
+    [SerializeField] private TextMeshProUGUI orbitStatusText;
+    [SerializeField] private Button enterOrbitButton;
+    [SerializeField] private Button exitOrbitButton;
     [Header("Worker Build Units UI")] 
     [SerializeField] private Transform buildUnitsContainer; // vertical layout group
     [SerializeField] private GameObject buildUnitButtonPrefab; // simple button with icon/text
@@ -45,6 +49,11 @@ public class UnitInfoPanel : MonoBehaviour
 
         if (forageButton != null)
             forageButton.onClick.AddListener(OnForageClicked);
+
+        if (enterOrbitButton != null)
+            enterOrbitButton.onClick.AddListener(OnEnterOrbitClicked);
+        if (exitOrbitButton != null)
+            exitOrbitButton.onClick.AddListener(OnExitOrbitClicked);
 
         // On start, clear the panel to show a "no unit selected" state.
         ClearPanelInfo();
@@ -172,6 +181,11 @@ unitInfoPanel.SetActive(true);
         }
         if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
 
+        // Hide orbit controls
+        if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
+        if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
+        if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
+
         // Clear unit references
         currentCombatUnit = null;
         currentWorkerUnit = null;
@@ -206,6 +220,9 @@ unitInfoPanel.SetActive(true);
         if (movePointsText != null) movePointsText.text = $"Move Speed: {currentCombatUnit.moveSpeed:F1}";
         rangeText.text = $"Range: {currentCombatUnit.CurrentRange}";
         if (moraleText != null) moraleText.text = $"Ammo: {currentCombatUnit.currentAmmo}/{currentCombatUnit.data.maxAmmo}";
+
+        // Orbit status & controls
+        UpdateOrbitControls(currentCombatUnit);
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -310,6 +327,10 @@ unitInfoPanel.SetActive(true);
             contributeWorkButton.onClick.RemoveListener(OnContributeWorkClicked);
         if (forageButton != null)
             forageButton.onClick.RemoveListener(OnForageClicked);
+        if (enterOrbitButton != null)
+            enterOrbitButton.onClick.RemoveListener(OnEnterOrbitClicked);
+        if (exitOrbitButton != null)
+            exitOrbitButton.onClick.RemoveListener(OnExitOrbitClicked);
     }
 
     private void HideAllSections()
@@ -496,5 +517,83 @@ UpdateUnitInfoForWorkerUnit();
         if (currentWorkerUnit == null || imp == null) return;
         currentWorkerUnit.StartBuilding(imp, currentWorkerUnit.currentTileIndex);
         UpdateUnitInfoForWorkerUnit();
+    }
+
+    // ===== ORBIT CONTROLS =====
+
+    /// <summary>
+    /// Update orbit status text and Enter/Exit Orbit button visibility for a combat unit.
+    /// </summary>
+    private void UpdateOrbitControls(CombatUnit unit)
+    {
+        if (unit == null || unit.data == null)
+        {
+            if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
+            if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
+            if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
+            return;
+        }
+
+        bool isInOrbit = unit.IsInOrbit;
+        bool canOrbit = unit.CanEnterOrbit(); // Spaceship type
+        bool hasActed = unit.hasActedThisTurn;
+
+        // Orbit status label
+        if (orbitStatusText != null)
+        {
+            if (isInOrbit)
+            {
+                orbitStatusText.text = "IN ORBIT";
+                orbitStatusText.gameObject.SetActive(true);
+            }
+            else if (canOrbit)
+            {
+                orbitStatusText.text = "Surface";
+                orbitStatusText.gameObject.SetActive(true);
+            }
+            else
+            {
+                orbitStatusText.gameObject.SetActive(false);
+            }
+        }
+
+        // Enter Orbit button: visible when unit can orbit and is currently on surface
+        if (enterOrbitButton != null)
+        {
+            bool showEnter = canOrbit && !isInOrbit && !hasActed;
+            enterOrbitButton.gameObject.SetActive(showEnter);
+            enterOrbitButton.interactable = showEnter;
+        }
+
+        // Exit Orbit button: visible when unit is in orbit
+        if (exitOrbitButton != null)
+        {
+            bool showExit = isInOrbit && !hasActed;
+            exitOrbitButton.gameObject.SetActive(showExit);
+            exitOrbitButton.interactable = showExit;
+        }
+    }
+
+    private void OnEnterOrbitClicked()
+    {
+        if (currentCombatUnit == null) return;
+        if (currentCombatUnit.hasActedThisTurn) return;
+        if (!currentCombatUnit.CanEnterOrbit()) return;
+        if (currentCombatUnit.IsInOrbit) return;
+
+        currentCombatUnit.EnterOrbit(currentCombatUnit.currentTileIndex);
+        currentCombatUnit.ConsumeAction();
+        UpdateUnitInfoForCombatUnit();
+    }
+
+    private void OnExitOrbitClicked()
+    {
+        if (currentCombatUnit == null) return;
+        if (currentCombatUnit.hasActedThisTurn) return;
+        if (!currentCombatUnit.IsInOrbit) return;
+
+        currentCombatUnit.ExitOrbit(currentCombatUnit.currentTileIndex);
+        currentCombatUnit.ConsumeAction();
+        UpdateUnitInfoForCombatUnit();
     }
 }

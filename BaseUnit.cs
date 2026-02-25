@@ -1041,29 +1041,6 @@ public abstract class BaseUnit : MonoBehaviour
     public bool IsInOrbit => currentLayer == TileLayer.Orbit;
 
     /// <summary>
-    /// Collect per-turn orbit yields (science, gold) for this unit.
-    /// Call once per turn for units in orbit. Returns zero yields if not in orbit.
-    /// </summary>
-    public virtual YieldValues CollectOrbitYields()
-    {
-        if (!IsInOrbit) return default;
-
-        var cu = this as CombatUnit;
-        if (cu == null || cu.data == null) return default;
-
-        // Get surface biome under this orbital position
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Biome surfaceBiome = Biome.Ocean; // fallback
-        if (ts != null)
-        {
-            var tile = ts.GetTileData(currentTileIndex);
-            if (tile != null) surfaceBiome = tile.biome;
-        }
-
-        return BiomeHelper.GetOrbitYields(surfaceBiome, cu.data.orbitSciencePerTurn, cu.data.orbitGoldPerTurn);
-    }
-
-    /// <summary>
     /// Request movement to target tile. Uses UnitMovementController.
     /// </summary>
     public virtual void MoveTo(int targetTileIndex)

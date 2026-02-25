@@ -269,6 +269,17 @@ return;
                 return baseUnit;
         }
         
+        // Also check orbit height (+4Y) for orbit-layer units
+        Vector3 orbitPosition = worldPosition + Vector3.up * 4f;
+        Collider[] orbitColliders = Physics.OverlapSphere(orbitPosition, 1f);
+        
+        foreach (var collider in orbitColliders)
+        {
+            var baseUnit = collider.GetComponentInParent<BaseUnit>();
+            if (baseUnit != null && baseUnit.currentLayer == TileLayer.Orbit)
+                return baseUnit;
+        }
+        
         return null;
     }
     

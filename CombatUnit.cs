@@ -636,14 +636,6 @@ public class CombatUnit : BaseUnit
         }
         return dist <= CurrentRange;
     }
-    /// Returns the damage multiplier (0-1). Call this when the attacker is in orbit
-    /// and the target is on the surface.
-    /// </summary>
-    public float GetBombardmentDamageMultiplier()
-    {
-        if (currentLayer != TileLayer.Orbit || data == null) return 1f;
-        return data.canBombardSurface ? data.bombardmentDamageMult : 0f;
-    }
 
     /// <summary>
     /// Whether this unit can currently bombard surface tiles from orbit.
@@ -1288,6 +1280,28 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
             return null;
         }
         return this;
+    }
+
+    /// <summary>
+    /// Restore saved runtime state after Initialize has been called.
+    /// Used by the save/load system to re-apply experience, health, ammo, etc.
+    /// </summary>
+    public void RestoreState(int savedHealth, int savedExperience, int savedLevel, int savedAmmo, bool savedHasActed, TileLayer savedLayer)
+    {
+        currentHealth = Mathf.Clamp(savedHealth, 0, MaxHealth);
+        experience = savedExperience;
+        level = Mathf.Max(1, savedLevel);
+        currentAmmo = savedAmmo;
+        hasActedThisTurn = savedHasActed;
+        currentLayer = savedLayer;
+
+        // If unit is in orbit, adjust Y position
+        if (savedLayer == TileLayer.Orbit)
+        {
+            Vector3 pos = transform.position;
+            pos.y += 4f;
+            transform.position = pos;
+        }
     }
 
     /// <summary>

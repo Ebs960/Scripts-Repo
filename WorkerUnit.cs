@@ -171,6 +171,25 @@ public class WorkerUnit : BaseUnit
         InitializeUnitLabel();
     }
 
+    /// <summary>
+    /// Restore saved runtime state after Initialize has been called.
+    /// Used by the save/load system.
+    /// </summary>
+    public void RestoreState(int savedHealth, int savedWorkPoints, int savedMovePoints, TileLayer savedLayer)
+    {
+        currentHealth = Mathf.Clamp(savedHealth, 0, MaxHealth);
+        currentWorkPoints = savedWorkPoints;
+        currentMovePoints = savedMovePoints;
+        currentLayer = savedLayer;
+
+        if (savedLayer == TileLayer.Orbit)
+        {
+            Vector3 pos = transform.position;
+            pos.y += 4f;
+            transform.position = pos;
+        }
+    }
+
     public void ContributeWork()
     {
         if (currentWorkPoints <= 0) return;
