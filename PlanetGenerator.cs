@@ -253,6 +253,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public GameObject underwaterRoot;
     [Tooltip("Root GameObject containing atmosphere visuals (clouds, banded gas giant renderer)")]
     public GameObject atmosphereRoot;
+    [Tooltip("Root GameObject containing orbit-layer visuals (thin shell/plane for orbit view). Assign a plane with your orbit material.")]
+    public GameObject orbitRoot;
     [Tooltip("Optional root GameObject to parent planet-specific runtime objects such as spawned resources")]
     public GameObject resourcesRoot;
 
@@ -263,6 +265,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float underwaterYOffset = 0f;
     [Tooltip("Local Y offset applied to the Atmosphere root when it is enabled. Use positive values to expand atmosphere shells.")]
     public float atmosphereYOffset = 0f;
+    [Tooltip("Local Y offset applied to the Orbit root when it is enabled. Controls the visual shell height.")]
+    public float orbitYOffset = 25f;
+
+    [Header("Orbit Layer")]
+    [Tooltip("World-space Y offset above a tile's surface position for orbit-layer units and resources. Must be above the tallest terrain.")]
+    public float orbitHeight = 25f;
     [Header("Atmosphere")]
     [Tooltip("Local scale multiplier applied to the atmosphere root. Use this to control atmosphere radius/thickness.")]
     public float atmosphereRadius = 1.0f;
@@ -377,6 +385,23 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     // Public property to access the seed
     public int Seed => seed;
+
+    /// <summary>
+    /// Get the configured orbit height for this planet. Other systems use this
+    /// instead of hardcoding a Y offset for orbit-layer positioning.
+    /// </summary>
+    public static float GetOrbitHeight(int planetIdx = -1)
+    {
+        // Multi-planet: look up the correct PlanetGenerator via GameManager
+        if (planetIdx >= 0 && GameManager.Instance != null)
+        {
+            var pg = GameManager.Instance.GetPlanetGenerator(planetIdx);
+            if (pg != null) return pg.orbitHeight;
+        }
+        // Fallback: singleton
+        if (Instance != null) return Instance.orbitHeight;
+        return 25f; // safe fallback
+    }
 
     // --- Continent Parameters (Stamping) ---
     [Header("Continent Generation (Stamping)")]
@@ -532,15 +557,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float coastElevation = 0.3f;
 
     [Header("Underwater Biomes (Ocean Floor)")]
-    [Tooltip("Extra downward elevation offset for trench tiles (negative value, world units).")]
-    [Range(-10f, 0f)]
-    public float trenchDepthBonus = -3f;
-    [Tooltip("Minimum tile distance from any coast/land for a tile to be eligible as Trench.")]
-    [Range(3, 20)]
-    public int trenchMinDistanceFromCoast = 6;
-    [Tooltip("Probability that an eligible deep-ocean tile becomes Trench (noise-based).")]
-    [Range(0f, 1f)]
-    public float trenchChance = 0.15f;
     [Tooltip("Minimum tile distance from coast for AbyssalPlains eligibility.")]
     [Range(1, 20)]
     public int abyssalMinDistanceFromCoast = 3;
@@ -550,6 +566,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Probability that an eligible ocean tile becomes AbyssalPlains (noise-based).")]
     [Range(0f, 1f)]
     public float abyssalChance = 0.35f;
+
+    [Header("Trench Stamping")]
+    [Tooltip("Number of elongated trenches to stamp in the deep ocean.")]
+    [Range(0, 20)]
+    public int trenchCount = 3;
+    [Tooltip("Minimum tile distance from coast for trench seed placement.")]
+    [Range(3, 30)]
+    public int trenchMinDistanceFromCoast = 6;
+    [Tooltip("Minimum length of a trench in tiles (spine segments).")]
+    [Range(5, 80)]
+    public int trenchMinLength = 15;
+    [Tooltip("Maximum length of a trench in tiles (spine segments).")]
+    [Range(10, 150)]
+    public int trenchMaxLength = 40;
+    [Tooltip("Half-width of the trench (tiles from center spine). 0 = 1-tile-wide, 1 = 3-tiles-wide, etc.")]
+    [Range(0, 4)]
+    public int trenchHalfWidth = 1;
+    [Tooltip("Maximum elevation offset at the trench center spine (negative = deeper).")]
+    [Range(-15f, 0f)]
+    public float trenchCenterDepth = -4f;
+    [Tooltip("Direction persistence when walking the trench spine (0 = pure random, 1 = perfectly straight).")]
+    [Range(0f, 1f)]
+    public float trenchCurvature = 0.7f;
+    [Tooltip("Minimum tile distance between trench spines to avoid overlap.")]
+    [Range(3, 30)]
+    public int trenchMinSeparation = 8;
     
     // --- River Generation (Placeholder) ---
     [Header("River Generation")]
@@ -1495,6 +1537,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float landElevMin = float.MaxValue;
         float landElevMax = float.MinValue;
         List<int> landTileIndices = new List<int>();
+        HashSet<int> landTileIndexSet = new HashSet<int>();
 
         // Sample a few representative tiles for detailed climate logs (avoid spam)
         List<int> climateSampleIndices = new List<int>();
@@ -1602,8 +1645,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Smooth climate arrays to reduce speckling
         for (int pass = 0; pass < Mathf.Max(0, climateSmoothingPasses); pass++)
         {
-            float[] newTemp = new float[tileCount];
-            float[] newMoist = new float[tileCount];
+            float[] newTemp = ArrayPoolUtils.RentFloat(tileCount);
+            float[] newMoist = ArrayPoolUtils.RentFloat(tileCount);
             for (int i = 0; i < tileCount; i++)
             {
                 float sumT = 0f; int cntT = 0;
@@ -1629,6 +1672,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 else newMoist[i] = sampledMoist[i];
             }
 
+            // Return old pooled arrays before reassigning
+            ArrayPoolUtils.ReturnFloat(sampledTemp);
+            ArrayPoolUtils.ReturnFloat(sampledMoist);
             sampledTemp = newTemp;
             sampledMoist = newMoist;
 
@@ -1643,7 +1689,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // --- Coastal moisture boost: BFS from ocean tiles, boost moisture near coasts ---
         if (coastalMoistureBoost > 0.001f && coastalMoistureRange > 0)
         {
-            int[] distFromCoast = new int[tileCount];
+            int[] distFromCoast = ArrayPoolUtils.RentInt(tileCount);
             for (int i = 0; i < tileCount; i++) distFromCoast[i] = int.MaxValue;
 
             var coastQueue = new Queue<int>();
@@ -1657,6 +1703,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
 
             // BFS flood fill from all ocean tiles simultaneously
+            int bfsCounter = 0;
             while (coastQueue.Count > 0)
             {
                 int cur = coastQueue.Dequeue();
@@ -1669,6 +1716,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     distFromCoast[n] = nextDist;
                     coastQueue.Enqueue(n);
                 }
+                if (++bfsCounter % 2000 == 0) yield return null;
             }
 
             // Apply moisture boost — linear falloff from coast
@@ -1683,6 +1731,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
             if (enableDiagnostics)
                 Debug.Log($"[PlanetGenerator] Coastal moisture boost applied: boost={coastalMoistureBoost} range={coastalMoistureRange} tiles");
+
+            ArrayPoolUtils.ReturnInt(distFromCoast);
         }
 
         // Second pass: assign biomes and build HexTileData using smoothed climate
@@ -1726,6 +1776,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
                 landTileIndices.Add(i);
+                landTileIndexSet.Add(i);
             }
             else
             {
@@ -1738,7 +1789,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 finalElevation = TierElevation(shapedNoisePerTile[i]);
                 if (finalElevation < landElevMin) landElevMin = finalElevation;
                 if (finalElevation > landElevMax) landElevMax = finalElevation;
-                if (!landTileIndices.Contains(i)) landTileIndices.Add(i);
+                if (!landTileIndexSet.Contains(i))
+                {
+                    landTileIndices.Add(i);
+                    landTileIndexSet.Add(i);
+                }
             }
 
             // Track climate min/max for diagnostics
@@ -1975,7 +2030,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // This creates a natural shoreline buffer — no hills or mountains right at the waterline.
         {
             int flattenRadius = 2;
-            int[] waterDist = new int[tileCount];
+            int[] waterDist = ArrayPoolUtils.RentInt(tileCount);
             for (int i = 0; i < tileCount; i++) waterDist[i] = -1;
 
             var bfsQueue = new Queue<int>();
@@ -1991,6 +2046,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 }
             }
 
+            int bfsCounter2 = 0;
             while (bfsQueue.Count > 0)
             {
                 int cur = bfsQueue.Dequeue();
@@ -2003,6 +2059,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     waterDist[n] = nextDist;
                     bfsQueue.Enqueue(n);
                 }
+                if (++bfsCounter2 % 2000 == 0) yield return null;
             }
 
             // Flatten any land tile within the radius
@@ -2021,18 +2078,19 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 data[i] = td;
                 baseData[i] = td;
             }
+
+            ArrayPoolUtils.ReturnInt(waterDist);
         }
 
-        // ---------- 6.3 Underwater Biome Assignment (ocean floor: AbyssalPlains / Trench) ----------
+        // ---------- 6.3 Underwater Biome Assignment (AbyssalPlains + Trench Stamping) ----------
         // BFS from coast/land tiles to compute distance-from-coast for every ocean tile.
-        // Then assign underwater biomes based on distance + temperature + noise.
-        // Surface biome stays Ocean/Seas — only underwaterBiome changes (drives floor texture).
+        // AbyssalPlains: per-tile noise (unchanged).
+        // Trenches: stamped as elongated curved paths in deep ocean (realistic subduction-zone shapes).
         {
-            int[] coastDist = new int[tileCount];
+            int[] coastDist = ArrayPoolUtils.RentInt(tileCount);
             for (int i = 0; i < tileCount; i++) coastDist[i] = -1;
 
             var coastBfs = new Queue<int>();
-            // Seed BFS from all land + coast tiles
             for (int i = 0; i < tileCount; i++)
             {
                 if (!data.ContainsKey(i)) continue;
@@ -2043,8 +2101,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     coastBfs.Enqueue(i);
                 }
             }
-
-            // BFS outward through ocean tiles
+            int bfsCounter3 = 0;
             while (coastBfs.Count > 0)
             {
                 int cur = coastBfs.Dequeue();
@@ -2052,24 +2109,24 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 foreach (int n in grid.neighbors[cur])
                 {
                     if (n < 0 || n >= tileCount) continue;
-                    if (coastDist[n] >= 0) continue; // already visited
+                    if (coastDist[n] >= 0) continue;
                     coastDist[n] = nextDist;
                     coastBfs.Enqueue(n);
                 }
+                if (++bfsCounter3 % 2000 == 0) yield return null;
             }
 
-            int abyssalCount = 0, trenchCount = 0;
+            // --- AbyssalPlains (per-tile noise, same as before) ---
+            int abyssalCount = 0;
             for (int i = 0; i < tileCount; i++)
             {
                 if (!data.ContainsKey(i)) continue;
                 var td = data[i];
-                // Only assign underwater biomes to Ocean tiles (not Seas/Coast/Lake/River)
                 if (td.biome != Biome.Ocean) continue;
 
                 int dist = coastDist[i];
-                if (dist < 0) dist = 999; // unreachable = treat as very far
+                if (dist < 0) dist = 999;
 
-                // Deterministic per-tile noise using tile index hash
                 float noise;
                 unchecked
                 {
@@ -2077,32 +2134,209 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     noise = (float)((uint)h % 10000) / 10000f;
                 }
 
-                // Delegate biome decision to BiomeHelper (centralized rules)
-                Biome underwaterResult = BiomeHelper.GetUnderwaterBiome(
-                    dist, td.temperature, noise,
-                    abyssalMinDistanceFromCoast, abyssalMaxDistanceFromCoast, abyssalChance,
-                    trenchMinDistanceFromCoast, trenchChance);
-
-                if (underwaterResult == Biome.AbyssalPlains)
+                if (dist >= abyssalMinDistanceFromCoast && dist <= abyssalMaxDistanceFromCoast && noise < abyssalChance)
                 {
                     td.underwaterBiome = Biome.AbyssalPlains;
                     data[i] = td;
                     baseData[i] = td;
                     abyssalCount++;
                 }
-                else if (underwaterResult == Biome.Trench)
-                {
-                    td.underwaterBiome = Biome.Trench;
-                    td.trenchDepth = trenchDepthBonus;
-                    td.elevation += trenchDepthBonus;
-                    data[i] = td;
-                    baseData[i] = td;
-                    trenchCount++;
-                }
-                // else: underwaterBiome stays default (Biome.Ocean) — standard ocean floor
             }
 
-            Debug.Log($"[PlanetGenerator] Underwater biome pass: {abyssalCount} AbyssalPlains tiles, {trenchCount} Trench tiles (abyssalDist={abyssalMinDistanceFromCoast}-{abyssalMaxDistanceFromCoast}, trenchMinDist={trenchMinDistanceFromCoast})");
+            // --- Trench Stamping (elongated curved paths like real subduction trenches) ---
+            int trenchTileCount = 0;
+            int trenchesStamped = 0;
+            if (trenchCount > 0)
+            {
+                System.Random trenchRand = new System.Random(unchecked((int)(seed ^ 0xDEE0CEAF)));
+
+                // Collect eligible deep ocean seed tiles
+                var deepOceanTiles = new List<int>();
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!data.ContainsKey(i)) continue;
+                    if (data[i].biome != Biome.Ocean) continue;
+                    int dist = coastDist[i];
+                    if (dist < 0) dist = 999;
+                    if (dist >= trenchMinDistanceFromCoast) deepOceanTiles.Add(i);
+                }
+
+                // Shuffle seed candidates deterministically
+                for (int i = deepOceanTiles.Count - 1; i > 0; i--)
+                {
+                    int j = trenchRand.Next(i + 1);
+                    (deepOceanTiles[i], deepOceanTiles[j]) = (deepOceanTiles[j], deepOceanTiles[i]);
+                }
+
+                // Track all tiles already claimed by a trench (for separation check)
+                HashSet<int> allTrenchSpineTiles = new HashSet<int>();
+
+                for (int t = 0; t < trenchCount && deepOceanTiles.Count > 0; t++)
+                {
+                    // Pick a seed tile that is far enough from existing trench spines
+                    int seedIdx = -1;
+                    for (int si = 0; si < deepOceanTiles.Count; si++)
+                    {
+                        int candidate = deepOceanTiles[si];
+                        if (allTrenchSpineTiles.Contains(candidate)) continue;
+
+                        // BFS check for minimum separation from existing trench tiles
+                        bool tooClose = false;
+                        if (trenchMinSeparation > 0 && allTrenchSpineTiles.Count > 0)
+                        {
+                            var sepQ = new Queue<(int idx, int d)>();
+                            var sepVisited = new HashSet<int>();
+                            sepQ.Enqueue((candidate, 0));
+                            sepVisited.Add(candidate);
+                            while (sepQ.Count > 0)
+                            {
+                                var (ci, cd) = sepQ.Dequeue();
+                                if (cd >= trenchMinSeparation) continue;
+                                foreach (int n in grid.neighbors[ci])
+                                {
+                                    if (n < 0 || n >= tileCount || sepVisited.Contains(n)) continue;
+                                    sepVisited.Add(n);
+                                    if (allTrenchSpineTiles.Contains(n)) { tooClose = true; break; }
+                                    sepQ.Enqueue((n, cd + 1));
+                                }
+                                if (tooClose) break;
+                            }
+                        }
+                        if (tooClose) continue;
+
+                        seedIdx = candidate;
+                        deepOceanTiles.RemoveAt(si);
+                        break;
+                    }
+                    if (seedIdx < 0) break; // no eligible seed left
+
+                    // Random-walk the trench spine
+                    int length = trenchMinLength + trenchRand.Next(trenchMaxLength - trenchMinLength + 1);
+                    var spine = new List<int> { seedIdx };
+                    var spineSet = new HashSet<int> { seedIdx }; // O(1) Contains for revisit check
+                    allTrenchSpineTiles.Add(seedIdx);
+
+                    // Pick a random initial direction by choosing a random deep-ocean neighbor
+                    int prevIdx = seedIdx;
+                    int prevDir = trenchRand.Next(6); // initial heading (neighbor slot 0-5)
+
+                    for (int step = 1; step < length; step++)
+                    {
+                        int current = spine[spine.Count - 1];
+                        var nbrs = grid.neighbors[current];
+
+                        // Build list of valid next tiles (ocean, far enough from coast)
+                        // Bias selection toward the previous direction for path continuity
+                        int bestNbr = -1;
+                        float bestScore = float.MinValue;
+
+                        for (int ni = 0; ni < nbrs.Count; ni++)
+                        {
+                            int n = nbrs[ni];
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!data.ContainsKey(n)) continue;
+                            if (data[n].biome != Biome.Ocean) continue;
+                            if (spineSet.Contains(n)) continue; // no revisiting
+
+                            int nDist = coastDist[n];
+                            if (nDist < 0) nDist = 999;
+                            // Must stay in deep ocean (at least trenchMinDistanceFromCoast - 2 for edge ramp)
+                            if (nDist < Mathf.Max(1, trenchMinDistanceFromCoast - 2)) continue;
+
+                            // Direction continuity score: favor neighbors in the same direction as previous step
+                            // Hex neighbors are indexed 0-5; angular distance wraps around 6
+                            int dirDelta = Mathf.Abs(ni - prevDir);
+                            if (dirDelta > 3) dirDelta = 6 - dirDelta;
+                            // dirDelta: 0 = same direction, 1 = slight turn, 2 = moderate, 3 = reverse
+                            float dirScore = 1f - (dirDelta / 3f); // 1.0 for same, 0.0 for reverse
+                            float score = Mathf.Lerp(0f, dirScore, trenchCurvature);
+                            // Add small random jitter so ties are broken and some natural wandering occurs
+                            score += (float)trenchRand.NextDouble() * (1f - trenchCurvature);
+                            // Prefer tiles further from coast (deeper ocean)
+                            score += nDist * 0.01f;
+
+                            if (score > bestScore)
+                            {
+                                bestScore = score;
+                                bestNbr = n;
+                                prevDir = ni;
+                            }
+                        }
+
+                        if (bestNbr < 0) break; // dead end — trench terminates early
+
+                        spine.Add(bestNbr);
+                        spineSet.Add(bestNbr);
+                        allTrenchSpineTiles.Add(bestNbr);
+                    }
+
+                    if (spine.Count < 3) continue; // too short, skip
+
+                    // Stamp the trench: spine + width band with depth gradient
+                    // Depth profile (V-shape): center spine = trenchCenterDepth, edges = lerp toward 0
+                    HashSet<int> trenchTiles = new HashSet<int>();
+                    Dictionary<int, float> trenchDepthMap = new Dictionary<int, float>();
+
+                    foreach (int si in spine)
+                    {
+                        // BFS outward from spine tile to fill trench width
+                        var widthQ = new Queue<(int idx, int ring)>();
+                        var widthVisited = new HashSet<int>();
+                        widthQ.Enqueue((si, 0));
+                        widthVisited.Add(si);
+
+                        while (widthQ.Count > 0)
+                        {
+                            var (wi, ring) = widthQ.Dequeue();
+                            if (ring > trenchHalfWidth) continue;
+
+                            if (data.ContainsKey(wi) && data[wi].biome == Biome.Ocean)
+                            {
+                                // Depth gradient: center = full depth, edge = partial
+                                float t01 = (trenchHalfWidth > 0) ? (float)ring / trenchHalfWidth : 0f;
+                                float depth = Mathf.Lerp(trenchCenterDepth, trenchCenterDepth * 0.2f, t01);
+
+                                // Keep the deepest value if multiple spine tiles overlap
+                                if (!trenchDepthMap.TryGetValue(wi, out float existing) || depth < existing)
+                                {
+                                    trenchDepthMap[wi] = depth;
+                                }
+                                trenchTiles.Add(wi);
+                            }
+
+                            if (ring < trenchHalfWidth)
+                            {
+                                foreach (int n in grid.neighbors[wi])
+                                {
+                                    if (n < 0 || n >= tileCount || widthVisited.Contains(n)) continue;
+                                    widthVisited.Add(n);
+                                    widthQ.Enqueue((n, ring + 1));
+                                }
+                            }
+                        }
+                    }
+
+                    // Apply trench to tile data
+                    foreach (int ti in trenchTiles)
+                    {
+                        if (!data.ContainsKey(ti)) continue;
+                        var td = data[ti];
+                        float depthOffset = trenchDepthMap[ti];
+                        td.underwaterBiome = Biome.Trench;
+                        td.trenchDepth = depthOffset;
+                        td.elevation += depthOffset;
+                        data[ti] = td;
+                        baseData[ti] = td;
+                        trenchTileCount++;
+                    }
+
+                    trenchesStamped++;
+                }
+            }
+
+            Debug.Log($"[PlanetGenerator] Underwater biome pass: {abyssalCount} AbyssalPlains tiles, {trenchesStamped} trenches stamped ({trenchTileCount} trench tiles total, minDist={trenchMinDistanceFromCoast}, lengths={trenchMinLength}-{trenchMaxLength})");
+
+            ArrayPoolUtils.ReturnInt(coastDist);
         }
 
         if (loadingPanelController != null)
@@ -2152,7 +2386,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Finalize
         HasGeneratedSurface = true;
-        Tiles = data.Values.ToList();
+        Tiles = new List<HexTileData>(data.Values);
 
         Debug.Log($"[PlanetGenerator] GenerateSurface COMPLETE for '{gameObject.name}' HasGeneratedSurface={HasGeneratedSurface} totalTiles={Tiles.Count} SeaLevelWorldY={SeaLevelWorldY}");
 
@@ -2301,7 +2535,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
 
             // Precompute caches: continent index per tile, coast lists per continent, and reachability to any coast
-            tileContinent = new int[tileCount];
+            tileContinent = ArrayPoolUtils.RentInt(tileCount);
             for (int ti = 0; ti < tileCount; ti++) tileContinent[ti] = GetContinentIndexForTile(ti);
 
             var coastByContinent = new Dictionary<int, List<int>>();
@@ -2313,9 +2547,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
 
             // Multi-source BFS from all coast tiles to mark tiles that can reach a coast via land (not through lakes)
-            reachesCoast = new bool[tileCount];
+            reachesCoast = ArrayPoolUtils.RentBool(tileCount);
             var q2 = new Queue<int>();
-            var seen2 = new bool[tileCount];
+            var seen2 = ArrayPoolUtils.RentBool(tileCount);
             foreach (int ct in coastTiles)
             {
                 if (ct < 0 || ct >= tileCount) continue;
@@ -2324,6 +2558,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 seen2[ct] = true;
                 reachesCoast[ct] = true;
             }
+            int bfsCounterRiver = 0;
             while (q2.Count > 0)
             {
                 int idx = q2.Dequeue();
@@ -2339,7 +2574,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     reachesCoast[n] = true;
                     q2.Enqueue(n);
                 }
+                if (++bfsCounterRiver % 2000 == 0) yield return null;
             }
+
+            ArrayPoolUtils.ReturnBool(seen2);
 
             // Determine target river count: one river per lake-group when lakes exist, otherwise fall back to preset
             targetRiverCount = (lakeSourcesDict.Count > 0) ? lakeSourcesDict.Count : Mathf.Clamp(GameSetupData.riverCount, 0, 200);
@@ -2409,31 +2647,33 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 try {
                 if (!tileData.ContainsKey(startIdx) || !tileData.ContainsKey(goalIdx)) return null;
 
-                var openSet = new HashSet<int>();
+                // Priority queue using SortedSet for O(log N) min-extraction instead of O(N) linear scan
                 var gScore = new Dictionary<int, float>();
                 var fScore = new Dictionary<int, float>();
                 var cameFrom = new Dictionary<int, int>();
+                var openSetHash = new HashSet<int>(); // track membership for O(1) Contains
+                var openQueue = new SortedSet<(float f, int idx)>(Comparer<(float f, int idx)>.Create(
+                    (a, b) => a.f != b.f ? a.f.CompareTo(b.f) : a.idx.CompareTo(b.idx)));
 
                 float Heuristic(int a, int b)
                 {
                     return HexDistanceWrapped(tileCoords[a], tileCoords[b], tilesX);
                 }
 
-                openSet.Add(startIdx);
+                float startF = Heuristic(startIdx, goalIdx);
                 gScore[startIdx] = 0f;
-                fScore[startIdx] = Heuristic(startIdx, goalIdx);
+                fScore[startIdx] = startF;
+                openSetHash.Add(startIdx);
+                openQueue.Add((startF, startIdx));
 
                 int steps = 0;
-                while (openSet.Count > 0 && steps++ < maxSteps)
+                while (openQueue.Count > 0 && steps++ < maxSteps)
                 {
-                    // pick node with lowest fScore
-                    int current = -1; float bestF = float.MaxValue;
-                    foreach (var n in openSet)
-                    {
-                        float v = fScore.ContainsKey(n) ? fScore[n] : float.MaxValue;
-                        if (v < bestF) { bestF = v; current = n; }
-                    }
-                    if (current == -1) break;
+                    // O(log N) extraction of node with lowest fScore
+                    var minEntry = openQueue.Min;
+                    openQueue.Remove(minEntry);
+                    int current = minEntry.idx;
+                    openSetHash.Remove(current);
 
                     if (current == goalIdx)
                     {
@@ -2448,8 +2688,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         path.Reverse();
                         return path;
                     }
-
-                    openSet.Remove(current);
 
                     if (!tileData.TryGetValue(current, out var curTile)) continue;
                     foreach (int n in grid.neighbors[current])
@@ -2473,11 +2711,17 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
                         if (!gScore.ContainsKey(n) || tentativeG < gScore[n])
                         {
+                            // Remove old entry from priority queue if updating
+                            if (openSetHash.Contains(n) && fScore.ContainsKey(n))
+                            {
+                                openQueue.Remove((fScore[n], n));
+                            }
                             cameFrom[n] = current;
                             gScore[n] = tentativeG;
                             float f = tentativeG + Heuristic(n, goalIdx);
                             fScore[n] = f;
-                            if (!openSet.Contains(n)) openSet.Add(n);
+                            if (!openSetHash.Contains(n)) openSetHash.Add(n);
+                            openQueue.Add((f, n));
                         }
                     }
                 }
@@ -2679,6 +2923,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
 
             // (Stamping debug logs removed)
+
+            // Return pooled arrays used for river reachability caches
+            if (tileContinent != null) { ArrayPoolUtils.ReturnInt(tileContinent); tileContinent = null; }
+            if (reachesCoast != null) { ArrayPoolUtils.ReturnBool(reachesCoast); reachesCoast = null; }
         }
 
         // Old greedy river walk removed — A* pathfinder is now authoritative. Do not use BuildRiverWalk.
@@ -3162,7 +3410,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         // --- Pass 2: Lake connected components + spill-rim water height ---
-        bool[] visitedLake = new bool[tileCount];
+        bool[] visitedLake = ArrayPoolUtils.RentBool(tileCount);
         int nextLakeId = 0;
 
         for (int i = 0; i < tileCount; i++)
@@ -3402,6 +3650,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         Debug.Log($"[PlanetGenerator] ComputeWaterMetadata: {nextLakeId} lake bodies labeled, river/ocean tiles tagged.");
+
+        ArrayPoolUtils.ReturnBool(visitedLake);
     }
 
     /// <summary>
@@ -3483,10 +3733,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (terrainRenderer != null)
             return terrainRenderer.DisplacementStrength;
 
-        var chunkManager = FindAnyObjectByType<HexMapChunkManager>(FindObjectsInactive.Include);
-        if (chunkManager != null)
-            return chunkManager.DisplacementStrength;
-
+        // terrainRenderer is already cached; skip redundant scene search
         return 1f; // World-space elevation: default scale is 1.0
     }
 }

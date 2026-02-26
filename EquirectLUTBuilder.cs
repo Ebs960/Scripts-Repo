@@ -125,7 +125,7 @@ public static class EquirectLUTBuilder
         if (grid == null || !grid.IsBuilt || width <= 0 || height <= 0)
             return null;
 
-        var lut = new int[width * height];
+        var lut = ArrayPoolUtils.RentInt(width * height);
 
         for (int y = 0; y < height; y++)
         {
@@ -158,7 +158,7 @@ public static class EquirectLUTBuilder
             yield break;
         }
 
-        var lut = new int[width * height];
+        var lut = ArrayPoolUtils.RentInt(width * height);
 
         float invWidth = 1f / width;
         float invHeight = 1f / height;

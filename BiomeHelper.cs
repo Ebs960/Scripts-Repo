@@ -111,19 +111,18 @@ public static class BiomeHelper {
     /// Determine the underwater floor biome for an Ocean tile based on distance from coast,
     /// temperature, and a per-tile noise value. Returns Biome.Ocean if no special underwater
     /// biome qualifies (i.e. standard ocean floor).
+    /// NOTE: Trenches are no longer assigned here — they are stamped as elongated paths
+    /// by PlanetGenerator.StampTrenches. This method only handles AbyssalPlains.
     /// </summary>
     /// <param name="distanceFromCoast">BFS tile distance from nearest coast/land. 0 = coast tile itself.</param>
     /// <param name="temperature">Tile temperature (0-1 normalized).</param>
     /// <param name="noise">Deterministic per-tile noise value (0-1) used for probability checks.</param>
-    /// <param name="abyssalMaxDistance">Max tile distance from coast for AbyssalPlains eligibility.</param>
     /// <param name="abyssalMinDistance">Min tile distance from coast for AbyssalPlains eligibility.</param>
+    /// <param name="abyssalMaxDistance">Max tile distance from coast for AbyssalPlains eligibility.</param>
     /// <param name="abyssalChance">Probability threshold for AbyssalPlains (noise must be below this).</param>
-    /// <param name="trenchMinDistance">Min tile distance from coast for Trench eligibility.</param>
-    /// <param name="trenchChance">Probability threshold for Trench (noise must be below this).</param>
     public static Biome GetUnderwaterBiome(
         int distanceFromCoast, float temperature, float noise,
-        int abyssalMinDistance = 3, int abyssalMaxDistance = 8, float abyssalChance = 0.35f,
-        int trenchMinDistance = 6, float trenchChance = 0.15f)
+        int abyssalMinDistance = 3, int abyssalMaxDistance = 8, float abyssalChance = 0.35f)
     {
         // AbyssalPlains: mid-range ocean floor, flat and featureless
         if (distanceFromCoast >= abyssalMinDistance && distanceFromCoast <= abyssalMaxDistance
@@ -132,13 +131,7 @@ public static class BiomeHelper {
             return Biome.AbyssalPlains;
         }
 
-        // Trench: far from coast, deep ocean
-        if (distanceFromCoast >= trenchMinDistance && noise < trenchChance)
-        {
-            return Biome.Trench;
-        }
-
-        // Standard ocean floor
+        // Standard ocean floor (Trenches are stamped separately by PlanetGenerator)
         return Biome.Ocean;
     }
 

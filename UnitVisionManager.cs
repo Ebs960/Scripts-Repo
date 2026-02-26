@@ -49,8 +49,7 @@ public class UnitVisionManager : MonoBehaviour
     public static int GetCivIndex(Civilization civ)
     {
         if (civ == null || CivilizationManager.Instance == null) return -1;
-        var all = CivilizationManager.Instance.GetAllCivs(); // returns a copy; acceptable for occasional lookups
-        return all.IndexOf(civ);
+        return CivilizationManager.Instance.GetCivIndex(civ);
     }
     
     void Awake()

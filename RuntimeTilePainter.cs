@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 
 [System.Serializable]
 public class TilePaintEvent : UnityEvent<int> { }
@@ -35,10 +36,10 @@ public class RuntimeTilePainter : MonoBehaviour
     void Update()
     {
         if (hexGrid == null && hexGridComponent == null) return;
-        if (Input.GetMouseButtonDown(0))
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             if (_cam == null) return;
-            var ray = _cam.ScreenPointToRay(Input.mousePosition);
+            var ray = _cam.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (Physics.Raycast(ray, out var hit, 10000f))
             {
                 TryPaintAtPosition(hit.point);

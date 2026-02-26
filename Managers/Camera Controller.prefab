@@ -83,7 +83,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_AllowMSAA: 1
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
@@ -110,7 +110,7 @@ MonoBehaviour:
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 65
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
   m_RenderPostProcessing: 0
@@ -252,6 +252,7 @@ MonoBehaviour:
   zoomSpeed: 40
   minHeight: 20
   maxHeight: 200
+  rotateSpeed: 60
   minPitchAngle: 30
   maxPitchAngle: 75
   allowMouseDrag: 1
@@ -260,6 +261,11 @@ MonoBehaviour:
   wrapEnabled: 1
   chunkManager: {fileID: 0}
   wrapCenterX: 0
+  underwaterTargetHeight: 30
+  underwaterTargetPitchAngle: 40
+  underwaterMoveSpeed: 40
+  underwaterMinHeight: 10
+  underwaterMaxHeight: 80
 --- !u!114 &-7654048598518861777
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,7 +283,7 @@ MonoBehaviour:
   clearDepth: 1
   volumeLayerMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 65
   volumeAnchorOverride: {fileID: 0}
   antialiasing: 0
   SMAAQuality: 2

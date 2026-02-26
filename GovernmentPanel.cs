@@ -1,6 +1,7 @@
 // (duplicate removed) - file contains a single GovernmentPanel class above
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
@@ -87,7 +88,7 @@ public class GovernmentPanel : MonoBehaviour
     private void Update()
     {
         // Close on Escape when panel is active
-        if (panelRoot != null && panelRoot.activeSelf && Input.GetKeyDown(KeyCode.Escape))
+        if (panelRoot != null && panelRoot.activeSelf && Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
         {
             Close();
         }

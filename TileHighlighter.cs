@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Highlights the currently hovered tile via shader uniform.
@@ -65,7 +66,7 @@ public class TileHighlighter : MonoBehaviour
 
         // Pick the tile under the mouse directly via WorldPicker
         if (worldPicker != null &&
-            worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 _) &&
+            worldPicker.TryPickTileIndex(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, out int tileIndex, out Vector3 _) &&
             tileIndex >= 0)
         {
             if (tileIndex != currentHighlightedTile)

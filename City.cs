@@ -1820,9 +1820,9 @@ Destroy(oldTuple.instance);
         int tradeRange = 10; // Default trade range, could be modified by technology/civics
         
         // Get civilizations without scanning the scene if possible
-        List<Civilization> allCivs = CivilizationManager.Instance != null
+        IReadOnlyList<Civilization> allCivs = CivilizationManager.Instance != null
             ? CivilizationManager.Instance.GetAllCivs()
-            : new List<Civilization>(FindObjectsByType<Civilization>(FindObjectsSortMode.None));
+            : (IReadOnlyList<Civilization>)new List<Civilization>(FindObjectsByType<Civilization>(FindObjectsSortMode.None));
         
         foreach (var civ in allCivs)
         {

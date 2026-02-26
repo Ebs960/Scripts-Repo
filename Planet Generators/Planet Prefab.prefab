@@ -71,6 +71,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6931367162624303467}
+  - component: {fileID: 9011855469797487454}
   m_Layer: 6
   m_Name: Underwater
   m_TagString: Untagged
@@ -93,37 +94,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1351839581991319769}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &4916646554407244369
-GameObject:
+--- !u!114 &9011855469797487454
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7407095892055119772}
-  m_Layer: 6
-  m_Name: Orbit
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7407095892055119772
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4916646554407244369}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 5, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1351839581991319769}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_GameObject: {fileID: 2456195774341594989}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: fcfe362685e4ceb4abf373f2c1a267ff, type: 2}
 --- !u!1 &5948921737104557089
 GameObject:
   m_ObjectHideFlags: 0
@@ -140,7 +127,6 @@ GameObject:
   - component: {fileID: -5893155586537961453}
   - component: {fileID: -5750504008650881166}
   - component: {fileID: 5887581935907441457}
-  - component: {fileID: 1628660839884279765}
   m_Layer: 6
   m_Name: Planet Prefab
   m_TagString: Untagged
@@ -163,8 +149,8 @@ Transform:
   m_Children:
   - {fileID: 4969945254994613023}
   - {fileID: 6931367162624303467}
-  - {fileID: 7407095892055119772}
   - {fileID: 1067298396880522597}
+  - {fileID: 6454596681175955564}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6434261854368368276
@@ -185,11 +171,14 @@ MonoBehaviour:
   terrainRenderer: {fileID: 0}
   surfaceRoot: {fileID: 1048475128305947683}
   underwaterRoot: {fileID: 2456195774341594989}
-  atmosphereRoot: {fileID: 4916646554407244369}
+  atmosphereRoot: {fileID: 0}
+  orbitRoot: {fileID: 7878963206720766331}
   resourcesRoot: {fileID: 466950285653567448}
   surfaceYOffset: 0
   underwaterYOffset: -1
   atmosphereYOffset: 20
+  orbitYOffset: 100
+  orbitHeight: 120
   atmosphereRadius: 1
   planetConfig: {fileID: 0}
   enableDiagnostics: 0
@@ -217,8 +206,8 @@ MonoBehaviour:
   ridgeStrength: 0.116
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 0.42
-  moistureFreq: 0.09
+  elevationFreq: 4.2
+  moistureFreq: 0.2
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.766
@@ -240,6 +229,17 @@ MonoBehaviour:
   oceanElevation: 0
   seasElevation: 3
   coastElevation: 5.5
+  abyssalMinDistanceFromCoast: 3
+  abyssalMaxDistanceFromCoast: 8
+  abyssalChance: 0.35
+  trenchCount: 3
+  trenchMinDistanceFromCoast: 6
+  trenchMinLength: 15
+  trenchMaxLength: 40
+  trenchHalfWidth: 1
+  trenchCenterDepth: -4
+  trenchCurvature: 0.7
+  trenchMinSeparation: 8
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
@@ -249,14 +249,14 @@ MonoBehaviour:
   lakeMinRadiusTiles: 2
   lakeMaxRadiusTiles: 3
   lakeMinDistanceFromCoast: 6
-  coastBiteCount: 9
+  coastBiteCount: 18
   coastBiteRadiusMin: 1
-  coastBiteRadiusMax: 2
-  coastSpurCount: 26
-  coastSpurRadiusMin: 3
+  coastBiteRadiusMax: 4
+  coastSpurCount: 9
+  coastSpurRadiusMin: 2
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
-  shallowSeasRings: 3
+  shallowSeasRings: 2
   lakeDepth: 0.96
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 5.87
@@ -411,26 +411,123 @@ MonoBehaviour:
   surfaceRootOverride: {fileID: 0}
   underwaterRootOverride: {fileID: 0}
   surfaceVolumeOverride: {fileID: 0}
-  underwaterVolumeOverride: {fileID: 1628660839884279765}
+  underwaterVolumeOverride: {fileID: 9011855469797487454}
   atmosphereRootOverride: {fileID: 0}
+  orbitRootOverride: {fileID: 0}
   gasGiantRendererOverride: {fileID: -5893155586537961453}
   gasGiantVolumeSpawnerOverride: {fileID: 1909149276891878161}
   terrainRendererOverride: {fileID: 0}
   logLayerChanges: 1
---- !u!114 &1628660839884279765
-MonoBehaviour:
+--- !u!1 &7878963206720766331
+GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5948921737104557089}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6454596681175955564}
+  - component: {fileID: 2122690178697967796}
+  - component: {fileID: 6267638432141293145}
+  - component: {fileID: 8027592281956740325}
+  m_Layer: 6
+  m_Name: Orbit Root
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6454596681175955564
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7878963206720766331}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351839581991319769}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &2122690178697967796
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7878963206720766331}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &6267638432141293145
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7878963206720766331}
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
-  m_IsGlobal: 1
-  priority: 0
-  blendDistance: 0
-  weight: 1
-  sharedProfile: {fileID: 11400000, guid: e50e0aec5883eff4f83dfef2583672ed, type: 2}
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 4209a3147c23b4a4d8765b0720901f81, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &8027592281956740325
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7878963206720766331}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}

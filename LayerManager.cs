@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.Serialization;
 using static GameManager;
 
@@ -39,6 +40,9 @@ public class LayerManager : MonoBehaviour
     [FormerlySerializedAs("atmosphereRoot")]
     [SerializeField] private GameObject atmosphereRootOverride;
 
+    [Tooltip("If not assigned, will use PlanetGenerator.orbitRoot.")]
+    [SerializeField] private GameObject orbitRootOverride;
+
     [Tooltip("If not assigned, will use PlanetGenerator.gasGiantRenderer.")]
     [SerializeField] private GasGiantRenderer gasGiantRendererOverride;
 
@@ -60,6 +64,7 @@ public class LayerManager : MonoBehaviour
     private bool _warnedMissingPlanetGenerator = false;
     private readonly HashSet<PlanetLayerType> _warnedUnsupportedLayer = new HashSet<PlanetLayerType>();
     private bool _lastUnderwaterVisible = false;
+    private bool _lastOrbitVisible = false;
 
     public event Action<PlanetLayerType, bool> OnLayerVisibilityChanged;
 
@@ -100,7 +105,8 @@ public class LayerManager : MonoBehaviour
         // - Underwater: disabled by default to avoid auto-switching camera at startup
         //   (enable explicitly via UI or code when user requests underwater view)
         // - Atmosphere: disabled by default (user toggles via UI)
-        // - Mantle/Orbit: not currently visualized by roots (default hidden)
+        // - Mantle: not currently visualized (default hidden)
+        // - Orbit: has optional visual root, default hidden (toggled by UI or code)
         _visible[PlanetLayerType.Surface] = IsLayerSupported(PlanetLayerType.Surface);
         _visible[PlanetLayerType.Underwater] = false;
         _visible[PlanetLayerType.Atmosphere] = false;
@@ -163,11 +169,11 @@ public class LayerManager : MonoBehaviour
 
     public void SetOnlyLayerVisible(PlanetLayerType layer)
     {
-        // Optional UI mode helper: show only one layer (if supported) and hide others.
-        // Keep behavior minimal: Surface/Underwater/Atmosphere only. Mantle/Orbit are left as-is unless requested.
+        // Show only the requested layer (if supported) and hide others.
         SetLayerVisible(PlanetLayerType.Surface, layer == PlanetLayerType.Surface);
         SetLayerVisible(PlanetLayerType.Underwater, layer == PlanetLayerType.Underwater);
         SetLayerVisible(PlanetLayerType.Atmosphere, layer == PlanetLayerType.Atmosphere);
+        SetLayerVisible(PlanetLayerType.Orbit, layer == PlanetLayerType.Orbit);
     }
 
     private void ApplyVisualState(bool force)
@@ -187,6 +193,7 @@ public class LayerManager : MonoBehaviour
         var surfaceRoot = surfaceRootOverride != null ? surfaceRootOverride : gen.surfaceRoot;
         var underwaterRoot = underwaterRootOverride != null ? underwaterRootOverride : gen.underwaterRoot;
         var atmosphereRoot = atmosphereRootOverride != null ? atmosphereRootOverride : gen.atmosphereRoot;
+        var orbitRoot = orbitRootOverride != null ? orbitRootOverride : gen.orbitRoot;
         var gasGiantRenderer = gasGiantRendererOverride != null ? gasGiantRendererOverride : gen.gasGiantRenderer;
         var terrainRenderer = terrainRendererOverride != null ? terrainRendererOverride : gen.terrainRenderer;
         var volumeSpawner = gasGiantVolumeSpawnerOverride != null ? gasGiantVolumeSpawnerOverride : gen.GetComponentInChildren<GasGiantVolumeSpawner>(true);
@@ -194,8 +201,9 @@ public class LayerManager : MonoBehaviour
         bool surfaceVisible = IsLayerVisible(PlanetLayerType.Surface) && IsLayerSupported(PlanetLayerType.Surface);
         bool underwaterVisible = IsLayerVisible(PlanetLayerType.Underwater) && IsLayerSupported(PlanetLayerType.Underwater);
         bool atmosphereVisible = IsLayerVisible(PlanetLayerType.Atmosphere) && IsLayerSupported(PlanetLayerType.Atmosphere);
+        bool orbitVisible = IsLayerVisible(PlanetLayerType.Orbit) && IsLayerSupported(PlanetLayerType.Orbit);
 
-        // Apply roots (with legacy Y offsets).
+        // Apply roots (with Y offsets).
         if (surfaceRoot != null)
         {
             surfaceRoot.SetActive(surfaceVisible);
@@ -208,6 +216,12 @@ public class LayerManager : MonoBehaviour
             underwaterRoot.SetActive(underwaterVisible);
             var lp = underwaterRoot.transform.localPosition;
             underwaterRoot.transform.localPosition = new Vector3(lp.x, gen.underwaterYOffset, lp.z);
+            if (logLayerChanges && force)
+                Debug.Log($"[LayerManager] underwaterRoot '{underwaterRoot.name}' active={underwaterVisible}, childCount={underwaterRoot.transform.childCount}");
+        }
+        else if (logLayerChanges && underwaterVisible)
+        {
+            Debug.LogWarning("[LayerManager] underwaterRoot is null but Underwater layer is visible — Volume cannot activate.");
         }
 
         if (atmosphereRoot != null)
@@ -215,6 +229,33 @@ public class LayerManager : MonoBehaviour
             atmosphereRoot.SetActive(atmosphereVisible);
             var lp = atmosphereRoot.transform.localPosition;
             atmosphereRoot.transform.localPosition = new Vector3(lp.x, gen.atmosphereYOffset, lp.z);
+        }
+
+        if (orbitRoot != null)
+        {
+            orbitRoot.SetActive(orbitVisible);
+            var lp = orbitRoot.transform.localPosition;
+            orbitRoot.transform.localPosition = new Vector3(lp.x, gen.orbitYOffset, lp.z);
+
+            // Auto-scale orbit root to match planet terrain footprint
+            if (terrainRenderer != null && terrainRenderer.IsBuilt)
+            {
+                float mw = terrainRenderer.MapWidth;
+                float mh = terrainRenderer.MapHeight;
+                if (mw > 0.01f && mh > 0.01f)
+                {
+                    orbitRoot.transform.localScale = new Vector3(mw, 1f, mh);
+                }
+            }
+            else if (gen.Grid != null)
+            {
+                float gw = gen.Grid.Width;
+                float gh = gen.Grid.Height;
+                if (gw > 0.01f && gh > 0.01f)
+                {
+                    orbitRoot.transform.localScale = new Vector3(gw, 1f, gh);
+                }
+            }
         }
 
         // Gas giant visuals are ONLY valid on planets that have Atmosphere and do not have Surface.
@@ -274,21 +315,63 @@ public class LayerManager : MonoBehaviour
         }
         _lastUnderwaterVisible = underwaterVisible;
 
-        // Toggle post-processing volumes if provided (use weight + enabled for smooth blending if desired)
-        if (surfaceVolumeOverride != null || underwaterVolumeOverride != null)
+        // Orbit camera transition: zoom camera up to orbit altitude when switching to orbit view
+        if (camManager != null)
         {
-            // Simple hard switch: enable the active volume and disable the other
-            if (underwaterVolumeOverride != null)
+            if (orbitVisible && !_lastOrbitVisible)
             {
-                underwaterVolumeOverride.enabled = underwaterVisible;
-                underwaterVolumeOverride.weight = underwaterVisible ? 1f : 0f;
+                float orbitH = gen.orbitHeight;
+                camManager.TransitionToOrbit(camManager.FocusPoint, orbitH);
             }
-            if (surfaceVolumeOverride != null)
+            else if (!orbitVisible && _lastOrbitVisible)
             {
-                bool surfActive = !underwaterVisible;
-                surfaceVolumeOverride.enabled = surfActive;
-                surfaceVolumeOverride.weight = surfActive ? 1f : 0f;
+                camManager.TransitionToSurface();
             }
+        }
+        _lastOrbitVisible = orbitVisible;
+
+        // Toggle post-processing volumes if provided (use weight + enabled for smooth blending if desired)
+        if (underwaterVolumeOverride != null)
+        {
+            bool wasEnabled = underwaterVolumeOverride.enabled;
+            underwaterVolumeOverride.enabled = underwaterVisible;
+            underwaterVolumeOverride.weight = underwaterVisible ? 1f : 0f;
+            // Ensure underwater Volume overrides the scene default when active
+            if (underwaterVisible)
+                underwaterVolumeOverride.priority = 10f;
+
+            // CRITICAL: Ensure the camera's Volume Layer Mask includes the underwater Volume's layer.
+            // HDRP cameras only evaluate Volumes whose GameObject layer is included in HDAdditionalCameraData.volumeLayerMask.
+            // The underwater root is on a custom layer (e.g. layer 6) that may not be in the mask by default.
+            EnsureCameraVolumeLayerIncludes(underwaterVolumeOverride.gameObject.layer);
+
+            if (logLayerChanges && wasEnabled != underwaterVisible)
+                Debug.Log($"[LayerManager] Underwater Volume toggled: enabled={underwaterVisible}, weight={(underwaterVisible ? 1f : 0f)}, priority={underwaterVolumeOverride.priority}, profile={(underwaterVolumeOverride.sharedProfile != null ? underwaterVolumeOverride.sharedProfile.name : "NULL")}, volumeLayer={underwaterVolumeOverride.gameObject.layer}");
+        }
+        if (surfaceVolumeOverride != null)
+        {
+            bool surfActive = !underwaterVisible;
+            surfaceVolumeOverride.enabled = surfActive;
+            surfaceVolumeOverride.weight = surfActive ? 1f : 0f;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the main camera's HDRP Volume Layer Mask includes the given layer.
+    /// Without this, Volumes on custom layers are silently ignored by the camera.
+    /// </summary>
+    private void EnsureCameraVolumeLayerIncludes(int layer)
+    {
+        var cam = Camera.main;
+        if (cam == null) return;
+        var hdCam = cam.GetComponent<HDAdditionalCameraData>();
+        if (hdCam == null) return;
+        int bit = 1 << layer;
+        if ((hdCam.volumeLayerMask & bit) == 0)
+        {
+            hdCam.volumeLayerMask |= bit;
+            if (logLayerChanges)
+                Debug.Log($"[LayerManager] Added layer {layer} to camera volumeLayerMask (now {hdCam.volumeLayerMask.value})");
         }
     }
 

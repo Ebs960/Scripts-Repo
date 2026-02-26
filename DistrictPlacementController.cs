@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 
 public class DistrictPlacementController : MonoBehaviour
@@ -98,7 +99,7 @@ public class DistrictPlacementController : MonoBehaviour
 
         // Clicking is now handled via OnTileClicked subscription (HandleTileClicked)
         // Right-click cancels placement (check UI blocking first)
-        if (Input.GetMouseButtonDown(1))
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
         {
             // Check if pointer is over UI before processing input
             if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())

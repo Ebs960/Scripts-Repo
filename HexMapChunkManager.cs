@@ -1385,7 +1385,7 @@ public class HexMapChunkManager : MonoBehaviour
     private int[] PrecomputeTileSliceIndices()
     {
         int tileCount = grid.TileCount;
-        var result = new int[tileCount];
+        var result = ArrayPoolUtils.RentInt(tileCount);
         int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
         for (int ti = 0; ti < tileCount; ti++)
@@ -1449,7 +1449,7 @@ public class HexMapChunkManager : MonoBehaviour
     private float[] PrecomputeTileElevations()
     {
         int tileCount = grid.TileCount;
-        var result = new float[tileCount];
+        var result = ArrayPoolUtils.RentFloat(tileCount);
         for (int ti = 0; ti < tileCount; ti++)
             result[ti] = GetRenderedElevation(ti);
         return result;
@@ -1478,6 +1478,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
         var sliceNative = new NativeArray<int>(tileSlice, Allocator.TempJob);
+        ArrayPoolUtils.ReturnInt(tileSlice); // return to pool after NativeArray copy
         var pixelsNative = new NativeArray<float>(pixelCount, Allocator.TempJob);
 
         new FillBiomeIndexMapJob
@@ -1524,7 +1525,8 @@ public class HexMapChunkManager : MonoBehaviour
         var tileElev = PrecomputeTileElevations();
 
         // Track min/max from the pre-computed array (avoids doing it in the Burst job)
-        for (int ti = 0; ti < tileElev.Length; ti++)
+        int tileCount = grid.TileCount;
+        for (int ti = 0; ti < tileCount; ti++)
         {
             float e = tileElev[ti];
             if (e != 0f) _heightmapNonZero++;
@@ -1536,6 +1538,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
         var elevNative = new NativeArray<float>(tileElev, Allocator.TempJob);
+        ArrayPoolUtils.ReturnFloat(tileElev); // return to pool after NativeArray copy
         var pixelsNative = new NativeArray<ushort>(pixelCount, Allocator.TempJob);
 
         new FillHeightmapJob
@@ -1738,18 +1741,24 @@ public class HexMapChunkManager : MonoBehaviour
             // doesn't match our runtime binding and will render with default values (often "all blue").
             // Note: Shader.HasProperty does not exist; check via a temporary Material instead.
             var tmp = new Material(s);
-            bool ok =
-                tmp.HasProperty("_BiomeIndexMap") &&
-                tmp.HasProperty("_Heightmap") &&
-                tmp.HasProperty("_BiomeAlbedoArray") &&
-                tmp.HasProperty("_BiomeNormalArray") &&
-                tmp.HasProperty("_BiomeMaskArray") &&
-                // Shader Graph can either sample surface slices directly from _BiomeIndexMap (slice map mode),
-                // or it can use _BiomeSurfaceMapTex (biome->slice mapping mode). We still set _BiomeSurfaceMapTex,
-                // but do not require it for shader compatibility checks.
-                tmp.HasProperty("_BiomeCount");
-            Destroy(tmp);
-            return ok;
+            try
+            {
+                bool ok =
+                    tmp.HasProperty("_BiomeIndexMap") &&
+                    tmp.HasProperty("_Heightmap") &&
+                    tmp.HasProperty("_BiomeAlbedoArray") &&
+                    tmp.HasProperty("_BiomeNormalArray") &&
+                    tmp.HasProperty("_BiomeMaskArray") &&
+                    // Shader Graph can either sample surface slices directly from _BiomeIndexMap (slice map mode),
+                    // or it can use _BiomeSurfaceMapTex (biome->slice mapping mode). We still set _BiomeSurfaceMapTex,
+                    // but do not require it for shader compatibility checks.
+                    tmp.HasProperty("_BiomeCount");
+                return ok;
+            }
+            finally
+            {
+                Destroy(tmp);
+            }
         }
 
         // Single inspector-assigned shader (no fallbacks).
@@ -2690,22 +2699,22 @@ public class HexMapChunkManager : MonoBehaviour
             Debug.Log($"[HexMapChunkManager][SDF] Iso values: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, hexSize={hexSize:F3}, grid={wCells}x{hCells}");
 
         // --- Build seed grids for rivers, lakes, and ocean ---
-        var seedRiver = new bool[wPts * hPts];
-        var seedLake = continuousWaterIncludesLakes ? new bool[wPts * hPts] : null;
-        var seedOcean = continuousWaterIncludesOcean ? new bool[wPts * hPts] : null;
-        var ownerRiver = new int[wPts * hPts];
-        for (int i = 0; i < ownerRiver.Length; i++) ownerRiver[i] = -1;
+        var seedRiver = ArrayPoolUtils.RentBool(wPts * hPts);
+        var seedLake = continuousWaterIncludesLakes ? ArrayPoolUtils.RentBool(wPts * hPts) : null;
+        var seedOcean = continuousWaterIncludesOcean ? ArrayPoolUtils.RentBool(wPts * hPts) : null;
+        var ownerRiver = ArrayPoolUtils.RentInt(wPts * hPts);
+        for (int i = 0; i < wPts * hPts; i++) ownerRiver[i] = -1;
         int[] ownerLake = null;
         if (seedLake != null)
         {
-            ownerLake = new int[wPts * hPts];
-            for (int i = 0; i < ownerLake.Length; i++) ownerLake[i] = -1;
+            ownerLake = ArrayPoolUtils.RentInt(wPts * hPts);
+            for (int i = 0; i < wPts * hPts; i++) ownerLake[i] = -1;
         }
         int[] ownerOcean = null;
         if (seedOcean != null)
         {
-            ownerOcean = new int[wPts * hPts];
-            for (int i = 0; i < ownerOcean.Length; i++) ownerOcean[i] = -1;
+            ownerOcean = ArrayPoolUtils.RentInt(wPts * hPts);
+            for (int i = 0; i < wPts * hPts; i++) ownerOcean[i] = -1;
         }
 
         // Helper: mark a seed at UV (0..1)
@@ -2798,32 +2807,45 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         // If no water seeds at all, remove mesh
+        int sdfLen = wPts * hPts;
         int seedRiverCount = 0, seedLakeCount = 0, seedOceanCount = 0;
-        for (int i = 0; i < seedRiver.Length; i++) if (seedRiver[i]) seedRiverCount++;
-        if (seedLake != null) for (int i = 0; i < seedLake.Length; i++) if (seedLake[i]) seedLakeCount++;
-        if (seedOcean != null) for (int i = 0; i < seedOcean.Length; i++) if (seedOcean[i]) seedOceanCount++;
+        for (int i = 0; i < sdfLen; i++) if (seedRiver[i]) seedRiverCount++;
+        if (seedLake != null) for (int i = 0; i < sdfLen; i++) if (seedLake[i]) seedLakeCount++;
+        if (seedOcean != null) for (int i = 0; i < sdfLen; i++) if (seedOcean[i]) seedOceanCount++;
         bool anySeed = seedRiverCount > 0 || seedLakeCount > 0 || seedOceanCount > 0;
 
         if (ShouldRunDiagnostics() || debugWaterVerbose)
             Debug.Log($"[HexMapChunkManager][SDF] Seed counts: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
 
-        if (!anySeed) { DestroyRiverSurface(); Debug.LogWarning("[HexMapChunkManager][SDF] No water seeds — unified water mesh not built. Check waterType on tiles."); yield break; }
+        if (!anySeed)
+        {
+            // Return pooled arrays before early exit
+            ArrayPoolUtils.ReturnBool(seedRiver);
+            if (seedLake != null) ArrayPoolUtils.ReturnBool(seedLake);
+            if (seedOcean != null) ArrayPoolUtils.ReturnBool(seedOcean);
+            ArrayPoolUtils.ReturnInt(ownerRiver);
+            if (ownerLake != null) ArrayPoolUtils.ReturnInt(ownerLake);
+            if (ownerOcean != null) ArrayPoolUtils.ReturnInt(ownerOcean);
+            DestroyRiverSurface();
+            Debug.LogWarning("[HexMapChunkManager][SDF] No water seeds — unified water mesh not built. Check waterType on tiles.");
+            yield break;
+        }
 
         // --- Approximate Euclidean distance transform (2-pass chamfer) in WORLD units ---
         float INF = 1e20f;
-        var distRiver = new float[wPts * hPts];
-        for (int i = 0; i < distRiver.Length; i++) distRiver[i] = seedRiver[i] ? 0f : INF;
+        var distRiver = ArrayPoolUtils.RentFloat(wPts * hPts);
+        for (int i = 0; i < wPts * hPts; i++) distRiver[i] = seedRiver[i] ? 0f : INF;
         float[] distLake = null;
         if (seedLake != null)
         {
-            distLake = new float[wPts * hPts];
-            for (int i = 0; i < distLake.Length; i++) distLake[i] = seedLake[i] ? 0f : INF;
+            distLake = ArrayPoolUtils.RentFloat(wPts * hPts);
+            for (int i = 0; i < wPts * hPts; i++) distLake[i] = seedLake[i] ? 0f : INF;
         }
         float[] distOcean = null;
         if (seedOcean != null)
         {
-            distOcean = new float[wPts * hPts];
-            for (int i = 0; i < distOcean.Length; i++) distOcean[i] = seedOcean[i] ? 0f : INF;
+            distOcean = ArrayPoolUtils.RentFloat(wPts * hPts);
+            for (int i = 0; i < wPts * hPts; i++) distOcean[i] = seedOcean[i] ? 0f : INF;
         }
 
         void DistanceTransformInPlace(float[] distArr, int[] ownerArr)
@@ -2940,13 +2962,13 @@ public class HexMapChunkManager : MonoBehaviour
         var norms = new System.Collections.Generic.List<Vector3>(65536);
         var tris = new System.Collections.Generic.List<int>(131072);
 
-        int[] cornerVert = new int[wPts * hPts];
-        for (int i = 0; i < cornerVert.Length; i++) cornerVert[i] = -1;
+        int[] cornerVert = ArrayPoolUtils.RentInt(wPts * hPts);
+        for (int i = 0; i < wPts * hPts; i++) cornerVert[i] = -1;
 
-        int[] horizEdge = new int[wCells * (hCells + 1)];        // edge between (x,y) and (x+1,y)
-        int[] vertEdge = new int[(wCells + 1) * hCells];         // edge between (x,y) and (x,y+1)
-        for (int i = 0; i < horizEdge.Length; i++) horizEdge[i] = -1;
-        for (int i = 0; i < vertEdge.Length; i++) vertEdge[i] = -1;
+        int[] horizEdge = ArrayPoolUtils.RentInt(wCells * (hCells + 1));        // edge between (x,y) and (x+1,y)
+        int[] vertEdge = ArrayPoolUtils.RentInt((wCells + 1) * hCells);         // edge between (x,y) and (x,y+1)
+        for (int i = 0; i < wCells * (hCells + 1); i++) horizEdge[i] = -1;
+        for (int i = 0; i < (wCells + 1) * hCells; i++) vertEdge[i] = -1;
 
         int lutW = bakeResult.width > 0 ? bakeResult.width : textureWidth;
         int lutH = bakeResult.height > 0 ? bakeResult.height : textureHeight;
@@ -3204,23 +3226,36 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}). iso: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, minIso={minIso:F4}, dx={dx:F4}, dz={dz:F4}, cells={wCells}x{hCells}, seeds: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
             }
+            // Return all pooled arrays before early exit
+            ArrayPoolUtils.ReturnBool(seedRiver);
+            if (seedLake != null) ArrayPoolUtils.ReturnBool(seedLake);
+            if (seedOcean != null) ArrayPoolUtils.ReturnBool(seedOcean);
+            ArrayPoolUtils.ReturnFloat(distRiver);
+            if (distLake != null) ArrayPoolUtils.ReturnFloat(distLake);
+            if (distOcean != null) ArrayPoolUtils.ReturnFloat(distOcean);
+            ArrayPoolUtils.ReturnInt(ownerRiver);
+            if (ownerLake != null) ArrayPoolUtils.ReturnInt(ownerLake);
+            if (ownerOcean != null) ArrayPoolUtils.ReturnInt(ownerOcean);
+            ArrayPoolUtils.ReturnInt(cornerVert);
+            ArrayPoolUtils.ReturnInt(horizEdge);
+            ArrayPoolUtils.ReturnInt(vertEdge);
             DestroyRiverSurface();
             Debug.LogWarning($"[HexMapChunkManager][SDF] Marching squares produced < 3 triangles (tris={tris.Count}) — unified water mesh not built. Check iso values or seed distribution.");
             yield break;
         }
         // Release SDF grid arrays — marching squares is done, only the vert/tri lists matter now.
-        seedRiver = null;
-        seedLake = null;
-        seedOcean = null;
-        distRiver = null;
-        distLake = null;
-        distOcean = null;
-        ownerRiver = null;
-        ownerLake = null;
-        ownerOcean = null;
-        cornerVert = null;
-        horizEdge = null;
-        vertEdge = null;
+        ArrayPoolUtils.ReturnBool(seedRiver); seedRiver = null;
+        if (seedLake != null) { ArrayPoolUtils.ReturnBool(seedLake); seedLake = null; }
+        if (seedOcean != null) { ArrayPoolUtils.ReturnBool(seedOcean); seedOcean = null; }
+        ArrayPoolUtils.ReturnFloat(distRiver); distRiver = null;
+        if (distLake != null) { ArrayPoolUtils.ReturnFloat(distLake); distLake = null; }
+        if (distOcean != null) { ArrayPoolUtils.ReturnFloat(distOcean); distOcean = null; }
+        ArrayPoolUtils.ReturnInt(ownerRiver); ownerRiver = null;
+        if (ownerLake != null) { ArrayPoolUtils.ReturnInt(ownerLake); ownerLake = null; }
+        if (ownerOcean != null) { ArrayPoolUtils.ReturnInt(ownerOcean); ownerOcean = null; }
+        ArrayPoolUtils.ReturnInt(cornerVert); cornerVert = null;
+        ArrayPoolUtils.ReturnInt(horizEdge); horizEdge = null;
+        ArrayPoolUtils.ReturnInt(vertEdge); vertEdge = null;
 
         yield return null;
 
@@ -3315,6 +3350,7 @@ public class HexMapChunkManager : MonoBehaviour
         EnsureRiverSurfaceObject();
         if (_riverSurfaceMesh == null) _riverSurfaceMesh = new Mesh();
         _riverSurfaceMesh.Clear();
+        _riverSurfaceMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // SDF grid can exceed 65k verts
         _riverSurfaceMesh.name = extrudeInlandWaterToVolume ? "UnifiedWaterVolume" : "UnifiedWaterSurface";
         _riverSurfaceMesh.SetVertices(verts);
         _riverSurfaceMesh.SetColors(cols);

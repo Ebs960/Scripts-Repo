@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
@@ -756,13 +757,13 @@ return;
     
     private void HandleInput()
     {
-        if (Input.GetKeyDown(KeyCode.Delete) && selectedNode != null)
+        if (Keyboard.current != null && Keyboard.current[Key.Delete].wasPressedThisFrame && selectedNode != null)
         {
             RemoveTechFromBuilder(selectedNode.RepresentedTech);
         }
         
         // Only handle Escape if we have an active state to clear
-        if (Input.GetKeyDown(KeyCode.Escape) && (isConnecting || selectedNode != null))
+        if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame && (isConnecting || selectedNode != null))
         {
 isConnecting = false;
             if (selectedNode != null)
@@ -795,7 +796,7 @@ isConnecting = false;
 
             Vector2 mousePos;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                builderContent, Input.mousePosition, null, out mousePos);
+                builderContent, Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, null, out mousePos);
 
             Vector2 from = selectedNode.GetPosition();
             LayoutLineBetween(connectionPreviewLine.GetComponent<RectTransform>(), from, mousePos, connectionThickness);

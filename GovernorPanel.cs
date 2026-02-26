@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using System;
@@ -59,7 +60,7 @@ public class GovernorPanel : MonoBehaviour
 
     private void Update()
     {
-        if (panelRoot != null && panelRoot.activeSelf && Input.GetKeyDown(KeyCode.Escape))
+        if (panelRoot != null && panelRoot.activeSelf && Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame)
         {
             Hide();
         }

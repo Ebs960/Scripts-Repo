@@ -182,11 +182,21 @@ public class WorkerUnit : BaseUnit
         currentMovePoints = savedMovePoints;
         currentLayer = savedLayer;
 
+        // If unit is in orbit, reposition at current orbit height (not stale saved Y)
         if (savedLayer == TileLayer.Orbit)
         {
-            Vector3 pos = transform.position;
-            pos.y += 4f;
-            transform.position = pos;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentTileIndex >= 0)
+            {
+                Vector3 surface = ts.GetTileSurfacePosition(currentTileIndex);
+                transform.position = surface + Vector3.up * PlanetGenerator.GetOrbitHeight(planetIndex);
+            }
+            else
+            {
+                Vector3 pos = transform.position;
+                pos.y = PlanetGenerator.GetOrbitHeight(planetIndex);
+                transform.position = pos;
+            }
         }
     }
 

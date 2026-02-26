@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -194,7 +195,7 @@ public class PauseMenuManager : MonoBehaviour
     void Update()
     {
         // Check for escape key - ONLY handle if we're the singleton instance
-        if (Input.GetKeyDown(KeyCode.Escape) && canTogglePause && Instance == this)
+        if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame && canTogglePause && Instance == this)
         {
 TogglePause();
         }
@@ -508,8 +509,7 @@ HideSaveLoadUI();
             {
                 saveData.playerCivName = CivilizationManager.Instance.playerCiv.civData.civName;
                 // Find the index of the player civilization in the civilizations list
-                var allCivs = CivilizationManager.Instance.GetAllCivs();
-                saveData.playerCivIndex = allCivs.IndexOf(CivilizationManager.Instance.playerCiv);
+                saveData.playerCivIndex = CivilizationManager.Instance.GetCivIndex(CivilizationManager.Instance.playerCiv);
             }
         }
 

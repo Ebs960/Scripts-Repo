@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Consolidated monolithic TileSystem combining ownership, fog, data access, and input event fan-out.
@@ -196,7 +197,7 @@ public class TileSystem : MonoBehaviour
         }
 
         // Click (only if not over UI)
-        if (Input.GetMouseButtonDown(0))
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             // MIGRATED: Check UI blocking before processing clicks
             if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI())
@@ -438,8 +439,7 @@ public class TileSystem : MonoBehaviour
             if (newOwner != null && CivilizationManager.Instance != null)
             {
                 // Best-effort: map Civilization to an overlay owner index by its registration order.
-                var all = CivilizationManager.Instance.GetAllCivs();
-                int idx = all.IndexOf(newOwner);
+                int idx = CivilizationManager.Instance.GetCivIndex(newOwner);
                 if (idx >= 0) newOwnerId = idx;
             }
 
@@ -573,14 +573,14 @@ public class TileSystem : MonoBehaviour
         }
         if (cachedWorldPicker != null)
         {
-            if (cachedWorldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
+            if (cachedWorldPicker.TryPickTileIndex(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, out int tileIndex, out Vector3 worldPos))
             {
                 return (true, tileIndex, worldPos);
             }
         }
         
         // FALLBACK: Raycast against flat map quad (if WorldPicker not available)
-        Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Input.mousePosition) : default;
+        Ray ray = mainCamera != null ? mainCamera.ScreenPointToRay(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector3.zero) : default;
         if (mainCamera == null) return (false, -1, Vector3.zero);
 
         // Use HexMapChunkManager (chunk-based map renderer)

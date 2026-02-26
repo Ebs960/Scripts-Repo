@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using TMPro;
 using GameCombat;
 
@@ -60,8 +61,6 @@ public class CombatUnit : BaseUnit
     // Projectile fields (useAnimationEventForProjectiles, queuedProjectile*, hasQueuedProjectile, engagedInMelee) 
     // are inherited from BaseUnit
     
-    // Throttle melee range checks for performance (check every 0.3 seconds)
-    private float lastMeleeRangeCheck = 0f;
     private const float MELEE_RANGE_CHECK_INTERVAL = 0.3f;
     private const float MELEE_ENGAGEMENT_RANGE = 2.5f; // Distance to consider "in melee range"
 
@@ -573,8 +572,8 @@ public class CombatUnit : BaseUnit
                 continue;
             }
             Vector3 pos = ts.GetTileSurfacePosition(idx);
-            // Orbit units stay at orbit height (+4Y above surface)
-            if (IsInOrbit) pos.y += 4f;
+            // Orbit units stay at configured orbit height above surface
+            if (IsInOrbit) pos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
             transform.position = pos;
 
             // Update tile occupancy using layered occupancy manager
@@ -1295,12 +1294,21 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         hasActedThisTurn = savedHasActed;
         currentLayer = savedLayer;
 
-        // If unit is in orbit, adjust Y position
+        // If unit is in orbit, reposition at current orbit height (not stale saved Y)
         if (savedLayer == TileLayer.Orbit)
         {
-            Vector3 pos = transform.position;
-            pos.y += 4f;
-            transform.position = pos;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentTileIndex >= 0)
+            {
+                Vector3 surface = ts.GetTileSurfacePosition(currentTileIndex);
+                transform.position = surface + Vector3.up * PlanetGenerator.GetOrbitHeight(planetIndex);
+            }
+            else
+            {
+                Vector3 pos = transform.position;
+                pos.y = PlanetGenerator.GetOrbitHeight(planetIndex);
+                transform.position = pos;
+            }
         }
     }
 
@@ -2288,7 +2296,7 @@ return;
         {
             // Check if we're clicking on a UI element that should block selection
             var pointerData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
-            pointerData.position = Input.mousePosition;
+            pointerData.position = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
             var results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
             UnityEngine.EventSystems.EventSystem.current.RaycastAll(pointerData, results);
             

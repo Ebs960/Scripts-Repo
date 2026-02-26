@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Linq;
@@ -34,8 +35,8 @@ public class CivilizationManager : MonoBehaviour
     // Property to access the current turn
     private int currentTurn => turnManager != null ? turnManager.round : 0;
     
-    // Public accessor for the list of civilizations
-    public List<Civilization> civilizations => new List<Civilization>(civs);
+    // Public accessor for the list of civilizations (read-only view, no allocation)
+    public IReadOnlyList<Civilization> civilizations => civs;
 
     void Awake()
     {
@@ -77,9 +78,19 @@ public class CivilizationManager : MonoBehaviour
 }
 
     /// <summary>
-    /// Returns a copy of all registered civilizations.
+    /// Returns a read-only view of all registered civilizations (no allocation).
     /// </summary>
-    public List<Civilization> GetAllCivs() => new List<Civilization>(civs);
+    public IReadOnlyList<Civilization> GetAllCivs() => civs;
+
+    /// <summary>
+    /// Returns the registration index of a civilization, or -1 if not found.
+    /// </summary>
+    public int GetCivIndex(Civilization civ)
+    {
+        for (int i = 0; i < civs.Count; i++)
+            if (civs[i] == civ) return i;
+        return -1;
+    }
 
     /// <summary>
     /// Advances to the next civ's turn.
@@ -215,19 +226,35 @@ public class CivilizationManager : MonoBehaviour
         var allCivs = GetAllCivs();
         var situation = new CivilizationSituation();
         
-        // Calculate averages
-        situation.averageMilitaryStrength = (float)allCivs.Average(c => ComputeMilitaryStrength(c));
-        situation.averageCityCount = (float)allCivs.Average(c => c.cities.Count);
-        situation.averageGoldPerTurn = (float)allCivs.Average(c => c.cities.Sum(city => city.GetGoldPerTurn()));
+        // Calculate averages (manual loops instead of LINQ to avoid allocations)
+        float totalMilitary = 0f, totalCities = 0f, totalGold = 0f;
+        int civCount = allCivs.Count;
+        for (int i = 0; i < civCount; i++)
+        {
+            totalMilitary += ComputeMilitaryStrength(allCivs[i]);
+            totalCities += allCivs[i].cities.Count;
+            float gold = 0f;
+            foreach (var city in allCivs[i].cities) gold += city.GetGoldPerTurn();
+            totalGold += gold;
+        }
+        situation.averageMilitaryStrength = civCount > 0 ? totalMilitary / civCount : 0f;
+        situation.averageCityCount = civCount > 0 ? totalCities / civCount : 0f;
+        situation.averageGoldPerTurn = civCount > 0 ? totalGold / civCount : 0f;
         
         // Current civ stats
         situation.militaryStrength = ComputeMilitaryStrength(civ);
         situation.cityCount = civ.cities.Count;
-        situation.goldPerTurn = civ.cities.Sum(city => city.GetGoldPerTurn());
+        float civGold = 0f;
+        foreach (var city in civ.cities) civGold += city.GetGoldPerTurn();
+        situation.goldPerTurn = (int)civGold;
         
         // Threat assessment
         situation.threatsNearby = CountNearbyThreats(civ);
-        situation.isAtWar = civ.relations.Values.Any(r => r == DiplomaticState.War);
+        situation.isAtWar = false;
+        foreach (var r in civ.relations.Values)
+        {
+            if (r == DiplomaticState.War) { situation.isAtWar = true; break; }
+        }
         
         // Opportunities
         situation.weakNeighbors = FindWeakNeighbors(civ);
@@ -336,7 +363,7 @@ public class CivilizationManager : MonoBehaviour
             if (unit.CanEnterOrbit() && !unit.IsInOrbit)
             {
                 // Spaceship on surface with nothing to do: enter orbit to collect yields
-                bool hasNearbyThreat = HasEnemyNearby(civ, unit, unit.CurrentRange + 2);
+                bool hasNearbyThreat = HasEnemyNearby(civ, unit, (int)unit.CurrentRange + 2);
                 if (!hasNearbyThreat)
                 {
                     unit.EnterOrbit(unit.currentTileIndex);
@@ -1633,8 +1660,8 @@ return result;
             return;
         }
 
-        int planetIndex = playerCiv != null && playerCiv.workerUnits.Count > 0 && playerCiv.workerUnits[0] != null
-            ? playerCiv.workerUnits[0].planetIndex
+        int planetIndex = pioneer.planetIndex >= 0
+            ? pioneer.planetIndex
             : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex);
         if (planet == null || planet.Grid == null)
@@ -1643,13 +1670,16 @@ return result;
             return;
         }
 
-        // Get the tile position and convert to direction from planet center
+        // Get the tile position in flat map space
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 tileWorldPosition = ts != null ? ts.GetTileCenterFlat(pioneerTileIndex) : Vector3.zero;
 
-        // Focus the camera on the tile in flat space
+        // Focus the camera on the pioneer and zoom in close (like Civilization start)
         cameraManager.JumpToWorldPoint(tileWorldPosition);
-}
+        // Zoom in to ~30% of the height range for a close-up start view
+        float startHeight = Mathf.Lerp(cameraManager.minHeight, cameraManager.maxHeight, 0.30f);
+        cameraManager.ZoomBy(cameraManager.CameraHeight - startHeight);
+    }
 
     /// <summary>
     /// Fisher–Yates shuffle.
@@ -1692,7 +1722,8 @@ return civ;
     void Update()
     {
         // Example: player presses End Turn (Enter key to avoid conflict with Space for space travel)
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        var kb = Keyboard.current;
+        if (kb != null && (kb[Key.Enter].wasPressedThisFrame || kb[Key.NumpadEnter].wasPressedThisFrame))
             AdvanceTurn();
     }
 

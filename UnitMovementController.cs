@@ -282,7 +282,7 @@ unit.UpdateWalkingState(false);
             Vector3 endPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : startPosition;
             if (unit.currentLayer == TileLayer.Orbit)
             {
-                endPosition += Vector3.up * 4f; // Match orbit height from EnterOrbit()
+                endPosition += Vector3.up * PlanetGenerator.GetOrbitHeight(unit.planetIndex);
             }
 
             float journeyLength = Vector3.Distance(startPosition, endPosition);

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using System.Text;
@@ -149,7 +150,7 @@ public class TooltipSystem : MonoBehaviour
     {
         if (tooltipRect == null || tooltipCanvas == null) return;
 
-        Vector2 mousePosition = Input.mousePosition;
+        Vector2 mousePosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
         
         // Convert mouse position to canvas position
         Vector2 canvasPosition;

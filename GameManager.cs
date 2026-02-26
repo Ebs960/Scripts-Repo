@@ -2209,7 +2209,15 @@ public class GameManager : MonoBehaviour
         {
             UIManager.Instance.HideAllPanels();
             if (UIManager.Instance.playerUI != null)
+            {
                 UIManager.Instance.playerUI.SetActive(true);
+
+                // Refresh layer dropdown now that planet generation is complete
+                // (Start-time refresh runs too early — LayerManager isn't added until ApplyPlanetLayers)
+                var pui = UIManager.Instance.playerUI.GetComponent<PlayerUI>();
+                if (pui == null) pui = UIManager.Instance.playerUI.GetComponentInChildren<PlayerUI>();
+                if (pui != null) pui.RefreshLayerDropdown();
+            }
         }
 
         // Initialize space loading panel if prefab is assigned
@@ -2433,8 +2441,7 @@ public class GameManager : MonoBehaviour
             if (civilizationManager != null && civilizationManager.playerCiv != null)
             {
                 saveData.playerCivName = civilizationManager.playerCiv.civData.civName;
-                var allCivs = civilizationManager.GetAllCivs();
-                saveData.playerCivIndex = allCivs.IndexOf(civilizationManager.playerCiv);
+                saveData.playerCivIndex = civilizationManager.GetCivIndex(civilizationManager.playerCiv);
             }
             
             // Get camera position/rotation

@@ -429,10 +429,10 @@ public class ResourceManager : MonoBehaviour
             surfacePos = ts.GetTileSurfacePosition(tileIndex, 0f);
         }
 
-        // Orbital resources float above the surface at orbit height (+4Y, matching BaseUnit.EnterOrbit)
+        // Orbital resources float above the surface at the configured orbit height
         if (resource.isOrbitalResource)
         {
-            surfacePos.y += 4f;
+            surfacePos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
         }
 
         // Retrieve tile data early so we can choose an appropriate parent before instantiation

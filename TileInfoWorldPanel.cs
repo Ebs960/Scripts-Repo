@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
@@ -70,7 +71,7 @@ public class TileInfoWorldPanel : MonoBehaviour
         if (worldPicker == null) return;
 
         // Pick the tile under the mouse
-        if (worldPicker.TryPickTileIndex(Input.mousePosition, out int tileIndex, out Vector3 worldPos))
+        if (worldPicker.TryPickTileIndex(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, out int tileIndex, out Vector3 worldPos))
         {
             if (tileIndex >= 0)
             {
@@ -111,7 +112,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     {
         if (panelRect == null || uiCanvas == null) return;
 
-        Vector2 screenPos = Input.mousePosition;
+        Vector2 screenPos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
         
         // Convert screen position to canvas space
         if (uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay)

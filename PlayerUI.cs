@@ -227,6 +227,10 @@ Civilization civToUse = currentCiv;
             currentCiv.OnTechResearched += OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
         }
+
+        // Re-populate layer dropdown now that planet generation + LayerManager init are complete
+        RefreshLayerDropdown();
+
         UpdatePlayerPanel(civ, round);
     }
     
@@ -507,7 +511,8 @@ currentCiv = civ;
         GameManager.PlanetLayerType[] layersToCheck = {
             GameManager.PlanetLayerType.Surface,
             GameManager.PlanetLayerType.Underwater,
-            GameManager.PlanetLayerType.Atmosphere
+            GameManager.PlanetLayerType.Atmosphere,
+            GameManager.PlanetLayerType.Orbit
         };
 
         foreach (var layer in layersToCheck)

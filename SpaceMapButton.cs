@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System.Linq;
 using System.Collections;
@@ -73,7 +74,7 @@ foreach (var ui in allSpaceMapUIs)
     void Update()
     {
         // Handle hotkey
-        if (Input.GetKeyDown(hotkey))
+        if (Keyboard.current != null && Keyboard.current[Key.M].wasPressedThisFrame)
         {
             // Respect UI blocking and input priority (UI-level allowed)
             if (InputManager.Instance != null)

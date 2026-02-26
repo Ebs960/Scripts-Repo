@@ -50,7 +50,7 @@ MonoBehaviour:
   biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   textureWidth: 2048
   textureHeight: 2048
-  heightmapAnisoLevel: 4
+  heightmapAnisoLevel: 16
   chunksX: 6
   chunksZ: 3
   meshSubdivisionsPerChunk: 72
@@ -62,10 +62,10 @@ MonoBehaviour:
   metallicMultiplier: 1
   aoIntensity: 1.31
   smoothnessMultiplier: 0.92
-  triplanarTiling: 0.01
+  triplanarTiling: 0.1
   triplanarBlend: 1
   useTriplanar: 0
-  normalStrength: 2
+  normalStrength: 1.23
   normalSampleRadius: 1
   biomeBlendRadius: 0.7
   biomeBlendSharpness: 4.51
@@ -97,11 +97,11 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 1024
-  riverSdfHeight: 512
-  riverHalfWidthMultiplier: 1.5
-  lakeHalfWidthMultiplier: 1.5
-  oceanHalfWidthMultiplier: 1.5
+  riverSdfWidth: 512
+  riverSdfHeight: 256
+  riverHalfWidthMultiplier: 1
+  lakeHalfWidthMultiplier: 1
+  oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0.01
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3

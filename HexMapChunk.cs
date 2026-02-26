@@ -156,7 +156,8 @@ public class HexMapChunk : MonoBehaviour
             seasonMaskHeight = chunkPixelHeight;
         }
 
-        var pixels = new Color[chunkPixelWidth * chunkPixelHeight];
+        int pixelCount = chunkPixelWidth * chunkPixelHeight;
+        var pixels = ArrayPoolUtils.Rent<Color>(pixelCount, true);
 
         int chunkOffsetX = chunkX * chunkPixelWidth;
         int chunkOffsetY = chunkZ * chunkPixelHeight;
@@ -191,6 +192,8 @@ public class HexMapChunk : MonoBehaviour
 
         seasonMaskTexture.SetPixels(pixels);
         seasonMaskTexture.Apply();
+
+        ArrayPoolUtils.Return<Color>(pixels);
 
         if (propertyBlock == null)
         {

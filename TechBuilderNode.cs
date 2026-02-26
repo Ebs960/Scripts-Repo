@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
@@ -156,7 +157,7 @@ public class TechBuilderNode : MonoBehaviour, IDragHandler, IBeginDragHandler, I
     {
         if (eventData.button == PointerEventData.InputButton.Left)
         {
-            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            if (Keyboard.current != null && (Keyboard.current[Key.LeftCtrl].isPressed || Keyboard.current[Key.RightCtrl].isPressed))
             {
                 // Ctrl+Click for connections
                 StartConnection();

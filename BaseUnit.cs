@@ -935,6 +935,14 @@ public abstract class BaseUnit : MonoBehaviour
             return;
         }
 
+        // Check if orbit slot is already occupied by another unit
+        var existingOccupant = occ.GetOccupantObject(tileIndex, TileLayer.Orbit);
+        if (existingOccupant != null && existingOccupant.GetInstanceID() != gameObject.GetInstanceID())
+        {
+            Debug.LogWarning($"[BaseUnit] {name} cannot enter orbit on tile {tileIndex}: already occupied by {existingOccupant.name}.");
+            return;
+        }
+
         // Clear current occupancy first (if any), then set Orbit occupancy.
         try
         {
@@ -949,10 +957,9 @@ public abstract class BaseUnit : MonoBehaviour
         currentLayer = TileLayer.Orbit;
         occ.SetOccupant(tileIndex, gameObject, TileLayer.Orbit);
 
-        // Minimal visuals: position above the tile surface so orbiting units don't Z-fight with surface units.
-        // Keep offset small and constant to avoid gameplay implications.
+        // Position above the tile surface at the configured orbit height.
         Vector3 surface = ts.GetTileSurfacePosition(tileIndex);
-        transform.position = surface + Vector3.up * 4f;
+        transform.position = surface + Vector3.up * PlanetGenerator.GetOrbitHeight(planetIndex);
 
         UpdateWalkingState(false);
 

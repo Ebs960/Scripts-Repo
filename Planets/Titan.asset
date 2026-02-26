@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Titan
   m_EditorClassIdentifier: Assembly-CSharp::PlanetConfig
   planetName: Titan
-  supportedLayers: 00000000040000000100000002000000
+  supportedLayers: 000000000400000001000000
   gasGiantVisualData: {fileID: 0}

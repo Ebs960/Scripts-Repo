@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Manages unit selection and movement commands.
@@ -185,19 +186,19 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         
         // Right click: Move selected unit
-        if (Input.GetMouseButtonDown(1))
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
         {
             HandleRightClick();
         }
         
         // R key: Show space travel UI for selected unit (changed from Space to avoid conflicts)
-        if (Input.GetKeyDown(KeyCode.R) && HasSelectedUnit())
+        if (Keyboard.current != null && Keyboard.current[Key.R].wasPressedThisFrame && HasSelectedUnit())
         {
             HandleSpaceTravelKey();
         }
         
         // M key: Open space map for solar system overview
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Keyboard.current != null && Keyboard.current[Key.M].wasPressedThisFrame)
         {
             HandleSpaceMapKey();
         }
@@ -269,8 +270,8 @@ return;
                 return baseUnit;
         }
         
-        // Also check orbit height (+4Y) for orbit-layer units
-        Vector3 orbitPosition = worldPosition + Vector3.up * 4f;
+        // Also check orbit height for orbit-layer units
+        Vector3 orbitPosition = worldPosition + Vector3.up * PlanetGenerator.GetOrbitHeight();
         Collider[] orbitColliders = Physics.OverlapSphere(orbitPosition, 1f);
         
         foreach (var collider in orbitColliders)

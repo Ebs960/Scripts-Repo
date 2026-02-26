@@ -57,9 +57,22 @@ public class PlanetaryCameraManager : MonoBehaviour
     [Tooltip("Maximum allowed camera height while underwater.")]
     public float underwaterMaxHeight = 80f;
 
+    [Header("Orbit Transition")]
+    [Tooltip("Target pitch angle (degrees) when viewing orbit layer (looking more downward).")]
+    public float orbitTargetPitchAngle = 60f;
+    [Tooltip("Speed (units/sec) the camera moves when swooping up to orbit.")]
+    public float orbitMoveSpeed = 50f;
+    [Tooltip("Extra height above orbit altitude for a good overview.")]
+    public float orbitHeightPadding = 30f;
+    [Tooltip("Minimum allowed camera height while in orbit view.")]
+    public float orbitMinHeight = 40f;
+    [Tooltip("Maximum allowed camera height while in orbit view.")]
+    public float orbitMaxHeight = 300f;
+
     // Runtime state
     private Coroutine _transitionCoroutine = null;
     private bool _isInUnderwaterMode = false;
+    private bool _isInOrbitMode = false;
     private float _savedSurfaceHeight;
     private float _savedSurfacePitchMin;
     private float _savedSurfacePitchMax;
@@ -72,6 +85,7 @@ public class PlanetaryCameraManager : MonoBehaviour
     }
 
     public bool IsInUnderwaterMode => _isInUnderwaterMode;
+    public bool IsInOrbitMode => _isInOrbitMode;
 
     // Expose focus point for helpers like FlatMapWrapCamera
     public Vector3 FocusPoint
@@ -104,6 +118,26 @@ public class PlanetaryCameraManager : MonoBehaviour
     {
         if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
         _transitionCoroutine = StartCoroutine(SurfaceTransitionCoroutine(duration));
+    }
+
+    /// <summary>
+    /// Smoothly move the camera up to orbit altitude for a birds-eye overview of orbit-layer objects.
+    /// </summary>
+    public void TransitionToOrbit(Vector3 focusPoint, float orbitLayerHeight)
+    {
+        if (_transitionCoroutine != null) StopCoroutine(_transitionCoroutine);
+
+        // Only save surface settings if we aren't already in a special mode
+        if (!_isInUnderwaterMode && !_isInOrbitMode)
+        {
+            _savedSurfaceHeight = _cameraHeight;
+            _savedSurfacePitchMin = minPitchAngle;
+            _savedSurfacePitchMax = maxPitchAngle;
+            _savedSurfaceMinHeight = minHeight;
+            _savedSurfaceMaxHeight = maxHeight;
+        }
+
+        _transitionCoroutine = StartCoroutine(OrbitTransitionCoroutine(focusPoint, orbitLayerHeight));
     }
 
     private System.Collections.IEnumerator UnderwaterTransitionCoroutine(Vector3 oceanWorldPoint, float moveSpeed)
@@ -156,7 +190,7 @@ public class PlanetaryCameraManager : MonoBehaviour
     private System.Collections.IEnumerator SurfaceTransitionCoroutine(float duration)
     {
         float startHeight = _cameraHeight;
-        float targetHeight = Mathf.Clamp(_savedSurfaceHeight, minHeight, maxHeight);
+        float targetHeight = Mathf.Clamp(_savedSurfaceHeight, _savedSurfaceMinHeight, _savedSurfaceMaxHeight);
         float startMinPitch = minPitchAngle;
         float startMaxPitch = maxPitchAngle;
         float elapsed = 0f;
@@ -179,6 +213,56 @@ public class PlanetaryCameraManager : MonoBehaviour
         minHeight = _savedSurfaceMinHeight;
         maxHeight = _savedSurfaceMaxHeight;
         _isInUnderwaterMode = false;
+        _isInOrbitMode = false;
+        _transitionCoroutine = null;
+    }
+
+    private System.Collections.IEnumerator OrbitTransitionCoroutine(Vector3 focusPoint, float orbitLayerHeight)
+    {
+        _isInOrbitMode = true;
+        _isInUnderwaterMode = false;
+
+        Vector3 targetFocus = new Vector3(focusPoint.x, 0f, focusPoint.z);
+        float targetHeight = Mathf.Clamp(orbitLayerHeight + orbitHeightPadding, orbitMinHeight, orbitMaxHeight);
+
+        // Apply orbit height constraints immediately
+        minHeight = orbitMinHeight;
+        maxHeight = orbitMaxHeight;
+
+        float speed = orbitMoveSpeed;
+
+        while (Mathf.Abs(_cameraHeight - targetHeight) > 0.2f ||
+               Vector3.Distance(_focusPoint, targetFocus) > 0.1f)
+        {
+            // Move focus toward target
+            Vector3 dir = targetFocus - _focusPoint;
+            if (dir.sqrMagnitude > 0.01f)
+            {
+                float step = speed * Time.deltaTime;
+                if (dir.sqrMagnitude <= step * step)
+                    _focusPoint = targetFocus;
+                else
+                    _focusPoint += dir.normalized * step;
+            }
+
+            // Smooth height ramp
+            _cameraHeight = Mathf.MoveTowards(_cameraHeight, targetHeight, speed * Time.deltaTime);
+
+            // Gradually adjust pitch to orbit preset
+            minPitchAngle = Mathf.MoveTowards(minPitchAngle, orbitTargetPitchAngle, 40f * Time.deltaTime);
+            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, orbitTargetPitchAngle, 40f * Time.deltaTime);
+
+            UpdateCameraPosition();
+            yield return null;
+        }
+
+        // Snap final values
+        _focusPoint = targetFocus;
+        _cameraHeight = targetHeight;
+        minPitchAngle = orbitTargetPitchAngle;
+        maxPitchAngle = orbitTargetPitchAngle;
+        UpdateCameraPosition();
+
         _transitionCoroutine = null;
     }
 
@@ -191,13 +275,17 @@ public class PlanetaryCameraManager : MonoBehaviour
         float dt = Time.deltaTime;
         Vector3 panDirection = Vector3.zero;
 
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) panDirection.x -= 1f;
-        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) panDirection.x += 1f;
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) panDirection.z += 1f;
-        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) panDirection.z -= 1f;
+        var kb = Keyboard.current;
+        if (kb != null)
+        {
+            if (kb[Key.A].isPressed || kb[Key.LeftArrow].isPressed) panDirection.x -= 1f;
+            if (kb[Key.D].isPressed || kb[Key.RightArrow].isPressed) panDirection.x += 1f;
+            if (kb[Key.W].isPressed || kb[Key.UpArrow].isPressed) panDirection.z += 1f;
+            if (kb[Key.S].isPressed || kb[Key.DownArrow].isPressed) panDirection.z -= 1f;
 
-        if (Input.GetKey(KeyCode.Q)) _cameraYaw -= rotateSpeed * dt;
-        if (Input.GetKey(KeyCode.E)) _cameraYaw += rotateSpeed * dt;
+            if (kb[Key.Q].isPressed) _cameraYaw -= rotateSpeed * dt;
+            if (kb[Key.E].isPressed) _cameraYaw += rotateSpeed * dt;
+        }
 
         if (panDirection.sqrMagnitude > 0f)
         {
@@ -245,7 +333,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             }
         }
 
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        float scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y / 120f : 0f;
         if (Mathf.Abs(scroll) > 0.001f)
             _cameraHeight = Mathf.Clamp(_cameraHeight - scroll * zoomSpeed, minHeight, maxHeight);
     }

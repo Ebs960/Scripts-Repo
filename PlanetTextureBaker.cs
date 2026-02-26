@@ -255,9 +255,9 @@ public static class PlanetTextureBaker
         }
 
         // Build per-tile data: biome indices, UVs, and elevations (for GPU texture sampling)
-        var tileBiomeIndices = new int[tileCount];
-        var tileUVs = new Vector2[tileCount];
-        var tileElevations = new float[tileCount];
+        var tileBiomeIndices = ArrayPoolUtils.RentInt(tileCount);
+        var tileUVs = new Vector2[tileCount]; // Unity Vector2 not supported by ArrayPool
+        var tileElevations = ArrayPoolUtils.RentFloat(tileCount);
         var tileColors = new Color32[tileCount]; // Still computed for fallback/reference
 
         for (int i = 0; i < tileCount; i++)
@@ -301,6 +301,8 @@ public static class PlanetTextureBaker
         if (lut == null || lut.Length != width * height)
         {
             Debug.LogError("[PlanetTextureBaker] Failed to build LUT");
+            ArrayPoolUtils.ReturnInt(tileBiomeIndices);
+            ArrayPoolUtils.ReturnFloat(tileElevations);
             return res;
         }
 
@@ -312,6 +314,10 @@ public static class PlanetTextureBaker
         var biomeIndexBuffer = GetOrCreateBiomeIndexBuffer(cacheKey, tileBiomeIndices);
         var tileUVBuffer = GetOrCreateTileUVBuffer(cacheKey, tileUVs);
         var elevationBuffer = GetOrCreateElevationBuffer(cacheKey, tileElevations);
+        
+        // Return pooled arrays after data is copied into compute buffers
+        ArrayPoolUtils.ReturnInt(tileBiomeIndices);
+        ArrayPoolUtils.ReturnFloat(tileElevations);
         
         // Color buffer kept for fallback/reference (may not be used in GPU path)
         // (Removed) Per-tile color buffer upload: shader uses biome lookup; tileColors are kept only for output/reference.
