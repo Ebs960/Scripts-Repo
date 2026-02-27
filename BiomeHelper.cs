@@ -329,7 +329,7 @@ public static class BiomeHelper {
         }
 
         // Temperate climates (0.45-0.55)
-        if (temperature > 0.52f) {
+        if (temperature > 0.50f) {
             if (moisture < 0.35f) return Biome.Plains;
             if (moisture < 0.819) return Biome.Temperate;
             return Biome.Swamp;
@@ -341,7 +341,7 @@ public static class BiomeHelper {
         }
 
        
-        if (temperature <= 0.11f) {
+        if (temperature <= 0.23f) {
             return Biome.Arctic;
         }
 

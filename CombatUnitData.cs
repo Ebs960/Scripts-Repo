@@ -34,6 +34,13 @@ public class CombatUnitData : ScriptableObject
     [Header("Basic Info")]
     public string unitName;
     public CombatCategory unitType;
+
+    [Header("Audio")]
+    [Tooltip("Sound played when this unit is selected/clicked on the map. Leave empty for no sound.")]
+    public AudioClip selectSound;
+    [Tooltip("Random pitch variation range (±) applied to select sound for variety.")]
+    [Range(0f, 0.3f)]
+    public float selectPitchVariation = 0.08f;
     
     // MEMORY FIX: Lazy icon loading - icons are large textures that shouldn't load automatically
     // When ScriptableObjects load, they auto-load all referenced assets including sprites/textures

@@ -12,6 +12,13 @@ public class ResourceData : ScriptableObject
     public Sprite icon;
     public GameObject prefab;
 
+    [Header("Audio")]
+    [Tooltip("Sound played when this resource is clicked on the map. Leave empty for no sound.")]
+    public AudioClip selectSound;
+    [Tooltip("Random pitch variation range (±) applied to select sound for variety.")]
+    [Range(0f, 0.3f)]
+    public float selectPitchVariation = 0.1f;
+
     [Header("Spawn Rules")]
     [Tooltip("Which biomes this resource can appear on (surface biome check)")]
     public Biome[] allowedBiomes;

@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae829dc2f2d526b45bf65e293f0f5f3a, type: 3}
+  m_Name: Ambient Sound Manager
+  m_EditorClassIdentifier: Assembly-CSharp::AmbientSoundDatabase
+  biomeEntries:
+  - biome: 2
+    clip: {fileID: 8300000, guid: 4dc145662db4b33438a60f0c70453d3a, type: 3}
+    volume: 0.5
+  - biome: 3
+    clip: {fileID: 8300000, guid: 57952386af424894f8ff888faea721f4, type: 3}
+    volume: 0.5
+  - biome: 6
+    clip: {fileID: 8300000, guid: 57952386af424894f8ff888faea721f4, type: 3}
+    volume: 0.5
+  - biome: 4
+    clip: {fileID: 8300000, guid: f1fa71afc7b0d98408ad67c3b8872425, type: 3}
+    volume: 0.5
+  - biome: 5
+    clip: {fileID: 8300000, guid: f1fa71afc7b0d98408ad67c3b8872425, type: 3}
+    volume: 0.5
+  - biome: 8
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 19
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 7
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 39
+    clip: {fileID: 8300000, guid: 6d59a4c85515ce54f970eff144ced17c, type: 3}
+    volume: 0.5
+  - biome: 38
+    clip: {fileID: 8300000, guid: 6d59a4c85515ce54f970eff144ced17c, type: 3}
+    volume: 0.5
+  - biome: 20
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 9
+    clip: {fileID: 8300000, guid: 57952386af424894f8ff888faea721f4, type: 3}
+    volume: 0.5
+  - biome: 17
+    clip: {fileID: 8300000, guid: 4dc145662db4b33438a60f0c70453d3a, type: 3}
+    volume: 0.5
+  - biome: 16
+    clip: {fileID: 8300000, guid: 4dc145662db4b33438a60f0c70453d3a, type: 3}
+    volume: 0.5
+  - biome: 15
+    clip: {fileID: 8300000, guid: 1de0ba297a67c1a45a5a028706c7c245, type: 3}
+    volume: 0.5
+  - biome: 14
+    clip: {fileID: 8300000, guid: 871239a6c17e35141a54ce987e6d6064, type: 3}
+    volume: 0.5
+  - biome: 18
+    clip: {fileID: 8300000, guid: 871239a6c17e35141a54ce987e6d6064, type: 3}
+    volume: 0.5
+  - biome: 24
+    clip: {fileID: 8300000, guid: 871239a6c17e35141a54ce987e6d6064, type: 3}
+    volume: 0.5
+  - biome: 13
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 21
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 26
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 23
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 34
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 37
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 25
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 13
+    clip: {fileID: 8300000, guid: 68b1a3cf0f7cf87488111c1aaa6c7622, type: 3}
+    volume: 0.5
+  - biome: 35
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 36
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 32
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 22
+    clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
+    volume: 0.5
+  - biome: 33
+    clip: {fileID: 8300000, guid: 755dafab6789a8741a6b58cf2e4abf11, type: 3}
+    volume: 0.5
+  - biome: 28
+    clip: {fileID: 8300000, guid: bf716dc32894d51488773ec13c9a0387, type: 3}
+    volume: 0.5
+  - biome: 29
+    clip: {fileID: 8300000, guid: bf716dc32894d51488773ec13c9a0387, type: 3}
+    volume: 0.5
+  - biome: 30
+    clip: {fileID: 8300000, guid: bf716dc32894d51488773ec13c9a0387, type: 3}
+    volume: 0.5
+  - biome: 31
+    clip: {fileID: 8300000, guid: bf716dc32894d51488773ec13c9a0387, type: 3}
+    volume: 0.5
+  waterEntries:
+  - waterType: 3
+    clip: {fileID: 8300000, guid: 755dafab6789a8741a6b58cf2e4abf11, type: 3}
+    maxVolume: 0.15
+    audibleRadius: 2
+  - waterType: 2
+    clip: {fileID: 8300000, guid: 35d14634adfea864da69d2650136cc6c, type: 3}
+    maxVolume: 0.15
+    audibleRadius: 2
+  - waterType: 1
+    clip: {fileID: 8300000, guid: 3a81f645ca0d7fd419c94e2445180bd9, type: 3}
+    maxVolume: 0.15
+    audibleRadius: 2
+  nearDistance: 33
+  farDistance: 63
+  distanceMinVolume: 0.104

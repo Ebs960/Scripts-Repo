@@ -150,7 +150,7 @@ public class UnitSelectionManager : MonoBehaviour
         var clickedUnit = GetUnitOnTile(tileIndex);
         if (clickedUnit == null)
             clickedUnit = GetUnitAtPosition(worldPos);
-        if (clickedUnit != null) SelectUnit(clickedUnit); else DeselectUnit();
+        if (clickedUnit != null) SelectUnit(clickedUnit); else { DeselectUnit(); PlayResourceClickSound(tileIndex); }
         // Note: Right-click movement remains handled in Update() to detect mouse button 1
     }
 
@@ -298,6 +298,9 @@ return;
         // Select new unit
         selectedUnit = unit;
         
+        // Play selection sound from the unit's data
+        PlayUnitSelectSound(unit);
+
         // Create visual indicator
         CreateSelectionIndicator();
         
@@ -465,5 +468,68 @@ if (UIManager.Instance != null)
         {
             Debug.LogWarning("[UnitSelectionManager] UIManager.Instance is null - cannot open space map");
         }
+    }
+
+    // ================================================================
+    //  Selection audio helpers
+    // ================================================================
+
+    /// <summary>
+    /// Play the select sound defined on a unit's data ScriptableObject (CombatUnitData or WorkerUnitData).
+    /// Uses PlayClipAtPoint so no persistent AudioSource is needed on the unit.
+    /// Pitch is slightly randomised for variety.
+    /// </summary>
+    private void PlayUnitSelectSound(BaseUnit unit)
+    {
+        AudioClip clip = null;
+        float pitchVar = 0.08f;
+
+        if (unit is CombatUnit combatUnit && combatUnit.data != null)
+        {
+            clip = combatUnit.data.selectSound;
+            pitchVar = combatUnit.data.selectPitchVariation;
+        }
+        else if (unit is WorkerUnit workerUnit && workerUnit.data != null)
+        {
+            clip = workerUnit.data.selectSound;
+            pitchVar = workerUnit.data.selectPitchVariation;
+        }
+
+        if (clip != null)
+            PlayClipWithPitchVariation(clip, unit.transform.position, pitchVar);
+    }
+
+    /// <summary>
+    /// When clicking a tile that has no unit, check for a resource and play its sound.
+    /// </summary>
+    private void PlayResourceClickSound(int tileIndex)
+    {
+        var ts = TileSystem.Instance;
+        if (ts == null) return;
+        var td = ts.GetTileData(tileIndex);
+        if (td == null || td.resource == null || td.resource.selectSound == null) return;
+
+        // Use the tile's world position for spatial placement of the sound.
+        Vector3 pos = ts.GetTileCenter(tileIndex);
+        PlayClipWithPitchVariation(td.resource.selectSound, pos, td.resource.selectPitchVariation);
+    }
+
+    /// <summary>
+    /// Play a one-shot clip at a world position with slight random pitch variation.
+    /// Creates a temporary GameObject with an AudioSource (Unity's PlayClipAtPoint doesn't support pitch).
+    /// </summary>
+    private static void PlayClipWithPitchVariation(AudioClip clip, Vector3 position, float pitchVar)
+    {
+        var go = new GameObject("SelectSound");
+        go.transform.position = position;
+        var src = go.AddComponent<AudioSource>();
+        src.clip = clip;
+        src.spatialBlend = 1f;        // 3D — panned toward entity
+        src.minDistance = 5f;
+        src.maxDistance = 120f;
+        src.rolloffMode = AudioRolloffMode.Linear;
+        src.pitch = 1f + Random.Range(-pitchVar, pitchVar);
+        src.Play();
+        Destroy(go, clip.length + 0.1f);
     }
 }

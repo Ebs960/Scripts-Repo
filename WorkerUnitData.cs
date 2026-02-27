@@ -22,6 +22,13 @@ public class WorkerUnitData : ScriptableObject
     public Sprite icon;
     public GameObject prefab;
 
+    [Header("Audio")]
+    [Tooltip("Sound played when this worker is selected/clicked on the map. Leave empty for no sound.")]
+    public AudioClip selectSound;
+    [Tooltip("Random pitch variation range (±) applied to select sound for variety.")]
+    [Range(0f, 0.3f)]
+    public float selectPitchVariation = 0.08f;
+
     [Header("Stats")] public int baseWorkPoints;
     public int baseMovePoints;
     public int baseHealth;

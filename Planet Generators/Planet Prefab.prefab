@@ -187,7 +187,7 @@ MonoBehaviour:
   seed: 12345
   numberOfContinents: 8
   continentNoiseEnabled: 1
-  continentNoiseFrequency: 0.0121
+  continentNoiseFrequency: 0.028
   continentNoiseAmplitude: 0.796
   minContinentWidthTilesSmall: 13
   maxContinentWidthTilesSmall: 22
@@ -201,8 +201,8 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.525
-  elevationExponent: 1.07
+  seedPositionVariance: 0.618
+  elevationExponent: 1
   ridgeStrength: 0.116
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
@@ -227,8 +227,8 @@ MonoBehaviour:
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
   oceanElevation: 0
-  seasElevation: 3
-  coastElevation: 5.5
+  seasElevation: 20
+  coastElevation: 30
   abyssalMinDistanceFromCoast: 3
   abyssalMaxDistanceFromCoast: 8
   abyssalChance: 0.35
@@ -238,8 +238,8 @@ MonoBehaviour:
   trenchMaxLength: 40
   trenchHalfWidth: 1
   trenchCenterDepth: -4
-  trenchCurvature: 0.7
-  trenchMinSeparation: 8
+  trenchCurvature: 0.474
+  trenchMinSeparation: 6
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
@@ -280,7 +280,7 @@ MonoBehaviour:
     biomeDecorations: []
     enableDecorations: 1
     globalScaleMultiplier: 1
-  stampingBatchSize: 4096
+  stampingBatchSize: 3000
   planetType: 0
   mapType: 0
   currentMapTypeName: 
