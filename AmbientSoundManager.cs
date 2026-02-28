@@ -163,8 +163,10 @@ public class AmbientSoundManager : MonoBehaviour
         CacheRefs();
         if (_grid == null || _tileSystem == null) return;
 
-        Vector3 focus = cameraManager.FocusPoint;
-        int tileIdx = _grid.GetTileAtPosition(focus);
+        // Use the physical camera footprint on the ground plane (XZ), not the focus point.
+        // FocusPoint is the *look-at target* and can be far from the camera at shallow pitch.
+        Vector3 samplePoint = GetCameraFootprintXZ();
+        int tileIdx = _grid.GetTileAtPosition(samplePoint);
         if (tileIdx < 0) return;
 
         var td = _tileSystem.GetTileData(tileIdx);
@@ -184,7 +186,21 @@ public class AmbientSoundManager : MonoBehaviour
         }
 
         // ── 2. Water proximity ──
-        EvaluateWaterProximity(tileIdx, td, focus);
+        EvaluateWaterProximity(tileIdx, td, samplePoint);
+    }
+
+    private Vector3 GetCameraFootprintXZ()
+    {
+        Vector3 p;
+        if (Camera.main != null)
+            p = Camera.main.transform.position;
+        else if (cameraManager != null)
+            p = cameraManager.transform.position;
+        else
+            p = Vector3.zero;
+
+        p.y = 0f;
+        return p;
     }
 
     // ================================================================

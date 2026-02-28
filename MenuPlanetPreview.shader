@@ -26,6 +26,8 @@ Shader "Custom/MenuPlanetPreview"
             _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
             _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
             _SunIntensity("Sun Intensity", Float) = 1.0
+        [Header(Civilization)]
+            _CivCount("Civilization Count", Float) = 4.0
     }
 
     SubShader
@@ -81,6 +83,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
+                float _CivCount;
             CBUFFER_END
 
             // -----------------------------------------------------------------
@@ -245,19 +248,26 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
                 // --- Vertex displacement ---
-                float3 objNorm = normalize(input.positionOS.xyz);
-                float disp = GetDisplacement(objNorm);
-                float3 displacedOS = input.positionOS.xyz + input.normalOS * disp;
+                float baseRadius = max(1e-5, length(input.positionOS.xyz));
+                float3 objNorm = input.positionOS.xyz / baseRadius;
 
-                // Compute displaced normal via finite differences
-                // eps must be large enough to span several vertices so the gradient
-                // is smooth; too small → steep normals → dark seam lines at coastlines.
+                float disp = GetDisplacement(objNorm);
+                float3 displacedOS = objNorm * (baseRadius * (1.0 + disp));
+
+                // Compute displaced normal from displaced positions (more stable than
+                // trying to perturb the normal directly).
                 float eps = 0.012;
                 float3 tangent1 = normalize(cross(objNorm, abs(objNorm.y) < 0.99 ? float3(0,1,0) : float3(1,0,0)));
                 float3 tangent2 = cross(objNorm, tangent1);
-                float dU = GetDisplacement(normalize(input.positionOS.xyz + tangent1 * eps));
-                float dV = GetDisplacement(normalize(input.positionOS.xyz + tangent2 * eps));
-                float3 dispNormalOS = normalize(objNorm + (tangent1 * (disp - dU) + tangent2 * (disp - dV)) / eps);
+
+                float3 nU = normalize(objNorm + tangent1 * eps);
+                float3 nV = normalize(objNorm + tangent2 * eps);
+                float dispU = GetDisplacement(nU);
+                float dispV = GetDisplacement(nV);
+                float3 p  = displacedOS;
+                float3 pU = nU * (baseRadius * (1.0 + dispU));
+                float3 pV = nV * (baseRadius * (1.0 + dispV));
+                float3 dispNormalOS = normalize(cross(pV - p, pU - p));
 
                 float3 worldPos = TransformObjectToWorld(displacedOS);
                 output.positionCS = TransformWorldToHClip(worldPos);
@@ -303,6 +313,19 @@ Shader "Custom/MenuPlanetPreview"
                 float latitude = abs(objNorm.y);
 
                 // ==============================================================
+                //  Latitude-based local climate (biome zoning)
+                // ==============================================================
+                // Equator is warmer, poles are colder. Temperature slider shifts the overall range.
+                // ±0.45 gives dramatic visible variation: jungle equator → tundra poles
+                float latTempBias = (1.0 - latitude) * 0.9 - 0.45;
+                float localTemp = saturate(_Temperature + latTempBias);
+                // Moisture: equator & ~60° wetter, ~30° drier (Hadley cell approximation)
+                // Also add noise so the wet/dry bands aren't perfect rings
+                float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.3;
+                float moistNoise = (noise3D(objNorm * 3.5 + float3(77.7, 33.3, 11.1)) - 0.5) * 0.25;
+                float localMoist = saturate(_Moisture + moistLatitude + moistNoise);
+
+                // ==============================================================
                 //  Rivers (shared noise — used by normal, infernal, and demonic)
                 // ==============================================================
                 // Multi-octave domain warping for natural, sinuous river curves.
@@ -333,25 +356,38 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  NORMAL WORLD colors
                 // ==============================================================
-                float3 landColor  = GetLandColor(_Temperature, _Moisture);
-                float3 oceanColor = GetOceanColor(_Temperature);
+                // Use latitude-based local temperature & moisture for per-pixel biome diversity
+                float3 landColor  = GetLandColor(localTemp, localMoist);
+                float3 baseOceanColor = GetOceanColor(localTemp);
 
-                // Apply biome tint + desert/tropical overlays driven by CPU-side factors
-                // Desert pushes colors toward sandy tones, tropical towards darker saturated green
-                float desertAmt = saturate(_DesertFactor);
-                float tropicalAmt = saturate(_TropicalFactor);
+                // Ocean depth: shallow turquoise near coasts, deep navy in open ocean
+                float oceanDepthFactor = saturate((_LandThreshold - n) / max(0.01, _LandThreshold * 0.5));
+                float3 shallowOcean = lerp(float3(0.10, 0.42, 0.50), float3(0.08, 0.48, 0.55), localTemp);
+                float3 oceanColor = lerp(shallowOcean, baseOceanColor * 0.7, smoothstep(0.0, 0.7, oceanDepthFactor));
+                // Warm tropical shallows
+                oceanColor = lerp(oceanColor, float3(0.08, 0.50, 0.52),
+                    saturate(localTemp - 0.6) * (1.0 - oceanDepthFactor) * 0.3);
+
+                // Apply biome tint + desert/tropical overlays — computed PER-PIXEL from local climate
+                // Desert: hot + dry regions. Tropical: hot + wet regions.
+                float localDesertAmt = saturate(localTemp * (1.0 - localMoist) * 1.8);
+                float localTropicalAmt = saturate(localMoist * localTemp * 2.0);
                     // Suppress biome overlays on infernal/demonic worlds
                     float hellBlend = saturate(infernal + demonic);
-                    desertAmt *= (1.0 - hellBlend);
-                    tropicalAmt *= (1.0 - hellBlend);
+                    localDesertAmt *= (1.0 - hellBlend);
+                    localTropicalAmt *= (1.0 - hellBlend);
 
                 // Desert tint (sandy) and tropical tint (deep green)
                 float3 desertTint = float3(0.85, 0.70, 0.45);
                 float3 tropicalTint = float3(0.08, 0.45, 0.12);
 
-                // Blend landColor toward desert/tropical based on their amounts
-                landColor = lerp(landColor, desertTint, desertAmt * 0.9);
-                landColor = lerp(landColor, tropicalTint, tropicalAmt * 0.9);
+                // Blend landColor toward desert/tropical based on per-pixel amounts + latitude bands
+                // Desert tint peaks at subtropical latitudes (~30°)
+                float subtropicalBand = 1.0 - smoothstep(0.0, 0.35, abs(latitude - 0.45));
+                landColor = lerp(landColor, desertTint, localDesertAmt * (subtropicalBand * 0.5 + 0.5));
+                // Tropical tint strongest near equator
+                float equatorialBand = 1.0 - smoothstep(0.0, 0.30, latitude);
+                landColor = lerp(landColor, tropicalTint, localTropicalAmt * (equatorialBand * 0.5 + 0.5));
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
@@ -363,8 +399,8 @@ Shader "Custom/MenuPlanetPreview"
                 float3 grad = normalize(float3(dx - d0, dy - d0, dz - d0));
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
-                // Subtly mix in the overall biome tint color (from C# computed blend)
-                landColor = lerp(landColor, _BiomeTint.rgb, saturate((desertAmt + tropicalAmt) * 0.5 + 0.15));
+                // _BiomeTint used only as a very subtle hint — per-pixel latitude colors dominate
+                landColor = lerp(landColor, _BiomeTint.rgb, 0.05);
 
                 // Elevation shading
                 float3 highlandColor = lerp(landColor, float3(0.55, 0.50, 0.42), 0.6);
@@ -374,21 +410,48 @@ Shader "Custom/MenuPlanetPreview"
                 float3 elevatedLand = landColor * lerp(0.85, 1.0, midBand);
                 elevatedLand = lerp(elevatedLand, highlandColor, highBand);
                 elevatedLand = lerp(elevatedLand, mountainColor, mtnBand);
-                // Snow amount includes shader-controlled snow factor to allow CPU tweaks
-                float snowAmount = snowBand * saturate(1.0 - _Temperature * 1.3 + _SnowFactor * 0.8);
+                // Snow: uses local temperature so equatorial peaks have less snow
+                float snowAmount = snowBand * saturate(1.0 - localTemp * 1.3 + _SnowFactor * 0.8);
                 elevatedLand = lerp(elevatedLand, snowPeakColor, snowAmount);
+
+                // Slope coloring: steep cliff faces show exposed rock
+                float3 sphereNormalWS = normalize(TransformObjectToWorldNormal(objNorm));
+                float slopeDot = dot(normalize(input.normalWS), sphereNormalWS);
+                float slopeFactor = smoothstep(0.88, 0.65, slopeDot) * edge;
+                float3 rockColor = lerp(float3(0.45, 0.40, 0.35), float3(0.55, 0.50, 0.44), elevNoise);
+                elevatedLand = lerp(elevatedLand, rockColor, slopeFactor * 0.7);
+
+                // Biome micro-textures: high-freq noise variation per biome type
+                float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7));
+                float microNoise2 = noise3D(samplePos * 55.0 + float3(41.2, 8.8, 63.1));
+                // Forest canopy dapple (temperate/tropical zones)
+                float forestMask = saturate(localMoist * (1.0 - highBand)) * saturate(localTemp * 2.0);
+                elevatedLand = lerp(elevatedLand, elevatedLand * lerp(0.82, 1.15, microNoise), forestMask * 0.4);
+                // Desert dune ripple (hot+dry zones)
+                float desertMicroMask = saturate((localTemp - 0.5) * 2.0) * saturate((1.0 - localMoist) * 1.5) * (1.0 - highBand);
+                float3 duneLight = elevatedLand * 1.12;
+                float3 duneDark = elevatedLand * 0.85;
+                elevatedLand = lerp(elevatedLand, lerp(duneDark, duneLight, microNoise2), desertMicroMask * 0.35);
+                // Tundra lichen speckle (cold zones)
+                float tundraMask = saturate((0.35 - localTemp) * 4.0) * (1.0 - snowAmount) * (1.0 - highBand);
+                // Savanna/grassland transition zone (warm, moderate moisture)
+                float savannaMask = saturate(localTemp - 0.4) * saturate(localMoist) * saturate(1.0 - localMoist) * (1.0 - highBand) * 2.0;
+                float3 savannaColor = lerp(float3(0.65, 0.60, 0.30), float3(0.55, 0.50, 0.25), microNoise);
+                elevatedLand = lerp(elevatedLand, savannaColor, savannaMask * 0.35);
+                float3 lichenColor = lerp(float3(0.50, 0.55, 0.42), float3(0.60, 0.58, 0.50), microNoise);
+                elevatedLand = lerp(elevatedLand, lichenColor, tundraMask * 0.25);
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
 
                 // Normal rivers (moisture-gated, not on mountains)
-                float normalRiverMask = riverMask * saturate((_Moisture - 0.20) * 2.0)
+                float normalRiverMask = riverMask * saturate((localMoist - 0.20) * 2.0)
                                       * saturate(1.0 - mtnBand * 0.8);
                 normalAlbedo = lerp(normalAlbedo, float3(0.10, 0.25, 0.45), saturate(normalRiverMask));
 
                 // Lakes (normal)
                 float lakeNoise = noise3D(samplePos * 12.0 + float3(7.7, 3.3, 9.9));
                 float lakeMask  = smoothstep(0.72, 0.78, lakeNoise)
-                                * saturate((_Moisture - 0.6) * 2.5) * step(0.5, edge);
+                                * saturate((localMoist - 0.6) * 2.5) * step(0.5, edge);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
 
                 // ---- Ice caps / Frozen world logic ----
@@ -516,6 +579,19 @@ Shader "Custom/MenuPlanetPreview"
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
                 // ==============================================================
+                //  Cloud shadows on surface
+                // ==============================================================
+                float3 cloudSamplePos = objNorm * 3.0;
+                float cloudAngle = timeVal * 0.05;
+                float cCos = cos(cloudAngle); float cSin = sin(cloudAngle);
+                cloudSamplePos.xz = float2(
+                    cloudSamplePos.x * cCos - cloudSamplePos.z * cSin,
+                    cloudSamplePos.x * cSin + cloudSamplePos.z * cCos);
+                float cloudShadow = fbm(cloudSamplePos + float3(5.5, 2.2, 8.8));
+                float cloudShadowMask = smoothstep(0.35, 0.55, cloudShadow) * 0.2 * (1.0 - infernal);
+                albedo *= (1.0 - cloudShadowMask);
+
+                // ==============================================================
                 //  Lighting (property-driven sun direction + color)
                 // ==============================================================
                 float3 lightDir = normalize(-_SunDirection.xyz);
@@ -534,7 +610,13 @@ Shader "Custom/MenuPlanetPreview"
                            * (1.0 - edge)
                            * lerp(0.35, 0.5, infernal);
 
-                float3 finalColor = albedo * lighting * sunCol + spec * sunCol;
+                // Sun glint on oceans — tight specular for "NASA photo" look
+                float oceanGlint = pow(saturate(dot(normal, halfVec)), 256.0)
+                                 * (1.0 - edge) * (1.0 - infernal) * 1.8;
+                float glintRipple = noise3D(samplePos * 40.0 + float3(timeVal * 0.5, 0, 0));
+                oceanGlint *= lerp(0.6, 1.4, glintRipple);
+
+                float3 finalColor = albedo * lighting * sunCol + spec * sunCol + oceanGlint * sunCol;
 
                 // ==============================================================
                 //  Emissive additions (infernal + demonic)
@@ -554,6 +636,31 @@ Shader "Custom/MenuPlanetPreview"
                 finalColor += demonRiverColor * saturate(demonRiverMask) * demonic * 0.5;
                 finalColor += demonVentColor * demonVentMask * demonic * 0.7;
                 finalColor += demonLavaLake * hellLakeMask * demonic * 0.4;
+
+                // ==============================================================
+                //  Terminator scattering (warm band at day/night boundary)
+                // ==============================================================
+                float terminatorMask = 1.0 - smoothstep(0.0, 0.18, abs(NdotL));
+                float3 terminatorColor = float3(0.85, 0.35, 0.12);
+                finalColor += terminatorColor * terminatorMask * 0.15 * (1.0 - infernal);
+
+                // ==============================================================
+                //  Night-side city lights
+                // ==============================================================
+                float nightMask = smoothstep(0.0, -0.1, NdotL);
+                float cityNoise1 = noise3D(samplePos * 45.0 + float3(88.1, 22.4, 55.7));
+                float cityNoise2 = noise3D(samplePos * 80.0 + float3(14.3, 67.8, 39.2));
+                float coastProximity = 1.0 - smoothstep(0.0, 0.15, abs(n - _LandThreshold));
+                float midLatitude = 1.0 - smoothstep(0.0, 0.4, abs(latitude - 0.4));
+                float cityDensity = saturate(_CivCount / 8.0);
+                float cityThreshold = lerp(0.88, 0.72, cityDensity);
+                float cityMask = step(cityThreshold, cityNoise1) * edge;
+                cityMask += step(cityThreshold + 0.03, cityNoise2) * edge
+                          * (coastProximity * 0.5 + midLatitude * 0.3);
+                cityMask = saturate(cityMask) * nightMask * (1.0 - infernal);
+                float3 cityLightColor = float3(1.0, 0.85, 0.55);
+                float cityFlicker = lerp(0.8, 1.0, noise3D(samplePos * 100.0 + float3(timeVal * 2.0, 0, 0)));
+                finalColor += cityLightColor * cityMask * 0.12 * cityFlicker;
 
                 // ==============================================================
                 //  Atmosphere rim glow
@@ -579,6 +686,19 @@ Shader "Custom/MenuPlanetPreview"
                 float3 frozenRimColor = float3(0.55, 0.70, 0.95);
                 // Old analytic atmosphere rim removed — handled by separate atmosphere shell
                 finalColor += frozenRimColor * frozenRimMask * 0.25;
+
+                // ==============================================================
+                //  Polar aurora (night side, high latitude, cold worlds)
+                // ==============================================================
+                float auroraMask = smoothstep(0.65, 0.85, latitude) * nightMask * (1.0 - infernal);
+                float auroraStrength = saturate((0.5 - _Temperature) * 2.5);
+                float auroraNoise = noise3D(float3(objNorm.x * 8.0, objNorm.z * 8.0, timeVal * 0.3));
+                float auroraCurtain = smoothstep(0.35, 0.55, auroraNoise);
+                float3 auroraColor = lerp(float3(0.15, 0.85, 0.35), float3(0.30, 0.45, 0.90),
+                    noise3D(float3(objNorm.xz * 4.0, timeVal * 0.15)));
+                auroraColor = lerp(auroraColor, float3(0.55, 0.20, 0.80),
+                    smoothstep(0.6, 0.8, auroraNoise) * 0.3);
+                finalColor += auroraColor * auroraMask * auroraCurtain * auroraStrength * 0.15;
 
                 return float4(finalColor, 1.0);
             }
@@ -643,6 +763,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
+                float _CivCount;
             CBUFFER_END
 
             // Inline noise for displacement (same as main pass)
@@ -683,9 +804,10 @@ Shader "Custom/MenuPlanetPreview"
                 Varyings output;
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
-                float3 n = normalize(input.positionOS.xyz);
+                float r = max(1e-5, length(input.positionOS.xyz));
+                float3 n = input.positionOS.xyz / r;
                 float d = GetDisp(n);
-                float3 displaced = input.positionOS.xyz + n * d;
+                float3 displaced = n * (r * (1.0 + d));
                 float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;
@@ -756,6 +878,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
+                float _CivCount;
             CBUFFER_END
 
             float hash31_s(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973));p+=dot(p,p.yxz+33.33);return frac((p.x+p.y)*p.z);}
@@ -771,8 +894,9 @@ Shader "Custom/MenuPlanetPreview"
                 Varyings output;
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
-                float3 n = normalize(input.positionOS.xyz);
-                float3 displaced = input.positionOS.xyz + n * GetDispS(n);
+                float r = max(1e-5, length(input.positionOS.xyz));
+                float3 n = input.positionOS.xyz / r;
+                float3 displaced = n * (r * (1.0 + GetDispS(n)));
                 float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;

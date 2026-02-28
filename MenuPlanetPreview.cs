@@ -39,6 +39,8 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
     [SerializeField] private Light previewLight;
+    [Tooltip("Preview camera used for background and post-processing. Auto-found in children if null.")]
+    [SerializeField] private Camera previewCamera;
 
     // -----------------------------------------------------------------
     //  Rotation
@@ -90,7 +92,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere. Higher = smoother displacement. 0-6 (6 ≈ 40k tris).")]
-    [Range(0,6)] [SerializeField] private int icosphereSubdivisions = 5;
+    [Range(0,10)] [SerializeField] private int icosphereSubdivisions = 5;
 
     // -----------------------------------------------------------------
     //  Preview Parameters (exposed in inspector for quick iteration)
@@ -132,6 +134,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private GameObject cloudShellGO;
     private GameObject atmosphereShellGO;
     private Volume bloomVolume;
+    private float civCount = 4f;
 
     // Cached shader property IDs — planet
     private static readonly int ID_LandScale     = Shader.PropertyToID("_LandScale");
@@ -163,6 +166,9 @@ public class MenuPlanetPreview : MonoBehaviour
     // Atmosphere shell-specific
     private static readonly int ID_AtmosFalloff  = Shader.PropertyToID("_AtmosphereFalloff");
     private static readonly int ID_AtmosIntensity = Shader.PropertyToID("_AtmosphereIntensity");
+
+    // City lights
+    private static readonly int ID_CivCount = Shader.PropertyToID("_CivCount");
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -278,6 +284,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Moisture,      moisture);
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
+        materialInstance.SetFloat(ID_CivCount,     civCount);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         UpdateBiomeVisuals();
@@ -538,7 +545,7 @@ public class MenuPlanetPreview : MonoBehaviour
         if (!enableBloom) return;
 
         // Find the preview camera (should be a sibling/child with a Camera component)
-        Camera previewCam = GetComponentInChildren<Camera>(true);
+        Camera previewCam = previewCamera ?? GetComponentInChildren<Camera>(true);
         if (previewCam == null)
         {
             Debug.LogWarning("[MenuPlanetPreview] No preview camera found — bloom not configured.");
@@ -678,18 +685,31 @@ public class MenuPlanetPreview : MonoBehaviour
         // Create a simple quad and place it behind the preview sphere
         backgroundQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
         backgroundQuad.name = "MenuPlanetPreview_SpaceBackground";
+        backgroundQuad.layer = previewRenderer.gameObject.layer;
 
         // Detach the quad from the rotating preview so it doesn't inherit the sphere's rotation
-        backgroundQuad.transform.SetParent(this.transform, true);
+        backgroundQuad.transform.SetParent(this.transform, false);
 
-        // Compute a world-space position slightly behind the preview sphere from the camera's view
+        // Compute a world-space position slightly behind the preview sphere from the preview camera's view.
+        // Prefer an inspector-assigned preview camera, then the scene's main camera, then fall back to any Camera on this preview.
+        Camera cam = previewCamera ?? Camera.main ?? GetComponentInChildren<Camera>(true);
+
         Vector3 center = previewRenderer.bounds.center;
         float maxExtent = Mathf.Max(previewRenderer.bounds.size.x, previewRenderer.bounds.size.y, previewRenderer.bounds.size.z);
         float size = maxExtent * 6f;
-        Vector3 viewDir = Camera.main != null ? (center - Camera.main.transform.position).normalized : previewRenderer.transform.forward;
+        Vector3 viewDir;
+        if (cam != null)
+            viewDir = (center - cam.transform.position).normalized; // from camera toward center
+        else
+            viewDir = (center - previewRenderer.transform.position).normalized;
+
         float distance = maxExtent * 0.5f + 1.5f;
+        // Place the quad between the center and the camera so it sits behind the planet relative to that camera
         backgroundQuad.transform.position = center + viewDir * (distance + maxExtent * 0.5f);
-        backgroundQuad.transform.rotation = Quaternion.identity;
+        if (cam != null)
+            backgroundQuad.transform.rotation = Quaternion.LookRotation(cam.transform.position - backgroundQuad.transform.position);
+        else
+            backgroundQuad.transform.rotation = Quaternion.LookRotation(previewRenderer.transform.position - backgroundQuad.transform.position);
         backgroundQuad.transform.localScale = new Vector3(size, size, 1f);
 
         var quadRenderer = backgroundQuad.GetComponent<MeshRenderer>();
@@ -702,10 +722,13 @@ public class MenuPlanetPreview : MonoBehaviour
 
     private void LateUpdate()
     {
-        // Keep the background quad facing the main camera if it exists
-        if (backgroundQuad != null && Camera.main != null)
+        // Keep the background quad facing the preview camera (prefer Camera.main, fall back to child camera)
+        if (backgroundQuad == null) return;
+
+        Camera cam = previewCamera ?? Camera.main ?? GetComponentInChildren<Camera>(true);
+        if (cam != null)
         {
-            backgroundQuad.transform.rotation = Quaternion.LookRotation(Camera.main.transform.position - backgroundQuad.transform.position);
+            backgroundQuad.transform.rotation = Quaternion.LookRotation(cam.transform.position - backgroundQuad.transform.position);
         }
     }
 
@@ -725,5 +748,16 @@ public class MenuPlanetPreview : MonoBehaviour
         }
         PushCloudParameters();
         PushAtmosphereParameters();
+    }
+
+    /// <summary>
+    /// Set civilization count for night-side city light density.
+    /// Higher values = more city lights visible on the dark hemisphere.
+    /// </summary>
+    public void SetCivCount(float value)
+    {
+        civCount = Mathf.Max(0f, value);
+        if (materialInstance != null)
+            materialInstance.SetFloat(ID_CivCount, civCount);
     }
 }

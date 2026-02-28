@@ -50,6 +50,10 @@ public class PlanetaryCameraManager : MonoBehaviour
     public float underwaterTargetHeight = 30f;
     [Tooltip("Target pitch angle (degrees) when underwater.")]
     public float underwaterTargetPitchAngle = 40f;
+    [Tooltip("Pitch angle when fully zoomed in while underwater.")]
+    public float underwaterMinPitchAngle = 35f;
+    [Tooltip("Pitch angle when fully zoomed out while underwater.")]
+    public float underwaterMaxPitchAngle = 55f;
     [Tooltip("Speed (units/sec) the camera moves when swooping to the ocean.")]
     public float underwaterMoveSpeed = 40f;
     [Tooltip("Minimum allowed camera height while underwater.")]
@@ -60,6 +64,10 @@ public class PlanetaryCameraManager : MonoBehaviour
     [Header("Orbit Transition")]
     [Tooltip("Target pitch angle (degrees) when viewing orbit layer (looking more downward).")]
     public float orbitTargetPitchAngle = 60f;
+    [Tooltip("Pitch angle when fully zoomed in while in orbit.")]
+    public float orbitMinPitchAngle = 55f;
+    [Tooltip("Pitch angle when fully zoomed out while in orbit.")]
+    public float orbitMaxPitchAngle = 75f;
     [Tooltip("Speed (units/sec) the camera moves when swooping up to orbit.")]
     public float orbitMoveSpeed = 50f;
     [Tooltip("Extra height above orbit altitude for a good overview.")]
@@ -169,9 +177,9 @@ public class PlanetaryCameraManager : MonoBehaviour
             // Smooth height lerp
             _cameraHeight = Mathf.MoveTowards(_cameraHeight, targetHeight, moveSpeed * Time.deltaTime);
 
-            // Adjust pitch target range to underwater preset gradually
-            minPitchAngle = Mathf.MoveTowards(minPitchAngle, underwaterTargetPitchAngle, 30f * Time.deltaTime);
-            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, underwaterTargetPitchAngle, 30f * Time.deltaTime);
+            // Adjust pitch range to underwater presets gradually
+            minPitchAngle = Mathf.MoveTowards(minPitchAngle, underwaterMinPitchAngle, 30f * Time.deltaTime);
+            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, underwaterMaxPitchAngle, 30f * Time.deltaTime);
 
             UpdateCameraPosition();
             yield return null;
@@ -180,8 +188,8 @@ public class PlanetaryCameraManager : MonoBehaviour
         // ensure final values
         _focusPoint = targetFocus;
         _cameraHeight = targetHeight;
-        minPitchAngle = underwaterTargetPitchAngle;
-        maxPitchAngle = underwaterTargetPitchAngle;
+        minPitchAngle = underwaterMinPitchAngle;
+        maxPitchAngle = underwaterMaxPitchAngle;
         UpdateCameraPosition();
 
         _transitionCoroutine = null;
@@ -248,9 +256,9 @@ public class PlanetaryCameraManager : MonoBehaviour
             // Smooth height ramp
             _cameraHeight = Mathf.MoveTowards(_cameraHeight, targetHeight, speed * Time.deltaTime);
 
-            // Gradually adjust pitch to orbit preset
-            minPitchAngle = Mathf.MoveTowards(minPitchAngle, orbitTargetPitchAngle, 40f * Time.deltaTime);
-            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, orbitTargetPitchAngle, 40f * Time.deltaTime);
+            // Gradually adjust pitch range to orbit presets
+            minPitchAngle = Mathf.MoveTowards(minPitchAngle, orbitMinPitchAngle, 40f * Time.deltaTime);
+            maxPitchAngle = Mathf.MoveTowards(maxPitchAngle, orbitMaxPitchAngle, 40f * Time.deltaTime);
 
             UpdateCameraPosition();
             yield return null;
@@ -259,8 +267,8 @@ public class PlanetaryCameraManager : MonoBehaviour
         // Snap final values
         _focusPoint = targetFocus;
         _cameraHeight = targetHeight;
-        minPitchAngle = orbitTargetPitchAngle;
-        maxPitchAngle = orbitTargetPitchAngle;
+        minPitchAngle = orbitMinPitchAngle;
+        maxPitchAngle = orbitMaxPitchAngle;
         UpdateCameraPosition();
 
         _transitionCoroutine = null;
@@ -290,11 +298,18 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (panDirection.sqrMagnitude > 0f)
         {
             panDirection.Normalize();
-            // Convert input (camera-relative) into world-space using current yaw
-            Quaternion yawRot = Quaternion.Euler(0f, _cameraYaw, 0f);
-            Vector3 camRelative = new Vector3(panDirection.x, 0f, panDirection.z);
-            Vector3 worldMove = yawRot * camRelative;
-            _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z) * panSpeed * dt;
+            // Move relative to the camera's current view direction (projected onto XZ).
+            // Using yaw-only can be opposite the actual view because the camera always
+            // looks toward the focus point.
+            Vector3 fwd = transform.forward;
+            fwd.y = 0f;
+            fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
+            Vector3 right = transform.right;
+            right.y = 0f;
+            right = right.sqrMagnitude > 1e-6f ? right.normalized : Vector3.right;
+
+            Vector3 worldMove = right * panDirection.x + fwd * panDirection.z;
+            _focusPoint += worldMove * panSpeed * dt;
         }
 
         if (allowMouseDrag)
@@ -330,8 +345,14 @@ public class PlanetaryCameraManager : MonoBehaviour
                 {
                     Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - _lastMousePos.Value;
                     Vector3 camRelative = new Vector3(-delta.x, 0f, -delta.y) * mouseSensitivity;
-                    Quaternion yawRot = Quaternion.Euler(0f, _cameraYaw, 0f);
-                    Vector3 worldMove = yawRot * camRelative;
+                    Vector3 fwd = transform.forward;
+                    fwd.y = 0f;
+                    fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
+                    Vector3 right = transform.right;
+                    right.y = 0f;
+                    right = right.sqrMagnitude > 1e-6f ? right.normalized : Vector3.right;
+
+                    Vector3 worldMove = right * camRelative.x + fwd * camRelative.z;
                     _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z);
                     _lastMousePos = Mouse.current.position.ReadValue();
                 }

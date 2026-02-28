@@ -99,8 +99,8 @@ MonoBehaviour:
   continuousWaterIncludesOcean: 1
   riverSdfWidth: 512
   riverSdfHeight: 256
-  riverHalfWidthMultiplier: 1
-  lakeHalfWidthMultiplier: 1
+  riverHalfWidthMultiplier: 0.7
+  lakeHalfWidthMultiplier: 0.75
   oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0.01
   extrudeInlandWaterToVolume: 0

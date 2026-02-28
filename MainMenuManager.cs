@@ -583,6 +583,9 @@ public class MainMenuManager : MonoBehaviour
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
         planetPreview.SetMapStyle(mapStyleVal);
+
+        // Push civilization count for night-side city light density
+        planetPreview.SetCivCount(aiCount + 1); // +1 for player civ
     }
 
     #endregion
