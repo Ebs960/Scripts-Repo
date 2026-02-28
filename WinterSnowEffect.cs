@@ -1,14 +1,27 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// Spawns a snow particle system that follows the camera during Winter.
 /// Fades in/out smoothly when the season changes, and disables itself
 /// when the camera is in orbit or underwater mode.
+/// Snow is filtered per-planet (only snow-capable planets) and per-biome
+/// (no snow in deserts/tropicals, full snow in tundra/glaciers, etc.).
 /// Attach to any persistent GameObject (e.g. the camera rig).
 /// </summary>
 public class WinterSnowEffect : MonoBehaviour
 {
     public static WinterSnowEffect Instance { get; private set; }
+
+    [Header("Planet Filter")]
+    [Tooltip("Only these planet types will produce snowfall. Others are always snow-free.")]
+    public PlanetType[] snowPlanetTypes = new PlanetType[]
+    {
+        PlanetType.Earth,
+        PlanetType.Europa,
+        PlanetType.Titan,
+        PlanetType.Pluto
+    };
 
     [Header("Particle Settings")]
     [Tooltip("Maximum particles alive at once.")]
@@ -30,6 +43,10 @@ public class WinterSnowEffect : MonoBehaviour
     [Tooltip("Spawn height above the camera.")]
     public float spawnHeightAboveCamera = 25f;
 
+    [Header("Biome Intensity")]
+    [Tooltip("How fast the biome multiplier blends when crossing biome borders (units/sec).")]
+    public float biomeFadeSpeed = 1.5f;
+
     [Header("Fade")]
     [Tooltip("Seconds to fade the emission rate in/out when season changes.")]
     public float fadeDuration = 3f;
@@ -44,6 +61,16 @@ public class WinterSnowEffect : MonoBehaviour
     private bool _shouldSnow = false;
     private float _fadeT = 0f; // 0 = off, 1 = full
 
+    // Planet allow-list (built from Inspector array for fast lookup)
+    private HashSet<PlanetType> _snowPlanetSet;
+
+    // Biome-aware intensity
+    private float _biomeMultiplier = 1f;       // current smoothed value
+    private float _biomeMultiplierTarget = 1f; // raw value from last tile lookup
+    private TileSystem _tileSystem;
+    private HexGrid _grid;
+    private float _nextTileUpdate;
+
     // ================================================================
     //  Lifecycle
     // ================================================================
@@ -52,6 +79,7 @@ public class WinterSnowEffect : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        RebuildPlanetSet();
         BuildParticleSystem();
     }
 
@@ -70,6 +98,17 @@ public class WinterSnowEffect : MonoBehaviour
 
     void LateUpdate()
     {
+        // --- biome tile lookup (throttled) ---
+        if (_shouldSnow && Time.time >= _nextTileUpdate)
+        {
+            _nextTileUpdate = Time.time + 0.25f;
+            UpdateBiomeMultiplier();
+        }
+
+        // Smoothly blend the biome multiplier so snow doesn't pop at borders
+        _biomeMultiplier = Mathf.MoveTowards(_biomeMultiplier, _biomeMultiplierTarget,
+            biomeFadeSpeed * Time.deltaTime);
+
         // --- decide target ---
         bool wantSnow = _shouldSnow && !IsOrbitOrUnderwater();
         float target = wantSnow ? 1f : 0f;
@@ -79,13 +118,16 @@ public class WinterSnowEffect : MonoBehaviour
         {
             float speed = 1f / Mathf.Max(fadeDuration, 0.01f);
             _fadeT = Mathf.MoveTowards(_fadeT, target, speed * Time.deltaTime);
-            _emission.rateOverTime = emissionRate * _fadeT;
         }
 
+        // Apply emission with both season fade and biome multiplier
+        _emission.rateOverTime = emissionRate * _fadeT * _biomeMultiplier;
+
         // Turn system off entirely when fully faded so it doesn't tick
-        if (_fadeT <= 0f && _ps.isPlaying && _ps.particleCount == 0)
+        float effectiveRate = _fadeT * _biomeMultiplier;
+        if (effectiveRate <= 0f && _ps.isPlaying && _ps.particleCount == 0)
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        else if (_fadeT > 0f && !_ps.isPlaying)
+        else if (effectiveRate > 0f && !_ps.isPlaying)
             _ps.Play();
 
         // --- follow camera ---
@@ -102,7 +144,7 @@ public class WinterSnowEffect : MonoBehaviour
         int current = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         if (planetIndex != current) return;
 
-        _shouldSnow = season == Season.Winter;
+        _shouldSnow = season == Season.Winter && IsPlanetSnowCapable();
     }
 
     /// <summary>
@@ -110,17 +152,26 @@ public class WinterSnowEffect : MonoBehaviour
     /// </summary>
     private void EvaluateCurrentSeason()
     {
+        CacheGridRefs();
+
         if (ClimateManager.Instance == null) return;
         int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         Season s = ClimateManager.Instance.GetSeasonForPlanet(pIndex);
-        _shouldSnow = s == Season.Winter;
+        _shouldSnow = s == Season.Winter && IsPlanetSnowCapable();
 
-        // If already winter, snap immediately
+        // If already winter on a snow-capable planet, snap immediately
         if (_shouldSnow)
         {
             _fadeT = 1f;
+            _biomeMultiplierTarget = 1f;
+            _biomeMultiplier = 1f;
             _emission.rateOverTime = emissionRate;
             _ps.Play();
+
+            // Do an immediate biome lookup so intensity is correct from frame 1
+            UpdateBiomeMultiplier();
+            _biomeMultiplier = _biomeMultiplierTarget; // snap, don't blend
+            _emission.rateOverTime = emissionRate * _biomeMultiplier;
         }
     }
 
@@ -134,6 +185,120 @@ public class WinterSnowEffect : MonoBehaviour
             cameraManager = FindFirstObjectByType<PlanetaryCameraManager>();
         if (cameraManager == null) return false;
         return cameraManager.IsInOrbitMode || cameraManager.IsInUnderwaterMode;
+    }
+
+    /// <summary>Returns true if the planet the player is currently looking at supports snowfall.</summary>
+    private bool IsPlanetSnowCapable()
+    {
+        if (_snowPlanetSet == null) RebuildPlanetSet();
+        var pg = GameManager.Instance != null ? GameManager.Instance.GetCurrentPlanetGenerator() : null;
+        if (pg == null) return true; // fail-open so single-planet Earth prototypes still work
+        return _snowPlanetSet.Contains(pg.planetType);
+    }
+
+    private void RebuildPlanetSet()
+    {
+        _snowPlanetSet = new HashSet<PlanetType>();
+        if (snowPlanetTypes != null)
+        {
+            foreach (var pt in snowPlanetTypes)
+                _snowPlanetSet.Add(pt);
+        }
+    }
+
+    // ── Biome-aware intensity ──
+
+    /// <summary>Cache HexGrid and TileSystem refs (called when planet changes).</summary>
+    private void CacheGridRefs()
+    {
+        var pg = GameManager.Instance != null ? GameManager.Instance.GetCurrentPlanetGenerator() : null;
+        _grid = pg != null ? pg.Grid : null;
+        _tileSystem = TileSystem.Instance;
+    }
+
+    /// <summary>Reads the biome under the camera and sets _biomeMultiplierTarget.</summary>
+    private void UpdateBiomeMultiplier()
+    {
+        if (_grid == null || _tileSystem == null || cameraManager == null)
+        {
+            CacheGridRefs();
+            if (_grid == null || _tileSystem == null) return;
+        }
+
+        Vector3 focus = cameraManager.FocusPoint;
+        int tileIdx = _grid.GetTileAtPosition(focus);
+        if (tileIdx < 0) return;
+
+        var td = _tileSystem.GetTileData(tileIdx);
+        if (td == null) return;
+
+        _biomeMultiplierTarget = GetBiomeSnowMultiplier(td.biome);
+    }
+
+    /// <summary>
+    /// Returns 0-1 how strongly snow should fall over a given biome.
+    /// 0 = no snow (desert, tropical, volcanic…), 1 = full blizzard (tundra, glacier…).
+    /// </summary>
+    public static float GetBiomeSnowMultiplier(Biome biome)
+    {
+        switch (biome)
+        {
+            // ── Full snow (cold biomes) ──
+            case Biome.Tundra:
+            case Biome.Glacier:
+            case Biome.Arctic:
+            case Biome.IcicleField:
+            case Biome.MartianPolarIce:
+            case Biome.EuropaIce:
+            case Biome.EuropaRidges:
+            case Biome.PlutoCryo:
+            case Biome.TitanIce:
+                return 1f;
+
+            // ── Moderate snow (temperate biomes) ──
+            case Biome.Temperate:
+            case Biome.Plains:
+            case Biome.Swamp:
+                return 0.7f;
+
+            // ── Light snow (water surfaces — flakes mostly melt) ──
+            case Biome.Coast:
+            case Biome.Ocean:
+            case Biome.Seas:
+            case Biome.Lake:
+            case Biome.River:
+                return 0.4f;
+
+            // ── No snow (hot/alien biomes) ──
+            case Biome.Desert:
+            case Biome.Savannah:
+            case Biome.Tropical:
+            case Biome.Volcanic:
+            case Biome.Steamlands:
+            case Biome.Ashlands:
+            case Biome.Scorched:
+            case Biome.Hellscape:
+            case Biome.VenusLava:
+            case Biome.VenusianPlains:
+            case Biome.MartianRegolith:
+            case Biome.MartianDunes:
+            case Biome.MercuryPlains:
+            case Biome.MercurianIce:    // Mercury's "ice" is subsurface, atmosphere-free
+            case Biome.JovianClouds:
+            case Biome.SaturnSurface:
+            case Biome.UranusSurface:
+            case Biome.NeptuneSurface:
+            case Biome.TitanLakes:
+            case Biome.TitanDunes:
+            case Biome.MoonDunes:
+            case Biome.AbyssalPlains:
+            case Biome.Trench:
+                return 0f;
+
+            // ── Catch-all for unknown/Any ──
+            default:
+                return 0.5f;
+        }
     }
 
     private void FollowCamera()
@@ -261,6 +426,15 @@ public class WinterSnowEffect : MonoBehaviour
     /// </summary>
     public void OnPlanetChanged()
     {
+        CacheGridRefs();
         EvaluateCurrentSeason();
+    }
+
+    /// <summary>
+    /// Call if the Inspector snowPlanetTypes array is changed at runtime.
+    /// </summary>
+    private void OnValidate()
+    {
+        RebuildPlanetSet();
     }
 }

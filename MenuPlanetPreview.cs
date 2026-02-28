@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using System.Collections.Generic;
 
 /// <summary>
@@ -10,9 +12,11 @@ using System.Collections.Generic;
 /// no GameManager, no seeds, no tile logic. It only sets material properties
 /// on a custom HDRP shader (Custom/MenuPlanetPreview).
 ///
-/// Hierarchy expected:
+/// Hierarchy created at runtime:
 ///   MenuPlanetPreview (this script)
-///     └── PreviewSphere (MeshFilter + MeshRenderer with sphere mesh)
+///     └── PreviewSphere   (MeshFilter + MeshRenderer — planet surface)
+///     └── _CloudShell      (MeshFilter + MeshRenderer — animated clouds)
+///     └── _AtmosphereShell (MeshFilter + MeshRenderer — rim glow)
 /// </summary>
 public class MenuPlanetPreview : MonoBehaviour
 {
@@ -27,6 +31,15 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("The shader to use. If empty, finds 'Custom/MenuPlanetPreview' at runtime.")]
     [SerializeField] private Shader previewShader;
 
+    [Tooltip("Cloud layer shader. If empty, finds 'Custom/MenuPlanetClouds' at runtime.")]
+    [SerializeField] private Shader cloudShader;
+
+    [Tooltip("Atmosphere shell shader. If empty, finds 'Custom/MenuPlanetAtmosphere' at runtime.")]
+    [SerializeField] private Shader atmosphereShader;
+
+    [Tooltip("Directional light illuminating the preview. Auto-found in children if null.")]
+    [SerializeField] private Light previewLight;
+
     // -----------------------------------------------------------------
     //  Rotation
     // -----------------------------------------------------------------
@@ -40,16 +53,44 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Strength of normal/detail perturbation.")]
     [Range(0f,1f)] [SerializeField] private float detailStrength = 0.18f;
 
-    [Tooltip("Atmosphere tint color for rim scattering.")]
+    [Tooltip("Atmosphere tint color for the atmosphere shell.")]
     [SerializeField] private Color atmosphereColor = new Color(0.62f, 0.78f, 0.95f, 1f);
-    [Tooltip("Power/width of atmosphere rim (higher = tighter rim).")]
-    [Range(0.5f,20f)] [SerializeField] private float atmospherePower = 3.5f;
-    [Tooltip("Radius/scale multiplier for the atmosphere rim/shell. 1 = default sphere size, >1 = larger atmosphere.")]
-    [Range(0.9f, 20f)] [SerializeField] private float atmosphereRadius = 1.05f;
+
+    [Header("Displacement")]
+    [Tooltip("How far land vertices protrude outward (fraction of radius). 0 = flat sphere.")]
+    [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.035f;
+
+    [Header("Clouds")]
+    [Tooltip("Cloud layer rotation speed (deg/s). Negative = opposite direction to planet.")]
+    [SerializeField] private float cloudRotationSpeed = -3f;
+    [Tooltip("Cloud altitude above planet surface.")]
+    [Range(0f, 0.1f)] [SerializeField] private float cloudAltitude = 0.018f;
+    [Tooltip("Cloud coverage density.")]
+    [Range(0f, 1f)] [SerializeField] private float cloudDensity = 0.55f;
+    [Tooltip("Cloud noise scale.")]
+    [SerializeField] private float cloudScale = 3.0f;
+    [Tooltip("Cloud animation speed.")]
+    [SerializeField] private float cloudSpeed = 0.08f;
+
+    [Header("Atmosphere Shell")]
+    [Tooltip("Scale multiplier for the atmosphere shell mesh.")]
+    [Range(1.01f, 1.15f)] [SerializeField] private float atmosphereShellScale = 1.06f;
+    [Tooltip("Fresnel falloff exponent for atmospheric rim glow.")]
+    [Range(1f, 8f)] [SerializeField] private float atmosphereFalloff = 3.5f;
+    [Tooltip("Brightness multiplier for the atmosphere glow.")]
+    [Range(0f, 3f)] [SerializeField] private float atmosphereIntensity = 1.2f;
+
+    [Header("HDRP Post-Processing")]
+    [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
+    [SerializeField] private bool enableBloom = true;
+    [Tooltip("Bloom threshold — only pixels brighter than this bloom.")]
+    [SerializeField] private float bloomThreshold = 0.5f;
+    [Tooltip("Bloom intensity.")]
+    [Range(0f, 1f)] [SerializeField] private float bloomIntensity = 0.35f;
 
     [Header("Mesh Quality")]
-    [Tooltip("Subdivisions for generated icosphere used for preview. 0..4 (higher increases vertex count).")]
-    [Range(0,10)] [SerializeField] private int icosphereSubdivisions = 2;
+    [Tooltip("Subdivisions for generated icosphere. Higher = smoother displacement. 0-6 (6 ≈ 40k tris).")]
+    [Range(0,6)] [SerializeField] private int icosphereSubdivisions = 5;
 
     // -----------------------------------------------------------------
     //  Preview Parameters (exposed in inspector for quick iteration)
@@ -86,8 +127,13 @@ public class MenuPlanetPreview : MonoBehaviour
     //  Private state
     // -----------------------------------------------------------------
     private Material materialInstance;
+    private Material cloudMaterialInstance;
+    private Material atmosphereMaterialInstance;
+    private GameObject cloudShellGO;
+    private GameObject atmosphereShellGO;
+    private Volume bloomVolume;
 
-    // Cached shader property IDs
+    // Cached shader property IDs — planet
     private static readonly int ID_LandScale     = Shader.PropertyToID("_LandScale");
     private static readonly int ID_LandThreshold = Shader.PropertyToID("_LandThreshold");
     private static readonly int ID_Temperature   = Shader.PropertyToID("_Temperature");
@@ -101,8 +147,22 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DetailScale   = Shader.PropertyToID("_DetailScale");
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
     private static readonly int ID_AtmosColor    = Shader.PropertyToID("_AtmosphereColor");
-    private static readonly int ID_AtmosPower    = Shader.PropertyToID("_AtmospherePower");
-    private static readonly int ID_AtmosRadius   = Shader.PropertyToID("_AtmosphereRadius");
+    private static readonly int ID_DisplacementScale = Shader.PropertyToID("_DisplacementScale");
+
+    // Shared across planet / cloud / atmosphere shaders
+    private static readonly int ID_SunDirection  = Shader.PropertyToID("_SunDirection");
+    private static readonly int ID_SunColor      = Shader.PropertyToID("_SunColor");
+    private static readonly int ID_SunIntensity  = Shader.PropertyToID("_SunIntensity");
+
+    // Cloud-specific
+    private static readonly int ID_CloudDensity  = Shader.PropertyToID("_CloudDensity");
+    private static readonly int ID_CloudScale    = Shader.PropertyToID("_CloudScale");
+    private static readonly int ID_CloudSpeed    = Shader.PropertyToID("_CloudSpeed");
+    private static readonly int ID_CloudAltitude = Shader.PropertyToID("_CloudAltitude");
+
+    // Atmosphere shell-specific
+    private static readonly int ID_AtmosFalloff  = Shader.PropertyToID("_AtmosphereFalloff");
+    private static readonly int ID_AtmosIntensity = Shader.PropertyToID("_AtmosphereIntensity");
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -115,30 +175,50 @@ public class MenuPlanetPreview : MonoBehaviour
             previewRenderer = GetComponentInChildren<MeshRenderer>();
         }
 
+        // Auto-find light in children
+        if (previewLight == null)
+        {
+            previewLight = GetComponentInChildren<Light>();
+        }
+
         SetupMaterial();
         ApplyAllParameters();
         SetupSpaceBackgroundIfNeeded();
 
         // Upgrade the preview mesh for better shading/detail
         TryReplacePreviewMesh();
+
+        // Build cloud + atmosphere shells
+        SetupCloudShell();
+        SetupAtmosphereShell();
+
+        // Enable bloom on the preview camera
+        SetupBloomVolume();
     }
 
     private void Update()
     {
-        // Slow cosmetic rotation
+        // Planet rotation
         if (previewRenderer != null)
         {
             previewRenderer.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
         }
+
+        // Cloud rotation (independent, typically opposite direction)
+        if (cloudShellGO != null)
+        {
+            cloudShellGO.transform.Rotate(Vector3.up, cloudRotationSpeed * Time.deltaTime, Space.Self);
+        }
+
+        // Sync sun direction from preview light to all materials
+        PushSunProperties();
     }
 
     private void OnDestroy()
     {
-        if (materialInstance != null)
-        {
-            Destroy(materialInstance);
-            materialInstance = null;
-        }
+        if (materialInstance != null) { Destroy(materialInstance); materialInstance = null; }
+        if (cloudMaterialInstance != null) { Destroy(cloudMaterialInstance); cloudMaterialInstance = null; }
+        if (atmosphereMaterialInstance != null) { Destroy(atmosphereMaterialInstance); atmosphereMaterialInstance = null; }
     }
 
     /// <summary>
@@ -149,6 +229,12 @@ public class MenuPlanetPreview : MonoBehaviour
         if (Application.isPlaying && materialInstance != null)
         {
             ApplyAllParameters();
+            PushCloudParameters();
+            PushAtmosphereParameters();
+
+            // Update atmosphere shell scale at runtime
+            if (atmosphereShellGO != null && previewRenderer != null)
+                atmosphereShellGO.transform.localScale = previewRenderer.transform.localScale * atmosphereShellScale;
         }
     }
 
@@ -178,6 +264,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
         materialInstance = new Material(previewShader);
         materialInstance.name = "MenuPlanetPreview_Instance";
+        materialInstance.renderQueue = (int)RenderQueue.Geometry;
         previewRenderer.material = materialInstance;
     }
 
@@ -195,12 +282,12 @@ public class MenuPlanetPreview : MonoBehaviour
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         UpdateBiomeVisuals();
 
-        // Push detail and atmosphere params
+        // Push detail params (old atmosphere props no longer pushed — handled by shell)
         materialInstance.SetFloat(ID_DetailScale, detailScale);
         materialInstance.SetFloat(ID_DetailStrength, detailStrength);
-        materialInstance.SetColor(ID_AtmosColor, atmosphereColor);
-        materialInstance.SetFloat(ID_AtmosPower, atmospherePower);
-        materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
+
+        // Displacement
+        materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
     }
 
     // -----------------------------------------------------------------
@@ -238,6 +325,8 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_Temperature, temperature);
             UpdateBiomeVisuals();
         }
+        PushCloudParameters();
+        PushAtmosphereParameters();
     }
 
     /// <summary>
@@ -272,14 +361,13 @@ public class MenuPlanetPreview : MonoBehaviour
     }
 
     /// <summary>
-    /// Set the radius/scale of the atmosphere rim used by the preview shader.
-    /// This mirrors the value to the material so UI can control atmospheric thickness.
+    /// Set the displacement scale for terrain protrusion on the planet surface.
     /// </summary>
-    public void SetAtmosphereRadius(float radius)
+    public void SetDisplacementScale(float value)
     {
-        atmosphereRadius = Mathf.Clamp(radius, 0.1f, 10f);
+        displacementScale = Mathf.Clamp(value, 0f, 0.15f);
         if (materialInstance != null)
-            materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
+            materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
     }
 
     // -----------------------------------------------------------------
@@ -313,12 +401,181 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
-        // Mirror detail/atmosphere props to shader so inspector updates apply immediately
+        // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);
         materialInstance.SetFloat(ID_DetailStrength, detailStrength);
-        materialInstance.SetColor(ID_AtmosColor, atmosphereColor);
-        materialInstance.SetFloat(ID_AtmosPower, atmospherePower);
-        materialInstance.SetFloat(ID_AtmosRadius, atmosphereRadius);
+    }
+
+    // -----------------------------------------------------------------
+    //  Cloud Shell setup + parameter push
+    // -----------------------------------------------------------------
+    private void SetupCloudShell()
+    {
+        if (previewRenderer == null) return;
+
+        if (cloudShader == null)
+            cloudShader = Shader.Find("Custom/MenuPlanetClouds");
+        if (cloudShader == null)
+        {
+            Debug.LogWarning("[MenuPlanetPreview] Cloud shader 'Custom/MenuPlanetClouds' not found.");
+            return;
+        }
+
+        cloudShellGO = new GameObject("_CloudShell");
+        cloudShellGO.transform.SetParent(previewRenderer.transform.parent, false);
+        cloudShellGO.transform.localPosition = previewRenderer.transform.localPosition;
+        cloudShellGO.transform.localScale    = previewRenderer.transform.localScale;
+        cloudShellGO.layer = previewRenderer.gameObject.layer;
+
+        var mf = cloudShellGO.AddComponent<MeshFilter>();
+        mf.sharedMesh = IcoSphereGenerator.Create(Mathf.Min(icosphereSubdivisions, 4), 1f);
+
+        var mr = cloudShellGO.AddComponent<MeshRenderer>();
+        cloudMaterialInstance = new Material(cloudShader);
+        cloudMaterialInstance.name = "MenuPlanetClouds_Instance";
+        cloudMaterialInstance.renderQueue = (int)RenderQueue.Transparent;
+        mr.material = cloudMaterialInstance;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+
+        PushCloudParameters();
+    }
+
+    private void PushCloudParameters()
+    {
+        if (cloudMaterialInstance == null) return;
+        cloudMaterialInstance.SetFloat(ID_CloudDensity, cloudDensity);
+        cloudMaterialInstance.SetFloat(ID_CloudScale, cloudScale);
+        cloudMaterialInstance.SetFloat(ID_CloudSpeed, cloudSpeed);
+        cloudMaterialInstance.SetFloat(ID_CloudAltitude, cloudAltitude);
+        cloudMaterialInstance.SetFloat(ID_Temperature, temperature);
+        cloudMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
+    }
+
+    // -----------------------------------------------------------------
+    //  Atmosphere Shell setup + parameter push
+    // -----------------------------------------------------------------
+    private void SetupAtmosphereShell()
+    {
+        if (previewRenderer == null) return;
+
+        if (atmosphereShader == null)
+            atmosphereShader = Shader.Find("Custom/MenuPlanetAtmosphere");
+        if (atmosphereShader == null)
+        {
+            Debug.LogWarning("[MenuPlanetPreview] Atmosphere shader 'Custom/MenuPlanetAtmosphere' not found.");
+            return;
+        }
+
+        atmosphereShellGO = new GameObject("_AtmosphereShell");
+        atmosphereShellGO.transform.SetParent(previewRenderer.transform.parent, false);
+        atmosphereShellGO.transform.localPosition = previewRenderer.transform.localPosition;
+        atmosphereShellGO.transform.localScale    = previewRenderer.transform.localScale * atmosphereShellScale;
+        atmosphereShellGO.layer = previewRenderer.gameObject.layer;
+
+        var mf = atmosphereShellGO.AddComponent<MeshFilter>();
+        mf.sharedMesh = IcoSphereGenerator.Create(3, 1f); // low poly is fine for a smooth glow
+
+        var mr = atmosphereShellGO.AddComponent<MeshRenderer>();
+        atmosphereMaterialInstance = new Material(atmosphereShader);
+        atmosphereMaterialInstance.name = "MenuPlanetAtmosphere_Instance";
+        atmosphereMaterialInstance.renderQueue = (int)RenderQueue.Transparent + 1;
+        mr.material = atmosphereMaterialInstance;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+
+        PushAtmosphereParameters();
+    }
+
+    private void PushAtmosphereParameters()
+    {
+        if (atmosphereMaterialInstance == null) return;
+        atmosphereMaterialInstance.SetColor(ID_AtmosColor, atmosphereColor);
+        atmosphereMaterialInstance.SetFloat(ID_AtmosFalloff, atmosphereFalloff);
+        atmosphereMaterialInstance.SetFloat(ID_AtmosIntensity, atmosphereIntensity);
+        atmosphereMaterialInstance.SetFloat(ID_Temperature, temperature);
+        atmosphereMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
+    }
+
+    // -----------------------------------------------------------------
+    //  Sun light → shader property sync
+    // -----------------------------------------------------------------
+    private void PushSunProperties()
+    {
+        if (previewLight == null) return;
+
+        Vector4 sunDir = previewLight.transform.forward; // light's forward = direction TOWARD surface
+        Color lightCol = previewLight.useColorTemperature
+            ? previewLight.color * Mathf.CorrelatedColorTemperatureToRGB(previewLight.colorTemperature)
+            : previewLight.color;
+        float intensity = previewLight.intensity / 1000f; // normalize lux to a shader-friendly range
+
+        if (materialInstance != null)
+        {
+            materialInstance.SetVector(ID_SunDirection, sunDir);
+            materialInstance.SetColor(ID_SunColor, lightCol);
+            materialInstance.SetFloat(ID_SunIntensity, intensity);
+        }
+        if (cloudMaterialInstance != null)
+        {
+            cloudMaterialInstance.SetVector(ID_SunDirection, sunDir);
+            cloudMaterialInstance.SetColor(ID_SunColor, lightCol);
+            cloudMaterialInstance.SetFloat(ID_SunIntensity, intensity);
+        }
+        if (atmosphereMaterialInstance != null)
+        {
+            atmosphereMaterialInstance.SetVector(ID_SunDirection, sunDir);
+            atmosphereMaterialInstance.SetColor(ID_SunColor, lightCol);
+            atmosphereMaterialInstance.SetFloat(ID_SunIntensity, intensity);
+        }
+    }
+
+    // -----------------------------------------------------------------
+    //  HDRP Bloom Volume (programmatic, no .asset files needed)
+    // -----------------------------------------------------------------
+    private void SetupBloomVolume()
+    {
+        if (!enableBloom) return;
+
+        // Find the preview camera (should be a sibling/child with a Camera component)
+        Camera previewCam = GetComponentInChildren<Camera>(true);
+        if (previewCam == null)
+        {
+            Debug.LogWarning("[MenuPlanetPreview] No preview camera found — bloom not configured.");
+            return;
+        }
+
+        // Enable post-processing on the HD camera data
+        var hdCam = previewCam.GetComponent<HDAdditionalCameraData>();
+        if (hdCam != null)
+        {
+            // Use the non-obsolete API to enable post-processing
+            hdCam.customRenderingSettings = true;
+            var mask = hdCam.renderingPathCustomFrameSettingsOverrideMask;
+            mask.mask[(uint)FrameSettingsField.Postprocess] = true;
+            hdCam.renderingPathCustomFrameSettingsOverrideMask = mask;
+
+            var fs = hdCam.renderingPathCustomFrameSettings;
+            fs.SetEnabled(FrameSettingsField.Postprocess, true);
+            hdCam.renderingPathCustomFrameSettings = fs;
+        }
+
+        // Create a local Volume on the camera for bloom
+        bloomVolume = previewCam.gameObject.AddComponent<Volume>();
+        bloomVolume.isGlobal = true;
+        bloomVolume.priority = 100;
+        bloomVolume.profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+        // Bloom
+        var bloom = bloomVolume.profile.Add<Bloom>(true);
+        bloom.threshold.Override(bloomThreshold);
+        bloom.intensity.Override(bloomIntensity);
+        bloom.scatter.Override(0.6f);
+
+        // Fixed exposure so bloom is consistent
+        var exposure = bloomVolume.profile.Add<Exposure>(true);
+        exposure.mode.Override(ExposureMode.Fixed);
+        exposure.fixedExposure.Override(0f);
     }
 
     // Replace the attached preview sphere mesh with a generated icosphere for higher visual quality
@@ -340,7 +597,7 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         public static Mesh Create(int subdivisions, float radius)
         {
-            subdivisions = Mathf.Clamp(subdivisions, 0, 4);
+            subdivisions = Mathf.Clamp(subdivisions, 0, 6);
             Mesh mesh = new Mesh();
             float t = (1f + Mathf.Sqrt(5f)) * 0.5f;
             List<Vector3> verts = new List<Vector3>
@@ -379,6 +636,8 @@ public class MenuPlanetPreview : MonoBehaviour
             }
 
             mesh.SetVertices(verts);
+            if (verts.Count > 65000)
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetTriangles(faces, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
@@ -464,5 +723,7 @@ public class MenuPlanetPreview : MonoBehaviour
         {
             materialInstance.SetFloat(ID_MapStyle, mapStyle);
         }
+        PushCloudParameters();
+        PushAtmosphereParameters();
     }
 }

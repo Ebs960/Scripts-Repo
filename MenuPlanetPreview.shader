@@ -13,10 +13,19 @@ Shader "Custom/MenuPlanetPreview"
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
-            _AtmosphereColor("Atmosphere Color", Color) = (0.62,0.78,0.95,1)
-            _AtmospherePower("Atmosphere Power", Range(0.5,6)) = 3.5
-            _AtmosphereRadius("Atmosphere Radius", Float) = 1.0
+            // _AtmosphereColor, _AtmospherePower, _AtmosphereRadius kept in CBUFFER
+            // for SRP Batcher layout but no longer exposed — atmosphere is handled by
+            // the separate MenuPlanetAtmosphere shell shader.
+            [HideInInspector] _AtmosphereColor("Atmosphere Color", Color) = (0.62,0.78,0.95,1)
+            [HideInInspector] _AtmospherePower("Atmosphere Power", Range(0.5,6)) = 3.5
+            [HideInInspector] _AtmosphereRadius("Atmosphere Radius", Float) = 1.0
             _MapStyle("Map Style", Range(0, 1)) = 0.0
+        [Header(Displacement)]
+            _DisplacementScale("Displacement Scale", Range(0, 0.15)) = 0.035
+        [Header(Sun)]
+            _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
+            _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
+            _SunIntensity("Sun Intensity", Float) = 1.0
     }
 
     SubShader
@@ -68,6 +77,10 @@ Shader "Custom/MenuPlanetPreview"
                     float4 _AtmosphereColor;
                     float _AtmospherePower;
                     float _AtmosphereRadius;
+                float _DisplacementScale;
+                float4 _SunDirection;
+                float4 _SunColor;
+                float _SunIntensity;
             CBUFFER_END
 
             // -----------------------------------------------------------------
@@ -208,6 +221,21 @@ Shader "Custom/MenuPlanetPreview"
             }
 
             // -----------------------------------------------------------------
+            //  Vertex displacement helper
+            // -----------------------------------------------------------------
+            float GetDisplacement(float3 objNorm)
+            {
+                float3 samplePos = objNorm * _LandScale;
+                float n = fbm(samplePos + float3(42.3, 17.1, 83.7));
+                // Wide transition (0.12 each side) so coastlines are gentle slopes, not cliffs
+                float edge = smoothstep(_LandThreshold - 0.12, _LandThreshold + 0.12, n);
+                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7));
+                // Displace land outward; oceans stay at base radius
+                // Note: _Elevation only affects color banding, NOT geometry displacement
+                return edge * elevNoise * _DisplacementScale;
+            }
+
+            // -----------------------------------------------------------------
             //  Vertex
             // -----------------------------------------------------------------
             Varyings vert(Attributes input)
@@ -216,11 +244,26 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
-                float3 worldPos = TransformObjectToWorld(input.positionOS.xyz);
+                // --- Vertex displacement ---
+                float3 objNorm = normalize(input.positionOS.xyz);
+                float disp = GetDisplacement(objNorm);
+                float3 displacedOS = input.positionOS.xyz + input.normalOS * disp;
+
+                // Compute displaced normal via finite differences
+                // eps must be large enough to span several vertices so the gradient
+                // is smooth; too small → steep normals → dark seam lines at coastlines.
+                float eps = 0.012;
+                float3 tangent1 = normalize(cross(objNorm, abs(objNorm.y) < 0.99 ? float3(0,1,0) : float3(1,0,0)));
+                float3 tangent2 = cross(objNorm, tangent1);
+                float dU = GetDisplacement(normalize(input.positionOS.xyz + tangent1 * eps));
+                float dV = GetDisplacement(normalize(input.positionOS.xyz + tangent2 * eps));
+                float3 dispNormalOS = normalize(objNorm + (tangent1 * (disp - dU) + tangent2 * (disp - dV)) / eps);
+
+                float3 worldPos = TransformObjectToWorld(displacedOS);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 output.positionWS = worldPos;
-                output.normalWS   = TransformObjectToWorldNormal(input.normalOS);
-                output.positionOS = input.positionOS.xyz;
+                output.normalWS   = TransformObjectToWorldNormal(dispNormalOS);
+                output.positionOS = input.positionOS.xyz; // undisplaced for fragment noise sampling
 
                 return output;
             }
@@ -473,11 +516,10 @@ Shader "Custom/MenuPlanetPreview"
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
                 // ==============================================================
-                //  Lighting
+                //  Lighting (property-driven sun direction + color)
                 // ==============================================================
-                // use perturbed normal computed earlier
-                // (previous plain normal calculation removed to retain detail perturbation)
-                float3 lightDir = normalize(float3(0.5, 0.7, -0.3));
+                float3 lightDir = normalize(-_SunDirection.xyz);
+                float3 sunCol   = _SunColor.rgb * _SunIntensity;
 
                 float NdotL   = dot(normal, lightDir);
                 float diffuse = saturate(NdotL * 0.6 + 0.4);
@@ -485,14 +527,14 @@ Shader "Custom/MenuPlanetPreview"
                 float ambient = saturate(normal.y * -0.15 + 0.20);
                 float lighting = diffuse + ambient;
 
-                float3 viewDir = normalize(-input.positionWS);
+                float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
                 float3 halfVec = normalize(lightDir + viewDir);
                 float specPow = lerp(48.0, 16.0, infernal);
                 float spec = pow(saturate(dot(normal, halfVec)), specPow)
                            * (1.0 - edge)
                            * lerp(0.35, 0.5, infernal);
 
-                float3 finalColor = albedo * lighting + spec;
+                float3 finalColor = albedo * lighting * sunCol + spec * sunCol;
 
                 // ==============================================================
                 //  Emissive additions (infernal + demonic)
@@ -535,14 +577,7 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 float frozenRimMask = pow(fresnel, 4.0) * frozenWorld * (1.0 - infernal);
                 float3 frozenRimColor = float3(0.55, 0.70, 0.95);
-                    // --------------------------------------------------------------
-                    //  Atmosphere scattering rim (simple analytic approach)
-                    //  Stronger on limb (high fresnel) and modulated by temperature/hellBlend
-                    // --------------------------------------------------------------
-                    // Atmosphere strength/visible radius multiplier
-                    float atmos = pow(fresnel, _AtmospherePower) * (1.0 - hellBlend) * _AtmosphereRadius;
-                    float3 atmosCol = _AtmosphereColor.rgb * atmos * 0.7;
-                    finalColor = lerp(finalColor, finalColor + atmosCol, atmos * 0.9);
+                // Old analytic atmosphere rim removed — handled by separate atmosphere shell
                 finalColor += frozenRimColor * frozenRimMask * 0.25;
 
                 return float4(finalColor, 1.0);
@@ -587,12 +622,71 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
+            // Must match main pass CBUFFER layout exactly for SRP Batcher
+            CBUFFER_START(UnityPerMaterial)
+                float _LandScale;
+                float _LandThreshold;
+                float _Temperature;
+                float _Moisture;
+                float _Elevation;
+                float4 _BiomeTint;
+                float _DesertFactor;
+                float _TropicalFactor;
+                float _SnowFactor;
+                float _MapStyle;
+                float _DetailScale;
+                float _DetailStrength;
+                float4 _AtmosphereColor;
+                float _AtmospherePower;
+                float _AtmosphereRadius;
+                float _DisplacementScale;
+                float4 _SunDirection;
+                float4 _SunColor;
+                float _SunIntensity;
+            CBUFFER_END
+
+            // Inline noise for displacement (same as main pass)
+            float hash31_d(float3 p)
+            {
+                p = frac(p * float3(0.1031, 0.1030, 0.0973));
+                p += dot(p, p.yxz + 33.33);
+                return frac((p.x + p.y) * p.z);
+            }
+            float noise3D_d(float3 p)
+            {
+                float3 i = floor(p); float3 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float n000 = hash31_d(i); float n100 = hash31_d(i + float3(1,0,0));
+                float n010 = hash31_d(i + float3(0,1,0)); float n110 = hash31_d(i + float3(1,1,0));
+                float n001 = hash31_d(i + float3(0,0,1)); float n101 = hash31_d(i + float3(1,0,1));
+                float n011 = hash31_d(i + float3(0,1,1)); float n111 = hash31_d(i + float3(1,1,1));
+                return lerp(lerp(lerp(n000,n100,f.x),lerp(n010,n110,f.x),f.y),
+                            lerp(lerp(n001,n101,f.x),lerp(n011,n111,f.x),f.y),f.z);
+            }
+            float fbm_d(float3 p)
+            {
+                float v=0; float a=0.5; float fr=1;
+                for(int i=0;i<4;i++){v+=a*noise3D_d(p*fr);fr*=2;a*=0.5;}
+                return v;
+            }
+            float GetDisp(float3 objNorm)
+            {
+                float3 sp = objNorm * _LandScale;
+                float n = fbm_d(sp + float3(42.3,17.1,83.7));
+                float edge = smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,n);
+                float elev = fbm_d(sp*1.5+float3(99.1,55.3,12.7));
+                return edge*elev*_DisplacementScale;
+            }
+
             Varyings vertDepth(Attributes input)
             {
                 Varyings output;
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
-                float3 worldPos = TransformObjectToWorld(input.positionOS.xyz);
+                float3 n = normalize(input.positionOS.xyz);
+                float d = GetDisp(n);
+                float3 displaced = input.positionOS.xyz + n * d;
+                float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;
             }
@@ -641,12 +735,45 @@ Shader "Custom/MenuPlanetPreview"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
+            // Must match main pass CBUFFER layout exactly for SRP Batcher
+            CBUFFER_START(UnityPerMaterial)
+                float _LandScale;
+                float _LandThreshold;
+                float _Temperature;
+                float _Moisture;
+                float _Elevation;
+                float4 _BiomeTint;
+                float _DesertFactor;
+                float _TropicalFactor;
+                float _SnowFactor;
+                float _MapStyle;
+                float _DetailScale;
+                float _DetailStrength;
+                float4 _AtmosphereColor;
+                float _AtmospherePower;
+                float _AtmosphereRadius;
+                float _DisplacementScale;
+                float4 _SunDirection;
+                float4 _SunColor;
+                float _SunIntensity;
+            CBUFFER_END
+
+            float hash31_s(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973));p+=dot(p,p.yxz+33.33);return frac((p.x+p.y)*p.z);}
+            float noise3D_s(float3 p){float3 i=floor(p);float3 f=frac(p);f=f*f*(3.0-2.0*f);
+                return lerp(lerp(lerp(hash31_s(i),hash31_s(i+float3(1,0,0)),f.x),lerp(hash31_s(i+float3(0,1,0)),hash31_s(i+float3(1,1,0)),f.x),f.y),
+                            lerp(lerp(hash31_s(i+float3(0,0,1)),hash31_s(i+float3(1,0,1)),f.x),lerp(hash31_s(i+float3(0,1,1)),hash31_s(i+float3(1,1,1)),f.x),f.y),f.z);}
+            float fbm_s(float3 p){float v=0;float a=0.5;float fr=1;for(int i=0;i<4;i++){v+=a*noise3D_s(p*fr);fr*=2;a*=0.5;}return v;}
+            float GetDispS(float3 n){float3 sp=n*_LandScale;float e=smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,fbm_s(sp+float3(42.3,17.1,83.7)));
+                return e*fbm_s(sp*1.5+float3(99.1,55.3,12.7))*_DisplacementScale;}
+
             Varyings vertShadow(Attributes input)
             {
                 Varyings output;
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
-                float3 worldPos = TransformObjectToWorld(input.positionOS.xyz);
+                float3 n = normalize(input.positionOS.xyz);
+                float3 displaced = input.positionOS.xyz + n * GetDispS(n);
+                float3 worldPos = TransformObjectToWorld(displaced);
                 output.positionCS = TransformWorldToHClip(worldPos);
                 return output;
             }

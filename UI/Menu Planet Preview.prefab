@@ -391,13 +391,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuPlanetPreview
   previewRenderer: {fileID: 3801824977754855485}
   previewShader: {fileID: 4800000, guid: e309bed75da97584db67f395144e288b, type: 3}
+  cloudShader: {fileID: 4800000, guid: 702be5e8519e60c4db811c022e02bf14, type: 3}
+  atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
+  previewLight: {fileID: 7093151305136474556}
   rotationSpeed: 22
-  detailScale: 1000
+  detailScale: 10000
   detailStrength: 0.019
   atmosphereColor: {r: 1, g: 0.9993178, b: 0.7905661, a: 1}
-  atmospherePower: 11.68
-  atmosphereRadius: 12.1
-  icosphereSubdivisions: 10
+  displacementScale: 0.0674
+  cloudRotationSpeed: 5
+  cloudAltitude: 0.018
+  cloudDensity: 0.55
+  cloudScale: 3
+  cloudSpeed: 0.08
+  atmosphereShellScale: 1.06
+  atmosphereFalloff: 1
+  atmosphereIntensity: 0.2
+  enableBloom: 1
+  bloomThreshold: 0.5
+  bloomIntensity: 0.612
+  icosphereSubdivisions: 6
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5

@@ -290,7 +290,11 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (panDirection.sqrMagnitude > 0f)
         {
             panDirection.Normalize();
-            _focusPoint += new Vector3(panDirection.x, 0f, panDirection.z) * panSpeed * dt;
+            // Convert input (camera-relative) into world-space using current yaw
+            Quaternion yawRot = Quaternion.Euler(0f, _cameraYaw, 0f);
+            Vector3 camRelative = new Vector3(panDirection.x, 0f, panDirection.z);
+            Vector3 worldMove = yawRot * camRelative;
+            _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z) * panSpeed * dt;
         }
 
         if (allowMouseDrag)
@@ -325,7 +329,10 @@ public class PlanetaryCameraManager : MonoBehaviour
                 else if (buttonHeld && _lastMousePos.HasValue)
                 {
                     Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - _lastMousePos.Value;
-                    _focusPoint += new Vector3(-delta.x, 0f, -delta.y) * mouseSensitivity;
+                    Vector3 camRelative = new Vector3(-delta.x, 0f, -delta.y) * mouseSensitivity;
+                    Quaternion yawRot = Quaternion.Euler(0f, _cameraYaw, 0f);
+                    Vector3 worldMove = yawRot * camRelative;
+                    _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z);
                     _lastMousePos = Mouse.current.position.ReadValue();
                 }
                 else if (buttonReleased)
