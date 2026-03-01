@@ -123,10 +123,19 @@ public class OrbitSkyboxController : MonoBehaviour
     {
         if (cameraManager == null) return;
 
-        float camHeight = cameraManager.CameraHeight;
-
-        // Compute blend factor (0 = fully surface, 1 = fully in orbit)
-        float t = Mathf.InverseLerp(orbitTransitionStart, orbitTransitionEnd, camHeight);
+        // Only apply the orbit transition when the camera is actually in orbit mode.
+        // Without this guard, simply zooming out on the surface world dims the sun,
+        // kills fog, and darkens exposure — breaking surface visuals.
+        float t;
+        if (cameraManager.IsInOrbitMode)
+        {
+            float camHeight = cameraManager.CameraHeight;
+            t = Mathf.InverseLerp(orbitTransitionStart, orbitTransitionEnd, camHeight);
+        }
+        else
+        {
+            t = 0f;
+        }
         OrbitBlend = t;
 
         // Drive the space sky volume weight
