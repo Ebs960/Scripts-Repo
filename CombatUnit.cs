@@ -2326,20 +2326,7 @@ return;
             }
         }
         
-        // CAMPAIGN MAP: Units are in armies - redirect selection to army
-        if (ArmyManager.Instance != null)
-        {
-            // Find which army contains this unit
-            var army = ArmyManager.Instance.GetArmyContainingUnit(this);
-            if (army != null)
-            {
-                // Select the army instead of the individual unit
-                ArmyManager.Instance.SelectArmy(army);
-                return;
-            }
-        }
-        
-        // Use the UnitSelectionManager for selection
+        // Use the UnitSelectionManager for individual unit selection (Civ5-style)
         if (UnitSelectionManager.Instance != null)
         {
             UnitSelectionManager.Instance.SelectUnit(this);

@@ -499,9 +499,6 @@ public class ImprovementManager : MonoBehaviour
         // Register occupancy in occupancy manager (defensive)
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
-        // Add unit to army system
-        ArmyIntegration.OnUnitCreated(unit, spawnIndex);
-
         unitJobs.Remove(job);
     }
 

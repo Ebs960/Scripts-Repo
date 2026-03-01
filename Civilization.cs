@@ -1438,15 +1438,15 @@ return false;
             missionaryUnit.Initialize(missionaryData, this);
             missionaryUnit.planetIndex = (city != null) ? city.planetIndex : 0;
             
-            // Add unit to army system
-            if (missionaryUnit.currentTileIndex >= 0)
-            {
-                ArmyIntegration.OnUnitCreated(missionaryUnit, missionaryUnit.currentTileIndex);
-            }
-            else
+            // Set tile index and register occupancy
+            if (missionaryUnit.currentTileIndex < 0)
             {
                 missionaryUnit.currentTileIndex = city.centerTileIndex;
-                ArmyIntegration.OnUnitCreated(missionaryUnit, city.centerTileIndex);
+            }
+            var occ = TileOccupancyManager.GetForPlanet(missionaryUnit.planetIndex) ?? TileOccupancyManager.Instance;
+            if (occ != null)
+            {
+                occ.SetOccupant(missionaryUnit.currentTileIndex, missionaryGO, missionaryUnit.currentLayer);
             }
             combatUnits.Add(missionaryUnit);
 
@@ -2418,12 +2418,6 @@ return true;
         public float workPointsPct, movePointsPct, healthPct;
     }
     
-    public struct ArmyBonusAgg
-    {
-        public int movePointsAdd, attackAdd, defenseAdd, healthAdd, moraleAdd;
-        public float movePointsPct, attackPct, defensePct, healthPct, moralePct;
-    }
-
     public struct YieldBonusAgg
     {
         public int foodAdd, productionAdd, goldAdd, scienceAdd, cultureAdd, faithAdd, policyPointsAdd;
@@ -2707,73 +2701,6 @@ return true;
                 }
             }
         }
-        return agg;
-    }
-    
-    /// <summary>
-    /// Aggregate all army bonuses from techs, cultures, policies, and government
-    /// Army bonuses apply to ALL armies (no target filtering)
-    /// </summary>
-    public ArmyBonusAgg AggregateArmyBonuses()
-    {
-        ArmyBonusAgg agg = new ArmyBonusAgg();
-        
-        // Techs
-        if (researchedTechs != null)
-        {
-            foreach (var tech in researchedTechs)
-            {
-                if (tech == null || tech.armyBonuses == null) continue;
-                foreach (var b in tech.armyBonuses)
-                {
-                    if (b != null)
-                    {
-                        agg.movePointsAdd += b.movePointsAdd;
-                        agg.attackAdd += b.attackAdd;
-                        agg.defenseAdd += b.defenseAdd;
-                        agg.healthAdd += b.healthAdd;
-                        agg.moraleAdd += b.moraleAdd;
-                        agg.movePointsPct += b.movePointsPct;
-                        agg.attackPct += b.attackPct;
-                        agg.defensePct += b.defensePct;
-                        agg.healthPct += b.healthPct;
-                        agg.moralePct += b.moralePct;
-                    }
-                }
-            }
-        }
-        
-        // Cultures
-        if (researchedCultures != null)
-        {
-            foreach (var culture in researchedCultures)
-            {
-                if (culture == null || culture.armyBonuses == null) continue;
-                foreach (var b in culture.armyBonuses)
-                {
-                    if (b != null)
-                    {
-                        agg.movePointsAdd += b.movePointsAdd;
-                        agg.attackAdd += b.attackAdd;
-                        agg.defenseAdd += b.defenseAdd;
-                        agg.healthAdd += b.healthAdd;
-                        agg.moraleAdd += b.moraleAdd;
-                        agg.movePointsPct += b.movePointsPct;
-                        agg.attackPct += b.attackPct;
-                        agg.defensePct += b.defensePct;
-                        agg.healthPct += b.healthPct;
-                        agg.moralePct += b.moralePct;
-                    }
-                }
-            }
-        }
-        
-        // Policies (if they have army bonuses in the future)
-        // Note: PolicyData doesn't have armyBonuses yet, but structure is ready
-        
-        // Government (if it has army bonuses in the future)
-        // Note: GovernmentData doesn't have armyBonuses yet, but structure is ready
-        
         return agg;
     }
 

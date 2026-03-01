@@ -99,10 +99,6 @@ public class EquipmentData : ScriptableObject
     public int culturePerTurn;
     public int faithPerTurn;
     public int policyPointsPerTurn;
-    
-    [Header("Army Bonuses (optional)")]
-    [Tooltip("If a unit in an army equips this item, grants these bonuses to the entire army. Useful for general's equipment, banners, etc.")]
-    public ArmyStatBonus armyBonus;
 
     public bool IsValidForUnit(CombatUnit unit, Civilization civ = null)
     {

@@ -163,43 +163,12 @@ public class UnitVisionManager : MonoBehaviour
         
         tempVisibleSet.Clear();
 
-        // Get civ (needed for armies + cities)
+        // Get civ (needed for units + cities)
         var civ = GetCivilization(civId);
 
-        // === Campaign-map vision source of truth ===
-        // Combat units are typically hidden/managed by the Army system on the campaign map.
-        // So we compute vision from armies (and also from any visible/unassigned units and workers).
+        // === Civ5-style vision: each individual unit provides vision ===
 
-        // Armies
-        if (civ != null && ArmyManager.Instance != null)
-        {
-            var armies = ArmyManager.Instance.GetArmiesByOwner(civ);
-            foreach (var army in armies)
-            {
-                if (army == null) continue;
-                if (army.planetIndex != planetIndex) continue;
-                if (army.currentTileIndex < 0) continue;
-
-                int sightRange = GetArmySightRange(army);
-                if (IsOnHill(army.currentTileIndex)) sightRange += hillSightBonus;
-                AddVisibleTilesInRange(army.currentTileIndex, sightRange, tempVisibleSet);
-            }
-        }
-
-        // Worker units (not part of armies)
-        foreach (var worker in UnitRegistry.GetWorkerUnits())
-        {
-            if (worker == null || worker.owner == null) continue;
-            if (civ != null && worker.owner != civ) continue;
-            if (worker.planetIndex != planetIndex) continue;
-            if (worker.currentTileIndex < 0) continue;
-
-            int sightRange = GetUnitSightRange(worker);
-            if (IsOnHill(worker.currentTileIndex)) sightRange += hillSightBonus;
-            AddVisibleTilesInRange(worker.currentTileIndex, sightRange, tempVisibleSet);
-        }
-
-        // Any combat units that are currently active on the campaign map (e.g., orphaned / not yet merged into an army)
+        // Combat units
         foreach (var unit in UnitRegistry.GetCombatUnits())
         {
             if (unit == null || unit.owner == null) continue;
@@ -212,6 +181,8 @@ public class UnitVisionManager : MonoBehaviour
             if (IsOnHill(unit.currentTileIndex)) sightRange += hillSightBonus;
             AddVisibleTilesInRange(unit.currentTileIndex, sightRange, tempVisibleSet);
         }
+
+        // Worker units\n        foreach (var worker in UnitRegistry.GetWorkerUnits())\n        {\n            if (worker == null || worker.owner == null) continue;\n            if (civ != null && worker.owner != civ) continue;\n            if (worker.planetIndex != planetIndex) continue;\n            if (worker.currentTileIndex < 0) continue;\n\n            int sightRange = GetUnitSightRange(worker);\n            if (IsOnHill(worker.currentTileIndex)) sightRange += hillSightBonus;\n            AddVisibleTilesInRange(worker.currentTileIndex, sightRange, tempVisibleSet);\n        }
 
         // Cities
         if (civ != null && civ.cities != null)
@@ -395,21 +366,6 @@ public class UnitVisionManager : MonoBehaviour
             return tileData.elevationTier == ElevationTier.Mountain;
         }
         return false;
-    }
-
-    private int GetArmySightRange(Army army)
-    {
-        if (army == null) return defaultSightRange;
-        int best = defaultSightRange;
-        if (army.units != null)
-        {
-            foreach (var u in army.units)
-            {
-                if (u == null || u.data == null) continue;
-                if (u.data.sightRange > best) best = u.data.sightRange;
-            }
-        }
-        return best;
     }
 
     /// <summary>

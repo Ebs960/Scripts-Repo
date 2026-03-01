@@ -36,7 +36,6 @@ public class UnitInfoPanel : MonoBehaviour
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
-    private Army currentArmy;
     private readonly List<GameObject> buildUnitButtons = new List<GameObject>();
 
     private void Awake()
@@ -99,7 +98,6 @@ public class UnitInfoPanel : MonoBehaviour
         {
             currentCombatUnit = combatUnit;
             currentWorkerUnit = null; // Ensure worker unit is cleared
-            currentArmy = null; // Clear army
             unitNameForLog = currentCombatUnit.data.unitName;
 PopulateForCombatUnit(currentCombatUnit);
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
@@ -108,7 +106,6 @@ PopulateForCombatUnit(currentCombatUnit);
         {
             currentWorkerUnit = workerUnit;
             currentCombatUnit = null; // Ensure combat unit is cleared
-            currentArmy = null; // Clear army
             unitNameForLog = currentWorkerUnit.data.unitName;
 PopulateForWorkerUnit(currentWorkerUnit);
 
@@ -118,15 +115,6 @@ PopulateForWorkerUnit(currentWorkerUnit);
                 bool canSettle = workerUnit.data.canFoundCity && workerUnit.CanFoundCityOnCurrentTile();
                 settleCityButton.gameObject.SetActive(canSettle);
             }
-        }
-        else if (unitObject is Army army)
-        {
-            currentArmy = army;
-            currentCombatUnit = null; // Clear combat unit
-            currentWorkerUnit = null; // Clear worker unit
-            unitNameForLog = army.armyName;
-PopulateForArmy(army);
-            if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for armies
         }
         else
         {
@@ -267,49 +255,6 @@ unitInfoPanel.SetActive(true);
         }
     }
     
-    /// <summary>
-    /// Populate UI for an Army (campaign map)
-    /// </summary>
-    private void PopulateForArmy(Army army)
-    {
-        if (army == null) return;
-        
-        // Show relevant sections
-        if (unitNameText != null) unitNameText.gameObject.SetActive(true);
-        if (unitTypeText != null) unitTypeText.gameObject.SetActive(true);
-        if (healthText != null) healthText.gameObject.SetActive(true);
-        if (movePointsText != null) movePointsText.gameObject.SetActive(true);
-        if (attackText != null) attackText.gameObject.SetActive(true);
-        if (defenseText != null) defenseText.gameObject.SetActive(true);
-        if (moraleText != null) moraleText.gameObject.SetActive(true);
-        
-        // Hide sections not relevant for armies
-        if (levelText != null) levelText.gameObject.SetActive(false);
-        if (experienceText != null) experienceText.gameObject.SetActive(false);
-        if (rangeText != null) rangeText.gameObject.SetActive(false);
-        
-        // Populate army info
-        unitNameText.text = army.armyName;
-        unitTypeText.text = "Army";
-        
-        healthText.text = $"Health: {army.currentHealth}/{army.totalHealth}";
-        movePointsText.text = $"Move Points: {army.currentMovePoints}/{army.baseMovePoints}";
-        attackText.text = $"Total Attack: {army.totalAttack}";
-        defenseText.text = $"Total Defense: {army.totalDefense}";
-        moraleText.text = $"Total Health: {army.currentHealth}/{army.totalHealth}";
-        
-        // Optional: Show unit count in levelText
-        if (levelText != null)
-        {
-            levelText.gameObject.SetActive(true);
-            levelText.text = $"Units: {army.units.Count}/{army.maxUnits}";
-        }
-        
-        // Hide worker-specific buttons for armies
-        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
-        if (buildUnitsContainer != null) buildUnitsContainer.gameObject.SetActive(false);
-    }
-
     private void OnSettleCityClicked()
     {
         if (currentWorkerUnit != null)

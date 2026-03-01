@@ -985,15 +985,16 @@ if (UIManager.Instance != null)
         // Add to owner's units
         owner.combatUnits.Add(unit);
         
-        // Add unit to army system
-        if (unit.currentTileIndex >= 0)
-        {
-            ArmyIntegration.OnUnitCreated(unit, unit.currentTileIndex);
-        }
-        else
+        // Set tile index and register occupancy
+        if (unit.currentTileIndex < 0)
         {
             unit.currentTileIndex = centerTileIndex;
-            ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
+        }
+        // Register with occupancy manager so tile-based selection works
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
+        {
+            occ.SetOccupant(unit.currentTileIndex, unitGO, unit.currentLayer);
         }
 
         // Fog of War: immediately refresh vision for this civ after spawning a unit.
@@ -1067,17 +1068,16 @@ if (UIManager.Instance != null)
                 unit.planetIndex = planetIndex;
                 owner.combatUnits.Add(unit);
                 producedUnits.Add(u);
-                
-                // Add unit to army system
-                if (unit.currentTileIndex >= 0)
+
+                // Set tile index and register occupancy
+                if (unit.currentTileIndex < 0)
                 {
-                    ArmyIntegration.OnUnitCreated(unit, unit.currentTileIndex);
-                }
-                else
-                {
-                    // Initialize tile index if not set
                     unit.currentTileIndex = centerTileIndex;
-                    ArmyIntegration.OnUnitCreated(unit, centerTileIndex);
+                }
+                var prodOcc = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                if (prodOcc != null)
+                {
+                    prodOcc.SetOccupant(unit.currentTileIndex, unitGO, unit.currentLayer);
                 }
 
                 // Fog of War: immediately refresh vision for this civ after producing a unit.
