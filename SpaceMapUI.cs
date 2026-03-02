@@ -337,12 +337,20 @@ ConfirmTravel(selectedPlanet);
             }
             else
             {
-                // Calculate position based on distance from star
-                float normalizedDistance = planet.distanceFromStar / maxDistance;
-                float radius = normalizedDistance * maxRadius;
+                // Logarithmic scaling so inner and outer planets are evenly spread
+                // instead of bunching near the center.
+                float logDist = Mathf.Log(1f + planet.distanceFromStar);
+                float logMax  = Mathf.Log(1f + maxDistance);
+                float normalizedDistance = logMax > 0.001f ? logDist / logMax : 0.5f;
+
+                // Ensure a minimum radius so the closest planet isn't on top of the star
+                float minRadius = maxRadius * 0.15f;
+                float radius = Mathf.Lerp(minRadius, maxRadius, normalizedDistance);
                 
-                // Distribute planets around their orbital distance
-                float angle = (360f / Mathf.Max(sortedPlanets.Count - 1, 1)) * (i - (homeWorld != null ? 1 : 0)) * Mathf.Deg2Rad;
+                // Distribute planets at equal angular spacing around orbit
+                int nonHomeCount = sortedPlanets.Count - (homeWorld != null ? 1 : 0);
+                int nonHomeIndex = i - (homeWorld != null ? 1 : 0);
+                float angle = (360f / Mathf.Max(nonHomeCount, 1)) * nonHomeIndex * Mathf.Deg2Rad;
                 position = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
             }
             

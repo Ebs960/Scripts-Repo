@@ -2105,6 +2105,12 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        // Show space loading screen while the world is being built
+        string destName = planetData.ContainsKey(planetIndex) ? planetData[planetIndex].planetName : $"Planet {planetIndex}";
+        ShowSpaceTravel(destName);
+        UpdateSpaceTravelProgress(0.05f, "Initiating travel...");
+        yield return null; // let UI render
+
         int previousPlanetIndex = currentPlanetIndex;
         currentPlanetIndex = planetIndex;
 
@@ -2118,6 +2124,9 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[GameManager] Activated planet {planetIndex} GameObject for switch");
         }
 
+        UpdateSpaceTravelProgress(0.15f, "Building grid...");
+        yield return null;
+
         bool surfaceJustGenerated = false;
         if (generator != null && !generator.Grid.IsBuilt)
         {
@@ -2126,13 +2135,19 @@ public class GameManager : MonoBehaviour
             GetFlatTileResolution(sizePreset, out int tilesX, out int tilesZ);
             generator.Grid.GenerateFlatGrid(tilesX, tilesZ, width, height);
         }
+
+        UpdateSpaceTravelProgress(0.30f, "Generating surface...");
+        yield return null;
+
         if (generator != null && generator.Grid.TileCount > 0 && !generator.HasGeneratedSurface)
         {
-            
             yield return StartCoroutine(generator.GenerateSurface());
             // NOTE: EnsureVisualsSpawned removed - new system uses texture-based rendering (FlatMapTextureRenderer)
             surfaceJustGenerated = true;
         }
+
+        UpdateSpaceTravelProgress(0.75f, "Initializing tile system...");
+        yield return null;
 
         // Per-planet TileSystems: ensure destination planet has one; do NOT reinitialize tile state on switch.
         EnsureTileSystemForPlanet(generator);
@@ -2142,6 +2157,9 @@ public class GameManager : MonoBehaviour
         {
             OnPlanetFullyGenerated?.Invoke(generator);
         }
+
+        UpdateSpaceTravelProgress(0.90f, $"Arriving at {destName}...");
+        yield return null;
 
         // Ensure planet-ready listeners rebuild on planet switch.
         OnPlanetReady?.Invoke(planetIndex);
@@ -2156,6 +2174,11 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"[GameManager] Deactivated planet {previousPlanetIndex} GameObject on switch to planet {planetIndex}");
             }
         }
+
+        UpdateSpaceTravelProgress(1.0f, "Complete!");
+        // Brief pause so the player sees 100%
+        yield return new WaitForSeconds(0.5f);
+        HideSpaceTravel();
     }
 
     /// <summary>

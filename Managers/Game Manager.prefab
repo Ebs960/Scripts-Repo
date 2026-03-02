@@ -81,7 +81,7 @@ MonoBehaviour:
   planetConfigs:
   - {fileID: 11400000, guid: 7751c15bf6c686e41bbe61c9db5ebcb0, type: 2}
   - {fileID: 11400000, guid: 740ab9ca7e444e84186623e4d83787c9, type: 2}
-  - {fileID: 11400000, guid: 841a290ba429d0841973aa212239f2b2, type: 2}
+  - {fileID: 11400000, guid: 7dd8bec5b7192f846ae5874fd68fe79a, type: 2}
   - {fileID: 11400000, guid: 9a060c2578193b94abddc98fb21b1f1d, type: 2}
   - {fileID: 11400000, guid: 28b00184f1cb94342abe0a919ef399b0, type: 2}
   - {fileID: 11400000, guid: 58c8fcab27603e845902322126c224a2, type: 2}
@@ -102,4 +102,3 @@ MonoBehaviour:
   flatMapWidth: 512
   flatMapHeight: 256
   flatPlaneY: 0
-  terrainDisplacementStrength: 8.8
