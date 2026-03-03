@@ -2108,7 +2108,10 @@ public class HexMapChunkManager : MonoBehaviour
     
     
     /// <summary>
-    /// Create a MeshCollider covering the entire map for WorldPicker raycasts with proper UV support.
+    /// Create a MeshCollider covering the entire map for WorldPicker raycasts.
+    /// The mesh is subdivided and CPU-displaced using the heightmap so that
+    /// raycasts land on the actual visible terrain surface at any camera angle
+    /// (including ground-level views).
     /// </summary>
     private void CreatePickingCollider()
     {
@@ -2122,53 +2125,103 @@ public class HexMapChunkManager : MonoBehaviour
         GameObject colliderObj = new GameObject("ChunkMapCollider");
         colliderObj.transform.SetParent(transform);
         colliderObj.transform.localPosition = new Vector3(0f, flatY, 0f);
-        colliderObj.transform.localRotation = Quaternion.identity; // No rotation - mesh is on XZ plane
+        colliderObj.transform.localRotation = Quaternion.identity;
         
-        // Create simple quad mesh with proper UVs on XZ plane (Y=0)
-        // This ensures hit.textureCoord works correctly for raycasting from above
-        Mesh quadMesh = new Mesh();
-        quadMesh.name = "PickingQuad";
+        // Subdivision resolution — match chunk mesh density, capped for performance
+        int subX = Mathf.Min(chunksX * meshSubdivisionsPerChunk, 512);
+        int subZ = Mathf.Min(chunksZ * meshSubdivisionsPerChunk, 256);
+        int vX = subX + 1;
+        int vZ = subZ + 1;
+        int vertCount = vX * vZ;
         
         float halfW = mapWidth * 0.5f;
         float halfH = mapHeight * 0.5f;
         
-        // Vertices on XZ plane (Y=0), facing up
-        quadMesh.vertices = new Vector3[]
-        {
-            new Vector3(-halfW, 0f, -halfH), // bottom-left
-            new Vector3(halfW, 0f, -halfH),  // bottom-right
-            new Vector3(-halfW, 0f, halfH),  // top-left
-            new Vector3(halfW, 0f, halfH)    // top-right
-        };
-        // UVs match the vertex layout
-        quadMesh.uv = new Vector2[]
-        {
-            new Vector2(0f, 0f),
-            new Vector2(1f, 0f),
-            new Vector2(0f, 1f),
-            new Vector2(1f, 1f)
-        };
-        // Triangles wound counter-clockwise when viewed from above (Y+)
-        quadMesh.triangles = new int[] { 0, 2, 1, 2, 3, 1 };
-        quadMesh.RecalculateNormals();
+        // Check if the heightmap is available for CPU-side displacement
+        bool hasHeightmap = heightmapTexture != null && heightmapTexture.isReadable;
+        int hmW = hasHeightmap ? heightmapTexture.width : 0;
+        int hmH = hasHeightmap ? heightmapTexture.height : 0;
         
-        // Add mesh filter (required for MeshCollider UV support)
+        var vertices = new Vector3[vertCount];
+        var uvs = new Vector2[vertCount];
+        
+        for (int z = 0; z < vZ; z++)
+        {
+            for (int x = 0; x < vX; x++)
+            {
+                int idx = z * vX + x;
+                float u = (float)x / subX;
+                float v = (float)z / subZ;
+                
+                float posX = -halfW + u * mapWidth;
+                float posZ = -halfH + v * mapHeight;
+                
+                // Sample the heightmap and apply the same displacement the GPU shader uses
+                float posY = 0f;
+                if (hasHeightmap)
+                {
+                    int px = Mathf.Clamp(Mathf.FloorToInt(u * hmW), 0, hmW - 1);
+                    int py = Mathf.Clamp(Mathf.FloorToInt(v * hmH), 0, hmH - 1);
+                    posY = heightmapTexture.GetPixel(px, py).r * displacementStrength;
+                }
+                
+                vertices[idx] = new Vector3(posX, posY, posZ);
+                uvs[idx] = new Vector2(u, v);
+            }
+        }
+        
+        // Build triangle indices
+        int triCount = subX * subZ * 6;
+        var triangles = new int[triCount];
+        int triIdx = 0;
+        for (int z = 0; z < subZ; z++)
+        {
+            for (int x = 0; x < subX; x++)
+            {
+                int bl = z * vX + x;
+                int br = bl + 1;
+                int tl = bl + vX;
+                int tr = tl + 1;
+                
+                triangles[triIdx++] = bl;
+                triangles[triIdx++] = tl;
+                triangles[triIdx++] = tr;
+                
+                triangles[triIdx++] = bl;
+                triangles[triIdx++] = tr;
+                triangles[triIdx++] = br;
+            }
+        }
+        
+        Mesh pickMesh = new Mesh();
+        pickMesh.name = "PickingMesh_Displaced";
+        if (vertCount > 65535)
+            pickMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        pickMesh.vertices = vertices;
+        pickMesh.uv = uvs;
+        pickMesh.triangles = triangles;
+        pickMesh.RecalculateNormals();
+        pickMesh.RecalculateBounds();
+        
+        // MeshFilter is required for hit.textureCoord to work with MeshCollider
         MeshFilter mf = colliderObj.AddComponent<MeshFilter>();
-        mf.mesh = quadMesh;
+        mf.mesh = pickMesh;
         
-        // Add invisible renderer (required for hit.textureCoord to work)
+        // Invisible renderer (required for hit.textureCoord on some Unity versions)
         MeshRenderer mr = colliderObj.AddComponent<MeshRenderer>();
         mr.enabled = false;
         
-        // Use MeshCollider for proper UV support (hit.textureCoord)
+        // MeshCollider for physics raycasts with proper UV interpolation
         var meshCollider = colliderObj.AddComponent<MeshCollider>();
-        meshCollider.sharedMesh = quadMesh;
+        meshCollider.sharedMesh = pickMesh;
         pickingCollider = meshCollider;
         
-        // Set layer for raycasting
+        // Set layer for filtered raycasting (WorldPicker uses this layer mask)
         int terrainLayer = LayerMask.NameToLayer("Terrain");
         colliderObj.layer = terrainLayer >= 0 ? terrainLayer : 0;
-}
+        
+        Debug.Log($"[HexMapChunkManager] Created displaced picking collider: {subX}x{subZ} subdivisions, {vertCount} verts, heightmap={hasHeightmap}, displacement={displacementStrength}");
+    }
     
     /// <summary>
     /// Update WorldPicker with our LUT and collider.
@@ -2181,15 +2234,15 @@ public class HexMapChunkManager : MonoBehaviour
             worldPicker.lut = bakeResult.lut;
             worldPicker.lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
             worldPicker.lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
-            worldPicker.flatMapCollider = pickingCollider;
-            worldPicker.mapWidth = mapWidth;
-            worldPicker.mapHeight = mapHeight;
-            worldPicker.heightmapTexture = heightmapTexture;
-            worldPicker.elevationScale = displacementStrength;
+            
+            // Set the picking layer mask to match the picking collider's actual layer
+            int layer = pickingCollider != null ? pickingCollider.gameObject.layer : 0;
+            worldPicker.pickingLayerMask = 1 << layer;
+            
             // Ensure a camera is assigned for picking. If the scene doesn't tag MainCamera (common in HDRP setups),
             // WorldPicker will still fall back to any available camera, but assigning here reduces ambiguity.
             if (worldPicker.targetCamera == null) worldPicker.targetCamera = Camera.main != null ? Camera.main : FindAnyObjectByType<Camera>();
-            Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, collider={(pickingCollider != null ? "assigned" : "null")}, mapSize={mapWidth}x{mapHeight}, heightmap={(heightmapTexture != null ? "assigned" : "null")}, elevScale={displacementStrength}");
+            Debug.Log($"[HexMapChunkManager] Updated WorldPicker: LUT={bakeResult.lut.Length}, pickingLayer={layer}, displaced collider={(pickingCollider != null ? "assigned" : "null")}");
         }
         else
         {

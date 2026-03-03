@@ -135,12 +135,11 @@ public class UIManager : MonoBehaviour
                 return true;
         }
         
-        // Also check if minimap generation is still in progress
-        var minimapUI = FindFirstObjectByType<MinimapUI>();
-        if (minimapUI != null && !minimapUI.MinimapsPreGenerated)
-        {
-            return true;
-        }
+        // NOTE: Minimap pre-generation check was removed here.
+        // In deferred/event-driven minimap mode, MinimapsPreGenerated stays false
+        // indefinitely, which was blocking ALL gameplay UI (unit panels, city panels,
+        // notifications, etc.) even after the game was fully playable.
+        // The loading panel check above is sufficient.
         
         return false;
     }
@@ -528,10 +527,13 @@ public class UIManager : MonoBehaviour
     public void ShowUnitInfoPanelForUnit(object unit)
     {
         if (unitInfoPanel == null || unit == null) return;
+        // Show the panel container FIRST (which calls HideAllPanels + SetActive),
+        // then populate it. This avoids populating into a hidden panel that gets
+        // immediately wiped by HideAllPanels, and eliminates a visual flicker.
+        ShowPanel("UnitInfoPanel");
         var infoUI = unitInfoPanel.GetComponent<UnitInfoPanel>();
         if (infoUI != null)
             infoUI.ShowPanel(unit);
-        ShowPanel("UnitInfoPanel");
     }
 
     public void HideUnitInfoPanel()

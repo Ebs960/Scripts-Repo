@@ -86,9 +86,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Enable bloom on the preview camera for emissive glow (lava, specular).")]
     [SerializeField] private bool enableBloom = true;
     [Tooltip("Bloom threshold — only pixels brighter than this bloom.")]
-    [SerializeField] private float bloomThreshold = 0.5f;
+    [SerializeField] private float bloomThreshold = 0.8f;
     [Tooltip("Bloom intensity.")]
-    [Range(0f, 1f)] [SerializeField] private float bloomIntensity = 0.35f;
+    [Range(0f, 2f)] [SerializeField] private float bloomIntensity = 0.9f;
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere. Higher = smoother displacement. 0-6 (6 ≈ 40k tris).")]
@@ -125,6 +125,21 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("0 = normal world,  1 = infernal/demonic (lava oceans, charred land, volcanic glow, hellish rim).")]
     [SerializeField] private float mapStyle = 0f;
 
+    [Header("Biome Tuning")]
+    [Tooltip("Deep tropical green color used for equatorial jungle and monsoon bands.")]
+    [SerializeField] private Color tropicalGreen = new Color(0.01f, 0.30f, 0.04f, 1f);
+
+    [Tooltip("Sandy desert color used for dry equatorial regions.")]
+    [SerializeField] private Color desertSand = new Color(0.96f, 0.89f, 0.65f, 1f);
+
+    [Range(0f, 1f)]
+    [Tooltip("Ice cap coverage size. 0 = no ice caps, 1 = massive polar ice.")]
+    [SerializeField] private float iceCapSize = 0.5f;
+
+    [Range(0f, 0.1f)]
+    [Tooltip("Blend width at biome band edges. 0 = hard cutoff, 0.03 = subtle transition.")]
+    [SerializeField] private float biomeBlend = 0.03f;
+
     // -----------------------------------------------------------------
     //  Private state
     // -----------------------------------------------------------------
@@ -143,6 +158,10 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Moisture      = Shader.PropertyToID("_Moisture");
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
+    private static readonly int ID_TropicalGreen = Shader.PropertyToID("_TropicalGreen");
+    private static readonly int ID_DesertSand    = Shader.PropertyToID("_DesertSand");
+    private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
+    private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
     private static readonly int ID_BiomeTint     = Shader.PropertyToID("_BiomeTint");
     private static readonly int ID_DesertFactor  = Shader.PropertyToID("_DesertFactor");
     private static readonly int ID_TropicalFactor = Shader.PropertyToID("_TropicalFactor");
@@ -285,6 +304,10 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_CivCount,     civCount);
+        materialInstance.SetColor(ID_TropicalGreen, tropicalGreen);
+        materialInstance.SetColor(ID_DesertSand,    desertSand);
+        materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);
+        materialInstance.SetFloat(ID_BiomeBlend,    biomeBlend);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         UpdateBiomeVisuals();
@@ -377,6 +400,34 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
     }
 
+    /// <summary>Set the tropical green color used in equatorial jungle and monsoon bands.</summary>
+    public void SetTropicalGreen(Color value)
+    {
+        tropicalGreen = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_TropicalGreen, tropicalGreen); }
+    }
+
+    /// <summary>Set the desert sand color used for dry equatorial regions.</summary>
+    public void SetDesertSand(Color value)
+    {
+        desertSand = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_DesertSand, desertSand); }
+    }
+
+    /// <summary>Set ice cap coverage size. 0 = no caps, 1 = massive polar ice.</summary>
+    public void SetIceCapSize(float value)
+    {
+        iceCapSize = Mathf.Clamp01(value);
+        if (materialInstance != null) { materialInstance.SetFloat(ID_IceCapSize, iceCapSize); }
+    }
+
+    /// <summary>Set biome blend width at band edges. 0 = hard cutoff, 0.03+ = subtle transition.</summary>
+    public void SetBiomeBlend(float value)
+    {
+        biomeBlend = Mathf.Clamp(value, 0f, 0.1f);
+        if (materialInstance != null) { materialInstance.SetFloat(ID_BiomeBlend, biomeBlend); }
+    }
+
     // -----------------------------------------------------------------
     //  Biome tinting and derived visual parameters
     // -----------------------------------------------------------------
@@ -407,6 +458,12 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_DesertFactor, desertFactor);
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
+        
+        // Push inspector-driven biome tuning params to shader
+        materialInstance.SetColor(ID_TropicalGreen, tropicalGreen);
+        materialInstance.SetColor(ID_DesertSand, desertSand);
+        materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
+        materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
         
         // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);

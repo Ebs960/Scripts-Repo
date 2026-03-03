@@ -140,6 +140,10 @@ public class GameManager : MonoBehaviour
         currentPlanetIndex = planetIndex;
         climateManager = GetClimateManager(currentPlanetIndex);
 
+        // Invalidate WorldPicker cache so stale tile indices from the old LUT are not returned
+        var worldPicker = FindAnyObjectByType<WorldPicker>();
+        if (worldPicker != null) worldPicker.InvalidateCache();
+
         // Per-planet TileSystems: do NOT reinitialize tile state on switch.
         // Ensure the destination planet has a TileSystem instance (created during generation).
         var gen = GetPlanetGenerator(currentPlanetIndex);
@@ -567,6 +571,13 @@ public class GameManager : MonoBehaviour
             TileSystem.Instance?.ClearAllCaches();
         }
         
+        // Reset InputManager priority so it doesn't stay stuck at Modal/UI across scene loads
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.SetPriority(InputManager.InputPriority.Background);
+            InputManager.Instance.SetInputEnabled(true);
+        }
+
         // Request garbage collection to free memory immediately
         System.GC.Collect();
         Resources.UnloadUnusedAssets();

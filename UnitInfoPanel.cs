@@ -280,9 +280,36 @@ unitInfoPanel.SetActive(true);
 
     private void HideAllSections()
     {
-        // Implement the logic to hide all sections of the panel
-        // This is a placeholder and should be replaced with the actual implementation
-}
+        // Reset all stat text fields to hidden so the populate methods can selectively show what they need
+        if (unitNameText != null) unitNameText.gameObject.SetActive(false);
+        if (unitTypeText != null) unitTypeText.gameObject.SetActive(false);
+        if (levelText != null) levelText.gameObject.SetActive(false);
+        if (experienceText != null) experienceText.gameObject.SetActive(false);
+        if (attackText != null) attackText.gameObject.SetActive(false);
+        if (defenseText != null) defenseText.gameObject.SetActive(false);
+        if (healthText != null) healthText.gameObject.SetActive(false);
+        if (movePointsText != null) movePointsText.gameObject.SetActive(false);
+        if (rangeText != null) rangeText.gameObject.SetActive(false);
+        if (moraleText != null) moraleText.gameObject.SetActive(false);
+
+        // Hide action buttons
+        if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
+        if (forageButton != null) forageButton.gameObject.SetActive(false);
+        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
+
+        // Hide orbit controls
+        if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
+        if (enterOrbitButton != null) enterOrbitButton.gameObject.SetActive(false);
+        if (exitOrbitButton != null) exitOrbitButton.gameObject.SetActive(false);
+
+        // Hide and clear build units section
+        if (buildUnitsContainer != null)
+        {
+            foreach (var go in buildUnitButtons) if (go != null) Destroy(go);
+            buildUnitButtons.Clear();
+            buildUnitsContainer.gameObject.SetActive(false);
+        }
+    }
 
     private void PopulateForCombatUnit(CombatUnit combatUnit)
     {

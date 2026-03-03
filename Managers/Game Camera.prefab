@@ -156,7 +156,7 @@ MonoBehaviour:
   minHeight: 25
   maxHeight: 80
   rotateSpeed: 50
-  minPitchAngle: 30
+  minPitchAngle: 20
   maxPitchAngle: 63
   allowMouseDrag: 1
   mouseSensitivity: 2
@@ -166,14 +166,18 @@ MonoBehaviour:
   wrapCenterX: 0
   underwaterTargetHeight: 20
   underwaterTargetPitchAngle: 45
+  underwaterMinPitchAngle: 35
+  underwaterMaxPitchAngle: 55
   underwaterMoveSpeed: 40
   underwaterMinHeight: 2
-  underwaterMaxHeight: 60
-  orbitTargetPitchAngle: 60
+  underwaterMaxHeight: 30
+  orbitTargetPitchAngle: 90
+  orbitMinPitchAngle: 55
+  orbitMaxPitchAngle: 75
   orbitMoveSpeed: 50
   orbitHeightPadding: 30
-  orbitMinHeight: 40
-  orbitMaxHeight: 300
+  orbitMinHeight: 80
+  orbitMaxHeight: 250
 --- !u!114 &2574990883171722082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -193,7 +197,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 65
   volumeAnchorOverride: {fileID: 0}
-  antialiasing: 1
+  antialiasing: 0
   SMAAQuality: 2
   dithering: 0
   stopNaNs: 0

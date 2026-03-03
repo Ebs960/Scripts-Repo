@@ -323,9 +323,18 @@ unit.UpdateWalkingState(false);
                 PositionUnitOnSurface(unitTransform, targetTileIndex);
             }
             
+            // Clear previous tile occupancy before setting new one
+            try
+            {
+                if (previousTileIndex >= 0 && previousTileIndex != targetTileIndex)
+                    occ?.ClearOccupant(previousTileIndex, unit.currentLayer);
+            }
+            catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] ClearOccupant failed: {ex.Message}"); }
+
             // Update current tile and occupancy using BaseUnit properties
             unit.currentTileIndex = targetTileIndex;
-            try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
+            try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); }
+            catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] SetOccupant failed: {ex.Message}"); }
             
             // Check for traps on arrival (ImprovementManager accepts either type)
             if (combatUnit != null)

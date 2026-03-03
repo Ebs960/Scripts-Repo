@@ -576,8 +576,14 @@ public class CombatUnit : BaseUnit
             if (IsInOrbit) pos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
             transform.position = pos;
 
-            // Update tile occupancy using layered occupancy manager
-            try { occ?.SetOccupant(idx, gameObject, currentLayer); } catch { }
+            // Clear previous tile occupancy before setting new one
+            try
+            {
+                if (currentTileIndex >= 0 && currentTileIndex != idx)
+                    occ?.ClearOccupant(currentTileIndex, currentLayer);
+                occ?.SetOccupant(idx, gameObject, currentLayer);
+            }
+            catch (System.Exception ex) { Debug.LogWarning($"[CombatUnit] Occupancy update failed: {ex.Message}"); }
 
             currentTileIndex = idx;
         }
@@ -1331,6 +1337,9 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
         transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
         currentTileIndex = tileIndex;
+
+        // Register with tile occupancy so tile-based selection works
+        RegisterOccupancy(tileIndex);
     }
 
     private void UpdateIdleAnimation()

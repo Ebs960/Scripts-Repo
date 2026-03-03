@@ -11,6 +11,11 @@ Shader "Custom/MenuPlanetPreview"
             _DesertFactor("Desert Factor", Range(0,1)) = 0.0
             _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
+        [Header(Biome Tuning)]
+            _TropicalGreen("Tropical Green", Color) = (0.01, 0.30, 0.04, 1)
+            _DesertSand("Desert Sand", Color) = (0.96, 0.89, 0.65, 1)
+            _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
+            _BiomeBlend("Biome Blend", Range(0, 0.1)) = 0.03
             _DetailScale("Detail Scale", Float) = 18.0
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
             // _AtmosphereColor, _AtmospherePower, _AtmosphereRadius kept in CBUFFER
@@ -73,6 +78,10 @@ Shader "Custom/MenuPlanetPreview"
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
+                float4 _TropicalGreen;
+                float4 _DesertSand;
+                float _IceCapSize;
+                float _BiomeBlend;
                 float _MapStyle;  // 0 = normal, 1 = infernal/demonic
                     float _DetailScale;
                     float _DetailStrength;
@@ -155,53 +164,65 @@ Shader "Custom/MenuPlanetPreview"
             // -----------------------------------------------------------------
             //  Color helpers
             // -----------------------------------------------------------------
-            float3 GetLandColor(float temp, float moist)
+            float3 GetLandColor(float lat, float tempShift, float moist)
             {
-                // Biome-band approach: temperature selects the base biome,
-                // moisture shifts within that biome. Temperature is dominant.
+                // Latitude-based biome bands with configurable soft blending.
+                // lat = 0.0 at equator, 1.0 at poles.
+                // tempShift shifts band edges; moist controls within-band palette.
                 //
-                // temp 0.0-0.15  : ice/tundra (white-gray-blue)
-                // temp 0.15-0.30 : boreal/taiga (dark muted green)
-                // temp 0.30-0.55 : temperate (green, varies with moisture)
-                // temp 0.55-0.75 : subtropical/savanna/steppe (gold-green to tan)
-                // temp 0.75-1.0  : arid/desert (sandy tan to reddish brown)
+                // Band layout (at neutral tempShift=0):
+                //   lat 0.00-0.15 : EQUATORIAL (desert ↔ jungle)
+                //   lat 0.15-0.30 : SUBTROPICAL (savanna ↔ monsoon)
+                //   lat 0.30-0.50 : TEMPERATE (grassland ↔ forest)
+                //   lat 0.50-0.65 : BOREAL (dark conifers)
+                //   lat 0.65-0.80 : TUNDRA (barren gray-brown)
+                //   lat 0.80-1.00 : POLAR ICE
 
-                float3 iceColor     = float3(0.82, 0.88, 0.94); // snowy white-blue
-                float3 tundraColor  = float3(0.55, 0.58, 0.48); // gray-green scrubland
-                float3 borealColor  = float3(0.22, 0.40, 0.25); // dark conifer green
-                float3 tempWet      = float3(0.25, 0.55, 0.20); // lush deciduous green
-                float3 tempDry      = float3(0.48, 0.52, 0.30); // drier grassland
-                float3 savannaWet   = float3(0.45, 0.52, 0.22); // green-gold savanna
-                float3 savannaDry   = float3(0.68, 0.58, 0.32); // dry golden steppe
-                float3 desertWet    = float3(0.72, 0.62, 0.40); // semi-arid scrub
-                float3 desertDry    = float3(0.82, 0.72, 0.48); // full sandy desert
+                // ---- Inspector-driven key colors ----
+                float3 desertSand   = _DesertSand.rgb;           // configurable sandy desert
+                float3 desertRed    = float3(0.88, 0.52, 0.22);  // red/orange arid
+                float3 jungleDeep   = _TropicalGreen.rgb;        // configurable deep tropical green
+                float3 savannaGold  = float3(0.82, 0.70, 0.25);  // warm golden grass
+                float3 jungleLush   = _TropicalGreen.rgb * 1.3;  // slightly brighter monsoon variant
+                float3 tempDry      = float3(0.42, 0.55, 0.18);  // olive grassland
+                float3 tempLush     = float3(0.14, 0.68, 0.12);  // vivid green forest
+                float3 borealDark   = float3(0.06, 0.25, 0.10);  // dark pine
+                float3 borealLight  = float3(0.10, 0.35, 0.14);  // lighter conifer
+                float3 tundraBrown  = float3(0.58, 0.50, 0.38);  // pale barren
+                float3 tundraGray   = float3(0.52, 0.50, 0.46);  // cold gray rock
+                float3 snowWhite    = float3(0.93, 0.95, 0.97);  // bright white
 
-                // Smooth band transitions
-                float tIce    = 1.0 - smoothstep(0.08, 0.20, temp);
-                float tTundra = smoothstep(0.08, 0.18, temp) * (1.0 - smoothstep(0.22, 0.32, temp));
-                float tBoreal = smoothstep(0.20, 0.30, temp) * (1.0 - smoothstep(0.35, 0.45, temp));
-                float tTemp   = smoothstep(0.30, 0.40, temp) * (1.0 - smoothstep(0.55, 0.65, temp));
-                float tSavan  = smoothstep(0.50, 0.60, temp) * (1.0 - smoothstep(0.72, 0.82, temp));
-                float tDesert = smoothstep(0.70, 0.80, temp);
+                // Clamp temperature shift so bands never fully vanish off the sphere.
+                float shift = clamp(tempShift * 0.6, -0.25, 0.25);
+                float sLat = lat + shift;
 
-                // Moisture blends within temperate/savanna/desert bands
-                float3 tempColor   = lerp(tempDry,   tempWet,   moist);
-                float3 savanColor  = lerp(savannaDry, savannaWet, moist);
-                float3 desertColor = lerp(desertDry, desertWet,  moist);
-                float3 borealBlend = lerp(tundraColor, borealColor, saturate(moist * 1.5));
+                // --- Moisture-driven color within each band ---
+                float3 equatC  = lerp(lerp(desertSand, desertRed, 0.4), jungleDeep, moist);
+                float3 subtrC  = lerp(savannaGold, jungleLush, moist);
+                float3 tempC   = lerp(tempDry, tempLush, moist);
+                float3 borealC = lerp(borealDark, borealLight, moist);
+                float3 tundraC = lerp(tundraBrown, tundraGray, moist);
 
-                float3 baseColor = iceColor    * tIce
-                                 + tundraColor * tTundra
-                                 + borealBlend * tBoreal
-                                 + tempColor   * tTemp
-                                 + savanColor  * tSavan
-                                 + desertColor * tDesert;
+                // Band edge thresholds
+                float e0 = 0.15;
+                float e1 = 0.30;
+                float e2 = 0.50;
+                float e3 = 0.65;
+                float e4 = 0.80;
+                float b = max(0.001, _BiomeBlend); // blend half-width
 
-                // Normalize in case bands overlap (they will slightly at transitions)
-                float totalWeight = tIce + tTundra + tBoreal + tTemp + tSavan + tDesert;
-                baseColor = totalWeight > 0.001 ? baseColor / totalWeight : float3(0.4, 0.5, 0.3);
-
-                return baseColor;
+                // Blend between adjacent bands using configurable transition width
+                if (sLat < e0 - b) return equatC;
+                if (sLat < e0 + b) return lerp(equatC, subtrC, smoothstep(e0 - b, e0 + b, sLat));
+                if (sLat < e1 - b) return subtrC;
+                if (sLat < e1 + b) return lerp(subtrC, tempC, smoothstep(e1 - b, e1 + b, sLat));
+                if (sLat < e2 - b) return tempC;
+                if (sLat < e2 + b) return lerp(tempC, borealC, smoothstep(e2 - b, e2 + b, sLat));
+                if (sLat < e3 - b) return borealC;
+                if (sLat < e3 + b) return lerp(borealC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
+                if (sLat < e4 - b) return tundraC;
+                if (sLat < e4 + b) return lerp(tundraC, snowWhite, smoothstep(e4 - b, e4 + b, sLat));
+                return snowWhite;
             }
 
             float3 GetOceanColor(float temp)
@@ -344,13 +365,13 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  Latitude-based local climate (biome zoning)
                 // ==============================================================
-                // Equator is warmer, poles are colder. Temperature slider shifts the overall range.
-                // ±0.55 gives dramatic visible biome bands: jungle equator → tundra/ice poles
-                float latTempBias = (1.0 - latitude) * 1.1 - 0.55;
-                float localTemp = saturate(_Temperature + latTempBias);
-                // Moisture: equator & ~60° wetter, ~30° drier (Hadley cell approximation)
-                // Also add noise so the wet/dry bands aren't perfect rings
-                float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.3;
+                // Biomes are selected STRICTLY by latitude.
+                // _Temperature shifts all band boundaries (hotter = bands move poleward).
+                // _Moisture controls within-band color (especially equator: desert vs jungle).
+                // Temperature shift: 0.5 = neutral, <0.5 = colder, >0.5 = hotter
+                float tempShift = _Temperature - 0.5; // range -0.5 to +0.5
+                // Moisture: add some latitude variation (equator/60° wetter, 30° drier)
+                float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.2;
                 float moistNoise = (noise3D(objNorm * 3.5 + float3(77.7, 33.3, 11.1)) - 0.5) * 0.25;
                 float localMoist = saturate(_Moisture + moistLatitude + moistNoise);
 
@@ -385,37 +406,21 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  NORMAL WORLD colors
                 // ==============================================================
-                // Use latitude-based local temperature & moisture for per-pixel biome diversity
-                float3 landColor  = GetLandColor(localTemp, localMoist);
-                float3 baseOceanColor = GetOceanColor(localTemp);
+                // Biome color selected strictly by latitude, shifted by temperature
+                float3 landColor  = GetLandColor(latitude, tempShift, localMoist);
+                float3 baseOceanColor = GetOceanColor(saturate(_Temperature));
 
                 // Ocean depth: shallow turquoise near coasts, deep navy in open ocean
                 float oceanDepthFactor = saturate((_LandThreshold - n) / max(0.01, _LandThreshold * 0.5));
-                float3 shallowOcean = lerp(float3(0.10, 0.42, 0.50), float3(0.08, 0.48, 0.55), localTemp);
+                float3 shallowOcean = lerp(float3(0.10, 0.42, 0.50), float3(0.08, 0.48, 0.55), _Temperature);
                 float3 oceanColor = lerp(shallowOcean, baseOceanColor * 0.7, smoothstep(0.0, 0.7, oceanDepthFactor));
-                // Warm tropical shallows
+                // Warm tropical shallows near equator
+                float eqOceanWarm = (1.0 - smoothstep(0.0, 0.25, latitude)) * _Temperature;
                 oceanColor = lerp(oceanColor, float3(0.08, 0.50, 0.52),
-                    saturate(localTemp - 0.6) * (1.0 - oceanDepthFactor) * 0.3);
+                    eqOceanWarm * (1.0 - oceanDepthFactor) * 0.3);
 
-                // Apply biome tint + desert/tropical overlays — computed PER-PIXEL from local climate
-                // Desert: hot + dry regions. Tropical: hot + wet regions.
-                float localDesertAmt = saturate(localTemp * (1.0 - localMoist) * 1.8);
-                float localTropicalAmt = saturate(localMoist * localTemp * 2.0);
-                    // Suppress biome overlays on infernal/demonic worlds
-                    float hellBlend = saturate(infernal + demonic);
-                    localDesertAmt *= (1.0 - hellBlend);
-                    localTropicalAmt *= (1.0 - hellBlend);
-
-                // Desert tint (sandy) and tropical tint (deep green)
-                float3 desertTint = float3(0.85, 0.70, 0.45);
-                float3 tropicalTint = float3(0.08, 0.45, 0.12);
-
-                // Light overlay blending — GetLandColor already handles biome bands,
-                // these just push the tint a bit more at key latitudes.
-                float subtropicalBand = 1.0 - smoothstep(0.0, 0.35, abs(latitude - 0.45));
-                landColor = lerp(landColor, desertTint, localDesertAmt * subtropicalBand * 0.3);
-                float equatorialBand = 1.0 - smoothstep(0.0, 0.30, latitude);
-                landColor = lerp(landColor, tropicalTint, localTropicalAmt * equatorialBand * 0.3);
+                // GetLandColor already handles all biome band coloring —
+                // no additional desert/tropical tint overlays needed.
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
@@ -430,16 +435,17 @@ Shader "Custom/MenuPlanetPreview"
                 // _BiomeTint used only as a very subtle hint — per-pixel latitude colors dominate
                 landColor = lerp(landColor, _BiomeTint.rgb, 0.05);
 
-                // Elevation shading
-                float3 highlandColor = lerp(landColor, float3(0.55, 0.50, 0.42), 0.6);
-                float3 mountainColor = float3(0.58, 0.56, 0.52);
+                // Elevation shading — preserve biome color, just darken/lighten
+                float3 highlandColor = lerp(landColor, landColor * 0.7 + float3(0.12, 0.10, 0.08), 0.4);
+                float3 mountainColor = lerp(landColor * 0.5, float3(0.50, 0.48, 0.44), 0.5);
                 float3 snowPeakColor = float3(0.92, 0.93, 0.96);
 
-                float3 elevatedLand = landColor * lerp(0.85, 1.0, midBand);
-                elevatedLand = lerp(elevatedLand, highlandColor, highBand);
-                elevatedLand = lerp(elevatedLand, mountainColor, mtnBand);
-                // Snow: uses local temperature so equatorial peaks have less snow
-                float snowAmount = snowBand * saturate(1.0 - localTemp * 1.3 + _SnowFactor * 0.8);
+                float3 elevatedLand = landColor * lerp(0.90, 1.0, midBand);
+                elevatedLand = lerp(elevatedLand, highlandColor, highBand * 0.6);
+                elevatedLand = lerp(elevatedLand, mountainColor, mtnBand * 0.7);
+                // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
+                float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
+                float snowAmount = snowBand * saturate(latSnowFactor + _SnowFactor * 0.5);
                 elevatedLand = lerp(elevatedLand, snowPeakColor, snowAmount);
 
                 // Slope coloring: steep cliff faces show exposed rock
@@ -449,25 +455,10 @@ Shader "Custom/MenuPlanetPreview"
                 float3 rockColor = lerp(float3(0.45, 0.40, 0.35), float3(0.55, 0.50, 0.44), elevNoise);
                 elevatedLand = lerp(elevatedLand, rockColor, slopeFactor * 0.7);
 
-                // Biome micro-textures: high-freq noise variation per biome type
+                // Biome micro-textures: subtle noise variation to break up flat bands
                 float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7));
-                float microNoise2 = noise3D(samplePos * 55.0 + float3(41.2, 8.8, 63.1));
-                // Forest canopy dapple (temperate/tropical zones)
-                float forestMask = saturate(localMoist * (1.0 - highBand)) * saturate(localTemp * 2.0);
-                elevatedLand = lerp(elevatedLand, elevatedLand * lerp(0.82, 1.15, microNoise), forestMask * 0.4);
-                // Desert dune ripple (hot+dry zones)
-                float desertMicroMask = saturate((localTemp - 0.5) * 2.0) * saturate((1.0 - localMoist) * 1.5) * (1.0 - highBand);
-                float3 duneLight = elevatedLand * 1.12;
-                float3 duneDark = elevatedLand * 0.85;
-                elevatedLand = lerp(elevatedLand, lerp(duneDark, duneLight, microNoise2), desertMicroMask * 0.35);
-                // Tundra lichen speckle (cold zones)
-                float tundraMask = saturate((0.35 - localTemp) * 4.0) * (1.0 - snowAmount) * (1.0 - highBand);
-                // Savanna/grassland transition zone (warm, moderate moisture)
-                float savannaMask = saturate(localTemp - 0.4) * saturate(localMoist) * saturate(1.0 - localMoist) * (1.0 - highBand) * 2.0;
-                float3 savannaColor = lerp(float3(0.65, 0.60, 0.30), float3(0.55, 0.50, 0.25), microNoise);
-                elevatedLand = lerp(elevatedLand, savannaColor, savannaMask * 0.35);
-                float3 lichenColor = lerp(float3(0.50, 0.55, 0.42), float3(0.60, 0.58, 0.50), microNoise);
-                elevatedLand = lerp(elevatedLand, lichenColor, tundraMask * 0.25);
+                // Light brightness variation preserving the biome's actual color
+                elevatedLand *= lerp(0.92, 1.08, microNoise);
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
 
@@ -483,13 +474,14 @@ Shader "Custom/MenuPlanetPreview"
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
 
                 // ---- Ice caps / Frozen world logic ----
-                // For frozen climates (temp < 0.15), ice and snow cover most of the surface
-                float frozenWorld = saturate((0.15 - _Temperature) * 8.0); // 1 when temp≈0, 0 when temp>0.15
+                // Ice coverage is strictly latitude-based, shifted by temperature.
+                // Hotter planets = ice only at extreme poles. Colder = ice extends far equatorward.
+                float frozenWorld = saturate((0.15 - _Temperature) * 8.0);
 
-                // Polar ice caps — grow dramatically as temperature drops
-                // At temp=0: caps start at latitude 0.25 (huge coverage)
-                // At temp=1: caps start at latitude 1.1 (beyond poles, no caps)
-                float capStart = lerp(0.25, 1.10, _Temperature);
+                // capStart controlled by _IceCapSize (0=no caps, 1=massive caps)
+                // and shifted by temperature (hotter = smaller caps)
+                float capBase = lerp(1.10, 0.25, _IceCapSize); // 0→no ice, 1→huge ice
+                float capStart = lerp(capBase, 1.10, saturate(_Temperature * 1.2));
                 float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2));
                 float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
 
@@ -628,9 +620,14 @@ Shader "Custom/MenuPlanetPreview"
                 float3 sunCol   = _SunColor.rgb * _SunIntensity;
 
                 float NdotL   = dot(normal, lightDir);
-                float diffuse = saturate(NdotL * 0.6 + 0.4);
+                // Half-Lambert wrap for a visible but smooth terminator.
+                // The day side is fully lit, the terminator has a soft falloff,
+                // and the dark side still has enough ambient to show biome colors.
+                float diffuse = saturate(NdotL * 0.75 + 0.25);
 
-                float ambient = saturate(normal.y * -0.15 + 0.20);
+                // Moderate ambient — dark hemisphere should be dim but biome colors
+                // should still be readable (like Earthrise photos from ISS at night).
+                float ambient = 0.12;
                 float lighting = diffuse + ambient;
 
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
@@ -638,11 +635,12 @@ Shader "Custom/MenuPlanetPreview"
                 float specPow = lerp(48.0, 16.0, infernal);
                 float spec = pow(saturate(dot(normal, halfVec)), specPow)
                            * (1.0 - edge)
-                           * lerp(0.35, 0.5, infernal);
+                           * lerp(0.5, 0.65, infernal);
 
                 // Sun glint on oceans — tight specular for "NASA photo" look
+                // Boosted to HDR range so bloom actually picks it up.
                 float oceanGlint = pow(saturate(dot(normal, halfVec)), 256.0)
-                                 * (1.0 - edge) * (1.0 - infernal) * 1.8;
+                                 * (1.0 - edge) * (1.0 - infernal) * 3.5;
                 float glintRipple = noise3D(samplePos * 40.0 + float3(timeVal * 0.5, 0, 0));
                 oceanGlint *= lerp(0.6, 1.4, glintRipple);
 
@@ -675,24 +673,6 @@ Shader "Custom/MenuPlanetPreview"
                 finalColor += terminatorColor * terminatorMask * 0.15 * (1.0 - infernal);
 
                 // ==============================================================
-                //  Night-side city lights
-                // ==============================================================
-                float nightMask = smoothstep(0.0, -0.1, NdotL);
-                float cityNoise1 = noise3D(samplePos * 45.0 + float3(88.1, 22.4, 55.7));
-                float cityNoise2 = noise3D(samplePos * 80.0 + float3(14.3, 67.8, 39.2));
-                float coastProximity = 1.0 - smoothstep(0.0, 0.15, abs(n - _LandThreshold));
-                float midLatitude = 1.0 - smoothstep(0.0, 0.4, abs(latitude - 0.4));
-                float cityDensity = saturate(_CivCount / 8.0);
-                float cityThreshold = lerp(0.88, 0.72, cityDensity);
-                float cityMask = step(cityThreshold, cityNoise1) * edge;
-                cityMask += step(cityThreshold + 0.03, cityNoise2) * edge
-                          * (coastProximity * 0.5 + midLatitude * 0.3);
-                cityMask = saturate(cityMask) * nightMask * (1.0 - infernal);
-                float3 cityLightColor = float3(1.0, 0.85, 0.55);
-                float cityFlicker = lerp(0.8, 1.0, noise3D(samplePos * 100.0 + float3(timeVal * 2.0, 0, 0)));
-                finalColor += cityLightColor * cityMask * 0.12 * cityFlicker;
-
-                // ==============================================================
                 //  Atmosphere rim glow
                 // ==============================================================
                 float fresnel = 1.0 - saturate(dot(normal, viewDir));
@@ -715,6 +695,7 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 //  Polar aurora (night side, high latitude, cold worlds)
                 // ==============================================================
+                float nightMask = smoothstep(0.0, -0.1, NdotL);
                 float auroraMask = smoothstep(0.65, 0.85, latitude) * nightMask * (1.0 - infernal);
                 float auroraStrength = saturate((0.5 - _Temperature) * 2.5);
                 float auroraNoise = noise3D(float3(objNorm.x * 8.0, objNorm.z * 8.0, timeVal * 0.3));

@@ -168,7 +168,7 @@ public class UnitSelectionManager : MonoBehaviour
             var obj = occ != null ? occ.TryGetAnyOccupantObject(tileIndex) : null;
             if (obj != null) return obj.GetComponent<BaseUnit>();
         }
-        catch { }
+        catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetUnitOnTile({tileIndex}) failed: {ex.Message}"); }
         return null;
     }
     

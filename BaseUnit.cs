@@ -1104,6 +1104,32 @@ public abstract class BaseUnit : MonoBehaviour
         if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
         transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
         currentTileIndex = tileIndex;
+
+        // Register with tile occupancy so tile-based selection (WorldPicker → GetUnitOnTile) works
+        RegisterOccupancy(tileIndex);
+    }
+
+    /// <summary>
+    /// Register this unit with the TileOccupancyManager for the given tile.
+    /// Called after currentTileIndex is set so tile-click selection can find us.
+    /// </summary>
+    protected void RegisterOccupancy(int tileIndex)
+    {
+        if (tileIndex < 0) return;
+        try
+        {
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            if (occ != null)
+            {
+                // Clear old tile occupancy if moving to a different tile
+                if (currentTileIndex >= 0 && currentTileIndex != tileIndex)
+                {
+                    occ.ClearOccupant(currentTileIndex, currentLayer);
+                }
+                occ.SetOccupant(tileIndex, gameObject, currentLayer);
+            }
+        }
+        catch (System.Exception ex) { Debug.LogWarning($"[BaseUnit] RegisterOccupancy failed for {name}: {ex.Message}"); }
     }
 
     #endregion
