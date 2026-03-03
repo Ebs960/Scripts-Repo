@@ -555,6 +555,11 @@ public class MainMenuManager : MonoBehaviour
         float temp = Mathf.Clamp01(selectedClimatePreset / 5f);
         planetPreview.SetTemperature(temp);
 
+        // Ice cap size: driven directly by climate preset
+        // Frozen=massive ice, Scorching=no ice. Completely decoupled from temperature math.
+        float[] iceCapSizes = { 0.95f, 0.50f, 0.26f, 0.18f, 0.09f, 0.0f };
+        planetPreview.SetIceCapSize(iceCapSizes[Mathf.Clamp(selectedClimatePreset, 0, 5)]);
+
         // Moisture: map selectedMoisturePreset (0-5) to 0–1
         // 0=Very Low→0, 5=Extreme→1
         float moist = Mathf.Clamp01(selectedMoisturePreset / 5f);

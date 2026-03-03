@@ -11,11 +11,26 @@ Shader "Custom/MenuPlanetPreview"
             _DesertFactor("Desert Factor", Range(0,1)) = 0.0
             _TropicalFactor("Tropical Factor", Range(0,1)) = 0.0
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
-        [Header(Biome Tuning)]
-            _TropicalGreen("Tropical Green", Color) = (0.01, 0.30, 0.04, 1)
+        [Header(Biome Zone Colors)]
+            _EquatorialColor("Equatorial (Desert/Jungle)", Color) = (0.01, 0.30, 0.04, 1)
             _DesertSand("Desert Sand", Color) = (0.96, 0.89, 0.65, 1)
+            _SubtropicalColor("Subtropical (Savanna/Monsoon)", Color) = (0.82, 0.70, 0.25, 1)
+            _TemperateColor("Temperate (Grassland/Forest)", Color) = (0.14, 0.68, 0.12, 1)
+            _BorealColor("Boreal (Conifers)", Color) = (0.06, 0.25, 0.10, 1)
+            _TundraColor("Tundra", Color) = (0.58, 0.50, 0.38, 1)
+            _PolarColor("Polar Ice/Snow", Color) = (0.93, 0.95, 0.97, 1)
+        [Header(Ocean Colors)]
+            _OceanCold("Ocean Cold", Color) = (0.08, 0.15, 0.30, 1)
+            _OceanWarm("Ocean Warm", Color) = (0.06, 0.22, 0.45, 1)
+            _OceanTropical("Ocean Tropical", Color) = (0.10, 0.32, 0.52, 1)
+        [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
             _BiomeBlend("Biome Blend", Range(0, 0.1)) = 0.03
+            _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
+            _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
+            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.3
+        [Header(Seed)]
+            _Seed("Planet Seed", Float) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
             _DetailStrength("Detail Strength", Range(0,1)) = 0.18
             // _AtmosphereColor, _AtmospherePower, _AtmosphereRadius kept in CBUFFER
@@ -78,11 +93,23 @@ Shader "Custom/MenuPlanetPreview"
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
-                float4 _TropicalGreen;
+                float4 _EquatorialColor;
                 float4 _DesertSand;
+                float4 _SubtropicalColor;
+                float4 _TemperateColor;
+                float4 _BorealColor;
+                float4 _TundraColor;
+                float4 _PolarColor;
+                float4 _OceanCold;
+                float4 _OceanWarm;
+                float4 _OceanTropical;
                 float _IceCapSize;
                 float _BiomeBlend;
-                float _MapStyle;  // 0 = normal, 1 = infernal/demonic
+                float _BiomeNoiseScale;
+                float _BiomeNoiseStrength;
+                float _ColorVibrancy;
+                float _Seed;
+                float _MapStyle;
                     float _DetailScale;
                     float _DetailStrength;
                     float4 _AtmosphereColor;
@@ -164,44 +191,50 @@ Shader "Custom/MenuPlanetPreview"
             // -----------------------------------------------------------------
             //  Color helpers
             // -----------------------------------------------------------------
-            float3 GetLandColor(float lat, float tempShift, float moist)
+            float3 GetLandColor(float lat, float tempShift, float moist, float3 objNorm)
             {
-                // Latitude-based biome bands with configurable soft blending.
+                // Latitude-based biome bands with noise-perturbed edges.
                 // lat = 0.0 at equator, 1.0 at poles.
                 // tempShift shifts band edges; moist controls within-band palette.
+                // objNorm is used for 3D noise to break up straight latitude lines.
                 //
                 // Band layout (at neutral tempShift=0):
-                //   lat 0.00-0.15 : EQUATORIAL (desert ↔ jungle)
-                //   lat 0.15-0.30 : SUBTROPICAL (savanna ↔ monsoon)
-                //   lat 0.30-0.50 : TEMPERATE (grassland ↔ forest)
+                //   lat 0.00-0.15 : EQUATORIAL (desert <-> jungle)
+                //   lat 0.15-0.30 : SUBTROPICAL (savanna <-> monsoon)
+                //   lat 0.30-0.50 : TEMPERATE (grassland <-> forest)
                 //   lat 0.50-0.65 : BOREAL (dark conifers)
                 //   lat 0.65-0.80 : TUNDRA (barren gray-brown)
                 //   lat 0.80-1.00 : POLAR ICE
 
-                // ---- Inspector-driven key colors ----
-                float3 desertSand   = _DesertSand.rgb;           // configurable sandy desert
-                float3 desertRed    = float3(0.88, 0.52, 0.22);  // red/orange arid
-                float3 jungleDeep   = _TropicalGreen.rgb;        // configurable deep tropical green
-                float3 savannaGold  = float3(0.82, 0.70, 0.25);  // warm golden grass
-                float3 jungleLush   = _TropicalGreen.rgb * 1.3;  // slightly brighter monsoon variant
-                float3 tempDry      = float3(0.42, 0.55, 0.18);  // olive grassland
-                float3 tempLush     = float3(0.14, 0.68, 0.12);  // vivid green forest
-                float3 borealDark   = float3(0.06, 0.25, 0.10);  // dark pine
-                float3 borealLight  = float3(0.10, 0.35, 0.14);  // lighter conifer
-                float3 tundraBrown  = float3(0.58, 0.50, 0.38);  // pale barren
-                float3 tundraGray   = float3(0.52, 0.50, 0.46);  // cold gray rock
-                float3 snowWhite    = float3(0.93, 0.95, 0.97);  // bright white
+                // ---- ALL colors from inspector ----
+                float3 desertSand   = _DesertSand.rgb;
+                float3 desertRed    = desertSand * float3(0.92, 0.58, 0.34); // derived arid variant
+                float3 jungleDeep   = _EquatorialColor.rgb;
+                float3 savannaBase  = _SubtropicalColor.rgb;
+                float3 jungleLush   = jungleDeep * 1.3;
+                float3 tempBase     = _TemperateColor.rgb;
+                float3 tempDry      = tempBase * 0.7 + float3(0.10, 0.08, 0.02); // drier variant
+                float3 borealBase   = _BorealColor.rgb;
+                float3 borealLight  = borealBase * 1.5;
+                float3 tundraBase   = _TundraColor.rgb;
+                float3 tundraGray   = tundraBase * 0.85 + float3(0.0, 0.0, 0.04);
+                float3 snowWhite    = _PolarColor.rgb;
 
                 // Clamp temperature shift so bands never fully vanish off the sphere.
                 float shift = clamp(tempShift * 0.6, -0.25, 0.25);
-                float sLat = lat + shift;
+
+                // --- Noise perturbation of latitude for organic, wavy band edges ---
+                float3 seedOffset = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
+                float latNoise = (fbm(objNorm * _BiomeNoiseScale + seedOffset + float3(55.5, 22.2, 88.8)) - 0.5)
+                               * _BiomeNoiseStrength * 2.0;
+                float sLat = lat + shift + latNoise;
 
                 // --- Moisture-driven color within each band ---
                 float3 equatC  = lerp(lerp(desertSand, desertRed, 0.4), jungleDeep, moist);
-                float3 subtrC  = lerp(savannaGold, jungleLush, moist);
-                float3 tempC   = lerp(tempDry, tempLush, moist);
-                float3 borealC = lerp(borealDark, borealLight, moist);
-                float3 tundraC = lerp(tundraBrown, tundraGray, moist);
+                float3 subtrC  = lerp(savannaBase, jungleLush, moist);
+                float3 tempC   = lerp(tempDry, tempBase, moist);
+                float3 borealC = lerp(borealBase, borealLight, moist);
+                float3 tundraC = lerp(tundraBase, tundraGray, moist);
 
                 // Band edge thresholds
                 float e0 = 0.15;
@@ -212,24 +245,31 @@ Shader "Custom/MenuPlanetPreview"
                 float b = max(0.001, _BiomeBlend); // blend half-width
 
                 // Blend between adjacent bands using configurable transition width
-                if (sLat < e0 - b) return equatC;
-                if (sLat < e0 + b) return lerp(equatC, subtrC, smoothstep(e0 - b, e0 + b, sLat));
-                if (sLat < e1 - b) return subtrC;
-                if (sLat < e1 + b) return lerp(subtrC, tempC, smoothstep(e1 - b, e1 + b, sLat));
-                if (sLat < e2 - b) return tempC;
-                if (sLat < e2 + b) return lerp(tempC, borealC, smoothstep(e2 - b, e2 + b, sLat));
-                if (sLat < e3 - b) return borealC;
-                if (sLat < e3 + b) return lerp(borealC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
-                if (sLat < e4 - b) return tundraC;
-                if (sLat < e4 + b) return lerp(tundraC, snowWhite, smoothstep(e4 - b, e4 + b, sLat));
-                return snowWhite;
+                float3 result;
+                if (sLat < e0 - b) result = equatC;
+                else if (sLat < e0 + b) result = lerp(equatC, subtrC, smoothstep(e0 - b, e0 + b, sLat));
+                else if (sLat < e1 - b) result = subtrC;
+                else if (sLat < e1 + b) result = lerp(subtrC, tempC, smoothstep(e1 - b, e1 + b, sLat));
+                else if (sLat < e2 - b) result = tempC;
+                else if (sLat < e2 + b) result = lerp(tempC, borealC, smoothstep(e2 - b, e2 + b, sLat));
+                else if (sLat < e3 - b) result = borealC;
+                else if (sLat < e3 + b) result = lerp(borealC, tundraC, smoothstep(e3 - b, e3 + b, sLat));
+                else if (sLat < e4 - b) result = tundraC;
+                else if (sLat < e4 + b) result = lerp(tundraC, snowWhite, smoothstep(e4 - b, e4 + b, sLat));
+                else result = snowWhite;
+
+                // Boost vibrancy: push colors away from gray toward their hue
+                float gray = dot(result, float3(0.299, 0.587, 0.114));
+                result = lerp(float3(gray, gray, gray), result, _ColorVibrancy);
+
+                return result;
             }
 
             float3 GetOceanColor(float temp)
             {
-                float3 coldOcean = float3(0.08, 0.15, 0.30); // dark slate blue
-                float3 warmOcean = float3(0.06, 0.22, 0.45); // medium blue
-                float3 hotOcean  = float3(0.10, 0.32, 0.52); // tropical blue
+                float3 coldOcean = _OceanCold.rgb;
+                float3 warmOcean = _OceanWarm.rgb;
+                float3 hotOcean  = _OceanTropical.rgb;
 
                 float t1 = saturate(temp * 2.0);
                 float t2 = saturate((temp - 0.5) * 2.0);
@@ -278,11 +318,12 @@ Shader "Custom/MenuPlanetPreview"
             // -----------------------------------------------------------------
             float GetDisplacement(float3 objNorm)
             {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 samplePos = objNorm * _LandScale;
-                float n = fbm(samplePos + float3(42.3, 17.1, 83.7));
+                float n = fbm(samplePos + float3(42.3, 17.1, 83.7) + seedOff);
                 // Wide transition (0.12 each side) so coastlines are gentle slopes, not cliffs
                 float edge = smoothstep(_LandThreshold - 0.12, _LandThreshold + 0.12, n);
-                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7));
+                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 // Displace land outward; oceans stay at base radius
                 // Note: _Elevation only affects color banding, NOT geometry displacement
                 return edge * elevNoise * _DisplacementScale;
@@ -345,14 +386,15 @@ Shader "Custom/MenuPlanetPreview"
 
                 // Sample noise at object-space position (seamless on sphere surface)
                 float3 objNorm = normalize(input.positionOS);
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 samplePos = objNorm * _LandScale;
-                float n = fbm(samplePos + float3(42.3, 17.1, 83.7));
+                float n = fbm(samplePos + float3(42.3, 17.1, 83.7) + seedOff);
 
                 // Soft edge between land and ocean
                 float edge = smoothstep(_LandThreshold - 0.04, _LandThreshold + 0.04, n);
 
                 // ---- Elevation noise ----
-                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7));
+                float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 float terrainHeight = elevNoise * _Elevation;
 
                 float midBand  = smoothstep(0.12, 0.30, terrainHeight);
@@ -372,7 +414,7 @@ Shader "Custom/MenuPlanetPreview"
                 float tempShift = _Temperature - 0.5; // range -0.5 to +0.5
                 // Moisture: add some latitude variation (equator/60° wetter, 30° drier)
                 float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.2;
-                float moistNoise = (noise3D(objNorm * 3.5 + float3(77.7, 33.3, 11.1)) - 0.5) * 0.25;
+                float moistNoise = (noise3D(objNorm * 3.5 + float3(77.7, 33.3, 11.1) + seedOff) - 0.5) * 0.25;
                 float localMoist = saturate(_Moisture + moistLatitude + moistNoise);
 
                 // ==============================================================
@@ -381,22 +423,22 @@ Shader "Custom/MenuPlanetPreview"
                 // Multi-octave domain warping for natural, sinuous river curves.
                 // First warp layer: large-scale bends
                 float3 warp1 = float3(
-                    noise3D(samplePos * 1.2 + float3(12.5, 34.7, 56.9)),
-                    noise3D(samplePos * 1.2 + float3(78.1, 23.4, 91.6)),
-                    noise3D(samplePos * 1.2 + float3(45.3, 67.8, 11.2))
+                    noise3D(samplePos * 1.2 + float3(12.5, 34.7, 56.9) + seedOff),
+                    noise3D(samplePos * 1.2 + float3(78.1, 23.4, 91.6) + seedOff),
+                    noise3D(samplePos * 1.2 + float3(45.3, 67.8, 11.2) + seedOff)
                 ) * 0.5 - 0.25;
                 // Second warp layer: smaller meanders
                 float3 warp2 = float3(
-                    noise3D(samplePos * 3.5 + float3(91.3, 17.8, 42.1)),
-                    noise3D(samplePos * 3.5 + float3(33.7, 82.5, 64.9)),
-                    noise3D(samplePos * 3.5 + float3(58.2, 11.6, 73.4))
+                    noise3D(samplePos * 3.5 + float3(91.3, 17.8, 42.1) + seedOff),
+                    noise3D(samplePos * 3.5 + float3(33.7, 82.5, 64.9) + seedOff),
+                    noise3D(samplePos * 3.5 + float3(58.2, 11.6, 73.4) + seedOff)
                 ) * 0.15 - 0.075;
 
                 float3 riverSample = samplePos + warp1 + warp2;
                 // Primary river: one or two big continental rivers
-                float riverNoise1 = noise3D(riverSample * 2.0 + float3(3.3, 77.7, 21.1));
+                float riverNoise1 = noise3D(riverSample * 2.0 + float3(3.3, 77.7, 21.1) + seedOff);
                 // Secondary: smaller tributary
-                float riverNoise2 = noise3D(riverSample * 3.8 + float3(61.2, 9.8, 44.4));
+                float riverNoise2 = noise3D(riverSample * 3.8 + float3(61.2, 9.8, 44.4) + seedOff);
                 // Thinner bands for more realistic width
                 float river1 = 1.0 - smoothstep(0.0, 0.040, abs(riverNoise1 - 0.5));
                 float river2 = 1.0 - smoothstep(0.0, 0.028, abs(riverNoise2 - 0.5));
@@ -407,7 +449,7 @@ Shader "Custom/MenuPlanetPreview"
                 //  NORMAL WORLD colors
                 // ==============================================================
                 // Biome color selected strictly by latitude, shifted by temperature
-                float3 landColor  = GetLandColor(latitude, tempShift, localMoist);
+                float3 landColor  = GetLandColor(latitude, tempShift, localMoist, objNorm);
                 float3 baseOceanColor = GetOceanColor(saturate(_Temperature));
 
                 // Ocean depth: shallow turquoise near coasts, deep navy in open ocean
@@ -425,10 +467,10 @@ Shader "Custom/MenuPlanetPreview"
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
                 float eps = 0.0015 * max(1.0, _DetailScale);
-                float d0 = fbm(samplePos * _DetailScale);
-                float dx = fbm((samplePos + float3(eps,0,0)) * _DetailScale);
-                float dy = fbm((samplePos + float3(0,eps,0)) * _DetailScale);
-                float dz = fbm((samplePos + float3(0,0,eps)) * _DetailScale);
+                float d0 = fbm(samplePos * _DetailScale + seedOff);
+                float dx = fbm((samplePos + float3(eps,0,0)) * _DetailScale + seedOff);
+                float dy = fbm((samplePos + float3(0,eps,0)) * _DetailScale + seedOff);
+                float dz = fbm((samplePos + float3(0,0,eps)) * _DetailScale + seedOff);
                 float3 grad = normalize(float3(dx - d0, dy - d0, dz - d0));
                 float3 normal = normalize(input.normalWS + grad * _DetailStrength * 1.2);
 
@@ -456,7 +498,7 @@ Shader "Custom/MenuPlanetPreview"
                 elevatedLand = lerp(elevatedLand, rockColor, slopeFactor * 0.7);
 
                 // Biome micro-textures: subtle noise variation to break up flat bands
-                float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7));
+                float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7) + seedOff);
                 // Light brightness variation preserving the biome's actual color
                 elevatedLand *= lerp(0.92, 1.08, microNoise);
 
@@ -468,41 +510,35 @@ Shader "Custom/MenuPlanetPreview"
                 normalAlbedo = lerp(normalAlbedo, float3(0.10, 0.25, 0.45), saturate(normalRiverMask));
 
                 // Lakes (normal)
-                float lakeNoise = noise3D(samplePos * 12.0 + float3(7.7, 3.3, 9.9));
+                float lakeNoise = noise3D(samplePos * 12.0 + float3(7.7, 3.3, 9.9) + seedOff);
                 float lakeMask  = smoothstep(0.72, 0.78, lakeNoise)
                                 * saturate((localMoist - 0.6) * 2.5) * step(0.5, edge);
                 normalAlbedo = lerp(normalAlbedo, float3(0.12, 0.30, 0.50), saturate(lakeMask));
 
-                // ---- Ice caps / Frozen world logic ----
-                // Ice coverage is strictly latitude-based, shifted by temperature.
-                // Hotter planets = ice only at extreme poles. Colder = ice extends far equatorward.
-                float frozenWorld = saturate((0.15 - _Temperature) * 8.0);
+                // ---- Ice caps ----
+                // Driven entirely by _IceCapSize (set by the climate preset in MainMenuManager).
+                // 0 = no ice,  1 = massive polar ice extending near equator.
+                // No temperature math — the preset already encodes how icy the planet should be.
 
-                // capStart controlled by _IceCapSize (0=no caps, 1=massive caps)
-                // and shifted by temperature (hotter = smaller caps)
-                float capBase = lerp(1.10, 0.25, _IceCapSize); // 0→no ice, 1→huge ice
-                float capStart = lerp(capBase, 1.10, saturate(_Temperature * 1.2));
-                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2));
+                float capStart = lerp(1.10, 0.15, _IceCapSize); // 0→above poles (none), 1→near equator
+
+                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
                 float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
 
-                // Frozen world: heavy snow and ice across ALL latitudes
-                float frozenIceNoise = noise3D(objNorm * 4.0 + float3(55.5, 11.1, 33.3));
-                float frozenSnowNoise = noise3D(objNorm * 7.0 + float3(22.2, 44.4, 66.6));
-                // Dense snow patches covering most of the surface
-                float frozenIceMask = smoothstep(0.15, 0.35, frozenIceNoise) * frozenWorld;
-                // Extra snow on land
-                float frozenSnowOnLand = smoothstep(0.25, 0.50, frozenSnowNoise) * frozenWorld * edge;
-                float totalIceMask = saturate(capMask + frozenIceMask + frozenSnowOnLand);
+                // Ice/snow color — white at center, icy blue at outer fringe
+                float3 snowWhite = _PolarColor.rgb;
+                float3 icyBlue   = float3(0.72, 0.85, 0.95); // pale icy blue
+                float iceVariation = noise3D(objNorm * 10.0 + float3(77.7, 88.8, 99.9) + seedOff);
 
-                // Ice/snow color — plain white snow, slightly off-white
-                float3 snowWhite = float3(0.92, 0.94, 0.96);
-                float3 iceGray   = float3(0.80, 0.83, 0.88); // slightly gray for variety
-                float iceVariation = noise3D(objNorm * 10.0 + float3(77.7, 88.8, 99.9));
-                float3 iceColor = lerp(iceGray, snowWhite, smoothstep(0.3, 0.7, iceVariation));
+                // Outer fringe of the cap is icy blue, inner core is snow white
+                float edgeFade = smoothstep(capStart - 0.05, capStart + 0.15, latitude + (iceEdgeNoise - 0.5) * 0.15);
+                float3 iceColor = lerp(icyBlue, snowWhite, edgeFade);
+                // Subtle variation within ice
+                iceColor = lerp(iceColor * 0.95, iceColor, smoothstep(0.3, 0.7, iceVariation));
                 // Frozen ocean gets a slightly darker ice sheet
                 iceColor = lerp(iceColor * 0.88, iceColor, edge);
 
-                normalAlbedo = lerp(normalAlbedo, iceColor, saturate(totalIceMask));
+                normalAlbedo = lerp(normalAlbedo, iceColor, saturate(capMask));
 
                 // ==============================================================
                 //  INFERNAL WORLD colors (style ≈ 0.5)
@@ -527,7 +563,7 @@ Shader "Custom/MenuPlanetPreview"
                 hellAlbedo = lerp(hellAlbedo, lavaRiverColor, saturate(lavaRiverMask));
 
                 // Volcanic vent spots
-                float ventNoise = noise3D(samplePos * 10.0 + float3(44.4, 88.8, 22.2));
+                float ventNoise = noise3D(samplePos * 10.0 + float3(44.4, 88.8, 22.2) + seedOff);
                 float ventMask = smoothstep(0.78, 0.84, ventNoise) * edge;
                 float ventFlicker = sin(timeVal * 4.0 + ventNoise * 20.0) * 0.5 + 0.5;
                 float3 ventColor = lerp(float3(0.85, 0.25, 0.02), float3(1.0, 0.60, 0.10), ventFlicker);
@@ -543,7 +579,7 @@ Shader "Custom/MenuPlanetPreview"
                 // Ash polar caps
                 float ashCapStart = 0.78;
                 float ashCapMask = smoothstep(ashCapStart - 0.06, ashCapStart + 0.06, latitude);
-                float ashEdgeNoise = noise3D(objNorm * 5.0 + float3(33.3, 66.6, 99.9));
+                float ashEdgeNoise = noise3D(objNorm * 5.0 + float3(33.3, 66.6, 99.9) + seedOff);
                 ashCapMask *= smoothstep(ashCapStart - 0.10, ashCapStart + 0.03, latitude + (ashEdgeNoise - 0.5) * 0.12);
                 float3 ashColor = lerp(float3(0.22, 0.18, 0.16), float3(0.30, 0.25, 0.22), edge);
                 hellAlbedo = lerp(hellAlbedo, ashColor, saturate(ashCapMask));
@@ -559,7 +595,7 @@ Shader "Custom/MenuPlanetPreview"
                 // Subtle variation from elevation noise
                 demonLand = lerp(demonLand, bloodTint, elevNoise * 0.5);
                 // Cracks of hellfire visible through the dark crust
-                float crackNoise = noise3D(samplePos * 7.0 + float3(66.6, 13.1, 99.9));
+                float crackNoise = noise3D(samplePos * 7.0 + float3(66.6, 13.1, 99.9) + seedOff);
                 float crackMask = smoothstep(0.46, 0.50, crackNoise) * edge;
                 float3 hellfireColor = float3(1.0, 0.20, 0.02); // intense hellfire red
                 float crackPulse = sin(timeVal * 3.0 + crackNoise * 15.0) * 0.5 + 0.5;
@@ -609,7 +645,7 @@ Shader "Custom/MenuPlanetPreview"
                 cloudSamplePos.xz = float2(
                     cloudSamplePos.x * cCos - cloudSamplePos.z * cSin,
                     cloudSamplePos.x * cSin + cloudSamplePos.z * cCos);
-                float cloudShadow = fbm(cloudSamplePos + float3(5.5, 2.2, 8.8));
+                float cloudShadow = fbm(cloudSamplePos + float3(5.5, 2.2, 8.8) + seedOff);
                 float cloudShadowMask = smoothstep(0.35, 0.55, cloudShadow) * 0.2 * (1.0 - infernal);
                 albedo *= (1.0 - cloudShadowMask);
 
@@ -759,6 +795,22 @@ Shader "Custom/MenuPlanetPreview"
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
+                float4 _EquatorialColor;
+                float4 _DesertSand;
+                float4 _SubtropicalColor;
+                float4 _TemperateColor;
+                float4 _BorealColor;
+                float4 _TundraColor;
+                float4 _PolarColor;
+                float4 _OceanCold;
+                float4 _OceanWarm;
+                float4 _OceanTropical;
+                float _IceCapSize;
+                float _BiomeBlend;
+                float _BiomeNoiseScale;
+                float _BiomeNoiseStrength;
+                float _ColorVibrancy;
+                float _Seed;
                 float _MapStyle;
                 float _DetailScale;
                 float _DetailStrength;
@@ -798,8 +850,9 @@ Shader "Custom/MenuPlanetPreview"
             }
             float GetDisp(float3 objNorm)
             {
+                float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 sp = objNorm * _LandScale;
-                float n = fbm_d(sp + float3(42.3,17.1,83.7));
+                float n = fbm_d(sp + float3(42.3,17.1,83.7) + seedOff);
                 float edge = smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,n);
                 float elev = fbm_d(sp*1.5+float3(99.1,55.3,12.7));
                 return edge*elev*_DisplacementScale;
@@ -874,6 +927,22 @@ Shader "Custom/MenuPlanetPreview"
                 float _DesertFactor;
                 float _TropicalFactor;
                 float _SnowFactor;
+                float4 _EquatorialColor;
+                float4 _DesertSand;
+                float4 _SubtropicalColor;
+                float4 _TemperateColor;
+                float4 _BorealColor;
+                float4 _TundraColor;
+                float4 _PolarColor;
+                float4 _OceanCold;
+                float4 _OceanWarm;
+                float4 _OceanTropical;
+                float _IceCapSize;
+                float _BiomeBlend;
+                float _BiomeNoiseScale;
+                float _BiomeNoiseStrength;
+                float _ColorVibrancy;
+                float _Seed;
                 float _MapStyle;
                 float _DetailScale;
                 float _DetailStrength;
@@ -892,7 +961,7 @@ Shader "Custom/MenuPlanetPreview"
                 return lerp(lerp(lerp(hash31_s(i),hash31_s(i+float3(1,0,0)),f.x),lerp(hash31_s(i+float3(0,1,0)),hash31_s(i+float3(1,1,0)),f.x),f.y),
                             lerp(lerp(hash31_s(i+float3(0,0,1)),hash31_s(i+float3(1,0,1)),f.x),lerp(hash31_s(i+float3(0,1,1)),hash31_s(i+float3(1,1,1)),f.x),f.y),f.z);}
             float fbm_s(float3 p){float v=0;float a=0.5;float fr=1;for(int i=0;i<4;i++){v+=a*noise3D_s(p*fr);fr*=2;a*=0.5;}return v;}
-            float GetDispS(float3 n){float3 sp=n*_LandScale;float e=smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,fbm_s(sp+float3(42.3,17.1,83.7)));
+            float GetDispS(float3 n){float3 seedOff=float3(_Seed,_Seed*0.7,_Seed*1.3);float3 sp=n*_LandScale;float e=smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,fbm_s(sp+float3(42.3,17.1,83.7)+seedOff));
                 return e*fbm_s(sp*1.5+float3(99.1,55.3,12.7))*_DisplacementScale;}
 
             Varyings vertShadow(Attributes input)

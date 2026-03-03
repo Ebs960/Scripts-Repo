@@ -125,13 +125,39 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("0 = normal world,  1 = infernal/demonic (lava oceans, charred land, volcanic glow, hellish rim).")]
     [SerializeField] private float mapStyle = 0f;
 
-    [Header("Biome Tuning")]
-    [Tooltip("Deep tropical green color used for equatorial jungle and monsoon bands.")]
-    [SerializeField] private Color tropicalGreen = new Color(0.01f, 0.30f, 0.04f, 1f);
+    [Header("Biome Zone Colors")]
+    [Tooltip("Equatorial jungle/rainforest color.")]
+    [SerializeField] private Color equatorialColor = new Color(0.01f, 0.30f, 0.04f, 1f);
 
     [Tooltip("Sandy desert color used for dry equatorial regions.")]
     [SerializeField] private Color desertSand = new Color(0.96f, 0.89f, 0.65f, 1f);
 
+    [Tooltip("Subtropical savanna/golden grass color.")]
+    [SerializeField] private Color subtropicalColor = new Color(0.82f, 0.70f, 0.25f, 1f);
+
+    [Tooltip("Temperate grassland/forest color.")]
+    [SerializeField] private Color temperateZoneColor = new Color(0.14f, 0.68f, 0.12f, 1f);
+
+    [Tooltip("Boreal dark conifer color.")]
+    [SerializeField] private Color borealColor = new Color(0.06f, 0.25f, 0.10f, 1f);
+
+    [Tooltip("Tundra barren gray-brown color.")]
+    [SerializeField] private Color tundraColor = new Color(0.58f, 0.50f, 0.38f, 1f);
+
+    [Tooltip("Polar ice/snow color.")]
+    [SerializeField] private Color polarColor = new Color(0.93f, 0.95f, 0.97f, 1f);
+
+    [Header("Ocean Colors")]
+    [Tooltip("Cold ocean (polar) color.")]
+    [SerializeField] private Color oceanCold = new Color(0.08f, 0.15f, 0.30f, 1f);
+
+    [Tooltip("Warm ocean (temperate) color.")]
+    [SerializeField] private Color oceanWarm = new Color(0.06f, 0.22f, 0.45f, 1f);
+
+    [Tooltip("Tropical ocean color.")]
+    [SerializeField] private Color oceanTropical = new Color(0.10f, 0.32f, 0.52f, 1f);
+
+    [Header("Biome Tuning")]
     [Range(0f, 1f)]
     [Tooltip("Ice cap coverage size. 0 = no ice caps, 1 = massive polar ice.")]
     [SerializeField] private float iceCapSize = 0.5f;
@@ -139,6 +165,25 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 0.1f)]
     [Tooltip("Blend width at biome band edges. 0 = hard cutoff, 0.03 = subtle transition.")]
     [SerializeField] private float biomeBlend = 0.03f;
+
+    [Range(0f, 10f)]
+    [Tooltip("Scale of noise used to perturb biome latitude bands. Higher = more detail.")]
+    [SerializeField] private float biomeNoiseScale = 3.0f;
+
+    [Range(0f, 0.2f)]
+    [Tooltip("Strength of noise perturbation on biome bands. 0 = straight lines.")]
+    [SerializeField] private float biomeNoiseStrength = 0.08f;
+
+    [Range(0.5f, 2f)]
+    [Tooltip("Color vibrancy boost. 1 = natural, >1 = more saturated.")]
+    [SerializeField] private float colorVibrancy = 1.3f;
+
+    [Header("Seed")]
+    [Tooltip("Planet noise seed. Randomized each play if randomizeSeed is true.")]
+    [SerializeField] private float seed = 0f;
+
+    [Tooltip("Randomize the planet seed on every Awake.")]
+    [SerializeField] private bool randomizeSeed = true;
 
     // -----------------------------------------------------------------
     //  Private state
@@ -158,10 +203,22 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Moisture      = Shader.PropertyToID("_Moisture");
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
-    private static readonly int ID_TropicalGreen = Shader.PropertyToID("_TropicalGreen");
+    private static readonly int ID_EquatorialColor = Shader.PropertyToID("_EquatorialColor");
     private static readonly int ID_DesertSand    = Shader.PropertyToID("_DesertSand");
+    private static readonly int ID_SubtropicalColor = Shader.PropertyToID("_SubtropicalColor");
+    private static readonly int ID_TemperateColor = Shader.PropertyToID("_TemperateColor");
+    private static readonly int ID_BorealColor   = Shader.PropertyToID("_BorealColor");
+    private static readonly int ID_TundraColor   = Shader.PropertyToID("_TundraColor");
+    private static readonly int ID_PolarColor    = Shader.PropertyToID("_PolarColor");
+    private static readonly int ID_OceanCold     = Shader.PropertyToID("_OceanCold");
+    private static readonly int ID_OceanWarm     = Shader.PropertyToID("_OceanWarm");
+    private static readonly int ID_OceanTropical = Shader.PropertyToID("_OceanTropical");
     private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
     private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
+    private static readonly int ID_BiomeNoiseScale = Shader.PropertyToID("_BiomeNoiseScale");
+    private static readonly int ID_BiomeNoiseStrength = Shader.PropertyToID("_BiomeNoiseStrength");
+    private static readonly int ID_ColorVibrancy = Shader.PropertyToID("_ColorVibrancy");
+    private static readonly int ID_Seed          = Shader.PropertyToID("_Seed");
     private static readonly int ID_BiomeTint     = Shader.PropertyToID("_BiomeTint");
     private static readonly int ID_DesertFactor  = Shader.PropertyToID("_DesertFactor");
     private static readonly int ID_TropicalFactor = Shader.PropertyToID("_TropicalFactor");
@@ -207,6 +264,13 @@ public class MenuPlanetPreview : MonoBehaviour
         }
 
         SetupMaterial();
+
+        // Randomize seed so each play session gets a unique planet
+        if (randomizeSeed)
+        {
+            seed = Random.Range(0f, 10000f);
+        }
+
         ApplyAllParameters();
         SetupSpaceBackgroundIfNeeded();
 
@@ -304,10 +368,28 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
         materialInstance.SetFloat(ID_CivCount,     civCount);
-        materialInstance.SetColor(ID_TropicalGreen, tropicalGreen);
+        materialInstance.SetFloat(ID_Seed,         seed);
+
+        // Push all biome zone colors
+        materialInstance.SetColor(ID_EquatorialColor, equatorialColor);
         materialInstance.SetColor(ID_DesertSand,    desertSand);
+        materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
+        materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
+        materialInstance.SetColor(ID_BorealColor,   borealColor);
+        materialInstance.SetColor(ID_TundraColor,   tundraColor);
+        materialInstance.SetColor(ID_PolarColor,    polarColor);
+
+        // Ocean colors
+        materialInstance.SetColor(ID_OceanCold,     oceanCold);
+        materialInstance.SetColor(ID_OceanWarm,     oceanWarm);
+        materialInstance.SetColor(ID_OceanTropical, oceanTropical);
+
+        // Biome tuning
         materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend,    biomeBlend);
+        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
+        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
+        materialInstance.SetFloat(ID_ColorVibrancy, colorVibrancy);
 
         // Update biome-related visual parameters derived from temperature/moisture/elevation
         UpdateBiomeVisuals();
@@ -400,11 +482,11 @@ public class MenuPlanetPreview : MonoBehaviour
             materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
     }
 
-    /// <summary>Set the tropical green color used in equatorial jungle and monsoon bands.</summary>
-    public void SetTropicalGreen(Color value)
+    /// <summary>Set the equatorial/tropical color used in jungle and monsoon bands.</summary>
+    public void SetEquatorialColor(Color value)
     {
-        tropicalGreen = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_TropicalGreen, tropicalGreen); }
+        equatorialColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_EquatorialColor, equatorialColor); }
     }
 
     /// <summary>Set the desert sand color used for dry equatorial regions.</summary>
@@ -412,6 +494,62 @@ public class MenuPlanetPreview : MonoBehaviour
     {
         desertSand = value;
         if (materialInstance != null) { materialInstance.SetColor(ID_DesertSand, desertSand); }
+    }
+
+    /// <summary>Set the subtropical savanna color.</summary>
+    public void SetSubtropicalColor(Color value)
+    {
+        subtropicalColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor); }
+    }
+
+    /// <summary>Set the temperate grassland/forest color.</summary>
+    public void SetTemperateZoneColor(Color value)
+    {
+        temperateZoneColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_TemperateColor, temperateZoneColor); }
+    }
+
+    /// <summary>Set the boreal conifer color.</summary>
+    public void SetBorealColor(Color value)
+    {
+        borealColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_BorealColor, borealColor); }
+    }
+
+    /// <summary>Set the tundra barren color.</summary>
+    public void SetTundraColor(Color value)
+    {
+        tundraColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_TundraColor, tundraColor); }
+    }
+
+    /// <summary>Set the polar ice/snow color.</summary>
+    public void SetPolarColor(Color value)
+    {
+        polarColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_PolarColor, polarColor); }
+    }
+
+    /// <summary>Set the cold ocean color.</summary>
+    public void SetOceanCold(Color value)
+    {
+        oceanCold = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_OceanCold, oceanCold); }
+    }
+
+    /// <summary>Set the warm ocean color.</summary>
+    public void SetOceanWarm(Color value)
+    {
+        oceanWarm = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_OceanWarm, oceanWarm); }
+    }
+
+    /// <summary>Set the tropical ocean color.</summary>
+    public void SetOceanTropical(Color value)
+    {
+        oceanTropical = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_OceanTropical, oceanTropical); }
     }
 
     /// <summary>Set ice cap coverage size. 0 = no caps, 1 = massive polar ice.</summary>
@@ -459,11 +597,23 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_TropicalFactor, tropicalFactor);
         materialInstance.SetFloat(ID_SnowFactor, snowFactor);
         
-        // Push inspector-driven biome tuning params to shader
-        materialInstance.SetColor(ID_TropicalGreen, tropicalGreen);
+        // Push all inspector-driven biome zone colors to shader
+        materialInstance.SetColor(ID_EquatorialColor, equatorialColor);
         materialInstance.SetColor(ID_DesertSand, desertSand);
+        materialInstance.SetColor(ID_SubtropicalColor, subtropicalColor);
+        materialInstance.SetColor(ID_TemperateColor, temperateZoneColor);
+        materialInstance.SetColor(ID_BorealColor, borealColor);
+        materialInstance.SetColor(ID_TundraColor, tundraColor);
+        materialInstance.SetColor(ID_PolarColor, polarColor);
+        materialInstance.SetColor(ID_OceanCold, oceanCold);
+        materialInstance.SetColor(ID_OceanWarm, oceanWarm);
+        materialInstance.SetColor(ID_OceanTropical, oceanTropical);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
+        materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
+        materialInstance.SetFloat(ID_BiomeNoiseStrength, biomeNoiseStrength);
+        materialInstance.SetFloat(ID_ColorVibrancy, colorVibrancy);
+        materialInstance.SetFloat(ID_Seed, seed);
         
         // Mirror detail props to shader so inspector updates apply immediately
         materialInstance.SetFloat(ID_DetailScale, detailScale);
