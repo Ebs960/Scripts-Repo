@@ -551,6 +551,9 @@ public class CombatUnit : BaseUnit
         if (path == null || path.Count == 0)
             return;
 
+        // Reset animation before killing the old coroutine — StopAllCoroutines
+        // would destroy the MoveAlongPath cleanup code that sets isMoving = false
+        isMoving = false;
         StopAllCoroutines();
         StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
     }
@@ -560,6 +563,8 @@ public class CombatUnit : BaseUnit
         // Flat-only movement: rely on TileSystem for planar centers
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+
+        isMoving = true;
 
         foreach (int idx in path)
         {
@@ -588,10 +593,12 @@ public class CombatUnit : BaseUnit
             currentTileIndex = idx;
         }
 
+        isMoving = false;
+
         // Raise movement completed event
         if (path.Count > 0)
         {
-            GameEventManager.Instance.RaiseMovementCompletedEvent(this, path[0], path[path.Count - 1], path.Count);
+            GameEventManager.Instance?.RaiseMovementCompletedEvent(this, path[0], path[path.Count - 1], path.Count);
         }
     }
 
@@ -1493,11 +1500,29 @@ return;
             if (_isMoving != value)
             {
                 _isMoving = value;
+                base.isMoving = value; // Keep BaseUnit field in sync
                 UpdateWalkingAnimation();
             }
         }
     }
-    
+
+    /// <summary>
+    /// Override BaseUnit.UpdateWalkingState to properly sync CombatUnit._isMoving
+    /// (BaseUnit's version sets base.isMoving which is hidden by 'new', causing desync)
+    /// </summary>
+    public override void UpdateWalkingState(bool walking)
+    {
+        // Set _isMoving directly (bypasses guard if value unchanged, but that's fine)
+        _isMoving = walking;
+        base.isMoving = walking;
+        
+        // Update animator
+        if (animator != null && HasParameter(animator, isWalkingHash))
+            animator.SetBool(isWalkingHash, walking);
+        
+        // Sync idle and walking visuals
+        UpdateWalkingAnimation();
+    }
 
     // Event fired when multi-tile move finishes
     public event System.Action OnMovementComplete;
@@ -2247,7 +2272,8 @@ return;
     {
         if (args.Unit == this)
         {
-            // Handle any post-movement logic
+            // Safety net: ensure walking animation stops when movement completes
+            isMoving = false;
         }
     }
 

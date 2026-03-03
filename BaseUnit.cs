@@ -1055,6 +1055,9 @@ public abstract class BaseUnit : MonoBehaviour
         var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
         if (path == null || path.Count == 0) return;
 
+        // Reset animation before killing the old coroutine — StopAllCoroutines
+        // would destroy the MoveAlongPath cleanup code that sets isMoving = false
+        UpdateWalkingState(false);
         StopAllCoroutines();
         StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
     }

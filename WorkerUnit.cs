@@ -131,6 +131,17 @@ public class WorkerUnit : BaseUnit
         base.Awake();
         UnitRegistry.RegisterPersistent(PersistentId, gameObject);
 
+        // Subscribe to movement completed event for animation cleanup
+        if (GameEventManager.Instance != null)
+        {
+            GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+        }
+        else
+        {
+            // GameEventManager may not exist yet at Awake; defer subscription
+            StartCoroutine(DeferredSubscribeToMovementEvent());
+        }
+
         // Auto-equip defaults
         if (data != null)
         {
@@ -140,6 +151,21 @@ public class WorkerUnit : BaseUnit
             if (equippedMiscellaneous == null && data.defaultMiscellaneous != null) EquipItem(data.defaultMiscellaneous);
             if (equippedProjectileWeapon == null && data.defaultProjectileWeapon != null) EquipItem(data.defaultProjectileWeapon);
         }
+    }
+
+    private System.Collections.IEnumerator DeferredSubscribeToMovementEvent()
+    {
+        while (GameEventManager.Instance == null)
+            yield return null;
+        GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+    }
+
+    protected override void OnDestroy()
+    {
+        // Unsubscribe from movement event
+        if (GameEventManager.Instance != null)
+            GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
+        base.OnDestroy();
     }
 
     #endregion
