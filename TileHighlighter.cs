@@ -44,46 +44,61 @@ public class TileHighlighter : MonoBehaviour
         }
     }
 
+    private TileSystem _subscribedTS;
+
     private void Start()
     {
-        // Auto-find WorldPicker if not assigned
-        if (worldPicker == null)
-        {
-            worldPicker = FindAnyObjectByType<WorldPicker>();
-        }
-
         FindTerrainMaterial();
+        SubscribeToTileSystem();
     }
 
     private void OnDisable()
     {
         ClearHighlight();
+        UnsubscribeFromTileSystem();
+    }
+
+    private void SubscribeToTileSystem()
+    {
+        var ts = TileSystem.Instance;
+        if (ts == null) return;
+        if (_subscribedTS == ts) return;
+        UnsubscribeFromTileSystem();
+        _subscribedTS = ts;
+        ts.OnTileHovered += OnTileHovered;
+        ts.OnTileHoverExited += OnTileHoverExited;
+    }
+
+    private void UnsubscribeFromTileSystem()
+    {
+        if (_subscribedTS != null)
+        {
+            _subscribedTS.OnTileHovered -= OnTileHovered;
+            _subscribedTS.OnTileHoverExited -= OnTileHoverExited;
+            _subscribedTS = null;
+        }
+    }
+
+    private void OnTileHovered(int tileIndex, Vector3 worldPos)
+    {
+        if (!enableHighlight) return;
+        if (tileIndex >= 0 && tileIndex != currentHighlightedTile)
+            SetHighlightedTile(tileIndex);
+    }
+
+    private void OnTileHoverExited()
+    {
+        if (currentHighlightedTile >= 0)
+            ClearHighlight();
     }
 
     private void Update()
     {
-        if (!enableHighlight) return;
+        // Re-subscribe if TileSystem was recreated (planet switch)
+        if (_subscribedTS == null || _subscribedTS != TileSystem.Instance)
+            SubscribeToTileSystem();
 
-        // Pick the tile under the mouse directly via WorldPicker
-        if (worldPicker != null &&
-            worldPicker.TryPickTileIndex(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, out int tileIndex, out Vector3 _) &&
-            tileIndex >= 0)
-        {
-            if (tileIndex != currentHighlightedTile)
-            {
-                SetHighlightedTile(tileIndex);
-            }
-        }
-        else
-        {
-            // No tile under cursor
-            if (currentHighlightedTile >= 0)
-            {
-                ClearHighlight();
-            }
-        }
-
-        // Pulse effect
+        // Pulse effect — only material color write, no raycast
         if (enablePulse && currentHighlightedTile >= 0 && terrainMaterial != null)
         {
             float pulse = Mathf.Lerp(pulseMin, pulseMax, (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f);

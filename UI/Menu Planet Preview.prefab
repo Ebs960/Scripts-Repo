@@ -26,7 +26,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1089509960964769067}
   m_LocalRotation: {x: 0.25000006, y: -0.24999997, z: 0.066987306, w: 0.9330127}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -0.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -34,7 +34,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 30, y: -30, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2.57, y: 0.35}
+  m_AnchoredPosition: {x: 0.58, y: 0.69}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!108 &7093151305136474556
@@ -405,23 +405,36 @@ MonoBehaviour:
   cloudDensity: 0.069
   cloudScale: 3
   cloudSpeed: 0.08
-  atmosphereShellScale: 1.053
+  atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
-  atmosphereIntensity: 0.14
+  atmosphereIntensity: 0.05
   enableBloom: 1
   bloomThreshold: 0.5
   bloomIntensity: 0.373
-  icosphereSubdivisions: 10
+  icosphereSubdivisions: 16
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
   moisture: 0.5
   elevation: 0.3
   mapStyle: 0
-  tropicalGreen: {r: 0, g: 1, b: 0.09589052, a: 1}
+  equatorialColor: {r: 0.01, g: 0.3, b: 0.04, a: 1}
   desertSand: {r: 1, g: 0.94884163, b: 0.7754717, a: 1}
+  subtropicalColor: {r: 0.82, g: 0.7, b: 0.25, a: 1}
+  temperateZoneColor: {r: 0.14, g: 0.68, b: 0.12, a: 1}
+  borealColor: {r: 0.06, g: 0.25, b: 0.1, a: 1}
+  tundraColor: {r: 1, g: 1, b: 1, a: 1}
+  polarColor: {r: 0.93, g: 0.95, b: 0.97, a: 1}
+  oceanCold: {r: 0, g: 0.32142878, b: 1, a: 1}
+  oceanWarm: {r: 0, g: 0.32156864, b: 1, a: 1}
+  oceanTropical: {r: 0, g: 0.32, b: 1, a: 1}
   iceCapSize: 0.5
-  biomeBlend: 0.03
+  biomeBlend: 0.1
+  biomeNoiseScale: 10
+  biomeNoiseStrength: 0.2
+  colorVibrancy: 2
+  seed: 0
+  randomizeSeed: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
   createBackgroundQuad: 1
 --- !u!1 &6832828193519875274

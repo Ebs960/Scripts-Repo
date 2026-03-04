@@ -472,9 +472,15 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
 
+        // Only update column wrapping when the camera has actually moved
         if (enableWrap && cameraTransform != null && chunks != null)
         {
-            UpdateColumnWrapping();
+            float camX = cameraTransform.position.x;
+            if (Mathf.Abs(camX - _lastWrapCamX) > 0.05f)
+            {
+                _lastWrapCamX = camX;
+                UpdateColumnWrapping();
+            }
         }
 
         // Detect changes made in the inspector at runtime and apply them immediately.
@@ -3899,6 +3905,7 @@ public class HexMapChunkManager : MonoBehaviour
     // Global water meshes (UnifiedWaterVolume/Surface, OceanPlane) are not parented to columns,
     // so they must be shifted by whole map widths to stay aligned with the teleported columns.
     private int _globalWaterWrapOffset = int.MinValue;
+    private float _lastWrapCamX = float.NegativeInfinity;
     private void UpdateGlobalWaterWrap(float cameraXLocal)
     {
         if (!enableWrap) return;

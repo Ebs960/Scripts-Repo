@@ -225,14 +225,8 @@ public class UnitMovementController : MonoBehaviour
         int previousTileIndex = currentTileIndex;
         
         // Set unit to moving state
-        if (combatUnit != null)
-        {
-            combatUnit.isMoving = true; // This will automatically update IsWalking animator parameter
-        }
-        else
-        {
-            unit.UpdateWalkingState(true);
-        }
+        Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} START path len={path.Count} from tile {currentTileIndex} | type={unit.GetType().Name}");
+        unit.UpdateWalkingState(true);
         
         // Move along each tile in path
         for (int i = 0; i < path.Count; i++)
@@ -263,7 +257,8 @@ public class UnitMovementController : MonoBehaviour
                 // Check if worker can afford this move
                 if (workerUnit.currentMovePoints < movementCost)
                 {
-unit.UpdateWalkingState(false);
+                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
+                    unit.UpdateWalkingState(false);
                     if (i > 0)
                         GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
 
@@ -345,11 +340,9 @@ unit.UpdateWalkingState(false);
                 // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
             if (unit.currentHealth <= 0 || unit.IsTrapped)
                 {
+                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} TRAPPED/DEAD at step {i} (hp={unit.currentHealth}, trapped={unit.IsTrapped})");
                     // Fire movement completed event up to this step and exit early
                     GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
-                if (combatUnit != null)
-                    combatUnit.isMoving = false;
-                else
                     unit.UpdateWalkingState(false);
 
                     // Fog of War: unit died or was trapped; update vision for owner at the final tile reached.
@@ -369,14 +362,8 @@ unit.UpdateWalkingState(false);
         }
         
         // Set unit back to idle state
-        if (combatUnit != null)
-        {
-            combatUnit.isMoving = false; // This will automatically update IsWalking animator parameter
-        }
-        else
-        {
-            unit.UpdateWalkingState(false);
-        }
+        Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} COMPLETED full path ({path.Count} steps)");
+        unit.UpdateWalkingState(false);
         
         // Fire movement completed event
         GameEventManager.Instance.RaiseMovementCompletedEvent((MonoBehaviour)unit, path[0], path[path.Count - 1], path.Count);

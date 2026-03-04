@@ -19,16 +19,14 @@ Shader "Custom/MenuPlanetPreview"
             _BorealColor("Boreal (Conifers)", Color) = (0.06, 0.25, 0.10, 1)
             _TundraColor("Tundra", Color) = (0.58, 0.50, 0.38, 1)
             _PolarColor("Polar Ice/Snow", Color) = (0.93, 0.95, 0.97, 1)
-        [Header(Ocean Colors)]
-            _OceanCold("Ocean Cold", Color) = (0.08, 0.15, 0.30, 1)
-            _OceanWarm("Ocean Warm", Color) = (0.06, 0.22, 0.45, 1)
-            _OceanTropical("Ocean Tropical", Color) = (0.10, 0.32, 0.52, 1)
+        [Header(Ocean Color)]
+            _OceanColor("Ocean Color", Color) = (0.06, 0.22, 0.45, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
             _BiomeBlend("Biome Blend", Range(0, 0.1)) = 0.03
             _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
             _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
-            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.3
+            _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.15
         [Header(Seed)]
             _Seed("Planet Seed", Float) = 0.0
             _DetailScale("Detail Scale", Float) = 18.0
@@ -46,8 +44,6 @@ Shader "Custom/MenuPlanetPreview"
             _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
             _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
             _SunIntensity("Sun Intensity", Float) = 1.0
-        [Header(Civilization)]
-            _CivCount("Civilization Count", Float) = 4.0
     }
 
     SubShader
@@ -100,9 +96,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
-                float4 _OceanCold;
-                float4 _OceanWarm;
-                float4 _OceanTropical;
+                float4 _OceanColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -119,7 +113,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
-                float _CivCount;
             CBUFFER_END
 
             // -----------------------------------------------------------------
@@ -227,7 +220,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 seedOffset = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float latNoise = (fbm(objNorm * _BiomeNoiseScale + seedOffset + float3(55.5, 22.2, 88.8)) - 0.5)
                                * _BiomeNoiseStrength * 2.0;
-                float sLat = lat + shift + latNoise;
+                float sLat = lat - shift + latNoise;
 
                 // --- Moisture-driven color within each band ---
                 float3 equatC  = lerp(lerp(desertSand, desertRed, 0.4), jungleDeep, moist);
@@ -267,13 +260,7 @@ Shader "Custom/MenuPlanetPreview"
 
             float3 GetOceanColor(float temp)
             {
-                float3 coldOcean = _OceanCold.rgb;
-                float3 warmOcean = _OceanWarm.rgb;
-                float3 hotOcean  = _OceanTropical.rgb;
-
-                float t1 = saturate(temp * 2.0);
-                float t2 = saturate((temp - 0.5) * 2.0);
-                return lerp(lerp(coldOcean, warmOcean, t1), hotOcean, t2);
+                return _OceanColor.rgb;
             }
 
             // -----------------------------------------------------------------
@@ -414,7 +401,7 @@ Shader "Custom/MenuPlanetPreview"
                 float tempShift = _Temperature - 0.5; // range -0.5 to +0.5
                 // Moisture: add some latitude variation (equator/60° wetter, 30° drier)
                 float moistLatitude = cos(latitude * 3.14159 * 2.0) * 0.2;
-                float moistNoise = (noise3D(objNorm * 3.5 + float3(77.7, 33.3, 11.1) + seedOff) - 0.5) * 0.25;
+                float moistNoise = (noise3D(objNorm * 5.0 + float3(77.7, 33.3, 11.1) + seedOff) - 0.5) * 0.12;
                 float localMoist = saturate(_Moisture + moistLatitude + moistNoise);
 
                 // ==============================================================
@@ -500,7 +487,7 @@ Shader "Custom/MenuPlanetPreview"
                 // Biome micro-textures: subtle noise variation to break up flat bands
                 float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7) + seedOff);
                 // Light brightness variation preserving the biome's actual color
-                elevatedLand *= lerp(0.92, 1.08, microNoise);
+                elevatedLand *= lerp(0.95, 1.05, microNoise);
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
 
@@ -637,19 +624,6 @@ Shader "Custom/MenuPlanetPreview"
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
                 // ==============================================================
-                //  Cloud shadows on surface
-                // ==============================================================
-                float3 cloudSamplePos = objNorm * 3.0;
-                float cloudAngle = timeVal * 0.05;
-                float cCos = cos(cloudAngle); float cSin = sin(cloudAngle);
-                cloudSamplePos.xz = float2(
-                    cloudSamplePos.x * cCos - cloudSamplePos.z * cSin,
-                    cloudSamplePos.x * cSin + cloudSamplePos.z * cCos);
-                float cloudShadow = fbm(cloudSamplePos + float3(5.5, 2.2, 8.8) + seedOff);
-                float cloudShadowMask = smoothstep(0.35, 0.55, cloudShadow) * 0.2 * (1.0 - infernal);
-                albedo *= (1.0 - cloudShadowMask);
-
-                // ==============================================================
                 //  Lighting (property-driven sun direction + color)
                 // ==============================================================
                 float3 lightDir = normalize(-_SunDirection.xyz);
@@ -664,7 +638,11 @@ Shader "Custom/MenuPlanetPreview"
                 // Moderate ambient — dark hemisphere should be dim but biome colors
                 // should still be readable (like Earthrise photos from ISS at night).
                 float ambient = 0.12;
-                float lighting = diffuse + ambient;
+
+                // Terrain ambient occlusion — valleys are darker, ridges catch more light
+                float terrainAO = lerp(1.0, 0.7, saturate(terrainHeight * 1.5)) // valleys darken
+                                * lerp(1.0, 0.85, mtnBand * 0.6);              // mountain crevices
+                float lighting = (diffuse + ambient) * terrainAO;
 
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
                 float3 halfVec = normalize(lightDir + viewDir);
@@ -802,9 +780,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
-                float4 _OceanCold;
-                float4 _OceanWarm;
-                float4 _OceanTropical;
+                float4 _OceanColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -821,7 +797,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
-                float _CivCount;
             CBUFFER_END
 
             // Inline noise for displacement (same as main pass)
@@ -854,7 +829,7 @@ Shader "Custom/MenuPlanetPreview"
                 float3 sp = objNorm * _LandScale;
                 float n = fbm_d(sp + float3(42.3,17.1,83.7) + seedOff);
                 float edge = smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,n);
-                float elev = fbm_d(sp*1.5+float3(99.1,55.3,12.7));
+                float elev = fbm_d(sp*1.5+float3(99.1,55.3,12.7) + seedOff);
                 return edge*elev*_DisplacementScale;
             }
 
@@ -934,9 +909,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _BorealColor;
                 float4 _TundraColor;
                 float4 _PolarColor;
-                float4 _OceanCold;
-                float4 _OceanWarm;
-                float4 _OceanTropical;
+                float4 _OceanColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -953,7 +926,6 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _SunDirection;
                 float4 _SunColor;
                 float _SunIntensity;
-                float _CivCount;
             CBUFFER_END
 
             float hash31_s(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973));p+=dot(p,p.yxz+33.33);return frac((p.x+p.y)*p.z);}
@@ -962,7 +934,7 @@ Shader "Custom/MenuPlanetPreview"
                             lerp(lerp(hash31_s(i+float3(0,0,1)),hash31_s(i+float3(1,0,1)),f.x),lerp(hash31_s(i+float3(0,1,1)),hash31_s(i+float3(1,1,1)),f.x),f.y),f.z);}
             float fbm_s(float3 p){float v=0;float a=0.5;float fr=1;for(int i=0;i<4;i++){v+=a*noise3D_s(p*fr);fr*=2;a*=0.5;}return v;}
             float GetDispS(float3 n){float3 seedOff=float3(_Seed,_Seed*0.7,_Seed*1.3);float3 sp=n*_LandScale;float e=smoothstep(_LandThreshold-0.12,_LandThreshold+0.12,fbm_s(sp+float3(42.3,17.1,83.7)+seedOff));
-                return e*fbm_s(sp*1.5+float3(99.1,55.3,12.7))*_DisplacementScale;}
+                return e*fbm_s(sp*1.5+float3(99.1,55.3,12.7)+seedOff)*_DisplacementScale;}
 
             Varyings vertShadow(Attributes input)
             {

@@ -43,6 +43,8 @@ public class TileInfoWorldPanel : MonoBehaviour
         else if (Instance != this) { Destroy(gameObject); return; }
     }
 
+    private TileSystem _subscribedTS;
+
     private void Start()
     {
         if (panelRect == null || biomeText == null || yieldsText == null)
@@ -52,59 +54,75 @@ public class TileInfoWorldPanel : MonoBehaviour
             return;
         }
 
-        // Auto-find WorldPicker if not assigned
-        if (worldPicker == null)
-        {
-            worldPicker = FindAnyObjectByType<WorldPicker>();
-            if (worldPicker != null)
-                Debug.Log("[TileInfoWorldPanel] Auto-found WorldPicker in scene.");
-            else
-                Debug.LogWarning("[TileInfoWorldPanel] No WorldPicker assigned or found. Tile hover will not work.");
-        }
-
         // Start hidden
         panelRect.gameObject.SetActive(false);
+        SubscribeToTileSystem();
     }
 
-    private void Update()
+    private void OnDisable()
     {
-        if (worldPicker == null) return;
+        UnsubscribeFromTileSystem();
+    }
 
-        // Pick the tile under the mouse
-        if (worldPicker.TryPickTileIndex(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, out int tileIndex, out Vector3 worldPos))
+    private void SubscribeToTileSystem()
+    {
+        var ts = TileSystem.Instance;
+        if (ts == null) return;
+        if (_subscribedTS == ts) return;
+        UnsubscribeFromTileSystem();
+        _subscribedTS = ts;
+        ts.OnTileHovered += OnTileHovered;
+        ts.OnTileHoverExited += OnTileHoverExited;
+    }
+
+    private void UnsubscribeFromTileSystem()
+    {
+        if (_subscribedTS != null)
         {
-            if (tileIndex >= 0)
-            {
-                // Get tile data from the current planet's TileSystem
-                int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-                var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-                var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-
-                if (tileData != null)
-                {
-                    // Only update content when hovering a new tile (avoid per-frame text rebuilding)
-                    if (tileIndex != lastHoveredTile)
-                    {
-                        lastHoveredTile = tileIndex;
-                        UpdateContent(tileData);
-                    }
-                    Show();
-
-                    // Position panel near cursor
-                    if (followMouse && uiCanvas != null)
-                    {
-                        PositionNearCursor();
-                    }
-                    return;
-                }
-            }
+            _subscribedTS.OnTileHovered -= OnTileHovered;
+            _subscribedTS.OnTileHoverExited -= OnTileHoverExited;
+            _subscribedTS = null;
         }
+    }
 
-        // No valid tile under cursor — hide
+    private void OnTileHovered(int tileIndex, Vector3 worldPos)
+    {
+        if (tileIndex < 0) return;
+
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+
+        if (tileData != null)
+        {
+            if (tileIndex != lastHoveredTile)
+            {
+                lastHoveredTile = tileIndex;
+                UpdateContent(tileData);
+            }
+            Show();
+        }
+    }
+
+    private void OnTileHoverExited()
+    {
         if (lastHoveredTile >= 0)
         {
             lastHoveredTile = -1;
             Hide();
+        }
+    }
+
+    private void Update()
+    {
+        // Re-subscribe if TileSystem was recreated (planet switch)
+        if (_subscribedTS == null || _subscribedTS != TileSystem.Instance)
+            SubscribeToTileSystem();
+
+        // Position tooltip near cursor while hovering (lightweight — no raycast)
+        if (followMouse && uiCanvas != null && lastHoveredTile >= 0)
+        {
+            PositionNearCursor();
         }
     }
 

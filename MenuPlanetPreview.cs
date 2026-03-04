@@ -92,7 +92,7 @@ public class MenuPlanetPreview : MonoBehaviour
 
     [Header("Mesh Quality")]
     [Tooltip("Subdivisions for generated icosphere. Higher = smoother displacement. 0-6 (6 ≈ 40k tris).")]
-    [Range(0,10)] [SerializeField] private int icosphereSubdivisions = 5;
+    [Range(0,20)] [SerializeField] private int icosphereSubdivisions = 5;
 
     // -----------------------------------------------------------------
     //  Preview Parameters (exposed in inspector for quick iteration)
@@ -147,15 +147,9 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Polar ice/snow color.")]
     [SerializeField] private Color polarColor = new Color(0.93f, 0.95f, 0.97f, 1f);
 
-    [Header("Ocean Colors")]
-    [Tooltip("Cold ocean (polar) color.")]
-    [SerializeField] private Color oceanCold = new Color(0.08f, 0.15f, 0.30f, 1f);
-
-    [Tooltip("Warm ocean (temperate) color.")]
-    [SerializeField] private Color oceanWarm = new Color(0.06f, 0.22f, 0.45f, 1f);
-
-    [Tooltip("Tropical ocean color.")]
-    [SerializeField] private Color oceanTropical = new Color(0.10f, 0.32f, 0.52f, 1f);
+    [Header("Ocean Color")]
+    [Tooltip("Ocean color.")]
+    [SerializeField] private Color oceanColor = new Color(0.06f, 0.22f, 0.45f, 1f);
 
     [Header("Biome Tuning")]
     [Range(0f, 1f)]
@@ -194,7 +188,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private GameObject cloudShellGO;
     private GameObject atmosphereShellGO;
     private Volume bloomVolume;
-    private float civCount = 4f;
+
 
     // Cached shader property IDs — planet
     private static readonly int ID_LandScale     = Shader.PropertyToID("_LandScale");
@@ -210,9 +204,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_BorealColor   = Shader.PropertyToID("_BorealColor");
     private static readonly int ID_TundraColor   = Shader.PropertyToID("_TundraColor");
     private static readonly int ID_PolarColor    = Shader.PropertyToID("_PolarColor");
-    private static readonly int ID_OceanCold     = Shader.PropertyToID("_OceanCold");
-    private static readonly int ID_OceanWarm     = Shader.PropertyToID("_OceanWarm");
-    private static readonly int ID_OceanTropical = Shader.PropertyToID("_OceanTropical");
+    private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
     private static readonly int ID_IceCapSize    = Shader.PropertyToID("_IceCapSize");
     private static readonly int ID_BiomeBlend    = Shader.PropertyToID("_BiomeBlend");
     private static readonly int ID_BiomeNoiseScale = Shader.PropertyToID("_BiomeNoiseScale");
@@ -243,8 +235,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_AtmosFalloff  = Shader.PropertyToID("_AtmosphereFalloff");
     private static readonly int ID_AtmosIntensity = Shader.PropertyToID("_AtmosphereIntensity");
 
-    // City lights
-    private static readonly int ID_CivCount = Shader.PropertyToID("_CivCount");
+
 
     // -----------------------------------------------------------------
     //  Lifecycle
@@ -257,10 +248,13 @@ public class MenuPlanetPreview : MonoBehaviour
             previewRenderer = GetComponentInChildren<MeshRenderer>();
         }
 
-        // Auto-find light in children
+        // Auto-find light: children first, then any directional light in the scene
+        if (previewLight == null)
+            previewLight = GetComponentInChildren<Light>();
         if (previewLight == null)
         {
-            previewLight = GetComponentInChildren<Light>();
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (l.type == LightType.Directional) { previewLight = l; break; }
         }
 
         SetupMaterial();
@@ -277,8 +271,7 @@ public class MenuPlanetPreview : MonoBehaviour
         // Upgrade the preview mesh for better shading/detail
         TryReplacePreviewMesh();
 
-        // Build cloud + atmosphere shells
-        SetupCloudShell();
+        // Build atmosphere shell (clouds removed)
         SetupAtmosphereShell();
 
         // Enable bloom on the preview camera
@@ -291,12 +284,6 @@ public class MenuPlanetPreview : MonoBehaviour
         if (previewRenderer != null)
         {
             previewRenderer.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
-        }
-
-        // Cloud rotation (independent, typically opposite direction)
-        if (cloudShellGO != null)
-        {
-            cloudShellGO.transform.Rotate(Vector3.up, cloudRotationSpeed * Time.deltaTime, Space.Self);
         }
 
         // Sync sun direction from preview light to all materials
@@ -367,7 +354,6 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetFloat(ID_Moisture,      moisture);
         materialInstance.SetFloat(ID_Elevation,     elevation);
         materialInstance.SetFloat(ID_MapStyle,     mapStyle);
-        materialInstance.SetFloat(ID_CivCount,     civCount);
         materialInstance.SetFloat(ID_Seed,         seed);
 
         // Push all biome zone colors
@@ -379,10 +365,8 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_TundraColor,   tundraColor);
         materialInstance.SetColor(ID_PolarColor,    polarColor);
 
-        // Ocean colors
-        materialInstance.SetColor(ID_OceanCold,     oceanCold);
-        materialInstance.SetColor(ID_OceanWarm,     oceanWarm);
-        materialInstance.SetColor(ID_OceanTropical, oceanTropical);
+        // Ocean color
+        materialInstance.SetColor(ID_OceanColor,    oceanColor);
 
         // Biome tuning
         materialInstance.SetFloat(ID_IceCapSize,    iceCapSize);
@@ -531,25 +515,11 @@ public class MenuPlanetPreview : MonoBehaviour
         if (materialInstance != null) { materialInstance.SetColor(ID_PolarColor, polarColor); }
     }
 
-    /// <summary>Set the cold ocean color.</summary>
-    public void SetOceanCold(Color value)
+    /// <summary>Set the ocean color.</summary>
+    public void SetOceanColor(Color value)
     {
-        oceanCold = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_OceanCold, oceanCold); }
-    }
-
-    /// <summary>Set the warm ocean color.</summary>
-    public void SetOceanWarm(Color value)
-    {
-        oceanWarm = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_OceanWarm, oceanWarm); }
-    }
-
-    /// <summary>Set the tropical ocean color.</summary>
-    public void SetOceanTropical(Color value)
-    {
-        oceanTropical = value;
-        if (materialInstance != null) { materialInstance.SetColor(ID_OceanTropical, oceanTropical); }
+        oceanColor = value;
+        if (materialInstance != null) { materialInstance.SetColor(ID_OceanColor, oceanColor); }
     }
 
     /// <summary>Set ice cap coverage size. 0 = no caps, 1 = massive polar ice.</summary>
@@ -605,9 +575,7 @@ public class MenuPlanetPreview : MonoBehaviour
         materialInstance.SetColor(ID_BorealColor, borealColor);
         materialInstance.SetColor(ID_TundraColor, tundraColor);
         materialInstance.SetColor(ID_PolarColor, polarColor);
-        materialInstance.SetColor(ID_OceanCold, oceanCold);
-        materialInstance.SetColor(ID_OceanWarm, oceanWarm);
-        materialInstance.SetColor(ID_OceanTropical, oceanTropical);
+        materialInstance.SetColor(ID_OceanColor, oceanColor);
         materialInstance.SetFloat(ID_IceCapSize, iceCapSize);
         materialInstance.SetFloat(ID_BiomeBlend, biomeBlend);
         materialInstance.SetFloat(ID_BiomeNoiseScale, biomeNoiseScale);
@@ -716,26 +684,21 @@ public class MenuPlanetPreview : MonoBehaviour
     // -----------------------------------------------------------------
     private void PushSunProperties()
     {
-        if (previewLight == null) return;
+        if (previewLight == null || materialInstance == null) return;
 
-        Vector4 sunDir = previewLight.transform.forward; // light's forward = direction TOWARD surface
-        Color lightCol = previewLight.useColorTemperature
-            ? previewLight.color * Mathf.CorrelatedColorTemperatureToRGB(previewLight.colorTemperature)
-            : previewLight.color;
-        float intensity = previewLight.intensity / 1000f; // normalize lux to a shader-friendly range
+        // Position-based: move the light in the scene and the planet lights from that angle.
+        Vector3 planetPos = previewRenderer != null ? previewRenderer.transform.position : transform.position;
+        Vector3 diff = planetPos - previewLight.transform.position;
+        if (diff.sqrMagnitude < 0.0001f) diff = previewLight.transform.forward;
+        Vector4 sunDir = diff.normalized;
 
-        if (materialInstance != null)
-        {
-            materialInstance.SetVector(ID_SunDirection, sunDir);
-            materialInstance.SetColor(ID_SunColor, lightCol);
-            materialInstance.SetFloat(ID_SunIntensity, intensity);
-        }
-        if (cloudMaterialInstance != null)
-        {
-            cloudMaterialInstance.SetVector(ID_SunDirection, sunDir);
-            cloudMaterialInstance.SetColor(ID_SunColor, lightCol);
-            cloudMaterialInstance.SetFloat(ID_SunIntensity, intensity);
-        }
+        Color lightCol = previewLight.color;
+        float intensity = previewLight.intensity > 10f ? previewLight.intensity / 1000f : previewLight.intensity;
+
+        materialInstance.SetVector(ID_SunDirection, sunDir);
+        materialInstance.SetColor(ID_SunColor, lightCol);
+        materialInstance.SetFloat(ID_SunIntensity, intensity);
+
         if (atmosphereMaterialInstance != null)
         {
             atmosphereMaterialInstance.SetVector(ID_SunDirection, sunDir);
@@ -957,14 +920,5 @@ public class MenuPlanetPreview : MonoBehaviour
         PushAtmosphereParameters();
     }
 
-    /// <summary>
-    /// Set civilization count for night-side city light density.
-    /// Higher values = more city lights visible on the dark hemisphere.
-    /// </summary>
-    public void SetCivCount(float value)
-    {
-        civCount = Mathf.Max(0f, value);
-        if (materialInstance != null)
-            materialInstance.SetFloat(ID_CivCount, civCount);
-    }
+
 }

@@ -77,6 +77,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     private LoadingPanelController _loadingPanel;
     // Moons are separate planets now; no "onMoon" camera mode tracking.
     private PlanetaryCameraManager _cachedCameraManager; // Cached reference to avoid repeated FindAnyObjectByType calls
+    private HexMapChunkManager _cachedChunkManager; // Cached reference
+    private Vector3 _lastMinimapCamPos; // Track camera position to skip redundant indicator updates
     
     // UI mirroring cache
     [SerializeField] private Camera uiCamera; // leave null for Screen Space - Overlay
@@ -589,8 +591,17 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     void Update()
     {
-        // Update position indicator every frame for smooth tracking
-        UpdatePositionIndicator();
+        // Only update position indicator when the camera has actually moved
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 camPos = cam.transform.position;
+            if ((camPos - _lastMinimapCamPos).sqrMagnitude > 0.01f)
+            {
+                _lastMinimapCamPos = camPos;
+                UpdatePositionIndicator();
+            }
+        }
     }
 
     private void OnEnable()
@@ -1233,10 +1244,11 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         float worldZ = (worldV - 0.5f) * grid.MapHeight;
         float yPlane = currentPlanetGen != null ? currentPlanetGen.transform.position.y : 0f;
         
-        // Use HexMapChunkManager Y position
-        var chunkManager = FindAnyObjectByType<HexMapChunkManager>();
-        if (chunkManager != null && chunkManager.IsBuilt)
-            yPlane = chunkManager.transform.position.y;
+        // Use HexMapChunkManager Y position (cached)
+        if (_cachedChunkManager == null)
+            _cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
+        if (_cachedChunkManager != null && _cachedChunkManager.IsBuilt)
+            yPlane = _cachedChunkManager.transform.position.y;
         
         Vector3 worldTarget = new Vector3(worldX, yPlane, worldZ);
 

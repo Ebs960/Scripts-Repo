@@ -258,9 +258,7 @@ public class CombatUnit : BaseUnit
             // Animator controller check removed (no longer needed for debugging)
 
             // Initialize as not moving (idle state)
-            // Let UpdateIdleAnimation() handle setting IsIdle if needed
-            _isMoving = false;
-            UpdateIdleAnimation();
+            UpdateWalkingState(false);
         }
         else
         {
@@ -553,7 +551,7 @@ public class CombatUnit : BaseUnit
 
         // Reset animation before killing the old coroutine — StopAllCoroutines
         // would destroy the MoveAlongPath cleanup code that sets isMoving = false
-        isMoving = false;
+        UpdateWalkingState(false);
         StopAllCoroutines();
         StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
     }
@@ -564,7 +562,7 @@ public class CombatUnit : BaseUnit
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
 
-        isMoving = true;
+        UpdateWalkingState(true);
 
         foreach (int idx in path)
         {
@@ -593,7 +591,7 @@ public class CombatUnit : BaseUnit
             currentTileIndex = idx;
         }
 
-        isMoving = false;
+        UpdateWalkingState(false);
 
         // Raise movement completed event
         if (path.Count > 0)
@@ -1051,21 +1049,12 @@ if (!data.canSwitchToMelee)
     {
         StopAllCoroutines();
         
-        // Use hash for consistent naming (capitalized to match WorkerUnit)
-        // Death animation should play fully - don't clear IsIdle here, let animator handle it
+        // Clear walking/idle state when dead
+        UpdateWalkingState(false);
+        
+        // Death animation should play fully
         if (animator != null && HasParameter(animator, deathHash))
             animator.SetTrigger(deathHash);
-        
-        // Clear IsIdle and IsWalking when dead (death animation should interrupt everything)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
-        {
-            animator.SetBool(isIdleHash, false);
-        }
-        if (animator != null && HasParameter(animator, isWalkingHash))
-        {
-            animator.SetBool(isWalkingHash, false);
-        }
         
         // Raise death event
         GameEventManager.Instance.RaiseUnitKilledEvent(null, this, currentHealth);
@@ -1218,11 +1207,10 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         }
         if (animator != null)
         {
-            // Update idle animation (which will use IsIdle bool if available)
-            // Don't trigger if unit is moving
-            if (!_isMoving)
+            // Update idle animation if not moving
+            if (!isMoving)
             {
-                UpdateIdleAnimation();
+                UpdateWalkingState(false);
             }
         }
         if (level - 1 < data.abilitiesByLevel.Length && data.abilitiesByLevel[level - 1] != null)
@@ -1349,179 +1337,26 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         RegisterOccupancy(tileIndex);
     }
 
-    private void UpdateIdleAnimation()
-    {
-        if (animator == null)
-        {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateIdleAnimation called but animator is null");
-            return;
-        }
-        
-        // Check if IsIdle parameter exists (do this once at method level)
-        bool hasIsIdleParam = HasParameter(animator, isIdleHash);
-        
-        // Only update idle animation if unit is not moving, not attacking, AND not playing other animations
-        if (_isMoving)
-        {
-            // If moving, clear IsIdle
-            if (hasIsIdleParam)
-            {
-                animator.SetBool(isIdleHash, false);
-            }
-return;
-        }
-        
-        // Don't set idle if we're in the middle of playing other animations (attack, hit, death, etc.)
-        // Check current state - if we're in a non-idle state, don't force idle
-        AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
-        string currentStateName = GetCurrentStateName(animator);
-        
-        if (currentState.IsName("Attack") ||
-            currentState.IsName("Hit") ||
-            currentState.IsName("Death") ||
-            currentState.IsName("RangedAttack"))
-        {
-return;
-        }
-        
-        // Use IsIdle bool parameter (required for single idle state)
-        if (hasIsIdleParam)
-        {
-            animator.SetBool(isIdleHash, true);
-        }
-        
-        // CRITICAL FIX: Force immediate transition to Idle if not already there
-        // This ensures the animation actually plays
-        bool isInIdleState = currentState.IsName("Idle") || currentState.IsName("idle");
-        bool isTransitioning = animator.IsInTransition(0);
-        
-        if (!isInIdleState && !isTransitioning)
-        {
-            // Force immediate transition to Idle state
-            try
-            {
-                animator.CrossFade("Idle", 0.1f, 0);
-            }
-            catch
-            {
-                // Idle state might not exist, which is fine if using parameters only
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Helper to get current animator state name for debugging
-    /// </summary>
-    private string GetCurrentStateName(Animator anim)
-    {
-        if (anim == null || anim.runtimeAnimatorController == null) return "No Animator";
-        
-        AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
-        // Try to get state name from layer
-        if (anim.layerCount > 0)
-        {
-            AnimatorClipInfo[] clipInfo = anim.GetCurrentAnimatorClipInfo(0);
-            if (clipInfo != null && clipInfo.Length > 0)
-            {
-                return clipInfo[0].clip.name;
-            }
-        }
-        
-        // Fallback: check common state names
-        if (stateInfo.IsName("Attack")) return "Attack";
-        if (stateInfo.IsName("Hit")) return "Hit";
-        if (stateInfo.IsName("Death")) return "Death";
-        if (stateInfo.IsName("Rout")) return "Rout";
-        if (stateInfo.IsName("Idle") || stateInfo.IsName("idle")) return "Idle";
-        if (stateInfo.IsName("Walk") || stateInfo.IsName("Walking")) return "Walk";
-        
-        return $"Unknown (normalizedTime: {stateInfo.normalizedTime:F2})";
-    }
-    
-    /// <summary>
-    /// Log all animator parameters for debugging
-    /// </summary>
-    private void LogAnimatorParameters(Animator anim)
-    {
-        if (anim == null || anim.runtimeAnimatorController == null) return;
-        
-        System.Text.StringBuilder paramLog = new System.Text.StringBuilder();
-        paramLog.Append($"[CombatUnit] {gameObject.name}: Animator Parameters - ");
-        
-        foreach (var param in anim.parameters)
-        {
-            string value = "";
-            switch (param.type)
-            {
-                case AnimatorControllerParameterType.Bool:
-                    value = anim.GetBool(param.nameHash).ToString();
-                    break;
-                case AnimatorControllerParameterType.Int:
-                    value = anim.GetInteger(param.nameHash).ToString();
-                    break;
-                case AnimatorControllerParameterType.Float:
-                    value = anim.GetFloat(param.nameHash).ToString("F2");
-                    break;
-                case AnimatorControllerParameterType.Trigger:
-                    value = "Trigger";
-                    break;
-            }
-            paramLog.Append($"{param.name}={value}, ");
-        }
-// Also log transition info
-        if (anim.IsInTransition(0))
-        {
-            AnimatorTransitionInfo transInfo = anim.GetAnimatorTransitionInfo(0);
-}
-        else
-        {
-            AnimatorStateInfo stateInfo = anim.GetCurrentAnimatorStateInfo(0);
-}
-    }
-    
     // currentTileIndex, moveSpeed are inherited from BaseUnit
     
     // CombatUnit-specific animation hashes (base hashes like isWalkingHash, attackHash, etc. are in BaseUnit)
     private static readonly int isIdleHash = Animator.StringToHash("IsIdle");
     private static readonly int rangedAttackHash = Animator.StringToHash("RangedAttack");
-    
-    // Centralized animation state tracking
-    private bool _isMoving = false;
-    
-    /// <summary>
-    /// Is this unit currently moving? Automatically syncs with animator IsWalking parameter
-    /// Hides base class implementation to add animation sync
-    /// </summary>
-    public new bool isMoving 
-    { 
-        get => _isMoving;
-        set 
-        {
-            if (_isMoving != value)
-            {
-                _isMoving = value;
-                base.isMoving = value; // Keep BaseUnit field in sync
-                UpdateWalkingAnimation();
-            }
-        }
-    }
 
     /// <summary>
-    /// Override BaseUnit.UpdateWalkingState to properly sync CombatUnit._isMoving
-    /// (BaseUnit's version sets base.isMoving which is hidden by 'new', causing desync)
+    /// Override BaseUnit.UpdateWalkingState — sets IsWalking and syncs IsIdle.
+    /// This is the ONLY path for walking animation changes.
     /// </summary>
     public override void UpdateWalkingState(bool walking)
     {
-        // Set _isMoving directly (bypasses guard if value unchanged, but that's fine)
-        _isMoving = walking;
-        base.isMoving = walking;
-        
-        // Update animator
-        if (animator != null && HasParameter(animator, isWalkingHash))
-            animator.SetBool(isWalkingHash, walking);
-        
-        // Sync idle and walking visuals
-        UpdateWalkingAnimation();
+        base.UpdateWalkingState(walking); // sets isMoving + IsWalking on animator
+
+        // Sync IsIdle (opposite of walking)
+        if (animator != null && HasParameter(animator, isIdleHash))
+        {
+            animator.SetBool(isIdleHash, !walking);
+            Debug.Log($"[CombatUnit] {gameObject.name} IsIdle={!walking}, IsWalking={walking}");
+        }
     }
 
     // Event fired when multi-tile move finishes
@@ -2078,79 +1913,6 @@ return;
     // SpawnProjectileFromEquipment, QueueProjectileForAnimation, FireQueuedProjectile, CancelQueuedProjectile
     // are overridden/inherited via BaseUnit
     
-    /// <summary>
-    /// Centralized method to update walking animation state
-    /// Syncs isMoving property with IsWalking animator parameter
-    /// </summary>
-    private void UpdateWalkingAnimation()
-    {
-        if (animator == null)
-        {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateWalkingAnimation called but animator is null");
-            return;
-        }
-        
-        // Check if animator controller is assigned
-        if (animator.runtimeAnimatorController == null)
-        {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name}: UpdateWalkingAnimation called but animator controller is null");
-            return;
-        }
-        
-        // Check if IsWalking parameter exists
-        bool hasIsWalking = HasParameter(animator, isWalkingHash);
-        if (!hasIsWalking)
-        {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name}: IsWalking parameter does not exist in animator controller");
-            return; // Parameter doesn't exist, can't update
-        }
-        
-        // Don't walk if not moving
-        bool shouldWalk = _isMoving;
-        
-        // Set IsWalking bool parameter based on _isMoving state
-        animator.SetBool(isWalkingHash, shouldWalk);
-        
-        // Always sync IsIdle with IsWalking (opposite states)
-        bool hasIsIdle = HasParameter(animator, isIdleHash);
-        if (hasIsIdle)
-        {
-            animator.SetBool(isIdleHash, !shouldWalk);
-        }
-        
-        // CRITICAL FIX: Force immediate transition if animator isn't responding to parameters
-        // This handles cases where animator controller has exit time or other blocking conditions
-        if (shouldWalk)
-        {
-            // Check if we're already in or transitioning to a walk state
-            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            bool isInWalkState = stateInfo.IsName("Walk") || stateInfo.IsName("Walking") || stateInfo.IsName("walk");
-            bool isTransitioning = animator.IsInTransition(0);
-            
-            // If not walking and not transitioning to walk, force the transition
-            if (!isInWalkState && !isTransitioning)
-            {
-                // Try to play Walk state directly with CrossFade for smooth transition
-                try
-                {
-                    animator.CrossFade("Walk", 0.1f, 0); // 0.1 second blend time
-                }
-                catch
-                {
-                    // If "Walk" doesn't exist, try "Walking"
-                    try
-                    {
-                        animator.CrossFade("Walking", 0.1f, 0);
-                    }
-                    catch
-                    {
-                        // Could not find walk state - animator controller may not have it set up properly
-                    }
-                }
-            }
-        }
-    }
-    
     // HasParameter is inherited from BaseUnit
     
     /// <summary>
@@ -2209,11 +1971,10 @@ return;
     
     /// <summary>
     /// Set walking state explicitly (for battle movement)
-    /// This overrides world map movement
     /// </summary>
-    public void SetWalkingState(bool walking)
+    public new void SetWalkingState(bool walking)
     {
-        isMoving = walking; // This will automatically update animator via property setter
+        UpdateWalkingState(walking);
     }
     
     /// <summary>

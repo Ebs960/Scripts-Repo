@@ -280,7 +280,9 @@ public class PlanetaryCameraManager : MonoBehaviour
         if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background))
             return;
 
-        float dt = Time.deltaTime;
+        // Cap dt so frame-rate dips never cause huge camera jumps.
+        // At worst the camera moves as if running at 15 FPS.
+        float dt = Mathf.Min(Time.deltaTime, 1f / 15f);
         Vector3 panDirection = Vector3.zero;
 
         var kb = Keyboard.current;

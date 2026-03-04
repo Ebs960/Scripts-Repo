@@ -557,7 +557,7 @@ public class MainMenuManager : MonoBehaviour
 
         // Ice cap size: driven directly by climate preset
         // Frozen=massive ice, Scorching=no ice. Completely decoupled from temperature math.
-        float[] iceCapSizes = { 0.95f, 0.50f, 0.26f, 0.18f, 0.09f, 0.0f };
+        float[] iceCapSizes = { 0.95f, 0.54f, 0.31f, 0.18f, 0.09f, 0.0f };
         planetPreview.SetIceCapSize(iceCapSizes[Mathf.Clamp(selectedClimatePreset, 0, 5)]);
 
         // Moisture: map selectedMoisturePreset (0-5) to 0–1
@@ -588,9 +588,6 @@ public class MainMenuManager : MonoBehaviour
         else if (lower.Contains("infernal"))
             mapStyleVal = 0.5f; // Infernal: volcanic, lava oceans
         planetPreview.SetMapStyle(mapStyleVal);
-
-        // Push civilization count for night-side city light density
-        planetPreview.SetCivCount(aiCount + 1); // +1 for player civ
     }
 
     #endregion

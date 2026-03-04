@@ -266,24 +266,30 @@ public class City : MonoBehaviour
         }
     }
 
+    private static Camera _cachedCam;
+    private static int _cachedCamFrame = -1;
+
     void LateUpdate()
     {
-        // Position label above city and face camera
-        if (labelCanvas != null)
+        // Position label above city and face camera (every 3rd frame, staggered by instance)
+        if (labelCanvas == null) return;
+        if ((Time.frameCount + (GetInstanceID() & 0x7FFFFFFF)) % 3 != 0) return;
+
+        // Cache Camera.main across all City instances per frame
+        if (_cachedCamFrame != Time.frameCount)
         {
-            var cam = Camera.main;
-            if (cam != null)
-            {
-                // Flat-only label placement: offset upward
-                Vector3 labelPos = transform.position + Vector3.up * labelVerticalOffset;
-                labelCanvas.transform.position = labelPos;
-                labelCanvas.transform.rotation = cam.transform.rotation;
-                float camDist = Vector3.Distance(cam.transform.position, labelPos);
-                float scale = labelScaleAtReferenceDistance * (camDist / labelReferenceDistance);
-                scale = Mathf.Clamp(scale, labelMinScale, labelMaxScale);
-                labelCanvas.transform.localScale = Vector3.one * scale;
-            }
+            _cachedCam = Camera.main;
+            _cachedCamFrame = Time.frameCount;
         }
+        if (_cachedCam == null) return;
+
+        Vector3 labelPos = transform.position + Vector3.up * labelVerticalOffset;
+        labelCanvas.transform.position = labelPos;
+        labelCanvas.transform.rotation = _cachedCam.transform.rotation;
+        float camDist = Vector3.Distance(_cachedCam.transform.position, labelPos);
+        float scale = labelScaleAtReferenceDistance * (camDist / labelReferenceDistance);
+        scale = Mathf.Clamp(scale, labelMinScale, labelMaxScale);
+        labelCanvas.transform.localScale = Vector3.one * scale;
     }
 
     // Call this whenever city data changes

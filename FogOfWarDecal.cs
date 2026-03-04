@@ -78,12 +78,18 @@ public class FogOfWarDecal : MonoBehaviour
         UpdateFogTexture();
     }
     
+    private RenderTexture _lastFogMask;
+
     void LateUpdate()
     {
-        // Continuously update the fog texture reference in case it changes
-        if (enableFog && terrainOverlayGPU != null)
+        // Only re-assign the texture when the RenderTexture reference actually changes
+        if (!enableFog || terrainOverlayGPU == null) return;
+        RenderTexture current = terrainOverlayGPU.GetFogMaskTexture();
+        if (current != _lastFogMask)
         {
-            UpdateFogTexture();
+            _lastFogMask = current;
+            if (current != null && decalMaterial != null)
+                decalMaterial.SetTexture(BaseColorMapID, current);
         }
     }
     

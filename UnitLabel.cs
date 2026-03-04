@@ -81,13 +81,13 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     void LateUpdate()
     {
         if (target == null) return;
+        // Throttle to every 3rd frame, staggered per instance
+        if ((Time.frameCount + (GetInstanceID() & 0x7FFFFFFF)) % 3 != 0) return;
+
         if (mainCam == null) mainCam = Camera.main;
-        if (mainCam == null) return; // Still no camera, can't do anything.
+        if (mainCam == null) return;
 
-        // Follow the target
         transform.position = target.position + offset;
-
-        // Make the label face the camera and remain upright relative to the camera's view.
         transform.rotation = mainCam.transform.rotation;
     }
 

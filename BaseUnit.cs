@@ -118,6 +118,11 @@ public abstract class BaseUnit : MonoBehaviour
     protected static readonly int deathHash = Animator.StringToHash("Death");
     protected static readonly int routHash = Animator.StringToHash("Rout");
 
+    // Cached parameter-existence flags (set once in Awake, avoids allocating parameters array each call)
+    protected bool _hasWalkParam;
+    protected bool _hasHitParam;
+    protected bool _hasDeathParam;
+
     #endregion
 
     #region Abstract Properties (must be implemented by subclasses)
@@ -362,6 +367,14 @@ public abstract class BaseUnit : MonoBehaviour
         animator = GetComponentInChildren<Animator>();
         if (animator == null)
             animator = GetComponent<Animator>();
+
+        // Cache parameter existence once so we never iterate anim.parameters at runtime
+        if (animator != null)
+        {
+            _hasWalkParam  = HasParameter(animator, isWalkingHash);
+            _hasHitParam   = HasParameter(animator, hitHash);
+            _hasDeathParam = HasParameter(animator, deathHash);
+        }
 
         // Bind to the correct planet/grid for multi-planet gameplay.
         // Priority:
@@ -771,7 +784,7 @@ public abstract class BaseUnit : MonoBehaviour
         }
         catch { }
 
-        if (animator != null && HasParameter(animator, hitHash))
+        if (animator != null && _hasHitParam)
             animator.SetTrigger(hitHash);
 
         currentHealth -= damageAmount;
@@ -847,7 +860,7 @@ public abstract class BaseUnit : MonoBehaviour
         }
         catch { }
 
-        if (animator != null && HasParameter(animator, deathHash))
+        if (animator != null && _hasDeathParam)
             animator.SetTrigger(deathHash);
 
         // Clear tile occupancy (layer-aware)
@@ -1086,10 +1099,50 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual void UpdateWalkingState(bool walking)
     {
-        if (animator == null) return;
-        if (HasParameter(animator, isWalkingHash))
+        if (animator == null)
+        {
+            Debug.LogWarning($"[BaseUnit] {gameObject.name} UpdateWalkingState({walking}) — animator is NULL, skipping");
+            return;
+        }
+        bool wasMoving = isMoving;
+        if (_hasWalkParam)
             animator.SetBool(isWalkingHash, walking);
         isMoving = walking;
+        _walkingStuckFrames = 0; // reset failsafe counter on any explicit state change
+        if (wasMoving != walking)
+        {
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            Debug.Log($"[BaseUnit] {gameObject.name} UpdateWalkingState: {wasMoving} -> {walking}" +
+                $" | hasIsWalking={_hasWalkParam} | animState={stateInfo.shortNameHash} | inTransition={animator.IsInTransition(0)}" +
+                $" | type={GetType().Name}");
+        }
+    }
+
+    // Failsafe: detect stuck walking animation
+    private int _walkingStuckFrames = 0;
+    private Vector3 _lastFailsafePos;
+
+    protected virtual void LateUpdate()
+    {
+        // If the unit says it's moving but hasn't actually changed position for 30+ frames,
+        // force-clear the walking state. This catches coroutine interruption edge cases.
+        if (isMoving)
+        {
+            if (Vector3.SqrMagnitude(transform.position - _lastFailsafePos) < 0.0001f)
+            {
+                _walkingStuckFrames++;
+                if (_walkingStuckFrames > 30) // ~0.5s at 60fps
+                {
+                    Debug.LogWarning($"[BaseUnit] {gameObject.name} FAILSAFE: Walking stuck for {_walkingStuckFrames} frames at {transform.position}. Forcing idle.");
+                    UpdateWalkingState(false);
+                }
+            }
+            else
+            {
+                _walkingStuckFrames = 0;
+            }
+        }
+        _lastFailsafePos = transform.position;
     }
 
     /// <summary>
