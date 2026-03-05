@@ -60,7 +60,7 @@ MonoBehaviour:
   globalSnowAmount: 0
   globalWetness: 0
   metallicMultiplier: 1
-  aoIntensity: 1.31
+  aoIntensity: 1
   smoothnessMultiplier: 0.92
   triplanarTiling: 0.1
   triplanarBlend: 1
@@ -97,10 +97,10 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 512
-  riverSdfHeight: 256
-  riverHalfWidthMultiplier: 0.2
-  lakeHalfWidthMultiplier: 0.6
+  riverSdfWidth: 1024
+  riverSdfHeight: 512
+  riverHalfWidthMultiplier: 1
+  lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0.01
   extrudeInlandWaterToVolume: 0

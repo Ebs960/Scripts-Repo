@@ -172,6 +172,27 @@ public class MenuPlanetPreview : MonoBehaviour
     [Tooltip("Color vibrancy boost. 1 = natural, >1 = more saturated.")]
     [SerializeField] private float colorVibrancy = 1.3f;
 
+    [Header("Surface Properties")]
+    [Range(0f, 1f)]
+    [Tooltip("Surface smoothness. 0 = rough/matte, 1 = mirror-like.")]
+    [SerializeField] private float smoothness = 0.3f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Metallic factor. 0 = dielectric, 1 = fully metallic.")]
+    [SerializeField] private float metallic = 0.0f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Ambient occlusion. 1 = full brightness, 0 = fully occluded.")]
+    [SerializeField] private float ambientOcclusion = 1.0f;
+
+    [Range(0f, 1f)]
+    [Tooltip("Ambient light strength on the dark hemisphere. 0 = pitch black, 0.12 = default.")]
+    [SerializeField] private float ambientStrength = 0.12f;
+
+    [Range(0.5f, 3f)]
+    [Tooltip("Overall brightness multiplier for the planet surface. 1 = natural, higher = brighter.")]
+    [SerializeField] private float brightness = 1.4f;
+
     [Header("Seed")]
     [Tooltip("Planet noise seed. Randomized each play if randomizeSeed is true.")]
     [SerializeField] private float seed = 0f;
@@ -219,11 +240,13 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_DetailStrength= Shader.PropertyToID("_DetailStrength");
     private static readonly int ID_AtmosColor    = Shader.PropertyToID("_AtmosphereColor");
     private static readonly int ID_DisplacementScale = Shader.PropertyToID("_DisplacementScale");
+    private static readonly int ID_Smoothness    = Shader.PropertyToID("_Smoothness");
+    private static readonly int ID_Metallic      = Shader.PropertyToID("_Metallic");
+    private static readonly int ID_AmbientOcclusion = Shader.PropertyToID("_AmbientOcclusion");
+    private static readonly int ID_AmbientStrength = Shader.PropertyToID("_AmbientStrength");
+    private static readonly int ID_Brightness = Shader.PropertyToID("_Brightness");
 
-    // Shared across planet / cloud / atmosphere shaders
-    private static readonly int ID_SunDirection  = Shader.PropertyToID("_SunDirection");
-    private static readonly int ID_SunColor      = Shader.PropertyToID("_SunColor");
-    private static readonly int ID_SunIntensity  = Shader.PropertyToID("_SunIntensity");
+
 
     // Cloud-specific
     private static readonly int ID_CloudDensity  = Shader.PropertyToID("_CloudDensity");
@@ -286,8 +309,7 @@ public class MenuPlanetPreview : MonoBehaviour
             previewRenderer.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.Self);
         }
 
-        // Sync sun direction from preview light to all materials
-        PushSunProperties();
+        // Sun lighting now read directly from HDRP's directional light buffer in the shaders
     }
 
     private void OnDestroy()
@@ -384,6 +406,13 @@ public class MenuPlanetPreview : MonoBehaviour
 
         // Displacement
         materialInstance.SetFloat(ID_DisplacementScale, displacementScale);
+
+        // Surface properties
+        materialInstance.SetFloat(ID_Smoothness, smoothness);
+        materialInstance.SetFloat(ID_Metallic, metallic);
+        materialInstance.SetFloat(ID_AmbientOcclusion, ambientOcclusion);
+        materialInstance.SetFloat(ID_AmbientStrength, ambientStrength);
+        materialInstance.SetFloat(ID_Brightness, brightness);
     }
 
     // -----------------------------------------------------------------
@@ -679,33 +708,7 @@ public class MenuPlanetPreview : MonoBehaviour
         atmosphereMaterialInstance.SetFloat(ID_MapStyle, mapStyle);
     }
 
-    // -----------------------------------------------------------------
-    //  Sun light → shader property sync
-    // -----------------------------------------------------------------
-    private void PushSunProperties()
-    {
-        if (previewLight == null || materialInstance == null) return;
 
-        // Position-based: move the light in the scene and the planet lights from that angle.
-        Vector3 planetPos = previewRenderer != null ? previewRenderer.transform.position : transform.position;
-        Vector3 diff = planetPos - previewLight.transform.position;
-        if (diff.sqrMagnitude < 0.0001f) diff = previewLight.transform.forward;
-        Vector4 sunDir = diff.normalized;
-
-        Color lightCol = previewLight.color;
-        float intensity = previewLight.intensity > 10f ? previewLight.intensity / 1000f : previewLight.intensity;
-
-        materialInstance.SetVector(ID_SunDirection, sunDir);
-        materialInstance.SetColor(ID_SunColor, lightCol);
-        materialInstance.SetFloat(ID_SunIntensity, intensity);
-
-        if (atmosphereMaterialInstance != null)
-        {
-            atmosphereMaterialInstance.SetVector(ID_SunDirection, sunDir);
-            atmosphereMaterialInstance.SetColor(ID_SunColor, lightCol);
-            atmosphereMaterialInstance.SetFloat(ID_SunIntensity, intensity);
-        }
-    }
 
     // -----------------------------------------------------------------
     //  HDRP Bloom Volume (programmatic, no .asset files needed)

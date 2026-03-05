@@ -54,6 +54,12 @@ public class CivData : ScriptableObject
     public float cultureModifier;           // New
     public float faithModifier;             // New
 
+    [Header("Starting Units")]
+    [Tooltip("Pioneer/settler prefab for this civilization. Falls back to CivilizationManager default if null.")]
+    public GameObject pioneerPrefab;
+    [Tooltip("WorkerUnitData asset for this civilization's pioneer. Falls back to CivilizationManager default if null.")]
+    public WorkerUnitData pioneerData;
+
     [Header("Gameplay Flags")]
     public bool isTribe;                     // Limited to max 3 cities, starts at war
     public bool isCityState;                 // Single-city civ with diplomatic traits

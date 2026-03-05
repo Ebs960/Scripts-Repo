@@ -7,9 +7,6 @@ Shader "Custom/MenuPlanetAtmosphere"
         _AtmosphereIntensity("Atmosphere Intensity", Range(0, 3)) = 1.2
         _Temperature("Temperature", Range(0, 1)) = 0.5
         _MapStyle("Map Style", Range(0, 1)) = 0.0
-        _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
-        _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
-        _SunIntensity("Sun Intensity", Float) = 1.0
     }
 
     SubShader
@@ -48,9 +45,6 @@ Shader "Custom/MenuPlanetAtmosphere"
                 float _AtmosphereIntensity;
                 float _Temperature;
                 float _MapStyle;
-                float4 _SunDirection;
-                float4 _SunColor;
-                float _SunIntensity;
             CBUFFER_END
 
             struct Attributes
@@ -92,16 +86,8 @@ Shader "Custom/MenuPlanetAtmosphere"
                 float fresnel = 1.0 - saturate(dot(viewDir, normal));
                 float rim = pow(fresnel, _AtmosphereFalloff);
 
-                // --- Sun-side brightening ---
-                // The atmosphere is visible all the way around (additive), but
-                // the day side is brighter — scattering is stronger toward the sun.
-                float3 lightDir = normalize(-_SunDirection.xyz);
-                float NdotL     = dot(normal, lightDir);
-
-                // Day side boost: atmosphere is ~2.5x brighter where the sun
-                // hits, with a smooth wrap so the terminator "thin blue line" is visible.
-                float dayBoost  = saturate(NdotL * 0.6 + 0.5);
-                float lightMix  = lerp(0.25, 1.0, dayBoost); // dark side still 25% visible
+                // Uniform glow — no directional light dependency
+                float lightMix = 1.0;
 
                 // --- Style-adaptive color ---
                 float style    = saturate(_MapStyle);
@@ -125,12 +111,8 @@ Shader "Custom/MenuPlanetAtmosphere"
                                            sin(_Time.y * 1.5) * 0.5 + 0.5);
                 atmosCol = lerp(atmosCol, demonicAtmos, demonic);
 
-                // Tint by sun color
-                float3 sunCol = _SunColor.rgb * _SunIntensity;
-                atmosCol *= sunCol;
-
                 // --- Final ---
-                // Atmosphere intensity modulated by rim and sun side
+                // Atmosphere intensity modulated by rim
                 float alpha = rim * _AtmosphereIntensity * lightMix;
 
                 // Clamp so it doesn't blow out

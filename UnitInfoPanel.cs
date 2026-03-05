@@ -19,8 +19,9 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI movePointsText;
     [SerializeField] private TextMeshProUGUI rangeText;
     [SerializeField] private TextMeshProUGUI moraleText;
-    // Optional: Add a dedicated TextMeshProUGUI for Work Points if you modify the prefab
-    // [SerializeField] private TextMeshProUGUI workPointsText; 
+    
+    [Header("Worker Stats")]
+    [SerializeField] private TextMeshProUGUI workPointsText;
 
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
@@ -158,6 +159,7 @@ unitInfoPanel.SetActive(true);
         if (movePointsText != null) { movePointsText.text = "Move: -"; movePointsText.gameObject.SetActive(true); }
         if (rangeText != null) { rangeText.text = "Range: -"; rangeText.gameObject.SetActive(true); }
         if (moraleText != null) { moraleText.text = "Morale: -"; moraleText.gameObject.SetActive(true); }
+        if (workPointsText != null) { workPointsText.text = "Work Points: -"; workPointsText.gameObject.SetActive(false); }
 
         // Hide buttons that require a unit
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
@@ -194,7 +196,7 @@ unitInfoPanel.SetActive(true);
         if (movePointsText != null) movePointsText.gameObject.SetActive(true);
         if (rangeText != null) rangeText.gameObject.SetActive(true);
         if (moraleText != null) moraleText.gameObject.SetActive(true);
-        // if (workPointsText != null) workPointsText.gameObject.SetActive(false); // Hide worker specific if it exists
+        if (workPointsText != null) workPointsText.gameObject.SetActive(false);
 
 
         unitNameText.text = currentCombatUnit.data.unitName;
@@ -225,27 +227,25 @@ unitInfoPanel.SetActive(true);
         if (attackText != null) attackText.gameObject.SetActive(true); // Show attack for worker
         if (defenseText != null) defenseText.gameObject.SetActive(true); // Show defense for worker
 
-        // if (workPointsText != null) workPointsText.gameObject.SetActive(true); // Show worker specific if it exists
+        if (workPointsText != null) workPointsText.gameObject.SetActive(true);
 
-        if (levelText != null) levelText.gameObject.SetActive(true); // Using levelText for Work Points
-        if (experienceText != null) experienceText.gameObject.SetActive(false); // Hide XP
+        if (levelText != null) levelText.gameObject.SetActive(false);
+        if (experienceText != null) experienceText.gameObject.SetActive(false);
         if (rangeText != null) rangeText.gameObject.SetActive(false);
         if (moraleText != null) moraleText.gameObject.SetActive(false);
 
 
         unitNameText.text = currentWorkerUnit.data.unitName;
-        unitTypeText.text = "Worker Unit"; // Explicitly set type
+        unitTypeText.text = "Worker Unit";
         
         healthText.text = $"Health: {currentWorkerUnit.currentHealth}/{currentWorkerUnit.data.baseHealth}";
         movePointsText.text = $"Move Points: {currentWorkerUnit.currentMovePoints}";
         attackText.text = $"Attack: {currentWorkerUnit.CurrentAttack}";
         defenseText.text = $"Defense: {currentWorkerUnit.CurrentDefense}";
 
-        // Placeholder for Work Points - using levelText
-        if (levelText != null)
+        if (workPointsText != null)
         {
-            levelText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
-            Debug.LogWarning("UnitInfoPanel: Using 'levelText' to display Worker Work Points. Consider adding a dedicated UI element.");
+            workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
         }
         // Show worker build units section
         if (buildUnitsContainer != null)

@@ -216,9 +216,9 @@ MonoBehaviour:
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 6
+  climateSmoothingPasses: 5
   climateSmoothingStrength: 0.218
-  coastalMoistureBoost: 0.119
+  coastalMoistureBoost: 0.183
   coastalMoistureRange: 3
   flatElevationMin: 5
   flatElevationMax: 5.47
@@ -229,9 +229,9 @@ MonoBehaviour:
   oceanElevation: 0
   seasElevation: 20
   coastElevation: 30
-  abyssalMinDistanceFromCoast: 3
+  abyssalMinDistanceFromCoast: 2
   abyssalMaxDistanceFromCoast: 8
-  abyssalChance: 0.35
+  abyssalChance: 0.882
   trenchCount: 3
   trenchMinDistanceFromCoast: 6
   trenchMinLength: 15
@@ -243,7 +243,7 @@ MonoBehaviour:
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
-  riverDepth: 1.59
+  riverDepth: 0.85
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
@@ -257,7 +257,7 @@ MonoBehaviour:
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 120
   shallowSeasRings: 2
-  lakeDepth: 0.96
+  lakeDepth: 0.55
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 5.87
   numberOfIslands: 8

@@ -34,7 +34,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 30, y: -30, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.58, y: 0.69}
+  m_AnchoredPosition: {x: 0.498, y: 0.69}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!108 &7093151305136474556
@@ -398,8 +398,8 @@ MonoBehaviour:
   rotationSpeed: 6
   detailScale: 10000
   detailStrength: 0.019
-  atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.6313726}
-  displacementScale: 0.0438
+  atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
+  displacementScale: 0.05
   cloudRotationSpeed: 5
   cloudAltitude: 0.0297
   cloudDensity: 0.069
@@ -407,11 +407,11 @@ MonoBehaviour:
   cloudSpeed: 0.08
   atmosphereShellScale: 1.0416
   atmosphereFalloff: 1
-  atmosphereIntensity: 0.05
+  atmosphereIntensity: 0.005
   enableBloom: 1
   bloomThreshold: 0.5
   bloomIntensity: 0.373
-  icosphereSubdivisions: 16
+  icosphereSubdivisions: 20
   landScale: 2
   landThreshold: 0.4
   temperature: 0.5
@@ -420,14 +420,12 @@ MonoBehaviour:
   mapStyle: 0
   equatorialColor: {r: 0.01, g: 0.3, b: 0.04, a: 1}
   desertSand: {r: 1, g: 0.94884163, b: 0.7754717, a: 1}
-  subtropicalColor: {r: 0.82, g: 0.7, b: 0.25, a: 1}
+  subtropicalColor: {r: 0.76048934, g: 0.90188676, b: 0.07997859, a: 1}
   temperateZoneColor: {r: 0.14, g: 0.68, b: 0.12, a: 1}
   borealColor: {r: 0.06, g: 0.25, b: 0.1, a: 1}
   tundraColor: {r: 1, g: 1, b: 1, a: 1}
   polarColor: {r: 0.93, g: 0.95, b: 0.97, a: 1}
-  oceanCold: {r: 0, g: 0.32142878, b: 1, a: 1}
-  oceanWarm: {r: 0, g: 0.32156864, b: 1, a: 1}
-  oceanTropical: {r: 0, g: 0.32, b: 1, a: 1}
+  oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
   iceCapSize: 0.5
   biomeBlend: 0.1
   biomeNoiseScale: 10

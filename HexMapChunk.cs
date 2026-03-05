@@ -118,11 +118,21 @@ public class HexMapChunk : MonoBehaviour
     
     /// <summary>
     /// Set the UV region this chunk samples from the main baked texture.
+    /// Applies small epsilon inset to prevent UV seam artifacts at chunk boundaries from texture interpolation.
     /// </summary>
     public void SetUVRegion(Vector2 uvMin, Vector2 uvMax)
     {
-        this.uvMin = uvMin;
-        this.uvMax = uvMax;
+        // Tiny epsilon inset prevents texture sampling from bleeding across chunk boundaries when
+        // bilinear/trilinear filtering interpolates across seams. Typical atlas padding is 1-2 texels.
+        const float uvEpsilon = 0.0005f; // ~1 texel for 2048x2048 texture
+        this.uvMin = new Vector2(
+            Mathf.Lerp(uvMin.x, uvMax.x, uvEpsilon),
+            Mathf.Lerp(uvMin.y, uvMax.y, uvEpsilon)
+        );
+        this.uvMax = new Vector2(
+            Mathf.Lerp(uvMin.x, uvMax.x, 1f - uvEpsilon),
+            Mathf.Lerp(uvMin.y, uvMax.y, 1f - uvEpsilon)
+        );
         isDirty = true;
     }
 
@@ -352,29 +362,31 @@ public class HexMapChunk : MonoBehaviour
         // at low camera angles (looks like "terrain disappearing / see-through at the horizon").
         //
         // Fix: expand the bounds vertically based on the displacement strength.
-        try
-        {
-            float displacement = 1f; // Default: world-space elevation scale
-            if (manager != null && manager.SharedMaterial != null && manager.SharedMaterial.HasProperty("_ElevationScale"))
+            try
             {
-                displacement = manager.SharedMaterial.GetFloat("_ElevationScale");
-            }
-            else if (manager != null)
-            {
-                displacement = manager.DisplacementStrength;
-            }
+                float displacement = 1f; // Default: world-space elevation scale
+                if (manager != null && manager.SharedMaterial != null && manager.SharedMaterial.HasProperty("_ElevationScale"))
+                {
+                    displacement = manager.SharedMaterial.GetFloat("_ElevationScale");
+                }
+                else if (manager != null)
+                {
+                    displacement = manager.DisplacementStrength;
+                }
 
-            // Add generous padding. We allow for both up and down displacement to be safe.
-            float halfY = Mathf.Max(5f, Mathf.Abs(displacement) + 5f);
-            var b = mesh.bounds;
-            b.center = new Vector3(b.center.x, 0f, b.center.z);
-            b.size = new Vector3(b.size.x, halfY * 2f, b.size.z);
-            mesh.bounds = b;
-        }
-        catch
-        {
-            // Bounds expansion is a robustness improvement; ignore failures to avoid breaking chunk generation.
-        }
+                // Expand bounds significantly to prevent frustum culling at shallow camera angles.
+                // At low pitch angles (30-40°), chunks can be incorrectly culled if bounds are too thin in Y.
+                // Use: displacement + generous padding, enforced with robust minimum.
+                float halfY = Mathf.Max(displacement + 10f, 40f); // At least 80 units tall
+                var b = mesh.bounds;
+                b.center = new Vector3(b.center.x, 0f, b.center.z);
+                b.size = new Vector3(Mathf.Max(b.size.x, 0.0001f), halfY * 2f, Mathf.Max(b.size.z, 0.0001f));
+                mesh.bounds = b;
+            }
+            catch
+            {
+                // Bounds expansion is a robustness improvement; ignore failures to avoid breaking chunk generation.
+            }
         
         // Update collider
         if (meshCollider != null)

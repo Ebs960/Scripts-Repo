@@ -192,7 +192,7 @@ public class WorkerUnit : BaseUnit
         // Position the unit on the tile
         PositionUnitOnSurface(startTileIndex);
 
-        if (animator != null) animator.SetTrigger(idleYoungHash);
+        if (animator != null) animator.SetBool(idleYoungHash, true);
 
         InitializeUnitLabel();
     }
@@ -487,12 +487,15 @@ public class WorkerUnit : BaseUnit
     public override void UpdateWalkingState(bool walking)
     {
         base.UpdateWalkingState(walking);
-        // WorkerUnit animators use triggers, not IsWalking bool — force idle when stopping
-        if (!walking && animator != null)
+        // IdleYoung is a Bool parameter in the animator — sync it with idle state
+        if (animator != null)
         {
-            animator.SetTrigger(idleYoungHash);
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            Debug.Log($"[WorkerUnit] {gameObject.name} fired IdleYoung trigger | animState={stateInfo.shortNameHash} | inTransition={animator.IsInTransition(0)}");
+            animator.SetBool(idleYoungHash, !walking);
+            if (!walking)
+            {
+                var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                Debug.Log($"[WorkerUnit] {gameObject.name} set IdleYoung=true | animState={stateInfo.shortNameHash} | inTransition={animator.IsInTransition(0)}");
+            }
         }
     }
 

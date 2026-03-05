@@ -719,6 +719,15 @@ Hide();
         }
         
         // Fallback: Direct planet switching (for non-spaceship travel or no unit selected)
+        // Show space loading screen IMMEDIATELY so user sees feedback before heavy generation work
+        if (SpaceLoadingPanelController.Instance != null)
+        {
+            SpaceLoadingPanelController.Instance.ShowSpaceLoading($"Traveling to {planet.planetName}...");
+        }
+        else if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ShowSpaceTravel(planet.planetName);
+        }
         Hide();
         if (GameManager.Instance != null)
         {

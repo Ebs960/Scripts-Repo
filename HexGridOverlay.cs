@@ -95,7 +95,7 @@ public class HexGridOverlay : MonoBehaviour
         // Try to find references silently at startup (avoid noisy warnings while systems initialize)
         FindReferences(silent: true);
 
-        Debug.Log($"[HexGridOverlay] After FindReferences — grid={(grid != null ? $"found (TileCount={grid.TileCount}, Width={grid.Width}, MapWidth={grid.MapWidth})" : "NULL")}, planetGenerator={(planetGenerator != null ? planetGenerator.name : "NULL")}");
+        // Debug.Log — After FindReferences (disabled to reduce console noise)
 
         // Subscribe to GameManager planet-ready event so we can acquire the grid when it's available.
         if (GameManager.Instance != null && !_subscribedToPlanetReady)
@@ -243,9 +243,9 @@ public class HexGridOverlay : MonoBehaviour
                 heightmapTexture = chunkManager.SharedMaterial.GetTexture("_Heightmap") as Texture2D;
             }
             if (!silent)
-                Debug.Log($"[HexGridOverlay] FindReferences — Found HexMapChunkManager on '{chunkManager.gameObject.name}', " +
-                    $"Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL (chunk manager has no grid yet)")}, " +
-                    $"displacementStrength={displacementStrength}");
+            {
+                // Debug.Log — FindReferences found HexMapChunkManager (disabled to reduce console noise)
+            }
         }
         else
         {
@@ -267,7 +267,7 @@ public class HexGridOverlay : MonoBehaviour
         if (planetGenerator != null && grid == null)
         {
             grid = planetGenerator.Grid;
-            Debug.Log($"[HexGridOverlay] FindReferences — Using PlanetGenerator '{planetGenerator.name}', Grid={(grid != null ? $"OK (TileCount={grid.TileCount})" : "NULL")}");
+            // Debug.Log — FindReferences using PlanetGenerator (disabled to reduce console noise)
         }
         
         if (grid == null && !silent)

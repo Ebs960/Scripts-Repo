@@ -526,6 +526,8 @@ public class GameManager : MonoBehaviour
         animalPrevalence = GameSetupData.animalPrevalence;
         generateMoon = GameSetupData.generateMoon;
 
+        // Initialize space loading panel early so it's ready for planet switches
+        InitializeSpaceLoadingPanel();
         
     }
 
@@ -1036,20 +1038,19 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public IEnumerator InitializeGameScene(GameObject loadingPanelPrefabOverride = null)
     {
-        // Wait a frame to let Awake() run everywhere else
-        yield return null;
-
         // Use override prefab if provided, otherwise use the field
         GameObject prefabToUse = loadingPanelPrefabOverride ?? loadingPanelPrefab;
         
-        // Spawn loading panel if prefab provided and not already cached
+        // Spawn loading panel IMMEDIATELY (before any yield) so UI is hidden from frame 1
         if (prefabToUse != null && cachedLoadingPanel == null)
         {
             GameObject loadingPanelInstance = Instantiate(prefabToUse);
             loadingPanelInstance.SetActive(true);
             cachedLoadingPanel = loadingPanelInstance.GetComponent<LoadingPanelController>();
-            yield return null; // Wait a frame to ensure UI updates
         }
+
+        // Now wait a frame to let Awake() run everywhere else
+        yield return null;
 
         // Start the game
         if (!gameInProgress)
@@ -2096,7 +2097,7 @@ public class GameManager : MonoBehaviour
     if (planetIndex != currentPlanetIndex)
     {
         planetGO.SetActive(false);
-        Debug.Log($"[GameManager] Planet {planetIndex} ({body}) deactivated after generation (not current planet {currentPlanetIndex})");
+        // Debug.Log — Planet deactivated after generation (disabled to reduce console noise)
     }
     
     }

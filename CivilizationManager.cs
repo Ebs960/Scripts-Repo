@@ -16,9 +16,9 @@ public class CivilizationManager : MonoBehaviour
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
-    [Tooltip("Prefab with a WorkerUnit component for pioneers")]
+    [Tooltip("Default prefab with a WorkerUnit component for pioneers (used when CivData has none)")]
     public GameObject pioneerPrefab;
-    [Tooltip("WorkerUnitData asset describing the pioneer unit")]
+    [Tooltip("Default WorkerUnitData asset describing the pioneer unit (used when CivData has none)")]
     public WorkerUnitData pioneerData;
     [Tooltip("Prefab with a City component for founding new cities")]
     public GameObject cityPrefab;
@@ -752,15 +752,18 @@ public class CivilizationManager : MonoBehaviour
             return; // Tribes can't expand beyond 3 cities
         }
         
-        // Get pioneer unit data
-        if (pioneerData == null)
+        // Resolve pioneer data: prefer per-civ, fall back to manager default
+        WorkerUnitData resolvedPioneerData = (civ.civData != null && civ.civData.pioneerData != null)
+            ? civ.civData.pioneerData : pioneerData;
+        
+        if (resolvedPioneerData == null)
         {
-            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: pioneerData not assigned");
+            Debug.LogWarning("[CivilizationManager] PrioritizeExpansion: no pioneerData on CivData or CivilizationManager");
             return;
         }
         
         // Check if pioneer can be produced
-        if (!pioneerData.AreRequirementsMet(civ)) return;
+        if (!resolvedPioneerData.AreRequirementsMet(civ)) return;
         
         // Find cities that can produce pioneers
         var citiesByProduction = civ.cities
@@ -774,7 +777,7 @@ public class CivilizationManager : MonoBehaviour
             if (city == null) continue;
             if (city.productionQueue != null && city.productionQueue.Count > 0) continue;
             
-            if (city.QueueProduction(pioneerData))
+            if (city.QueueProduction(resolvedPioneerData))
             {
 break; // Only queue one pioneer per turn
             }
@@ -1486,22 +1489,25 @@ break; // Only propose one alliance per turn
             playerCiv = civ;
         }
 
-        // Check if pioneerPrefab and pioneerData are assigned
-        if (pioneerPrefab == null)
+        // Resolve pioneer prefab & data: prefer per-civ, fall back to manager defaults
+        GameObject resolvedPioneerPrefab = (data.pioneerPrefab != null) ? data.pioneerPrefab : pioneerPrefab;
+        WorkerUnitData resolvedPioneerData = (data.pioneerData != null) ? data.pioneerData : pioneerData;
+
+        if (resolvedPioneerPrefab == null)
         {
-            Debug.LogError("SpawnOneCivilization: pioneerPrefab is not assigned in CivilizationManager!");
+            Debug.LogError($"SpawnOneCivilization: No pioneer prefab for {data.civName} (not on CivData or CivilizationManager)!");
             return;
         }
         
-        if (pioneerData == null)
+        if (resolvedPioneerData == null)
         {
-            Debug.LogError("SpawnOneCivilization: pioneerData is not assigned in CivilizationManager!");
+            Debug.LogError($"SpawnOneCivilization: No pioneer data for {data.civName} (not on CivData or CivilizationManager)!");
             return;
         }
         // Instantiate pioneer — parent under the planet so it deactivates on planet switch
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
-        var wgo = Instantiate(pioneerPrefab, pos, Quaternion.identity);
+        var wgo = Instantiate(resolvedPioneerPrefab, pos, Quaternion.identity);
         if (planet != null) wgo.transform.SetParent(planet.transform, true);
         if (wgo == null)
         {
@@ -1517,7 +1523,7 @@ break; // Only propose one alliance per turn
             return;
         }
         
-        pioneer.Initialize(pioneerData, civ, tile);
+        pioneer.Initialize(resolvedPioneerData, civ, tile);
         pioneer.planetIndex = planetIndex;
         civ.workerUnits.Add(pioneer);
         

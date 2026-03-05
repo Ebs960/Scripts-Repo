@@ -116,6 +116,9 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
 
     private static void Snapshot(string label, bool includeObjectBreakdown)
     {
+        // Disabled — too noisy for console. Re-enable when profiling memory.
+        return;
+#pragma warning disable CS0162
         try
         {
             var proc = Process.GetCurrentProcess();
@@ -149,6 +152,7 @@ public sealed class RuntimeMemoryBreakdown : MonoBehaviour
         {
             Debug.LogWarning($"[Memory][{label}] Snapshot failed: {ex.Message}");
         }
+#pragma warning restore CS0162
     }
 
     private static void SummarizeType<T>(string typeName, bool logEachItem = false) where T : UnityEngine.Object

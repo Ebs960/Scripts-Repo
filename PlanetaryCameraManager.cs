@@ -374,6 +374,10 @@ public class PlanetaryCameraManager : MonoBehaviour
         float zoomT = Mathf.InverseLerp(minHeight, maxHeight, _cameraHeight);
         float pitchAngle = Mathf.Lerp(minPitchAngle, maxPitchAngle, zoomT);
 
+        // Clamp pitch to safe range to avoid tan() singularities and prevent extreme frustum distortion.
+        // Tan approaches infinity near 90° and becomes unstable near 0°.
+        pitchAngle = Mathf.Clamp(pitchAngle, 10f, 85f);
+        
         float pitchRad = pitchAngle * Mathf.Deg2Rad;
         float horizontalDist = _cameraHeight / Mathf.Tan(pitchRad);
 

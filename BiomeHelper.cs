@@ -322,9 +322,9 @@ public static class BiomeHelper {
         
         // Hot climates (>0.82)
         if (temperature > 0.82f) {
-            if (moisture < 0.39f) return Biome.Desert;
-            if (moisture < 0.50f) return Biome.Savannah;
-            if (moisture < 0.89f) return Biome.Tropical;
+            if (moisture < 0.22f) return Biome.Desert;
+            if (moisture < 0.40f) return Biome.Savannah;
+            if (moisture < 0.85f) return Biome.Tropical;
             return Biome.Swamp;
         }
 

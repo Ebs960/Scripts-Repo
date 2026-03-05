@@ -40,10 +40,12 @@ Shader "Custom/MenuPlanetPreview"
             _MapStyle("Map Style", Range(0, 1)) = 0.0
         [Header(Displacement)]
             _DisplacementScale("Displacement Scale", Range(0, 0.15)) = 0.035
-        [Header(Sun)]
-            _SunDirection("Sun Direction", Vector) = (-0.5, -0.7, 0.3, 0)
-            _SunColor("Sun Color", Color) = (1, 0.95, 0.85, 1)
-            _SunIntensity("Sun Intensity", Float) = 1.0
+        [Header(Surface)]
+            _Smoothness("Smoothness", Range(0, 1)) = 0.3
+            _Metallic("Metallic", Range(0, 1)) = 0.0
+            _AmbientOcclusion("Ambient Occlusion", Range(0, 1)) = 1.0
+            _AmbientStrength("Ambient Strength", Range(0, 1)) = 0.12
+            _Brightness("Brightness", Range(0.5, 3.0)) = 1.4
     }
 
     SubShader
@@ -110,9 +112,11 @@ Shader "Custom/MenuPlanetPreview"
                     float _AtmospherePower;
                     float _AtmosphereRadius;
                 float _DisplacementScale;
-                float4 _SunDirection;
-                float4 _SunColor;
-                float _SunIntensity;
+                float _Smoothness;
+                float _Metallic;
+                float _AmbientOcclusion;
+                float _AmbientStrength;
+                float _Brightness;
             CBUFFER_END
 
             // -----------------------------------------------------------------
@@ -437,16 +441,9 @@ Shader "Custom/MenuPlanetPreview"
                 // ==============================================================
                 // Biome color selected strictly by latitude, shifted by temperature
                 float3 landColor  = GetLandColor(latitude, tempShift, localMoist, objNorm);
-                float3 baseOceanColor = GetOceanColor(saturate(_Temperature));
 
-                // Ocean depth: shallow turquoise near coasts, deep navy in open ocean
-                float oceanDepthFactor = saturate((_LandThreshold - n) / max(0.01, _LandThreshold * 0.5));
-                float3 shallowOcean = lerp(float3(0.10, 0.42, 0.50), float3(0.08, 0.48, 0.55), _Temperature);
-                float3 oceanColor = lerp(shallowOcean, baseOceanColor * 0.7, smoothstep(0.0, 0.7, oceanDepthFactor));
-                // Warm tropical shallows near equator
-                float eqOceanWarm = (1.0 - smoothstep(0.0, 0.25, latitude)) * _Temperature;
-                oceanColor = lerp(oceanColor, float3(0.08, 0.50, 0.52),
-                    eqOceanWarm * (1.0 - oceanDepthFactor) * 0.3);
+                // Uniform ocean color — single inspector-driven color, no depth/latitude variation
+                float3 oceanColor = _OceanColor.rgb;
 
                 // GetLandColor already handles all biome band coloring —
                 // no additional desert/tropical tint overlays needed.
@@ -624,41 +621,17 @@ Shader "Custom/MenuPlanetPreview"
                 albedo = lerp(albedo, demonAlbedo, demonic);
 
                 // ==============================================================
-                //  Lighting (property-driven sun direction + color)
+                //  Unlit — output albedo directly, no directional lighting
+                //  Heightmap-driven shading: valleys darker, ridges brighter
                 // ==============================================================
-                float3 lightDir = normalize(-_SunDirection.xyz);
-                float3 sunCol   = _SunColor.rgb * _SunIntensity;
-
-                float NdotL   = dot(normal, lightDir);
-                // Half-Lambert wrap for a visible but smooth terminator.
-                // The day side is fully lit, the terminator has a soft falloff,
-                // and the dark side still has enough ambient to show biome colors.
-                float diffuse = saturate(NdotL * 0.75 + 0.25);
-
-                // Moderate ambient — dark hemisphere should be dim but biome colors
-                // should still be readable (like Earthrise photos from ISS at night).
-                float ambient = 0.12;
-
-                // Terrain ambient occlusion — valleys are darker, ridges catch more light
-                float terrainAO = lerp(1.0, 0.7, saturate(terrainHeight * 1.5)) // valleys darken
-                                * lerp(1.0, 0.85, mtnBand * 0.6);              // mountain crevices
-                float lighting = (diffuse + ambient) * terrainAO;
-
+                // Height-based brightness: low terrain dims, peaks brighten
+                float heightShade = lerp(0.72, 1.0, saturate(terrainHeight * 2.5));
+                // Slope darkening: steep faces are shadowed crevices
+                float slopeShade = lerp(0.65, 1.0, slopeDot);
+                // Combine: land gets height+slope shading, ocean stays uniform
+                float terrainShading = lerp(1.0, heightShade * slopeShade, edge);
+                float3 finalColor = albedo * terrainShading * _Brightness;
                 float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - input.positionWS);
-                float3 halfVec = normalize(lightDir + viewDir);
-                float specPow = lerp(48.0, 16.0, infernal);
-                float spec = pow(saturate(dot(normal, halfVec)), specPow)
-                           * (1.0 - edge)
-                           * lerp(0.5, 0.65, infernal);
-
-                // Sun glint on oceans — tight specular for "NASA photo" look
-                // Boosted to HDR range so bloom actually picks it up.
-                float oceanGlint = pow(saturate(dot(normal, halfVec)), 256.0)
-                                 * (1.0 - edge) * (1.0 - infernal) * 3.5;
-                float glintRipple = noise3D(samplePos * 40.0 + float3(timeVal * 0.5, 0, 0));
-                oceanGlint *= lerp(0.6, 1.4, glintRipple);
-
-                float3 finalColor = albedo * lighting * sunCol + spec * sunCol + oceanGlint * sunCol;
 
                 // ==============================================================
                 //  Emissive additions (infernal + demonic)
@@ -680,13 +653,6 @@ Shader "Custom/MenuPlanetPreview"
                 finalColor += demonLavaLake * hellLakeMask * demonic * 0.4;
 
                 // ==============================================================
-                //  Terminator scattering (warm band at day/night boundary)
-                // ==============================================================
-                float terminatorMask = 1.0 - smoothstep(0.0, 0.18, abs(NdotL));
-                float3 terminatorColor = float3(0.85, 0.35, 0.12);
-                finalColor += terminatorColor * terminatorMask * 0.15 * (1.0 - infernal);
-
-                // ==============================================================
                 //  Atmosphere rim glow
                 // ==============================================================
                 float fresnel = 1.0 - saturate(dot(normal, viewDir));
@@ -705,20 +671,6 @@ Shader "Custom/MenuPlanetPreview"
 
                 // Frozen worlds: no special rim glow — just cold and snowy
                 // (atmosphere shell handles any remaining rim)
-
-                // ==============================================================
-                //  Polar aurora (night side, high latitude, cold worlds)
-                // ==============================================================
-                float nightMask = smoothstep(0.0, -0.1, NdotL);
-                float auroraMask = smoothstep(0.65, 0.85, latitude) * nightMask * (1.0 - infernal);
-                float auroraStrength = saturate((0.5 - _Temperature) * 2.5);
-                float auroraNoise = noise3D(float3(objNorm.x * 8.0, objNorm.z * 8.0, timeVal * 0.3));
-                float auroraCurtain = smoothstep(0.35, 0.55, auroraNoise);
-                float3 auroraColor = lerp(float3(0.15, 0.85, 0.35), float3(0.30, 0.45, 0.90),
-                    noise3D(float3(objNorm.xz * 4.0, timeVal * 0.15)));
-                auroraColor = lerp(auroraColor, float3(0.55, 0.20, 0.80),
-                    smoothstep(0.6, 0.8, auroraNoise) * 0.3);
-                finalColor += auroraColor * auroraMask * auroraCurtain * auroraStrength * 0.15;
 
                 return float4(finalColor, 1.0);
             }
@@ -794,9 +746,11 @@ Shader "Custom/MenuPlanetPreview"
                 float _AtmospherePower;
                 float _AtmosphereRadius;
                 float _DisplacementScale;
-                float4 _SunDirection;
-                float4 _SunColor;
-                float _SunIntensity;
+                float _Smoothness;
+                float _Metallic;
+                float _AmbientOcclusion;
+                float _AmbientStrength;
+                float _Brightness;
             CBUFFER_END
 
             // Inline noise for displacement (same as main pass)
@@ -923,9 +877,11 @@ Shader "Custom/MenuPlanetPreview"
                 float _AtmospherePower;
                 float _AtmosphereRadius;
                 float _DisplacementScale;
-                float4 _SunDirection;
-                float4 _SunColor;
-                float _SunIntensity;
+                float _Smoothness;
+                float _Metallic;
+                float _AmbientOcclusion;
+                float _AmbientStrength;
+                float _Brightness;
             CBUFFER_END
 
             float hash31_s(float3 p){p=frac(p*float3(0.1031,0.1030,0.0973));p+=dot(p,p.yxz+33.33);return frac((p.x+p.y)*p.z);}

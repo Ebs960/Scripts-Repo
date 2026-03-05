@@ -635,7 +635,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[HexMapChunkManager] Map dimensions: {mapWidth}x{mapHeight} (grid={gridW}x{gridH}, GameManager={GameManager.Instance?.GetFlatMapWidth() ?? 0}x{GameManager.Instance?.GetFlatMapHeight() ?? 0})");
+            // Debug.Log — Map dimensions (disabled to reduce console noise)
         }
         
         columnWidth = mapWidth / chunksX;
