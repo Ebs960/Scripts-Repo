@@ -995,6 +995,8 @@ if (!data.canSwitchToMelee)
         
         // currentHealth is protected set in BaseUnit, so we can set it directly
         currentHealth -= damageAmount;
+        ShowHealthChangePopup(-Mathf.Abs(damageAmount));
+        UpdateUnitLabel();
 // Raise damage event
         GameEventManager.Instance.RaiseDamageAppliedEvent(null, this, damageAmount);
         

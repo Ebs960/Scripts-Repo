@@ -71,6 +71,13 @@ public abstract class BaseUnit : MonoBehaviour
     [Header("Unit UI")]
     [SerializeField] protected GameObject unitLabelPrefab;
     protected UnitLabel unitLabelInstance;
+    private const float HealthPopupVerticalOffset = 1.5f;
+    private const float HealthPopupRiseDistance = 1.5f;
+    private const float HealthPopupDuration = 0.7f;
+    private const float HealthPopupScale = 0.18f;
+    private static readonly Color DamagePopupColor = new Color(0.9f, 0.2f, 0.2f, 1f);
+    private static readonly Color HealPopupColor = new Color(0.2f, 0.9f, 0.2f, 1f);
+    private static readonly Color HealthPopupOutlineColor = new Color(0f, 0f, 0f, 0.9f);
 
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons")]
@@ -791,6 +798,7 @@ public abstract class BaseUnit : MonoBehaviour
             animator.SetTrigger(hitHash);
 
         currentHealth -= damageAmount;
+        ShowHealthChangePopup(-Mathf.Abs(damageAmount));
 
         // Update label
         UpdateUnitLabel();
@@ -824,7 +832,13 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual void Heal(int amount)
     {
         if (amount <= 0) return;
+        int previousHealth = currentHealth;
         currentHealth = Mathf.Min(currentHealth + amount, MaxHealth);
+        int actualHealed = currentHealth - previousHealth;
+        if (actualHealed <= 0) return;
+
+        ShowHealthChangePopup(actualHealed);
+        UpdateUnitLabel();
     }
 
     protected System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
@@ -1226,6 +1240,75 @@ public abstract class BaseUnit : MonoBehaviour
                 ? owner.civData.civName : "Unknown";
             unitLabelInstance.UpdateLabel(UnitName, ownerName, currentHealth, MaxHealth);
         }
+    }
+
+    protected void ShowHealthChangePopup(int amount)
+    {
+        if (amount == 0 || !gameObject.activeInHierarchy) return;
+
+        Transform anchor = labelAnchor != null ? labelAnchor : transform;
+        GameObject popupGO = new GameObject("HealthChangePopup");
+        popupGO.transform.SetParent(anchor, false);
+        popupGO.transform.localPosition = new Vector3(0f, HealthPopupVerticalOffset, 0f);
+        popupGO.transform.localRotation = Quaternion.identity;
+        popupGO.transform.localScale = Vector3.one * HealthPopupScale;
+
+        var popupText = popupGO.AddComponent<TextMeshPro>();
+        if (TMP_Settings.defaultFontAsset != null)
+            popupText.font = TMP_Settings.defaultFontAsset;
+        popupText.text = amount > 0 ? $"+{amount}" : amount.ToString();
+        popupText.fontSize = 3f;
+        popupText.alignment = TextAlignmentOptions.Center;
+        popupText.enableWordWrapping = false;
+        popupText.color = amount > 0 ? HealPopupColor : DamagePopupColor;
+        popupText.outlineWidth = 0.18f;
+        popupText.outlineColor = HealthPopupOutlineColor;
+        popupText.raycastTarget = false;
+
+        var popupRenderer = popupGO.GetComponent<MeshRenderer>();
+        if (popupRenderer != null)
+        {
+            popupRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            popupRenderer.receiveShadows = false;
+            popupRenderer.sortingOrder = 100;
+        }
+
+        StartCoroutine(AnimateHealthChangePopup(popupGO.transform, popupText));
+    }
+
+    private System.Collections.IEnumerator AnimateHealthChangePopup(Transform popupTransform, TextMeshPro popupText)
+    {
+        if (popupTransform == null || popupText == null)
+            yield break;
+
+        Camera worldCamera = Camera.main;
+        Vector3 startLocalPosition = popupTransform.localPosition;
+        Vector3 endLocalPosition = startLocalPosition + Vector3.up * HealthPopupRiseDistance;
+        Color baseColor = popupText.color;
+        float elapsed = 0f;
+
+        while (elapsed < HealthPopupDuration)
+        {
+            if (popupTransform == null || popupText == null)
+                yield break;
+
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / HealthPopupDuration);
+            popupTransform.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, t);
+
+            if (worldCamera == null)
+                worldCamera = Camera.main;
+            if (worldCamera != null)
+                popupTransform.rotation = worldCamera.transform.rotation;
+
+            Color fadedColor = baseColor;
+            fadedColor.a = 1f - t;
+            popupText.color = fadedColor;
+            yield return null;
+        }
+
+        if (popupTransform != null)
+            Destroy(popupTransform.gameObject);
     }
 
     #endregion

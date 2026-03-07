@@ -67,20 +67,33 @@ public class TechButtonUI : MonoBehaviour
         button = GetComponent<Button>();
         if (button != null)
         {
+            if (backgroundImage != null)
+                button.targetGraphic = backgroundImage;
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => techUI.SelectTech(RepresentedTech));
         }
+
+        RefreshButtonColorBlock();
+        RefreshColor();
     }
 
     public void SetState(TechState state)
     {
         currentState = state;
+        if (button == null) button = GetComponent<Button>();
+        if (button != null)
+        {
+            // Only allow interaction if not researched
+            button.interactable = (state != TechState.Researched);
+        }
+        RefreshButtonColorBlock();
         RefreshColor();
     }
 
     public void SetSelected(bool selected)
     {
         isSelected = selected;
+        RefreshButtonColorBlock();
         RefreshColor();
     }
 
@@ -107,6 +120,48 @@ public class TechButtonUI : MonoBehaviour
             case TechState.Locked:
                 backgroundImage.color = lockedColor;
                 break;
+        }
+    }
+
+    private void RefreshButtonColorBlock()
+    {
+        if (button == null) return;
+
+        Color baseColor = GetDisplayColorForCurrentState();
+        Color hoverColor = currentState == TechState.Locked || isSelected
+            ? baseColor
+            : Color.Lerp(baseColor, Color.white, 0.18f);
+        Color pressedColor = currentState == TechState.Locked || isSelected
+            ? baseColor
+            : Color.Lerp(baseColor, Color.black, 0.12f);
+
+        ColorBlock colors = button.colors;
+        colors.colorMultiplier = 1f;
+        colors.fadeDuration = 0.08f;
+        colors.normalColor = baseColor;
+        colors.highlightedColor = hoverColor;
+        colors.selectedColor = baseColor;
+        colors.pressedColor = pressedColor;
+        colors.disabledColor = baseColor;
+        button.colors = colors;
+    }
+
+    private Color GetDisplayColorForCurrentState()
+    {
+        if (isSelected)
+            return selectedColor;
+
+        switch (currentState)
+        {
+            case TechState.Researched:
+                return researchedColor;
+            case TechState.Researching:
+                return researchingColor;
+            case TechState.Available:
+                return availableColor;
+            case TechState.Locked:
+            default:
+                return lockedColor;
         }
     }
 } 

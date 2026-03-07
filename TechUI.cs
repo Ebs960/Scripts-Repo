@@ -26,6 +26,8 @@ public class TechUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedTechTurnsRemainingText;
     [SerializeField] private TextMeshProUGUI selectedTechPrerequisitesText;
     [SerializeField] private TextMeshProUGUI selectedTechUnlocksText;
+    [SerializeField] private TextMeshProUGUI selectedTechBuildingsText;
+    [SerializeField] private TextMeshProUGUI selectedTechImprovementsText;
     [SerializeField] private Button closeButton;
 
     private Civilization playerCiv;
@@ -513,7 +515,8 @@ playerCiv.StartResearch(tech);
         }
         selectedTechPrerequisitesText.text = prereqs;
 
-        string unlocks = "Unlocks: ";
+        List<string> buildingUnlocks = new List<string>();
+        List<string> improvementUnlocks = new List<string>();
         List<string> unlockItems = new List<string>();
 
         // Reverse-lookup: find all data assets that require this tech
@@ -522,55 +525,84 @@ playerCiv.StartResearch(tech);
             foreach (var b in buildings)
                 if (b != null && b.requiredTechs != null)
                     foreach (var rt in b.requiredTechs)
-                        if (rt == tech) { unlockItems.Add(b.buildingName); break; }
+                        if (rt == tech)
+                        {
+                            AddUniqueUnlock(buildingUnlocks, b.buildingName);
+                            AddUniqueUnlock(unlockItems, b.buildingName);
+                            break;
+                        }
 
         var combatUnits = ResourceCache.GetAllCombatUnits();
         if (combatUnits != null)
             foreach (var u in combatUnits)
                 if (u != null && u.requiredTechs != null)
                     foreach (var rt in u.requiredTechs)
-                        if (rt == tech) { unlockItems.Add(u.unitName); break; }
+                        if (rt == tech) { AddUniqueUnlock(unlockItems, u.unitName); break; }
 
         var workerUnits = ResourceCache.GetAllWorkerUnits();
         if (workerUnits != null)
             foreach (var w in workerUnits)
                 if (w != null && w.requiredTechs != null)
                     foreach (var rt in w.requiredTechs)
-                        if (rt == tech) { unlockItems.Add(w.unitName); break; }
+                        if (rt == tech) { AddUniqueUnlock(unlockItems, w.unitName); break; }
 
         var improvements = ResourceCache.GetAllImprovements();
         if (improvements != null)
             foreach (var imp in improvements)
-                if (imp != null && imp.requiredTechs != null)
-                    foreach (var rt in imp.requiredTechs)
-                        if (rt == tech) { unlockItems.Add(imp.improvementName); break; }
+                if (imp != null)
+                {
+                    if (imp.requiredTechs != null)
+                    {
+                        foreach (var rt in imp.requiredTechs)
+                        {
+                            if (rt == tech)
+                            {
+                                AddUniqueUnlock(improvementUnlocks, imp.improvementName);
+                                AddUniqueUnlock(unlockItems, imp.improvementName);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (imp.availableUpgrades != null)
+                    {
+                        foreach (var upgrade in imp.availableUpgrades)
+                        {
+                            if (upgrade == null || upgrade.requiredTech != tech)
+                                continue;
+
+                            string upgradeLabel = string.IsNullOrWhiteSpace(upgrade.upgradeName)
+                                ? $"{imp.improvementName} Upgrade"
+                                : $"{imp.improvementName}: {upgrade.upgradeName}";
+                            AddUniqueUnlock(improvementUnlocks, upgradeLabel);
+                            AddUniqueUnlock(unlockItems, upgradeLabel);
+                        }
+                    }
+                }
 
         var equipment = ResourceCache.GetAllEquipment();
         if (equipment != null)
             foreach (var eq in equipment)
                 if (eq != null && eq.requiredTechs != null)
                     foreach (var rt in eq.requiredTechs)
-                        if (rt == tech) { unlockItems.Add(eq.equipmentName); break; }
+                        if (rt == tech) { AddUniqueUnlock(unlockItems, eq.equipmentName); break; }
 
         // Also show directly-referenced unlocks on TechData itself
         if (tech.unlockedGovernments != null)
             foreach (var g in tech.unlockedGovernments)
-                if (g != null) unlockItems.Add(g.governmentName);
+                if (g != null) AddUniqueUnlock(unlockItems, g.governmentName);
         if (tech.unlockedReligions != null)
             foreach (var r in tech.unlockedReligions)
-                if (r != null) unlockItems.Add(r.religionName);
+                if (r != null) AddUniqueUnlock(unlockItems, r.religionName);
         if (tech.unlocksReligion)
-            unlockItems.Add("Religion Mechanics");
+            AddUniqueUnlock(unlockItems, "Religion Mechanics");
 
-        if (unlockItems.Count > 0)
-        {
-            unlocks += string.Join(", ", unlockItems);
-        }
-        else
-        {
-            unlocks += "Nothing yet";
-        }
-        selectedTechUnlocksText.text = unlocks;
+        if (selectedTechBuildingsText != null)
+            selectedTechBuildingsText.text = FormatUnlockField("Buildings", buildingUnlocks);
+        if (selectedTechImprovementsText != null)
+            selectedTechImprovementsText.text = FormatUnlockField("Improvements", improvementUnlocks);
+
+        selectedTechUnlocksText.text = FormatUnlockField("Unlocks", unlockItems);
     }
 
     private int GetTotalSciencePerTurn(Civilization civ)
@@ -597,6 +629,24 @@ playerCiv.StartResearch(tech);
         if (selectedTechTurnsRemainingText != null) selectedTechTurnsRemainingText.text = "";
         selectedTechPrerequisitesText.text = "";
         selectedTechUnlocksText.text = "";
+        if (selectedTechBuildingsText != null) selectedTechBuildingsText.text = "";
+        if (selectedTechImprovementsText != null) selectedTechImprovementsText.text = "";
+    }
+
+    private static void AddUniqueUnlock(List<string> list, string value)
+    {
+        if (list == null || string.IsNullOrWhiteSpace(value) || list.Contains(value))
+            return;
+
+        list.Add(value);
+    }
+
+    private static string FormatUnlockField(string label, List<string> items)
+    {
+        if (items == null || items.Count == 0)
+            return $"{label}: None";
+
+        return $"{label}: {string.Join(", ", items)}";
     }
 
     public void RefreshUI()

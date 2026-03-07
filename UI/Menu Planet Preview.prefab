@@ -428,15 +428,15 @@ MonoBehaviour:
   oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
   mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 1}
   iceCapSize: 0.5
-  biomeBlend: 0.312
+  biomeBlend: 0.25
   biomeNoiseScale: 10
-  biomeNoiseStrength: 0.2
-  colorVibrancy: 2
-  smoothness: 0.3
+  biomeNoiseStrength: 0.137
+  colorVibrancy: 1.253
+  smoothness: 0.3401596
   metallic: 0
   ambientOcclusion: 1
   ambientStrength: 0.12
-  brightness: 2.1
+  brightness: 1.2
   seed: 0
   randomizeSeed: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
