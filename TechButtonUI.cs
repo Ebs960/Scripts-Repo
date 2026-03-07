@@ -15,6 +15,7 @@ public class TechButtonUI : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private TextMeshProUGUI techNameText;
     [SerializeField] private Image backgroundImage;
+    [SerializeField] private Image iconImage; // <-- Add this line for the icon
 
     [Header("Colors")]
     [SerializeField] private Color researchedColor = Color.green;
@@ -39,13 +40,29 @@ public class TechButtonUI : MonoBehaviour
         techUI = ownerUI;
 
         // Auto-find components if not assigned (for procedurally created nodes)
+
         if (techNameText == null)
             techNameText = GetComponentInChildren<TextMeshProUGUI>();
         if (backgroundImage == null)
             backgroundImage = GetComponent<Image>();
+        if (iconImage == null)
+        {
+            // Try to find an Image named "Icon" in children (common prefab pattern)
+            var images = GetComponentsInChildren<Image>(true);
+            foreach (var img in images)
+            {
+                if (img.gameObject.name.ToLower().Contains("icon"))
+                {
+                    iconImage = img;
+                    break;
+                }
+            }
+        }
 
         if (techNameText != null)
             techNameText.text = tech.techName;
+        if (iconImage != null)
+            iconImage.sprite = tech.techIcon;
 
         button = GetComponent<Button>();
         if (button != null)

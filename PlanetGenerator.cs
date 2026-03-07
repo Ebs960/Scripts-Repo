@@ -1829,57 +1829,88 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // instead of retaining their former land values.
 
         // ---------- 6. Post-processing (Coasts, Seas, Visuals) --------------
-        // Create coast tiles first where land meets water (excluding glaciers and rivers)
-        HashSet<int> waterTiles = new HashSet<int>();
-        // Make a set of protected biomes that can't be modified by coastline/seas processing
+        // Create coast tiles from a frozen land/water snapshot so conversion cannot
+        // recursively spread through the continent during the same pass.
         HashSet<int> postProcessProtectedTiles = new HashSet<int>();
+        bool[] isOceanWaterSnapshot = new bool[tileCount];
+        bool[] shouldBecomeCoast = new bool[tileCount];
 
         for (int i = 0; i < tileCount; i++) {
             if (!data.ContainsKey(i)) continue;
 
+            var td = data[i];
+
             // Protect Arctic and Glacier tiles from ever becoming a coast or sea
-            if (data[i].biome == Biome.Arctic || data[i].biome == Biome.Glacier) {
+            if (td.biome == Biome.Arctic || td.biome == Biome.Glacier) {
                 postProcessProtectedTiles.Add(i);
                 continue;
             }
 
-            if (data[i].isLake) {
-                continue;
-            }
-
-            // Consider tiles that are NOT land and NOT lakes as ocean water bodies (Glaciers are now treated as land)
-            if (!data[i].isLand && !data[i].isLake) {
-                 waterTiles.Add(i);
-                 continue; 
-            }
-
-            bool hasWaterNeighbor = false;
-            foreach (int nIdx in grid.neighbors[i]) {
-                // A neighbor is water if it's in the waterTiles set OR it's an ocean/sea/glacier
-                if (waterTiles.Contains(nIdx) || (data.ContainsKey(nIdx) && !data[nIdx].isLand && !data[nIdx].isLake)) {
-                    hasWaterNeighbor = true; break;
-                }
-            }
-            // Convert land tile to Coast if adjacent to Ocean/Seas (but NEVER Arctic/Glacier)
-            // Mountains and hills adjacent to water are demoted — coastline always forms.
-            if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i)) {
-                var td = data[i];
-                td.biome = Biome.Coast;
-                td.isLand = false;
-                td.isHill = false;
-                td.isMountain = false;
-                td.elevationTier = ElevationTier.Flat;
-                data[i] = td;
-                baseData[i] = td;
+            // Snapshot only true pre-coast ocean water. Lakes are excluded.
+            if (!td.isLand && !td.isLake) {
+                isOceanWaterSnapshot[i] = true;
             }
 
             // BATCH YIELD
-            if (i > 0 && i % 500 == 0)
+            if (i > 0 && i % 1000 == 0)
             {
                 if (loadingPanelController != null)
                 {
-                    loadingPanelController.SetProgress(0.5f + (float)i / tileCount * 0.1f); // Progress 50% to 60%
-                    loadingPanelController.SetStatus("Forming coastlines...");
+                    loadingPanelController.SetProgress(0.5f + (float)i / tileCount * 0.04f);
+                    loadingPanelController.SetStatus("Scanning shoreline...");
+                }
+                yield return null;
+            }
+        }
+
+        for (int i = 0; i < tileCount; i++) {
+            if (!data.ContainsKey(i)) continue;
+            if (postProcessProtectedTiles.Contains(i)) continue;
+
+            var td = data[i];
+            if (!td.isLand || td.isLake || td.isRiver) continue;
+
+            bool hasOceanNeighbor = false;
+            foreach (int nIdx in grid.neighbors[i]) {
+                if (nIdx < 0 || nIdx >= tileCount) continue;
+                if (isOceanWaterSnapshot[nIdx]) {
+                    hasOceanNeighbor = true;
+                    break;
+                }
+            }
+
+            shouldBecomeCoast[i] = hasOceanNeighbor;
+
+            // BATCH YIELD
+            if (i > 0 && i % 1000 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.54f + (float)i / tileCount * 0.03f);
+                    loadingPanelController.SetStatus("Marking coastline...");
+                }
+                yield return null;
+            }
+        }
+
+        for (int i = 0; i < tileCount; i++) {
+            if (!shouldBecomeCoast[i]) continue;
+
+            var td = data[i];
+            td.biome = Biome.Coast;
+            td.isLand = false;
+            td.isHill = false;
+            td.isMountain = false;
+            td.elevationTier = ElevationTier.Flat;
+            data[i] = td;
+            baseData[i] = td;
+
+            if (i > 0 && i % 1000 == 0)
+            {
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.57f + (float)i / tileCount * 0.03f);
+                    loadingPanelController.SetStatus("Applying coastline...");
                 }
                 yield return null;
             }
