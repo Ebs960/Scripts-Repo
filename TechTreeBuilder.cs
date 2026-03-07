@@ -43,7 +43,7 @@ public class TechTreeBuilder : MonoBehaviour
     public Color occupiedCellColor = Color.clear; // Transparent cells
     
     [Header("Node Prefab")]
-    [Tooltip("Optional prefab for tech tree nodes. Must have a TechBuilderNode component with " +
+    [Tooltip("Optional prefab for tech tree nodes. Must have a TechPaletteItem component with " +
              "techIcon, techNameText, and backgroundImage wired up. If left empty, nodes are " +
              "created procedurally in code (plain rectangles).")]
     public GameObject techNodePrefab;
@@ -61,17 +61,17 @@ public class TechTreeBuilder : MonoBehaviour
     private readonly List<TechData> availableTechs = new List<TechData>();
     private readonly Dictionary<string, TechData> techByName = new Dictionary<string, TechData>();
 
-    private Dictionary<TechData, TechBuilderNode> techNodes = new Dictionary<TechData, TechBuilderNode>();
+    private Dictionary<TechData, TechPaletteItem> techNodes = new Dictionary<TechData, TechPaletteItem>();
     private List<GameObject> connectionLines = new List<GameObject>();
-    private TechBuilderNode selectedNode;
-    private TechBuilderNode draggedNode;
+    private TechPaletteItem selectedNode;
+    private TechPaletteItem draggedNode;
     private bool isConnecting = false;
     private GameObject connectionPreviewLine;
     private Image connectionPreviewImage;
     
     // Grid system
     private GameObject[,] gridCells;
-    private Dictionary<Vector2Int, TechBuilderNode> gridOccupancy = new Dictionary<Vector2Int, TechBuilderNode>();
+    private Dictionary<Vector2Int, TechPaletteItem> gridOccupancy = new Dictionary<Vector2Int, TechPaletteItem>();
     
     public static TechTreeBuilder Instance { get; private set; }
     
@@ -431,68 +431,106 @@ return;
             return;
         }
 
-        // Create the palette item completely in code - no prefab needed!
-        GameObject paletteItem = new GameObject($"PaletteItem_{tech.techName}");
-        paletteItem.transform.SetParent(techPalette, false);
+        GameObject paletteItem;
+        TechPaletteItem item;
 
-        // Add RectTransform and set it up
-        RectTransform rect = paletteItem.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(180, 50);
-        rect.anchorMin = new Vector2(0, 1); // top-left
-        rect.anchorMax = new Vector2(0, 1);
-        rect.pivot = new Vector2(0, 1);
-        rect.localScale = Vector3.one;
+        if (techNodePrefab != null)
+        {
+            // Use the same prefab as builder nodes
+            paletteItem = Instantiate(techNodePrefab, techPalette);
+            paletteItem.name = $"PaletteItem_{tech.techName}";
 
-        // Add background image
-        Image backgroundImage = paletteItem.AddComponent<Image>();
-        backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            item = paletteItem.GetComponent<TechPaletteItem>();
+            if (item == null)
+            {
+                Debug.LogError("[TechTreeBuilder] techNodePrefab missing TechPaletteItem! Falling back to code.");
+                Destroy(paletteItem);
+                paletteItem = null;
+                item = null;
+            }
+            else
+            {
+                // Keep the prefab's own size, just ensure scale is right
+                RectTransform rect = paletteItem.GetComponent<RectTransform>();
+                rect.localScale = Vector3.one;
 
-        // Create icon child object
-        GameObject iconObj = new GameObject("Icon");
-        iconObj.transform.SetParent(paletteItem.transform, false);
-        RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-        iconRect.anchorMin = new Vector2(0, 0);
-        iconRect.anchorMax = new Vector2(0, 1);
-        iconRect.sizeDelta = new Vector2(42, 0);
-        iconRect.offsetMin = new Vector2(4, 4);
-        iconRect.offsetMax = new Vector2(46, -4);
+                // Add layout element so the sidebar scroll container can size it
+                LayoutElement layoutElement = paletteItem.GetComponent<LayoutElement>();
+                if (layoutElement == null) layoutElement = paletteItem.AddComponent<LayoutElement>();
+                layoutElement.minWidth = 140;
+                layoutElement.minHeight = 40;
+                layoutElement.preferredWidth = 180;
+                layoutElement.preferredHeight = 50;
 
-        Image iconImage = iconObj.AddComponent<Image>();
-        iconImage.sprite = tech.techIcon; // Use the tech's icon directly!
-        iconImage.color = Color.white;
-        iconImage.preserveAspect = true;
+                item.isBuilderNode = false;
+                item.Initialize(tech, this);
+            }
+        }
+        else
+        {
+            paletteItem = null;
+            item = null;
+        }
 
-        // Create text child object
-        GameObject textObj = new GameObject("Text");
-        textObj.transform.SetParent(paletteItem.transform, false);
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        textRect.anchorMin = new Vector2(0, 0);
-        textRect.anchorMax = new Vector2(1, 1);
-        textRect.offsetMin = new Vector2(50, 4);
-        textRect.offsetMax = new Vector2(-4, -4);
+        // Fallback: build entirely in code if no prefab
+        if (paletteItem == null)
+        {
+            paletteItem = new GameObject($"PaletteItem_{tech.techName}");
+            paletteItem.transform.SetParent(techPalette, false);
 
-        TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = tech.techName; // Use the tech's name directly!
-        text.fontSize = 11;
-        text.fontSizeMin = 8;
-        text.fontSizeMax = 14;
-        text.enableAutoSizing = true;
-        text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            RectTransform rect = paletteItem.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(180, 50);
+            rect.anchorMin = new Vector2(0, 1);
+            rect.anchorMax = new Vector2(0, 1);
+            rect.pivot = new Vector2(0, 1);
+            rect.localScale = Vector3.one;
 
-        // Add layout element for proper sizing
-        LayoutElement layoutElement = paletteItem.AddComponent<LayoutElement>();
-        layoutElement.minWidth = 140;
-        layoutElement.minHeight = 40;
-        layoutElement.preferredWidth = 180;
-        layoutElement.preferredHeight = 50;
+            Image backgroundImage = paletteItem.AddComponent<Image>();
+            backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
 
-        // Add the TechPaletteItem component and set it up
-        TechPaletteItem item = paletteItem.AddComponent<TechPaletteItem>();
-        item.techIcon = iconImage;
-        item.techNameText = text;
-        item.backgroundImage = backgroundImage;
-        item.Initialize(tech, this);
+            GameObject iconObj = new GameObject("Icon");
+            iconObj.transform.SetParent(paletteItem.transform, false);
+            RectTransform iconRect = iconObj.AddComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0, 0);
+            iconRect.anchorMax = new Vector2(0, 1);
+            iconRect.sizeDelta = new Vector2(42, 0);
+            iconRect.offsetMin = new Vector2(4, 4);
+            iconRect.offsetMax = new Vector2(46, -4);
+
+            Image iconImage = iconObj.AddComponent<Image>();
+            iconImage.sprite = tech.techIcon;
+            iconImage.color = Color.white;
+            iconImage.preserveAspect = true;
+
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(paletteItem.transform, false);
+            RectTransform textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0, 0);
+            textRect.anchorMax = new Vector2(1, 1);
+            textRect.offsetMin = new Vector2(50, 4);
+            textRect.offsetMax = new Vector2(-4, -4);
+
+            TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = tech.techName;
+            text.fontSize = 11;
+            text.fontSizeMin = 8;
+            text.fontSizeMax = 14;
+            text.enableAutoSizing = true;
+            text.color = Color.white;
+            text.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+
+            LayoutElement layoutElement = paletteItem.AddComponent<LayoutElement>();
+            layoutElement.minWidth = 140;
+            layoutElement.minHeight = 40;
+            layoutElement.preferredWidth = 180;
+            layoutElement.preferredHeight = 50;
+
+            item = paletteItem.AddComponent<TechPaletteItem>();
+            item.techIcon = iconImage;
+            item.techNameText = text;
+            item.backgroundImage = backgroundImage;
+            item.Initialize(tech, this);
+        }
 }
     
     public void AddTechToBuilder(TechData tech, Vector2 position)
@@ -518,37 +556,37 @@ return;
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
 
         GameObject nodeObj;
-        TechBuilderNode node;
+        TechPaletteItem node;
 
         if (techNodePrefab != null)
         {
             // ---------- PREFAB PATH ----------
             // Instantiate the designer-authored prefab. The prefab must have a
-            // TechBuilderNode component with techIcon, techNameText, and
+            // TechPaletteItem component with techIcon, techNameText, and
             // backgroundImage already wired up in the Inspector.
             nodeObj = Instantiate(techNodePrefab, builderContent);
             nodeObj.name = $"TechNode_{tech.techName}";
 
-            node = nodeObj.GetComponent<TechBuilderNode>();
+            node = nodeObj.GetComponent<TechPaletteItem>();
             if (node == null)
             {
-                Debug.LogError($"[TechTreeBuilder] techNodePrefab is missing a TechBuilderNode component! Falling back to code creation.");
+                Debug.LogError($"[TechTreeBuilder] techNodePrefab is missing a TechPaletteItem component! Falling back to code creation.");
                 Destroy(nodeObj);
                 nodeObj = null;
                 node = null;
             }
             else
             {
-                // Position & size to match the grid cell
+                // Set canvas-relative positioning without altering the prefab's own size
                 RectTransform rect = nodeObj.GetComponent<RectTransform>();
                 if (rect == null) rect = nodeObj.AddComponent<RectTransform>();
-                rect.sizeDelta = new Vector2(cellSize.x - 10, cellSize.y - 10);
                 rect.anchorMin = new Vector2(0, 1);
                 rect.anchorMax = new Vector2(0, 1);
                 rect.pivot = new Vector2(0.5f, 0.5f);
                 rect.localScale = Vector3.one;
                 rect.anchoredPosition = snapPosition;
 
+                node.isBuilderNode = true;
                 node.Initialize(tech, this);
                 node.SetGridPosition(finalGridPos);
             }
@@ -606,7 +644,8 @@ return;
             text.color = Color.white;
             text.alignment = TMPro.TextAlignmentOptions.Center;
 
-            node = nodeObj.AddComponent<TechBuilderNode>();
+            node = nodeObj.AddComponent<TechPaletteItem>();
+            node.isBuilderNode = true;
             node.techIcon = iconImage;
             node.techNameText = text;
             node.backgroundImage = backgroundImage;
@@ -625,7 +664,7 @@ return;
     
     public void RemoveTechFromBuilder(TechData tech)
     {
-        if (techNodes.TryGetValue(tech, out TechBuilderNode node))
+        if (techNodes.TryGetValue(tech, out TechPaletteItem node))
         {
             if (selectedNode == node)
                 selectedNode = null;
@@ -645,7 +684,7 @@ return;
         }
     }
     
-    public void SelectNode(TechBuilderNode node)
+    public void SelectNode(TechPaletteItem node)
     {
         if (selectedNode != null)
             selectedNode.SetSelected(false);
@@ -658,7 +697,7 @@ return;
         }
     }
     
-    public void StartConnection(TechBuilderNode fromNode)
+    public void StartConnection(TechPaletteItem fromNode)
     {
         if (selectedNode != null && selectedNode != fromNode)
         {
@@ -710,7 +749,7 @@ return;
         foreach (var kvp in techNodes)
         {
             TechData tech = kvp.Key;
-            TechBuilderNode node = kvp.Value;
+            TechPaletteItem node = kvp.Value;
             if (tech?.requiredTechnologies == null) continue;
 
             foreach (var dependency in tech.requiredTechnologies)
@@ -723,7 +762,7 @@ return;
         }
     }
     
-    private void CreateConnectionLine(TechBuilderNode fromNode, TechBuilderNode toNode)
+    private void CreateConnectionLine(TechPaletteItem fromNode, TechPaletteItem toNode)
     {
         if (builderContent == null || fromNode == null || toNode == null) return;
 

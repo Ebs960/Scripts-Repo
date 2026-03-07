@@ -153,11 +153,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlanetaryCameraManager
   panSpeed: 80
   zoomSpeed: 40
-  minHeight: 25
+  minHeight: 33
   maxHeight: 80
   rotateSpeed: 50
-  minPitchAngle: 20
-  maxPitchAngle: 63
+  minPitchAngle: 30
+  maxPitchAngle: 80
   allowMouseDrag: 1
   mouseSensitivity: 2
   dragMouseButton: 0

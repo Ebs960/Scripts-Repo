@@ -1788,11 +1788,6 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.name = "ChunkTerrainMaterial";
 
         // One-time diagnostic: confirms which shader we actually bound at runtime.
-        if (ShouldRunDiagnostics())
-        {
-            Debug.Log($"[HexMapChunkManager][Diag] Using terrain shader: {shader.name}");
-        }
-
         ApplyBiomeMaterialSettings();
         
         // Create and apply LUT texture for tile highlighting
@@ -2658,8 +2653,7 @@ public class HexMapChunkManager : MonoBehaviour
                 else if (wt == TileWaterType.Ocean) oceanTiles++;
             }
         }
-        if (ShouldRunDiagnostics() || debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Pre-build totals: ocean={oceanTiles}, lake={lakeTiles}, river={riverTiles}, totalWater={totalWater}");
+        
 
         int batchSize = Mathf.Max(1, chunksPerBatch);
         int count = 0;
@@ -2678,8 +2672,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
         }
 
-        if (ShouldRunDiagnostics() || debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][WaterDiag] Post-build: per-tile water meshes done (SDF unified mesh handles ocean/river/lake when enabled)");
+        
 
         // Diagnostic: detect coast/seas/ocean tiles missing waterType (common cause of missing coast water)
         if (ShouldRunDiagnostics() && planetGenerator != null && planetGenerator.data != null)
@@ -2754,8 +2747,7 @@ public class HexMapChunkManager : MonoBehaviour
         isoLake = Mathf.Max(isoLake, minIso);
         isoOcean = Mathf.Max(isoOcean, minIso);
 
-        if (debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][SDF] Iso values: river={isoRiver:F3}, lake={isoLake:F3}, ocean={isoOcean:F3}, hexSize={hexSize:F3}, grid={wCells}x{hCells}");
+        
 
         // --- Build seed grids for rivers, lakes, and ocean ---
         var seedRiver = ArrayPoolUtils.RentBool(wPts * hPts);
@@ -2873,8 +2865,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (seedOcean != null) for (int i = 0; i < sdfLen; i++) if (seedOcean[i]) seedOceanCount++;
         bool anySeed = seedRiverCount > 0 || seedLakeCount > 0 || seedOceanCount > 0;
 
-        if (ShouldRunDiagnostics() || debugWaterVerbose)
-            Debug.Log($"[HexMapChunkManager][SDF] Seed counts: river={seedRiverCount}, lake={seedLakeCount}, ocean={seedOceanCount}");
+        
 
         if (!anySeed)
         {

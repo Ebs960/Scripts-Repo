@@ -1998,8 +1998,6 @@ public class GameManager : MonoBehaviour
         generator.numberOfIslands = GameSetupData.numberOfIslands;
         generator.generateIslands = GameSetupData.generateIslands;
 
-        Debug.Log($"[GameManager][Diag] Multi-planet apply: preset={GameSetupData.selectedTerrainPreset}, continents={generator.numberOfContinents}, islands={generator.numberOfIslands}, generateIslands={generator.generateIslands}");
-
         // Rivers & lakes (allowed preset-driven settings)
         // Water features must be gated by Underwater layer support.
         // PlanetConfig is assigned above when available, so HasLayer() is authoritative here.

@@ -129,11 +129,6 @@ public class HexGridOverlay : MonoBehaviour
 
         if (!showGrid)
         {
-            if (!_loggedFirstUpdate)
-            {
-                Debug.LogWarning("[HexGridOverlay] Update skipped: showGrid is FALSE");
-                _loggedFirstUpdate = true;
-            }
             return;
         }
         
@@ -282,7 +277,6 @@ public class HexGridOverlay : MonoBehaviour
         FindReferences(silent: false);
         if (grid != null)
         {
-            Debug.Log($"[HexGridOverlay] HandlePlanetReady — acquired grid (TileCount={grid.TileCount}).");
             // Reset logging flags so first-update diagnostics run again when grid becomes available
             _loggedFirstGridUpdate = false;
             _loggedFirstUpdate = false;

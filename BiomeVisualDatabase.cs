@@ -450,7 +450,5 @@ public class BiomeVisualDatabase : ScriptableObject
             if (sf.heightArray != null) { Resources.UnloadAsset(sf.heightArray); unloaded++; }
             if (sf.emissiveArray != null) { Resources.UnloadAsset(sf.emissiveArray); unloaded++; }
         }
-        if (unloaded > 0)
-            Debug.Log($"[BiomeVisualDatabase] Unloaded {unloaded} source Texture2DArrays from {families.Count} families to reclaim VRAM.");
     }
 }

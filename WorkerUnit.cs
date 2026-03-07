@@ -383,16 +383,16 @@ public class WorkerUnit : BaseUnit
     }
 
     /// <summary>
-    /// Workers can be attacked by combat units; workers can also weakly retaliate.
+    /// Workers can attack any unit (combat units, other workers, animals) — weakly.
     /// </summary>
-    public bool CanAttack(CombatUnit target)
+    public bool CanAttack(BaseUnit target)
     {
         if (target == null) return false;
         float dist = Vector3.Distance(transform.position, target.transform.position);
         return dist <= BaseRange;
     }
 
-    public void Attack(CombatUnit target)
+    public void Attack(BaseUnit target)
     {
         if (!CanAttack(target)) return;
         int damage = Mathf.Max(1, CurrentAttack);

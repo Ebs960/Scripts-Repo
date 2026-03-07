@@ -96,6 +96,5 @@ public class GasGiantRenderer : MonoBehaviour
     {
         if (mr != null) mr.enabled = enabled;
         this.enabled = enabled;
-        Debug.Log($"[GasGiantRenderer] SetEnabledForPlanet('{gameObject.name}') = {enabled}");
     }
 }

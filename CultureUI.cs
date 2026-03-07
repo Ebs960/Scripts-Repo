@@ -16,13 +16,14 @@ public class CultureUI : MonoBehaviour
     [Header("Culture Tree Integration")]
     [SerializeField] private CultureTreeBackgroundData backgroundData; // Background system
     [SerializeField] private bool useCustomLayout = true; // Use saved layout vs list layout
-    [SerializeField] private string layoutFileName = "CultureTreeLayout.json"; // JSON file from CultureTreeBuilder
+    [SerializeField] private TextAsset layoutJson; // Assign this in the inspector
     [SerializeField] private Vector2 cultureNodeSize = new Vector2(200, 100); // Size of each culture node
 
     [Header("Info Panel")]
     [SerializeField] private TextMeshProUGUI selectedCultureNameText;
     [SerializeField] private TextMeshProUGUI selectedCultureDescriptionText;
     [SerializeField] private TextMeshProUGUI selectedCultureCostText;
+    [SerializeField] private TextMeshProUGUI selectedCultureTurnsRemainingText;
     [SerializeField] private TextMeshProUGUI selectedCulturePrerequisitesText;
     [SerializeField] private TextMeshProUGUI selectedCultureUnlocksText;
     [SerializeField] private Button closeButton;
@@ -315,27 +316,15 @@ public class CultureUI : MonoBehaviour
     
     private CultureTreeLayout LoadLayoutFromFile()
     {
-        string filePath = "";
-        
-#if UNITY_EDITOR
-        // In editor, look in Assets folder
-        filePath = System.IO.Path.Combine(Application.dataPath, layoutFileName);
-#else
-        // In build, look in persistent data path
-        filePath = System.IO.Path.Combine(Application.persistentDataPath, layoutFileName);
-#endif
-        
-        if (!System.IO.File.Exists(filePath))
+        if (layoutJson == null)
         {
-            Debug.LogWarning($"Culture tree layout file not found at: {filePath}");
+            Debug.LogWarning("Culture tree layout TextAsset not assigned!");
             return null;
         }
-        
         try
         {
-            string json = System.IO.File.ReadAllText(filePath);
-            CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(json);
-return layout;
+            CultureTreeLayout layout = JsonUtility.FromJson<CultureTreeLayout>(layoutJson.text);
+            return layout;
         }
         catch (System.Exception e)
         {
@@ -372,7 +361,14 @@ return layout;
 
         selectedCultureNameText.text = culture.cultureName;
         selectedCultureDescriptionText.text = culture.description;
+        // Calculate turns remaining
+        int culPerTurn = GetTotalCulturePerTurn(playerCiv);
+        float remaining = culture.cultureCost;
+        if (playerCiv != null && playerCiv.currentCulture == culture)
+            remaining = culture.cultureCost - playerCiv.currentCultureProgress;
         selectedCultureCostText.text = $"Cost: {culture.cultureCost} Culture";
+        if (selectedCultureTurnsRemainingText != null)
+            selectedCultureTurnsRemainingText.text = culPerTurn > 0 ? $"~{Mathf.CeilToInt(remaining / culPerTurn)} turns" : "";
 
         string prereqs = "Prerequisites: ";
         if (culture.requiredCultures != null && culture.requiredCultures.Length > 0)
@@ -401,12 +397,29 @@ return layout;
         }
         selectedCultureUnlocksText.text = unlocks;
     }
+
+    private int GetTotalCulturePerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int total = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) total += city.GetCulturePerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) total += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).culture;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) total += civ.ComputeWorkerPerTurnYield(w.data).culture;
+        return total;
+    }
     
     void ClearInfoPanel()
     {
         selectedCultureNameText.text = "Select a Culture";
         selectedCultureDescriptionText.text = "";
         selectedCultureCostText.text = "";
+        if (selectedCultureTurnsRemainingText != null) selectedCultureTurnsRemainingText.text = "";
         selectedCulturePrerequisitesText.text = "";
         selectedCultureUnlocksText.text = "";
     }

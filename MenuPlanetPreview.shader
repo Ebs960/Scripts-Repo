@@ -21,9 +21,11 @@ Shader "Custom/MenuPlanetPreview"
             _PolarColor("Polar Ice/Snow", Color) = (0.93, 0.95, 0.97, 1)
         [Header(Ocean Color)]
             _OceanColor("Ocean Color", Color) = (0.06, 0.22, 0.45, 1)
+        [Header(Mountain Color)]
+            _MountainColor("Mountain Color", Color) = (0.72, 0.58, 0.38, 1)
         [Header(Biome Tuning)]
             _IceCapSize("Ice Cap Size", Range(0, 1)) = 0.5
-            _BiomeBlend("Biome Blend", Range(0, 0.1)) = 0.03
+            _BiomeBlend("Biome Blend", Range(0, 1.0)) = 0.03
             _BiomeNoiseScale("Biome Noise Scale", Range(0, 10)) = 3.0
             _BiomeNoiseStrength("Biome Noise Strength", Range(0, 0.2)) = 0.08
             _ColorVibrancy("Color Vibrancy", Range(0.5, 2.0)) = 1.15
@@ -99,6 +101,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;
+                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -388,7 +391,6 @@ Shader "Custom/MenuPlanetPreview"
                 float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
                 float terrainHeight = elevNoise * _Elevation;
 
-                float midBand  = smoothstep(0.12, 0.30, terrainHeight);
                 float highBand = smoothstep(0.30, 0.50, terrainHeight);
                 float mtnBand  = smoothstep(0.50, 0.65, terrainHeight);
                 float snowBand = smoothstep(0.62, 0.78, terrainHeight);
@@ -450,7 +452,7 @@ Shader "Custom/MenuPlanetPreview"
                 // --------------------------------------------------------------
                 //  High-frequency detail normal perturbation
                 // --------------------------------------------------------------
-                float eps = 0.0015 * max(1.0, _DetailScale);
+                float eps = 0.002 / max(1.0, _DetailScale);
                 float d0 = fbm(samplePos * _DetailScale + seedOff);
                 float dx = fbm((samplePos + float3(eps,0,0)) * _DetailScale + seedOff);
                 float dy = fbm((samplePos + float3(0,eps,0)) * _DetailScale + seedOff);
@@ -461,25 +463,24 @@ Shader "Custom/MenuPlanetPreview"
                 // _BiomeTint used only as a very subtle hint — per-pixel latitude colors dominate
                 landColor = lerp(landColor, _BiomeTint.rgb, 0.05);
 
-                // Elevation shading — preserve biome color, just darken/lighten
-                float3 highlandColor = lerp(landColor, landColor * 0.7 + float3(0.12, 0.10, 0.08), 0.4);
-                float3 mountainColor = lerp(landColor * 0.5, float3(0.50, 0.48, 0.44), 0.5);
+                // Mountains use their own inspector color (cartographic style)
+                float3 mountainColor = _MountainColor.rgb;
                 float3 snowPeakColor = float3(0.92, 0.93, 0.96);
 
-                float3 elevatedLand = landColor * lerp(0.90, 1.0, midBand);
-                elevatedLand = lerp(elevatedLand, highlandColor, highBand * 0.6);
-                elevatedLand = lerp(elevatedLand, mountainColor, mtnBand * 0.7);
+                float3 elevatedLand = landColor;
+                // Mountains blend in at high elevation — distinct color like a map
+                float mtnBlend = smoothstep(0.35, 0.60, terrainHeight);
+                elevatedLand = lerp(elevatedLand, mountainColor, mtnBlend);
                 // Snow: strictly latitude-based — more snow at higher latitudes, less near equator
                 float latSnowFactor = smoothstep(0.4, 0.7, latitude + tempShift * -0.5);
                 float snowAmount = snowBand * saturate(latSnowFactor + _SnowFactor * 0.5);
                 elevatedLand = lerp(elevatedLand, snowPeakColor, snowAmount);
 
-                // Slope coloring: steep cliff faces show exposed rock
+                // Slope shading on mountains: darken steep faces for depth
                 float3 sphereNormalWS = normalize(TransformObjectToWorldNormal(objNorm));
                 float slopeDot = dot(normalize(input.normalWS), sphereNormalWS);
                 float slopeFactor = smoothstep(0.88, 0.65, slopeDot) * edge;
-                float3 rockColor = lerp(float3(0.45, 0.40, 0.35), float3(0.55, 0.50, 0.44), elevNoise);
-                elevatedLand = lerp(elevatedLand, rockColor, slopeFactor * 0.7);
+                elevatedLand = lerp(elevatedLand, elevatedLand * 0.6, slopeFactor * 0.5);
 
                 // Biome micro-textures: subtle noise variation to break up flat bands
                 float microNoise = noise3D(samplePos * 35.0 + float3(7.1, 13.3, 21.7) + seedOff);
@@ -487,6 +488,12 @@ Shader "Custom/MenuPlanetPreview"
                 elevatedLand *= lerp(0.95, 1.05, microNoise);
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
+
+                // Coastline outline: thin dark fringe where land meets ocean
+                float edgeWidth = fwidth(edge);
+                float coastline = smoothstep(0.0, edgeWidth * 1.5, edge) * (1.0 - smoothstep(1.0 - edgeWidth * 1.5, 1.0, edge));
+                float coastMask = 1.0 - coastline;
+                normalAlbedo *= lerp(1.0, 0.45, coastMask * step(0.01, edge) * step(edge, 0.99));
 
                 // Normal rivers (moisture-gated, not on mountains)
                 float normalRiverMask = riverMask * saturate((localMoist - 0.20) * 2.0)
@@ -733,6 +740,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;
+                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;
@@ -864,6 +872,7 @@ Shader "Custom/MenuPlanetPreview"
                 float4 _TundraColor;
                 float4 _PolarColor;
                 float4 _OceanColor;
+                float4 _MountainColor;
                 float _IceCapSize;
                 float _BiomeBlend;
                 float _BiomeNoiseScale;

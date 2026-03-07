@@ -659,6 +659,8 @@ public class Civilization : MonoBehaviour
         if (food < minimumFoodStockpile)
             food = minimumFoodStockpile;
 
+        Debug.Log($"[Civilization][BeginTurn] {civData?.civName}: turn={round} cities={cities?.Count} combatUnits={combatUnits?.Count} workers={workerUnits?.Count} | gold={gold} food={food} science={science} culture={culture} faith={faith}");
+
         // 4) Advance technology
         ProcessResearch();
 
@@ -720,8 +722,14 @@ public class Civilization : MonoBehaviour
 
     private void ProcessResearch()
     {
-        if (currentTech == null) return;
-        currentTechProgress += science; // 'science' here is the total accumulated for the turn
+        if (currentTech == null)
+        {
+            Debug.Log($"[Civilization][Research] {civData?.civName}: No currentTech assigned — skipping ProcessResearch. science={science}");
+            return;
+        }
+        float prevProgress = currentTechProgress;
+        currentTechProgress += science;
+        Debug.Log($"[Civilization][Research] {civData?.civName}: tech='{currentTech.techName}' scienceThisTurn={science} prevProgress={prevProgress} newProgress={currentTechProgress} cost={currentTech.scienceCost} remaining={currentTech.scienceCost - currentTechProgress}");
         if (currentTechProgress >= currentTech.scienceCost)
         {
             TechData completedTech = currentTech;
@@ -805,8 +813,14 @@ public class Civilization : MonoBehaviour
 
     private void ProcessCulture()
     {
-        if (currentCulture == null) return;
-        currentCultureProgress += culture; // 'culture' here is the total accumulated for the turn
+        if (currentCulture == null)
+        {
+            Debug.Log($"[Civilization][Culture] {civData?.civName}: No currentCulture assigned — skipping ProcessCulture. culture={culture}");
+            return;
+        }
+        float prevProgress = currentCultureProgress;
+        currentCultureProgress += culture;
+        Debug.Log($"[Civilization][Culture] {civData?.civName}: culture='{currentCulture.cultureName}' cultureThisTurn={culture} prevProgress={prevProgress} newProgress={currentCultureProgress} cost={currentCulture.cultureCost} remaining={currentCulture.cultureCost - currentCultureProgress}");
         if (currentCultureProgress >= currentCulture.cultureCost)
         {
             CultureData completedCulture = currentCulture;
@@ -2134,9 +2148,11 @@ return true;
     public List<ImprovementData> GetUnlockedImprovements()
     {
         var result = new HashSet<ImprovementData>();
-        // REMOVED: TechData no longer directly unlocks improvements
-        // Improvement availability is now controlled solely by requiredTechs in ImprovementData
-        // This method now returns an empty list - improvements should be checked via their requiredTechs
+        foreach (var imp in ResourceCache.GetAllImprovements())
+        {
+            if (imp != null && imp.AreRequirementsMet(this))
+                result.Add(imp);
+        }
         return result.ToList();
     }
 
@@ -2147,20 +2163,12 @@ return true;
     public HashSet<ImprovementData> GetObsoleteImprovementsForWorker(WorkerUnitData worker)
     {
         var obsolete = new HashSet<ImprovementData>();
-        if (worker == null || worker.buildableImprovements == null) return obsolete;
-
-        // Consider only replacements that are both unlocked AND buildable by this worker
         var unlocked = GetUnlockedImprovements();
 
         foreach (var replacement in unlocked)
         {
             if (replacement == null) continue;
 
-            // Worker must be able to build the replacement
-            bool workerCanBuildReplacement = System.Array.Exists(worker.buildableImprovements, i => i == replacement);
-            if (!workerCanBuildReplacement) continue;
-
-            // Any improvement listed in replacement.replacesImprovements becomes obsolete for this worker
             if (replacement.replacesImprovements != null)
             {
                 foreach (var old in replacement.replacesImprovements)
@@ -2181,11 +2189,11 @@ return true;
     public List<ImprovementData> GetAvailableImprovementsForWorker(WorkerUnitData worker, int tileIndex = -1, int planetIndex = -1)
     {
         var list = new List<ImprovementData>();
-        if (worker == null || worker.buildableImprovements == null) return list;
+        var unlocked = GetUnlockedImprovements();
+        if (unlocked == null || unlocked.Count == 0) return list;
 
         var obsolete = GetObsoleteImprovementsForWorker(worker);
 
-        // Optional tile filter
         HexTileData tileData = null;
         if (tileIndex >= 0)
         {
@@ -2194,14 +2202,10 @@ return true;
             tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         }
 
-        // Precompute unlocked replacements for tile-aware obsolescence
-        var unlocked = GetUnlockedImprovements();
-
-        foreach (var imp in worker.buildableImprovements)
+        foreach (var imp in unlocked)
         {
             if (imp == null) continue;
 
-            // Tile filters
             if (tileData != null)
             {
                 if (!tileData.isLand) continue;
@@ -2212,31 +2216,21 @@ return true;
                 }
             }
 
-            // Obsolescence: if a replacement is unlocked AND valid for this worker AND allowed on this tile, hide this improvement
             bool obsoleteHere = false;
-            if (imp != null && unlocked != null)
+            foreach (var repl in unlocked)
             {
-                foreach (var repl in unlocked)
+                if (repl == null || repl.replacesImprovements == null) continue;
+                bool replacesThis = System.Array.IndexOf(repl.replacesImprovements, imp) >= 0;
+                if (!replacesThis) continue;
+
+                if (tileData != null && repl.allowedBiomes != null && repl.allowedBiomes.Length > 0)
                 {
-                    if (repl == null || repl.replacesImprovements == null) continue;
-                    // Is 'imp' listed as replaced by 'repl'?
-                    bool replacesThis = System.Array.IndexOf(repl.replacesImprovements, imp) >= 0;
-                    if (!replacesThis) continue;
-
-                    // Can this worker build the replacement?
-                    bool workerCanBuildReplacement = System.Array.Exists(worker.buildableImprovements, i => i == repl);
-                    if (!workerCanBuildReplacement) continue;
-
-                    // If tile specified, ensure replacement is allowed here
-                    if (tileData != null && repl.allowedBiomes != null && repl.allowedBiomes.Length > 0)
-                    {
-                        bool replAllowed = System.Array.IndexOf(repl.allowedBiomes, tileData.biome) >= 0;
-                        if (!replAllowed) continue;
-                    }
-
-                    obsoleteHere = true;
-                    break;
+                    bool replAllowed = System.Array.IndexOf(repl.allowedBiomes, tileData.biome) >= 0;
+                    if (!replAllowed) continue;
                 }
+
+                obsoleteHere = true;
+                break;
             }
 
             if (obsoleteHere) continue;

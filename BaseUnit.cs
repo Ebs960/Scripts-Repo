@@ -1109,13 +1109,7 @@ public abstract class BaseUnit : MonoBehaviour
             animator.SetBool(isWalkingHash, walking);
         isMoving = walking;
         _walkingStuckFrames = 0; // reset failsafe counter on any explicit state change
-        if (wasMoving != walking)
-        {
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-            Debug.Log($"[BaseUnit] {gameObject.name} UpdateWalkingState: {wasMoving} -> {walking}" +
-                $" | hasIsWalking={_hasWalkParam} | animState={stateInfo.shortNameHash} | inTransition={animator.IsInTransition(0)}" +
-                $" | type={GetType().Name}");
-        }
+        
     }
 
     // Failsafe: detect stuck walking animation

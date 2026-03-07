@@ -322,29 +322,21 @@ UpdateUnitInfoForCombatUnit();
     {
 UpdateUnitInfoForWorkerUnit();
 
-        // Default forage button state
         if (forageButton != null)
         {
-            forageButton.gameObject.SetActive(false);
-            forageButton.interactable = false;
-        }
-
-        if (workerUnit == null) return;
-
-        var rm = ResourceManager.Instance;
-        if (rm == null) return;
-
-        // Only allow foraging of the tile the worker is standing on
-        int tile = workerUnit.currentTileIndex;
-        var inst = rm.GetResourceInstanceAtTile(tile);
-        if (inst != null && workerUnit.CanForage(inst.data, tile))
-        {
-            if (forageButton != null)
+            forageButton.gameObject.SetActive(true);
+            bool canForageNow = false;
+            if (workerUnit != null)
             {
-                forageButton.gameObject.SetActive(true);
-                forageButton.interactable = true;
+                var rm = ResourceManager.Instance;
+                if (rm != null)
+                {
+                    int tile = workerUnit.currentTileIndex;
+                    var inst = rm.GetResourceInstanceAtTile(tile);
+                    canForageNow = inst != null && workerUnit.CanForage(inst.data, tile);
+                }
             }
-            return;
+            forageButton.interactable = canForageNow;
         }
     }
 
@@ -379,10 +371,21 @@ UpdateUnitInfoForWorkerUnit();
         var civ = worker.owner;
         if (civ == null) return;
 
-        // First, list buildable improvements
+        // --- Improvements Section ---
         var improvements = civ.GetAvailableImprovementsForWorker(worker.data, worker.currentTileIndex, worker.planetIndex);
-        if (improvements != null)
+        var allUnlocked = civ.GetUnlockedImprovements();
+        Debug.Log($"[UnitInfoPanel] Worker '{worker.data.unitName}' on tile {worker.currentTileIndex}: " +
+                  $"Total unlocked improvements={allUnlocked?.Count ?? 0}, " +
+                  $"Available for this worker/tile={improvements?.Count ?? 0}");
+        if (improvements != null && improvements.Count > 0)
         {
+            var headerGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+            buildUnitButtons.Add(headerGO);
+            var headerBtn = headerGO.GetComponent<Button>();
+            if (headerBtn != null) headerBtn.interactable = false;
+            var headerTxt = headerGO.GetComponentInChildren<TextMeshProUGUI>();
+            if (headerTxt != null) headerTxt.text = "— Improvements —";
+
             foreach (var imp in improvements)
             {
                 if (imp == null) continue;
@@ -404,35 +407,48 @@ UpdateUnitInfoForWorkerUnit();
             }
         }
 
-    // Gather units unlocked by civ (tech/culture/unique)
-    var units = civ.unlockedCombatUnits;
-    var workerUnits = civ.unlockedWorkerUnits;
-    if (units == null && workerUnits == null) return;
+        // --- Units Section ---
+        var units = civ.unlockedCombatUnits;
+        var workerUnits = civ.unlockedWorkerUnits;
 
-        foreach (var u in units)
+        bool hasAnyUnits = false;
+
+        if (units != null)
         {
-            if (u == null) continue;
-            if (!u.buildableByWorker) continue;
-            if (!worker.CanBuildUnit(u, worker.currentTileIndex)) continue;
-
-            var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
-            buildUnitButtons.Add(btnGO);
-
-            // Try to populate basic visuals if it has Image/Text components
-            var txt = btnGO.GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null) txt.text = $"Build {u.unitName} ({u.workerWorkCost} WP)";
-            var img = btnGO.GetComponentInChildren<Image>();
-            if (img != null && u.icon != null) img.sprite = u.icon;
-
-            var button = btnGO.GetComponent<Button>();
-            if (button != null)
+            foreach (var u in units)
             {
-                var unitLocal = u;
-                button.onClick.AddListener(() => OnStartWorkerBuildUnit(unitLocal));
+                if (u == null) continue;
+                if (!u.buildableByWorker) continue;
+                if (!worker.CanBuildUnit(u, worker.currentTileIndex)) continue;
+
+                if (!hasAnyUnits)
+                {
+                    hasAnyUnits = true;
+                    var headerGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+                    buildUnitButtons.Add(headerGO);
+                    var headerBtn = headerGO.GetComponent<Button>();
+                    if (headerBtn != null) headerBtn.interactable = false;
+                    var headerTxt = headerGO.GetComponentInChildren<TextMeshProUGUI>();
+                    if (headerTxt != null) headerTxt.text = "— Units —";
+                }
+
+                var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+                buildUnitButtons.Add(btnGO);
+
+                var txt = btnGO.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null) txt.text = $"Build {u.unitName} ({u.workerWorkCost} WP)";
+                var img = btnGO.GetComponentInChildren<Image>();
+                if (img != null && u.icon != null) img.sprite = u.icon;
+
+                var button = btnGO.GetComponent<Button>();
+                if (button != null)
+                {
+                    var unitLocal = u;
+                    button.onClick.AddListener(() => OnStartWorkerBuildUnit(unitLocal));
+                }
             }
         }
 
-        // Also list buildable worker units
         if (workerUnits != null)
         {
             foreach (var wu in workerUnits)
@@ -440,6 +456,17 @@ UpdateUnitInfoForWorkerUnit();
                 if (wu == null) continue;
                 if (!wu.buildableByWorker) continue;
                 if (!worker.CanBuildWorker(wu, worker.currentTileIndex)) continue;
+
+                if (!hasAnyUnits)
+                {
+                    hasAnyUnits = true;
+                    var headerGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
+                    buildUnitButtons.Add(headerGO);
+                    var headerBtn = headerGO.GetComponent<Button>();
+                    if (headerBtn != null) headerBtn.interactable = false;
+                    var headerTxt = headerGO.GetComponentInChildren<TextMeshProUGUI>();
+                    if (headerTxt != null) headerTxt.text = "— Units —";
+                }
 
                 var btnGO = Instantiate(buildUnitButtonPrefab, buildUnitsContainer);
                 buildUnitButtons.Add(btnGO);

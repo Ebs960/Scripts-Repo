@@ -138,7 +138,7 @@ public class HexTileData
     /// True when this tile is an ocean/seas tile that has a meaningful underwater floor biome
     /// (AbyssalPlains, Trench, etc.) distinct from the plain Ocean default.
     /// </summary>
-    public bool IsUnderwaterTile => !isLand && underwaterBiome != Biome.Ocean && underwaterBiome != biome;
+    public bool IsUnderwaterTile => !isLand && underwaterBiome != biome;
 
     /// <summary>
     /// True when this ocean tile has an underwater improvement (e.g. Fishing Net, Deep Sea Mine).

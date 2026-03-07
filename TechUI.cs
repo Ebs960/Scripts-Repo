@@ -15,7 +15,7 @@ public class TechUI : MonoBehaviour
     [Header("Tech Tree Integration")]
     [SerializeField] private TechTreeBackgroundData backgroundData; // Background system
     [SerializeField] private bool useCustomLayout = true; // Use saved layout vs grid layout
-    [SerializeField] private string layoutFileName = "TechTreeLayout.json"; // JSON file from TechTreeBuilder
+    [SerializeField] private TextAsset layoutJson; // Assign this in the inspector
     [SerializeField] private Vector2 techNodeSize = new Vector2(180, 90); // Size of each tech node
     [SerializeField] private Vector2 gridSpacing = new Vector2(200, 100); // Spacing between nodes
 
@@ -23,6 +23,7 @@ public class TechUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedTechNameText;
     [SerializeField] private TextMeshProUGUI selectedTechDescriptionText;
     [SerializeField] private TextMeshProUGUI selectedTechCostText;
+    [SerializeField] private TextMeshProUGUI selectedTechTurnsRemainingText;
     [SerializeField] private TextMeshProUGUI selectedTechPrerequisitesText;
     [SerializeField] private TextMeshProUGUI selectedTechUnlocksText;
     [SerializeField] private Button closeButton;
@@ -77,7 +78,20 @@ public class TechUI : MonoBehaviour
         }
         UIManager.Instance.ShowPanel("techPanel");
         PopulateTechTree();
-        ClearInfoPanel(); // Do not auto-select any tech
+        // Auto-select current research or first available tech so info panel is never blank
+        if (playerCiv.currentTech != null)
+        {
+            SelectTechInfoOnly(playerCiv.currentTech);
+        }
+        else
+        {
+            // Show first available tech
+            var firstAvailable = TechManager.Instance.allTechs.FirstOrDefault(t => t != null && playerCiv.CanResearch(t));
+            if (firstAvailable != null)
+                SelectTechInfoOnly(firstAvailable);
+            else
+                ClearInfoPanel();
+        }
     }
 
     public void Hide()
@@ -273,16 +287,14 @@ public class TechUI : MonoBehaviour
         foreach (TechData tech in TechManager.Instance.allTechs)
         {
             if (tech == null) continue;
-            
-            // Find saved position for this tech
+            // Find saved position for this tech by asset name
             Vector2 position = Vector2.zero;
             bool foundPosition = false;
-            
             if (layout.techPositions != null)
             {
                 foreach (var pos in layout.techPositions)
                 {
-                    if (pos.techName == tech.techName)
+                    if (pos.techName == tech.name)
                     {
                         position = pos.position;
                         foundPosition = true;
@@ -290,13 +302,11 @@ public class TechUI : MonoBehaviour
                     }
                 }
             }
-            
             if (!foundPosition)
             {
-                Debug.LogWarning($"No saved position found for tech: {tech.techName}");
+                Debug.LogWarning($"No saved position found for tech: {tech.name}");
                 continue; // Skip techs not in the saved layout
             }
-            
             CreateTechNode(tech, position, techNodeSize);
         }
 }
@@ -305,70 +315,26 @@ public class TechUI : MonoBehaviour
     {
         if (nodeSize == default)
             nodeSize = techNodeSize;
-            
-        GameObject techNode = new GameObject($"TechNode_{tech.techName}");
-        techNode.transform.SetParent(techContent, false);
 
-        RectTransform rect = techNode.AddComponent<RectTransform>();
-        rect.sizeDelta = nodeSize;
+        // Instantiate the assigned prefab
+        GameObject techNode = Instantiate(techButtonPrefab, techContent);
+        techNode.name = $"TechNode_{tech.techName}";
+        RectTransform rect = techNode.GetComponent<RectTransform>();
+        if (rect == null) rect = techNode.AddComponent<RectTransform>();
         rect.anchorMin = new Vector2(0, 1);
         rect.anchorMax = new Vector2(0, 1);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = position;
 
-        // Add background
-        Image background = techNode.AddComponent<Image>();
-        background.color = GetTechStateColor(tech);
-
-        // Add button component
-        Button button = techNode.AddComponent<Button>();
-        button.targetGraphic = background;
-        button.onClick.AddListener(() => SelectTech(tech));
+        // Initialize the TechButtonUI component
+        TechButtonUI techButtonUI = techNode.GetComponent<TechButtonUI>();
+        if (techButtonUI == null) techButtonUI = techNode.AddComponent<TechButtonUI>();
+        techButtonUI.Initialize(tech, this);
+        techButtons.Add(techButtonUI);
 
         // Wire UI interactions for dynamically created tech node
         if (UIManager.Instance != null)
             UIManager.Instance.WireUIInteractions(techNode);
-
-        // Create icon
-        if (tech.techIcon != null)
-        {
-            GameObject iconObj = new GameObject("Icon");
-            iconObj.transform.SetParent(techNode.transform, false);
-            
-            RectTransform iconRect = iconObj.AddComponent<RectTransform>();
-            iconRect.anchorMin = new Vector2(0, 0.3f);
-            iconRect.anchorMax = new Vector2(0.4f, 1f);
-            iconRect.offsetMin = Vector2.zero;
-            iconRect.offsetMax = Vector2.zero;
-
-            Image iconImage = iconObj.AddComponent<Image>();
-            iconImage.sprite = tech.techIcon;
-            iconImage.preserveAspect = true;
-        }
-
-        // Create text
-        GameObject textObj = new GameObject("Text");
-        textObj.transform.SetParent(techNode.transform, false);
-        
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        textRect.anchorMin = new Vector2(0.4f, 0);
-        textRect.anchorMax = new Vector2(1, 1);
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = tech.techName;
-        text.fontSize = 10;
-        text.fontSizeMin = 8;
-        text.fontSizeMax = 12;
-        text.enableAutoSizing = true;
-        text.color = Color.white;
-        text.alignment = TMPro.TextAlignmentOptions.Center;
-
-        // Create a simple state management component
-        TechButtonUI techButtonUI = techNode.AddComponent<TechButtonUI>();
-        techButtonUI.Initialize(tech, this);
-        techButtons.Add(techButtonUI);
     }
 
     private void CreateConnectionLines()
@@ -432,6 +398,17 @@ public class TechUI : MonoBehaviour
             return Color.gray;
     }
 
+    /// <summary>
+    /// Update the info panel and highlight the button without starting research.
+    /// </summary>
+    private void SelectTechInfoOnly(TechData tech)
+    {
+        currentlySelectedTech = tech;
+        UpdateInfoPanel(tech);
+        foreach (var btnUI in techButtons)
+            btnUI.SetSelected(tech == btnUI.RepresentedTech);
+    }
+
     public void SelectTech(TechData tech)
     {
         currentlySelectedTech = tech;
@@ -461,7 +438,14 @@ playerCiv.StartResearch(tech);
 
         selectedTechNameText.text = tech.techName;
         selectedTechDescriptionText.text = tech.description;
+        // Calculate turns remaining
+        int sciPerTurn = GetTotalSciencePerTurn(playerCiv);
+        float remaining = tech.scienceCost;
+        if (playerCiv != null && playerCiv.currentTech == tech)
+            remaining = tech.scienceCost - playerCiv.currentTechProgress;
         selectedTechCostText.text = $"Cost: {tech.scienceCost} Science";
+        if (selectedTechTurnsRemainingText != null)
+            selectedTechTurnsRemainingText.text = sciPerTurn > 0 ? $"~{Mathf.CeilToInt(remaining / sciPerTurn)} turns" : "";
 
         string prereqs = "Prerequisites: ";
         if (tech.requiredTechnologies != null && tech.requiredTechnologies.Length > 0)
@@ -476,9 +460,53 @@ playerCiv.StartResearch(tech);
 
         string unlocks = "Unlocks: ";
         List<string> unlockItems = new List<string>();
-        // REMOVED: TechData no longer directly unlocks units/buildings
-        // Availability is now controlled solely by requiredTechs in the respective data classes
-        // Add other unlock types here (policies, governments, etc.)
+
+        // Reverse-lookup: find all data assets that require this tech
+        var buildings = ResourceCache.GetAllBuildings();
+        if (buildings != null)
+            foreach (var b in buildings)
+                if (b != null && b.requiredTechs != null)
+                    foreach (var rt in b.requiredTechs)
+                        if (rt == tech) { unlockItems.Add(b.buildingName); break; }
+
+        var combatUnits = ResourceCache.GetAllCombatUnits();
+        if (combatUnits != null)
+            foreach (var u in combatUnits)
+                if (u != null && u.requiredTechs != null)
+                    foreach (var rt in u.requiredTechs)
+                        if (rt == tech) { unlockItems.Add(u.unitName); break; }
+
+        var workerUnits = ResourceCache.GetAllWorkerUnits();
+        if (workerUnits != null)
+            foreach (var w in workerUnits)
+                if (w != null && w.requiredTechs != null)
+                    foreach (var rt in w.requiredTechs)
+                        if (rt == tech) { unlockItems.Add(w.unitName); break; }
+
+        var improvements = ResourceCache.GetAllImprovements();
+        if (improvements != null)
+            foreach (var imp in improvements)
+                if (imp != null && imp.requiredTechs != null)
+                    foreach (var rt in imp.requiredTechs)
+                        if (rt == tech) { unlockItems.Add(imp.improvementName); break; }
+
+        var equipment = ResourceCache.GetAllEquipment();
+        if (equipment != null)
+            foreach (var eq in equipment)
+                if (eq != null && eq.requiredTechs != null)
+                    foreach (var rt in eq.requiredTechs)
+                        if (rt == tech) { unlockItems.Add(eq.equipmentName); break; }
+
+        // Also show directly-referenced unlocks on TechData itself
+        if (tech.unlockedGovernments != null)
+            foreach (var g in tech.unlockedGovernments)
+                if (g != null) unlockItems.Add(g.governmentName);
+        if (tech.unlockedReligions != null)
+            foreach (var r in tech.unlockedReligions)
+                if (r != null) unlockItems.Add(r.religionName);
+        if (tech.unlocksReligion)
+            unlockItems.Add("Religion Mechanics");
+
         if (unlockItems.Count > 0)
         {
             unlocks += string.Join(", ", unlockItems);
@@ -489,12 +517,29 @@ playerCiv.StartResearch(tech);
         }
         selectedTechUnlocksText.text = unlocks;
     }
+
+    private int GetTotalSciencePerTurn(Civilization civ)
+    {
+        if (civ == null) return 0;
+        int total = 0;
+        if (civ.cities != null)
+            foreach (var city in civ.cities)
+                if (city != null) total += city.GetSciencePerTurn();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits)
+                if (u != null && u.data != null) total += civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous).science;
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits)
+                if (w != null && w.data != null) total += civ.ComputeWorkerPerTurnYield(w.data).science;
+        return total;
+    }
     
     void ClearInfoPanel()
     {
         selectedTechNameText.text = "Select a Technology";
         selectedTechDescriptionText.text = "";
         selectedTechCostText.text = "";
+        if (selectedTechTurnsRemainingText != null) selectedTechTurnsRemainingText.text = "";
         selectedTechPrerequisitesText.text = "";
         selectedTechUnlocksText.text = "";
     }
@@ -560,27 +605,25 @@ if (playerCiv == null) return;
     
     private TechTreeLayout LoadLayoutFromFile()
     {
-        string filePath = "";
-        
-#if UNITY_EDITOR
-        // In editor, look in Assets folder
-        filePath = System.IO.Path.Combine(Application.dataPath, layoutFileName);
-#else
-        // In build, look in persistent data path
-        filePath = System.IO.Path.Combine(Application.persistentDataPath, layoutFileName);
-#endif
-        
-        if (!System.IO.File.Exists(filePath))
+        if (layoutJson == null)
         {
-            Debug.LogWarning($"Tech tree layout file not found at: {filePath}");
+            Debug.LogWarning("Tech tree layout TextAsset not assigned!");
             return null;
         }
-        
+        Debug.Log("Loaded JSON: " + layoutJson.text);
         try
         {
-            string json = System.IO.File.ReadAllText(filePath);
-            TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(json);
-return layout;
+            TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(layoutJson.text);
+            Debug.Log("Deserialized layout: " + (layout == null ? "NULL" : "OK"));
+            if (layout != null && layout.techPositions != null)
+            {
+                Debug.Log("JSON tech names: " + string.Join(", ", layout.techPositions.Select(p => p.techName)));
+            }
+            if (TechManager.Instance != null && TechManager.Instance.allTechs != null)
+            {
+                Debug.Log("Asset tech names: " + string.Join(", ", TechManager.Instance.allTechs.Select(t => t.name)));
+            }
+            return layout;
         }
         catch (System.Exception e)
         {

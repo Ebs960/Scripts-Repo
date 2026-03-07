@@ -152,6 +152,12 @@ public class ImprovementData : ScriptableObject
     public Biome[] allowedUnderwaterBiomes;
     public ResourceData[] requiredResources;
 
+    [Header("Tech & Culture Requirements")]
+    [Tooltip("All these techs must be researched to unlock this improvement")]
+    public TechData[] requiredTechs;
+    [Tooltip("All these cultures must be adopted to unlock this improvement")]
+    public CultureData[] requiredCultures;
+
     [Header("Underwater")]
     [Tooltip("If true, this improvement is placed on the ocean floor (underwater layer). Bypasses the isLand check and validates against underwaterBiome instead.")]
     public bool isUnderwaterImprovement = false;
@@ -218,4 +224,21 @@ public class ImprovementData : ScriptableObject
     
     [Tooltip("Available upgrades that can be built on this improvement")]
     public ImprovementUpgradeData[] availableUpgrades;
+
+    /// <summary>
+    /// Checks if the civilization meets this improvement's tech/culture requirements.
+    /// </summary>
+    public bool AreRequirementsMet(Civilization civ)
+    {
+        if (civ == null) return false;
+        if (requiredTechs != null)
+            foreach (var tech in requiredTechs)
+                if (tech != null && !civ.researchedTechs.Contains(tech))
+                    return false;
+        if (requiredCultures != null)
+            foreach (var culture in requiredCultures)
+                if (culture != null && !civ.researchedCultures.Contains(culture))
+                    return false;
+        return true;
+    }
 }

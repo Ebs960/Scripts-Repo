@@ -274,14 +274,13 @@ public class PlanetaryCameraManager : MonoBehaviour
         _transitionCoroutine = null;
     }
 
+
     void HandleInput()
     {
         // MIGRATED: Check InputManager priority (Background priority for camera)
         if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background))
             return;
 
-        // Cap dt so frame-rate dips never cause huge camera jumps.
-        // At worst the camera moves as if running at 15 FPS.
         float dt = Mathf.Min(Time.deltaTime, 1f / 15f);
         Vector3 panDirection = Vector3.zero;
 
@@ -293,16 +292,15 @@ public class PlanetaryCameraManager : MonoBehaviour
             if (kb[Key.W].isPressed || kb[Key.UpArrow].isPressed) panDirection.z += 1f;
             if (kb[Key.S].isPressed || kb[Key.DownArrow].isPressed) panDirection.z -= 1f;
 
-            if (kb[Key.Q].isPressed) _cameraYaw -= rotateSpeed * dt;
-            if (kb[Key.E].isPressed) _cameraYaw += rotateSpeed * dt;
+            // Q/E rotate camera in place (Y axis)
+            if (kb[Key.Q].isPressed) transform.Rotate(Vector3.up, -rotateSpeed * dt, Space.World);
+            if (kb[Key.E].isPressed) transform.Rotate(Vector3.up, rotateSpeed * dt, Space.World);
         }
 
         if (panDirection.sqrMagnitude > 0f)
         {
             panDirection.Normalize();
             // Move relative to the camera's current view direction (projected onto XZ).
-            // Using yaw-only can be opposite the actual view because the camera always
-            // looks toward the focus point.
             Vector3 fwd = transform.forward;
             fwd.y = 0f;
             fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
@@ -311,7 +309,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             right = right.sqrMagnitude > 1e-6f ? right.normalized : Vector3.right;
 
             Vector3 worldMove = right * panDirection.x + fwd * panDirection.z;
-            _focusPoint += worldMove * panSpeed * dt;
+            transform.position += worldMove * panSpeed * dt;
         }
 
         if (allowMouseDrag)
@@ -370,29 +368,17 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void UpdateCameraPosition()
     {
-        // Interpolate pitch based on zoom level (zoomed in = lower pitch, zoomed out = higher pitch)
+        // Only update height (zoom) and pitch (look up/down), not yaw or orbit
         float zoomT = Mathf.InverseLerp(minHeight, maxHeight, _cameraHeight);
         float pitchAngle = Mathf.Lerp(minPitchAngle, maxPitchAngle, zoomT);
-
-        // Clamp pitch to safe range to avoid tan() singularities and prevent extreme frustum distortion.
-        // Tan approaches infinity near 90° and becomes unstable near 0°.
         pitchAngle = Mathf.Clamp(pitchAngle, 10f, 85f);
-        
-        float pitchRad = pitchAngle * Mathf.Deg2Rad;
-        float horizontalDist = _cameraHeight / Mathf.Tan(pitchRad);
-
-        // Rotate camera around focus point (Y axis) using Q/E yaw
-        float yawRad = _cameraYaw * Mathf.Deg2Rad;
-        float offsetX = horizontalDist * Mathf.Sin(yawRad);
-        float offsetZ = -horizontalDist * Mathf.Cos(yawRad);
-
-        Vector3 camPos = new Vector3(
-            _focusPoint.x + offsetX,
-            _cameraHeight,
-            _focusPoint.z + offsetZ
-        );
-        transform.position = camPos;
-        transform.rotation = Quaternion.LookRotation(_focusPoint - camPos, Vector3.up);
+        Vector3 euler = transform.eulerAngles;
+        euler.x = pitchAngle;
+        transform.eulerAngles = euler;
+        // Optionally clamp Y position if needed
+        Vector3 pos = transform.position;
+        pos.y = _cameraHeight;
+        transform.position = pos;
     }
 
     void LateUpdate()

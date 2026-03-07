@@ -216,8 +216,6 @@ public class LayerManager : MonoBehaviour
             underwaterRoot.SetActive(underwaterVisible);
             var lp = underwaterRoot.transform.localPosition;
             underwaterRoot.transform.localPosition = new Vector3(lp.x, gen.underwaterYOffset, lp.z);
-            if (logLayerChanges && force)
-                Debug.Log($"[LayerManager] underwaterRoot '{underwaterRoot.name}' active={underwaterVisible}, childCount={underwaterRoot.transform.childCount}");
         }
         else if (logLayerChanges && underwaterVisible)
         {
@@ -345,8 +343,7 @@ public class LayerManager : MonoBehaviour
             // The underwater root is on a custom layer (e.g. layer 6) that may not be in the mask by default.
             EnsureCameraVolumeLayerIncludes(underwaterVolumeOverride.gameObject.layer);
 
-            if (logLayerChanges && wasEnabled != underwaterVisible)
-                Debug.Log($"[LayerManager] Underwater Volume toggled: enabled={underwaterVisible}, weight={(underwaterVisible ? 1f : 0f)}, priority={underwaterVolumeOverride.priority}, profile={(underwaterVolumeOverride.sharedProfile != null ? underwaterVolumeOverride.sharedProfile.name : "NULL")}, volumeLayer={underwaterVolumeOverride.gameObject.layer}");
+
         }
         if (surfaceVolumeOverride != null)
         {

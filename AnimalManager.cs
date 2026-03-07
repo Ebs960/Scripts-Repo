@@ -651,7 +651,6 @@ return true;
                 );
                 if (!allowsWater)
                 {
-                    if (debugSpawning) Debug.Log($"[AnimalManager] Skipping tile {i}: water tile and rule does not allow water");
                     continue;
                 }
             }

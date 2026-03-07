@@ -362,7 +362,6 @@ public class UnitMovementController : MonoBehaviour
         }
         
         // Set unit back to idle state
-        Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} COMPLETED full path ({path.Count} steps)");
         unit.UpdateWalkingState(false);
         
         // Fire movement completed event

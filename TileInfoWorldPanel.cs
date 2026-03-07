@@ -22,6 +22,7 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI biomeText;
     [SerializeField] private TextMeshProUGUI yieldsText;
     [SerializeField] private TextMeshProUGUI elevationText;
+    [SerializeField] private TextMeshProUGUI resourceText;
 
     [Header("Styling")]
     [SerializeField] private TMP_FontAsset overrideFontAsset;
@@ -161,6 +162,19 @@ public class TileInfoWorldPanel : MonoBehaviour
             biomeText.text = biomeName;
         }
         if (yieldsText != null) yieldsText.text = FormatYields(tileData);
+
+        // Resource display
+        if (resourceText != null)
+        {
+            if (tileData.HasResource && tileData.resource != null)
+            {
+                resourceText.text = $"Resource: {tileData.resource.resourceName}";
+            }
+            else
+            {
+                resourceText.text = "Resource: None";
+            }
+        }
 
         string elevInfo = $"Elev: {tileData.elevation:F2}m\nHill: {(tileData.isHill ? "Yes" : "No")}\nMountain: {(tileData.isMountain ? "Yes" : "No")}";
         if (elevationText != null)

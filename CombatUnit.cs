@@ -1355,7 +1355,6 @@ if (data != null && owner != null) owner.food += data.foodOnKill;
         if (animator != null && HasParameter(animator, isIdleHash))
         {
             animator.SetBool(isIdleHash, !walking);
-            Debug.Log($"[CombatUnit] {gameObject.name} IsIdle={!walking}, IsWalking={walking}");
         }
     }
 

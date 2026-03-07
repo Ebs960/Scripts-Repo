@@ -77,7 +77,7 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Food this worker consumes each turn (subtracted from civilization stockpile)")]
     public int foodConsumptionPerTurn = 1;
 
-    [Header("Build Options")] public ImprovementData[] buildableImprovements;
+    [Header("Build Options")]
     public RouteType[] buildableRoutes;
 
     [Header("Requirements")]

@@ -388,6 +388,38 @@ currentCiv = civ;
         int totalPolicyPoints = SumCityYield(civ, city => city.GetPolicyPointPerTurn());
         int totalFaith = SumCityYield(civ, city => city.GetFaithPerTurn());
 
+        // Add per-turn yields from combat units
+        if (civ.combatUnits != null)
+        {
+            foreach (var u in civ.combatUnits)
+            {
+                if (u == null || u.data == null) continue;
+                var y = civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
+                totalFood += y.food;
+                totalGold += y.gold;
+                totalScience += y.science;
+                totalCulture += y.culture;
+                totalFaith += y.faith;
+                totalPolicyPoints += y.policy;
+            }
+        }
+
+        // Add per-turn yields from worker units
+        if (civ.workerUnits != null)
+        {
+            foreach (var w in civ.workerUnits)
+            {
+                if (w == null || w.data == null) continue;
+                var y = civ.ComputeWorkerPerTurnYield(w.data);
+                totalFood += y.food;
+                totalGold += y.gold;
+                totalScience += y.science;
+                totalCulture += y.culture;
+                totalFaith += y.faith;
+                totalPolicyPoints += y.policy;
+            }
+        }
+
         if (foodYieldText != null) foodYieldText.text = $"+{totalFood}";
         if (goldYieldText != null) goldYieldText.text = $"+{totalGold}";
         if (scienceYieldText != null) scienceYieldText.text = $"+{totalScience}";

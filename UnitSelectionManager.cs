@@ -17,6 +17,9 @@ public class UnitSelectionManager : MonoBehaviour
     // Currently selected unit - now uses BaseUnit as common type
     private BaseUnit selectedUnit; // Can be CombatUnit or WorkerUnit (both inherit from BaseUnit)
     private GameObject selectionIndicator;
+    // Frame guard: prevent OnTileClickedTileSystem from deselecting a unit
+    // that was just selected by OnMouseDown in the same frame.
+    private int lastSelectionFrame = -1;
     // Cached highlight/selection materials to avoid allocations
     private static Material s_selectionIndicatorMaterial;
     private static UnityEngine.MaterialPropertyBlock s_selectionMPB;
@@ -150,7 +153,21 @@ public class UnitSelectionManager : MonoBehaviour
         var clickedUnit = GetUnitOnTile(tileIndex);
         if (clickedUnit == null)
             clickedUnit = GetUnitAtPosition(worldPos);
-        if (clickedUnit != null) SelectUnit(clickedUnit); else { DeselectUnit(); PlayResourceClickSound(tileIndex); }
+        if (clickedUnit != null)
+        {
+            SelectUnit(clickedUnit);
+        }
+        else
+        {
+            // Guard: if a unit was selected this very frame (e.g. via OnMouseDown on the
+            // unit's collider), do NOT deselect it. The tile-click may not resolve the
+            // unit through occupancy/overlap, but the direct click on the unit is authoritative.
+            if (lastSelectionFrame == Time.frameCount)
+                return;
+
+            DeselectUnit();
+            PlayResourceClickSound(tileIndex);
+        }
         // Note: Right-click movement remains handled in Update() to detect mouse button 1
     }
 
@@ -191,6 +208,19 @@ public class UnitSelectionManager : MonoBehaviour
             HandleRightClick();
         }
         
+        // Left click on void (no tile hit): deselect the current unit.
+        // OnTileClicked only fires for valid tile hits, so we must handle the
+        // "clicked on nothing" case here.
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && selectedUnit != null)
+        {
+            // Only deselect if TileSystem did NOT already handle this click
+            // (i.e., the click didn't land on a valid tile).
+            if (!isHoveringTile || cachedHoveredTileIndex < 0)
+            {
+                DeselectUnit();
+            }
+        }
+
         // R key: Show space travel UI for selected unit (changed from Space to avoid conflicts)
         if (Keyboard.current != null && Keyboard.current[Key.R].wasPressedThisFrame && HasSelectedUnit())
         {
@@ -259,8 +289,8 @@ return;
     /// </summary>
     private BaseUnit GetUnitAtPosition(Vector3 worldPosition)
     {
-        // Use a small sphere to detect units near the click position
-        Collider[] colliders = Physics.OverlapSphere(worldPosition, 0.5f);
+        // Use a sphere to detect units near the click position
+        Collider[] colliders = Physics.OverlapSphere(worldPosition, 1.5f);
         
         foreach (var collider in colliders)
         {
@@ -297,6 +327,7 @@ return;
         
         // Select new unit
         selectedUnit = unit;
+        lastSelectionFrame = Time.frameCount;
         
         // Play selection sound from the unit's data
         PlayUnitSelectSound(unit);
@@ -333,14 +364,44 @@ selectedUnit = null;
     }
     
     /// <summary>
-    /// Move the selected unit to the target tile
+    /// Move the selected unit to the target tile, or attack an enemy on that tile.
     /// </summary>
     private void MoveSelectedUnitToTile(int targetTileIndex)
     {
         if (selectedUnit == null)
             return;
-        
-        // Check if unit can move to target tile
+
+        // Check if there is an enemy unit on the target tile
+        BaseUnit targetUnit = GetUnitOnTile(targetTileIndex);
+        bool isEnemy = targetUnit != null && targetUnit.owner != selectedUnit.owner;
+
+        // --- Attack path ---
+        if (isEnemy)
+        {
+            if (selectedUnit is CombatUnit attackerCombat)
+            {
+                if (targetUnit is CombatUnit targetCombat && attackerCombat.CanAttack(targetCombat))
+                {
+                    attackerCombat.Attack(targetCombat);
+                    return;
+                }
+                if (targetUnit is WorkerUnit targetWorker && attackerCombat.CanAttack(targetWorker))
+                {
+                    attackerCombat.Attack(targetWorker);
+                    return;
+                }
+            }
+            else if (selectedUnit is WorkerUnit attackerWorker)
+            {
+                if (attackerWorker.CanAttack(targetUnit))
+                {
+                    attackerWorker.Attack(targetUnit);
+                    return;
+                }
+            }
+        }
+
+        // --- Movement path ---
         bool canMove = false;
         string unitName = "";
         
@@ -352,7 +413,7 @@ selectedUnit = null;
             if (canMove)
             {
                 combatUnit.MoveTo(targetTileIndex);
-}
+            }
         }
         else if (selectedUnit is WorkerUnit workerUnit)
         {
@@ -362,12 +423,12 @@ selectedUnit = null;
             if (canMove)
             {
                 workerUnit.MoveTo(targetTileIndex);
-}
+            }
         }
         
         if (!canMove)
         {
-if (UIManager.Instance != null)
+            if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowNotification($"{unitName} cannot move there!");
             }

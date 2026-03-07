@@ -48,7 +48,7 @@ Light:
   serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 6640.073
+  m_Intensity: 8325.891
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -395,11 +395,11 @@ MonoBehaviour:
   atmosphereShader: {fileID: 4800000, guid: cb96f3189a52add41aa35ad8b71a41ac, type: 3}
   previewLight: {fileID: 7093151305136474556}
   previewCamera: {fileID: 5433544173430284001}
-  rotationSpeed: 6
+  rotationSpeed: 9
   detailScale: 10000
   detailStrength: 0.019
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.05
+  displacementScale: 0.0647
   cloudRotationSpeed: 5
   cloudAltitude: 0.0297
   cloudDensity: 0.069
@@ -420,17 +420,23 @@ MonoBehaviour:
   mapStyle: 0
   equatorialColor: {r: 0.01, g: 0.3, b: 0.04, a: 1}
   desertSand: {r: 1, g: 0.94884163, b: 0.7754717, a: 1}
-  subtropicalColor: {r: 0.76048934, g: 0.90188676, b: 0.07997859, a: 1}
-  temperateZoneColor: {r: 0.14, g: 0.68, b: 0.12, a: 1}
+  subtropicalColor: {r: 0.6996491, g: 0.79622644, b: 0.23285857, a: 1}
+  temperateZoneColor: {r: 0.14177993, g: 0.5471698, b: 0.12698464, a: 1}
   borealColor: {r: 0.06, g: 0.25, b: 0.1, a: 1}
   tundraColor: {r: 1, g: 1, b: 1, a: 1}
   polarColor: {r: 0.93, g: 0.95, b: 0.97, a: 1}
   oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
+  mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 1}
   iceCapSize: 0.5
-  biomeBlend: 0.1
+  biomeBlend: 0.312
   biomeNoiseScale: 10
   biomeNoiseStrength: 0.2
   colorVibrancy: 2
+  smoothness: 0.3
+  metallic: 0
+  ambientOcclusion: 1
+  ambientStrength: 0.12
+  brightness: 2.1
   seed: 0
   randomizeSeed: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}
