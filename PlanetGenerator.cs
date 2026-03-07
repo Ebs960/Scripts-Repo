@@ -546,13 +546,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float mountainElevationMax = 15.0f;
 
     [Header("Water Elevation")]
-    [Range(-5f, 5f)]
+    [Range(-5f, 40f)]
     [Tooltip("Ocean floor elevation in world units (typically 0 = flat plane level).")]
     public float oceanElevation = 0f;
-    [Range(-5f, 5f)]
+    [Range(-5f, 40f)]
     [Tooltip("Shallow seas elevation in world units.")]
     public float seasElevation = 0.15f;
-    [Range(-5f, 5f)]
+    [Range(-5f, 40f)]
     [Tooltip("Coast elevation in world units. Sea level is typically at or near this value.")]
     public float coastElevation = 0.3f;
     
@@ -2798,8 +2798,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 flatElevationMax = 32.25f;
                 hillElevationMin = 33.75f;
                 hillElevationMax = 35.0f;
-                mountainElevationMin = 38.0f;
-                mountainElevationMax = 40.0f;
+                mountainElevationMin = 37.0f;
+                mountainElevationMax = 39.0f;
                 ridgeStrength = 0.05f;
                 break;
             case 3: // Mountainous — lots of hills, frequent mountains

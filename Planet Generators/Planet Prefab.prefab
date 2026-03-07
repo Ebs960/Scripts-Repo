@@ -186,6 +186,7 @@ MonoBehaviour:
   randomSeed: 1
   seed: 12345
   numberOfContinents: 8
+  stampingBatchSize: 3000
   continentNoiseEnabled: 1
   continentNoiseFrequency: 0.028
   continentNoiseAmplitude: 0.796
@@ -218,7 +219,7 @@ MonoBehaviour:
   usePeriodicClimateNoise: 1
   climateSmoothingPasses: 5
   climateSmoothingStrength: 0.218
-  coastalMoistureBoost: 0.183
+  coastalMoistureBoost: 0.184
   coastalMoistureRange: 3
   flatElevationMin: 5
   flatElevationMax: 5.47
@@ -227,19 +228,8 @@ MonoBehaviour:
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
   oceanElevation: 0
-  seasElevation: 20
+  seasElevation: 23
   coastElevation: 30
-  abyssalMinDistanceFromCoast: 2
-  abyssalMaxDistanceFromCoast: 8
-  abyssalChance: 0.882
-  trenchCount: 3
-  trenchMinDistanceFromCoast: 6
-  trenchMinLength: 15
-  trenchMaxLength: 40
-  trenchHalfWidth: 1
-  trenchCenterDepth: -4
-  trenchCurvature: 0.474
-  trenchMinSeparation: 6
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
@@ -249,14 +239,13 @@ MonoBehaviour:
   lakeMinRadiusTiles: 2
   lakeMaxRadiusTiles: 3
   lakeMinDistanceFromCoast: 6
-  coastBiteCount: 18
+  coastBiteCount: 11
   coastBiteRadiusMin: 1
   coastBiteRadiusMax: 4
   coastSpurCount: 9
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 4
-  minLandTilesForCoastStamps: 120
-  shallowSeasRings: 2
+  minLandTilesForCoastStamps: 100
   lakeDepth: 0.55
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 5.87
@@ -280,7 +269,6 @@ MonoBehaviour:
     biomeDecorations: []
     enableDecorations: 1
     globalScaleMultiplier: 1
-  stampingBatchSize: 3000
   planetType: 0
   mapType: 0
   currentMapTypeName: 

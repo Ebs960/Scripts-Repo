@@ -61,9 +61,17 @@ public class WorldPicker : MonoBehaviour
         // Ensure camera reference
         if (targetCamera == null) targetCamera = Camera.main;
         if (targetCamera == null) targetCamera = FindAnyObjectByType<Camera>();
-        if (targetCamera == null) return false;
+        if (targetCamera == null)
+        {
+            Debug.LogWarning("[WorldPicker] No camera found for picking!");
+            return false;
+        }
 
-        if (lut == null || lut.Length == 0) return false;
+        if (lut == null || lut.Length == 0)
+        {
+            Debug.LogWarning("[WorldPicker] LUT is null or empty!");
+            return false;
+        }
 
         // Screen pixel check — skip redundant raycasts when mouse hasn't moved
         int spx = Mathf.RoundToInt(screenPos.x);
@@ -72,6 +80,7 @@ public class WorldPicker : MonoBehaviour
         {
             tileIndex = cachedTileIndex;
             hitWorldPos = cachedHitWorldPos;
+            if (debugLog) Debug.Log($"[WorldPicker] Used cached tileIndex={tileIndex} at screen ({spx},{spy})");
             return tileIndex >= 0;
         }
 
@@ -83,6 +92,7 @@ public class WorldPicker : MonoBehaviour
             lastScreenPy = spy;
             cachedTileIndex = -1;
             cachedHitWorldPos = Vector3.zero;
+            Debug.LogWarning($"[WorldPicker] Raycast miss at screen ({spx},{spy})");
             return false;
         }
 
@@ -98,8 +108,19 @@ public class WorldPicker : MonoBehaviour
         int py = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
         int pixelIndex = py * lutWidth + px;
 
+        if (debugLog)
+        {
+            Debug.Log($"[WorldPicker] Raycast hit {hit.collider?.name} at world {hit.point}, uv=({u:F3},{v:F3}), px={px}, py={py}, pixelIndex={pixelIndex}");
+        }
+
         if (pixelIndex >= 0 && pixelIndex < lut.Length)
+        {
             tileIndex = lut[pixelIndex];
+        }
+        else
+        {
+            Debug.LogWarning($"[WorldPicker] Pixel index {pixelIndex} out of LUT bounds (lut.Length={lut.Length})");
+        }
 
         // Only log when tile actually changes
         if (debugLog && tileIndex != cachedTileIndex)
@@ -110,6 +131,11 @@ public class WorldPicker : MonoBehaviour
         lastScreenPy = spy;
         cachedTileIndex = tileIndex;
         cachedHitWorldPos = hitWorldPos;
+
+        if (tileIndex < 0)
+        {
+            Debug.LogWarning($"[WorldPicker] LUT lookup returned invalid tileIndex at px={px}, py={py}, uv=({u:F3},{v:F3})");
+        }
 
         return tileIndex >= 0;
     }

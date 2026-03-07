@@ -437,6 +437,13 @@ public class ResourceManager : MonoBehaviour
 
         // Retrieve tile data early so we can choose an appropriate parent before instantiation
         var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
+        // Ensure the tile's resource field is set to match the spawned resource
+        if (tileData != null)
+        {
+            tileData.resource = resource;
+            // If needed, update the tile data in the TileSystem (for serialization or eventing)
+            ts.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
+        }
 
         // Use object pooling if available
         GameObject go = SimpleObjectPool.Instance != null
