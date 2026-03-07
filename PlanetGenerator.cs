@@ -1865,7 +1865,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             if (hasWaterNeighbor && !postProcessProtectedTiles.Contains(i)) {
                 var td = data[i];
                 td.biome = Biome.Coast;
-                td.isLand = true;
+                td.isLand = false;
                 td.isHill = false;
                 td.isMountain = false;
                 td.elevationTier = ElevationTier.Flat;
@@ -3058,9 +3058,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         if (tileData == null || hexGrid == null || tileCount <= 0) return;
 
         // --- Pass 1: Ocean tiles ---
-        float flatY = GameManager.Instance != null ? GameManager.Instance.GetFlatPlaneY() : transform.position.y;
         // Ocean water elevation = coastElevation (shared sea level for all ocean/seas/coast tiles)
         float oceanWaterElev = coastElevation;
+        int[] waterDistanceFromCoast = new int[tileCount];
+        for (int i = 0; i < tileCount; i++) waterDistanceFromCoast[i] = -1;
+        var coastalWaterQueue = new Queue<int>();
 
         for (int i = 0; i < tileCount; i++)
         {
@@ -3072,7 +3074,232 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 td.lakeId = -1;
                 td.waterElevation = oceanWaterElev;
                 td.riverFlowDirXZ = Vector2.zero;
+                td.trenchDepth = 0f;
+
+                if (b == Biome.Ocean)
+                {
+                    td.underwaterBiome = Biome.AbyssalPlains;
+                    td.elevation = Mathf.Min(td.elevation, oceanElevation - 0.35f);
+                }
+                else
+                {
+                    td.underwaterBiome = Biome.Ocean;
+                }
+
                 tileData[i] = td;
+                baseData[i] = td;
+
+                if (b == Biome.Coast)
+                {
+                    waterDistanceFromCoast[i] = 0;
+                    coastalWaterQueue.Enqueue(i);
+                }
+            }
+        }
+
+        while (coastalWaterQueue.Count > 0)
+        {
+            int current = coastalWaterQueue.Dequeue();
+            int nextDistance = waterDistanceFromCoast[current] + 1;
+
+            foreach (int n in hexGrid.neighbors[current])
+            {
+                if (n < 0 || n >= tileCount || waterDistanceFromCoast[n] >= 0) continue;
+                if (!tileData.TryGetValue(n, out var ntd)) continue;
+                if (ntd.biome != Biome.Ocean && ntd.biome != Biome.Seas) continue;
+
+                waterDistanceFromCoast[n] = nextDistance;
+                coastalWaterQueue.Enqueue(n);
+            }
+        }
+
+        float Hash01(int value, int salt)
+        {
+            uint h = unchecked((uint)(value * 374761393)) ^ unchecked((uint)(salt * 668265263));
+            h = (h ^ (h >> 13)) * 1274126177u;
+            h ^= h >> 16;
+            return (h & 0x00FFFFFFu) / 16777215f;
+        }
+
+        bool IsDeepOceanCandidate(int idx)
+        {
+            if (idx < 0 || idx >= tileCount) return false;
+            if (!tileData.TryGetValue(idx, out var td)) return false;
+            return td.biome == Biome.Ocean && waterDistanceFromCoast[idx] >= 4;
+        }
+
+        void StampTrenchTile(int idx, float targetDepth)
+        {
+            if (!tileData.TryGetValue(idx, out var td)) return;
+            if (td.biome != Biome.Ocean) return;
+
+            td.underwaterBiome = Biome.Trench;
+            td.trenchDepth = Mathf.Min(td.trenchDepth, targetDepth);
+            td.elevation = Mathf.Min(td.elevation, oceanElevation + td.trenchDepth);
+            tileData[idx] = td;
+            baseData[idx] = td;
+        }
+
+        var deepOceanCandidates = new List<int>();
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (IsDeepOceanCandidate(i))
+                deepOceanCandidates.Add(i);
+        }
+
+        if (deepOceanCandidates.Count > 0)
+        {
+            var trenchRand = new System.Random(unchecked(seed ^ 0x54A9B31));
+            var usedCenterlineTiles = new HashSet<int>();
+            int trenchTargetCount = Mathf.Clamp(tileCount / 3500, 1, 4);
+
+            List<int> BuildTrenchPath(int startTile, int desiredLength)
+            {
+                var path = new List<int>();
+                var visited = new HashSet<int>();
+                int current = startTile;
+                Vector2 previousDirection = Vector2.zero;
+
+                while (path.Count < desiredLength)
+                {
+                    path.Add(current);
+                    visited.Add(current);
+
+                    int bestNext = -1;
+                    float bestScore = float.NegativeInfinity;
+                    Vector3 currentCenter = hexGrid.tileCenters[current];
+
+                    foreach (int n in hexGrid.neighbors[current])
+                    {
+                        if (!IsDeepOceanCandidate(n)) continue;
+                        if (visited.Contains(n) || usedCenterlineTiles.Contains(n)) continue;
+
+                        Vector3 dir3 = hexGrid.tileCenters[n] - currentCenter;
+                        dir3.y = 0f;
+                        if (dir3.sqrMagnitude <= 0.0001f) continue;
+
+                        Vector2 dir = new Vector2(dir3.x, dir3.z).normalized;
+                        float forwardBias = previousDirection == Vector2.zero ? 0f : Vector2.Dot(previousDirection, dir);
+                        float score =
+                            waterDistanceFromCoast[n] * 0.9f +
+                            Hash01(n, seed ^ path.Count) * 1.25f +
+                            forwardBias * 1.5f;
+
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestNext = n;
+                        }
+                    }
+
+                    if (bestNext < 0)
+                        break;
+
+                    Vector3 step3 = hexGrid.tileCenters[bestNext] - currentCenter;
+                    step3.y = 0f;
+                    previousDirection = new Vector2(step3.x, step3.z).normalized;
+                    current = bestNext;
+                }
+
+                return path.Count >= 6 ? path : null;
+            }
+
+            for (int trenchIndex = 0; trenchIndex < trenchTargetCount; trenchIndex++)
+            {
+                if (deepOceanCandidates.Count == 0) break;
+
+                int bestSeedIdx = -1;
+                float bestSeedScore = float.NegativeInfinity;
+                int attempts = Mathf.Min(18, deepOceanCandidates.Count);
+                for (int attempt = 0; attempt < attempts; attempt++)
+                {
+                    int candidate = deepOceanCandidates[trenchRand.Next(deepOceanCandidates.Count)];
+                    if (usedCenterlineTiles.Contains(candidate)) continue;
+
+                    float candidateScore = waterDistanceFromCoast[candidate] + Hash01(candidate, seed ^ 0x2D1);
+                    if (candidateScore > bestSeedScore)
+                    {
+                        bestSeedScore = candidateScore;
+                        bestSeedIdx = candidate;
+                    }
+                }
+
+                if (bestSeedIdx < 0) continue;
+
+                int desiredLength = Mathf.Clamp(8 + trenchRand.Next(6, 14), 8, Mathf.Max(10, tileCount / 180));
+                var trenchPath = BuildTrenchPath(bestSeedIdx, desiredLength);
+                if (trenchPath == null) continue;
+
+                for (int i = 0; i < trenchPath.Count; i++)
+                {
+                    int centerTile = trenchPath[i];
+                    usedCenterlineTiles.Add(centerTile);
+
+                    float centerDepth = -1.25f - Hash01(centerTile, seed ^ 0x731) * 0.55f;
+                    StampTrenchTile(centerTile, centerDepth);
+
+                    int prev = i > 0 ? trenchPath[i - 1] : -1;
+                    int next = i < trenchPath.Count - 1 ? trenchPath[i + 1] : -1;
+                    Vector2 forward = Vector2.zero;
+                    Vector3 centerWorld = hexGrid.tileCenters[centerTile];
+
+                    if (prev >= 0)
+                    {
+                        Vector3 prevDir3 = centerWorld - hexGrid.tileCenters[prev];
+                        prevDir3.y = 0f;
+                        if (prevDir3.sqrMagnitude > 0.0001f)
+                            forward += new Vector2(prevDir3.x, prevDir3.z).normalized;
+                    }
+                    if (next >= 0)
+                    {
+                        Vector3 nextDir3 = hexGrid.tileCenters[next] - centerWorld;
+                        nextDir3.y = 0f;
+                        if (nextDir3.sqrMagnitude > 0.0001f)
+                            forward += new Vector2(nextDir3.x, nextDir3.z).normalized;
+                    }
+                    if (forward.sqrMagnitude <= 0.0001f)
+                        forward = Vector2.right;
+                    else
+                        forward.Normalize();
+
+                    int bestFlank = -1;
+                    float bestFlankScore = float.NegativeInfinity;
+                    int secondFlank = -1;
+                    float secondFlankScore = float.NegativeInfinity;
+
+                    foreach (int n in hexGrid.neighbors[centerTile])
+                    {
+                        if (!IsDeepOceanCandidate(n)) continue;
+                        if (n == prev || n == next) continue;
+
+                        Vector3 sideDir3 = hexGrid.tileCenters[n] - centerWorld;
+                        sideDir3.y = 0f;
+                        if (sideDir3.sqrMagnitude <= 0.0001f) continue;
+
+                        Vector2 sideDir = new Vector2(sideDir3.x, sideDir3.z).normalized;
+                        float perpendicularity = 1f - Mathf.Abs(Vector2.Dot(forward, sideDir));
+                        float score = perpendicularity * 2f + waterDistanceFromCoast[n] * 0.5f + Hash01(n, seed ^ 0x1337);
+
+                        if (score > bestFlankScore)
+                        {
+                            secondFlank = bestFlank;
+                            secondFlankScore = bestFlankScore;
+                            bestFlank = n;
+                            bestFlankScore = score;
+                        }
+                        else if (score > secondFlankScore)
+                        {
+                            secondFlank = n;
+                            secondFlankScore = score;
+                        }
+                    }
+
+                    if (bestFlank >= 0)
+                        StampTrenchTile(bestFlank, centerDepth * 0.7f);
+
+                    if (secondFlank >= 0 && Hash01(centerTile, seed ^ 0x6A09) > 0.6f)
+                        StampTrenchTile(secondFlank, centerDepth * 0.55f);
+                }
             }
         }
 
@@ -3316,7 +3543,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        Debug.Log($"[PlanetGenerator] ComputeWaterMetadata: {nextLakeId} lake bodies labeled, river/ocean tiles tagged.");
+        int abyssalCount = 0;
+        int trenchCount = 0;
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!tileData.TryGetValue(i, out var td)) continue;
+            if (td.underwaterBiome == Biome.AbyssalPlains) abyssalCount++;
+            else if (td.underwaterBiome == Biome.Trench) trenchCount++;
+        }
+
+        Debug.Log($"[PlanetGenerator] ComputeWaterMetadata: {nextLakeId} lake bodies labeled, river/ocean tiles tagged, abyssal={abyssalCount}, trench={trenchCount}.");
     }
 
     /// <summary>

@@ -89,7 +89,10 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void Awake()
     {
+        if (transform.position.y > 0.001f)
+            _cameraHeight = transform.position.y;
         _cameraHeight = Mathf.Clamp(_cameraHeight, minHeight, maxHeight);
+        _focusPoint = new Vector3(transform.position.x, 0f, transform.position.z);
     }
 
     public bool IsInUnderwaterMode => _isInUnderwaterMode;
@@ -309,7 +312,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             right = right.sqrMagnitude > 1e-6f ? right.normalized : Vector3.right;
 
             Vector3 worldMove = right * panDirection.x + fwd * panDirection.z;
-            transform.position += worldMove * panSpeed * dt;
+            _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z) * (panSpeed * dt);
         }
 
         if (allowMouseDrag)
@@ -375,9 +378,10 @@ public class PlanetaryCameraManager : MonoBehaviour
         Vector3 euler = transform.eulerAngles;
         euler.x = pitchAngle;
         transform.eulerAngles = euler;
-        // Optionally clamp Y position if needed
         Vector3 pos = transform.position;
+        pos.x = _focusPoint.x;
         pos.y = _cameraHeight;
+        pos.z = _focusPoint.z;
         transform.position = pos;
     }
 

@@ -29,6 +29,9 @@ public class LoadingPanelController : MonoBehaviour
     private readonly Dictionary<GameObject, bool> originalUIStates = new Dictionary<GameObject, bool>();
     
     public static LoadingPanelController Instance => instance;
+    public bool IsLoadingVisible => loadingPanel != null && loadingPanel.activeInHierarchy;
+    public bool IsSpaceLoadingVisible => spaceLoadingPanel != null && spaceLoadingPanel.spaceLoadingPanel != null && spaceLoadingPanel.spaceLoadingPanel.activeInHierarchy;
+    public bool IsAnyLoadingVisible => IsLoadingVisible || IsSpaceLoadingVisible;
 
     void Awake()
     {

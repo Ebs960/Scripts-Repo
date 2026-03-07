@@ -262,54 +262,107 @@ public class TechUI : MonoBehaviour
     private void CreateTechNodesWithCustomLayout()
     {
         // Load layout from JSON file
+        Debug.Log("[TechUI] Attempting to load custom tech tree layout from JSON...");
         TechTreeLayout layout = LoadLayoutFromFile();
         if (layout == null)
         {
-            Debug.LogWarning("No tech tree layout found, falling back to grid layout");
+            Debug.LogWarning("[TechUI] No tech tree layout found, falling back to grid layout");
             CreateTechNodesWithGridLayout();
             return;
         }
-        
-        // Set content size from layout
-        if (layout.techPositions != null && layout.techPositions.Count > 0)
+
+        Debug.Log($"[TechUI] Loaded layout with {layout.techPositions?.Count ?? 0} tech positions.");
+
+        var layoutPositions = new Dictionary<string, Vector2>(System.StringComparer.OrdinalIgnoreCase);
+        if (layout.techPositions != null)
         {
-            // Calculate content size based on tech positions
-            float maxX = 0f, minY = 0f;
             foreach (var pos in layout.techPositions)
             {
-                maxX = Mathf.Max(maxX, pos.position.x + techNodeSize.x);
-                minY = Mathf.Min(minY, pos.position.y - techNodeSize.y);
+                if (pos == null || string.IsNullOrWhiteSpace(pos.techName))
+                    continue;
+
+                layoutPositions[pos.techName] = pos.position;
             }
-            techContent.sizeDelta = new Vector2(maxX + 100f, Mathf.Abs(minY) + 100f);
         }
-        
-        // Create tech nodes using saved positions
+
+        var resolvedPositions = new Dictionary<TechData, Vector2>();
+        var fallbackRowsByAge = new Dictionary<TechAge, int>();
+
         foreach (TechData tech in TechManager.Instance.allTechs)
         {
             if (tech == null) continue;
-            // Find saved position for this tech by asset name
-            Vector2 position = Vector2.zero;
-            bool foundPosition = false;
-            if (layout.techPositions != null)
+
+            Vector2 position;
+            bool foundPosition =
+                layoutPositions.TryGetValue(tech.name, out position) ||
+                (!string.IsNullOrWhiteSpace(tech.techName) && layoutPositions.TryGetValue(tech.techName, out position));
+
+            if (foundPosition)
             {
-                foreach (var pos in layout.techPositions)
+                Debug.Log($"[TechUI] Found position for tech '{tech.name}': {position}");
+                resolvedPositions[tech] = position;
+                continue;
+            }
+
+            bool placedFromPrereqs = false;
+            if (tech.requiredTechnologies != null && tech.requiredTechnologies.Length > 0)
+            {
+                float maxPrereqX = float.NegativeInfinity;
+                float avgPrereqY = 0f;
+                int prereqCount = 0;
+
+                foreach (var prereq in tech.requiredTechnologies)
                 {
-                    if (pos.techName == tech.name)
-                    {
-                        position = pos.position;
-                        foundPosition = true;
-                        break;
-                    }
+                    if (prereq == null || !resolvedPositions.TryGetValue(prereq, out Vector2 prereqPos))
+                        continue;
+
+                    maxPrereqX = Mathf.Max(maxPrereqX, prereqPos.x);
+                    avgPrereqY += prereqPos.y;
+                    prereqCount++;
+                }
+
+                if (prereqCount > 0)
+                {
+                    position = new Vector2(maxPrereqX + gridSpacing.x, avgPrereqY / prereqCount);
+                    placedFromPrereqs = true;
                 }
             }
-            if (!foundPosition)
+
+            if (!placedFromPrereqs)
             {
-                Debug.LogWarning($"No saved position found for tech: {tech.name}");
-                continue; // Skip techs not in the saved layout
+                int row = fallbackRowsByAge.TryGetValue(tech.techAge, out int existingRow) ? existingRow : 0;
+                float ageStartX = backgroundData != null
+                    ? backgroundData.GetAgeStartPosition(tech.techAge) + 100f
+                    : 100f + ((int)tech.techAge * 300f);
+                position = new Vector2(ageStartX, -(row * gridSpacing.y + 50f));
+                fallbackRowsByAge[tech.techAge] = row + 1;
             }
-            CreateTechNode(tech, position, techNodeSize);
+
+            Debug.LogWarning($"[TechUI] No saved position found for tech '{tech.name}'. Using fallback position {position}.");
+            resolvedPositions[tech] = position;
         }
-}
+
+        if (resolvedPositions.Count == 0)
+        {
+            Debug.LogWarning("[TechUI] Custom layout resolved no tech positions, falling back to grid layout");
+            CreateTechNodesWithGridLayout();
+            return;
+        }
+
+        float maxX = 0f;
+        float minY = 0f;
+        foreach (var kvp in resolvedPositions)
+        {
+            Vector2 pos = kvp.Value;
+            maxX = Mathf.Max(maxX, pos.x + techNodeSize.x);
+            minY = Mathf.Min(minY, pos.y - techNodeSize.y);
+        }
+        techContent.sizeDelta = new Vector2(maxX + 100f, Mathf.Abs(minY) + 100f);
+        Debug.Log($"[TechUI] Set techContent size to {techContent.sizeDelta}");
+
+        foreach (var kvp in resolvedPositions)
+            CreateTechNode(kvp.Key, kvp.Value, techNodeSize);
+    }
 
     private void CreateTechNode(TechData tech, Vector2 position, Vector2 nodeSize = default)
     {
@@ -317,6 +370,8 @@ public class TechUI : MonoBehaviour
             nodeSize = techNodeSize;
 
         // Instantiate the assigned prefab
+
+        Debug.Log($"[TechUI] Creating tech node for '{tech.name}' at position {position}");
         GameObject techNode = Instantiate(techButtonPrefab, techContent);
         techNode.name = $"TechNode_{tech.techName}";
         RectTransform rect = techNode.GetComponent<RectTransform>();
@@ -607,27 +662,27 @@ if (playerCiv == null) return;
     {
         if (layoutJson == null)
         {
-            Debug.LogWarning("Tech tree layout TextAsset not assigned!");
+            Debug.LogWarning("[TechUI] Tech tree layout TextAsset not assigned!");
             return null;
         }
-        Debug.Log("Loaded JSON: " + layoutJson.text);
+        Debug.Log("[TechUI] Loaded JSON: " + layoutJson.text);
         try
         {
             TechTreeLayout layout = JsonUtility.FromJson<TechTreeLayout>(layoutJson.text);
-            Debug.Log("Deserialized layout: " + (layout == null ? "NULL" : "OK"));
+            Debug.Log("[TechUI] Deserialized layout: " + (layout == null ? "NULL" : "OK"));
             if (layout != null && layout.techPositions != null)
             {
-                Debug.Log("JSON tech names: " + string.Join(", ", layout.techPositions.Select(p => p.techName)));
+                Debug.Log("[TechUI] JSON tech names: " + string.Join(", ", layout.techPositions.Select(p => p.techName)));
             }
             if (TechManager.Instance != null && TechManager.Instance.allTechs != null)
             {
-                Debug.Log("Asset tech names: " + string.Join(", ", TechManager.Instance.allTechs.Select(t => t.name)));
+                Debug.Log("[TechUI] Asset tech names: " + string.Join(", ", TechManager.Instance.allTechs.Select(t => t.name)));
             }
             return layout;
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Failed to load tech tree layout: {e.Message}");
+            Debug.LogError($"[TechUI] Failed to load tech tree layout: {e.Message}");
             return null;
         }
     }

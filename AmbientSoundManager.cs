@@ -81,6 +81,14 @@ public class AmbientSoundManager : MonoBehaviour
     {
         if (database == null || cameraManager == null) return;
 
+        if (LoadingPanelController.Instance != null && LoadingPanelController.Instance.IsAnyLoadingVisible)
+        {
+            _distanceMultiplier = 0f;
+            _waterTargetVolume = 0f;
+            ApplyVolumes();
+            return;
+        }
+
         // ── Mute everything in orbit mode — biome/water sounds don't belong in space ──
         if (cameraManager.IsInOrbitMode)
         {

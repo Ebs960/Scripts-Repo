@@ -552,6 +552,35 @@ public static class BiomeHelper {
         if (tile == null) return 99;
         int baseCost = GetMovementCost(tile.biome);
 
+        if (unit != null)
+        {
+            if (unit is WorkerUnit)
+            {
+                if (!tile.isLand) return 99;
+            }
+            else if (unit is CombatUnit combatUnit)
+            {
+                if (combatUnit.currentLayer != TileLayer.Orbit && !tile.isLand)
+                {
+                    switch (combatUnit.data != null ? combatUnit.data.unitType : CombatCategory.Spearman)
+                    {
+                        case CombatCategory.Ship:
+                        case CombatCategory.Boat:
+                        case CombatCategory.Submarine:
+                        case CombatCategory.SeaCrawler:
+                            break;
+                        default:
+                            return 99;
+                    }
+                }
+            }
+            else if (unit is BaseUnit baseUnit)
+            {
+                if (baseUnit.currentLayer != TileLayer.Orbit && !tile.isLand)
+                    return 99;
+            }
+        }
+
         // If there's an improvement that modifies movement, apply it as a flat reduction
         // NOTE: We interpret ImprovementData.movementSpeedBonus as a flat movement-cost reducer
         // (rounded), which has the same gameplay effect as "adds movement points when moving on this tile".

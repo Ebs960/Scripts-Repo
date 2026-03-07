@@ -381,6 +381,7 @@ public class HexMapChunkManager : MonoBehaviour
     private Coroutine _buildCoroutine;
     
     // Public accessors (API compatible with FlatMapTextureRenderer)
+        public float MapWidth => mapWidth;
     public HexGrid Grid => grid;
     public PlanetGenerator PlanetGenerator => planetGenerator;
     public int MeshSubdivisionsPerChunk => meshSubdivisionsPerChunk;
@@ -389,7 +390,6 @@ public class HexMapChunkManager : MonoBehaviour
     /// Water surfaces must use this value to match terrain vertex displacement.
     /// </summary>
     public float DisplacementStrength => displacementStrength;
-    public float MapWidth => mapWidth;
     public float MapHeight => mapHeight;
     public bool IsBuilt => chunks != null;
     public Texture MapTexture => bakeResult.texture;
@@ -398,6 +398,7 @@ public class HexMapChunkManager : MonoBehaviour
     public int LUTHeight => bakeResult.height;
     public Material SharedMaterial => sharedMaterial;
     public float FlatY => flatY;
+    public bool WrapEnabled => enableWrap;
     
     // Collider for WorldPicker (uses MeshCollider for proper UV support)
     private Collider pickingCollider;

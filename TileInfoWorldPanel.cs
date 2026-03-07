@@ -48,6 +48,9 @@ public class TileInfoWorldPanel : MonoBehaviour
 
     private void Start()
     {
+        if (worldPicker == null)
+            worldPicker = FindAnyObjectByType<WorldPicker>();
+
         if (panelRect == null || biomeText == null || yieldsText == null)
         {
             Debug.LogWarning("[TileInfoWorldPanel] UI references are not fully assigned (need at least panelRect, biomeText, yieldsText). Disabling.");
@@ -67,6 +70,10 @@ public class TileInfoWorldPanel : MonoBehaviour
 
     private void SubscribeToTileSystem()
     {
+        if (worldPicker == null)
+            worldPicker = FindAnyObjectByType<WorldPicker>();
+        if (worldPicker == null) return;
+
         var ts = TileSystem.Instance;
         if (ts == null) return;
         if (_subscribedTS == ts) return;

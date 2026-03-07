@@ -1289,10 +1289,13 @@ public class GameManager : MonoBehaviour
 
         
 
+        // Hide loading panel before startup audio/events so generation is fully finished first.
+        HideLoadingPanel();
+
         // Game is now ready
         OnGameStarted?.Invoke();
 
-        // Start game music now that everything is loaded and the loading panel will be hidden
+        // Start game music now that everything is loaded and the loading panel is hidden
         if (MusicManager.Instance != null)
         {
             MusicManager.Instance.PlayMusic();
@@ -1475,11 +1478,11 @@ public class GameManager : MonoBehaviour
         // Update loading progress - Final steps
         UpdateLoadingProgress(1.0f, "Game ready!");
 
-        // Game is now ready
-        OnGameStarted?.Invoke();
-
         // CRITICAL: Hide loading panel now that game is ready
         HideLoadingPanel();
+
+        // Game is now ready
+        OnGameStarted?.Invoke();
 
         // Start game music now that everything is loaded and the loading panel is hidden
         if (MusicManager.Instance != null)

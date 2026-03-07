@@ -489,12 +489,6 @@ Shader "Custom/MenuPlanetPreview"
 
                 float3 normalAlbedo = lerp(oceanColor, elevatedLand, edge);
 
-                // Coastline outline: thin dark fringe where land meets ocean
-                float edgeWidth = fwidth(edge);
-                float coastline = smoothstep(0.0, edgeWidth * 1.5, edge) * (1.0 - smoothstep(1.0 - edgeWidth * 1.5, 1.0, edge));
-                float coastMask = 1.0 - coastline;
-                normalAlbedo *= lerp(1.0, 0.45, coastMask * step(0.01, edge) * step(edge, 0.99));
-
                 // Normal rivers (moisture-gated, not on mountains)
                 float normalRiverMask = riverMask * saturate((localMoist - 0.20) * 2.0)
                                       * saturate(1.0 - mtnBand * 0.8);

@@ -584,6 +584,10 @@ public class TileSystem : MonoBehaviour
             {
                 return (true, tileIndex, worldPos);
             }
+
+            // If a WorldPicker exists, trust it as the authoritative path.
+            // Falling back here can silently reintroduce flat-map picking errors.
+            return (false, -1, Vector3.zero);
         }
         
         // FALLBACK: Raycast against flat map quad (if WorldPicker not available)

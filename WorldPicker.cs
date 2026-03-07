@@ -35,6 +35,9 @@ public class WorldPicker : MonoBehaviour
     private int lastScreenPy = -1;
     private int cachedTileIndex = -1;
     private Vector3 cachedHitWorldPos = Vector3.zero;
+    private Vector3 lastCameraPosition = new Vector3(float.NaN, float.NaN, float.NaN);
+    private Quaternion lastCameraRotation = Quaternion.identity;
+    private HexMapChunkManager cachedChunkManager;
 
     /// <summary>
     /// Invalidate the screen-pixel cache. Call when switching planets, changing LUT,
@@ -46,6 +49,8 @@ public class WorldPicker : MonoBehaviour
         lastScreenPy = -1;
         cachedTileIndex = -1;
         cachedHitWorldPos = Vector3.zero;
+        lastCameraPosition = new Vector3(float.NaN, float.NaN, float.NaN);
+        lastCameraRotation = Quaternion.identity;
     }
 
     /// <summary>
@@ -61,82 +66,128 @@ public class WorldPicker : MonoBehaviour
         // Ensure camera reference
         if (targetCamera == null) targetCamera = Camera.main;
         if (targetCamera == null) targetCamera = FindAnyObjectByType<Camera>();
-        if (targetCamera == null)
-        {
-            Debug.LogWarning("[WorldPicker] No camera found for picking!");
-            return false;
-        }
+        if (targetCamera == null) return false;
+        if (lut == null || lut.Length == 0) return false;
 
-        if (lut == null || lut.Length == 0)
-        {
-            Debug.LogWarning("[WorldPicker] LUT is null or empty!");
-            return false;
-        }
-
-        // Screen pixel check — skip redundant raycasts when mouse hasn't moved
         int spx = Mathf.RoundToInt(screenPos.x);
         int spy = Mathf.RoundToInt(screenPos.y);
-        if (spx == lastScreenPx && spy == lastScreenPy)
+        Vector3 cameraPosition = targetCamera.transform.position;
+        Quaternion cameraRotation = targetCamera.transform.rotation;
+        bool cameraUnchanged =
+            !float.IsNaN(lastCameraPosition.x) &&
+            (cameraPosition - lastCameraPosition).sqrMagnitude <= 0.000001f &&
+            Quaternion.Angle(cameraRotation, lastCameraRotation) <= 0.001f;
+
+        if (spx == lastScreenPx && spy == lastScreenPy && cameraUnchanged)
         {
             tileIndex = cachedTileIndex;
             hitWorldPos = cachedHitWorldPos;
-            if (debugLog) Debug.Log($"[WorldPicker] Used cached tileIndex={tileIndex} at screen ({spx},{spy})");
             return tileIndex >= 0;
         }
 
-        // Raycast against the displaced terrain collider(s) using layer mask
+        if (cachedChunkManager == null)
+            cachedChunkManager = FindAnyObjectByType<HexMapChunkManager>();
+
         Ray ray = targetCamera.ScreenPointToRay(screenPos);
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxRaycastDistance, pickingLayerMask))
+        if (!TryRaycastTerrain(ray, out RaycastHit hit, out hitWorldPos))
         {
             lastScreenPx = spx;
             lastScreenPy = spy;
             cachedTileIndex = -1;
             cachedHitWorldPos = Vector3.zero;
-            Debug.LogWarning($"[WorldPicker] Raycast miss at screen ({spx},{spy})");
+            lastCameraPosition = cameraPosition;
+            lastCameraRotation = cameraRotation;
             return false;
         }
 
-        hitWorldPos = hit.point;
-
-        // Convert hit point to UV coordinates via mesh UVs — authoritative.
-        // The MeshCollider's mesh has UVs mapped 0-1 across the map, matching the LUT.
         float u = Mathf.Repeat(hit.textureCoord.x, 1f);
         float v = Mathf.Clamp01(hit.textureCoord.y);
-
-        // LUT pixel lookup
         int px = Mathf.Clamp(Mathf.FloorToInt(u * lutWidth), 0, lutWidth - 1);
         int py = Mathf.Clamp(Mathf.FloorToInt(v * lutHeight), 0, lutHeight - 1);
         int pixelIndex = py * lutWidth + px;
-
-        if (debugLog)
-        {
-            Debug.Log($"[WorldPicker] Raycast hit {hit.collider?.name} at world {hit.point}, uv=({u:F3},{v:F3}), px={px}, py={py}, pixelIndex={pixelIndex}");
-        }
-
         if (pixelIndex >= 0 && pixelIndex < lut.Length)
-        {
             tileIndex = lut[pixelIndex];
-        }
-        else
-        {
-            Debug.LogWarning($"[WorldPicker] Pixel index {pixelIndex} out of LUT bounds (lut.Length={lut.Length})");
-        }
 
-        // Only log when tile actually changes
-        if (debugLog && tileIndex != cachedTileIndex)
-            Debug.Log($"[WorldPicker] Picked tileIndex={tileIndex} uv=({u:F3},{v:F3}) worldHit={hitWorldPos}");
-
-        // Cache result
         lastScreenPx = spx;
         lastScreenPy = spy;
         cachedTileIndex = tileIndex;
         cachedHitWorldPos = hitWorldPos;
+        lastCameraPosition = cameraPosition;
+        lastCameraRotation = cameraRotation;
 
-        if (tileIndex < 0)
-        {
-            Debug.LogWarning($"[WorldPicker] LUT lookup returned invalid tileIndex at px={px}, py={py}, uv=({u:F3},{v:F3})");
-        }
+        if (debugLog && tileIndex >= 0)
+            Debug.Log($"[WorldPicker] Picked tileIndex={tileIndex} uv=({u:F3},{v:F3}) worldHit={hitWorldPos}");
 
         return tileIndex >= 0;
+    }
+
+    private bool TryRaycastTerrain(Ray screenRay, out RaycastHit bestHit, out Vector3 bestWorldPoint)
+    {
+        RaycastHit localBestHit = default;
+        Vector3 localBestWorldPoint = Vector3.zero;
+
+        Vector3 direction = screenRay.direction.normalized;
+        float bestDistanceAlongRay = float.PositiveInfinity;
+        float bestPerpDistanceSq = float.PositiveInfinity;
+        bool found = false;
+
+        void ConsiderCandidate(Ray candidateRay, Vector3 worldOffset)
+        {
+            if (!TryRaycastSingle(candidateRay, out RaycastHit hit))
+                return;
+
+            Vector3 candidateWorldPoint = hit.point + worldOffset;
+            float alongRay = Vector3.Dot(candidateWorldPoint - screenRay.origin, direction);
+            if (alongRay < 0f || alongRay > maxRaycastDistance)
+                return;
+
+            Vector3 projectedPoint = screenRay.origin + direction * alongRay;
+            float perpDistanceSq = (candidateWorldPoint - projectedPoint).sqrMagnitude;
+
+            if (!found || perpDistanceSq < bestPerpDistanceSq - 0.0001f ||
+                (Mathf.Abs(perpDistanceSq - bestPerpDistanceSq) <= 0.0001f && alongRay < bestDistanceAlongRay))
+            {
+                found = true;
+                bestPerpDistanceSq = perpDistanceSq;
+                bestDistanceAlongRay = alongRay;
+                localBestHit = hit;
+                localBestWorldPoint = candidateWorldPoint;
+            }
+        }
+
+        if (cachedChunkManager == null || !cachedChunkManager.WrapEnabled || cachedChunkManager.MapWidth <= 0.001f)
+        {
+            ConsiderCandidate(screenRay, Vector3.zero);
+            bestHit = localBestHit;
+            bestWorldPoint = localBestWorldPoint;
+            return found;
+        }
+
+        float mapWidth = cachedChunkManager.MapWidth;
+        Vector3 wrapOffset = cachedChunkManager.transform.TransformVector(new Vector3(mapWidth, 0f, 0f));
+        Vector3 localRayOrigin = cachedChunkManager.transform.InverseTransformPoint(screenRay.origin);
+        int nearestWrapMultiple = Mathf.RoundToInt(localRayOrigin.x / mapWidth);
+
+        // Test the canonical wrapped sheet first, then adjacent sheets around the seam.
+        for (int delta = -1; delta <= 1; delta++)
+        {
+            int wrapMultiple = nearestWrapMultiple + delta;
+            Vector3 rayShift = -wrapOffset * wrapMultiple;
+            ConsiderCandidate(new Ray(screenRay.origin + rayShift, screenRay.direction), -rayShift);
+        }
+
+        bestHit = localBestHit;
+        bestWorldPoint = localBestWorldPoint;
+        return found;
+    }
+
+    private bool TryRaycastSingle(Ray ray, out RaycastHit hit)
+    {
+        hit = default;
+
+        if (cachedChunkManager != null && cachedChunkManager.PickingCollider != null)
+            return cachedChunkManager.PickingCollider.Raycast(ray, out hit, maxRaycastDistance);
+
+        return Physics.Raycast(ray, out hit, maxRaycastDistance, pickingLayerMask);
     }
 }

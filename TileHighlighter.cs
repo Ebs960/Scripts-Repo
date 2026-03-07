@@ -48,6 +48,9 @@ public class TileHighlighter : MonoBehaviour
 
     private void Start()
     {
+        if (worldPicker == null)
+            worldPicker = FindAnyObjectByType<WorldPicker>();
+
         FindTerrainMaterial();
         SubscribeToTileSystem();
     }
@@ -60,6 +63,10 @@ public class TileHighlighter : MonoBehaviour
 
     private void SubscribeToTileSystem()
     {
+        if (worldPicker == null)
+            worldPicker = FindAnyObjectByType<WorldPicker>();
+        if (worldPicker == null) return;
+
         var ts = TileSystem.Instance;
         if (ts == null) return;
         if (_subscribedTS == ts) return;

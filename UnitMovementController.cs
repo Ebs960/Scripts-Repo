@@ -159,7 +159,7 @@ public class UnitMovementController : MonoBehaviour
                 }
                 else
                 {
-                    moveCost = BiomeHelper.GetMovementCost(neighborTileData, null);
+                    moveCost = BiomeHelper.GetMovementCost(neighborTileData, unit);
                     if (moveCost >= 99) continue; // Unpassable
                 }
 
@@ -240,6 +240,15 @@ public class UnitMovementController : MonoBehaviour
             
             // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
             var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
+            if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
+            {
+                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
+                unit.UpdateWalkingState(false);
+                if (i > 0)
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+                yield break;
+            }
+
             int movementCost;
             if (unit.currentLayer == TileLayer.Orbit)
             {
@@ -248,7 +257,7 @@ public class UnitMovementController : MonoBehaviour
             }
             else
             {
-                movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, workerUnit) : 1;
+                movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
             }
             
             // Deduct movement points for workers (they still use turn-based movement)
