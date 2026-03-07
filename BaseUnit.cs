@@ -15,6 +15,9 @@ using GameCombat;
 [RequireComponent(typeof(Animator))]
 public abstract class BaseUnit : MonoBehaviour
 {
+    [Header("UI Anchors")]
+    [Tooltip("Optional: Assign a child transform to control where the unit label appears. If not set, defaults to the unit root.")]
+    [SerializeField] protected Transform labelAnchor;
     #region Equipment Fields
     
     [Header("Equipment Attachment Points")]
@@ -1193,13 +1196,14 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (unitLabelPrefab != null && unitLabelInstance == null)
         {
-            var labelGO = Instantiate(unitLabelPrefab, transform);
+            Transform anchor = labelAnchor != null ? labelAnchor : transform;
+            var labelGO = Instantiate(unitLabelPrefab, anchor);
             unitLabelInstance = labelGO.GetComponent<UnitLabel>();
             if (unitLabelInstance != null)
             {
                 string ownerName = owner != null && owner.civData != null 
                     ? owner.civData.civName : "Unknown";
-                unitLabelInstance.Initialize(transform, UnitName, ownerName, currentHealth, MaxHealth);
+                unitLabelInstance.Initialize(anchor, UnitName, ownerName, currentHealth, MaxHealth);
 
                 // Disable raycast on label text
                 var textComponents = unitLabelInstance.GetComponentsInChildren<TextMeshProUGUI>();
