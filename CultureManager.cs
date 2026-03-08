@@ -1,11 +1,13 @@
 // Assets/Scripts/Civs/CultureManager.cs
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class CultureManager : MonoBehaviour
 {
     public static CultureManager Instance { get; private set; }
     public List<CultureData> allCultures = new List<CultureData>();
+    public event Action<Civilization, CultureData> OnCultureResearchCompleted;
 
     void Awake()
     {
@@ -19,28 +21,39 @@ public class CultureManager : MonoBehaviour
     public List<CultureData> GetAvailableCultures(Civilization civ)
     {
         var available = new List<CultureData>();
-        // Use GameManager API for multi-planet support
-        var planet = GameManager.Instance?.GetCurrentPlanetGenerator();
-        
-        if (planet == null)
-        {
-            Debug.LogError("PlanetGenerator not found");
-            return available;
-        }
 
         foreach (var cult in allCultures)
         {
+            if (cult == null) continue;
             if (civ.researchedCultures.Contains(cult)) 
                 continue;
 
-            // tech prereqs, if any
-            bool meetsCultReqs = true;
-            foreach (var req in cult.requiredCultures)
+            // tech prerequisites
+            bool meetsTechReqs = true;
+            if (cult.requiredTechnologies != null)
             {
-                if (!civ.researchedCultures.Contains(req))
+                foreach (var req in cult.requiredTechnologies)
                 {
-                    meetsCultReqs = false;
-                    break;
+                    if (req != null && !civ.researchedTechs.Contains(req))
+                    {
+                        meetsTechReqs = false;
+                        break;
+                    }
+                }
+            }
+            if (!meetsTechReqs) continue;
+
+            // culture prerequisites
+            bool meetsCultReqs = true;
+            if (cult.requiredCultures != null)
+            {
+                foreach (var req in cult.requiredCultures)
+                {
+                    if (req != null && !civ.researchedCultures.Contains(req))
+                    {
+                        meetsCultReqs = false;
+                        break;
+                    }
                 }
             }
             if (!meetsCultReqs) continue;
@@ -51,13 +64,16 @@ public class CultureManager : MonoBehaviour
 
             // biome control
             bool meetsBiomeReq = true;
-            foreach (var biome in cult.requiredControlledBiomes)
+            if (cult.requiredControlledBiomes != null)
             {
-                // O(1) check via Civilization-owned biome aggregates (maintained by TileSystem.SetTileOwner).
-                if (!civ.HasControlledBiome(biome))
+                foreach (var biome in cult.requiredControlledBiomes)
                 {
-                    meetsBiomeReq = false;
-                    break;
+                    // O(1) check via Civilization-owned biome aggregates (maintained by TileSystem.SetTileOwner).
+                    if (!civ.HasControlledBiome(biome))
+                    {
+                        meetsBiomeReq = false;
+                        break;
+                    }
                 }
             }
             if (!meetsBiomeReq) continue;
@@ -73,9 +89,10 @@ public class CultureManager : MonoBehaviour
     /// </summary>
     public void StartCulture(Civilization civ, CultureData cult)
     {
+        if (civ == null || cult == null) return;
         if (!civ.CanCultivate(cult)) return;
         civ.StartCulture(cult);
-}
+    }
 
     /// <summary>
     /// Called when a culture is fully adopted by a civilization.
@@ -83,31 +100,14 @@ public class CultureManager : MonoBehaviour
     public void CompleteCultureAdoption(Civilization civ, CultureData cult)
     {
         if (civ == null || cult == null) return;
-// Inform the civilization (which will add to researchedCultures and apply bonuses)
-        civ.OnCultureAdopted(cult);
 
-        // Reset current culture research in the civilization
+        // Mirror tech completion timing: clear active progress before applying completion effects.
         civ.currentCulture = null;
         civ.currentCultureProgress = 0;
 
-        // If this culture enables the trade system, unlock it for the civ (or globally if desired)
-        if (cult.enablesTradeSystem)
-        {
-            // If a TradeManager exists, prefer using it so the unlock is centralized
-            if (TradeManager.Instance != null)
-            {
-                TradeManager.Instance.UnlockTradeForCivilization(civ);
-            }
-            else
-            {
-                // Fallback: set per-civ flag and notify UI
-                civ.tradeEnabled = true;
-                UIManager.Instance?.ShowNotification($"{civ.civData.civName} has unlocked the Trade system!");
-            }
-        }
+        // Inform the civilization (which will add to researchedCultures and apply bonuses)
+        civ.OnCultureAdopted(cult);
 
-        // TODO: Trigger UI updates or other game events as needed
-        // For example, an event like:
-        // OnCultureFullyAdopted?.Invoke(civ, cult);
+        OnCultureResearchCompleted?.Invoke(civ, cult);
     }
 }

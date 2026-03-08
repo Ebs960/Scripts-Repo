@@ -65,12 +65,53 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Get tile data from any planet by checking all planets
     /// </summary>
-    private HexTileData GetTileDataAcrossAllPlanets(int tileIndex)
+    private HexTileData GetTileDataAcrossAllPlanets(int tileIndex, int planetIndex = -1)
     {
-        // Multi-planet: without an explicit planet, default to the current planet.
-        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        int pIndex = ResolvePlanetIndex(planetIndex);
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         return (ts != null) ? ts.GetTileData(tileIndex) : null;
+    }
+
+    private static int ResolvePlanetIndex(int planetIndex)
+    {
+        return planetIndex >= 0 ? planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+    }
+
+    private BuildJob FindBuildJob(int tileIndex, int planetIndex)
+    {
+        return jobs.Find(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex);
+    }
+
+    private UnitJob FindUnitJob(int tileIndex, int planetIndex)
+    {
+        return unitJobs.Find(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex);
+    }
+
+    private WorkerJob FindWorkerJob(int tileIndex, int planetIndex)
+    {
+        return workerJobs.Find(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex);
+    }
+
+    private void SpawnConstructionVisual(ImprovementData data, int tileIndex, int planetIndex)
+    {
+        if (data == null || data.constructionPrefab == null) return;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        var tileData = ts.GetTileData(tileIndex);
+        if (tileData == null) return;
+
+        if (tileData.improvementInstanceObject != null)
+            Destroy(tileData.improvementInstanceObject);
+
+        Vector3 pos = ts.GetTileSurfacePosition(tileIndex);
+        GameObject constructionObject = Instantiate(data.constructionPrefab, pos, Quaternion.identity);
+        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+        if (planetGen != null) constructionObject.transform.SetParent(planetGen.transform, true);
+
+        tileData.improvementInstanceObject = constructionObject;
+        ts.SetTileData(tileIndex, tileData);
     }
 
     void Awake()
@@ -144,14 +185,14 @@ public class ImprovementManager : MonoBehaviour
     /// Attempt to start a build job for this improvement on tileIndex.
     /// Returns false if a job already exists or tile is invalid.
     /// </summary>
-    public bool CreateBuildJob(ImprovementData data, int tileIndex, Civilization owner)
+    public bool CreateBuildJob(ImprovementData data, int tileIndex, Civilization owner, int planetIndex = -1)
     {
-        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        planetIndex = ResolvePlanetIndex(planetIndex);
         // No duplicate jobs on same tile
-        if (jobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
+        if (FindBuildJob(tileIndex, planetIndex) != null) return false;
 
         // Check tile requirements across all planets
-        var td = GetTileDataAcrossAllPlanets(tileIndex);
+        var td = GetTileDataAcrossAllPlanets(tileIndex, planetIndex);
         if (td == null) return false;
         
         // Basic terrain checks
@@ -196,6 +237,7 @@ public class ImprovementManager : MonoBehaviour
 
         var job = new BuildJob(tileIndex, planetIndex, owner, data);
         jobs.Add(job);
+        SpawnConstructionVisual(data, tileIndex, planetIndex);
         return true;
     }
 
@@ -203,7 +245,7 @@ public class ImprovementManager : MonoBehaviour
     /// Attempt to start a worker unit build job for a combat unit on tileIndex.
     /// Respects unit flags, requirements, limits, and tile occupancy.
     /// </summary>
-    public bool CreateUnitJob(CombatUnitData unit, int tileIndex, Civilization owner)
+    public bool CreateUnitJob(CombatUnitData unit, int tileIndex, Civilization owner, int planetIndex = -1)
     {
         if (unit == null || owner == null) return false;
         if (!unit.buildableByWorker) return false;
@@ -211,8 +253,8 @@ public class ImprovementManager : MonoBehaviour
         if (!LimitManager.Instance.CanCreateCombatUnit(owner, unit)) return false;
 
         // No duplicate jobs per tile
-        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-        if (unitJobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        if (FindUnitJob(tileIndex, planetIndex) != null) return false;
 
         // Tile must be valid and free
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
@@ -230,15 +272,15 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Attempt to start a worker build job for a worker unit on tileIndex.
     /// </summary>
-    public bool CreateWorkerJob(WorkerUnitData unit, int tileIndex, Civilization owner)
+    public bool CreateWorkerJob(WorkerUnitData unit, int tileIndex, Civilization owner, int planetIndex = -1)
     {
         if (unit == null || owner == null) return false;
         if (!unit.buildableByWorker) return false;
         if (!unit.AreRequirementsMet(owner)) return false;
         if (!LimitManager.Instance.CanCreateWorkerUnit(owner, unit)) return false;
 
-        int planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-        if (workerJobs.Exists(j => j.tileIndex == tileIndex && j.planetIndex == planetIndex)) return false;
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        if (FindWorkerJob(tileIndex, planetIndex) != null) return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
@@ -253,10 +295,11 @@ public class ImprovementManager : MonoBehaviour
     /// Assign a worker to an existing build job on tileIndex. Returns true when assigned.
     /// Worker identity is tracked by GameObject InstanceID.
     /// </summary>
-    public bool AssignWorkerToJob(int tileIndex, WorkerUnit worker)
+    public bool AssignWorkerToJob(int tileIndex, WorkerUnit worker, int planetIndex = -1)
     {
     if (worker == null) return false;
-    var job = jobs.Find(j => j.tileIndex == tileIndex);
+    planetIndex = ResolvePlanetIndex(planetIndex);
+    var job = FindBuildJob(tileIndex, planetIndex);
     if (job == null) return false;
     string pid = worker.PersistentId;
     if (job.assignedWorkerPersistentIds == null) job.assignedWorkerPersistentIds = new List<string>();
@@ -267,10 +310,11 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Unassign a worker from a specific job.
     /// </summary>
-    public void UnassignWorkerFromJob(int tileIndex, WorkerUnit worker)
+    public void UnassignWorkerFromJob(int tileIndex, WorkerUnit worker, int planetIndex = -1)
     {
     if (worker == null) return;
-    var job = jobs.Find(j => j.tileIndex == tileIndex);
+    planetIndex = ResolvePlanetIndex(planetIndex);
+    var job = FindBuildJob(tileIndex, planetIndex);
     if (job == null) return;
     string pid = worker.PersistentId;
     job.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
@@ -293,13 +337,43 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Check if a worker is assigned to the build job on tileIndex.
     /// </summary>
-    public bool JobAssignedToWorker(int tileIndex, WorkerUnit worker)
+    public bool JobAssignedToWorker(int tileIndex, WorkerUnit worker, int planetIndex = -1)
     {
         if (worker == null) return false;
-        var job = jobs.Find(j => j.tileIndex == tileIndex);
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindBuildJob(tileIndex, planetIndex);
         if (job == null) return false;
         string pid = worker.PersistentId;
         return job.assignedWorkerPersistentIds != null && job.assignedWorkerPersistentIds.Contains(pid);
+    }
+
+    public bool HasBuildJobAtTile(int tileIndex, int planetIndex = -1, ImprovementData data = null)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindBuildJob(tileIndex, planetIndex);
+        return job != null && (data == null || job.data == data);
+    }
+
+    public bool HasUnitJobAtTile(int tileIndex, int planetIndex = -1, CombatUnitData data = null)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindUnitJob(tileIndex, planetIndex);
+        return job != null && (data == null || job.data == data);
+    }
+
+    public bool HasWorkerJobAtTile(int tileIndex, int planetIndex = -1, WorkerUnitData data = null)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindWorkerJob(tileIndex, planetIndex);
+        return job != null && (data == null || job.data == data);
+    }
+
+    public bool HasAnyJobAtTile(int tileIndex, int planetIndex = -1)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        return FindBuildJob(tileIndex, planetIndex) != null ||
+               FindUnitJob(tileIndex, planetIndex) != null ||
+               FindWorkerJob(tileIndex, planetIndex) != null;
     }
 
     /// <summary>
@@ -335,9 +409,10 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Apply work points from a worker to the job on its tile.
     /// </summary>
-    public void AddWork(int tileIndex, int workPoints)
+    public void AddWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
-        var job = jobs.Find(j => j.tileIndex == tileIndex);
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindBuildJob(tileIndex, planetIndex);
         if (job == null) return;
 
         job.remainingWork -= workPoints;
@@ -350,9 +425,10 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Apply work points to a unit job on this tile.
     /// </summary>
-    public void AddUnitWork(int tileIndex, int workPoints)
+    public void AddUnitWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
-        var job = unitJobs.Find(j => j.tileIndex == tileIndex);
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindUnitJob(tileIndex, planetIndex);
         if (job == null) return;
 
         job.remainingWork -= workPoints;
@@ -365,9 +441,10 @@ public class ImprovementManager : MonoBehaviour
     /// <summary>
     /// Apply work points to a worker unit job on this tile.
     /// </summary>
-    public void AddWorkerWork(int tileIndex, int workPoints)
+    public void AddWorkerWork(int tileIndex, int workPoints, int planetIndex = -1)
     {
-        var job = workerJobs.Find(j => j.tileIndex == tileIndex);
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindWorkerJob(tileIndex, planetIndex);
         if (job == null) return;
 
         job.remainingWork -= workPoints;
@@ -391,10 +468,22 @@ public class ImprovementManager : MonoBehaviour
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
         var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
+        GameObject completedImprovement = null;
+
+        var tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
+        GameObject previousConstructionObject = tileData != null ? tileData.improvementInstanceObject : null;
+        if (tileData != null)
+        {
+            tileData.improvement = job.data;
+            // Persist owner on tile data for save/load and gameplay checks
+            tileData.improvementOwner = job.owner;
+            tileData.improvementInstanceObject = null;
+            if (ts != null) ts.SetTileData(job.tileIndex, tileData);
+        }
 
         if (job.data.completePrefab != null)
         {
-            GameObject completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
+            completedImprovement = Instantiate(job.data.completePrefab, pos, Quaternion.identity);
             // Keep hierarchy organized: parent improvements under their planet generator.
             if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
 
@@ -420,16 +509,16 @@ public class ImprovementManager : MonoBehaviour
             }
 
             // Store runtime reference on the tile data for later upgrade application
-            var tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
+            tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
             if (tileData != null)
             {
-                tileData.improvement = job.data;
-                // Persist owner on tile data for save/load and gameplay checks
-                tileData.improvementOwner = job.owner;
                 tileData.improvementInstanceObject = completedImprovement;
                 if (ts != null) ts.SetTileData(job.tileIndex, tileData);
             }
         }
+
+        if (previousConstructionObject != null && previousConstructionObject != completedImprovement)
+            Destroy(previousConstructionObject);
 
 
         // If the completed improvement is a road, bump the network version to invalidate caches

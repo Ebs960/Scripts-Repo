@@ -571,10 +571,58 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     private void PerformCulturalDecisions(Civilization civ)
     {
-        // Placeholder for cultural AI decisions
-        // - Culture research priorities
-        // - Policy adoption
-        // - Government changes
+        if (civ.currentCulture != null || CultureManager.Instance == null) return;
+
+        var availableCultures = CultureManager.Instance.GetAvailableCultures(civ);
+        if (availableCultures.Count == 0) return;
+
+        var scoredCultures = new List<(CultureData culture, float score)>();
+        foreach (var culture in availableCultures)
+        {
+            float score = CalculateCultureScore(civ, culture);
+            scoredCultures.Add((culture, score));
+        }
+
+        var bestCulture = scoredCultures.OrderByDescending(c => c.score).First().culture;
+        CultureManager.Instance.StartCulture(civ, bestCulture);
+    }
+
+    private float CalculateCultureScore(Civilization civ, CultureData culture)
+    {
+        float score = 1f;
+        var leader = civ.leader;
+
+        score += 10f;
+
+        if (culture.goldModifier > 0 || culture.productionModifier > 0)
+            score += leader.GetFocusPriority(FocusArea.Economic) * 5f;
+
+        if (culture.scienceModifier > 0)
+            score += leader.GetFocusPriority(FocusArea.Scientific) * 5f;
+
+        if (culture.cultureModifier > 0)
+            score += leader.GetFocusPriority(FocusArea.Cultural) * 5f;
+
+        if (culture.faithModifier > 0 || culture.unlocksReligion)
+            score += leader.GetFocusPriority(FocusArea.Religious) * 5f;
+
+        switch (leader.primaryAgenda)
+        {
+            case LeaderAgenda.Militaristic:
+                if (culture.attackBonus > 0 || culture.defenseBonus > 0)
+                    score *= 1.5f;
+                break;
+            case LeaderAgenda.Scientific:
+                if (culture.scienceModifier > 0)
+                    score *= 1.5f;
+                break;
+            case LeaderAgenda.Religious:
+                if (culture.unlocksReligion || culture.faithModifier > 0)
+                    score *= 1.5f;
+                break;
+        }
+
+        return score;
     }
     
     /// <summary>

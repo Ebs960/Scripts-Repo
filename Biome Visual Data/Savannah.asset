@@ -12,6 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Savannah
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
+  springResponse:
+    snow: 0
+    wet: 0.705
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0.5411765}
+  summerResponse:
+    snow: 0
+    wet: 0
+    dry: 0.201
+    tint: {r: 0.7735849, g: 0.5463605, b: 0.18536842, a: 0.53333336}
+  autumnResponse:
+    snow: 0
+    wet: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  winterResponse:
+    snow: 0.205
+    wet: 0
+    dry: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
   biome: 3
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: f54ca6dc879f0564883d973b5e82b5db, type: 2}

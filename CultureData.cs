@@ -7,13 +7,20 @@ public class CultureData : ScriptableObject
 {
     [Header("Identification")]
     public string cultureName;
+    public TechAge cultureAge;
 
     [TextArea]
     public string description;
 
-    [Header("Visual")]
+    [Header("Visual & Tree Layout")]
     [Tooltip("Icon sprite for the culture")]
     public Sprite cultureIcon;
+    [Tooltip("Hint for vertical positioning within dependency layer (0=top, higher=bottom)")]
+    public int positionHint = 0;
+    [Tooltip("Group related cultures together")]
+    public TechCategory category = TechCategory.Cultural;
+    [Tooltip("Custom color for this culture node (optional)")]
+    public Color cultureColor = Color.white;
 
     [Header("Gameplay")]
     [Tooltip("If true this culture enables the global trade system when adopted.")]
@@ -21,6 +28,7 @@ public class CultureData : ScriptableObject
 
     [Header("Cost & Requirements")]
     public int cultureCost;
+    public TechData[] requiredTechnologies;
     public CultureData[] requiredCultures;
     public int requiredCityCount;
     public Biome[] requiredControlledBiomes;
@@ -30,6 +38,7 @@ public class CultureData : ScriptableObject
     // Policy availability is now controlled solely by requiredTechs/requiredCultures/requiredGovernments in PolicyData
     public GovernmentData[] unlockedGovernments;
     public ReligionData[] unlockedReligions;
+    public LeaderData[] unlockedLeaders;
     // REMOVED: All unlocked arrays - availability now controlled ONLY by requiredCultures in the respective data classes
     // Unit availability: CombatUnitData.requiredCultures / WorkerUnitData.requiredCultures
     // Building availability: BuildingData.requiredCultures
@@ -97,6 +106,8 @@ public class CultureData : ScriptableObject
     public GenericYieldBonus[] genericYieldBonuses;
 
     [Header("Limits")]
+    [Tooltip("How much this culture increases the maximum number of cities a civilization may found.")]
+    public int cityCapIncrease = 0;
     [Tooltip("How much this culture increases the maximum number of pantheons a civilization may found.")]
     public int pantheonCapIncrease = 0;
 

@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 374ba1a9152d9d741b0b720b76e43334, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  biomeVisualDatabase: {fileID: 11400000, guid: 73704b805f4b48549b6aefb4d0f8a79c, type: 2}
   turnsPerSeason: 3
   currentSeason: 0
   forceSeasonChange: 0
@@ -73,3 +74,15 @@ MonoBehaviour:
     season: 3
     seasonalAlbedo: {fileID: 2800000, guid: 5b7104a4eb25b564fbea9b98c6a200d6, type: 3}
     seasonalNormal: {fileID: 2800000, guid: 72de37daba2959d4fa31efc321c929f3, type: 3}
+  biomeSeasonResponses:
+  - biome: 0
+    season: 0
+    yieldMultiplier: 0
+    snow: 0
+    wet: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  isGlobalClimateManager: 1
+  planetIndex: 0
+  winterAttritionDamage: 1
+  enableWinterAttrition: 1

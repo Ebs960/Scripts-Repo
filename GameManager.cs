@@ -2499,10 +2499,52 @@ public class GameManager : MonoBehaviour
             if (civilizationManager != null)
             {
                 var allCivs = civilizationManager.GetAllCivs();
+                saveData.civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>();
                 for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
                 {
                     var civ = allCivs[civIdx];
                     if (civ == null) continue;
+
+                    var civProgress = new PauseMenuManager.CivilizationProgressSaveData
+                    {
+                        civIndex = civIdx,
+                        currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
+                        currentTechProgress = civ.currentTechProgress,
+                        currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
+                        currentCultureProgress = civ.currentCultureProgress,
+                        tradeEnabled = civ.tradeEnabled,
+                        governorsEnabled = civ.governorsEnabled,
+                        governorCount = civ.governorCount,
+                        cityCapFromBonuses = civ.GetCityCapBonusForSave(),
+                        pantheonCapFromBonuses = civ.pantheonCapFromBonuses,
+                        attackBonus = civ.attackBonus,
+                        defenseBonus = civ.defenseBonus,
+                        movementBonus = civ.movementBonus,
+                        foodModifier = civ.foodModifier,
+                        productionModifier = civ.productionModifier,
+                        goldModifier = civ.goldModifier,
+                        scienceModifier = civ.scienceModifier,
+                        cultureModifier = civ.cultureModifier,
+                        faithModifier = civ.faithModifier
+                    };
+
+                    if (civ.researchedTechs != null)
+                        foreach (var tech in civ.researchedTechs)
+                            if (tech != null) civProgress.researchedTechNames.Add(tech.name);
+                    if (civ.researchedCultures != null)
+                        foreach (var culture in civ.researchedCultures)
+                            if (culture != null) civProgress.researchedCultureNames.Add(culture.name);
+                    if (civ.unlockedGovernorTraits != null)
+                        foreach (var trait in civ.unlockedGovernorTraits)
+                            if (trait != null) civProgress.unlockedGovernorTraitNames.Add(trait.name);
+                    if (civ.cultureUnlockedPantheons != null)
+                        foreach (var pantheon in civ.cultureUnlockedPantheons)
+                            if (pantheon != null) civProgress.cultureUnlockedPantheonNames.Add(pantheon.name);
+                    if (civ.cultureUnlockedBeliefs != null)
+                        foreach (var belief in civ.cultureUnlockedBeliefs)
+                            if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
+
+                    saveData.civilizationProgress.Add(civProgress);
                     if (civ.combatUnits != null)
                     {
                         foreach (var unit in civ.combatUnits)
@@ -2697,6 +2739,15 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"Failed to restore player civ index: {e.Message}");
         }
 
+        try
+        {
+            RestoreCivilizationProgressFromSaveData(saveData);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore civilization progression: {e.Message}\n{e.StackTrace}");
+        }
+
         // Import improvement manager assignments AFTER units are present and registered
         if (saveData.jobAssignments != null && saveData.jobAssignments.Count > 0)
         {
@@ -2724,6 +2775,98 @@ public class GameManager : MonoBehaviour
         }
 
         
+    }
+
+    private void RestoreCivilizationProgressFromSaveData(PauseMenuManager.GameSaveData saveData)
+    {
+        if (saveData?.civilizationProgress == null || saveData.civilizationProgress.Count == 0) return;
+
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null) return;
+
+        var techLookup = BuildAssetLookup(ResourceCache.GetAllTechData(), t => t.techName);
+        var cultureLookup = BuildAssetLookup(ResourceCache.GetAllCultureData(), c => c.cultureName);
+        var governorTraitLookup = BuildAssetLookup(Resources.LoadAll<GovernorTrait>(""), t => t.traitName);
+        var pantheonLookup = BuildAssetLookup(Resources.LoadAll<PantheonData>(""), p => p.pantheonName);
+        var beliefLookup = BuildAssetLookup(Resources.LoadAll<BeliefData>(""), b => b.beliefName);
+
+        foreach (var progress in saveData.civilizationProgress)
+        {
+            if (progress == null) continue;
+            if (progress.civIndex < 0 || progress.civIndex >= allCivs.Count) continue;
+
+            var civ = allCivs[progress.civIndex];
+            if (civ == null) continue;
+
+            var researchedTechs = ResolveAssets(progress.researchedTechNames, techLookup);
+            var researchedCultures = ResolveAssets(progress.researchedCultureNames, cultureLookup);
+            var unlockedGovernorTraits = ResolveAssets(progress.unlockedGovernorTraitNames, governorTraitLookup);
+            var unlockedPantheons = ResolveAssets(progress.cultureUnlockedPantheonNames, pantheonLookup);
+            var unlockedBeliefs = ResolveAssets(progress.cultureUnlockedBeliefNames, beliefLookup);
+
+            techLookup.TryGetValue(progress.currentTechName ?? string.Empty, out var currentTech);
+            cultureLookup.TryGetValue(progress.currentCultureName ?? string.Empty, out var currentCulture);
+
+            civ.RestoreProgressionState(
+                researchedTechs,
+                currentTech,
+                progress.currentTechProgress,
+                researchedCultures,
+                currentCulture,
+                progress.currentCultureProgress,
+                progress.tradeEnabled,
+                progress.governorsEnabled,
+                progress.governorCount,
+                progress.cityCapFromBonuses,
+                progress.pantheonCapFromBonuses,
+                progress.attackBonus,
+                progress.defenseBonus,
+                progress.movementBonus,
+                progress.foodModifier,
+                progress.productionModifier,
+                progress.goldModifier,
+                progress.scienceModifier,
+                progress.cultureModifier,
+                progress.faithModifier,
+                unlockedGovernorTraits,
+                unlockedPantheons,
+                unlockedBeliefs);
+        }
+    }
+
+    private static Dictionary<string, T> BuildAssetLookup<T>(IEnumerable<T> assets, Func<T, string> displayNameSelector) where T : ScriptableObject
+    {
+        var lookup = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        if (assets == null) return lookup;
+
+        foreach (var asset in assets)
+        {
+            if (asset == null) continue;
+
+            if (!string.IsNullOrWhiteSpace(asset.name))
+                lookup[asset.name] = asset;
+
+            string displayName = displayNameSelector != null ? displayNameSelector(asset) : null;
+            if (!string.IsNullOrWhiteSpace(displayName))
+                lookup[displayName] = asset;
+        }
+
+        return lookup;
+    }
+
+    private static List<T> ResolveAssets<T>(IEnumerable<string> names, Dictionary<string, T> lookup) where T : ScriptableObject
+    {
+        var assets = new List<T>();
+        if (names == null || lookup == null) return assets;
+
+        foreach (var name in names)
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            if (lookup.TryGetValue(name, out var asset) && asset != null && !assets.Contains(asset))
+                assets.Add(asset);
+        }
+
+        return assets;
     }
 
     /// <summary>

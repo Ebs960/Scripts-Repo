@@ -1,8 +1,22 @@
 using UnityEngine;
 
+[System.Serializable]
+public struct BiomeSeasonVisualResponse
+{
+    [Range(0f, 1f)] public float snow;
+    [Range(0f, 1f)] public float wet;
+    [Range(0f, 1f)] public float dry;
+    public Color tint;
+}
+
 [CreateAssetMenu(menuName = "Terrain/Biome Visual Data")]
 public class BiomeVisualData : ScriptableObject
 {
+    [Header("Seasonal Visual Responses")]
+    public BiomeSeasonVisualResponse springResponse;
+    public BiomeSeasonVisualResponse summerResponse;
+    public BiomeSeasonVisualResponse autumnResponse;
+    public BiomeSeasonVisualResponse winterResponse;
     public Biome biome;
 
     // Classify water behavior per-biome. This drives whether HDRP Water Surfaces

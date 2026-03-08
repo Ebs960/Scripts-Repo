@@ -546,6 +546,7 @@ public class CombatUnit : BaseUnit
     public override void MoveTo(int targetTileIndex)
     {
         var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
+        path = UnitMovementController.Instance.TrimPathToAvailableMovement(this, path);
         if (path == null || path.Count == 0)
             return;
 
@@ -1973,7 +1974,7 @@ return;
     /// <summary>
     /// Set walking state explicitly (for battle movement)
     /// </summary>
-    public new void SetWalkingState(bool walking)
+    public void SetWalkingState(bool walking)
     {
         UpdateWalkingState(walking);
     }

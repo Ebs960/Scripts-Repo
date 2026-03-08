@@ -92,6 +92,28 @@ public class WorkerUnit : BaseUnit
     }
 
     /// <summary>
+    /// Get the starting movement points a worker would have at the beginning of a turn,
+    /// including civ/tech/equipment bonuses and winter penalty. This does not modify state.
+    /// </summary>
+    public int GetStartingMovePoints()
+    {
+        var wb = AggregateWorkerBonusesLocal(owner, data);
+        int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+
+        if (IsTrapped)
+        {
+            return 0;
+        }
+
+        int move = baseMove;
+        if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
+        {
+            move = Mathf.Max(1, move - 1);
+        }
+        return move;
+    }
+
+    /// <summary>
     /// Deduct movement points after moving. Called by UnitMovementController.
     /// </summary>
     public void DeductMovePoints(int amount)
@@ -107,7 +129,7 @@ public class WorkerUnit : BaseUnit
         // Auto-contribute to jobs
         if (currentWorkPoints > 0 && ImprovementManager.Instance != null)
         {
-            if (ImprovementManager.Instance.JobAssignedToWorker(currentTileIndex, this))
+            if (ImprovementManager.Instance.JobAssignedToWorker(currentTileIndex, this, planetIndex))
             {
                 var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
                 var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
@@ -229,21 +251,24 @@ public class WorkerUnit : BaseUnit
     public void ContributeWork()
     {
         if (currentWorkPoints <= 0) return;
-        ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasBuildJobAtTile(currentTileIndex, planetIndex)) return;
+        ImprovementManager.Instance.AddWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 
     public void ContributeWorkToUnit()
     {
         if (currentWorkPoints <= 0) return;
-        ImprovementManager.Instance.AddUnitWork(currentTileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasUnitJobAtTile(currentTileIndex, planetIndex)) return;
+        ImprovementManager.Instance.AddUnitWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 
     public void ContributeWorkToWorker()
     {
         if (currentWorkPoints <= 0) return;
-        ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasWorkerJobAtTile(currentTileIndex, planetIndex)) return;
+        ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 
@@ -442,14 +467,24 @@ public class WorkerUnit : BaseUnit
     public void StartBuildingUnit(CombatUnitData unitData, int tileIndex)
     {
         if (!CanBuildUnit(unitData, tileIndex)) return;
-        ImprovementManager.Instance?.AddUnitWork(tileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null) return;
+        if (!ImprovementManager.Instance.HasUnitJobAtTile(tileIndex, planetIndex, unitData) &&
+            !ImprovementManager.Instance.CreateUnitJob(unitData, tileIndex, owner, planetIndex))
+            return;
+
+        ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 
     public void StartBuildingWorker(WorkerUnitData workerData, int tileIndex)
     {
         if (!CanBuildWorker(workerData, tileIndex)) return;
-        ImprovementManager.Instance?.AddWorkerWork(tileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null) return;
+        if (!ImprovementManager.Instance.HasWorkerJobAtTile(tileIndex, planetIndex, workerData) &&
+            !ImprovementManager.Instance.CreateWorkerJob(workerData, tileIndex, owner, planetIndex))
+            return;
+
+        ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 
@@ -458,7 +493,13 @@ public class WorkerUnit : BaseUnit
         if (improvement == null) return;
         if (currentWorkPoints <= 0) return;
         if (tileIndex != currentTileIndex) return;
-        ImprovementManager.Instance?.AddWork(tileIndex, currentWorkPoints);
+        if (ImprovementManager.Instance == null) return;
+        if (!ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex, improvement) &&
+            !ImprovementManager.Instance.CreateBuildJob(improvement, tileIndex, owner, planetIndex))
+            return;
+
+        ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
+        ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
     }
 

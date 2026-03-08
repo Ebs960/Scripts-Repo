@@ -86,6 +86,7 @@ public class PauseMenuManager : MonoBehaviour
     // ===== UNIT STATE =====
     public List<CombatUnitSaveData> combatUnits;
     public List<WorkerUnitSaveData> workerUnits;
+    public List<CivilizationProgressSaveData> civilizationProgress;
         
         public GameSaveData()
         {
@@ -97,6 +98,35 @@ public class PauseMenuManager : MonoBehaviour
     /// <summary>
     /// Serializable snapshot of a single CombatUnit for save/load.
     /// </summary>
+    [Serializable]
+    public class CivilizationProgressSaveData
+    {
+        public int civIndex;
+        public List<string> researchedTechNames = new List<string>();
+        public string currentTechName;
+        public float currentTechProgress;
+        public List<string> researchedCultureNames = new List<string>();
+        public string currentCultureName;
+        public float currentCultureProgress;
+        public bool tradeEnabled;
+        public bool governorsEnabled;
+        public int governorCount;
+        public int cityCapFromBonuses;
+        public int pantheonCapFromBonuses;
+        public float attackBonus;
+        public float defenseBonus;
+        public float movementBonus;
+        public float foodModifier;
+        public float productionModifier;
+        public float goldModifier;
+        public float scienceModifier;
+        public float cultureModifier;
+        public float faithModifier;
+        public List<string> unlockedGovernorTraitNames = new List<string>();
+        public List<string> cultureUnlockedPantheonNames = new List<string>();
+        public List<string> cultureUnlockedBeliefNames = new List<string>();
+    }
+
     [Serializable]
     public class CombatUnitSaveData
     {
@@ -544,10 +574,52 @@ HideSaveLoadUI();
             if (CivilizationManager.Instance != null)
             {
                 var allCivs = CivilizationManager.Instance.GetAllCivs();
+                saveData.civilizationProgress = new List<CivilizationProgressSaveData>();
                 for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
                 {
                     var civ = allCivs[civIdx];
                     if (civ == null) continue;
+
+                    var civProgress = new CivilizationProgressSaveData
+                    {
+                        civIndex = civIdx,
+                        currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
+                        currentTechProgress = civ.currentTechProgress,
+                        currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
+                        currentCultureProgress = civ.currentCultureProgress,
+                        tradeEnabled = civ.tradeEnabled,
+                        governorsEnabled = civ.governorsEnabled,
+                        governorCount = civ.governorCount,
+                        cityCapFromBonuses = civ.GetCityCapBonusForSave(),
+                        pantheonCapFromBonuses = civ.pantheonCapFromBonuses,
+                        attackBonus = civ.attackBonus,
+                        defenseBonus = civ.defenseBonus,
+                        movementBonus = civ.movementBonus,
+                        foodModifier = civ.foodModifier,
+                        productionModifier = civ.productionModifier,
+                        goldModifier = civ.goldModifier,
+                        scienceModifier = civ.scienceModifier,
+                        cultureModifier = civ.cultureModifier,
+                        faithModifier = civ.faithModifier
+                    };
+
+                    if (civ.researchedTechs != null)
+                        foreach (var tech in civ.researchedTechs)
+                            if (tech != null) civProgress.researchedTechNames.Add(tech.name);
+                    if (civ.researchedCultures != null)
+                        foreach (var culture in civ.researchedCultures)
+                            if (culture != null) civProgress.researchedCultureNames.Add(culture.name);
+                    if (civ.unlockedGovernorTraits != null)
+                        foreach (var trait in civ.unlockedGovernorTraits)
+                            if (trait != null) civProgress.unlockedGovernorTraitNames.Add(trait.name);
+                    if (civ.cultureUnlockedPantheons != null)
+                        foreach (var pantheon in civ.cultureUnlockedPantheons)
+                            if (pantheon != null) civProgress.cultureUnlockedPantheonNames.Add(pantheon.name);
+                    if (civ.cultureUnlockedBeliefs != null)
+                        foreach (var belief in civ.cultureUnlockedBeliefs)
+                            if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
+
+                    saveData.civilizationProgress.Add(civProgress);
 
                     // Combat units
                     if (civ.combatUnits != null)

@@ -12,6 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Tropical
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
+  springResponse:
+    snow: 0
+    wet: 0.498
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0.40784314}
+  summerResponse:
+    snow: 0
+    wet: 0
+    dry: 0.526
+    tint: {r: 0.7283019, g: 0.5186131, b: 0.22398713, a: 0.7176471}
+  autumnResponse:
+    snow: 0
+    wet: 0
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  winterResponse:
+    snow: 0.152
+    wet: 0
+    dry: 0
+    tint: {r: 1, g: 1, b: 1, a: 0.42745098}
   biome: 6
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: d2536777d4fb9fb4a9dbe9989a33da67, type: 2}

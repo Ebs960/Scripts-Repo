@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using TMPro;
 
 /// <summary>
 /// Manages unit selection and movement commands.
@@ -13,6 +14,23 @@ public class UnitSelectionManager : MonoBehaviour
     [Header("Selection Settings")]
     [SerializeField] private Color selectedUnitHighlightColor = Color.yellow;
     [SerializeField] private GameObject selectionIndicatorPrefab; // Optional visual indicator
+    
+    [Header("Path Preview")]
+    [Tooltip("Optional prefab to use for path markers. If null, a simple sphere will be used.")]
+    [SerializeField] private GameObject pathMarkerPrefab;
+    [SerializeField] private Color pathMarkerColor = Color.cyan;
+    
+    [Tooltip("Prefab used for per-tile path icons (Image/Sprite + Text child). If assigned, these prefabs will be pooled and used for each tile icon; preferred for numbered icons.)")]
+    [SerializeField] private GameObject pathTilePrefab;
+    
+    
+    [Header("Attack Hover")]
+    [Tooltip("Optional prefab to use as the attack-hover icon. If null, assign a Sprite to `attackHoverIcon` to create a simple SpriteRenderer at runtime.")]
+    [SerializeField] private GameObject attackHoverPrefab;
+    [Tooltip("Sprite used for the attack-hover indicator if no prefab is provided.")]
+    [SerializeField] private Sprite attackHoverIcon;
+    [Tooltip("Vertical offset above the unit to place the attack icon.")]
+    [SerializeField] private float attackHoverYOffset = 0.8f;
     
     // Currently selected unit - now uses BaseUnit as common type
     private BaseUnit selectedUnit; // Can be CombatUnit or WorkerUnit (both inherit from BaseUnit)
@@ -31,6 +49,25 @@ public class UnitSelectionManager : MonoBehaviour
     private int cachedHoveredTileIndex = -1;
     private Vector3 cachedHoveredWorldPos = Vector3.zero;
     private bool isHoveringTile = false;
+
+    // Path preview state
+    private bool isPreviewing = false;
+    private int previewTargetTile = -1;
+    private GameObject previewParent;
+    [Header("Debug & Safety")]
+    [Tooltip("Enable verbose preview/debug logs for selection and path preview (dev only)")]
+    [SerializeField] private bool previewDebug = true;
+    [Tooltip("Maximum number of per-tile preview icons to instantiate (safety cap)")]
+    [SerializeField] private int previewMaxIcons = 20;
+    private readonly System.Collections.Generic.List<GameObject> previewMarkers = new System.Collections.Generic.List<GameObject>();
+    private readonly System.Collections.Generic.List<TextMeshPro> previewMarkerLabels = new System.Collections.Generic.List<TextMeshPro>();
+    // Pooled per-tile prefab instances (used when `pathTilePrefab` is assigned)
+    private readonly System.Collections.Generic.List<GameObject> pooledPathTiles = new System.Collections.Generic.List<GameObject>();
+    
+
+    // Runtime attack hover instance (single pooled instance)
+    private GameObject attackHoverInstance;
+    private SpriteRenderer attackHoverSpriteRenderer;
 
     // Multi-planet: subscribe to the active planet's TileSystem events
     private TileSystem eventTileSystem;
@@ -133,6 +170,7 @@ public class UnitSelectionManager : MonoBehaviour
         cachedHoveredTileIndex = tileIndex;
         cachedHoveredWorldPos = worldPos;
         isHoveringTile = true;
+        UpdateAttackHover(tileIndex, worldPos);
     }
 
     private void OnTileExitedTileSystem()
@@ -140,6 +178,7 @@ public class UnitSelectionManager : MonoBehaviour
         cachedHoveredTileIndex = -1;
         cachedHoveredWorldPos = Vector3.zero;
         isHoveringTile = false;
+        ClearAttackHover();
     }
 
     private void OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
@@ -183,7 +222,12 @@ public class UnitSelectionManager : MonoBehaviour
         {
             var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
             var obj = occ != null ? occ.TryGetAnyOccupantObject(tileIndex) : null;
-            if (obj != null) return obj.GetComponent<BaseUnit>();
+            if (obj != null)
+            {
+                var bu = obj.GetComponent<BaseUnit>();
+                if (previewDebug) Debug.Log($"[USM] GetUnitOnTile({tileIndex}) found object={obj.name} baseUnit={(bu!=null)}");
+                return bu;
+            }
         }
         catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetUnitOnTile({tileIndex}) failed: {ex.Message}"); }
         return null;
@@ -202,10 +246,21 @@ public class UnitSelectionManager : MonoBehaviour
         if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Gameplay))
             return;
         
-        // Right click: Move selected unit
-        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+        // Right click: start/continue/commit path preview and move on release
+        if (Mouse.current != null)
         {
-            HandleRightClick();
+            if (Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                StartPathPreview();
+            }
+            else if (Mouse.current.rightButton.isPressed)
+            {
+                UpdatePathPreviewWhileDragging();
+            }
+            else if (Mouse.current.rightButton.wasReleasedThisFrame)
+            {
+                CommitOrCancelPathPreview();
+            }
         }
         
         // Left click on void (no tile hit): deselect the current unit.
@@ -247,23 +302,360 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleRightClick()
     {
-        if (selectedUnit == null)
+        // Deprecated: movement is now handled via preview lifecycle
+    }
+
+    private void StartPathPreview()
+    {
+        if (selectedUnit == null) return;
+        isPreviewing = true;
+        previewTargetTile = -1;
+        EnsurePreviewObjects();
+        UpdatePathPreviewWhileDragging();
+    }
+
+    private void UpdatePathPreviewWhileDragging()
+    {
+        if (!isPreviewing || selectedUnit == null) return;
+
+        int target = -1;
+        if (isHoveringTile && cachedHoveredTileIndex >= 0) target = cachedHoveredTileIndex;
+        else
         {
-return;
+            var hit = GetMouseHitInfo();
+            if (hit.hit) target = hit.tileIndex;
         }
-        // Prefer authoritative hovered tile info
-        if (isHoveringTile && cachedHoveredTileIndex >= 0)
+
+        if (target != previewTargetTile)
         {
-            MoveSelectedUnitToTile(cachedHoveredTileIndex);
+            previewTargetTile = target;
+            UpdatePreviewVisuals();
+        }
+    }
+
+    private void CommitOrCancelPathPreview()
+    {
+        if (!isPreviewing) return;
+        isPreviewing = false;
+
+        if (previewTargetTile >= 0)
+        {
+            MoveSelectedUnitToTile(previewTargetTile);
+        }
+
+        ClearPreviewVisuals();
+    }
+
+    private void EnsurePreviewObjects()
+    {
+        if (previewParent == null)
+        {
+            previewParent = new GameObject("PathPreview");
+            previewParent.transform.SetParent(transform);
+            previewParent.transform.localPosition = Vector3.zero;
+        }
+    }
+
+    private void UpdatePreviewVisuals()
+    {
+        // If no per-tile prefab is assigned, we can't preview (we no longer draw lines)
+        if (pathTilePrefab == null) return;
+
+        if (previewTargetTile < 0)
+        {
             return;
         }
 
-    // Fallback: perform a raycast using TileSystem's mask if available
-        var hitInfo = GetMouseHitInfo();
-        if (hitInfo.hit && hitInfo.tileIndex >= 0)
+        var umc = UnitMovementController.Instance;
+        if (umc == null)
         {
-            MoveSelectedUnitToTile(hitInfo.tileIndex);
+            return;
         }
+        int start = selectedUnit.currentTileIndex;
+        var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null)
+        {
+            previewLine.positionCount = 0;
+            return;
+        }
+
+        // Use the movement controller's per-turn segmentation API to get turn breakpoints
+        var segments = umc.GetPathSegmentsByTurn(selectedUnit, start, previewTargetTile);
+        if (segments == null || segments.Count == 0)
+        {
+            previewLine.positionCount = 0;
+            return;
+        }
+
+        // Build a per-tile list of world positions (one icon per tile along the path).
+        // Also build a parallel list `breakpointNumbers` where 0 = not a turn breakpoint,
+        // and >0 = turn index to display inside the icon.
+        var positions = new System.Collections.Generic.List<Vector3>();
+        var breakpointNumbers = new System.Collections.Generic.List<int>();
+        for (int s = 0; s < segments.Count; s++)
+        {
+            var seg = segments[s];
+            for (int i = 0; i < seg.Count; i++)
+            {
+                int tile = seg[i];
+                Vector3 pos = ts.GetTileSurfacePosition(tile) + Vector3.up * 0.2f;
+                positions.Add(pos);
+                // If this is the last tile in the segment, mark it as a breakpoint and store the turn number (1-based)
+                bool isBreakpoint = (i == seg.Count - 1);
+                breakpointNumbers.Add(isBreakpoint ? (s + 1) : 0);
+            }
+        }
+
+        // Debug and safety: log counts and cap excessive previews to avoid memory spikes
+        if (previewDebug) Debug.Log($"[USM] UpdatePreviewVisuals segments={segments.Count} positions={positions.Count} pooled={pooledPathTiles.Count}");
+        if (positions.Count > previewMaxIcons)
+        {
+            Debug.LogWarning($"[USM] Preview positions ({positions.Count}) exceed previewMaxIcons ({previewMaxIcons}) - truncating to cap.");
+            positions.RemoveRange(previewMaxIcons, positions.Count - previewMaxIcons);
+            breakpointNumbers.RemoveRange(previewMaxIcons, breakpointNumbers.Count - previewMaxIcons);
+        }
+
+        // Quick sampling to check whether spawned icons are above the actual mesh surface
+        if (previewDebug && positions.Count > 0)
+        {
+            int samples = Mathf.Min(5, positions.Count);
+            for (int si = 0; si < samples; si++)
+            {
+                Vector3 testPos = positions[si] + Vector3.up * 2f;
+                if (Physics.Raycast(testPos, Vector3.down, out var hit, 5f))
+                {
+                    float delta = positions[si].y - hit.point.y;
+                    Debug.Log($"[USM] Preview sample {si}: posY={positions[si].y:F3} surfaceY={hit.point.y:F3} delta={delta:F3}");
+                    if (delta < -0.05f || delta > 1.5f)
+                        Debug.LogWarning($"[USM] Preview sample {si} seems far from surface (delta={delta:F3})");
+                }
+            }
+        }
+
+        // Render preview: use pooled per-tile prefabs only (no lines)
+        if (pathTilePrefab != null)
+        {
+            // Ensure pool size
+            for (int i = pooledPathTiles.Count; i < positions.Count; i++)
+            {
+                var p = Instantiate(pathTilePrefab, previewParent.transform);
+                p.name = $"PathTile_{pooledPathTiles.Count}";
+                p.SetActive(false);
+                pooledPathTiles.Add(p);
+            }
+
+            // Position pooled prefabs and ensure label (if any) is hidden
+            for (int i = 0; i < pooledPathTiles.Count; i++)
+            {
+                var go = pooledPathTiles[i];
+                if (i < positions.Count)
+                {
+                    go.SetActive(true);
+                    go.transform.position = positions[i];
+                    go.transform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
+                    var tmp = go.GetComponentInChildren<TextMeshPro>();
+                    if (tmp != null)
+                    {
+                        tmp.text = "";
+                        tmp.gameObject.SetActive(false);
+                    }
+                }
+                else
+                {
+                    go.SetActive(false);
+                }
+            }
+        }
+        
+
+        // Place per-turn markers at the last tile of each segment
+        for (int m = 0; m < segments.Count; m++)
+        {
+            var seg = segments[m];
+            if (seg == null || seg.Count == 0) continue;
+            int markerTile = seg[seg.Count - 1];
+            Vector3 mpos = ts.GetTileSurfacePosition(markerTile) + Vector3.up * 0.25f;
+            GameObject marker = GetOrCreateMarker(m);
+            marker.transform.position = mpos;
+            marker.SetActive(true);
+            if (m < previewMarkerLabels.Count && previewMarkerLabels[m] != null)
+            {
+                var lbl = previewMarkerLabels[m];
+                lbl.text = (m + 1).ToString();
+                lbl.gameObject.SetActive(true);
+            }
+        }
+    }
+
+    private GameObject GetOrCreateMarker(int idx)
+    {
+        if (idx < previewMarkers.Count)
+        {
+            return previewMarkers[idx];
+        }
+
+        GameObject go;
+        if (pathMarkerPrefab != null)
+        {
+            go = Instantiate(pathMarkerPrefab, previewParent.transform);
+        }
+        else if (pathTilePrefab != null)
+        {
+            // Prefer tile prefab when marker prefab is not provided so the label sits inside the icon
+            go = Instantiate(pathTilePrefab, previewParent.transform);
+        }
+        else
+        {
+            go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            var c = go.GetComponent<Collider>(); if (c != null) Destroy(c);
+            var rend = go.GetComponent<Renderer>();
+            if (rend != null)
+            {
+                var mat = new Material(Shader.Find("Unlit/Color"));
+                mat.SetColor("_Color", pathMarkerColor);
+                rend.material = mat;
+            }
+        }
+
+        if (string.IsNullOrEmpty(go.name)) go.name = $"PathMarker_{previewMarkers.Count}";
+        go.transform.SetParent(previewParent.transform);
+        // Make markers larger so the icon is clearly visible
+        go.transform.localScale = Vector3.one * 0.6f;
+
+        // Prefer using a label baked into the prefab. Do NOT auto-create labels
+        // so that numbering only appears when the prefab provides a text child.
+        TextMeshPro label = go.GetComponentInChildren<TextMeshPro>();
+        if (label == null)
+        {
+            if (previewDebug) Debug.LogWarning($"[USM] Marker prefab lacks TextMeshPro child — numeric labels will be skipped for marker {go.name}");
+        }
+        else
+        {
+            // If a label exists (from a prefab), make sure it's centered and ordered
+            label.transform.localPosition = Vector3.zero;
+            var lblRenderer = label.GetComponent<MeshRenderer>();
+            if (lblRenderer != null) lblRenderer.sortingOrder = 1002;
+            label.gameObject.SetActive(false);
+        }
+
+        previewMarkers.Add(go);
+        previewMarkerLabels.Add(label); // may be null when prefab doesn't provide one
+        go.SetActive(false);
+        return go;
+    }
+
+    private void ClearPreviewVisuals()
+    {
+        // previewLineDots was removed during declutter; ensure pooled tiles are hidden instead
+        foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
+        foreach (var m in previewMarkers) if (m != null) m.SetActive(false);
+        foreach (var lbl in previewMarkerLabels) if (lbl != null) lbl.gameObject.SetActive(false);
+        previewTargetTile = -1;
+    }
+
+    // -------------------------
+    // Attack hover indicator
+    // -------------------------
+    private void EnsureAttackHover()
+    {
+        if (attackHoverInstance != null) return;
+
+        if (attackHoverPrefab != null)
+        {
+            attackHoverInstance = Instantiate(attackHoverPrefab, transform);
+            attackHoverSpriteRenderer = attackHoverInstance.GetComponentInChildren<SpriteRenderer>();
+        }
+        else
+        {
+            attackHoverInstance = new GameObject("AttackHover");
+            attackHoverInstance.transform.SetParent(transform);
+            attackHoverSpriteRenderer = attackHoverInstance.AddComponent<SpriteRenderer>();
+            if (attackHoverIcon != null)
+            {
+                attackHoverSpriteRenderer.sprite = attackHoverIcon;
+            }
+            // Use an unlit transparent shader when available
+            var shader = Shader.Find("Unlit/Transparent");
+            if (shader != null)
+            {
+                var mat = new Material(shader);
+                attackHoverSpriteRenderer.material = mat;
+            }
+            attackHoverInstance.transform.localScale = Vector3.one * 0.4f;
+        }
+
+        attackHoverInstance.SetActive(false);
+    }
+
+    private void UpdateAttackHover(int tileIndex, Vector3 worldPos)
+    {
+        BaseUnit hovered = null;
+        if (tileIndex >= 0) hovered = GetUnitOnTile(tileIndex);
+        if (hovered == null) hovered = GetUnitAtPosition(worldPos);
+
+        if (hovered == null) { ClearAttackHover(); return; }
+
+        // Show the icon if ANY of the player's units can attack this hovered unit
+        if (!CanPlayerAttack(hovered)) { ClearAttackHover(); return; }
+
+        EnsureAttackHover();
+        if (attackHoverInstance == null) return;
+
+        attackHoverInstance.SetActive(true);
+        attackHoverInstance.transform.position = hovered.transform.position + Vector3.up * attackHoverYOffset;
+
+        // If prefab provided and it uses a SpriteRenderer child, try to set sprite as override
+        if (attackHoverSpriteRenderer != null && attackHoverIcon != null && attackHoverSpriteRenderer.sprite == null)
+        {
+            attackHoverSpriteRenderer.sprite = attackHoverIcon;
+        }
+    }
+
+    private void ClearAttackHover()
+    {
+        if (attackHoverInstance != null)
+        {
+            attackHoverInstance.SetActive(false);
+        }
+    }
+
+    private bool CanSelectedUnitAttack(BaseUnit target)
+    {
+        if (selectedUnit == null || target == null) return false;
+        if (selectedUnit is CombatUnit attackerCombat)
+        {
+            if (target is CombatUnit targetCombat) return attackerCombat.CanAttack(targetCombat);
+            if (target is WorkerUnit targetWorker) return attackerCombat.CanAttack(targetWorker);
+        }
+        else if (selectedUnit is WorkerUnit attackerWorker)
+        {
+            return attackerWorker.CanAttack(target);
+        }
+        return false;
+    }
+
+    private bool CanPlayerAttack(BaseUnit target)
+    {
+        if (target == null) return false;
+        var civMgr = CivilizationManager.Instance;
+        if (civMgr == null || civMgr.playerCiv == null) return false;
+
+        // Check all player's combat units
+        foreach (var cu in UnitRegistry.GetCombatUnits())
+        {
+            if (cu == null || cu.owner != civMgr.playerCiv) continue;
+            if (target is CombatUnit tc && cu.CanAttack(tc)) return true;
+            if (target is WorkerUnit tw && cu.CanAttack(tw)) return true;
+        }
+
+        // Check player's workers (if they can attack)
+        foreach (var wu in UnitRegistry.GetWorkerUnits())
+        {
+            if (wu == null || wu.owner != civMgr.playerCiv) continue;
+            if (wu.CanAttack(target)) return true;
+        }
+
+        return false;
     }
     
     /// <summary>
@@ -297,7 +689,10 @@ return;
             // Try to get BaseUnit (covers both CombatUnit and WorkerUnit)
             var baseUnit = collider.GetComponentInParent<BaseUnit>();
             if (baseUnit != null)
+            {
+                if (previewDebug) Debug.Log($"[USM] GetUnitAtPosition hit collider={collider.name} unit={baseUnit.name}");
                 return baseUnit;
+            }
         }
         
         // Also check orbit height for orbit-layer units
@@ -308,7 +703,10 @@ return;
         {
             var baseUnit = collider.GetComponentInParent<BaseUnit>();
             if (baseUnit != null && baseUnit.currentLayer == TileLayer.Orbit)
+            {
+                if (previewDebug) Debug.Log($"[USM] GetUnitAtPosition orbit hit collider={collider.name} unit={baseUnit.name}");
                 return baseUnit;
+            }
         }
         
         return null;
@@ -340,6 +738,7 @@ return;
         {
             UIManager.Instance.ShowUnitInfoPanelForUnit(unit);
         }
+        if (previewDebug) Debug.Log($"[USM] SelectUnit -> {unit.name} (tile {unit.currentTileIndex})");
 }
     
     /// <summary>
@@ -349,7 +748,8 @@ return;
     {
         if (selectedUnit == null)
             return;
-selectedUnit = null;
+        if (previewDebug) Debug.Log($"[USM] DeselectUnit -> {selectedUnit.name}");
+        selectedUnit = null;
 
         // Remove visual indicator
         if (selectionIndicator != null)
@@ -361,6 +761,9 @@ selectedUnit = null;
         // Hide the unit info panel when nothing is selected
         if (UIManager.Instance != null)
             UIManager.Instance.HideUnitInfoPanel();
+
+        // Clear any attack hover indicator
+        ClearAttackHover();
     }
     
     /// <summary>

@@ -29,6 +29,8 @@ public class BiomeSeasonResponse
 
 public class ClimateManager : MonoBehaviour
 {
+    [Header("Biome Visual Database")]
+    public BiomeVisualDatabase biomeVisualDatabase;
     public static ClimateManager Instance { get; private set; }
     public static event Action<int, Season> OnPlanetSeasonChanged;
 
@@ -44,9 +46,11 @@ public class ClimateManager : MonoBehaviour
     public List<SeasonalTextureEntry> seasonalTextures = new List<SeasonalTextureEntry>();
     private Dictionary<Biome, Dictionary<Season, (Texture2D albedo, Texture2D normal)>> seasonalTextureLookup = new();
 
-    [Header("Biome Seasonal Responses")]
-    public List<BiomeSeasonResponse> biomeSeasonResponses = new List<BiomeSeasonResponse>();
     private Dictionary<(Biome, Season), BiomeSeasonResponse> seasonResponseLookup = new();
+
+    // Per-tile precomputed season responses (cached for performance).
+    // Index: tileIndex -> array of 4 BiomeSeasonResponse (indexed by (int)season)
+    private Dictionary<int, BiomeSeasonResponse[]> tileSeasonCache = new();
 
     [Header("Multi-Planet Support")]
     [Tooltip("This global ClimateManager handles climate for all planets in the solar system")]
@@ -83,7 +87,7 @@ public class ClimateManager : MonoBehaviour
         }
 
         BuildSeasonalTextureLookup();
-        BuildSeasonResponseLookup();
+        AutoPopulateBiomeSeasonResponses();
         
         // Initialize climate data for all planets (multi-planet is always used)
         if (isGlobalClimateManager)
@@ -95,7 +99,63 @@ public class ClimateManager : MonoBehaviour
     private void OnValidate()
     {
         BuildSeasonalTextureLookup();
-        BuildSeasonResponseLookup();
+        AutoPopulateBiomeSeasonResponses();
+    }
+
+    /// <summary>
+    /// Auto-populate seasonResponseLookup from BiomeVisualDatabase's BiomeVisualData assets.
+    /// </summary>
+    private void AutoPopulateBiomeSeasonResponses()
+    {
+        seasonResponseLookup.Clear();
+        if (biomeVisualDatabase == null || biomeVisualDatabase.biomes == null)
+        {
+            Debug.LogWarning("[ClimateManager] No BiomeVisualDatabase assigned or it is empty.");
+            return;
+        }
+
+        int added = 0;
+        foreach (var biomeData in biomeVisualDatabase.biomes)
+        {
+            if (biomeData == null) continue;
+            foreach (Season season in Enum.GetValues(typeof(Season)))
+            {
+                var resp = new BiomeSeasonResponse();
+                resp.biome = biomeData.biome;
+                resp.season = season;
+                resp.yieldMultiplier = 1f;
+                switch (season)
+                {
+                    case Season.Spring:
+                        resp.snow = biomeData.springResponse.snow;
+                        resp.wet = biomeData.springResponse.wet;
+                        resp.dry = biomeData.springResponse.dry;
+                        resp.tint = biomeData.springResponse.tint;
+                        break;
+                    case Season.Summer:
+                        resp.snow = biomeData.summerResponse.snow;
+                        resp.wet = biomeData.summerResponse.wet;
+                        resp.dry = biomeData.summerResponse.dry;
+                        resp.tint = biomeData.summerResponse.tint;
+                        break;
+                    case Season.Autumn:
+                        resp.snow = biomeData.autumnResponse.snow;
+                        resp.wet = biomeData.autumnResponse.wet;
+                        resp.dry = biomeData.autumnResponse.dry;
+                        resp.tint = biomeData.autumnResponse.tint;
+                        break;
+                    case Season.Winter:
+                        resp.snow = biomeData.winterResponse.snow;
+                        resp.wet = biomeData.winterResponse.wet;
+                        resp.dry = biomeData.winterResponse.dry;
+                        resp.tint = biomeData.winterResponse.tint;
+                        break;
+                }
+                seasonResponseLookup[(resp.biome, resp.season)] = resp;
+                added++;
+            }
+        }
+        Debug.Log($"[ClimateManager] Auto-populated {added} biome/season responses from BiomeVisualDatabase into lookup.");
     }
 
     void Start()
@@ -219,11 +279,22 @@ planetSeasons.Clear();
 
     private void ApplySeasonalEffects(Season season, int planetIndex = 0)
     {
-OnSeasonChanged?.Invoke(season);
+        Debug.Log($"[ClimateManager] Applying seasonal effects: {season} on planet {planetIndex}");
+        OnSeasonChanged?.Invoke(season);
         OnPlanetSeasonChanged?.Invoke(planetIndex, season);
+
+        // Log snow values for all biomes for this season from lookup
+        foreach (var resp in seasonResponseLookup.Values)
+        {
+            if (resp.season == season)
+            {
+                Debug.Log($"[ClimateManager] Biome {resp.biome} - Snow: {resp.snow}, Wet: {resp.wet}, Dry: {resp.dry}, Tint: {resp.tint}");
+            }
+        }
 
         if (season == Season.Winter)
         {
+            Debug.Log("[ClimateManager] Winter detected, applying snow effects.");
             ApplyWinterMovementPenalty(planetIndex);
             if (enableWinterAttrition)
             {
@@ -332,6 +403,74 @@ OnSeasonChanged?.Invoke(season);
     }
 
     /// <summary>
+    /// Returns a precomputed season response for a specific tile index if available.
+    /// Falls back to biome-based lookup when cache is not present.
+    /// </summary>
+    public BiomeSeasonResponse GetSeasonResponseForTile(int tileIndex, Season season)
+    {
+        if (tileSeasonCache != null && tileSeasonCache.TryGetValue(tileIndex, out var arr) && arr != null)
+        {
+            int idx = (int)season;
+            if (idx >= 0 && idx < arr.Length && arr[idx] != null) return arr[idx];
+        }
+
+        // Fallback: try to find tile biome and return biome-based response
+        var gen = planet ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (gen != null && gen.data != null && gen.data.TryGetValue(tileIndex, out var tile))
+        {
+            return GetSeasonResponse(tile.biome, season);
+        }
+
+        // Last resort: return empty response with default biome
+        return new BiomeSeasonResponse { biome = default(Biome), season = season };
+    }
+
+    /// <summary>
+    /// Precompute per-tile BiomeSeasonResponse arrays for the given planet generator.
+    /// Stores results in `tileSeasonCache` to accelerate chunk mask generation.
+    /// </summary>
+    public void PrecomputeTileSeasonCacheForPlanet(PlanetGenerator generator)
+    {
+        if (generator == null || generator.data == null) return;
+        tileSeasonCache.Clear();
+
+        var seasons = System.Enum.GetValues(typeof(Season));
+        foreach (var kv in generator.data)
+        {
+            int tileIndex = kv.Key;
+            var tile = kv.Value;
+            try
+            {
+                BiomeSeasonResponse[] arr = new BiomeSeasonResponse[System.Enum.GetValues(typeof(Season)).Length];
+                foreach (Season s in seasons)
+                {
+                    if (seasonResponseLookup.TryGetValue((tile.biome, s), out var resp) && resp != null)
+                    {
+                        // Clone to avoid shared mutation
+                        var clone = new BiomeSeasonResponse();
+                        clone.biome = resp.biome;
+                        clone.season = resp.season;
+                        clone.yieldMultiplier = resp.yieldMultiplier;
+                        clone.snow = resp.snow;
+                        clone.wet = resp.wet;
+                        clone.dry = resp.dry;
+                        clone.tint = resp.tint;
+                        arr[(int)s] = clone;
+                    }
+                    else
+                    {
+                        arr[(int)s] = new BiomeSeasonResponse { biome = tile.biome, season = s };
+                    }
+                }
+                tileSeasonCache[tileIndex] = arr;
+            }
+            catch { /* ignore per-tile failures */ }
+        }
+
+        Debug.Log($"[ClimateManager] Precomputed season responses for {tileSeasonCache.Count} tiles.");
+    }
+
+    /// <summary>
     /// Get the current season for a specific planet
     /// </summary>
     public Season GetSeasonForPlanet(int planetIndex = 0)
@@ -406,15 +545,7 @@ OnSeasonChanged?.Invoke(season);
         }
     }
 
-    private void BuildSeasonResponseLookup()
-    {
-        seasonResponseLookup.Clear();
-        foreach (var response in biomeSeasonResponses)
-        {
-            if (response == null) continue;
-            seasonResponseLookup[(response.biome, response.season)] = response;
-        }
-    }
+    
 
     private void UpdateReferences()
     {
@@ -438,6 +569,16 @@ OnSeasonChanged?.Invoke(season);
         {
             planetSeasons[generator.planetIndex] = Season.Spring;
             planetSeasonStartTurns[generator.planetIndex] = currentTurn;
+        }
+
+        // Precompute per-tile season responses for this planet to avoid repeated biome lookups during chunk updates
+        try
+        {
+            PrecomputeTileSeasonCacheForPlanet(generator);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ClimateManager] PrecomputeTileSeasonCacheForPlanet failed: {ex.Message}");
         }
 
         ApplySeasonalEffects(GetSeasonForPlanet(generator.planetIndex), generator.planetIndex);

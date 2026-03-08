@@ -63,8 +63,6 @@ public class MenuPlanetPreview : MonoBehaviour
     [Range(0f, 0.15f)] [SerializeField] private float displacementScale = 0.035f;
 
     [Header("Clouds")]
-    [Tooltip("Cloud layer rotation speed (deg/s). Negative = opposite direction to planet.")]
-    [SerializeField] private float cloudRotationSpeed = -3f;
     [Tooltip("Cloud altitude above planet surface.")]
     [Range(0f, 0.1f)] [SerializeField] private float cloudAltitude = 0.018f;
     [Tooltip("Cloud coverage density.")]

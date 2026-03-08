@@ -313,6 +313,88 @@ public class Civilization : MonoBehaviour
     /// Returns true if this civ may found/own another city given the cap.
     /// </summary>
     public bool CanFoundMoreCities() => cities == null || cities.Count < CurrentCityCap;
+
+    public int GetCityCapBonusForSave() => cityCapFromBonuses;
+
+    public void RestoreProgressionState(
+        List<TechData> restoredTechs,
+        TechData restoredCurrentTech,
+        float restoredCurrentTechProgress,
+        List<CultureData> restoredCultures,
+        CultureData restoredCurrentCulture,
+        float restoredCurrentCultureProgress,
+        bool restoredTradeEnabled,
+        bool restoredGovernorsEnabled,
+        int restoredGovernorCount,
+        int restoredCityCapFromBonuses,
+        int restoredPantheonCapFromBonuses,
+        float restoredAttackBonus,
+        float restoredDefenseBonus,
+        float restoredMovementBonus,
+        float restoredFoodModifier,
+        float restoredProductionModifier,
+        float restoredGoldModifier,
+        float restoredScienceModifier,
+        float restoredCultureModifier,
+        float restoredFaithModifier,
+        List<GovernorTrait> restoredUnlockedGovernorTraits,
+        List<PantheonData> restoredPantheons,
+        List<BeliefData> restoredBeliefs)
+    {
+        researchedTechs = restoredTechs ?? new List<TechData>();
+        currentTech = restoredCurrentTech;
+        currentTechProgress = restoredCurrentTechProgress;
+
+        researchedCultures = restoredCultures ?? new List<CultureData>();
+        currentCulture = restoredCurrentCulture;
+        currentCultureProgress = restoredCurrentCultureProgress;
+
+        tradeEnabled = restoredTradeEnabled;
+        governorsEnabled = restoredGovernorsEnabled;
+        governorCount = restoredGovernorCount;
+        cityCapFromBonuses = restoredCityCapFromBonuses;
+        pantheonCapFromBonuses = restoredPantheonCapFromBonuses;
+
+        attackBonus = restoredAttackBonus;
+        defenseBonus = restoredDefenseBonus;
+        movementBonus = restoredMovementBonus;
+        foodModifier = restoredFoodModifier;
+        productionModifier = restoredProductionModifier;
+        goldModifier = restoredGoldModifier;
+        scienceModifier = restoredScienceModifier;
+        cultureModifier = restoredCultureModifier;
+        faithModifier = restoredFaithModifier;
+
+        unlockedGovernorTraits = restoredUnlockedGovernorTraits ?? new List<GovernorTrait>();
+        cultureUnlockedPantheons = restoredPantheons ?? new List<PantheonData>();
+        cultureUnlockedBeliefs = restoredBeliefs ?? new List<BeliefData>();
+
+        InvalidateAvailabilityCache();
+        UpdateCityModelsForNewAge();
+
+        try
+        {
+            if (combatUnits != null)
+                foreach (var u in combatUnits)
+                    if (u != null) u.OnCivBonusesChanged();
+            if (workerUnits != null)
+                foreach (var w in workerUnits)
+                    if (w != null) w.OnCivBonusesChanged();
+            if (cities != null)
+                foreach (var c in cities)
+                    if (c != null)
+                    {
+                        c.RefreshGovernorBonuses();
+                        c.UpdateAvailableBuildings();
+                    }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Civilization] RestoreProgressionState refresh threw: {ex}");
+        }
+
+        OnUnlocksChanged?.Invoke();
+    }
     
 
     // Increase the number of governors this civ can create
@@ -387,6 +469,12 @@ public class Civilization : MonoBehaviour
         // Seed starting techs
         if (civData.startingTechs != null)
             researchedTechs.AddRange(civData.startingTechs);
+
+        // Seed starting cultures. Fallback to legacy cultureBonuses data so older civ assets still work.
+        if (civData.startingCultures != null)
+            researchedCultures.AddRange(civData.startingCultures);
+        else if (civData.cultureBonuses != null)
+            researchedCultures.AddRange(civData.cultureBonuses);
 
         // Seed starting policies
         if (civData.startingPolicies != null)
@@ -916,12 +1004,25 @@ OnTechStarted?.Invoke(tech); // Fire event for UI
         if (currentCulture != null) return false;
         if (researchedCultures.Contains(cult)) return false;
         // if (culture <= 0) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Culture output is <= 0."); return false; }
+        if (cult.requiredTechnologies != null)
+        {
+            foreach (var req in cult.requiredTechnologies)
+            {
+                if (req != null && !researchedTechs.Contains(req)) return false;
+            }
+        }
         foreach (var req in cult.requiredCultures)
         {
             if (!researchedCultures.Contains(req)) return false;
         }
         if (cities.Count < cult.requiredCityCount) return false;
-        // Add biome check if needed
+        if (cult.requiredControlledBiomes != null)
+        {
+            foreach (var biome in cult.requiredControlledBiomes)
+            {
+                if (!HasControlledBiome(biome)) return false;
+            }
+        }
         return true;
     }
 

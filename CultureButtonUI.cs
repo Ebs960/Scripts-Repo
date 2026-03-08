@@ -14,6 +14,7 @@ public class CultureButtonUI : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private TextMeshProUGUI cultureNameText;
     [SerializeField] private Image backgroundImage;
+    [SerializeField] private Image iconImage;
 
     [Header("Colors")]
     [SerializeField] private Color researchedColor = Color.green;
@@ -34,26 +35,57 @@ public class CultureButtonUI : MonoBehaviour
         RepresentedCulture = culture;
         cultureUI = ownerUI;
 
+        if (cultureNameText == null)
+            cultureNameText = GetComponentInChildren<TextMeshProUGUI>();
+        if (backgroundImage == null)
+            backgroundImage = GetComponent<Image>();
+        if (iconImage == null)
+        {
+            var images = GetComponentsInChildren<Image>(true);
+            foreach (var img in images)
+            {
+                if (img.gameObject.name.ToLower().Contains("icon"))
+                {
+                    iconImage = img;
+                    break;
+                }
+            }
+        }
+
         if (cultureNameText != null)
             cultureNameText.text = culture.cultureName;
+        if (iconImage != null)
+            iconImage.sprite = culture.cultureIcon;
 
         button = GetComponent<Button>();
         if (button != null)
         {
+            if (backgroundImage != null)
+                button.targetGraphic = backgroundImage;
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => cultureUI.SelectCulture(RepresentedCulture));
         }
+
+        RefreshButtonColorBlock();
+        RefreshColor();
     }
 
     public void SetState(CultureState state)
     {
         currentState = state;
+        if (button == null) button = GetComponent<Button>();
+        if (button != null)
+        {
+            button.interactable = (state != CultureState.Researched);
+        }
+        RefreshButtonColorBlock();
         RefreshColor();
     }
 
     public void SetSelected(bool selected)
     {
         isSelected = selected;
+        RefreshButtonColorBlock();
         RefreshColor();
     }
 
@@ -79,6 +111,48 @@ public class CultureButtonUI : MonoBehaviour
             case CultureState.Locked:
                 backgroundImage.color = lockedColor;
                 break;
+        }
+    }
+
+    private void RefreshButtonColorBlock()
+    {
+        if (button == null) return;
+
+        Color baseColor = GetDisplayColorForCurrentState();
+        Color hoverColor = currentState == CultureState.Locked || isSelected
+            ? baseColor
+            : Color.Lerp(baseColor, Color.white, 0.18f);
+        Color pressedColor = currentState == CultureState.Locked || isSelected
+            ? baseColor
+            : Color.Lerp(baseColor, Color.black, 0.12f);
+
+        ColorBlock colors = button.colors;
+        colors.colorMultiplier = 1f;
+        colors.fadeDuration = 0.08f;
+        colors.normalColor = baseColor;
+        colors.highlightedColor = hoverColor;
+        colors.selectedColor = baseColor;
+        colors.pressedColor = pressedColor;
+        colors.disabledColor = baseColor;
+        button.colors = colors;
+    }
+
+    private Color GetDisplayColorForCurrentState()
+    {
+        if (isSelected)
+            return selectedColor;
+
+        switch (currentState)
+        {
+            case CultureState.Researched:
+                return researchedColor;
+            case CultureState.Researching:
+                return researchingColor;
+            case CultureState.Available:
+                return availableColor;
+            case CultureState.Locked:
+            default:
+                return lockedColor;
         }
     }
 } 

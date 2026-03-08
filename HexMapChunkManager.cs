@@ -4100,7 +4100,7 @@ public class HexMapChunkManager : MonoBehaviour
     private void HandlePlanetSeasonChanged(int planetIndex, Season season)
     {
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
-        UpdateSeasonMasksForSeason(season);
+        UpdateSeasonMasksBatched(season, chunksPerBatch);
     }
 
     private void UpdateSeasonMasksForCurrentSeason()
@@ -4112,7 +4112,7 @@ public class HexMapChunkManager : MonoBehaviour
             : ClimateManager.Instance;
         if (climateManager == null) return;
 
-        UpdateSeasonMasksForSeason(climateManager.GetSeasonForPlanet(planetGenerator.planetIndex));
+        UpdateSeasonMasksBatched(climateManager.GetSeasonForPlanet(planetGenerator.planetIndex), chunksPerBatch);
     }
 
     private void UpdateSeasonMasksForSeason(Season season)
@@ -4149,6 +4149,66 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         UpdateGhostSeasonMasks();
+    }
+
+    // Batched coroutine for updating season masks to avoid frame spikes.
+    private Coroutine _seasonMaskCoroutine = null;
+
+    public void UpdateSeasonMasksBatched(Season season, int chunksPerFrame = 2)
+    {
+        if (!enableSeasonMasks) return;
+        if (planetGenerator == null || chunks == null || bakeResult.lut == null) return;
+
+        if (_seasonMaskCoroutine != null)
+        {
+            StopCoroutine(_seasonMaskCoroutine);
+            _seasonMaskCoroutine = null;
+        }
+        _seasonMaskCoroutine = StartCoroutine(UpdateSeasonMasksForSeasonCoroutine(season, chunksPerFrame));
+    }
+
+    private System.Collections.IEnumerator UpdateSeasonMasksForSeasonCoroutine(Season season, int chunksPerFrame)
+    {
+        if (chunks == null) yield break;
+        if (chunksPerFrame <= 0) chunksPerFrame = 1;
+
+        int lutWidth = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutHeight = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
+        var climateManager = GameManager.Instance != null
+            ? GameManager.Instance.GetClimateManager(planetGenerator.planetIndex)
+            : ClimateManager.Instance;
+        if (climateManager == null) yield break;
+
+        int processed = 0;
+        for (int x = 0; x < chunksX; x++)
+        {
+            for (int z = 0; z < chunksZ; z++)
+            {
+                var chunk = chunks[x, z];
+                if (chunk == null) continue;
+
+                chunk.UpdateSeasonMask(
+                    lutWidth,
+                    lutHeight,
+                    seasonMaskWidth,
+                    seasonMaskHeight,
+                    bakeResult.lut,
+                    planetGenerator,
+                    climateManager,
+                    season);
+
+                processed++;
+                if (processed >= chunksPerFrame)
+                {
+                    processed = 0;
+                    yield return null;
+                }
+            }
+        }
+
+        UpdateGhostSeasonMasks();
+        _seasonMaskCoroutine = null;
     }
     
     /// <summary>

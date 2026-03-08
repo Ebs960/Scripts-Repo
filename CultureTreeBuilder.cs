@@ -1063,7 +1063,7 @@ foreach (var levelPair in levels.OrderBy(kvp => kvp.Value))
         {
             layout.culturePositions.Add(new CulturePosition
             {
-                cultureName = pair.Key.cultureName,
+                cultureName = pair.Key.name,
                 position = pair.Value.GetPosition()
             });
         }
@@ -1077,9 +1077,17 @@ foreach (var levelPair in levels.OrderBy(kvp => kvp.Value))
         
         if (layout?.culturePositions == null) return;
         
+        var cultureByAssetName = new Dictionary<string, CultureData>(System.StringComparer.OrdinalIgnoreCase);
+        foreach (var kvp in cultureByName)
+        {
+            if (kvp.Value != null && !string.IsNullOrWhiteSpace(kvp.Value.name))
+                cultureByAssetName[kvp.Value.name] = kvp.Value;
+        }
+
         foreach (var culturePos in layout.culturePositions)
         {
-            if (cultureByName.TryGetValue(culturePos.cultureName, out CultureData culture))
+            if (cultureByAssetName.TryGetValue(culturePos.cultureName, out CultureData culture) ||
+                cultureByName.TryGetValue(culturePos.cultureName, out culture))
             {
                 AddCultureToBuilder(culture, culturePos.position);
             }

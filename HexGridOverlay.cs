@@ -115,7 +115,6 @@ public class HexGridOverlay : MonoBehaviour
     }
     
     // Debug: track whether we've logged the "first frame" info yet
-    private bool _loggedFirstUpdate = false;
     private int _updateCallCount = 0;
     
     void Update()
@@ -175,7 +174,7 @@ public class HexGridOverlay : MonoBehaviour
         if (visible)
         {
             _loggedFirstGridUpdate = false;
-            _loggedFirstUpdate = false;
+            _loggedFirstGridUpdate = false;
         }
         _lastShowGridState = showGrid;
     }
@@ -279,7 +278,7 @@ public class HexGridOverlay : MonoBehaviour
         {
             // Reset logging flags so first-update diagnostics run again when grid becomes available
             _loggedFirstGridUpdate = false;
-            _loggedFirstUpdate = false;
+            _loggedFirstGridUpdate = false;
         }
     }
     

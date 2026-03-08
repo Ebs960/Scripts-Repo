@@ -48,6 +48,9 @@ public class SpaceLoadingPanelController : MonoBehaviour
     private bool isLoading = false;
     private float currentProgress = 0f;
     private string currentStatus = "";
+    // Minimum display duration for the loading screen (seconds)
+    [SerializeField] private float minLoadingDuration = 10f;
+    private float showStartTime = -999f;
     
     // Video management
     private VideoClip currentVideoClip;
@@ -153,6 +156,7 @@ public class SpaceLoadingPanelController : MonoBehaviour
             spaceLoadingPanel.SetActive(true);
 
         isLoading = true;
+        showStartTime = Time.time;
         currentProgress = 0f;
         currentStatus = initialStatus;
 
@@ -177,6 +181,15 @@ public class SpaceLoadingPanelController : MonoBehaviour
     /// </summary>
     public void HideSpaceLoading()
     {
+        // Enforce a minimum display duration so the player sees the loading experience.
+        float elapsed = Time.time - showStartTime;
+        if (elapsed < minLoadingDuration)
+        {
+            float wait = minLoadingDuration - elapsed;
+            StartCoroutine(DelayedHide(wait));
+            return;
+        }
+
         if (spaceLoadingPanel != null)
             spaceLoadingPanel.SetActive(false);
 
@@ -194,6 +207,25 @@ public class SpaceLoadingPanelController : MonoBehaviour
         if (spaceAudioSource != null && spaceAudioSource.isPlaying)
             spaceAudioSource.Stop();
 }
+
+    private System.Collections.IEnumerator DelayedHide(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        // After waiting, perform the hide actions
+        if (spaceLoadingPanel != null)
+            spaceLoadingPanel.SetActive(false);
+
+        isLoading = false;
+
+        if (videoPlayer != null && videoPlayer.isPlaying)
+            videoPlayer.Stop();
+
+        if (spaceshipManager != null)
+            spaceshipManager.ClearDisplay();
+
+        if (spaceAudioSource != null && spaceAudioSource.isPlaying)
+            spaceAudioSource.Stop();
+    }
 
     /// <summary>
     /// Update loading progress (0.0 to 1.0)

@@ -195,7 +195,7 @@ public class HexMapChunk : MonoBehaviour
                     continue;
                 }
 
-                var response = climateManager.GetSeasonResponse(tile.biome, season);
+                var response = climateManager.GetSeasonResponseForTile(tileIndex, season);
                 pixels[rowBase + x] = new Color(response.snow, response.wet, response.dry, 0f);
             }
         }

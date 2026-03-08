@@ -1083,6 +1083,7 @@ public abstract class BaseUnit : MonoBehaviour
     public virtual void MoveTo(int targetTileIndex)
     {
         var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
+        path = UnitMovementController.Instance.TrimPathToAvailableMovement(this, path);
         if (path == null || path.Count == 0) return;
 
         // Reset animation before killing the old coroutine — StopAllCoroutines
@@ -1259,7 +1260,7 @@ public abstract class BaseUnit : MonoBehaviour
         popupText.text = amount > 0 ? $"+{amount}" : amount.ToString();
         popupText.fontSize = 3f;
         popupText.alignment = TextAlignmentOptions.Center;
-        popupText.enableWordWrapping = false;
+        popupText.textWrappingMode = TextWrappingModes.NoWrap;
         popupText.color = amount > 0 ? HealPopupColor : DamagePopupColor;
         popupText.outlineWidth = 0.18f;
         popupText.outlineColor = HealthPopupOutlineColor;

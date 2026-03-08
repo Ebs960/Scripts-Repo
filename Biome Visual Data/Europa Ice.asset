@@ -12,6 +12,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c73d4d78ca4f3aa468e4b0b286d64cc2, type: 3}
   m_Name: Europa Ice
   m_EditorClassIdentifier: Assembly-CSharp::BiomeVisualData
+  springResponse:
+    snow: 0
+    wet: 0.169
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0.3019608}
+  summerResponse:
+    snow: 0
+    wet: 0
+    dry: 0.437
+    tint: {r: 0, g: 0, b: 0, a: 0}
+  autumnResponse:
+    snow: 0
+    wet: 0
+    dry: 0
+    tint: {r: 0.9245283, g: 0.5938017, b: 0.06803123, a: 1}
+  winterResponse:
+    snow: 0.47
+    wet: 0.055
+    dry: 0
+    tint: {r: 0, g: 0, b: 0, a: 0}
   biome: 36
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 9f2b52ef11c5b234a97da2f06f3baf89, type: 2}

@@ -863,11 +863,62 @@ public class TileSystem : MonoBehaviour
         }
         return -1; // No path
     }
+
+    /// <summary>
+    /// Get the minimum hex-step distance on the wrapped flat grid.
+    /// Falls back to BFS when grid dimensions are unavailable.
+    /// </summary>
+    public int GetWrappedHexDistance(int a, int b)
+    {
+        if (!isReady || a < 0 || b < 0 || a >= neighbors.Length || b >= neighbors.Length) return -1;
+        if (a == b) return 0;
+
+        var grid = planetRef != null ? planetRef.Grid : null;
+        if (grid == null || grid.Width <= 0 || grid.Height <= 0 || grid.TileCount != neighbors.Length)
+            return GetTileDistance(a, b);
+
+        int width = grid.Width;
+        int rowA = a / width;
+        int colA = a % width;
+        int rowB = b / width;
+        int colB = b % width;
+
+        Vector3Int cubeA = EvenRToCube(rowA, colA);
+        int bestDistance = int.MaxValue;
+
+        // Horizontal wrap turns the map into a cylinder, so check the target column
+        // in the local copy and one wrapped copy on each side.
+        for (int wrapOffset = -1; wrapOffset <= 1; wrapOffset++)
+        {
+            Vector3Int cubeB = EvenRToCube(rowB, colB + wrapOffset * width);
+            int distance = CubeDistance(cubeA, cubeB);
+            if (distance < bestDistance)
+                bestDistance = distance;
+        }
+
+        return bestDistance;
+    }
     
     /// <summary>
     /// Get Euclidean distance for continuous movement/physics (not pathfinding).
     /// </summary>
     public float GetTileDistanceFlat(int a, int b) => Vector3.Distance(GetTileCenterFlat(a), GetTileCenterFlat(b));
+
+    private static Vector3Int EvenRToCube(int row, int col)
+    {
+        int x = col - ((row + (row & 1)) / 2);
+        int z = row;
+        int y = -x - z;
+        return new Vector3Int(x, y, z);
+    }
+
+    private static int CubeDistance(Vector3Int a, Vector3Int b)
+    {
+        int dx = Mathf.Abs(a.x - b.x);
+        int dy = Mathf.Abs(a.y - b.y);
+        int dz = Mathf.Abs(a.z - b.z);
+        return Mathf.Max(dx, Mathf.Max(dy, dz));
+    }
 
     public List<int> GetTilesWithinSteps(int start, int steps)
     {

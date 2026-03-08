@@ -38,6 +38,7 @@ public class CivData : ScriptableObject
 
     [Header("Starting Assets")]
     public TechData[] startingTechs;         // Technologies known at game start
+    public CultureData[] startingCultures;   // Cultures known at game start
     public PolicyData[] startingPolicies;    // Initial policies or governments
     public CombatUnitData[] uniqueUnits;     // Civilizational unique units
     public BuildingData[] uniqueBuildings;   // Unique city or tile improvements

@@ -242,7 +242,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 5985908199895929807}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.9999896
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -455,8 +455,7 @@ MonoBehaviour:
   orbitStatusText: {fileID: 0}
   enterOrbitButton: {fileID: 0}
   exitOrbitButton: {fileID: 0}
-  buildUnitsContainer: {fileID: 4326793101263831165}
-  buildUnitButtonPrefab: {fileID: 5455478592113520035, guid: a66a64649470dfc40a643b447e39256b, type: 3}
+  buildOptionsDropdown: {fileID: 2447662883100105850}
   contributeWorkButton: {fileID: 1927341149938918328}
 --- !u!1 &2899194157734454522
 GameObject:
@@ -2682,6 +2681,7 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 3931742236562114558, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
     - {fileID: 493239075593534668, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
+    - {fileID: 4118295044863959975, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 4444974019412979008, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
       insertIndex: 1
@@ -2733,6 +2733,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &2447662883100105850 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5722283992036161961, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
+  m_PrefabInstance: {fileID: 7970943173212972499}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b743370ac3e4ec2a1668f5455a8ef8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!114 &3469283773297629087 stripped

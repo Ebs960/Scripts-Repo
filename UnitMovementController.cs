@@ -25,6 +25,14 @@ public class UnitMovementController : MonoBehaviour
 
         public PathNode(int tileIndex) { this.tileIndex = tileIndex; }
 
+        public void Reset(int tileIndex)
+        {
+            this.tileIndex = tileIndex;
+            gCost = 0f;
+            hCost = 0f;
+            parent = null;
+        }
+
         public int CompareTo(PathNode other)
         {
             int cmp = FCost.CompareTo(other.FCost);
@@ -32,6 +40,92 @@ public class UnitMovementController : MonoBehaviour
             if (cmp == 0) cmp = tileIndex.CompareTo(other.tileIndex);
             return cmp;
         }
+    }
+
+    // Simple binary min-heap for PathNode ordered by FCost/hCost/tileIndex.
+    private class PathNodeHeap
+    {
+        private List<PathNode> heap = new List<PathNode>();
+
+        public int Count => heap.Count;
+
+        public void Clear() => heap.Clear();
+
+        public void Add(PathNode node)
+        {
+            heap.Add(node);
+            SiftUp(heap.Count - 1);
+        }
+
+        public PathNode PopMin()
+        {
+            if (heap.Count == 0) return null;
+            var min = heap[0];
+            var last = heap[heap.Count - 1];
+            heap.RemoveAt(heap.Count - 1);
+            if (heap.Count > 0)
+            {
+                heap[0] = last;
+                SiftDown(0);
+            }
+            return min;
+        }
+
+        private void SiftUp(int i)
+        {
+            while (i > 0)
+            {
+                int p = (i - 1) / 2;
+                if (heap[i].CompareTo(heap[p]) < 0)
+                {
+                    var tmp = heap[i]; heap[i] = heap[p]; heap[p] = tmp;
+                    i = p;
+                }
+                else break;
+            }
+        }
+
+        private void SiftDown(int i)
+        {
+            int n = heap.Count;
+            while (true)
+            {
+                int l = 2 * i + 1;
+                int r = 2 * i + 2;
+                int smallest = i;
+                if (l < n && heap[l].CompareTo(heap[smallest]) < 0) smallest = l;
+                if (r < n && heap[r].CompareTo(heap[smallest]) < 0) smallest = r;
+                if (smallest != i)
+                {
+                    var tmp = heap[i]; heap[i] = heap[smallest]; heap[smallest] = tmp;
+                    i = smallest;
+                }
+                else break;
+            }
+        }
+    }
+
+    // Pool for PathNode instances to reduce allocations
+    private Stack<PathNode> nodePool = new Stack<PathNode>(512);
+    private PathNode RentNode(int tileIndex)
+    {
+        if (nodePool.Count > 0)
+        {
+            var n = nodePool.Pop();
+            n.Reset(tileIndex);
+            return n;
+        }
+        return new PathNode(tileIndex);
+    }
+
+    private void ReturnAllNodes(Dictionary<int, PathNode> nodes)
+    {
+        if (nodes == null) return;
+        foreach (var kv in nodes)
+        {
+            nodePool.Push(kv.Value);
+        }
+        nodes.Clear();
     }
 
     void Awake()
@@ -123,10 +217,7 @@ public class UnitMovementController : MonoBehaviour
         };
 
         startNode.gCost = 0;
-        // Use planar centers for heuristic on flat map
-        startNode.hCost = Vector3.Distance(
-            ts.GetTileCenterFlat(startIndex),
-            ts.GetTileCenterFlat(endIndex));
+        startNode.hCost = GetPathHeuristic(ts, startIndex, endIndex, isOrbit, orbitCost);
 
 
         while (openSet.Count > 0)
@@ -175,10 +266,7 @@ public class UnitMovementController : MonoBehaviour
                     
                     neighborNode.parent = currentNode;
                     neighborNode.gCost = tentativeGCost;
-                    // Heuristic based on planar distance between tile centers
-                    neighborNode.hCost = Vector3.Distance(
-                        ts.GetTileCenterFlat(neighborIndex),
-                        ts.GetTileCenterFlat(endIndex));
+                    neighborNode.hCost = GetPathHeuristic(ts, neighborIndex, endIndex, isOrbit, orbitCost);
                     
                     if (openSet.Contains(neighborNode))
                         openSet.Remove(neighborNode);
@@ -201,6 +289,96 @@ public class UnitMovementController : MonoBehaviour
         }
         path.Reverse();
         return path;
+    }
+
+    public List<int> TrimPathToAvailableMovement(BaseUnit unit, List<int> path)
+    {
+        if (unit == null || path == null || path.Count == 0) return path;
+        if (unit.currentLayer == TileLayer.Orbit) return path;
+        if (unit is not WorkerUnit workerUnit) return path;
+
+        int pIndex = unit.planetIndex;
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        if (ts == null) return path;
+
+        int remainingMovePoints = workerUnit.currentMovePoints;
+        List<int> trimmedPath = new List<int>(path.Count);
+
+        foreach (int tileIndex in path)
+        {
+            var tileData = ts.GetTileData(tileIndex);
+            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
+            if (movementCost >= 99 || remainingMovePoints < movementCost)
+                break;
+
+            trimmedPath.Add(tileIndex);
+            remainingMovePoints -= movementCost;
+        }
+
+        return trimmedPath;
+    }
+
+    /// <summary>
+    /// Returns the path segmented into per-turn lists for the given unit.
+    /// Each inner list represents tiles traversed during a single turn (first = current turn remainder).
+    /// </summary>
+    public List<List<int>> GetPathSegmentsByTurn(BaseUnit unit, int startIndex, int endIndex)
+    {
+        var path = FindPath(startIndex, endIndex, unit);
+        if (path == null || path.Count == 0) return null;
+
+        // Non-worker units don't consume turn-based move points; return whole path as single segment
+        if (unit == null || unit is not WorkerUnit)
+        {
+            return new List<List<int>> { new List<int>(path) };
+        }
+
+        var worker = unit as WorkerUnit;
+        int remaining = worker.currentMovePoints;
+        int fullPerTurn = worker.GetStartingMovePoints();
+
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        var segments = new List<List<int>>();
+        var currentSeg = new List<int>();
+
+        foreach (int tileIndex in path)
+        {
+            var td = ts != null ? ts.GetTileData(tileIndex) : null;
+            int cost = td != null ? BiomeHelper.GetMovementCost(td, unit) : 1;
+            if (cost >= 99) break;
+
+            if (remaining < cost)
+            {
+                if (currentSeg.Count > 0)
+                {
+                    segments.Add(new List<int>(currentSeg));
+                    currentSeg.Clear();
+                }
+                // reset for next turn
+                remaining = fullPerTurn;
+                // If still can't pay this tile even on a fresh turn, abort
+                if (cost > fullPerTurn) break;
+            }
+
+            currentSeg.Add(tileIndex);
+            remaining -= cost;
+        }
+
+        if (currentSeg.Count > 0)
+            segments.Add(currentSeg);
+
+        return segments;
+    }
+
+    private static float GetPathHeuristic(TileSystem ts, int fromIndex, int toIndex, bool isOrbit, int orbitCost)
+    {
+        if (ts == null) return 0f;
+
+        int hexSteps = ts.GetWrappedHexDistance(fromIndex, toIndex);
+        if (hexSteps < 0) return 0f;
+
+        int minStepCost = isOrbit ? Mathf.Max(0, orbitCost) : 1;
+        return hexSteps * minStepCost;
     }
 
     /// <summary>
@@ -237,19 +415,10 @@ public class UnitMovementController : MonoBehaviour
             int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
             var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
-            
-            // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
-            var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
-            if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
-            {
-                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
-                unit.UpdateWalkingState(false);
-                if (i > 0)
-                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
-                yield break;
-            }
 
             int movementCost;
+            // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
+            var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
             if (unit.currentLayer == TileLayer.Orbit)
             {
                 var orbitCu = combatUnit;
@@ -259,25 +428,34 @@ public class UnitMovementController : MonoBehaviour
             {
                 movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
             }
+
+            if (workerUnit != null && workerUnit.currentMovePoints < movementCost)
+            {
+                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
+                unit.UpdateWalkingState(false);
+                if (i > 0)
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+
+                // Fog of War: moving stopped early, refresh vision for unit owner.
+                if (UnitVisionManager.Instance != null && unit.owner != null)
+                {
+                    UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                }
+                yield break;
+            }
+
+            if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
+            {
+                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
+                unit.UpdateWalkingState(false);
+                if (i > 0)
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+                yield break;
+            }
             
             // Deduct movement points for workers (they still use turn-based movement)
             if (workerUnit != null)
             {
-                // Check if worker can afford this move
-                if (workerUnit.currentMovePoints < movementCost)
-                {
-                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
-                    unit.UpdateWalkingState(false);
-                    if (i > 0)
-                        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
-
-                    // Fog of War: moving stopped early, refresh vision for unit owner.
-                    if (UnitVisionManager.Instance != null && unit.owner != null)
-                    {
-                        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
-                    }
-                    yield break;
-                }
                 workerUnit.DeductMovePoints(movementCost);
             }
             
