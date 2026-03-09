@@ -65,6 +65,6 @@ MonoBehaviour:
     spawnRate: 1
     maxCount: 10
     allowedBiomes: 040000000500000008000000
-  debugSpawning: 1
+  debugSpawning: 0
   animalSpawnBatchSize: 10
   animalSpawnFramesBetweenBatches: 0

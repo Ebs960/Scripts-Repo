@@ -15,74 +15,34 @@ public class UnitMovementController : MonoBehaviour
     [SerializeField] private float rotationSpeed = 10f;
     [SerializeField] private AnimationCurve movementCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-    private class PathNode : System.IComparable<PathNode>
+    private const int MaxPathSearchNodes = 10000;
+
+    private sealed class MinHeap
     {
-        public int tileIndex;
-        public float gCost; // cost from start
-        public float hCost; // heuristic cost to end
-        public float FCost => gCost + hCost;
-        public PathNode parent;
-
-        public PathNode(int tileIndex) { this.tileIndex = tileIndex; }
-
-        public void Reset(int tileIndex)
-        {
-            this.tileIndex = tileIndex;
-            gCost = 0f;
-            hCost = 0f;
-            parent = null;
-        }
-
-        public int CompareTo(PathNode other)
-        {
-            int cmp = FCost.CompareTo(other.FCost);
-            if (cmp == 0) cmp = hCost.CompareTo(other.hCost);
-            if (cmp == 0) cmp = tileIndex.CompareTo(other.tileIndex);
-            return cmp;
-        }
-    }
-
-    // Simple binary min-heap for PathNode ordered by FCost/hCost/tileIndex.
-    private class PathNodeHeap
-    {
-        private List<PathNode> heap = new List<PathNode>();
+        private readonly List<(int tile, float priority)> heap = new List<(int, float)>();
 
         public int Count => heap.Count;
-
         public void Clear() => heap.Clear();
 
-        public void Add(PathNode node)
+        public void Enqueue(int tile, float priority)
         {
-            heap.Add(node);
-            SiftUp(heap.Count - 1);
-        }
-
-        public PathNode PopMin()
-        {
-            if (heap.Count == 0) return null;
-            var min = heap[0];
-            var last = heap[heap.Count - 1];
-            heap.RemoveAt(heap.Count - 1);
-            if (heap.Count > 0)
-            {
-                heap[0] = last;
-                SiftDown(0);
-            }
-            return min;
-        }
-
-        private void SiftUp(int i)
-        {
+            heap.Add((tile, priority));
+            int i = heap.Count - 1;
             while (i > 0)
             {
                 int p = (i - 1) / 2;
-                if (heap[i].CompareTo(heap[p]) < 0)
-                {
-                    var tmp = heap[i]; heap[i] = heap[p]; heap[p] = tmp;
-                    i = p;
-                }
+                if (heap[i].priority < heap[p].priority) { var tmp = heap[i]; heap[i] = heap[p]; heap[p] = tmp; i = p; }
                 else break;
             }
+        }
+
+        public int Dequeue()
+        {
+            var min = heap[0];
+            var last = heap[heap.Count - 1];
+            heap.RemoveAt(heap.Count - 1);
+            if (heap.Count > 0) { heap[0] = last; SiftDown(0); }
+            return min.tile;
         }
 
         private void SiftDown(int i)
@@ -90,43 +50,20 @@ public class UnitMovementController : MonoBehaviour
             int n = heap.Count;
             while (true)
             {
-                int l = 2 * i + 1;
-                int r = 2 * i + 2;
-                int smallest = i;
-                if (l < n && heap[l].CompareTo(heap[smallest]) < 0) smallest = l;
-                if (r < n && heap[r].CompareTo(heap[smallest]) < 0) smallest = r;
-                if (smallest != i)
-                {
-                    var tmp = heap[i]; heap[i] = heap[smallest]; heap[smallest] = tmp;
-                    i = smallest;
-                }
+                int l = 2 * i + 1, r = 2 * i + 2, s = i;
+                if (l < n && heap[l].priority < heap[s].priority) s = l;
+                if (r < n && heap[r].priority < heap[s].priority) s = r;
+                if (s != i) { var tmp = heap[i]; heap[i] = heap[s]; heap[s] = tmp; i = s; }
                 else break;
             }
         }
     }
 
-    // Pool for PathNode instances to reduce allocations
-    private Stack<PathNode> nodePool = new Stack<PathNode>(512);
-    private PathNode RentNode(int tileIndex)
-    {
-        if (nodePool.Count > 0)
-        {
-            var n = nodePool.Pop();
-            n.Reset(tileIndex);
-            return n;
-        }
-        return new PathNode(tileIndex);
-    }
-
-    private void ReturnAllNodes(Dictionary<int, PathNode> nodes)
-    {
-        if (nodes == null) return;
-        foreach (var kv in nodes)
-        {
-            nodePool.Push(kv.Value);
-        }
-        nodes.Clear();
-    }
+    private readonly MinHeap openSet = new MinHeap();
+    private readonly Dictionary<int, float> bestCost = new Dictionary<int, float>();
+    private readonly Dictionary<int, int> cameFrom = new Dictionary<int, int>();
+    // Track active move coroutines per-unit so they can be cancelled from BaseUnit (failsafe, interruptions)
+    private readonly Dictionary<int, Coroutine> _activeMoveCoroutines = new Dictionary<int, Coroutine>();
 
     void Awake()
     {
@@ -195,7 +132,9 @@ public class UnitMovementController : MonoBehaviour
             return null;
         }
 
-        // Determine if this is orbit-layer pathfinding
+        if (startIndex == endIndex)
+            return new List<int>();
+
         bool isOrbit = unit != null && unit.currentLayer == TileLayer.Orbit;
         int orbitCost = BiomeHelper.DefaultOrbitMovementCost;
         if (isOrbit)
@@ -205,90 +144,77 @@ public class UnitMovementController : MonoBehaviour
                 orbitCost = cu.data.orbitMovementCost;
         }
 
-        PathNode startNode = new PathNode(startIndex);
-        PathNode endNode = new PathNode(endIndex);
+        // Dijkstra (h=0) guarantees optimal paths regardless of hex spacing or map wrapping.
+        openSet.Clear();
+        bestCost.Clear();
+        cameFrom.Clear();
 
-        SortedSet<PathNode> openSet = new SortedSet<PathNode> { startNode };
-        HashSet<int> closedSet = new HashSet<int>();
+        bestCost[startIndex] = 0f;
+        openSet.Enqueue(startIndex, 0f);
 
-        Dictionary<int, PathNode> allNodes = new Dictionary<int, PathNode>
-        {
-            [startIndex] = startNode
-        };
-
-        startNode.gCost = 0;
-        startNode.hCost = GetPathHeuristic(ts, startIndex, endIndex, isOrbit, orbitCost);
-
+        int expanded = 0;
 
         while (openSet.Count > 0)
         {
-            PathNode currentNode = openSet.Min;
+            int current = openSet.Dequeue();
 
-            if (currentNode.tileIndex == endIndex)
+            float currentG = bestCost.TryGetValue(current, out float cg) ? cg : float.MaxValue;
+
+            // Skip stale heap entries: if we already found a cheaper way to this tile, ignore
+            if (bestCost.TryGetValue(current, out float best) && currentG > best)
+                continue;
+
+            if (current == endIndex)
             {
-                return RetracePath(startNode, currentNode);
+                var path = new List<int>();
+                int trace = endIndex;
+                while (trace != startIndex)
+                {
+                    path.Add(trace);
+                    if (!cameFrom.TryGetValue(trace, out int prev))
+                        return null;
+                    trace = prev;
+                }
+                path.Reverse();
+                return path;
             }
 
-            openSet.Remove(currentNode);
-            closedSet.Add(currentNode.tileIndex);
-
-            foreach (int neighborIndex in ts.GetNeighbors(currentNode.tileIndex))
+            expanded++;
+            if (expanded > MaxPathSearchNodes)
             {
-                if (closedSet.Contains(neighborIndex))
-                {
-                    continue;
-                }
+                Debug.LogWarning($"[UnitMovementController] Aborting path search: expanded > {MaxPathSearchNodes} nodes (start={startIndex} end={endIndex})");
+                return null;
+            }
 
-                var neighborTileData = ts.GetTileData(neighborIndex);
-                if (neighborTileData == null) continue; // Skip invalid tiles
+            foreach (int neighbor in ts.GetNeighbors(current))
+            {
+                var neighborTile = ts.GetTileData(neighbor);
+                if (neighborTile == null) continue;
 
                 int moveCost;
                 if (isOrbit)
                 {
-                    // Orbit: flat cost, no terrain restrictions (all tiles traversable)
                     moveCost = orbitCost;
                 }
                 else
                 {
-                    moveCost = BiomeHelper.GetMovementCost(neighborTileData, unit);
-                    if (moveCost >= 99) continue; // Unpassable
+                    moveCost = BiomeHelper.GetMovementCost(neighborTile, unit);
+                    if (moveCost >= 99) continue;
                 }
 
-                float tentativeGCost = currentNode.gCost + moveCost;
+                float tentativeG = currentG + moveCost;
 
-                if (!allNodes.TryGetValue(neighborIndex, out PathNode neighborNode) || tentativeGCost < neighborNode.gCost)
-                {
-                    if (neighborNode == null)
-                    {
-                        neighborNode = new PathNode(neighborIndex);
-                        allNodes[neighborIndex] = neighborNode;
-                    }
-                    
-                    neighborNode.parent = currentNode;
-                    neighborNode.gCost = tentativeGCost;
-                    neighborNode.hCost = GetPathHeuristic(ts, neighborIndex, endIndex, isOrbit, orbitCost);
-                    
-                    if (openSet.Contains(neighborNode))
-                        openSet.Remove(neighborNode);
-                    openSet.Add(neighborNode);
-                }
+                if (bestCost.TryGetValue(neighbor, out float existingG) && tentativeG >= existingG)
+                    continue;
+
+                bestCost[neighbor] = tentativeG;
+                cameFrom[neighbor] = current;
+                openSet.Enqueue(neighbor, tentativeG);
             }
         }
 
-        return null; // No path found
-    }
-
-    private List<int> RetracePath(PathNode startNode, PathNode endNode)
-    {
-        List<int> path = new List<int>();
-        PathNode currentNode = endNode;
-        while (currentNode != null && currentNode.tileIndex != startNode.tileIndex)
-        {
-            path.Add(currentNode.tileIndex);
-            currentNode = currentNode.parent;
-        }
-        path.Reverse();
-        return path;
+        // No path found
+        return null;
     }
 
     public List<int> TrimPathToAvailableMovement(BaseUnit unit, List<int> path)
@@ -370,16 +296,6 @@ public class UnitMovementController : MonoBehaviour
         return segments;
     }
 
-    private static float GetPathHeuristic(TileSystem ts, int fromIndex, int toIndex, bool isOrbit, int orbitCost)
-    {
-        if (ts == null) return 0f;
-
-        int hexSteps = ts.GetWrappedHexDistance(fromIndex, toIndex);
-        if (hexSteps < 0) return 0f;
-
-        int minStepCost = isOrbit ? Mathf.Max(0, orbitCost) : 1;
-        return hexSteps * minStepCost;
-    }
 
     /// <summary>
     /// Unified movement method for any unit type.
@@ -390,142 +306,145 @@ public class UnitMovementController : MonoBehaviour
     {
         if (unit == null || path == null || path.Count == 0)
             yield break;
-            
-        // BaseUnit provides common properties for all unit types
-        // Cast for type-specific behavior
-        CombatUnit combatUnit = unit as CombatUnit;
-        WorkerUnit workerUnit = unit as WorkerUnit;
-        
-        int currentTileIndex = unit.currentTileIndex;
-        Transform unitTransform = unit.transform;
-        
-        // Track the previous tile for movement cost calculation
-        int previousTileIndex = currentTileIndex;
-        
-        // Set unit to moving state
-        Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} START path len={path.Count} from tile {currentTileIndex} | type={unit.GetType().Name}");
-        unit.UpdateWalkingState(true);
-        
-        // Move along each tile in path
-        for (int i = 0; i < path.Count; i++)
+
+        // Ensure we always remove the active coroutine record when this enumerator ends.
+        try
         {
-            int targetTileIndex = path[i];
+            // BaseUnit provides common properties for all unit types
+            // Cast for type-specific behavior
+            CombatUnit combatUnit = unit as CombatUnit;
+            WorkerUnit workerUnit = unit as WorkerUnit;
 
-            // Per-planet TileSystem/Occupancy (true multi-planet gameplay)
-            int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
-            var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-            var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
+            int currentTileIndex = unit.currentTileIndex;
+            Transform unitTransform = unit.transform;
 
-            int movementCost;
-            // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
-            var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
-            if (unit.currentLayer == TileLayer.Orbit)
+            // Track the previous tile for movement cost calculation
+            int previousTileIndex = currentTileIndex;
+
+            // Set unit to moving state
+            Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} START path len={path.Count} from tile {currentTileIndex} | type={unit.GetType().Name}");
+            unit.UpdateWalkingState(true);
+
+            // Move along each tile in path
+            for (int i = 0; i < path.Count; i++)
             {
-                var orbitCu = combatUnit;
-                movementCost = (orbitCu != null && orbitCu.data != null) ? orbitCu.data.orbitMovementCost : BiomeHelper.DefaultOrbitMovementCost;
-            }
-            else
-            {
-                movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
-            }
+                int targetTileIndex = path[i];
 
-            if (workerUnit != null && workerUnit.currentMovePoints < movementCost)
-            {
-                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
-                unit.UpdateWalkingState(false);
-                if (i > 0)
-                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+                // Per-planet TileSystem/Occupancy (true multi-planet gameplay)
+                int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+                var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+                var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
 
-                // Fog of War: moving stopped early, refresh vision for unit owner.
-                if (UnitVisionManager.Instance != null && unit.owner != null)
+                int movementCost;
+                // Get movement cost for this step (orbit uses flat cost, surface uses terrain cost)
+                var tileData = ts != null ? ts.GetTileData(targetTileIndex) : null;
+                if (unit.currentLayer == TileLayer.Orbit)
                 {
-                    UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                    var orbitCu = combatUnit;
+                    movementCost = (orbitCu != null && orbitCu.data != null) ? orbitCu.data.orbitMovementCost : BiomeHelper.DefaultOrbitMovementCost;
                 }
-                yield break;
-            }
-
-            if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
-            {
-                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
-                unit.UpdateWalkingState(false);
-                if (i > 0)
-                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
-                yield break;
-            }
-            
-            // Deduct movement points for workers (they still use turn-based movement)
-            if (workerUnit != null)
-            {
-                workerUnit.DeductMovePoints(movementCost);
-            }
-            
-            // Calculate planar positions on the flat map (orbit units stay elevated above surface)
-            Vector3 startPosition = unitTransform.position;
-            Vector3 endPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : startPosition;
-            if (unit.currentLayer == TileLayer.Orbit)
-            {
-                endPosition += Vector3.up * PlanetGenerator.GetOrbitHeight(unit.planetIndex);
-            }
-
-            float journeyLength = Vector3.Distance(startPosition, endPosition);
-            if (journeyLength < 0.001f) continue;
-
-            float startTime = Time.time;
-            float journeyDuration = journeyLength / moveSpeed;
-            if (journeyDuration <= 0) journeyDuration = 0.01f;
-
-            while (Time.time - startTime < journeyDuration)
-            {
-                float timeProgress = (Time.time - startTime) / journeyDuration;
-                float curveProgress = movementCurve.Evaluate(Mathf.Clamp01(timeProgress));
-                
-                // Interpolate position directly on the flat map
-                unitTransform.position = Vector3.Lerp(startPosition, endPosition, curveProgress);
-                
-                // Rotate to face movement direction on the XZ plane
-                Vector3 movementDirection = endPosition - startPosition;
-                movementDirection.y = 0f;
-                if (movementDirection.sqrMagnitude > 0.001f)
+                else
                 {
-                    Quaternion targetRotation = Quaternion.LookRotation(movementDirection.normalized, Vector3.up);
-                    unitTransform.rotation = Quaternion.Slerp(unitTransform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                    movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
                 }
-                
-                yield return null;
-            }
-            
-            // Snap to final position and orientation on flat map
-            if (unit.currentLayer == TileLayer.Orbit)
-            {
-                // Keep orbit height — don't snap to terrain surface
-                unitTransform.position = endPosition;
-            }
-            else
-            {
-                PositionUnitOnSurface(unitTransform, targetTileIndex);
-            }
-            
-            // Clear previous tile occupancy before setting new one
-            try
-            {
-                if (previousTileIndex >= 0 && previousTileIndex != targetTileIndex)
-                    occ?.ClearOccupant(previousTileIndex, unit.currentLayer);
-            }
-            catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] ClearOccupant failed: {ex.Message}"); }
 
-            // Update current tile and occupancy using BaseUnit properties
-            unit.currentTileIndex = targetTileIndex;
-            try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); }
-            catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] SetOccupant failed: {ex.Message}"); }
-            
-            // Check for traps on arrival (ImprovementManager accepts either type)
-            if (combatUnit != null)
-                ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
-            else if (workerUnit != null)
-                ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
+                if (workerUnit != null && workerUnit.currentMovePoints < movementCost)
+                {
+                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
+                    unit.UpdateWalkingState(false);
+                    if (i > 0)
+                        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+
+                    // Fog of War: moving stopped early, refresh vision for unit owner.
+                    if (UnitVisionManager.Instance != null && unit.owner != null)
+                    {
+                        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                    }
+                    yield break;
+                }
+
+                if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
+                {
+                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
+                    unit.UpdateWalkingState(false);
+                    if (i > 0)
+                        GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
+                    yield break;
+                }
+
+                // Deduct movement points for workers (they still use turn-based movement)
+                if (workerUnit != null)
+                {
+                    workerUnit.DeductMovePoints(movementCost);
+                }
+
+                // Calculate planar positions on the flat map (orbit units stay elevated above surface)
+                Vector3 startPosition = unitTransform.position;
+                Vector3 endPosition = ts != null ? ts.GetTileSurfacePosition(targetTileIndex) : startPosition;
+                if (unit.currentLayer == TileLayer.Orbit)
+                {
+                    endPosition += Vector3.up * PlanetGenerator.GetOrbitHeight(unit.planetIndex);
+                }
+
+                float journeyLength = Vector3.Distance(startPosition, endPosition);
+                if (journeyLength < 0.001f) continue;
+
+                float startTime = Time.time;
+                float journeyDuration = journeyLength / moveSpeed;
+                if (journeyDuration <= 0) journeyDuration = 0.01f;
+
+                while (Time.time - startTime < journeyDuration)
+                {
+                    float timeProgress = (Time.time - startTime) / journeyDuration;
+                    float curveProgress = movementCurve.Evaluate(Mathf.Clamp01(timeProgress));
+
+                    // Interpolate position directly on the flat map
+                    unitTransform.position = Vector3.Lerp(startPosition, endPosition, curveProgress);
+
+                    // Rotate to face movement direction on the XZ plane
+                    Vector3 movementDirection = endPosition - startPosition;
+                    movementDirection.y = 0f;
+                    if (movementDirection.sqrMagnitude > 0.001f)
+                    {
+                        Quaternion targetRotation = Quaternion.LookRotation(movementDirection.normalized, Vector3.up);
+                        unitTransform.rotation = Quaternion.Slerp(unitTransform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                    }
+
+                    yield return null;
+                }
+
+                // Snap to final position and orientation on flat map
+                if (unit.currentLayer == TileLayer.Orbit)
+                {
+                    // Keep orbit height — don't snap to terrain surface
+                    unitTransform.position = endPosition;
+                }
+                else
+                {
+                    PositionUnitOnSurface(unitTransform, targetTileIndex);
+                }
+
+                // Clear previous tile occupancy before setting new one
+                try
+                {
+                    if (previousTileIndex >= 0 && previousTileIndex != targetTileIndex)
+                        occ?.ClearOccupant(previousTileIndex, unit.currentLayer);
+                }
+                catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] ClearOccupant failed: {ex.Message}"); }
+
+                // Update current tile and occupancy using BaseUnit properties
+                unit.currentTileIndex = targetTileIndex;
+                try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); }
+                catch (System.Exception ex) { Debug.LogWarning($"[UnitMovementController] SetOccupant failed: {ex.Message}"); }
+
+                // Check for traps on arrival (ImprovementManager accepts either type)
+                if (combatUnit != null)
+                    ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
+                else if (workerUnit != null)
+                    ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
 
                 // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
-            if (unit.currentHealth <= 0 || unit.IsTrapped)
+                if (unit.currentHealth <= 0 || unit.IsTrapped)
                 {
                     Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} TRAPPED/DEAD at step {i} (hp={unit.currentHealth}, trapped={unit.IsTrapped})");
                     // Fire movement completed event up to this step and exit early
@@ -538,32 +457,64 @@ public class UnitMovementController : MonoBehaviour
                         UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
                     }
                     yield break;
-            }
-            
-            // Fire movement event for each step
-            GameEventManager.Instance.RaiseUnitMovedEvent(unit, previousTileIndex, targetTileIndex, movementCost);
-            previousTileIndex = targetTileIndex;
-            
-            // Small delay between steps
-            yield return new WaitForSeconds(0.1f);
-        }
-        
-        // Set unit back to idle state
-        unit.UpdateWalkingState(false);
-        
-        // Fire movement completed event
-        GameEventManager.Instance.RaiseMovementCompletedEvent((MonoBehaviour)unit, path[0], path[path.Count - 1], path.Count);
+                }
 
-        // Fog of War: movement completed; refresh vision for unit owner.
-        if (UnitVisionManager.Instance != null && unit.owner != null)
+                // Fire movement event for each step
+                GameEventManager.Instance.RaiseUnitMovedEvent(unit, previousTileIndex, targetTileIndex, movementCost);
+                previousTileIndex = targetTileIndex;
+
+                // Small delay between steps
+                yield return new WaitForSeconds(0.1f);
+            }
+
+            // Set unit back to idle state
+            unit.UpdateWalkingState(false);
+
+            // Fire movement completed event
+            GameEventManager.Instance.RaiseMovementCompletedEvent((MonoBehaviour)unit, path[0], path[path.Count - 1], path.Count);
+
+            // Fog of War: movement completed; refresh vision for unit owner.
+            if (UnitVisionManager.Instance != null && unit.owner != null)
+            {
+                UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+            }
+        }
+        finally
         {
-            UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+            try { _activeMoveCoroutines.Remove(unit != null ? unit.GetInstanceID() : -1); } catch { }
         }
     }
 
     /// <summary>
     /// Properly positions and orients a unit on the flat map surface
     /// </summary>
+    /// <summary>
+    /// Start movement coroutine for a unit and track it so it can be cancelled later.
+    /// </summary>
+    public void StartMoveForUnit(BaseUnit unit, List<int> path)
+    {
+        if (unit == null) return;
+        // Cancel any previous movement for this unit first
+        StopMoveForUnit(unit);
+        var c = StartCoroutine(MoveAlongPath(unit, path));
+        try { _activeMoveCoroutines[unit.GetInstanceID()] = c; } catch { }
+    }
+
+    /// <summary>
+    /// Stop any active movement coroutine for the provided unit.
+    /// Safe to call even if no coroutine is active.
+    /// </summary>
+    public void StopMoveForUnit(BaseUnit unit)
+    {
+        if (unit == null) return;
+        int id = unit.GetInstanceID();
+        if (_activeMoveCoroutines.TryGetValue(id, out var coroutine))
+        {
+            try { if (coroutine != null) StopCoroutine(coroutine); } catch { }
+            _activeMoveCoroutines.Remove(id);
+        }
+    }
+
     private void PositionUnitOnSurface(Transform unitTransform, int tileIndex)
     {
         // Best-effort: use current planet TileSystem for surface positioning.

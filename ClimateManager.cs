@@ -41,6 +41,10 @@ public class ClimateManager : MonoBehaviour
     [Header("Debug")]
     public bool forceSeasonChange = false;
     public Season debugTargetSeason = Season.Winter;
+    [Tooltip("Enable verbose climate debug logs (per-biome values). Disable to reduce console spam.")]
+    public bool verboseLogs = false;
+    [Tooltip("Log a concise message when a planet's season changes.")]
+    public bool seasonChangeDebug = true;
 
     [Header("Seasonal Textures")]
     public List<SeasonalTextureEntry> seasonalTextures = new List<SeasonalTextureEntry>();
@@ -155,7 +159,7 @@ public class ClimateManager : MonoBehaviour
                 added++;
             }
         }
-        Debug.Log($"[ClimateManager] Auto-populated {added} biome/season responses from BiomeVisualDatabase into lookup.");
+        if (verboseLogs) Debug.Log($"[ClimateManager] Auto-populated {added} biome/season responses from BiomeVisualDatabase into lookup.");
     }
 
     void Start()
@@ -279,22 +283,27 @@ planetSeasons.Clear();
 
     private void ApplySeasonalEffects(Season season, int planetIndex = 0)
     {
-        Debug.Log($"[ClimateManager] Applying seasonal effects: {season} on planet {planetIndex}");
+        if (verboseLogs) Debug.Log($"[ClimateManager] Applying seasonal effects: {season} on planet {planetIndex}");
         OnSeasonChanged?.Invoke(season);
         OnPlanetSeasonChanged?.Invoke(planetIndex, season);
+
+        if (seasonChangeDebug)
+        {
+            Debug.Log($"[ClimateManager] SeasonChanged -> Planet:{planetIndex} Season:{season}");
+        }
 
         // Log snow values for all biomes for this season from lookup
         foreach (var resp in seasonResponseLookup.Values)
         {
             if (resp.season == season)
             {
-                Debug.Log($"[ClimateManager] Biome {resp.biome} - Snow: {resp.snow}, Wet: {resp.wet}, Dry: {resp.dry}, Tint: {resp.tint}");
+                if (verboseLogs) Debug.Log($"[ClimateManager] Biome {resp.biome} - Snow: {resp.snow}, Wet: {resp.wet}, Dry: {resp.dry}, Tint: {resp.tint}");
             }
         }
 
         if (season == Season.Winter)
         {
-            Debug.Log("[ClimateManager] Winter detected, applying snow effects.");
+            if (verboseLogs) Debug.Log("[ClimateManager] Winter detected, applying snow effects.");
             ApplyWinterMovementPenalty(planetIndex);
             if (enableWinterAttrition)
             {

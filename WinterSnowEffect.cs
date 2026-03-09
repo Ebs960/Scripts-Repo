@@ -70,6 +70,10 @@ public class WinterSnowEffect : MonoBehaviour
     private TileSystem _tileSystem;
     private HexGrid _grid;
     private float _nextTileUpdate;
+    private int _lastPlanetIndex = int.MinValue;
+    // Debug logging throttle
+    private float _lastSnowDebugLogTime = -999f;
+    private float _lastLoggedEffectiveRate = -1f;
 
     // ================================================================
     //  Lifecycle
@@ -98,6 +102,14 @@ public class WinterSnowEffect : MonoBehaviour
 
     void LateUpdate()
     {
+        int currentPlanetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (_lastPlanetIndex != currentPlanetIndex)
+        {
+            _lastPlanetIndex = currentPlanetIndex;
+            OnPlanetChanged();
+            _nextTileUpdate = 0f;
+        }
+
         // --- biome tile lookup (throttled) ---
         if (_shouldSnow && Time.time >= _nextTileUpdate)
         {
@@ -121,10 +133,23 @@ public class WinterSnowEffect : MonoBehaviour
         }
 
         // Apply emission with both season fade and biome multiplier
-        _emission.rateOverTime = emissionRate * _fadeT * _biomeMultiplier;
+        _emission.rateOverTime = new ParticleSystem.MinMaxCurve(emissionRate * _fadeT * _biomeMultiplier);
 
         // Turn system off entirely when fully faded so it doesn't tick
         float effectiveRate = _fadeT * _biomeMultiplier;
+        // Throttled debug log: only print during winter (_shouldSnow true),
+        // and then only when effectiveRate changes significantly or every 2s
+        if (_shouldSnow)
+        {
+            if (Time.time - _lastSnowDebugLogTime > 2f || Mathf.Abs(effectiveRate - _lastLoggedEffectiveRate) > 0.01f)
+            {
+                _lastSnowDebugLogTime = Time.time;
+                _lastLoggedEffectiveRate = effectiveRate;
+                bool orbitOrUnder = IsOrbitOrUnderwater();
+                Debug.Log($"[WinterSnowEffect] shouldSnow={_shouldSnow} fadeT={_fadeT:F3} biomeMul={_biomeMultiplier:F3} biomeTarget={_biomeMultiplierTarget:F3} effectiveRate={effectiveRate:F3} psPlaying={_ps != null && _ps.isPlaying} orbitOrUnder={orbitOrUnder}");
+            }
+        }
+
         if (effectiveRate <= 0f && _ps.isPlaying && _ps.particleCount == 0)
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         else if (effectiveRate > 0f && !_ps.isPlaying)
@@ -156,6 +181,7 @@ public class WinterSnowEffect : MonoBehaviour
 
         if (ClimateManager.Instance == null) return;
         int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        _lastPlanetIndex = pIndex;
         Season s = ClimateManager.Instance.GetSeasonForPlanet(pIndex);
         _shouldSnow = s == Season.Winter && IsPlanetSnowCapable();
 
@@ -165,13 +191,13 @@ public class WinterSnowEffect : MonoBehaviour
             _fadeT = 1f;
             _biomeMultiplierTarget = 1f;
             _biomeMultiplier = 1f;
-            _emission.rateOverTime = emissionRate;
+            _emission.rateOverTime = new ParticleSystem.MinMaxCurve(emissionRate);
             _ps.Play();
 
             // Do an immediate biome lookup so intensity is correct from frame 1
             UpdateBiomeMultiplier();
             _biomeMultiplier = _biomeMultiplierTarget; // snap, don't blend
-            _emission.rateOverTime = emissionRate * _biomeMultiplier;
+            _emission.rateOverTime = new ParticleSystem.MinMaxCurve(emissionRate * _biomeMultiplier);
         }
     }
 
@@ -241,9 +267,19 @@ public class WinterSnowEffect : MonoBehaviour
     /// </summary>
     public static float GetBiomeSnowMultiplier(Biome biome)
     {
+        // Prefer authoritative data from ClimateManager (populated from BiomeVisualDatabase)
+        if (ClimateManager.Instance != null)
+        {
+            var resp = ClimateManager.Instance.GetSeasonResponse(biome, Season.Winter);
+            if (resp != null)
+            {
+                return Mathf.Clamp01(resp.snow);
+            }
+        }
+
+        // Fallback: use the original hardcoded mapping if no runtime data is available
         switch (biome)
         {
-            // ── Full snow (cold biomes) ──
             case Biome.Tundra:
             case Biome.Glacier:
             case Biome.Arctic:
@@ -255,13 +291,11 @@ public class WinterSnowEffect : MonoBehaviour
             case Biome.TitanIce:
                 return 1f;
 
-            // ── Moderate snow (temperate biomes) ──
             case Biome.Temperate:
             case Biome.Plains:
             case Biome.Swamp:
                 return 0.7f;
 
-            // ── Light snow (water surfaces — flakes mostly melt) ──
             case Biome.Coast:
             case Biome.Ocean:
             case Biome.Seas:
@@ -269,7 +303,6 @@ public class WinterSnowEffect : MonoBehaviour
             case Biome.River:
                 return 0.4f;
 
-            // ── No snow (hot/alien biomes) ──
             case Biome.Desert:
             case Biome.Savannah:
             case Biome.Tropical:
@@ -283,7 +316,7 @@ public class WinterSnowEffect : MonoBehaviour
             case Biome.MartianRegolith:
             case Biome.MartianDunes:
             case Biome.MercuryPlains:
-            case Biome.MercurianIce:    // Mercury's "ice" is subsurface, atmosphere-free
+            case Biome.MercurianIce:
             case Biome.JovianClouds:
             case Biome.SaturnSurface:
             case Biome.UranusSurface:
@@ -295,7 +328,6 @@ public class WinterSnowEffect : MonoBehaviour
             case Biome.Trench:
                 return 0f;
 
-            // ── Catch-all for unknown/Any ──
             default:
                 return 0.5f;
         }
@@ -353,9 +385,10 @@ public class WinterSnowEffect : MonoBehaviour
         var vel = _ps.velocityOverLifetime;
         vel.enabled = true;
         vel.space = ParticleSystemSimulationSpace.World;
-        vel.x = new ParticleSystem.MinMaxCurve(0f);
-        vel.y = new ParticleSystem.MinMaxCurve(-minFallSpeed, -maxFallSpeed);
-        vel.z = new ParticleSystem.MinMaxCurve(0f);
+        // Ensure all axes use the same MinMaxCurve mode (two-constant mode) to avoid mixed-mode errors
+        vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
+        vel.y = new ParticleSystem.MinMaxCurve(-maxFallSpeed, -minFallSpeed);
+        vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
 
         // Reset startSpeed since velocity module handles movement
         main.startSpeed = 0f;

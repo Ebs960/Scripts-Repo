@@ -28,10 +28,10 @@ MonoBehaviour:
     dry: 0
     tint: {r: 0, g: 0, b: 0, a: 0}
   winterResponse:
-    snow: 0.132
+    snow: 0
     wet: 0
     dry: 0
-    tint: {r: 1, g: 1, b: 1, a: 0.22352941}
+    tint: {r: 1, g: 1, b: 1, a: 0}
   biome: 2
   waterType: 0
   surfaceFamily: {fileID: 11400000, guid: 7f2ad27429079274d92be6a8a2ad4f65, type: 2}
@@ -43,6 +43,5 @@ MonoBehaviour:
   tint: {r: 1, g: 1, b: 1, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.217
   wetnessResponse: 0
   isWaterBiome: 0

@@ -58,6 +58,7 @@ MonoBehaviour:
   flatY: 0
   preserveLandElevationNearFreshwater: 0
   globalSnowAmount: 0
+  globalSnowTransitionDuration: 3
   globalWetness: 0
   metallicMultiplier: 1
   aoIntensity: 1
@@ -83,7 +84,7 @@ MonoBehaviour:
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
-  debugWaterVerbose: 1
+  debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
   manualOceanWaterY: 6

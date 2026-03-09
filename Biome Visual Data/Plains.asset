@@ -28,7 +28,7 @@ MonoBehaviour:
     dry: 0
     tint: {r: 0, g: 0, b: 0, a: 0}
   winterResponse:
-    snow: 0.205
+    snow: 0.124
     wet: 0
     dry: 0
     tint: {r: 1, g: 1, b: 1, a: 1}
@@ -43,6 +43,4 @@ MonoBehaviour:
   tint: {r: 0.8740821, g: 1, b: 0, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.137
-  wetnessResponse: 0.146
   isWaterBiome: 0

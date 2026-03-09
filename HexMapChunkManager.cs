@@ -123,6 +123,8 @@ public class HexMapChunkManager : MonoBehaviour
     [Header("Biome Visual Modifiers")]
     [Range(0f, 1f)]
     [SerializeField] private float globalSnowAmount = 0f;
+    [Min(0.01f)]
+    [SerializeField] private float globalSnowTransitionDuration = 3f;
     [Range(0f, 1f)]
     [SerializeField] private float globalWetness = 0f;
     [Header("Material Channel Multipliers")]
@@ -197,6 +199,9 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private float debugLogCooldownSeconds = 0.5f;
     private float _lastDebugLogTime = -999f;
     private int _wrapTeleportEvents = 0;
+    private float _targetGlobalSnowAmount = 0f;
+    private float _currentGlobalSnowAmount = 0f;
+    private static readonly int _GlobalSnowAmountID = Shader.PropertyToID("_GlobalSnowAmount");
 
     [Header("Diagnostics")]
     [Tooltip("Logs the full transform parent chain when building chunks (helps find unexpected rotation/offset).")]
@@ -483,6 +488,8 @@ public class HexMapChunkManager : MonoBehaviour
                 UpdateColumnWrapping();
             }
         }
+
+        UpdateSnow();
 
         // Detect changes made in the inspector at runtime and apply them immediately.
         bool applied = false;
@@ -955,15 +962,19 @@ public class HexMapChunkManager : MonoBehaviour
             for (int i = 0; i < count; i++)
             {
                 var entry = visuals[i];
-                if (entry != null)
-                {
-                    biomeTintArray[i] = entry.tint;
-                    // Tiling fallback: if biome.tiling is <= 0, use the SurfaceFamily defaultTiling (explicit fallback).
-                    float tiling = entry.tiling;
-                    if (tiling <= 0f && entry.surfaceFamily != null)
-                        tiling = entry.surfaceFamily.defaultTiling;
-                    biomeParamsArray[i] = new Vector4(tiling, entry.snowRetention, entry.wetnessResponse, entry.isWaterBiome ? 1f : 0f);
-                }
+                    if (entry != null)
+                    {
+                        biomeTintArray[i] = entry.tint;
+                        // Tiling fallback: if biome.tiling is <= 0, use the SurfaceFamily defaultTiling (explicit fallback).
+                        float tiling = entry.tiling;
+                        if (tiling <= 0f && entry.surfaceFamily != null)
+                            tiling = entry.surfaceFamily.defaultTiling;
+                        // Consolidation: use the seasonal winter response's snow value as the
+                        // per-biome shader parameter. This makes the seasonal response the
+                        // authoritative source for biome snow intensity.
+                        float retentionFromSeason = entry.winterResponse.snow;
+                        biomeParamsArray[i] = new Vector4(tiling, retentionFromSeason, entry.winterResponse.wet, entry.isWaterBiome ? 1f : 0f);
+                    }
                 else
                 {
                     biomeTintArray[i] = Color.white;
@@ -4100,7 +4111,55 @@ public class HexMapChunkManager : MonoBehaviour
     private void HandlePlanetSeasonChanged(int planetIndex, Season season)
     {
         if (planetGenerator == null || planetGenerator.planetIndex != planetIndex) return;
+        ApplyBiomeMaterialSettings();
+        // Ensure season masks are enabled when winter begins so the per-tile
+        // snow/wet/dry masks are applied by the terrain shader. This covers
+        // cases where global snow amount is already 1 and enableSeasonMasks
+        // remained false (eg. forced season change without a prior toggle).
+        if (season == Season.Winter && !enableSeasonMasks)
+        {
+            enableSeasonMasks = true;
+        }
         UpdateSeasonMasksBatched(season, chunksPerBatch);
+    }
+
+    private void UpdateSnow()
+    {
+        Season season = Season.Spring;
+        var cm = ClimateManager.Instance;
+        if (cm != null)
+        {
+            int pIndex = planetGenerator != null ? planetGenerator.planetIndex
+                : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+            season = cm.GetSeasonForPlanet(pIndex);
+        }
+
+        float newTarget = season == Season.Winter ? 1f : 0f;
+        bool targetChanged = !Mathf.Approximately(newTarget, _targetGlobalSnowAmount);
+        _targetGlobalSnowAmount = newTarget;
+
+        if (targetChanged && newTarget > 0f && !enableSeasonMasks)
+        {
+            enableSeasonMasks = true;
+            UpdateSeasonMasksBatched(season, chunksPerBatch);
+        }
+
+        if (!targetChanged && Mathf.Approximately(_currentGlobalSnowAmount, _targetGlobalSnowAmount))
+            return;
+
+        _currentGlobalSnowAmount = Mathf.MoveTowards(
+            _currentGlobalSnowAmount,
+            _targetGlobalSnowAmount,
+            Time.deltaTime / Mathf.Max(globalSnowTransitionDuration, 0.01f));
+
+        globalSnowAmount = _currentGlobalSnowAmount;
+
+        if (sharedMaterial != null)
+        {
+            sharedMaterial.SetFloat(_GlobalSnowAmountID, _currentGlobalSnowAmount);
+        }
+
+        Shader.SetGlobalFloat(_GlobalSnowAmountID, _currentGlobalSnowAmount);
     }
 
     private void UpdateSeasonMasksForCurrentSeason()

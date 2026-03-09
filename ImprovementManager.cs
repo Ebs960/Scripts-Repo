@@ -189,11 +189,11 @@ public class ImprovementManager : MonoBehaviour
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
         // No duplicate jobs on same tile
-        if (FindBuildJob(tileIndex, planetIndex) != null) return false;
+        if (FindBuildJob(tileIndex, planetIndex) != null) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: duplicate job tile={tileIndex} planet={planetIndex}"); return false; }
 
         // Check tile requirements across all planets
         var td = GetTileDataAcrossAllPlanets(tileIndex, planetIndex);
-        if (td == null) return false;
+        if (td == null) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: tile data null tile={tileIndex} planet={planetIndex}"); return false; }
         
         // Basic terrain checks
         if (data.isOrbitalImprovement)
@@ -202,24 +202,24 @@ public class ImprovementManager : MonoBehaviour
             if (data.allowedBiomes != null && data.allowedBiomes.Length > 0 &&
                 System.Array.IndexOf(data.allowedBiomes, td.biome) < 0 &&
                 System.Array.IndexOf(data.allowedBiomes, Biome.Any) < 0)
-                return false;
+                { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: orbital allowedBiomes mismatch tile={tileIndex}"); return false; }
         }
         else if (data.isUnderwaterImprovement)
         {
             // Underwater improvements: tile must be a water tile with a valid underwaterBiome
             if (td.isLand) return false;
             if (td.underwaterBiome == Biome.Ocean && (data.allowedUnderwaterBiomes == null || data.allowedUnderwaterBiomes.Length == 0))
-                return false; // plain ocean floor, and no explicit allowance
+                { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: underwater ocean floor not allowed tile={tileIndex}"); return false; } // plain ocean floor, and no explicit allowance
             if (data.allowedUnderwaterBiomes != null && data.allowedUnderwaterBiomes.Length > 0 &&
                 System.Array.IndexOf(data.allowedUnderwaterBiomes, td.underwaterBiome) < 0)
-                return false;
+                { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: underwater allowedBiomes mismatch tile={tileIndex}"); return false; }
         }
         else
         {
             // Standard land improvements
-            if (!td.isLand) return false;
+            if (!td.isLand) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: not land tile={tileIndex}"); return false; }
             if (data.allowedBiomes != null && data.allowedBiomes.Length > 0 && 
-                System.Array.IndexOf(data.allowedBiomes, td.biome) < 0) return false;
+                System.Array.IndexOf(data.allowedBiomes, td.biome) < 0) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: allowedBiomes mismatch tile={tileIndex} biome={td.biome}"); return false; }
         }
         
         // Territory control checks
@@ -228,12 +228,12 @@ public class ImprovementManager : MonoBehaviour
         bool isEnemyTerritory = td.owner != null && td.owner != owner;
         
         // Check city requirement
-        if (data.needsCity && !td.HasCity) return false;
+        if (data.needsCity && !td.HasCity) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: needsCity but no city tile={tileIndex}"); return false; }
         
         // Check territory control requirements
-        if (data.requiresControlledTerritory && !isOwnedByBuilder) return false;
-        if (isNeutral && !data.canBuildInNeutralTerritory) return false;
-        if (isEnemyTerritory && !data.canBuildInEnemyTerritory) return false;
+        if (data.requiresControlledTerritory && !isOwnedByBuilder) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: requiresControlledTerritory not owned tile={tileIndex}"); return false; }
+        if (isNeutral && !data.canBuildInNeutralTerritory) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: neutral territory not allowed tile={tileIndex}"); return false; }
+        if (isEnemyTerritory && !data.canBuildInEnemyTerritory) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: enemy territory not allowed tile={tileIndex}"); return false; }
 
         var job = new BuildJob(tileIndex, planetIndex, owner, data);
         jobs.Add(job);
@@ -304,6 +304,9 @@ public class ImprovementManager : MonoBehaviour
     string pid = worker.PersistentId;
     if (job.assignedWorkerPersistentIds == null) job.assignedWorkerPersistentIds = new List<string>();
     if (!job.assignedWorkerPersistentIds.Contains(pid)) job.assignedWorkerPersistentIds.Add(pid);
+    // Notify listeners that a worker was assigned
+    if (GameEventManager.Instance != null)
+        GameEventManager.Instance.RaiseWorkerAssignedToJob(worker, tileIndex, planetIndex);
     return true;
     }
 
@@ -318,6 +321,9 @@ public class ImprovementManager : MonoBehaviour
     if (job == null) return;
     string pid = worker.PersistentId;
     job.assignedWorkerPersistentIds?.RemoveAll(x => x == pid);
+    // Notify listeners that a worker was unassigned
+    if (GameEventManager.Instance != null)
+        GameEventManager.Instance.RaiseWorkerUnassignedFromJob(worker, tileIndex, planetIndex);
     }
 
     /// <summary>
@@ -495,10 +501,8 @@ public class ImprovementManager : MonoBehaviour
             // Record owning civ on runtime instance
             instance.owner = job.owner;
 
-            // Ensure the click handler exists and is initialized so the UI can open
-            var clickHandler = completedImprovement.GetComponent<ImprovementClickHandler>();
-            if (clickHandler == null) clickHandler = completedImprovement.AddComponent<ImprovementClickHandler>();
-            clickHandler.Initialize(job.tileIndex, job.data, job.planetIndex);
+            // Initialize the runtime ImprovementInstance so it can handle clicks and state
+            instance.Initialize(job.tileIndex, job.data, job.planetIndex);
 
             // Add collider if needed for clicking
             if (completedImprovement.GetComponent<Collider>() == null)
@@ -907,8 +911,7 @@ public class ImprovementManager : MonoBehaviour
                     newInst.data = impInstance.data;
                     newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
 
-                    var ch = newObj.GetComponent<ImprovementClickHandler>() ?? newObj.AddComponent<ImprovementClickHandler>();
-                    ch.Initialize(tileIndex, tileData.improvement, planetIndex);
+                    newInst.Initialize(tileIndex, tileData.improvement, planetIndex);
 
                     tileData.improvementInstanceObject = newObj;
                     // Persist change back to the correct planet

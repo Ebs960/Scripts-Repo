@@ -46,14 +46,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   selectedUnitHighlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   selectionIndicatorPrefab: {fileID: 6787124938150287005, guid: ba2e596e7b919774f84cea07c44a830e, type: 3}
-  pathMarkerPrefab: {fileID: 8010103797940107027, guid: da82b8212f2812b469f3346de0337a81, type: 3}
+  pathMarkerPrefab: {fileID: 9024755621722196491, guid: 4ecce51adc64d10439adf3bf35de0fff, type: 3}
   pathMarkerColor: {r: 0, g: 1, b: 1, a: 1}
-  pathLineSprite: {fileID: 21300000, guid: f7099b50ae3a9824f86e63ef2f96eaa5, type: 3}
-  pathTilePrefab: {fileID: 1381842832808130272, guid: 9cb755659af5fa2408c962d716894603, type: 3}
-  pathNodeSprite: {fileID: 21300000, guid: 91b47b1ff6563834a9d756d29220535b, type: 3}
-  pathSpriteColor: {r: 1, g: 1, b: 1, a: 1}
-  pathDotSize: 0.12
-  maxPreviewDots: 300
+  pathTilePrefab: {fileID: 5712344309510528117, guid: 3f68c6612f6a6274e8040355bee6c999, type: 3}
   attackHoverPrefab: {fileID: 0}
   attackHoverIcon: {fileID: 21300000, guid: 0f154c0167064f045b4c9ee3fecaa904, type: 3}
   attackHoverYOffset: 0.8
+  previewDebug: 0
+  previewMaxIcons: 10

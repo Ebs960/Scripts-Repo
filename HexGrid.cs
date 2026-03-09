@@ -85,7 +85,7 @@ public class HexGrid
                 Vector3 center = new Vector3(worldX, 0f, worldZ);
                 tileCenters[index] = center;
 
-                // 6-neighbor even-r offset with horizontal wrap
+                // 6-neighbor odd-r offset with horizontal wrap
                 var nbrs = new List<int>(6);
                 int rUp = r - 1;
                 int rDn = r + 1;
@@ -97,26 +97,26 @@ public class HexGrid
                 {
                     if ((r & 1) == 0)
                     {
-                        nbrs.Add(rUp * Width + c);     // up-left
-                        nbrs.Add(rUp * Width + cR);     // up-right
+                        nbrs.Add(rUp * Width + cL);    // up-left
+                        nbrs.Add(rUp * Width + c);     // up-right
                     }
                     else
                     {
-                        nbrs.Add(rUp * Width + cL);    // up-left
-                        nbrs.Add(rUp * Width + c);      // up-right
+                        nbrs.Add(rUp * Width + c);     // up-left
+                        nbrs.Add(rUp * Width + cR);    // up-right
                     }
                 }
                 if (rDn < Height)
                 {
                     if ((r & 1) == 0)
                     {
-                        nbrs.Add(rDn * Width + c);     // down-left
-                        nbrs.Add(rDn * Width + cR);     // down-right
+                        nbrs.Add(rDn * Width + cL);    // down-left
+                        nbrs.Add(rDn * Width + c);     // down-right
                     }
                     else
                     {
-                        nbrs.Add(rDn * Width + cL);    // down-left
-                        nbrs.Add(rDn * Width + c);      // down-right
+                        nbrs.Add(rDn * Width + c);     // down-left
+                        nbrs.Add(rDn * Width + cR);    // down-right
                     }
                 }
                 neighbors[index] = nbrs;
@@ -194,7 +194,7 @@ public class HexGrid
             zi = -xi - yi;
 
         int row = zi;
-        int col = xi + ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
+        int col = xi + ((row - (row & 1)) / 2);
         col = ((col % Width) + Width) % Width;
         if (row < 0 || row >= Height)
             return -1;

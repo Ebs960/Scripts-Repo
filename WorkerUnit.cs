@@ -40,7 +40,8 @@ public class WorkerUnit : BaseUnit
     private readonly int idleExperiencedHash = Animator.StringToHash("IdleExperienced");
     private readonly int foundCityHash = Animator.StringToHash("FoundCity");
     private readonly int forageHash = Animator.StringToHash("Forage");
-    private readonly int buildHash = Animator.StringToHash("Build");
+    private readonly int buildBoolHash = Animator.StringToHash("IsBuilding");
+    private bool _lastBuildAnimState = false;
 
     #region Implement Abstract Members from BaseUnit
 
@@ -153,10 +154,12 @@ public class WorkerUnit : BaseUnit
         base.Awake();
         UnitRegistry.RegisterPersistent(PersistentId, gameObject);
 
-        // Subscribe to movement completed event for animation cleanup
+        // Subscribe to movement completed and worker assignment events for animation updates
         if (GameEventManager.Instance != null)
         {
             GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+            GameEventManager.Instance.OnWorkerAssignedToJob += HandleWorkerAssignedEvent;
+            GameEventManager.Instance.OnWorkerUnassignedFromJob += HandleWorkerUnassignedEvent;
         }
         else
         {
@@ -180,13 +183,19 @@ public class WorkerUnit : BaseUnit
         while (GameEventManager.Instance == null)
             yield return null;
         GameEventManager.Instance.OnMovementCompleted += HandleMovementCompleted;
+        GameEventManager.Instance.OnWorkerAssignedToJob += HandleWorkerAssignedEvent;
+        GameEventManager.Instance.OnWorkerUnassignedFromJob += HandleWorkerUnassignedEvent;
     }
 
     protected override void OnDestroy()
     {
         // Unsubscribe from movement event
         if (GameEventManager.Instance != null)
+        {
             GameEventManager.Instance.OnMovementCompleted -= HandleMovementCompleted;
+            GameEventManager.Instance.OnWorkerAssignedToJob -= HandleWorkerAssignedEvent;
+            GameEventManager.Instance.OnWorkerUnassignedFromJob -= HandleWorkerUnassignedEvent;
+        }
         base.OnDestroy();
     }
 
@@ -270,6 +279,30 @@ public class WorkerUnit : BaseUnit
         if (ImprovementManager.Instance == null || !ImprovementManager.Instance.HasWorkerJobAtTile(currentTileIndex, planetIndex)) return;
         ImprovementManager.Instance.AddWorkerWork(currentTileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
+    }
+
+    
+
+    private void HandleWorkerAssignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
+    {
+        if (args == null || args.Worker == null) return;
+        if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
+        if (animator != null)
+        {
+            animator.SetBool(buildBoolHash, true);
+            _lastBuildAnimState = true;
+        }
+    }
+
+    private void HandleWorkerUnassignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
+    {
+        if (args == null || args.Worker == null) return;
+        if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
+        if (animator != null)
+        {
+            animator.SetBool(buildBoolHash, false);
+            _lastBuildAnimState = false;
+        }
     }
 
     public void FoundCity()
@@ -430,12 +463,15 @@ public class WorkerUnit : BaseUnit
     /// </summary>
     public bool CanForage(ResourceData resource, int tileIndex)
     {
-        if (resource == null) return false;
-        if (currentWorkPoints <= 0) return false;
-        if (tileIndex != currentTileIndex) return false;
+        if (resource == null) { Debug.Log("[WorkerUnit] CanForage=false: resource==null"); return false; }
+        if (currentWorkPoints <= 0) { Debug.Log($"[WorkerUnit] CanForage=false: no work points ({currentWorkPoints}) tile={tileIndex}"); return false; }
+        if (tileIndex != currentTileIndex) { Debug.Log($"[WorkerUnit] CanForage=false: tile mismatch current={currentTileIndex} requested={tileIndex}"); return false; }
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var td = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (td == null || !td.isLand) return false;
+        if (td == null) { Debug.Log($"[WorkerUnit] CanForage=false: tile data null tile={tileIndex}"); return false; }
+        if (!td.isLand) { Debug.Log($"[WorkerUnit] CanForage=false: tile not land tile={tileIndex}"); return false; }
+        if (!resource.canBeForaged) { Debug.Log($"[WorkerUnit] CanForage=false: resource not foragable {resource.resourceName}"); return false; }
+        if (data != null && !data.canForage) { Debug.Log($"[WorkerUnit] CanForage=false: worker data.canForage=false"); return false; }
         return true;
     }
 
@@ -466,11 +502,11 @@ public class WorkerUnit : BaseUnit
 
     public void StartBuildingUnit(CombatUnitData unitData, int tileIndex)
     {
-        if (!CanBuildUnit(unitData, tileIndex)) return;
-        if (ImprovementManager.Instance == null) return;
+        if (!CanBuildUnit(unitData, tileIndex)) { Debug.Log($"[WorkerUnit] StartBuildingUnit failed: CanBuildUnit=false unit={unitData?.unitName} tile={tileIndex}"); return; }
+        if (ImprovementManager.Instance == null) { Debug.Log($"[WorkerUnit] StartBuildingUnit failed: ImprovementManager missing"); return; }
         if (!ImprovementManager.Instance.HasUnitJobAtTile(tileIndex, planetIndex, unitData) &&
             !ImprovementManager.Instance.CreateUnitJob(unitData, tileIndex, owner, planetIndex))
-            return;
+        { Debug.Log($"[WorkerUnit] StartBuildingUnit failed: CreateUnitJob rejected unit={unitData?.unitName} tile={tileIndex}"); return; }
 
         ImprovementManager.Instance.AddUnitWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
@@ -478,11 +514,11 @@ public class WorkerUnit : BaseUnit
 
     public void StartBuildingWorker(WorkerUnitData workerData, int tileIndex)
     {
-        if (!CanBuildWorker(workerData, tileIndex)) return;
-        if (ImprovementManager.Instance == null) return;
+        if (!CanBuildWorker(workerData, tileIndex)) { Debug.Log($"[WorkerUnit] StartBuildingWorker failed: CanBuildWorker=false worker={workerData?.unitName} tile={tileIndex}"); return; }
+        if (ImprovementManager.Instance == null) { Debug.Log($"[WorkerUnit] StartBuildingWorker failed: ImprovementManager missing"); return; }
         if (!ImprovementManager.Instance.HasWorkerJobAtTile(tileIndex, planetIndex, workerData) &&
             !ImprovementManager.Instance.CreateWorkerJob(workerData, tileIndex, owner, planetIndex))
-            return;
+        { Debug.Log($"[WorkerUnit] StartBuildingWorker failed: CreateWorkerJob rejected worker={workerData?.unitName} tile={tileIndex}"); return; }
 
         ImprovementManager.Instance.AddWorkerWork(tileIndex, currentWorkPoints, planetIndex);
         currentWorkPoints = 0;
@@ -490,13 +526,13 @@ public class WorkerUnit : BaseUnit
 
     public void StartBuilding(ImprovementData improvement, int tileIndex)
     {
-        if (improvement == null) return;
-        if (currentWorkPoints <= 0) return;
-        if (tileIndex != currentTileIndex) return;
-        if (ImprovementManager.Instance == null) return;
+        if (improvement == null) { Debug.Log("[WorkerUnit] StartBuilding failed: improvement==null"); return; }
+        if (currentWorkPoints <= 0) { Debug.Log($"[WorkerUnit] StartBuilding failed: no work points (0) tile={tileIndex}"); return; }
+        if (tileIndex != currentTileIndex) { Debug.Log($"[WorkerUnit] StartBuilding failed: tile mismatch current={currentTileIndex} requested={tileIndex}"); return; }
+        if (ImprovementManager.Instance == null) { Debug.Log("[WorkerUnit] StartBuilding failed: ImprovementManager missing"); return; }
         if (!ImprovementManager.Instance.HasBuildJobAtTile(tileIndex, planetIndex, improvement) &&
             !ImprovementManager.Instance.CreateBuildJob(improvement, tileIndex, owner, planetIndex))
-            return;
+        { Debug.Log($"[WorkerUnit] StartBuilding failed: CreateBuildJob rejected improvement={improvement?.name} tile={tileIndex}"); return; }
 
         ImprovementManager.Instance.AssignWorkerToJob(tileIndex, this, planetIndex);
         ImprovementManager.Instance.AddWork(tileIndex, currentWorkPoints, planetIndex);

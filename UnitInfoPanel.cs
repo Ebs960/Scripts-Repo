@@ -26,6 +26,7 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
     [SerializeField] private Button forageButton; // new forage action for workers
+    [SerializeField] private Button startBuildButton; // starts selected build option (optional)
     [Header("Orbit Controls")]
     [SerializeField] private TextMeshProUGUI orbitStatusText;
     [SerializeField] private Button enterOrbitButton;
@@ -47,6 +48,7 @@ public class UnitInfoPanel : MonoBehaviour
         public string Display;
     }
     private List<BuildOption> buildOptions = new List<BuildOption>();
+    private int pendingBuildIndex = -1;
     private bool suppressBuildOptionCallback;
 
     private void Awake()
@@ -72,6 +74,13 @@ public class UnitInfoPanel : MonoBehaviour
             buildOptionsDropdown.onValueChanged.RemoveAllListeners();
             buildOptionsDropdown.onValueChanged.AddListener(OnBuildOptionSelected);
             buildOptionsDropdown.gameObject.SetActive(false);
+        }
+        if (startBuildButton != null)
+        {
+            startBuildButton.onClick.RemoveAllListeners();
+            startBuildButton.onClick.AddListener(OnStartBuildButtonClicked);
+            startBuildButton.gameObject.SetActive(false);
+            startBuildButton.interactable = false;
         }
 
         // Validate serialized fields at startup so missing inspector wiring is obvious in Console
@@ -354,12 +363,15 @@ UpdateUnitInfoForWorkerUnit();
             bool canForageNow = false;
             if (workerUnit != null)
             {
-                var rm = ResourceManager.Instance;
-                if (rm != null)
+                int tile = workerUnit.currentTileIndex;
+                var ts = TileSystem.GetForPlanet(workerUnit.planetIndex) ?? TileSystem.Instance;
+                var td = ts != null ? ts.GetTileData(tile) : null;
+                var resData = td != null ? td.resource : null;
+                canForageNow = resData != null && workerUnit.CanForage(resData, tile);
+                if (!canForageNow)
                 {
-                    int tile = workerUnit.currentTileIndex;
-                    var inst = rm.GetResourceInstanceAtTile(tile);
-                    canForageNow = inst != null && workerUnit.CanForage(inst.data, tile);
+                    string resStr = resData != null ? resData.resourceName : "N/A";
+                    Debug.Log($"[UnitInfoPanel] Forage disabled -> tile={tile} res={resStr} workerWP={workerUnit.currentWorkPoints} workerCanForage={workerUnit.data?.canForage} resCanBeForaged={(resData!=null?resData.canBeForaged.ToString():"N/A")} tileIsLand={(td!=null?td.isLand.ToString():"N/A")} workerTile={workerUnit.currentTileIndex} GamePlanet={GameManager.Instance?.currentPlanetIndex} resPlanet={workerUnit.planetIndex}");
                 }
             }
             forageButton.interactable = canForageNow;
@@ -477,6 +489,7 @@ UpdateUnitInfoForWorkerUnit();
             buildOptionsDropdown.SetValueWithoutNotify(0);
             suppressBuildOptionCallback = false;
             buildOptionsDropdown.interactable = false;
+            if (startBuildButton != null) { startBuildButton.gameObject.SetActive(false); startBuildButton.interactable = false; }
         }
         else
         {
@@ -488,6 +501,7 @@ UpdateUnitInfoForWorkerUnit();
             buildOptionsDropdown.SetValueWithoutNotify(0);
             suppressBuildOptionCallback = false;
             buildOptionsDropdown.interactable = true;
+            if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
         }
         buildOptionsDropdown.gameObject.SetActive(true);
     }
@@ -495,9 +509,30 @@ UpdateUnitInfoForWorkerUnit();
     private void OnBuildOptionSelected(int idx)
     {
         if (suppressBuildOptionCallback || buildOptions == null || currentWorkerUnit == null) return;
-        if (idx <= 0 || idx > buildOptions.Count) return;
+        if (idx <= 0 || idx > buildOptions.Count)
+        {
+            // clear pending selection
+            pendingBuildIndex = -1;
+            if (startBuildButton != null) startBuildButton.interactable = false;
+            return;
+        }
 
-        var opt = buildOptions[idx - 1];
+        // Store pending build selection; do not start immediately. User must press the Start button.
+        pendingBuildIndex = idx - 1;
+        if (startBuildButton != null)
+        {
+            startBuildButton.interactable = true;
+        }
+    }
+
+    private void OnStartBuildButtonClicked()
+    {
+        if (pendingBuildIndex < 0 || buildOptions == null || pendingBuildIndex >= buildOptions.Count || currentWorkerUnit == null) return;
+        var opt = buildOptions[pendingBuildIndex];
+        // Clear pending and disable button
+        pendingBuildIndex = -1;
+        if (startBuildButton != null) startBuildButton.interactable = false;
+
         switch (opt.Type)
         {
             case BuildOption.OptionType.Improvement:

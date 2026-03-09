@@ -60,7 +60,7 @@ public class UnitSelectionManager : MonoBehaviour
     [Tooltip("Maximum number of per-tile preview icons to instantiate (safety cap)")]
     [SerializeField] private int previewMaxIcons = 20;
     private readonly System.Collections.Generic.List<GameObject> previewMarkers = new System.Collections.Generic.List<GameObject>();
-    private readonly System.Collections.Generic.List<TextMeshPro> previewMarkerLabels = new System.Collections.Generic.List<TextMeshPro>();
+    private readonly System.Collections.Generic.List<UnityEngine.Component> previewMarkerLabels = new System.Collections.Generic.List<UnityEngine.Component>();
     // Pooled per-tile prefab instances (used when `pathTilePrefab` is assigned)
     private readonly System.Collections.Generic.List<GameObject> pooledPathTiles = new System.Collections.Generic.List<GameObject>();
     
@@ -309,22 +309,16 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (selectedUnit == null) return;
         isPreviewing = true;
-        previewTargetTile = -1;
+        previewTargetTile = ResolvePreviewTargetTile();
         EnsurePreviewObjects();
-        UpdatePathPreviewWhileDragging();
+        UpdatePreviewVisuals();
     }
 
     private void UpdatePathPreviewWhileDragging()
     {
         if (!isPreviewing || selectedUnit == null) return;
 
-        int target = -1;
-        if (isHoveringTile && cachedHoveredTileIndex >= 0) target = cachedHoveredTileIndex;
-        else
-        {
-            var hit = GetMouseHitInfo();
-            if (hit.hit) target = hit.tileIndex;
-        }
+        int target = ResolvePreviewTargetTile();
 
         if (target != previewTargetTile)
         {
@@ -337,6 +331,7 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (!isPreviewing) return;
         isPreviewing = false;
+        previewTargetTile = ResolvePreviewTargetTile();
 
         if (previewTargetTile >= 0)
         {
@@ -344,6 +339,12 @@ public class UnitSelectionManager : MonoBehaviour
         }
 
         ClearPreviewVisuals();
+    }
+
+    private int ResolvePreviewTargetTile()
+    {
+        var hit = GetMouseHitInfo();
+        return hit.hit ? hit.tileIndex : -1;
     }
 
     private void EnsurePreviewObjects()
@@ -358,24 +359,30 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void UpdatePreviewVisuals()
     {
-        // If no per-tile prefab is assigned, we can't preview (we no longer draw lines)
-        if (pathTilePrefab == null) return;
-
         if (previewTargetTile < 0)
         {
+            ClearPreviewVisuals();
             return;
         }
 
+        foreach (var m in previewMarkers) if (m != null) m.SetActive(false);
+        foreach (var lbl in previewMarkerLabels) if (lbl != null) lbl.gameObject.SetActive(false);
+
         var umc = UnitMovementController.Instance;
+        // Fallback: Instance may not be assigned yet due to initialization order.
         if (umc == null)
         {
-            return;
+            umc = FindAnyObjectByType<UnitMovementController>();
+            if (umc == null)
+            {
+                if (previewDebug) Debug.LogWarning("[USM] UnitMovementController not found yet; skipping preview.");
+                return;
+            }
         }
         int start = selectedUnit.currentTileIndex;
         var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
         if (ts == null)
         {
-            previewLine.positionCount = 0;
             return;
         }
 
@@ -383,7 +390,8 @@ public class UnitSelectionManager : MonoBehaviour
         var segments = umc.GetPathSegmentsByTurn(selectedUnit, start, previewTargetTile);
         if (segments == null || segments.Count == 0)
         {
-            previewLine.positionCount = 0;
+            foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
+            ShowDestinationMarker(previewTargetTile, ts, 0);
             return;
         }
 
@@ -435,8 +443,11 @@ public class UnitSelectionManager : MonoBehaviour
         // Render preview: use pooled per-tile prefabs only (no lines)
         if (pathTilePrefab != null)
         {
-            // Ensure pool size
-            for (int i = pooledPathTiles.Count; i < positions.Count; i++)
+            // Hard cap: do not instantiate more than previewMaxIcons prefabs
+            int maxToShow = Mathf.Min(positions.Count, previewMaxIcons);
+
+            // Ensure pool size up to capped count
+            for (int i = pooledPathTiles.Count; i < maxToShow; i++)
             {
                 var p = Instantiate(pathTilePrefab, previewParent.transform);
                 p.name = $"PathTile_{pooledPathTiles.Count}";
@@ -444,20 +455,58 @@ public class UnitSelectionManager : MonoBehaviour
                 pooledPathTiles.Add(p);
             }
 
-            // Position pooled prefabs and ensure label (if any) is hidden
+            // Position pooled prefabs (only up to maxToShow) and ensure label (if any) is hidden
             for (int i = 0; i < pooledPathTiles.Count; i++)
             {
                 var go = pooledPathTiles[i];
-                if (i < positions.Count)
+                if (i < maxToShow)
                 {
-                    go.SetActive(true);
-                    go.transform.position = positions[i];
-                    go.transform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
-                    var tmp = go.GetComponentInChildren<TextMeshPro>();
-                    if (tmp != null)
+                    // If this path tile is a turn breakpoint, do not show a path icon here;
+                    // the per-turn marker will be shown instead.
+                    if (breakpointNumbers != null && i < breakpointNumbers.Count && breakpointNumbers[i] > 0)
                     {
-                        tmp.text = "";
-                        tmp.gameObject.SetActive(false);
+                        go.SetActive(false);
+                        continue;
+                    }
+
+                    Vector3 targetPos = positions[i];
+
+                    // Attempt to align to actual mesh surface via a short downward raycast.
+                    // This fixes cases where the mesh is displaced by a shader or heightmap that
+                    // doesn't match the tile elevation stored in TileData.
+                    Vector3 rayStart = targetPos + Vector3.up * 4f;
+                    if (Physics.Raycast(rayStart, Vector3.down, out var hit, 6f))
+                    {
+                        float surfaceY = hit.point.y;
+                        float delta = targetPos.y - surfaceY;
+                        // If the delta is significant, snap to the physics surface
+                        if (Mathf.Abs(delta) > 0.05f)
+                        {
+                            if (previewDebug) Debug.Log($"[USM] Adjusting preview tile {i} Y from {targetPos.y:F3} to surface {surfaceY:F3} (delta {delta:F3})");
+                            targetPos.y = surfaceY + 0.02f; // small offset above surface
+                        }
+                    }
+
+                    go.SetActive(true);
+                    go.transform.position = targetPos;
+                    // Ensure the icon's face points toward the sky (flat on the ground).
+                    // Many mesh/Text prefabs face along their local forward (+Z), so set forward->up.
+                    go.transform.forward = Vector3.up;
+                    // Support both TextMeshPro (3D) and TextMeshProUGUI (UI) labels, including inactive children.
+                    var tmp3d = go.GetComponentInChildren<TextMeshPro>(true);
+                    if (tmp3d != null)
+                    {
+                        tmp3d.text = "";
+                        tmp3d.gameObject.SetActive(false);
+                    }
+                    else
+                    {
+                        var tmpUI = go.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+                        if (tmpUI != null)
+                        {
+                            tmpUI.text = "";
+                            tmpUI.gameObject.SetActive(false);
+                        }
                     }
                 }
                 else
@@ -465,6 +514,16 @@ public class UnitSelectionManager : MonoBehaviour
                     go.SetActive(false);
                 }
             }
+
+            // If there were more positions than the cap, warn once
+            if (positions.Count > previewMaxIcons)
+            {
+                Debug.LogWarning($"[USM] Preview truncated: showing {previewMaxIcons}/{positions.Count} icons to avoid spike.");
+            }
+        }
+        else
+        {
+            foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
         }
         
 
@@ -477,13 +536,47 @@ public class UnitSelectionManager : MonoBehaviour
             Vector3 mpos = ts.GetTileSurfacePosition(markerTile) + Vector3.up * 0.25f;
             GameObject marker = GetOrCreateMarker(m);
             marker.transform.position = mpos;
+            // Orient marker so its visible face points upward (flat on ground)
+            marker.transform.forward = Vector3.up;
             marker.SetActive(true);
             if (m < previewMarkerLabels.Count && previewMarkerLabels[m] != null)
             {
-                var lbl = previewMarkerLabels[m];
-                lbl.text = (m + 1).ToString();
-                lbl.gameObject.SetActive(true);
+                var lblComp = previewMarkerLabels[m];
+                if (lblComp is TextMeshPro lbl3d)
+                {
+                    lbl3d.text = (m + 1).ToString();
+                    lbl3d.gameObject.SetActive(true);
+                }
+                else if (lblComp is TMPro.TextMeshProUGUI lblUI)
+                {
+                    lblUI.text = (m + 1).ToString();
+                    lblUI.gameObject.SetActive(true);
+                }
             }
+        }
+
+        int lastSegmentEndTile = segments.Count > 0 && segments[segments.Count - 1] != null && segments[segments.Count - 1].Count > 0
+            ? segments[segments.Count - 1][segments[segments.Count - 1].Count - 1]
+            : -1;
+        if (lastSegmentEndTile != previewTargetTile)
+        {
+            ShowDestinationMarker(previewTargetTile, ts, segments.Count);
+        }
+    }
+
+    private void ShowDestinationMarker(int tileIndex, TileSystem ts, int markerIndex)
+    {
+        if (tileIndex < 0 || ts == null) return;
+
+        Vector3 pos = ts.GetTileSurfacePosition(tileIndex) + Vector3.up * 0.25f;
+        GameObject marker = GetOrCreateMarker(markerIndex);
+        marker.transform.position = pos;
+        marker.transform.forward = Vector3.up;
+        marker.SetActive(true);
+
+        if (markerIndex < previewMarkerLabels.Count && previewMarkerLabels[markerIndex] != null)
+        {
+            previewMarkerLabels[markerIndex].gameObject.SetActive(false);
         }
     }
 
@@ -499,13 +592,11 @@ public class UnitSelectionManager : MonoBehaviour
         {
             go = Instantiate(pathMarkerPrefab, previewParent.transform);
         }
-        else if (pathTilePrefab != null)
-        {
-            // Prefer tile prefab when marker prefab is not provided so the label sits inside the icon
-            go = Instantiate(pathTilePrefab, previewParent.transform);
-        }
         else
         {
+            // Avoid instantiating `pathTilePrefab` as a marker because pooled path-tile prefabs
+            // are already placed for each tile; instantiating the tile prefab again for markers
+            // can produce duplicate icons on the same tile. Use a simple sphere marker instead.
             go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             var c = go.GetComponent<Collider>(); if (c != null) Destroy(c);
             var rend = go.GetComponent<Renderer>();
@@ -522,24 +613,58 @@ public class UnitSelectionManager : MonoBehaviour
         // Make markers larger so the icon is clearly visible
         go.transform.localScale = Vector3.one * 0.6f;
 
-        // Prefer using a label baked into the prefab. Do NOT auto-create labels
-        // so that numbering only appears when the prefab provides a text child.
-        TextMeshPro label = go.GetComponentInChildren<TextMeshPro>();
-        if (label == null)
+        // Ensure any world-space Canvas on the prefab has the scene camera assigned so
+        // UI labels (TextMeshProUGUI) render and receive events correctly.
+        var canvas = go.GetComponentInChildren<Canvas>();
+        if (canvas != null && canvas.renderMode == RenderMode.WorldSpace && canvas.worldCamera == null)
         {
-            if (previewDebug) Debug.LogWarning($"[USM] Marker prefab lacks TextMeshPro child — numeric labels will be skipped for marker {go.name}");
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                canvas.worldCamera = mainCamera;
+                if (previewDebug) Debug.Log($"[USM] Assigned Canvas.worldCamera for marker prefab {go.name} to {mainCamera.name}");
+            }
+        }
+
+        // Prefer using a label baked into the prefab. Do NOT auto-create labels
+        // so numbering only appears when the prefab provides a text child.
+        UnityEngine.Component labelComp = null;
+        var label3D = go.GetComponentInChildren<TextMeshPro>(true);
+        if (label3D != null)
+        {
+            labelComp = label3D;
+            label3D.transform.localPosition = Vector3.zero;
+            var lblRenderer = label3D.GetComponent<MeshRenderer>();
+            if (lblRenderer != null) lblRenderer.sortingOrder = 1002;
+            label3D.gameObject.SetActive(false);
         }
         else
         {
-            // If a label exists (from a prefab), make sure it's centered and ordered
-            label.transform.localPosition = Vector3.zero;
-            var lblRenderer = label.GetComponent<MeshRenderer>();
-            if (lblRenderer != null) lblRenderer.sortingOrder = 1002;
-            label.gameObject.SetActive(false);
+            var labelUI = go.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+            if (labelUI != null)
+            {
+                labelComp = labelUI;
+                labelUI.rectTransform.localPosition = Vector3.zero;
+                labelUI.gameObject.SetActive(false);
+                // Check for a parent Canvas and whether it's world-space
+                var parentCanvas = labelUI.GetComponentInParent<UnityEngine.Canvas>();
+                if (parentCanvas == null)
+                {
+                    if (previewDebug) Debug.LogWarning($"[USM] Marker prefab's TextMeshProUGUI has no Canvas parent; label may not render: {go.name}");
+                }
+                else if (parentCanvas.renderMode != UnityEngine.RenderMode.WorldSpace)
+                {
+                    if (previewDebug) Debug.LogWarning($"[USM] Marker prefab's Canvas is not WorldSpace; TextMeshProUGUI may not appear in world: {go.name}");
+                }
+            }
+            else
+            {
+                if (previewDebug) Debug.LogWarning($"[USM] Marker prefab lacks TextMeshPro (3D) or TextMeshProUGUI child — numeric labels will be skipped for marker {go.name}");
+            }
         }
 
         previewMarkers.Add(go);
-        previewMarkerLabels.Add(label); // may be null when prefab doesn't provide one
+        previewMarkerLabels.Add(labelComp); // may be null when prefab doesn't provide one
         go.SetActive(false);
         return go;
     }

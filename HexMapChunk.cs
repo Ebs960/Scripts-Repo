@@ -195,7 +195,7 @@ public class HexMapChunk : MonoBehaviour
                     continue;
                 }
 
-                var response = climateManager.GetSeasonResponseForTile(tileIndex, season);
+                var response = climateManager.GetSeasonResponse(tile.biome, season);
                 pixels[rowBase + x] = new Color(response.snow, response.wet, response.dry, 0f);
             }
         }
@@ -220,6 +220,7 @@ public class HexMapChunk : MonoBehaviour
         propertyBlock.SetVector("_TileSeasonMask_ST", new Vector4(uvScale.x, uvScale.y, uvOffset.x, uvOffset.y));
         meshRenderer.SetPropertyBlock(propertyBlock);
     }
+
     
     /// <summary>
     /// Assign which tile indices belong to this chunk (for dirty tracking).

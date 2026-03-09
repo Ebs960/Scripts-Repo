@@ -554,7 +554,7 @@ public class CombatUnit : BaseUnit
         // would destroy the MoveAlongPath cleanup code that sets isMoving = false
         UpdateWalkingState(false);
         StopAllCoroutines();
-        StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
+        UnitMovementController.Instance?.StartMoveForUnit(this, path);
     }
 
     public void MoveAlongPath(List<int> path)

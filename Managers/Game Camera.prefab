@@ -153,7 +153,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlanetaryCameraManager
   panSpeed: 80
   zoomSpeed: 40
-  minHeight: 33
+  minHeight: 40
   maxHeight: 80
   rotateSpeed: 50
   minPitchAngle: 30

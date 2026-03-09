@@ -73,7 +73,7 @@ public static class EquirectLUTBuilder
                 zi = -xi - yi;
 
             int row = zi;
-            int col = xi + ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
+            int col = xi + ((row - (row & 1)) / 2);
             col = ((col % grid.gridWidth) + grid.gridWidth) % grid.gridWidth;
 
             if (row < 0 || row >= grid.gridHeight)

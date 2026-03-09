@@ -93,6 +93,20 @@ public class CivilizationManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Unregisters a civilization from the manager. Safe to call even if the civ
+    /// is already destroyed or null; this will remove null entries and clear
+    /// player references.
+    /// </summary>
+    public void UnregisterCiv(Civilization civ)
+    {
+        // prune null entries first
+        civs.RemoveAll(x => x == null);
+        if (civ == null) return;
+        if (civs.Contains(civ)) civs.Remove(civ);
+        if (playerCiv == civ) playerCiv = null;
+    }
+
+    /// <summary>
     /// Advances to the next civ's turn.
     /// </summary>
     public void AdvanceTurn()

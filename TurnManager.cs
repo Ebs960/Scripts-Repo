@@ -64,6 +64,23 @@ public class TurnManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Unregister a civilization from the turn manager. Safe to call multiple times.
+    /// </summary>
+    public void UnregisterCivilization(Civilization civ)
+    {
+        if (civ == null) return;
+        civs.RemoveAll(x => x == null);
+        if (civs.Contains(civ))
+        {
+            int idx = civs.IndexOf(civ);
+            civs.RemoveAt(idx);
+            if (playerCiv == civ) playerCiv = null;
+            // adjust currentIndex if necessary
+            if (idx <= currentIndex) currentIndex = Mathf.Max(-1, currentIndex - 1);
+        }
+    }
+
+    /// <summary>
     /// Begins the turn cycle. Call this once after spawning all civs.
     /// </summary>
     public void StartTurns()
@@ -147,6 +164,51 @@ public class TurnManager : MonoBehaviour
             }
         }
 
+        // Prune civilizations that have no cities and no units to avoid stalled turns
+        if (civs.Count > 0)
+        {
+            var snapshot = civs.ToArray();
+            bool removedAny = false;
+            foreach (var c in snapshot)
+            {
+                if (c == null)
+                {
+                    civs.Remove(c);
+                    removedAny = true;
+                    continue;
+                }
+
+                // Remove any null entries that may have accumulated in the civ's lists
+                try { c.cities?.RemoveAll(x => x == null); } catch { }
+                try { c.combatUnits?.RemoveAll(x => x == null); } catch { }
+                try { c.workerUnits?.RemoveAll(x => x == null); } catch { }
+
+                bool hasCities = c.cities != null && c.cities.Count > 0;
+                bool hasCombat = c.combatUnits != null && c.combatUnits.Count > 0;
+                bool hasWorkers = c.workerUnits != null && c.workerUnits.Count > 0;
+
+                if (!hasCities && !hasCombat && !hasWorkers)
+                {
+                    Debug.Log($"TurnManager: Removing empty civilization '{c.civData?.civName ?? "(unknown)"}'");
+                    // Remove from turn list and unregister with CivilizationManager, then destroy object
+                    civs.Remove(c);
+                    try { CivilizationManager.Instance?.UnregisterCiv(c); } catch { }
+                    try { if (c.gameObject != null) Destroy(c.gameObject); } catch { }
+                    if (playerCiv == c) playerCiv = null;
+                    removedAny = true;
+                }
+            }
+
+            if (civs.Count == 0)
+            {
+                Debug.LogWarning("TurnManager: No civilizations remain after pruning. Stopping turns.");
+                yield break;
+            }
+
+            // If we removed any civs, reset index so turn order remains valid
+            if (removedAny) currentIndex = -1;
+        }
+
         // Advance to next civ
         currentIndex++;
         if (currentIndex >= civs.Count) currentIndex = 0;
@@ -170,6 +232,20 @@ public class TurnManager : MonoBehaviour
         OnAIProcessingChanged?.Invoke(!isPlayer, civ);
 
         civ.BeginTurn(round);
+
+        // Simple automatic worker contribution: call the same public methods the UI uses.
+        // Keeps logic minimal (no new scripts) — workers will attempt to contribute work at their turn start.
+        if (civ != null && civ.workerUnits != null)
+        {
+            foreach (var w in civ.workerUnits)
+            {
+                if (w == null) continue;
+                // Call the public contribution methods (these already guard for no-job / no-points)
+                w.ContributeWork();
+                w.ContributeWorkToUnit();
+                w.ContributeWorkToWorker();
+            }
+        }
 
         OnCivTurnStarted?.Invoke(civ, round);
         // Legacy: many systems subscribe here.

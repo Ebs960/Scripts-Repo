@@ -84,8 +84,26 @@ public class ResourceManager : MonoBehaviour
             InitializeResourceManager();
         }
 
+        // Subscribe to tile resource change events so ResourceManager owns the visual instance lifecycle.
+        try
+        {
+            ts.OnTileResourceChanged -= (t, o, n) => HandleTileResourceChanged(t, o, n, planetIndex);
+            ts.OnTileResourceChanged += (t, o, n) => HandleTileResourceChanged(t, o, n, planetIndex);
+        }
+        catch { }
+
         SpawnResourcesOnPlanet(generator, planetIndex);
         spawnedPlanetIndices.Add(planetIndex);
+
+        // One-time reconciliation to repair any mismatches between TileSystem tile data and spawned instances.
+        try
+        {
+            ReconcilePlanetResources(planetIndex);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ResourceManager] ReconcilePlanetResources failed for planet {planetIndex}: {ex.Message}");
+        }
     }
 
     private IEnumerator WaitForTileSystemAndSpawn(PlanetGenerator generator)
@@ -399,29 +417,26 @@ public class ResourceManager : MonoBehaviour
         civ.policyPoints += rd.foragePolicyPoints;
         civ.faith        += rd.forageFaith;
 
-        // Clear the tile's resource in the hex data using planet-aware method
-        var ts = TileSystem.GetForPlanet(inst.planetIndex) ?? TileSystem.Instance;
-        if (ts != null)
-        {
-            var tileData = ts.GetTileDataFromPlanet(inst.tileIndex, inst.planetIndex);
-            if (tileData != null)
-            {
-                tileData.resource = null;
-                ts.SetTileDataOnPlanet(inst.tileIndex, tileData, inst.planetIndex);
-            }
-        }
-
-        spawnedResources.Remove(inst);
-        Destroy(inst.gameObject);
+        // Request tile-level removal of the resource; TileSystem will raise event and ResourceManager will destroy the instance.
+        TileSystem.SetResourceOnTile(null, inst.tileIndex, inst.planetIndex);
     }
 
     // Method to spawn a resource instance
     private void SpawnResourceInstance(ResourceData resource, int tileIndex, int planetIndex)
     {
         if (resource == null) return;
-
         // Get the TileSystem for this planet and compute a surface position for the resource
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        // GUARD: avoid spawning more than one resource on the same tile/planet
+        if (GetResourceInstanceAtTile(tileIndex, planetIndex) != null)
+        {
+            return;
+        }
+        var _tileCheck = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
+        if (_tileCheck != null && _tileCheck.resource != null)
+        {
+            return;
+        }
         Vector3 surfacePos = Vector3.zero;
         if (ts != null)
         {
@@ -435,100 +450,140 @@ public class ResourceManager : MonoBehaviour
             surfacePos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
         }
 
-        // Retrieve tile data early so we can choose an appropriate parent before instantiation
-        var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
-        // Ensure the tile's resource field is set to match the spawned resource
-        if (tileData != null)
+        // Instead of directly creating instances here, set the authoritative tile resource
+        // via TileSystem. ResourceManager listens to OnTileResourceChanged and will
+        // create/destroy visual instances in response.
+        TileSystem.SetResourceOnTile(resource, tileIndex, planetIndex);
+    }
+
+    // Handles tile resource changes from TileSystem. Responsible for creating/destroying ResourceInstance GameObjects.
+    private void HandleTileResourceChanged(int tileIndex, ResourceData oldResource, ResourceData newResource, int planetIndex)
+    {
+        // If a resource was added, ensure an instance exists.
+        if (newResource != null)
         {
-            tileData.resource = resource;
-            // If needed, update the tile data in the TileSystem (for serialization or eventing)
-            ts.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
-        }
+            if (GetResourceInstanceAtTile(tileIndex, planetIndex) != null) return;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            Vector3 surfacePos = Vector3.zero;
+            if (ts != null) surfacePos = ts.GetTileSurfacePosition(tileIndex, 0f);
+            if (newResource.isOrbitalResource) surfacePos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
 
-        // Use object pooling if available
-        GameObject go = SimpleObjectPool.Instance != null
-            ? SimpleObjectPool.Instance.Get(resource.prefab, surfacePos, Quaternion.identity)
-            : Instantiate(resource.prefab, surfacePos, Quaternion.identity);
+            GameObject go = SimpleObjectPool.Instance != null
+                ? SimpleObjectPool.Instance.Get(newResource.prefab, surfacePos, Quaternion.identity)
+                : Instantiate(newResource.prefab, surfacePos, Quaternion.identity);
 
-        // Keep hierarchy organized: parent spawned world objects under their planet generator.
-        // (Do not change gameplay logic; this is purely scene organization.)
-        try
-        {
-            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
-            if (planetGen != null)
-            {
-                // Parent resources under the planet's visual layer for better scene organization.
-                // Prefer a dedicated resourcesRoot when present. Fallback to per-layer roots,
-                // then fall back to the planet GameObject itself.
-                Transform parent = null;
-                if (planetGen.resourcesRoot != null)
-                    parent = planetGen.resourcesRoot.transform;
-                else if (tileData != null && tileData.isLand && planetGen.surfaceRoot != null)
-                    parent = planetGen.surfaceRoot.transform;
-                else if (tileData != null && !tileData.isLand && planetGen.underwaterRoot != null)
-                    parent = planetGen.underwaterRoot.transform;
-                else
-                    parent = planetGen.transform;
-
-                if (parent != null)
-                    go.transform.SetParent(parent, true);
-            }
-
-            // Ensure the spawned object rests on the terrain surface regardless of prefab pivot.
-            // Align by renderer/collider bounds: move object up so its lowest visual/collider point equals the surface Y.
+            // Parent and align
             try
             {
+                var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
+                Transform parent = null;
+                if (planetGen != null)
+                {
+                    if (planetGen.resourcesRoot != null) parent = planetGen.resourcesRoot.transform;
+                    else if (tileData != null && tileData.isLand && planetGen.surfaceRoot != null) parent = planetGen.surfaceRoot.transform;
+                    else if (tileData != null && !tileData.isLand && planetGen.underwaterRoot != null) parent = planetGen.underwaterRoot.transform;
+                    else parent = planetGen.transform;
+                }
+                if (parent != null) go.transform.SetParent(parent, true);
+
                 float surfaceY = surfacePos.y;
                 float lowest = float.MaxValue;
                 var rends = go.GetComponentsInChildren<Renderer>(true);
-                foreach (var r in rends)
-                {
-                    if (r == null) continue;
-                    lowest = Mathf.Min(lowest, r.bounds.min.y);
-                }
+                foreach (var r in rends) if (r != null) lowest = Mathf.Min(lowest, r.bounds.min.y);
                 var cols = go.GetComponentsInChildren<Collider>(true);
-                foreach (var c in cols)
-                {
-                    if (c == null) continue;
-                    lowest = Mathf.Min(lowest, c.bounds.min.y);
-                }
+                foreach (var c in cols) if (c != null) lowest = Mathf.Min(lowest, c.bounds.min.y);
                 if (lowest != float.MaxValue)
                 {
                     float delta = surfaceY - lowest;
-                    if (Mathf.Abs(delta) > 0.0001f)
-                        go.transform.position = go.transform.position + new Vector3(0f, delta, 0f);
+                    if (Mathf.Abs(delta) > 0.0001f) go.transform.position = go.transform.position + new Vector3(0f, delta, 0f);
                 }
             }
             catch { }
-            }
-        
-        catch { 
 
-        var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
-        inst.data = resource;
-        inst.tileIndex = tileIndex;
-        inst.planetIndex = planetIndex;
-        spawnedResources.Add(inst);
+            var inst = go.GetComponent<ResourceInstance>() ?? go.AddComponent<ResourceInstance>();
+            inst.data = newResource;
+            inst.tileIndex = tileIndex;
+            inst.planetIndex = planetIndex;
+            spawnedResources.Add(inst);
 
-        // Update the tile data to reflect the new resource
-        if (tileData != null)
-        {
-            tileData.resource = resource;
-            ts?.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
-            // Register resource occupancy: surface, underwater, or orbit
+            // Register occupancy
             try
             {
+                var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
                 TileLayer layer;
-                if (resource.isOrbitalResource)
-                    layer = TileLayer.Orbit;
-                else if (tileData.isLand)
-                    layer = TileLayer.Surface;
-                else
-                    layer = TileLayer.Underwater;
+                if (newResource.isOrbitalResource) layer = TileLayer.Orbit;
+                else if (tileData != null && tileData.isLand) layer = TileLayer.Surface;
+                else layer = TileLayer.Underwater;
                 (TileOccupancyManager.GetForPlanet(inst.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, go, layer);
             }
-            catch {}
+            catch { }
+        }
+        else
+        {
+            // Resource removed: destroy instance if present
+            var inst = GetResourceInstanceAtTile(tileIndex, planetIndex);
+            if (inst != null)
+            {
+                spawnedResources.Remove(inst);
+                try { Destroy(inst.gameObject); } catch { }
+            }
         }
     }
-}
+
+    // One-time reconciliation that repairs mismatches between tile data and spawned instances.
+    private void ReconcilePlanetResources(int planetIndex)
+    {
+        var ts = TileSystem.GetForPlanet(planetIndex);
+        PlanetGenerator gen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+        int fixes = 0;
+
+        if (gen != null && gen.Grid != null && ts != null)
+        {
+            int tileCount = gen.Grid.TileCount;
+            for (int i = 0; i < tileCount; i++)
+            {
+                var td = ts.GetTileDataFromPlanet(i, planetIndex);
+                var inst = GetResourceInstanceAtTile(i, planetIndex);
+                bool tileHas = td != null && td.resource != null;
+                if (tileHas && inst == null)
+                {
+                    // Create missing instance to match tile data
+                    HandleTileResourceChanged(i, null, td.resource, planetIndex);
+                    Debug.Log($"[ResourceManager][Reconcile] Created ResourceInstance for tile {i} resource '{td.resource.resourceName}' on planet {planetIndex}");
+                    fixes++;
+                }
+                else if (!tileHas && inst != null)
+                {
+                    // Remove stray instance
+                    HandleTileResourceChanged(i, inst.data, null, planetIndex);
+                    Debug.Log($"[ResourceManager][Reconcile] Destroyed stray ResourceInstance at tile {i} on planet {planetIndex}");
+                    fixes++;
+                }
+            }
+        }
+        else if (ts != null)
+        {
+            // No generator available; at least verify spawned instances have matching tile data
+            var instances = spawnedResources.ToArray();
+            foreach (var inst in instances)
+            {
+                if (inst == null) continue;
+                if (inst.planetIndex != planetIndex) continue;
+                var td = ts.GetTileDataFromPlanet(inst.tileIndex, planetIndex);
+                bool tileHas = td != null && td.resource != null;
+                if (!tileHas || td.resource != inst.data)
+                {
+                    HandleTileResourceChanged(inst.tileIndex, inst.data, null, planetIndex);
+                    Debug.Log($"[ResourceManager][Reconcile] Destroyed mismatched ResourceInstance at tile {inst.tileIndex} on planet {planetIndex}");
+                    fixes++;
+                }
+            }
+        }
+
+        if (fixes > 0)
+            Debug.Log($"[ResourceManager][Reconcile] Fixed {fixes} resource mismatches on planet {planetIndex}");
+        else
+            Debug.Log($"[ResourceManager][Reconcile] No mismatches found on planet {planetIndex}");
+    }
 }

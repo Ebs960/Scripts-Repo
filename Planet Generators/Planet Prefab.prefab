@@ -202,25 +202,25 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.618
+  seedPositionVariance: 0.8
   elevationExponent: 1
   ridgeStrength: 0.116
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 4.2
+  elevationFreq: 6
   moistureFreq: 0.2
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.766
-  latitudeExponent: 1.23
+  latitudeExponent: 1
   temperatureNoiseFrequency: 0.19
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
-  usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 5
-  climateSmoothingStrength: 0.218
-  coastalMoistureBoost: 0.184
-  coastalMoistureRange: 3
+  usePeriodicClimateNoise: 0
+  climateSmoothingPasses: 3
+  climateSmoothingStrength: 0.106
+  coastalMoistureBoost: 0.098
+  coastalMoistureRange: 1
   flatElevationMin: 5
   flatElevationMax: 5.47
   hillElevationMin: 8.1
@@ -241,8 +241,8 @@ MonoBehaviour:
   lakeMinDistanceFromCoast: 6
   coastBiteCount: 11
   coastBiteRadiusMin: 1
-  coastBiteRadiusMax: 4
-  coastSpurCount: 9
+  coastBiteRadiusMax: 2
+  coastSpurCount: 10
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 100

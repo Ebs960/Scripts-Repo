@@ -51,8 +51,7 @@ public class BiomeVisualData : ScriptableObject
     public float emissiveIntensity = 0f;
 
     [Header("Climate Response")]
-    [Range(0f, 1f)] public float snowRetention;
-    [Range(0f, 1f)] public float wetnessResponse;
+    // Removed legacy wetnessResponse. Use per-season responses in BiomeSeasonVisualResponse (spring/summer/autumn/winter).
 
     [Header("Flags")]
     public bool isWaterBiome;

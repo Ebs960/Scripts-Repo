@@ -175,10 +175,8 @@ return;
                     newInst.data = impInstance.data;
                     newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
 
-                    // Ensure click handler
-                    var ch = newObj.GetComponent<ImprovementClickHandler>();
-                    if (ch == null) ch = newObj.AddComponent<ImprovementClickHandler>();
-                    ch.Initialize(currentTileIndex, tileData.improvement, currentPlanetIndex);
+                    // Initialize the ImprovementInstance on the replacement object
+                    newInst.Initialize(currentTileIndex, tileData.improvement, currentPlanetIndex);
 
                     // Replace reference on tile data
                     tileData.improvementInstanceObject = newObj;

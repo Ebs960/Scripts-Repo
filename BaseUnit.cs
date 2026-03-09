@@ -71,10 +71,22 @@ public abstract class BaseUnit : MonoBehaviour
     [Header("Unit UI")]
     [SerializeField] protected GameObject unitLabelPrefab;
     protected UnitLabel unitLabelInstance;
-    private const float HealthPopupVerticalOffset = 1.5f;
-    private const float HealthPopupRiseDistance = 1.5f;
-    private const float HealthPopupDuration = 0.7f;
-    private const float HealthPopupScale = 0.18f;
+    [Header("Popup Settings")]
+    [SerializeField]
+    [Tooltip("Vertical offset above unit for popup")]
+    private float healthPopupVerticalOffset = 1.5f;
+    [SerializeField]
+    [Tooltip("Rise distance for popup animation")]
+    private float healthPopupRiseDistance = 1.5f;
+    [SerializeField]
+    [Tooltip("Duration of popup animation in seconds")]
+    private float healthPopupDuration = 0.7f;
+    [SerializeField]
+    [Tooltip("Scale applied to floating health/damage popups")]
+    private float healthPopupScale = 1.2f;
+    [SerializeField]
+    [Tooltip("Font size used for floating health/damage popups")]
+    private float healthPopupFontSize = 7f;
     private static readonly Color DamagePopupColor = new Color(0.9f, 0.2f, 0.2f, 1f);
     private static readonly Color HealPopupColor = new Color(0.2f, 0.9f, 0.2f, 1f);
     private static readonly Color HealthPopupOutlineColor = new Color(0f, 0f, 0f, 0.9f);
@@ -1090,7 +1102,8 @@ public abstract class BaseUnit : MonoBehaviour
         // would destroy the MoveAlongPath cleanup code that sets isMoving = false
         UpdateWalkingState(false);
         StopAllCoroutines();
-        StartCoroutine(UnitMovementController.Instance.MoveAlongPath(this, path));
+        // Start movement coroutine on the controller and track it so it can be cancelled.
+        UnitMovementController.Instance?.StartMoveForUnit(this, path);
     }
 
     /// <summary>
@@ -1127,6 +1140,11 @@ public abstract class BaseUnit : MonoBehaviour
             animator.SetBool(isWalkingHash, walking);
         isMoving = walking;
         _walkingStuckFrames = 0; // reset failsafe counter on any explicit state change
+        if (!walking)
+        {
+            // Ensure any controller-side movement coroutine is stopped so the unit truly becomes idle.
+            try { UnitMovementController.Instance?.StopMoveForUnit(this); } catch { }
+        }
         
     }
 
@@ -1250,15 +1268,16 @@ public abstract class BaseUnit : MonoBehaviour
         Transform anchor = labelAnchor != null ? labelAnchor : transform;
         GameObject popupGO = new GameObject("HealthChangePopup");
         popupGO.transform.SetParent(anchor, false);
-        popupGO.transform.localPosition = new Vector3(0f, HealthPopupVerticalOffset, 0f);
+        popupGO.transform.localPosition = new Vector3(0f, healthPopupVerticalOffset, 0f);
         popupGO.transform.localRotation = Quaternion.identity;
-        popupGO.transform.localScale = Vector3.one * HealthPopupScale;
+        popupGO.transform.localScale = Vector3.one * healthPopupScale;
 
         var popupText = popupGO.AddComponent<TextMeshPro>();
         if (TMP_Settings.defaultFontAsset != null)
             popupText.font = TMP_Settings.defaultFontAsset;
         popupText.text = amount > 0 ? $"+{amount}" : amount.ToString();
-        popupText.fontSize = 3f;
+        // Font size configurable via Inspector
+        popupText.fontSize = healthPopupFontSize;
         popupText.alignment = TextAlignmentOptions.Center;
         popupText.textWrappingMode = TextWrappingModes.NoWrap;
         popupText.color = amount > 0 ? HealPopupColor : DamagePopupColor;
@@ -1284,17 +1303,17 @@ public abstract class BaseUnit : MonoBehaviour
 
         Camera worldCamera = Camera.main;
         Vector3 startLocalPosition = popupTransform.localPosition;
-        Vector3 endLocalPosition = startLocalPosition + Vector3.up * HealthPopupRiseDistance;
+        Vector3 endLocalPosition = startLocalPosition + Vector3.up * healthPopupRiseDistance;
         Color baseColor = popupText.color;
         float elapsed = 0f;
 
-        while (elapsed < HealthPopupDuration)
+        while (elapsed < healthPopupDuration)
         {
             if (popupTransform == null || popupText == null)
                 yield break;
 
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / HealthPopupDuration);
+            float t = Mathf.Clamp01(elapsed / healthPopupDuration);
             popupTransform.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, t);
 
             if (worldCamera == null)

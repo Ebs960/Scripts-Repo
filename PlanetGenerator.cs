@@ -3008,7 +3008,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     private Vector2Int OffsetToAxial(Vector2Int offset) {
         int row = offset.y;
         int col = offset.x;
-        int q = col - ((row & 1) == 0 ? (row / 2) : ((row + 1) / 2));
+        int q = col - ((row - (row & 1)) / 2);
         int r = row;
         return new Vector2Int(q, r);
     }

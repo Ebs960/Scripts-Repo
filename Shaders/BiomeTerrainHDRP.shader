@@ -17,6 +17,9 @@ Shader "Custom/BiomeTerrainHDRP"
         [Header(Biome Data Textures)]
         _BiomeSurfaceMapTex ("Biome Surface Map (start,count,surface,forced)", 2D) = "black" {}
         _BiomeEmissiveMapTex ("Biome Emissive Map (RGB=tint, A=intensity)", 2D) = "black" {}
+        _TileSeasonMask ("Tile Season Mask (R=snow,G=wet,B=dry)", 2D) = "white" {}
+        _TileSeasonMask_TexSize ("Tile Season Mask TexSize", Vector) = (0,0,0,0)
+        _TileSeasonMask_ST ("Tile Season Mask ST", Vector) = (1,1,0,0)
 
         [Header(Displacement)]
         _ElevationScale ("Elevation Scale", Range(0.1, 20)) = 1.0
@@ -143,6 +146,7 @@ Shader "Custom/BiomeTerrainHDRP"
     TEXTURE2D(_LUT);                 SAMPLER(sampler_LUT);
     TEXTURE2D(_BiomeSurfaceMapTex);  SAMPLER(sampler_BiomeSurfaceMapTex);
     TEXTURE2D(_BiomeEmissiveMapTex); SAMPLER(sampler_BiomeEmissiveMapTex);
+    TEXTURE2D(_TileSeasonMask);      SAMPLER(sampler_TileSeasonMask);
     TEXTURE2D(_FogMask);             SAMPLER(sampler_FogMask);
     TEXTURE2D(_OwnershipOverlay);    SAMPLER(sampler_OwnershipOverlay);
     TEXTURE2D(_SliceToBiomeMap);     SAMPLER(sampler_SliceToBiomeMap);
@@ -189,6 +193,8 @@ Shader "Custom/BiomeTerrainHDRP"
     float _DetailNormalStrength;
     float _DetailFadeStart;
     float _DetailFadeEnd;
+    float4 _TileSeasonMask_TexSize;
+    float4 _TileSeasonMask_ST;
     
     float _BiomeBlendRadius;
     float _BiomeBlendSharpness;
@@ -667,7 +673,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 float3 normalWS;
                 float4 mask; // R=metallic, G=AO, B=height, A=smoothness
                 float3 emission;
-                float4 biomeParams; // x=tiling, y=snowRetention, z=wetnessResponse, w=isWaterBiome
+                float4 biomeParams; // x=tiling, y=winterSnow, z=biomeWinterWet (0-1), w=isWaterBiome
                 float height;
             };
 
@@ -887,14 +893,24 @@ Shader "Custom/BiomeTerrainHDRP"
                 // ==========================================================
                 // SNOW OVERLAY WITH NORMAL PERTURBATION (#8)
                 // ==========================================================
-                float biomeSnowRetention = biomeParams.y;
+                float biomeWinterSnow = biomeParams.y;
                 float biomeWetnessResponse = biomeParams.z;
                 float isWaterBiome = biomeParams.w;
 
-                float snowRetention = lerp(0.3, 1.0, biomeSnowRetention);
+                // Allow zero retention (no forced baseline). Previously used a hard 0.3 minimum
+                // which prevented per-biome zero-snow behavior. Use 0.0 -> 1.0 mapping so
+                // biome value of 0 produces no snow when other factors are zero.
+                float snowRetention = lerp(0.0, 1.0, biomeWinterSnow);
+                // Base snow mask based on slope/normal and global amount
                 float snowMask = saturate(displacedNormal.y) * _GlobalSnowAmount * snowRetention;
                 snowMask *= smoothstep(0.4, 0.7, displacedNormal.y);
                 snowMask *= (1.0 - isWaterBiome);
+
+                // Sample per-chunk season mask (if provided) to modulate snow/wet/dry per-tile.
+                float2 seasonUV = uv * _TileSeasonMask_ST.xy + _TileSeasonMask_ST.zw;
+                float4 seasonMaskSample = SAMPLE_TEXTURE2D(_TileSeasonMask, sampler_TileSeasonMask, seasonUV);
+                // seasonMaskSample.r = snow, .g = wet, .b = dry
+                snowMask *= seasonMaskSample.r;
 
                 if (snowMask > 0.01)
                 {
@@ -924,7 +940,10 @@ Shader "Custom/BiomeTerrainHDRP"
                 // ==========================================================
                 // WETNESS
                 // ==========================================================
-                float wetFactor = _GlobalWetness * lerp(0.2, 1.0, biomeWetnessResponse);
+                float wetFactor = _GlobalWetness * lerp(0.0, 1.0, biomeWetnessResponse);
+                // Modulate wet factor by per-tile mask (green channel)
+                float seasonWet = seasonMaskSample.g;
+                wetFactor *= seasonWet;
                 if (wetFactor > 0.01)
                 {
                     albedo *= lerp(1.0, 0.6, wetFactor);

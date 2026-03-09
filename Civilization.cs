@@ -576,14 +576,20 @@ public class Civilization : MonoBehaviour
         {
             turnCount = round;
 
-            // 1) Reset units
-            foreach (var u in combatUnits) 
+            // 1) Reset units (iterate a snapshot to avoid collection-modified exceptions)
+            if (combatUnits != null)
             {
-                if (u != null) u.ResetForNewTurn();
+                foreach (var u in combatUnits.ToArray())
+                {
+                    if (u != null) u.ResetForNewTurn();
+                }
             }
-            foreach (var w in workerUnits)  
+            if (workerUnits != null)
             {
-                if (w != null) w.ResetForNewTurn();
+                foreach (var w in workerUnits.ToArray())
+                {
+                    if (w != null) w.ResetForNewTurn();
+                }
             }
 
             // 2) Process each city (production, growth, morale, surrender, label)
@@ -721,7 +727,7 @@ public class Civilization : MonoBehaviour
         // Worker units consume food based on their data
         if (workerUnits != null)
         {
-            foreach (var w in workerUnits)
+            foreach (var w in workerUnits.ToArray())
             {
                 if (w != null && w.data != null)
                     totalFoodConsumption += w.data.foodConsumptionPerTurn;
@@ -733,7 +739,7 @@ public class Civilization : MonoBehaviour
         // Cities consume food based on population size
         if (cities != null)
         {
-            foreach (var city in cities)
+            foreach (var city in cities.ToArray())
             {
                 if (city != null)
                     totalFoodConsumption += city.GetFoodConsumptionPerTurn();
@@ -758,7 +764,7 @@ public class Civilization : MonoBehaviour
         // --- NEW: Unrest & famine handling ---
         // Update war weariness
         int warCount = 0;
-        foreach (var kv in relations)
+        foreach (var kv in relations.ToArray())
             if (kv.Value == DiplomaticState.War)
                 warCount++;
         if (warCount > 0)
@@ -775,20 +781,27 @@ public class Civilization : MonoBehaviour
         {
             // Each turn of famine, all units lose 5% max health
             int unitsAffected = 0;
-            foreach (var u in combatUnits)
+            // Use snapshots to avoid collection-modified-during-enumeration if units die
+            if (combatUnits != null)
             {
-                if (u != null)
+                foreach (var u in combatUnits.ToArray())
                 {
-                    u.ApplyDamage(Mathf.CeilToInt(u.MaxHealth * 0.05f));
-                    unitsAffected++;
+                    if (u != null)
+                    {
+                        u.ApplyDamage(Mathf.CeilToInt(u.MaxHealth * 0.05f));
+                        unitsAffected++;
+                    }
                 }
             }
-            foreach (var w in workerUnits)
+            if (workerUnits != null)
             {
-                if (w != null && w.data != null)
+                foreach (var w in workerUnits.ToArray())
                 {
-                    w.ApplyDamage(Mathf.CeilToInt(w.data.baseHealth * 0.05f));
-                    unitsAffected++;
+                    if (w != null && w.data != null)
+                    {
+                        w.ApplyDamage(Mathf.CeilToInt(w.data.baseHealth * 0.05f));
+                        unitsAffected++;
+                    }
                 }
             }
             
@@ -806,6 +819,47 @@ public class Civilization : MonoBehaviour
 
         // 6) Fire turn‐started event
         OnTurnStarted?.Invoke(this, round);
+
+        // After all per-turn effects (which may have killed units), check if this civ is now empty
+        CheckAndDestroyIfEmpty();
+    }
+
+    /// <summary>
+    /// Prune null entries and, if there are no cities and no units left, unregister
+    /// and destroy this Civilization GameObject. This is the authoritative self-terminate path.
+    /// Safe to call multiple times.
+    /// </summary>
+    public void CheckAndDestroyIfEmpty()
+    {
+        try
+        {
+            cities?.RemoveAll(x => x == null);
+            combatUnits?.RemoveAll(x => x == null);
+            workerUnits?.RemoveAll(x => x == null);
+
+            bool hasCities = cities != null && cities.Count > 0;
+            bool hasCombat = combatUnits != null && combatUnits.Count > 0;
+            bool hasWorkers = workerUnits != null && workerUnits.Count > 0;
+
+            if (!hasCities && !hasCombat && !hasWorkers)
+            {
+                Debug.Log($"[Civilization] {civData?.civName ?? "(unknown)"} has no cities or units — self-terminating.");
+
+                // Unregister from managers
+                try { CivilizationManager.Instance?.UnregisterCiv(this); } catch { }
+                try { TurnManager.Instance?.UnregisterCivilization(this); } catch { }
+
+                // Clear diplomacy relations to avoid lingering references
+                try { relations?.Clear(); } catch { }
+
+                // Destroy the GameObject (Unity will finalize OnDestroy later)
+                try { if (gameObject != null) Destroy(gameObject); } catch { }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[Civilization] CheckAndDestroyIfEmpty failed: {ex.Message}");
+        }
     }
 
     private void ProcessResearch()
@@ -3173,6 +3227,13 @@ return true;
         }
         
         return _equipmentAvailabilityCache[equipmentData];
+    }
+
+    void OnDestroy()
+    {
+        try { CivilizationManager.Instance?.UnregisterCiv(this); } catch { }
+        try { TurnManager.Instance?.UnregisterCivilization(this); } catch { }
+        try { relations?.Clear(); } catch { }
     }
 }
 

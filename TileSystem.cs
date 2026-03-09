@@ -83,6 +83,8 @@ public class TileSystem : MonoBehaviour
     public event Action<int,Vector3> OnTileHovered;              // (tile, worldPos)
     public event Action OnTileHoverExited;                       // hover exit
     public event Action<int,Vector3> OnTileClicked;              // (tile, worldPos)
+    // Resource change event: (tileIndex, oldResource, newResource)
+    public event Action<int, ResourceData, ResourceData> OnTileResourceChanged;
 
     void Awake()
     {
@@ -157,6 +159,7 @@ public class TileSystem : MonoBehaviour
             OnTileHovered = null;
             OnTileHoverExited = null;
             OnTileClicked = null;
+            OnTileResourceChanged = null;
 
             isReady = false;
         }
@@ -738,6 +741,63 @@ public class TileSystem : MonoBehaviour
         PlanetGenerator planetGen = GetPlanetGeneratorForIndex(planetIndex);
         if (planetGen != null) planetGen.SetHexTileData(tile, data);
     }
+
+    /// <summary>
+    /// Atomically set the resource on a tile for the given planet and raise an event so listeners
+    /// (e.g., ResourceManager, UI) can react to visual/instance lifecycle changes.
+    /// </summary>
+    public static void SetResourceOnTile(ResourceData resource, int tileIndex, int planetIndex)
+    {
+        var ts = GetForPlanet(planetIndex);
+        if (ts != null && ts.isReady)
+        {
+            ts.SetResource(tileIndex, resource);
+            // Persist to generator/state as well
+            if (ts.planetRef != null)
+            {
+                ts.planetRef.suppressOwnershipGuards = true;
+                try { ts.planetRef.SetHexTileData(tileIndex, ts.GetTileData(tileIndex)); }
+                finally { ts.planetRef.suppressOwnershipGuards = false; }
+            }
+            return;
+        }
+
+        // Fallback: if TileSystem not ready, attempt to set via generator directly
+        var gen = GetPlanetGeneratorForIndex(planetIndex);
+        if (gen != null)
+        {
+            var td = gen.GetHexTileData(tileIndex);
+            if (td != null)
+            {
+                var old = td.resource;
+                td.resource = resource;
+                gen.SetHexTileData(tileIndex, td);
+            }
+        }
+    }
+
+    // Instance-side resource setter that raises the OnTileResourceChanged event.
+    public void SetResource(int tile, ResourceData resource)
+    {
+        if (!isReady || tiles == null) return;
+        if (tile < 0 || tile >= tiles.Length) return;
+
+        var prev = tiles[tile]?.resource;
+        if (ReferenceEquals(prev, resource)) return;
+
+        if (tiles[tile] == null) tiles[tile] = new HexTileData();
+        tiles[tile].resource = resource;
+        _dirtyOverlayTiles.Add(tile);
+
+        try
+        {
+            OnTileResourceChanged?.Invoke(tile, prev, resource);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[TileSystem] OnTileResourceChanged handler threw: {ex.Message}");
+        }
+    }
     
     /// <summary>
     /// Gets the tile center position from a specific planet's grid.
@@ -782,7 +842,7 @@ public class TileSystem : MonoBehaviour
     /// <summary>
     /// Helper method to get a planet generator by index
     /// </summary>
-    private PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
+    private static PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
     {
         if (GameManager.Instance == null) return null;
         var gen = GameManager.Instance.GetPlanetGenerator(planetIndex);
@@ -883,14 +943,14 @@ public class TileSystem : MonoBehaviour
         int rowB = b / width;
         int colB = b % width;
 
-        Vector3Int cubeA = EvenRToCube(rowA, colA);
+        Vector3Int cubeA = OddRToCube(rowA, colA);
         int bestDistance = int.MaxValue;
 
         // Horizontal wrap turns the map into a cylinder, so check the target column
         // in the local copy and one wrapped copy on each side.
         for (int wrapOffset = -1; wrapOffset <= 1; wrapOffset++)
         {
-            Vector3Int cubeB = EvenRToCube(rowB, colB + wrapOffset * width);
+            Vector3Int cubeB = OddRToCube(rowB, colB + wrapOffset * width);
             int distance = CubeDistance(cubeA, cubeB);
             if (distance < bestDistance)
                 bestDistance = distance;
@@ -904,9 +964,9 @@ public class TileSystem : MonoBehaviour
     /// </summary>
     public float GetTileDistanceFlat(int a, int b) => Vector3.Distance(GetTileCenterFlat(a), GetTileCenterFlat(b));
 
-    private static Vector3Int EvenRToCube(int row, int col)
+    private static Vector3Int OddRToCube(int row, int col)
     {
-        int x = col - ((row + (row & 1)) / 2);
+        int x = col - ((row - (row & 1)) / 2);
         int z = row;
         int y = -x - z;
         return new Vector3Int(x, y, z);

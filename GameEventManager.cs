@@ -32,6 +32,10 @@ public class GameEventManager : MonoBehaviour
     public event Action<ResourceEventArgs> OnResourceHarvested;
     public event Action<ResourceEventArgs> OnResourceAdded;
     
+    // Worker assignment events
+    public event Action<WorkerAssignmentEventArgs> OnWorkerAssignedToJob;
+    public event Action<WorkerAssignmentEventArgs> OnWorkerUnassignedFromJob;
+    
     // Tile Events
     public event Action<TileEventArgs> OnTileSelected;
     public event Action<TileEventArgs> OnTileImproved;
@@ -154,6 +158,29 @@ public class GameEventManager : MonoBehaviour
             Cause = null;
         }
     }
+
+    // Worker assignment event arguments
+    public class WorkerAssignmentEventArgs : GameEventArgs
+    {
+        public MonoBehaviour Worker { get; private set; }
+        public int TileIndex { get; private set; }
+        public int PlanetIndex { get; private set; }
+
+        public void Setup(MonoBehaviour worker, int tileIndex, int planetIndex)
+        {
+            Initialize();
+            Worker = worker;
+            TileIndex = tileIndex;
+            PlanetIndex = planetIndex;
+        }
+
+        public override void Reset()
+        {
+            Worker = null;
+            TileIndex = -1;
+            PlanetIndex = -1;
+        }
+    }
     
     #endregion
     
@@ -258,6 +285,25 @@ public class GameEventManager : MonoBehaviour
         args.Setup(source, resourceType, amount);
         OnResourceHarvested.Invoke(args);
         ReturnResourceEventArgs(args);
+    }
+
+    // Worker assignment events
+    public void RaiseWorkerAssignedToJob(MonoBehaviour worker, int tileIndex, int planetIndex)
+    {
+        if (OnWorkerAssignedToJob == null) return;
+        var args = new WorkerAssignmentEventArgs();
+        args.Setup(worker, tileIndex, planetIndex);
+        OnWorkerAssignedToJob.Invoke(args);
+        args.Reset();
+    }
+
+    public void RaiseWorkerUnassignedFromJob(MonoBehaviour worker, int tileIndex, int planetIndex)
+    {
+        if (OnWorkerUnassignedFromJob == null) return;
+        var args = new WorkerAssignmentEventArgs();
+        args.Setup(worker, tileIndex, planetIndex);
+        OnWorkerUnassignedFromJob.Invoke(args);
+        args.Reset();
     }
     
     public void RaiseResourceAddedEvent(MonoBehaviour source, string resourceType, int amount)

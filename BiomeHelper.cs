@@ -493,7 +493,7 @@ public static class BiomeHelper {
         Biome.Savannah => 1,
         Biome.Coast => 1,
 
-        Biome.Temperate => 2,
+        Biome.Temperate => 1,
         Biome.Tropical => 2,
         Biome.Swamp => 3,
 
