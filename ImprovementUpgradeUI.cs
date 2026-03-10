@@ -1,8 +1,9 @@
 // Assets/Scripts/UI/ImprovementUpgradeUI.cs
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic;
 
 public class ImprovementUpgradeUI : MonoBehaviour
 {
@@ -19,6 +20,18 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private Civilization currentCiv;
     private List<GameObject> upgradeButtons = new List<GameObject>();
 
+    // Slide animation fields
+    [Header("Slide Settings")]
+    [SerializeField] private float slideDuration = 0.18f;
+    [SerializeField] private float offscreenPadding = 12f;
+    private RectTransform panelRect;
+    private Vector2 targetAnchoredPos;
+    private Vector2 hiddenAnchoredPos;
+    private Coroutine slideCoroutine;
+    // TileSystem subscription for click-away behavior
+    private TileSystem eventTileSystem;
+    private int eventPlanetIndex = int.MinValue;
+
     private void Awake()
     {
         if (closeButton != null)
@@ -26,6 +39,47 @@ public class ImprovementUpgradeUI : MonoBehaviour
         
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
+    }
+
+    private void Start()
+    {
+        if (upgradePanel != null)
+            panelRect = upgradePanel.GetComponent<RectTransform>();
+        if (panelRect != null)
+        {
+            targetAnchoredPos = panelRect.anchoredPosition;
+            float width = panelRect.rect.width;
+            hiddenAnchoredPos = targetAnchoredPos + new Vector2(width + offscreenPadding, 0f);
+            panelRect.anchoredPosition = hiddenAnchoredPos;
+            if (upgradePanel != null) upgradePanel.SetActive(false);
+        }
+
+        // Subscribe to TileSystem clicks so clicking away will hide the panel
+        int desiredPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        eventPlanetIndex = desiredPlanet;
+        eventTileSystem = TileSystem.GetForPlanet(desiredPlanet) ?? TileSystem.Instance;
+        if (eventTileSystem != null)
+            eventTileSystem.OnTileClicked += HandleAnyTileClicked;
+    }
+
+    private void OnDisable()
+    {
+        if (eventTileSystem != null)
+            eventTileSystem.OnTileClicked -= HandleAnyTileClicked;
+        eventTileSystem = null;
+    }
+
+    private void HandleAnyTileClicked(int clickedTileIndex, Vector3 worldPos)
+    {
+        // Ignore if panel not visible
+        if (upgradePanel == null || !upgradePanel.activeSelf) return;
+        // Ignore clicks over UI
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return;
+        // If clicked tile is different than current, hide the panel
+        if (clickedTileIndex != currentTileIndex)
+        {
+            HidePanel();
+        }
     }
 
     public void ShowUpgradePanel(ImprovementData improvement, int tileIndex, Civilization civ, int planetIndex = -1)
@@ -43,14 +97,59 @@ public class ImprovementUpgradeUI : MonoBehaviour
         PopulateUpgradeOptions();
 
         if (upgradePanel != null)
+        {
             upgradePanel.SetActive(true);
+            StartSlideIn();
+        }
     }
 
     public void HidePanel()
     {
+        // Start slide out and clear after it finishes
+        StartSlideOut();
+    }
+
+    private void StartSlideIn()
+    {
+        if (panelRect == null) return;
+        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, targetAnchoredPos, slideDuration));
+    }
+
+    private void StartSlideOut()
+    {
+        if (panelRect == null)
+        {
+            // Fallback: immediate hide
+            DoClearAndHide();
+            return;
+        }
+        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, hiddenAnchoredPos, slideDuration, DoClearAndHide));
+    }
+
+    private IEnumerator Slide(Vector2 from, Vector2 to, float duration, System.Action onComplete = null)
+    {
+        float t = 0f;
+        panelRect.anchoredPosition = from;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float f = Mathf.Clamp01(t / duration);
+            float ease = f * f * (3f - 2f * f);
+            panelRect.anchoredPosition = Vector2.LerpUnclamped(from, to, ease);
+            yield return null;
+        }
+        panelRect.anchoredPosition = to;
+        slideCoroutine = null;
+        onComplete?.Invoke();
+    }
+
+    private void DoClearAndHide()
+    {
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
-        
+
         ClearUpgradeButtons();
         currentImprovement = null;
         currentTileIndex = -1;
@@ -177,32 +276,59 @@ return;
 
                     // Initialize the ImprovementInstance on the replacement object
                     newInst.Initialize(currentTileIndex, tileData.improvement, currentPlanetIndex);
+                    // Preserve runtime ownership and transfer attached parts
+                    newInst.owner = impInstance.owner;
+                    if (impInstance.attachedParts != null && impInstance.attachedParts.Count > 0)
+                    {
+                        newInst.attachedParts = new System.Collections.Generic.List<GameObject>();
+                        foreach (var child in impInstance.attachedParts)
+                        {
+                            if (child == null) continue;
+                            // Reparent child into the new instance so it survives the destroy
+                            child.transform.SetParent(newObj.transform, true);
+                            newInst.attachedParts.Add(child);
+                        }
+                    }
 
                     // Replace reference on tile data
                     tileData.improvementInstanceObject = newObj;
                     ts?.SetTileData(currentTileIndex, tileData);
 
-                    // Destroy old instance
+                    // Destroy old instance (attached parts already reparented)
                     Destroy(instanceObj);
                     instanceObj = newObj;
                     impInstance = newInst;
                 }
                 else if (upgrade.attachPrefabs != null && upgrade.attachPrefabs.Length > 0)
                 {
-                    foreach (var prefab in upgrade.attachPrefabs)
+                    for (int i = 0; i < upgrade.attachPrefabs.Length; i++)
                     {
+                        var prefab = upgrade.attachPrefabs[i];
                         if (prefab == null) continue;
                         // Avoid duplicating identical attachment by name
                         bool already = false;
-                        foreach (var child in impInstance.attachedParts)
+                        if (impInstance.attachedParts != null)
                         {
-                            if (child != null && child.name.Contains(prefab.name)) { already = true; break; }
+                            foreach (var child in impInstance.attachedParts)
+                            {
+                                if (child != null && child.name.Contains(prefab.name)) { already = true; break; }
+                            }
                         }
                         if (already) continue;
 
                         var go = Instantiate(prefab, instanceObj.transform);
-                        go.transform.localPosition = Vector3.zero;
-                        go.transform.localRotation = Quaternion.identity;
+
+                        // Apply configured local position/rotation if provided
+                        Vector3 localPos = Vector3.zero;
+                        Quaternion localRot = Quaternion.identity;
+                        if (upgrade.attachLocalPositions != null && i < upgrade.attachLocalPositions.Length)
+                            localPos = upgrade.attachLocalPositions[i];
+                        if (upgrade.attachLocalEulerAngles != null && i < upgrade.attachLocalEulerAngles.Length)
+                            localRot = Quaternion.Euler(upgrade.attachLocalEulerAngles[i]);
+
+                        go.transform.localPosition = localPos;
+                        go.transform.localRotation = localRot;
+                        if (impInstance.attachedParts == null) impInstance.attachedParts = new System.Collections.Generic.List<GameObject>();
                         impInstance.attachedParts.Add(go);
                     }
                 }
@@ -228,6 +354,7 @@ return;
             string keyToPersist = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
             if (!tileData.builtUpgrades.Contains(keyToPersist))
                 tileData.builtUpgrades.Add(keyToPersist);
+            Debug.Log($"Applied improvement upgrade '{keyToPersist}' to tile {currentTileIndex}");
             // Recompute aggregated defense modifiers and persist
             tileData.RecomputeImprovementDefenseAggregates();
             ts?.SetTileData(currentTileIndex, tileData);
@@ -240,13 +367,15 @@ return;
 
     private bool HasUpgrade(ImprovementUpgradeData upgrade)
     {
-        // Check if this upgrade has already been built on this tile
+        // Check if this upgrade has already been built on this tile using the same key logic used when persisting
+        if (upgrade == null) return false;
         if (currentPlanetIndex < 0) currentPlanetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var ts = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (tileData?.builtUpgrades == null) return false;
-        
-        return tileData.builtUpgrades.Contains(upgrade.upgradeName);
+
+        string key = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+        return tileData.builtUpgrades.Contains(key);
     }
 
     private void ClearUpgradeButtons()

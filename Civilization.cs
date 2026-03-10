@@ -189,6 +189,25 @@ public class Civilization : MonoBehaviour
     public TechData      currentTech;
     public float         currentTechProgress;
     public float scienceModifier = 0f; // Civilization-wide percentage bonus, starts at 0%
+    // When true the civ started this research during the current turn and should
+    // not receive science progress until the next turn (ensures minimum 1-turn duration)
+    private bool researchStartedThisTurn = false;
+
+    /// <summary>
+    /// Called when research is started this turn to defer progress until next turn.
+    /// </summary>
+    public void MarkResearchStartedThisTurn()
+    {
+        researchStartedThisTurn = true;
+    }
+    // When true the civ started culture adoption this turn and should defer progress
+    // until the next turn (ensures minimum 1-turn duration for culture adoption)
+    private bool cultureStartedThisTurn = false;
+
+    public void MarkCultureStartedThisTurn()
+    {
+        cultureStartedThisTurn = true;
+    }
 
     [Header("Culture")]
     public List<CultureData> researchedCultures    = new List<CultureData>();
@@ -280,6 +299,11 @@ public class Civilization : MonoBehaviour
     public event Action<Civilization,int> OnTurnStarted;  // civ, round
     public event Action<CultureData>        OnCultureCompleted;
     public event System.Action<ResourceData, int> OnResourceChanged;
+    // Yield change events for immediate UI updates
+    public event System.Action<int,int> OnFoodChanged; // (newAmount, delta)
+    public event System.Action<int,int> OnGoldChanged;
+    public event System.Action<int,int> OnFaithChanged;
+    public event System.Action<int,int> OnPolicyPointsChanged;
     // Add equipment event
     public event System.Action<EquipmentData, int> OnEquipmentChanged;
     public event Action<TechData> OnTechStarted;
@@ -614,6 +638,10 @@ public class Civilization : MonoBehaviour
         }
 
         // 3) Collect city yields into storage
+        // Compute science and culture as per-turn yields (do not accumulate them across turns).
+        int totalScienceThisTurn = 0;
+        int totalCultureThisTurn = 0;
+
         foreach (var city in cities)
         {
             if (city != null)
@@ -622,8 +650,8 @@ public class Civilization : MonoBehaviour
                 {
                     gold         += Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
                     food         += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
-                    science      += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
-                    culture      += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
+                    totalScienceThisTurn += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
+                    totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
                     policyPoints += city.GetPolicyPointPerTurn(); // Assuming no direct modifier for policy points yet
                     faith        += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
                 }
@@ -679,8 +707,8 @@ public class Civilization : MonoBehaviour
             // Apply global civ yield modifiers to these additions as well
             gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
             food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            science += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
-            culture += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
             policyPoints += addPol; // no global modifier currently
         }
@@ -703,11 +731,15 @@ public class Civilization : MonoBehaviour
 
             gold    += Mathf.RoundToInt(addGold * (1 + goldModifier));
             food    += Mathf.RoundToInt(addFood * (1 + foodModifier));
-            science += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
-            culture += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
+            totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
+            totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
             policyPoints += addPol; // no global modifier currently
         }
+
+        // Commit computed per-turn science & culture yields into their fields (do not accumulate across turns)
+        science = totalScienceThisTurn;
+        culture = totalCultureThisTurn;
 
         // 3.8) FOOD CONSUMPTION - Units and cities must eat!
         int totalFoodConsumption = 0;
@@ -869,6 +901,13 @@ public class Civilization : MonoBehaviour
             Debug.Log($"[Civilization][Research] {civData?.civName}: No currentTech assigned — skipping ProcessResearch. science={science}");
             return;
         }
+        // If research was started this turn, defer progress until the next turn
+        if (researchStartedThisTurn)
+        {
+            researchStartedThisTurn = false;
+            Debug.Log($"[Civilization][Research] {civData?.civName}: research started this turn - deferring first progress tick.");
+            return;
+        }
         float prevProgress = currentTechProgress;
         currentTechProgress += science;
         Debug.Log($"[Civilization][Research] {civData?.civName}: tech='{currentTech.techName}' scienceThisTurn={science} prevProgress={prevProgress} newProgress={currentTechProgress} cost={currentTech.scienceCost} remaining={currentTech.scienceCost - currentTechProgress}");
@@ -958,6 +997,13 @@ public class Civilization : MonoBehaviour
         if (currentCulture == null)
         {
             Debug.Log($"[Civilization][Culture] {civData?.civName}: No currentCulture assigned — skipping ProcessCulture. culture={culture}");
+            return;
+        }
+        // If culture was started this turn, defer progress until the next turn
+        if (cultureStartedThisTurn)
+        {
+            cultureStartedThisTurn = false;
+            Debug.Log($"[Civilization][Culture] {civData?.civName}: culture adoption started this turn - deferring first progress tick.");
             return;
         }
         float prevProgress = currentCultureProgress;
@@ -1085,6 +1131,8 @@ OnTechStarted?.Invoke(tech); // Fire event for UI
         if (!CanCultivate(cult)) return;
         currentCulture = cult;
         currentCultureProgress = 0;
+        // Ensure first culture progress tick is deferred until next turn
+        MarkCultureStartedThisTurn();
 OnCultureStarted?.Invoke(cult); // Fire event for UI
     }
 
@@ -2471,6 +2519,35 @@ return true;
         }
         return production - GetFoodConsumptionPerTurn();
     }
+
+    // Centralized yield modification helpers that raise events for UI to subscribe to.
+    public void AddFood(int amount)
+    {
+        int old = food;
+        food += amount;
+        OnFoodChanged?.Invoke(food, amount);
+    }
+
+    public void AddGold(int amount)
+    {
+        int old = gold;
+        gold += amount;
+        OnGoldChanged?.Invoke(gold, amount);
+    }
+
+    public void AddFaith(int amount)
+    {
+        int old = faith;
+        faith += amount;
+        OnFaithChanged?.Invoke(faith, amount);
+    }
+
+    public void AddPolicyPoints(int amount)
+    {
+        int old = policyPoints;
+        policyPoints += amount;
+        OnPolicyPointsChanged?.Invoke(policyPoints, amount);
+    }
     
     /// <summary>
     /// Get detailed food consumption breakdown (for UI tooltips)
@@ -2557,8 +2634,8 @@ return true;
 
     public struct UnitBonusAgg
     {
-        public int attackAdd, defenseAdd, healthAdd, rangeAdd, moraleAdd;
-        public float attackPct, defensePct, healthPct, rangePct, moralePct;
+        public int attackAdd, defenseAdd, healthAdd, rangeAdd;
+        public float attackPct, defensePct, healthPct, rangePct;
     }
 
     public struct WorkerBonusAgg

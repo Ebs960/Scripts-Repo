@@ -33,7 +33,7 @@ public class CombatUnit : BaseUnit
     public override float BaseRange => useOverrideStats && range > 0 ? range : (data?.baseRange ?? 0);
     
     protected override EquipmentTarget AcceptedEquipmentTarget => EquipmentTarget.CombatUnit;
-    protected override float MeleeEngageDuration => data?.meleeEngageDuration ?? 8f;
+    // MeleeEngageDuration removed — engagement duration deprecated.
     /// <summary>
     /// Editor button to equip all default equipment from the assigned data asset.
     /// </summary>
@@ -321,7 +321,7 @@ public class CombatUnit : BaseUnit
 
     // Combined stats - UPDATED to include all ability modifiers
     // Local aggregation structs
-    private struct UnitAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd, moraleAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct, moralePct; }
+    private struct UnitAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
     private struct EquipAgg { public int attackAdd, defenseAdd, healthAdd, moveAdd, rangeAdd, apAdd; public float attackPct, defensePct, healthPct, movePct, rangePct, apPct; }
 
     private UnitAgg AggregateUnitBonusesLocal(Civilization civ, CombatUnitData u)
@@ -335,9 +335,9 @@ public class CombatUnit : BaseUnit
                     if (b != null && b.unit == u)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.rangeAdd += b.rangeAdd; a.moraleAdd += b.moraleAdd;
+                        a.rangeAdd += b.rangeAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.rangePct += b.rangePct; a.moralePct += b.moralePct;
+                        a.rangePct += b.rangePct;
                     }
             }
         if (civ.researchedCultures != null)
@@ -348,9 +348,9 @@ public class CombatUnit : BaseUnit
                     if (b != null && b.unit == u)
                     {
                         a.attackAdd += b.attackAdd; a.defenseAdd += b.defenseAdd; a.healthAdd += b.healthAdd;
-                        a.rangeAdd += b.rangeAdd; a.moraleAdd += b.moraleAdd;
+                        a.rangeAdd += b.rangeAdd;
                         a.attackPct += b.attackPct; a.defensePct += b.defensePct; a.healthPct += b.healthPct;
-                        a.rangePct += b.rangePct; a.moralePct += b.moralePct;
+                        a.rangePct += b.rangePct;
                     }
             }
         return a;
@@ -536,7 +536,12 @@ public class CombatUnit : BaseUnit
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
             var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
+            {
+                // Block only if the occupant is another unit or a city; allow resources/improvements.
+                if (occObj.GetComponent<BaseUnit>() != null) return false;
+                if (occObj.GetComponent<City>() != null) return false;
+            }
         }
         catch { /* ignore and fallback */ }
 
@@ -633,19 +638,27 @@ public class CombatUnit : BaseUnit
             if (!data.canAttackSpace) return false;
         }
 
-        // Range check — use horizontal (XZ) distance for cross-layer attacks so orbit height doesn't inflate range
-        float dist;
-        if (currentLayer != target.currentLayer)
+        // Range check — use tile-step distance (hex steps) consistent with movement/path math
+        try
         {
-            Vector3 a = transform.position; a.y = 0f;
-            Vector3 b = target.transform.position; b.y = 0f;
-            dist = Vector3.Distance(a, b);
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int tileSteps = ts.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (tileSteps >= 0)
+                {
+                    int maxSteps = Mathf.FloorToInt(CurrentRange);
+                    return tileSteps <= maxSteps;
+                }
+            }
         }
-        else
+        catch (System.Exception ex)
         {
-            dist = Vector3.Distance(transform.position, target.transform.position);
+            Debug.LogWarning($"[CombatUnit] Tile-based range check failed: {ex.Message}");
         }
-        return dist <= CurrentRange;
+
+        // If tile-based check couldn't be performed, do not allow attack (no fallbacks)
+        return false;
     }
 
     /// <summary>
@@ -671,19 +684,27 @@ public class CombatUnit : BaseUnit
             if (data == null || !data.canBombardSurface) return false;
         }
         
-        // Range check — use horizontal distance for cross-layer attacks
-        float dist;
-        if (currentLayer != target.currentLayer)
+        // Range check — use tile-step distance (hex steps) consistent with movement/path math
+        try
         {
-            Vector3 a = transform.position; a.y = 0f;
-            Vector3 b = target.transform.position; b.y = 0f;
-            dist = Vector3.Distance(a, b);
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int tileSteps = ts.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (tileSteps >= 0)
+                {
+                    int maxSteps = Mathf.FloorToInt(CurrentRange);
+                    return tileSteps <= maxSteps;
+                }
+            }
         }
-        else
+        catch (System.Exception ex)
         {
-            dist = Vector3.Distance(transform.position, target.transform.position);
+            Debug.LogWarning($"[CombatUnit] Tile-based range check failed (worker): {ex.Message}");
         }
-        return dist <= CurrentRange;
+
+        // If tile-based check couldn't be performed, do not allow attack (no fallbacks)
+        return false;
     }
     
     /// <summary>
@@ -734,7 +755,14 @@ public class CombatUnit : BaseUnit
 
     public void Attack(CombatUnit target)
     {
-        if (!CanAttack(target)) return;
+        bool canAttack = CanAttack(target);
+        if (!canAttack)
+        {
+            Debug.Log($"[CombatUnit] {name} Attack aborted: CanAttack returned false for target={target?.name}");
+            return;
+        }
+
+        Debug.Log($"[CombatUnit] {name} Attack requested on {target.name} (selTile={currentTileIndex} tgtTile={target.currentTileIndex} range={CurrentRange})");
 
         try
         {
@@ -759,9 +787,11 @@ public class CombatUnit : BaseUnit
         if (data != null && data.isRangedUnit && !ConsumeAmmo())
         {
             // Out of ammo! Can't fire ranged attack
-if (!data.canSwitchToMelee)
+            Debug.Log($"[CombatUnit] {name} Out of ammo attempting ranged attack on {target.name}");
+            if (!data.canSwitchToMelee)
             {
                 // Can't attack at all without ammo
+                Debug.Log($"[CombatUnit] {name} cannot switch to melee; aborting attack.");
                 return;
             }
             // Otherwise, fall through to melee attack (with penalty applied in CurrentAttack)
@@ -831,7 +861,21 @@ if (!data.canSwitchToMelee)
     // Melee / instant-hit path: apply damage immediately and provide attacker context so the melee weapon behavior can trigger
     bool targetDies = target.ApplyDamage(damage, this, true);
 
-        if (!targetDies)
+        if (targetDies)
+        {
+            // Award food from kill to attacker civ
+            try
+            {
+                if (target.data != null && target.data.foodOnKill > 0 && this.owner != null)
+                {
+                    this.owner.AddFood(target.data.foodOnKill);
+                }
+                // Raise unit killed event with correct attacker
+                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, damage);
+            }
+            catch { }
+        }
+        else
         {
             // Counter-attack if target can
             if (target.CanAttack(this))
@@ -921,6 +965,17 @@ if (!data.canSwitchToMelee)
         
         if (targetDied)
         {
+            // Award food and notify
+            try
+            {
+                if (target.data != null && target.data.foodOnKill > 0 && this.owner != null)
+                {
+                    this.owner.AddFood(target.data.foodOnKill);
+                }
+                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, finalDamage);
+            }
+            catch { }
+
             GainExperience(finalDamage * 2); // Extra XP for kills
         }
         else
@@ -933,6 +988,26 @@ if (!data.canSwitchToMelee)
         }
 
         GainExperience(finalDamage);
+    }
+
+    /// <summary>
+    /// Override of unified Attack(BaseUnit) entry point. Dispatches to the
+    /// existing type-specific Attack implementations to preserve current behavior.
+    /// </summary>
+    public override void Attack(BaseUnit target)
+    {
+        if (target is CombatUnit tc)
+        {
+            Attack(tc);
+        }
+        else if (target is WorkerUnit tw)
+        {
+            Attack(tw);
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUnit] Attack(BaseUnit) received unsupported target type: {target?.GetType().Name}");
+        }
     }
     
     /// <summary>
@@ -1059,12 +1134,8 @@ if (!data.canSwitchToMelee)
         if (animator != null && HasParameter(animator, deathHash))
             animator.SetTrigger(deathHash);
         
-        // Raise death event
-        GameEventManager.Instance.RaiseUnitKilledEvent(null, this, currentHealth);
-        
         // Fire local death event for listeners (e.g., AnimalManager)
         OnDeath?.Invoke();
-if (data != null && owner != null) owner.food += data.foodOnKill;
         
         if (owner != null) owner.combatUnits.Remove(this);
         

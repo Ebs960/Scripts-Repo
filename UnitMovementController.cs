@@ -73,6 +73,54 @@ public class UnitMovementController : MonoBehaviour
         // Initial attempt to find references in scene
         FindReferencesInCurrentScene();
     }
+
+    void Start()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
+    }
+
+    private void HandleTurnChanged(Civilization civ, int round)
+    {
+        if (civ == null) return;
+
+        // Resume queued movement for units that belong to this civ
+        try
+        {
+            foreach (var cu in UnitRegistry.GetCombatUnits())
+            {
+                if (cu == null || cu.owner != civ) continue;
+                if (cu.queuedMovementSegments != null && cu.queuedMovementSegments.Count > 0 && !cu.isMoving)
+                {
+                    var seg = cu.queuedMovementSegments.Dequeue();
+                    if (seg != null && seg.Count > 0)
+                        StartMoveForUnit(cu, seg);
+                }
+            }
+
+            foreach (var wu in UnitRegistry.GetWorkerUnits())
+            {
+                if (wu == null || wu.owner != civ) continue;
+                if (wu.queuedMovementSegments != null && wu.queuedMovementSegments.Count > 0 && !wu.isMoving)
+                {
+                    var seg = wu.queuedMovementSegments.Dequeue();
+                    if (seg != null && seg.Count > 0)
+                        StartMoveForUnit(wu, seg);
+                }
+            }
+        }
+        catch { }
+    }
     
     /// <summary>
     /// Set references from GameManager after generators are created

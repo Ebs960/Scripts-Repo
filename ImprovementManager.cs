@@ -546,6 +546,21 @@ public class ImprovementManager : MonoBehaviour
             };
         }
 
+        // Notify any assigned workers that the job is complete so they can clear their build animation/state
+        if (job.assignedWorkerPersistentIds != null && job.assignedWorkerPersistentIds.Count > 0)
+        {
+            foreach (var pid in job.assignedWorkerPersistentIds)
+            {
+                var go = UnitRegistry.GetByPersistentId(pid);
+                if (go == null) continue;
+                var worker = go.GetComponent<WorkerUnit>();
+                if (worker == null) continue;
+                // Raise unassigned event so listeners (WorkerUnit) clear animator flag and any UI updates
+                if (GameEventManager.Instance != null)
+                    GameEventManager.Instance.RaiseWorkerUnassignedFromJob(worker, job.tileIndex, job.planetIndex);
+            }
+        }
+
         jobs.Remove(job);
     }
 
@@ -688,7 +703,7 @@ public class ImprovementManager : MonoBehaviour
             this.planetIndex = planetIndex;
             this.owner = owner;
             this.data = data;
-            this.remainingWork = data.workCost;
+            this.remainingWork = Mathf.Max(1, data.workCost);
         }
 
         public void Clamp()

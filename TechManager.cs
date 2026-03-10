@@ -88,6 +88,8 @@ return;
         // Start researching
         civ.currentTech = tech;
         civ.currentTechProgress = 0;
+        // Ensure the civ does not get progress the same turn (minimum 1 turn research)
+        civ.MarkResearchStartedThisTurn();
 // TODO: play sound, show feedback, etc.
     }
     

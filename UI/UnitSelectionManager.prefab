@@ -52,5 +52,5 @@ MonoBehaviour:
   attackHoverPrefab: {fileID: 0}
   attackHoverIcon: {fileID: 21300000, guid: 0f154c0167064f045b4c9ee3fecaa904, type: 3}
   attackHoverYOffset: 0.8
-  previewDebug: 0
-  previewMaxIcons: 10
+  previewDebug: 1
+  previewMaxIcons: 15

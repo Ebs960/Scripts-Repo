@@ -44,15 +44,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ddd4d49105e22f541a6f2950a2cea5f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WinterSnowEffect
-  maxParticles: 4000
-  emissionRate: 800
-  lifetime: 6
-  minSize: 0.05
-  maxSize: 0.15
-  minFallSpeed: 1.5
-  maxFallSpeed: 3.5
+  snowPlanetTypes: 000000000a0000000900000008000000
+  maxParticles: 10000
+  emissionRate: 8000
+  lifetime: 40
+  minSize: 2
+  maxSize: 4
+  minFallSpeed: 40
+  maxFallSpeed: 60
   driftStrength: 0.6
-  spawnAreaHalfWidth: 60
-  spawnHeightAboveCamera: 25
+  spawnAreaHalfWidth: 1000
+  spawnHeightAboveCamera: 5
+  biomeFadeSpeed: 1.5
   fadeDuration: 3
   cameraManager: {fileID: 0}

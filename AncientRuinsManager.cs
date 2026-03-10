@@ -77,10 +77,38 @@ public class AncientRuinsManager : MonoBehaviour
             if (ruin.planetIndex != planetIndex || ruin.isDiscovered)
                 continue;
 
-            float distance = Vector3.Distance(unitPosition, ruin.position);
-            if (distance <= 2.0f) // Discovery range
+            // Prefer tile-step (hex) distance for discovery
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            int unitTile = -1;
+            int ruinTile = -1;
+            bool usedTileCheck = false;
+            if (ts != null && ts.IsReady())
             {
-                DiscoverRuin(ruin, civilization);
+                var pg = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                if (pg != null && pg.Grid != null)
+                {
+                    unitTile = pg.Grid.GetTileAtPosition(unitPosition);
+                    ruinTile = pg.Grid.GetTileAtPosition(ruin.position);
+                    if (unitTile >= 0 && ruinTile >= 0)
+                    {
+                        int steps = ts.GetWrappedHexDistance(unitTile, ruinTile);
+                        if (steps <= 2)
+                        {
+                            DiscoverRuin(ruin, civilization);
+                        }
+                        usedTileCheck = true;
+                    }
+                }
+            }
+
+            // If we couldn't map to tiles, fall back to world-space distance
+            if (!usedTileCheck)
+            {
+                float distance = Vector3.Distance(unitPosition, ruin.position);
+                if (distance <= 2.0f) // Discovery range (world-space fallback)
+                {
+                    DiscoverRuin(ruin, civilization);
+                }
             }
         }
     }
@@ -118,8 +146,16 @@ public class AncientRuinsManager : MonoBehaviour
                 break;
             case RuinType.Culture:
                 int culture = UnityEngine.Random.Range(20, 100);
-                civ.culture += culture; // Use existing culture field
-                rewards.Add($"Gained {culture} culture from ancient writings!");
+                if (civ.currentCulture != null)
+                {
+                    civ.currentCultureProgress += culture;
+                    rewards.Add($"Applied {culture} culture directly to current culture adoption!");
+                }
+                else
+                {
+                    civ.culture += culture; // Fallback: add to civ culture for this turn
+                    rewards.Add($"Gained {culture} culture from ancient writings!");
+                }
                 break;
             case RuinType.Faith:
                 int faith = UnityEngine.Random.Range(15, 75);

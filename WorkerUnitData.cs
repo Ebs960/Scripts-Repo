@@ -10,8 +10,7 @@ public class WorkerUnitData : ScriptableObject
     public EquipmentData defaultWeapon;
     [Tooltip("Default projectile/ranged weapon equipped by this worker (used when firing)")]
     public EquipmentData defaultProjectileWeapon;
-    [Tooltip("How many seconds a unit stays 'engaged in melee' after receiving a melee hit before reverting to ranged behavior.")]
-    public float meleeEngageDuration = 8f;
+    // meleeEngageDuration removed (deprecated)
     [Tooltip("Default shield equipped by this worker (optional)")]
     public EquipmentData defaultShield;
     [Tooltip("Default armor equipped by this worker (optional)")]
@@ -67,6 +66,9 @@ public class WorkerUnitData : ScriptableObject
     [Header("Per-Turn Yields")]
     [Tooltip("Flat yields this worker provides each turn while alive (added to owning civilization)")]
     public int foodPerTurn;
+    [Header("Yield")]
+    [Tooltip("Food awarded to attacker when this worker is killed (0 = none)")]
+    public int foodOnKill;
     public int goldPerTurn;
     public int sciencePerTurn;
     public int culturePerTurn;

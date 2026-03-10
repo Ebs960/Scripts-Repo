@@ -49,6 +49,8 @@ public class UnitSelectionManager : MonoBehaviour
     private int cachedHoveredTileIndex = -1;
     private Vector3 cachedHoveredWorldPos = Vector3.zero;
     private bool isHoveringTile = false;
+    // Pending attack target for move-then-attack orders (for the currently selected unit)
+    private BaseUnit pendingAttackTarget = null;
 
     // Path preview state
     private bool isPreviewing = false;
@@ -116,6 +118,11 @@ public class UnitSelectionManager : MonoBehaviour
             }
             s_selectionMPB = new UnityEngine.MaterialPropertyBlock();
         }
+        // Subscribe to global movement-completed events so the preview/UI can refresh
+        if (GameEventManager.Instance != null)
+        {
+            GameEventManager.Instance.OnMovementCompleted += OnUnitMovementCompleted;
+        }
     }
     
     void Update()
@@ -163,6 +170,18 @@ public class UnitSelectionManager : MonoBehaviour
             eventTileSystem.OnTileClicked -= OnTileClickedTileSystem;
         }
         eventTileSystem = null;
+        if (GameEventManager.Instance != null)
+        {
+            GameEventManager.Instance.OnMovementCompleted -= OnUnitMovementCompleted;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (GameEventManager.Instance != null)
+        {
+            GameEventManager.Instance.OnMovementCompleted -= OnUnitMovementCompleted;
+        }
     }
 
     private void OnTileHoveredTileSystem(int tileIndex, Vector3 worldPos)
@@ -338,7 +357,9 @@ public class UnitSelectionManager : MonoBehaviour
             MoveSelectedUnitToTile(previewTargetTile);
         }
 
+        // Clear transient preview visuals, then immediately show persistent queued path if still selected
         ClearPreviewVisuals();
+        if (HasSelectedUnit()) ShowQueuedPathPreviewIfAny();
     }
 
     private int ResolvePreviewTargetTile()
@@ -392,7 +413,15 @@ public class UnitSelectionManager : MonoBehaviour
         {
             foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
             ShowDestinationMarker(previewTargetTile, ts, 0);
+            if (previewDebug) Debug.Log($"[USM] UpdatePreviewVisuals: target={previewTargetTile} segments=0");
             return;
+        }
+
+        if (previewDebug)
+        {
+            Debug.Log($"[USM] UpdatePreviewVisuals: target={previewTargetTile} segments={segments.Count}");
+            var unitOnPreview = GetUnitOnTile(previewTargetTile);
+            if (unitOnPreview != null) Debug.Log($"[USM] Preview target tile has unit: {unitOnPreview.name}");
         }
 
         // Build a per-tile list of world positions (one icon per tile along the path).
@@ -574,9 +603,29 @@ public class UnitSelectionManager : MonoBehaviour
         marker.transform.forward = Vector3.up;
         marker.SetActive(true);
 
+        // If the marker has a label component, show a numeric label for positive turn indices.
         if (markerIndex < previewMarkerLabels.Count && previewMarkerLabels[markerIndex] != null)
         {
-            previewMarkerLabels[markerIndex].gameObject.SetActive(false);
+            var lblComp = previewMarkerLabels[markerIndex];
+            // For markerIndex == 0 we intentionally hide the numeric label (legacy behavior)
+            if (markerIndex > 0)
+            {
+                if (lblComp is TextMeshPro lbl3d)
+                {
+                    lbl3d.text = markerIndex.ToString();
+                    lbl3d.gameObject.SetActive(true);
+                }
+                else if (lblComp is TMPro.TextMeshProUGUI lblUI)
+                {
+                    lblUI.text = markerIndex.ToString();
+                    lblUI.gameObject.SetActive(true);
+                }
+            }
+            else
+            {
+                // keep legacy behaviour: no numeric label for a markerIndex of 0
+                lblComp.gameObject.SetActive(false);
+            }
         }
     }
 
@@ -676,6 +725,140 @@ public class UnitSelectionManager : MonoBehaviour
         foreach (var m in previewMarkers) if (m != null) m.SetActive(false);
         foreach (var lbl in previewMarkerLabels) if (lbl != null) lbl.gameObject.SetActive(false);
         previewTargetTile = -1;
+    }
+
+    /// <summary>
+    /// If the currently selected unit has queued multi-turn movement segments,
+    /// render a persistent path preview showing those segments until the unit is deselected.
+    /// </summary>
+    private void ShowQueuedPathPreviewIfAny()
+    {
+        if (selectedUnit == null) return;
+        var queued = selectedUnit.queuedMovementSegments;
+        if (queued == null || queued.Count == 0) return;
+
+        EnsurePreviewObjects();
+        var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        // Build positions and breakpoint numbers from the queued segments (do not dequeue)
+        var positions = new System.Collections.Generic.List<Vector3>();
+        var breakpointNumbers = new System.Collections.Generic.List<int>();
+        int segIndex = 0;
+        int lastTile = -1;
+        foreach (var seg in queued)
+        {
+            if (seg == null || seg.Count == 0) { segIndex++; continue; }
+            for (int i = 0; i < seg.Count; i++)
+            {
+                int tile = seg[i];
+                Vector3 pos = ts.GetTileSurfacePosition(tile) + Vector3.up * 0.2f;
+                positions.Add(pos);
+                bool isBreakpoint = (i == seg.Count - 1);
+                breakpointNumbers.Add(isBreakpoint ? (segIndex + 1) : 0);
+                lastTile = tile;
+            }
+            segIndex++;
+        }
+
+        if (positions.Count == 0)
+        {
+            foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
+            return;
+        }
+
+        // Cap positions to avoid spikes
+        if (positions.Count > previewMaxIcons)
+        {
+            if (previewDebug) Debug.LogWarning($"[USM] Queued preview positions ({positions.Count}) exceed cap ({previewMaxIcons}); truncating.");
+            positions.RemoveRange(previewMaxIcons, positions.Count - previewMaxIcons);
+            breakpointNumbers.RemoveRange(previewMaxIcons, breakpointNumbers.Count - previewMaxIcons);
+        }
+
+        // Position pooled prefabs for tile icons
+        if (pathTilePrefab != null)
+        {
+            int maxToShow = Mathf.Min(positions.Count, previewMaxIcons);
+            for (int i = pooledPathTiles.Count; i < maxToShow; i++)
+            {
+                var p = Instantiate(pathTilePrefab, previewParent.transform);
+                p.name = $"PathTile_{pooledPathTiles.Count}";
+                p.SetActive(false);
+                pooledPathTiles.Add(p);
+            }
+
+            for (int i = 0; i < pooledPathTiles.Count; i++)
+            {
+                var go = pooledPathTiles[i];
+                if (i < maxToShow)
+                {
+                    if (breakpointNumbers != null && i < breakpointNumbers.Count && breakpointNumbers[i] > 0)
+                    {
+                        go.SetActive(false);
+                        continue;
+                    }
+
+                    Vector3 targetPos = positions[i];
+                    Vector3 rayStart = targetPos + Vector3.up * 4f;
+                    if (Physics.Raycast(rayStart, Vector3.down, out var hit, 6f))
+                    {
+                        float surfaceY = hit.point.y;
+                        float delta = targetPos.y - surfaceY;
+                        if (Mathf.Abs(delta) > 0.05f)
+                        {
+                            if (previewDebug) Debug.Log($"[USM] Adjusting queued preview tile {i} Y from {targetPos.y:F3} to surface {surfaceY:F3} (delta {delta:F3})");
+                            targetPos.y = surfaceY + 0.02f;
+                        }
+                    }
+
+                    go.SetActive(true);
+                    go.transform.position = targetPos;
+                    go.transform.forward = Vector3.up;
+                    var tmp3d = go.GetComponentInChildren<TextMeshPro>(true);
+                    if (tmp3d != null) { tmp3d.text = ""; tmp3d.gameObject.SetActive(false); }
+                    else
+                    {
+                        var tmpUI = go.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+                        if (tmpUI != null) { tmpUI.text = ""; tmpUI.gameObject.SetActive(false); }
+                    }
+                }
+                else
+                {
+                    go.SetActive(false);
+                }
+            }
+        }
+        else
+        {
+            foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
+        }
+
+        // Place per-turn markers at the last tile of each queued segment
+        segIndex = 0;
+        foreach (var seg in queued)
+        {
+            if (seg == null || seg.Count == 0) { segIndex++; continue; }
+            int markerTile = seg[seg.Count - 1];
+            Vector3 mpos = ts.GetTileSurfacePosition(markerTile) + Vector3.up * 0.25f;
+            GameObject marker = GetOrCreateMarker(segIndex);
+            marker.transform.position = mpos;
+            marker.transform.forward = Vector3.up;
+            marker.SetActive(true);
+            if (segIndex < previewMarkerLabels.Count && previewMarkerLabels[segIndex] != null)
+            {
+                var lblComp = previewMarkerLabels[segIndex];
+                if (lblComp is TextMeshPro lbl3d) { lbl3d.text = (segIndex + 1).ToString(); lbl3d.gameObject.SetActive(true); }
+                else if (lblComp is TMPro.TextMeshProUGUI lblUI) { lblUI.text = (segIndex + 1).ToString(); lblUI.gameObject.SetActive(true); }
+            }
+            segIndex++;
+        }
+
+        // Destination marker at the final queued tile
+        if (lastTile >= 0)
+        {
+            ShowDestinationMarker(lastTile, ts, queued.Count);
+            previewTargetTile = lastTile;
+        }
     }
 
     // -------------------------
@@ -863,8 +1046,58 @@ public class UnitSelectionManager : MonoBehaviour
         {
             UIManager.Instance.ShowUnitInfoPanelForUnit(unit);
         }
+        // Clear any transient preview state and show persistent queued-path (if any)
+        ClearPreviewVisuals();
+        ShowQueuedPathPreviewIfAny();
         if (previewDebug) Debug.Log($"[USM] SelectUnit -> {unit.name} (tile {unit.currentTileIndex})");
 }
+
+    /// <summary>
+    /// Called when any unit finishes movement. If it's the currently selected unit,
+    /// refresh the persistent queued-path preview and the unit info panel so move
+    /// points and markers update immediately.
+    /// </summary>
+    private void OnUnitMovementCompleted(GameEventManager.UnitMovementEventArgs args)
+    {
+        if (args == null || args.Unit == null) return;
+        if (selectedUnit == null) return;
+
+        // args.Unit is a MonoBehaviour; selectedUnit inherits MonoBehaviour
+        if (args.Unit == (MonoBehaviour)selectedUnit)
+        {
+            if (previewDebug) Debug.Log($"[USM] OnUnitMovementCompleted for selected unit {selectedUnit.name} - refreshing queued preview/UI");
+            // Rebuild persistent preview from queuedMovementSegments
+            ClearPreviewVisuals();
+            ShowQueuedPathPreviewIfAny();
+            // Refresh the unit info panel so it reflects new movement points immediately
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowUnitInfoPanelForUnit(selectedUnit);
+            }
+            // If we had a pending attack target for this unit, try to execute it now
+            if (pendingAttackTarget != null && args.Unit == (MonoBehaviour)selectedUnit)
+            {
+                try
+                {
+                    var tgt = pendingAttackTarget;
+                    // Check range again using tile-steps
+                    var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+                    if (ts != null && selectedUnit.currentTileIndex >= 0 && tgt.currentTileIndex >= 0)
+                    {
+                        int tileSteps = ts.GetWrappedHexDistance(selectedUnit.currentTileIndex, tgt.currentTileIndex);
+                        int maxSteps = Mathf.FloorToInt((selectedUnit is CombatUnit sc) ? sc.CurrentRange : (selectedUnit is WorkerUnit sw ? sw.BaseRange : 0f));
+                        if (tileSteps <= maxSteps)
+                        {
+                            // In range now — perform unified attack
+                            selectedUnit.Attack(tgt);
+                            pendingAttackTarget = null;
+                        }
+                    }
+                }
+                catch { pendingAttackTarget = null; }
+            }
+        }
+    }
     
     /// <summary>
     /// Deselect the current unit
@@ -889,6 +1122,8 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Clear any attack hover indicator
         ClearAttackHover();
+        // Clear any preview visuals when deselecting
+        ClearPreviewVisuals();
     }
     
     /// <summary>
@@ -903,35 +1138,96 @@ public class UnitSelectionManager : MonoBehaviour
         BaseUnit targetUnit = GetUnitOnTile(targetTileIndex);
         bool isEnemy = targetUnit != null && targetUnit.owner != selectedUnit.owner;
 
+        if (previewDebug)
+        {
+            string tgtName = targetUnit != null ? targetUnit.name : "<none>";
+            Debug.Log($"[USM] MoveSelectedUnitToTile called. sel={selectedUnit.name} selTile={selectedUnit.currentTileIndex} tgtTile={targetTileIndex} target={tgtName} isEnemy={isEnemy}");
+            if (targetUnit != null)
+            {
+                // Prefer tile-based distance (same metric as movement/path preview)
+                float dist = -1f;
+                int tileSteps = -1;
+                try
+                {
+                    var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+                    if (ts != null && selectedUnit.currentTileIndex >= 0 && targetUnit.currentTileIndex >= 0)
+                    {
+                        tileSteps = ts.GetWrappedHexDistance(selectedUnit.currentTileIndex, targetUnit.currentTileIndex);
+                        dist = tileSteps >= 0 ? tileSteps : -1f;
+                    }
+                    else
+                    {
+                        dist = Vector3.Distance(selectedUnit.transform.position, targetUnit.transform.position);
+                    }
+                }
+                catch (System.Exception)
+                {
+                    dist = Vector3.Distance(selectedUnit.transform.position, targetUnit.transform.position);
+                }
+                float range = (selectedUnit is CombatUnit sc) ? sc.CurrentRange : (selectedUnit is WorkerUnit sw ? sw.BaseRange : 0f);
+                bool canAttack = (selectedUnit is CombatUnit cc) ? cc.CanAttack(targetUnit as CombatUnit) : (selectedUnit is WorkerUnit ww ? ww.CanAttack(targetUnit) : false);
+                Debug.Log($"[USM] Target tiles: selTile={selectedUnit.currentTileIndex} tgtTile={targetUnit.currentTileIndex} tileSteps={tileSteps} distanceMetric={dist} range={range:F2} canAttack={canAttack}");
+            }
+        }
+
         // --- Attack path ---
         if (isEnemy)
         {
-            if (selectedUnit is CombatUnit attackerCombat)
+            bool canAttack = (selectedUnit is CombatUnit cc) ? (targetUnit is CombatUnit tc ? cc.CanAttack(tc) : (targetUnit is WorkerUnit tw ? cc.CanAttack(tw) : false)) : (selectedUnit is WorkerUnit ww ? ww.CanAttack(targetUnit) : false);
+            if (canAttack)
             {
-                if (targetUnit is CombatUnit targetCombat && attackerCombat.CanAttack(targetCombat))
-                {
-                    attackerCombat.Attack(targetCombat);
-                    return;
-                }
-                if (targetUnit is WorkerUnit targetWorker && attackerCombat.CanAttack(targetWorker))
-                {
-                    attackerCombat.Attack(targetWorker);
-                    return;
-                }
-            }
-            else if (selectedUnit is WorkerUnit attackerWorker)
-            {
-                if (attackerWorker.CanAttack(targetUnit))
-                {
-                    attackerWorker.Attack(targetUnit);
-                    return;
-                }
+                selectedUnit.Attack(targetUnit);
+                return;
             }
         }
 
         // --- Movement path ---
         bool canMove = false;
         string unitName = "";
+        // If enemy and not currently attackable, try to compute an approach tile that gets us into range and move there, then attack
+        if (isEnemy && targetUnit != null)
+        {
+            // If not attackable now, compute path and find first tile along path that puts us within attack range
+            bool alreadyInRange = (selectedUnit is CombatUnit sc0) ? sc0.CanAttack(targetUnit as CombatUnit) : (selectedUnit is WorkerUnit sw0 ? sw0.CanAttack(targetUnit) : false);
+            if (!alreadyInRange && UnitMovementController.Instance != null)
+            {
+                var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+                var fullPath = UnitMovementController.Instance.FindPath(selectedUnit.currentTileIndex, targetUnit.currentTileIndex, selectedUnit);
+                if (fullPath != null && fullPath.Count > 0 && ts != null)
+                {
+                    float rangeF = (selectedUnit is CombatUnit sc) ? sc.CurrentRange : (selectedUnit is WorkerUnit sw ? sw.BaseRange : 0f);
+                    int maxRangeSteps = Mathf.FloorToInt(rangeF);
+                    int approachTile = -1;
+                    // iterate path from start to end and find the first tile where distance to target <= range
+                    for (int i = 0; i < fullPath.Count; i++)
+                    {
+                        int pathTile = fullPath[i];
+                        int steps = ts.GetWrappedHexDistance(pathTile, targetUnit.currentTileIndex);
+                        if (steps <= maxRangeSteps)
+                        {
+                            approachTile = pathTile;
+                            break;
+                        }
+                    }
+                    if (approachTile >= 0)
+                    {
+                        // Move to approach tile and set pending attack target
+                        pendingAttackTarget = targetUnit;
+                        if (selectedUnit is CombatUnit approachCombat)
+                        {
+                            if (approachCombat.CanMoveTo(approachTile)) approachCombat.MoveTo(approachTile);
+                            else pendingAttackTarget = null;
+                        }
+                        else if (selectedUnit is WorkerUnit workerUnit)
+                        {
+                            if (workerUnit.CanMoveTo(approachTile)) workerUnit.MoveTo(approachTile);
+                            else pendingAttackTarget = null;
+                        }
+                        return;
+                    }
+                }
+            }
+        }
         
         if (selectedUnit is CombatUnit combatUnit)
         {

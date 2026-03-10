@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 public class UnitInfoPanel : MonoBehaviour
@@ -18,7 +19,6 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI healthText;
     [SerializeField] private TextMeshProUGUI movePointsText;
     [SerializeField] private TextMeshProUGUI rangeText;
-    [SerializeField] private TextMeshProUGUI moraleText;
     
     [Header("Worker Stats")]
     [SerializeField] private TextMeshProUGUI workPointsText;
@@ -94,6 +94,33 @@ public class UnitInfoPanel : MonoBehaviour
         }
     }
 
+    // --- Slide animation settings ---
+    [Header("Slide Settings")]
+    [Tooltip("Duration in seconds for slide in/out animations")]
+    [SerializeField] private float slideDuration = 0.2f;
+    [Tooltip("Extra offset beyond panel width to position offscreen")]
+    [SerializeField] private float offscreenPadding = 20f;
+
+    private RectTransform panelRect;
+    private Vector2 targetAnchoredPos;
+    private Vector2 hiddenAnchoredPos;
+    private Coroutine slideCoroutine;
+
+    private void Start()
+    {
+        if (unitInfoPanel != null)
+            panelRect = unitInfoPanel.GetComponent<RectTransform>();
+        if (panelRect != null)
+        {
+            targetAnchoredPos = panelRect.anchoredPosition;
+            float width = panelRect.rect.width;
+            hiddenAnchoredPos = targetAnchoredPos + new Vector2(width + offscreenPadding, 0f);
+            // Initially hide offscreen
+            panelRect.anchoredPosition = hiddenAnchoredPos;
+            if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
+        }
+    }
+
     private void ValidateSerializedFields()
     {
         // Common section
@@ -109,7 +136,6 @@ public class UnitInfoPanel : MonoBehaviour
         if (healthText == null) Debug.LogWarning("[UnitInfoPanel] healthText is not assigned in the Inspector.");
         if (movePointsText == null) Debug.LogWarning("[UnitInfoPanel] movePointsText is not assigned in the Inspector.");
         if (rangeText == null) Debug.LogWarning("[UnitInfoPanel] rangeText is not assigned in the Inspector.");
-        if (moraleText == null) Debug.LogWarning("[UnitInfoPanel] moraleText is not assigned in the Inspector.");
 
         // Actions / Construction
         if (settleCityButton == null) Debug.LogWarning("[UnitInfoPanel] settleCityButton is not assigned in the Inspector.");
@@ -154,15 +180,57 @@ PopulateForWorkerUnit(currentWorkerUnit);
             Debug.LogError($"UnitInfoPanel.ShowPanel: The internal 'unitInfoPanel' GameObject reference is NULL for {unitNameForLog}! Cannot activate panel. Check prefab assignment in UnitInfoPanel.cs Inspector.");
             return;
         }
-unitInfoPanel.SetActive(true);
-// Update common elements if any, or specific ones again if needed after activation
+        // Start slide-in animation
+        StartSlideIn();
+        // Update common elements if any, or specific ones again if needed after activation
         // RefreshLayout(); // If you have dynamic content that needs a layout refresh
     }
 
     public void HidePanel()
     {
-        // "Hiding" now means clearing the info to the default state.
-        ClearPanelInfo();
+        // Start slide-out animation then clear panel when complete
+        StartSlideOut();
+    }
+
+    private void StartSlideIn()
+    {
+        if (panelRect == null) return;
+        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, targetAnchoredPos, slideDuration));
+    }
+
+    private void StartSlideOut()
+    {
+        if (panelRect == null)
+        {
+            ClearPanelInfo();
+            return;
+        }
+        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, hiddenAnchoredPos, slideDuration, () => {
+            // After slide out completes, clear and deactivate
+            ClearPanelInfo();
+            if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
+        }));
+    }
+
+    private IEnumerator Slide(Vector2 from, Vector2 to, float duration, System.Action onComplete = null)
+    {
+        float t = 0f;
+        // Ensure starting position
+        panelRect.anchoredPosition = from;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float f = Mathf.Clamp01(t / duration);
+            // Smooth step easing
+            float ease = f * f * (3f - 2f * f);
+            panelRect.anchoredPosition = Vector2.LerpUnclamped(from, to, ease);
+            yield return null;
+        }
+        panelRect.anchoredPosition = to;
+        slideCoroutine = null;
+        onComplete?.Invoke();
     }
 
     private void ClearPanelInfo()
@@ -182,7 +250,6 @@ unitInfoPanel.SetActive(true);
         if (healthText != null) { healthText.text = "Health: -/-"; healthText.gameObject.SetActive(true); }
         if (movePointsText != null) { movePointsText.text = "Move: -"; movePointsText.gameObject.SetActive(true); }
         if (rangeText != null) { rangeText.text = "Range: -"; rangeText.gameObject.SetActive(true); }
-        if (moraleText != null) { moraleText.text = "Morale: -"; moraleText.gameObject.SetActive(true); }
         if (workPointsText != null) { workPointsText.text = "Work Points: -"; workPointsText.gameObject.SetActive(false); }
 
         // Hide buttons that require a unit
@@ -218,7 +285,6 @@ unitInfoPanel.SetActive(true);
         if (healthText != null) healthText.gameObject.SetActive(true);
         if (movePointsText != null) movePointsText.gameObject.SetActive(true);
         if (rangeText != null) rangeText.gameObject.SetActive(true);
-        if (moraleText != null) moraleText.gameObject.SetActive(true);
         if (workPointsText != null) workPointsText.gameObject.SetActive(false);
 
 
@@ -232,7 +298,6 @@ unitInfoPanel.SetActive(true);
         healthText.text = $"Health: {currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
         if (movePointsText != null) movePointsText.text = $"Move Speed: {currentCombatUnit.moveSpeed:F1}";
         rangeText.text = $"Range: {currentCombatUnit.CurrentRange}";
-        if (moraleText != null) moraleText.text = $"Ammo: {currentCombatUnit.currentAmmo}/{currentCombatUnit.data.maxAmmo}";
 
         // Orbit status & controls
         UpdateOrbitControls(currentCombatUnit);
@@ -255,7 +320,6 @@ unitInfoPanel.SetActive(true);
         if (levelText != null) levelText.gameObject.SetActive(false);
         if (experienceText != null) experienceText.gameObject.SetActive(false);
         if (rangeText != null) rangeText.gameObject.SetActive(false);
-        if (moraleText != null) moraleText.gameObject.SetActive(false);
 
 
         unitNameText.text = currentWorkerUnit.data.unitName;
@@ -331,7 +395,6 @@ unitInfoPanel.SetActive(true);
         if (healthText != null) healthText.gameObject.SetActive(false);
         if (movePointsText != null) movePointsText.gameObject.SetActive(false);
         if (rangeText != null) rangeText.gameObject.SetActive(false);
-        if (moraleText != null) moraleText.gameObject.SetActive(false);
 
         // Hide action buttons
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
@@ -394,13 +457,19 @@ UpdateUnitInfoForWorkerUnit();
             buildOptionsDropdown.gameObject.SetActive(true);
         }
 
-        if (contributeWorkButton != null)
+        // Use the single Start/Contribute button for both starting builds and contributing work
+        if (startBuildButton != null)
         {
             bool hasJob = ImprovementManager.Instance != null &&
                           ImprovementManager.Instance.HasAnyJobAtTile(workerUnit.currentTileIndex, workerUnit.planetIndex);
-            contributeWorkButton.gameObject.SetActive(true);
-            contributeWorkButton.interactable = hasJob && workerUnit.currentWorkPoints > 0;
+            // Prefer showing the single button; set label accordingly
+            startBuildButton.gameObject.SetActive(true);
+            var txt = startBuildButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Build";
+            startBuildButton.interactable = hasJob ? (workerUnit.currentWorkPoints > 0) : (buildOptions != null && buildOptions.Count > 0 && workerUnit.currentWorkPoints > 0);
         }
+        // Hide legacy contribute button to avoid duplicate actions
+        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
     }
 
 
@@ -527,7 +596,19 @@ UpdateUnitInfoForWorkerUnit();
 
     private void OnStartBuildButtonClicked()
     {
-        if (pendingBuildIndex < 0 || buildOptions == null || pendingBuildIndex >= buildOptions.Count || currentWorkerUnit == null) return;
+        if (currentWorkerUnit == null) return;
+
+        // If there's an existing job on this tile, treat the button as "Contribute Work"
+        bool hasJob = ImprovementManager.Instance != null &&
+                      ImprovementManager.Instance.HasAnyJobAtTile(currentWorkerUnit.currentTileIndex, currentWorkerUnit.planetIndex);
+        if (hasJob)
+        {
+            OnContributeWorkClicked();
+            return;
+        }
+
+        // Otherwise behave as Start Build (require a pending selection)
+        if (pendingBuildIndex < 0 || buildOptions == null || pendingBuildIndex >= buildOptions.Count) return;
         var opt = buildOptions[pendingBuildIndex];
         // Clear pending and disable button
         pendingBuildIndex = -1;

@@ -301,9 +301,15 @@ planetSeasons.Clear();
             }
         }
 
+        // Per-season debug messages and seasonal effects
+        if (verboseLogs)
+        {
+            Debug.Log($"[ClimateManager] {season} detected, applying seasonal responses (wet/dry/snow debug).");
+        }
+
         if (season == Season.Winter)
         {
-            if (verboseLogs) Debug.Log("[ClimateManager] Winter detected, applying snow effects.");
+            if (verboseLogs) Debug.Log("[ClimateManager] Applying winter-specific snow effects and attrition.");
             ApplyWinterMovementPenalty(planetIndex);
             if (enableWinterAttrition)
             {
@@ -312,6 +318,7 @@ planetSeasons.Clear();
         }
         else
         {
+            if (verboseLogs) Debug.Log($"[ClimateManager] Applying wetness/dryness handling for {season}.");
             RemoveWinterMovementPenalty(planetIndex);
         }
     }

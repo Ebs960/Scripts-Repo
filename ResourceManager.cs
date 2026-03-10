@@ -507,17 +507,8 @@ public class ResourceManager : MonoBehaviour
             inst.planetIndex = planetIndex;
             spawnedResources.Add(inst);
 
-            // Register occupancy
-            try
-            {
-                var tileData = ts != null ? ts.GetTileDataFromPlanet(tileIndex, planetIndex) : null;
-                TileLayer layer;
-                if (newResource.isOrbitalResource) layer = TileLayer.Orbit;
-                else if (tileData != null && tileData.isLand) layer = TileLayer.Surface;
-                else layer = TileLayer.Underwater;
-                (TileOccupancyManager.GetForPlanet(inst.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, go, layer);
-            }
-            catch { }
+            // NOTE: Resources no longer register as tile occupants. Occupancy is reserved for units and cities only.
+            // This avoids blocking unit movement and selection when resources are present on a tile.
         }
         else
         {

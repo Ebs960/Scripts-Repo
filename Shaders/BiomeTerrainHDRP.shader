@@ -97,6 +97,12 @@ Shader "Custom/BiomeTerrainHDRP"
         _SnowNormalStrength ("Snow Normal Strength", Range(0, 2)) = 0.5
         _SnowNormalTiling ("Snow Normal Tiling", Range(0.1, 20)) = 5.0
         _SnowSparkleStrength ("Snow Sparkle Strength", Range(0, 1)) = 0.3
+        
+        [Header(Wetness)]
+        _WetNormalStrength ("Wet Normal Strength", Range(0, 2)) = 0.35
+        _WetNormalTiling ("Wet Normal Tiling", Range(0.1, 20)) = 8.0
+        _WetSmoothnessBoost ("Wet Smoothness Boost", Range(0, 1)) = 0.5
+        _WetAlbedoDarken ("Wet Albedo Darken", Range(0, 1)) = 0.5
 
         [Header(Distance LOD)]
         _TriplanarLODStart ("Triplanar LOD Start Distance", Range(0, 200)) = 50.0
@@ -201,6 +207,10 @@ Shader "Custom/BiomeTerrainHDRP"
     float _SnowNormalStrength;
     float _SnowNormalTiling;
     float _SnowSparkleStrength;
+    float _WetNormalStrength;
+    float _WetNormalTiling;
+    float _WetSmoothnessBoost;
+    float _WetAlbedoDarken;
     float _TriplanarLODStart;
     float _TriplanarLODEnd;
     float _CliffTiling;
@@ -938,7 +948,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 }
 
                 // ==========================================================
-                // WETNESS
+                // WETNESS (enhanced: adds normal perturb + stronger smoothness)
                 // ==========================================================
                 float wetFactor = _GlobalWetness * lerp(0.0, 1.0, biomeWetnessResponse);
                 // Modulate wet factor by per-tile mask (green channel)
@@ -946,8 +956,24 @@ Shader "Custom/BiomeTerrainHDRP"
                 wetFactor *= seasonWet;
                 if (wetFactor > 0.01)
                 {
-                    albedo *= lerp(1.0, 0.6, wetFactor);
-                    smoothness = lerp(smoothness, min(smoothness + 0.3, 0.95), wetFactor);
+                    // Darken albedo based on configured darken amount
+                    albedo *= lerp(1.0, 1.0 - _WetAlbedoDarken, wetFactor);
+
+                    // Boost smoothness (wet surfaces become glossier)
+                    smoothness = lerp(smoothness, min(smoothness + _WetSmoothnessBoost, 0.99), wetFactor);
+
+                    // Mild normal perturbation to simulate surface wetness (soft ripples/puddles)
+                    float2 wetUV = worldPos.xz * _WetNormalTiling;
+                    float wetNx = sin(wetUV.x * 6.2831 + wetUV.y * 3.14) * 0.25
+                                + sin(wetUV.x * 12.566 - wetUV.y * 7.85) * 0.125;
+                    float wetNy = cos(wetUV.y * 6.2831 - wetUV.x * 2.71) * 0.25
+                                + cos(wetUV.y * 15.707 + wetUV.x * 4.33) * 0.125;
+                    float3 wetPerturb = normalize(float3(
+                        wetNx * _WetNormalStrength * wetFactor,
+                        1.0,
+                        wetNy * _WetNormalStrength * wetFactor));
+
+                    normalWS = normalize(lerp(normalWS, wetPerturb, wetFactor * 0.5));
                 }
 
                 // ==========================================================

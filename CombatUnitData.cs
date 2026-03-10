@@ -235,8 +235,7 @@ public class CombatUnitData : ScriptableObject
     // defaultWeapon is the authoritative melee weapon. Legacy 'defaultMeleeWeapon' removed.
     [Tooltip("Default projectile/ranged weapon equipped by this unit (used when firing) ")]
     public EquipmentData defaultProjectileWeapon;
-    [Tooltip("How many seconds a unit stays 'engaged in melee' after receiving a melee hit before reverting to ranged behavior.")]
-    public float meleeEngageDuration = 8f;
+    // meleeEngageDuration removed (deprecated)
 
     [Header("Yield")]
     public int foodOnKill;

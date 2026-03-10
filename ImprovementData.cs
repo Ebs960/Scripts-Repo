@@ -16,6 +16,10 @@ public class ImprovementUpgradeData
     public bool makesVisualChange = false;
     [Tooltip("Prefabs that will be instantiated as children of the improvement when this upgrade is applied (good for modular pieces like walls, moats, keeps)")]
     public GameObject[] attachPrefabs;
+    [Tooltip("Local position offsets to apply to each corresponding entry in attachPrefabs. If empty or shorter than attachPrefabs, missing entries default to Vector3.zero.")]
+    public Vector3[] attachLocalPositions;
+    [Tooltip("Local rotation (Euler angles in degrees) to apply to each corresponding entry in attachPrefabs. If empty or shorter than attachPrefabs, missing entries default to (0,0,0).")]
+    public Vector3[] attachLocalEulerAngles;
     [Tooltip("Optional: fully replace the improvement GameObject when this upgrade is applied. Use for complex visual reworks.")]
     public GameObject replacePrefab;
 

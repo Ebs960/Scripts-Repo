@@ -41,7 +41,7 @@ public class WorkerUnit : BaseUnit
     private readonly int foundCityHash = Animator.StringToHash("FoundCity");
     private readonly int forageHash = Animator.StringToHash("Forage");
     private readonly int buildBoolHash = Animator.StringToHash("IsBuilding");
-    private bool _lastBuildAnimState = false;
+    
 
     #region Implement Abstract Members from BaseUnit
 
@@ -62,7 +62,7 @@ public class WorkerUnit : BaseUnit
     }
 
     protected override EquipmentTarget AcceptedEquipmentTarget => EquipmentTarget.WorkerUnit;
-    protected override float MeleeEngageDuration => data?.meleeEngageDuration ?? 8f;
+    // MeleeEngageDuration removed — engagement duration deprecated.
 
     public override void ResetForNewTurn()
     {
@@ -87,7 +87,7 @@ public class WorkerUnit : BaseUnit
         }
 
         CheckForHazardousBiomeDamage();
-        
+
         // Auto-contribute to jobs at start of turn
         AutoContributeToJobs();
     }
@@ -287,22 +287,20 @@ public class WorkerUnit : BaseUnit
     {
         if (args == null || args.Worker == null) return;
         if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
-        if (animator != null)
-        {
-            animator.SetBool(buildBoolHash, true);
-            _lastBuildAnimState = true;
-        }
+            if (animator != null)
+            {
+                animator.SetBool(buildBoolHash, true);
+            }
     }
 
     private void HandleWorkerUnassignedEvent(GameEventManager.WorkerAssignmentEventArgs args)
     {
         if (args == null || args.Worker == null) return;
         if (args.Worker.GetInstanceID() != gameObject.GetInstanceID()) return;
-        if (animator != null)
-        {
-            animator.SetBool(buildBoolHash, false);
-            _lastBuildAnimState = false;
-        }
+            if (animator != null)
+            {
+                animator.SetBool(buildBoolHash, false);
+            }
     }
 
     public void FoundCity()
@@ -322,17 +320,27 @@ public class WorkerUnit : BaseUnit
         var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
         if (td == null || !td.isLand) return false;
 
-        // Distance check
-        const float minCityDist = 4.0f;
+        // Distance check: use tile-step distance (hex steps) rather than world-space distance
+        const int minCitySteps = 4; // must be at least this many tile steps away
         var allCivs = CivilizationManager.Instance.GetAllCivs();
         foreach (var civ in allCivs)
         {
             foreach (var city in civ.cities)
             {
-                Vector3 a = ts != null ? ts.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
-                Vector3 b = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
-                float d = Vector3.Distance(a, b);
-                if (d < minCityDist) return false;
+                if (city == null) continue;
+                if (ts != null && ts.IsReady())
+                {
+                    int steps = ts.GetWrappedHexDistance(currentTileIndex, city.centerTileIndex);
+                    if (steps < minCitySteps) return false;
+                }
+                else
+                {
+                    // Fallback for legacy/runtime edgecases: approximate using flat center distance
+                    Vector3 a = ts != null ? ts.GetTileCenterFlat(currentTileIndex) : Vector3.zero;
+                    Vector3 b = ts != null ? ts.GetTileCenterFlat(city.centerTileIndex) : Vector3.zero;
+                    float d = Vector3.Distance(a, b);
+                    if (d < minCitySteps) return false;
+                }
             }
         }
         return true;
@@ -426,7 +434,12 @@ public class WorkerUnit : BaseUnit
 
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-        if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+        if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
+        {
+            // Block only if the occupant is another unit or a city; allow resources/improvements.
+            if (occObj.GetComponent<BaseUnit>() != null) return false;
+            if (occObj.GetComponent<City>() != null) return false;
+        }
         return true;
     }
 
@@ -446,15 +459,52 @@ public class WorkerUnit : BaseUnit
     public bool CanAttack(BaseUnit target)
     {
         if (target == null) return false;
-        float dist = Vector3.Distance(transform.position, target.transform.position);
-        return dist <= BaseRange;
+        // Use tile-step distance for attack checks to match movement metric
+        try
+        {
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentTileIndex >= 0 && target.currentTileIndex >= 0)
+            {
+                int tileSteps = ts.GetWrappedHexDistance(currentTileIndex, target.currentTileIndex);
+                if (tileSteps >= 0)
+                {
+                    int maxSteps = Mathf.FloorToInt(BaseRange);
+                    return tileSteps <= maxSteps;
+                }
+            }
+        }
+        catch (System.Exception) { }
+        // If tile-based check can't be performed, do not allow attack
+        return false;
     }
 
-    public void Attack(BaseUnit target)
+    public override void Attack(BaseUnit target)
     {
         if (!CanAttack(target)) return;
+
+        // Play attack animation (use Attack trigger if available)
+        try
+        {
+            if (animator != null && HasParameter(animator, attackHash))
+                animator.SetTrigger(attackHash);
+        }
+        catch { }
+
         int damage = Mathf.Max(1, CurrentAttack);
-        target.ApplyDamage(damage, this, attackerIsMelee: true);
+        bool died = target.ApplyDamage(damage, this, attackerIsMelee: true);
+
+        if (died)
+        {
+            try
+            {
+                if (target is CombatUnit cu && cu.data != null && cu.data.foodOnKill > 0 && this.owner != null)
+                {
+                    this.owner.AddFood(cu.data.foodOnKill);
+                }
+                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, damage);
+            }
+            catch { }
+        }
     }
 
     /// <summary>

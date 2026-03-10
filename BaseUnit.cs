@@ -66,6 +66,16 @@ public abstract class BaseUnit : MonoBehaviour
 
     #endregion
 
+    /// <summary>
+    /// Unified attack entry point for all unit types. Subclasses should override
+    /// to route to their specialized attack implementations (melee/ranged, worker/combat).
+    /// External callers can call this method without needing to know the concrete unit type.
+    /// </summary>
+    public virtual void Attack(BaseUnit target)
+    {
+        Debug.LogWarning($"[BaseUnit] Attack(BaseUnit) not overridden on {GetType().Name} (target={target?.GetType().Name})");
+    }
+
     #region Core Unit Fields
 
     [Header("Unit UI")]
@@ -102,6 +112,9 @@ public abstract class BaseUnit : MonoBehaviour
 
     // Runtime state
     public Civilization owner { get; protected set; }
+    // Queue of movement segments to execute across turns. Each segment is a list of tile indices
+    // representing tiles to traverse during a single turn. Non-serialized because runtime-only.
+    [System.NonSerialized] public Queue<System.Collections.Generic.List<int>> queuedMovementSegments = new();
     public int currentHealth { get; protected set; }
     public int currentTileIndex = -1;
     public TileLayer currentLayer = TileLayer.Surface;
@@ -120,7 +133,6 @@ public abstract class BaseUnit : MonoBehaviour
     protected int queuedProjectileDamage = -1;
     protected bool hasQueuedProjectile = false;
     protected bool engagedInMelee = false;
-    protected Coroutine meleeEngageCoroutine = null;
 
     // Trap immobilization
     protected int trappedTurnsRemaining = 0;
@@ -171,7 +183,7 @@ public abstract class BaseUnit : MonoBehaviour
     protected abstract EquipmentTarget AcceptedEquipmentTarget { get; }
 
     /// <summary>Duration unit stays in melee after being hit</summary>
-    protected abstract float MeleeEngageDuration { get; }
+    // Melee engagement duration deprecated — engagement state is managed by range checks / attack logic now.
 
     #endregion
 
@@ -831,9 +843,9 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (attackerIsMelee)
         {
+            // Mark engaged in melee — duration handling deprecated; engagement state should be managed
+            // by range/attack logic or explicit code paths.
             engagedInMelee = true;
-            if (meleeEngageCoroutine != null) StopCoroutine(meleeEngageCoroutine);
-            meleeEngageCoroutine = StartCoroutine(EndMeleeEngageAfterDelay(MeleeEngageDuration));
         }
         return ApplyDamage(damageAmount);
     }
@@ -853,17 +865,7 @@ public abstract class BaseUnit : MonoBehaviour
         UpdateUnitLabel();
     }
 
-    protected System.Collections.IEnumerator EndMeleeEngageAfterDelay(float delay)
-    {
-        float t = 0f;
-        while (t < delay)
-        {
-            t += Time.deltaTime;
-            yield return null;
-        }
-        engagedInMelee = false;
-        meleeEngageCoroutine = null;
-    }
+    // Melee engagement timeout coroutine removed (deprecated).
 
     /// <summary>
     /// Handle unit death. Override in subclasses for additional cleanup.
@@ -1094,16 +1096,33 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual void MoveTo(int targetTileIndex)
     {
-        var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
-        path = UnitMovementController.Instance.TrimPathToAvailableMovement(this, path);
-        if (path == null || path.Count == 0) return;
+        if (UnitMovementController.Instance == null) return;
 
-        // Reset animation before killing the old coroutine — StopAllCoroutines
-        // would destroy the MoveAlongPath cleanup code that sets isMoving = false
+        // Compute per-turn segments for the full path
+        var segments = UnitMovementController.Instance.GetPathSegmentsByTurn(this, currentTileIndex, targetTileIndex);
+        if (segments == null || segments.Count == 0) return;
+
+        // Cancel any existing movement/queue for this unit
         UpdateWalkingState(false);
         StopAllCoroutines();
-        // Start movement coroutine on the controller and track it so it can be cancelled.
-        UnitMovementController.Instance?.StartMoveForUnit(this, path);
+        queuedMovementSegments.Clear();
+
+        // Enqueue remaining segments (segments[1..]) for subsequent turns
+        for (int i = 1; i < segments.Count; i++)
+        {
+            if (segments[i] != null && segments[i].Count > 0)
+                queuedMovementSegments.Enqueue(new System.Collections.Generic.List<int>(segments[i]));
+        }
+
+        // Start the first segment immediately
+        var first = segments[0];
+        if (first == null || first.Count == 0)
+        {
+            // Nothing to do
+            return;
+        }
+
+        UnitMovementController.Instance?.StartMoveForUnit(this, first);
     }
 
     /// <summary>
@@ -1119,7 +1138,15 @@ public abstract class BaseUnit : MonoBehaviour
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
             var obj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-            if (obj != null && obj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+            if (obj != null && obj.GetInstanceID() != gameObject.GetInstanceID())
+            {
+                // Allow movement onto tiles occupied by resources or improvements.
+                // Block only if the occupant is another unit (BaseUnit-derived).
+                if (obj.GetComponent<BaseUnit>() != null)
+                {
+                    return false;
+                }
+            }
         }
         catch { }
         return true;

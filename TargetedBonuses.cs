@@ -13,7 +13,6 @@ public class UnitStatBonus
     public int defenseAdd;
     public int healthAdd;
     public int rangeAdd;
-    public int moraleAdd;
 
     [Header("Multiplicative (%)")]
     [Tooltip("Percent increase as 0.10 = +10%.")]
@@ -21,7 +20,6 @@ public class UnitStatBonus
     public float defensePct;
     public float healthPct;
     public float rangePct;
-    public float moralePct;
 }
 
 [System.Serializable]

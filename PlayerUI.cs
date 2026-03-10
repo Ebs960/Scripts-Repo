@@ -58,6 +58,31 @@ public class PlayerUI : MonoBehaviour
         // Removed age/tech/culture text fields — nothing to hide at runtime
     }
 
+    // Handlers for Civilization yield change events
+    private void OnFoodChangedHandler(int newAmount, int delta)
+    {
+        if (currentCiv != null)
+            UpdatePlayerPanel(currentCiv, TurnManager.Instance != null ? TurnManager.Instance.round : 0);
+    }
+
+    private void OnGoldChangedHandler(int newAmount, int delta)
+    {
+        if (currentCiv != null)
+            UpdatePlayerPanel(currentCiv, TurnManager.Instance != null ? TurnManager.Instance.round : 0);
+    }
+
+    private void OnFaithChangedHandler(int newAmount, int delta)
+    {
+        if (currentCiv != null)
+            UpdatePlayerPanel(currentCiv, TurnManager.Instance != null ? TurnManager.Instance.round : 0);
+    }
+
+    private void OnPolicyPointsChangedHandler(int newAmount, int delta)
+    {
+        if (currentCiv != null)
+            UpdatePlayerPanel(currentCiv, TurnManager.Instance != null ? TurnManager.Instance.round : 0);
+    }
+
     private void SetupButtonListeners()
     {
         if (endTurnButton != null)
@@ -226,6 +251,7 @@ Civilization civToUse = currentCiv;
             currentCiv.OnCultureStarted += OnTechOrCultureStarted;
             currentCiv.OnTechResearched += OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
+            
         }
 
         // Re-populate layer dropdown now that planet generation + LayerManager init are complete
@@ -296,6 +322,10 @@ return true;
             currentCiv.OnCultureStarted -= OnTechOrCultureStarted;
             currentCiv.OnTechResearched -= OnTechOrCultureStarted;
             currentCiv.OnCultureCompleted -= OnTechOrCultureStarted;
+            currentCiv.OnFoodChanged -= OnFoodChangedHandler;
+            currentCiv.OnGoldChanged -= OnGoldChangedHandler;
+            currentCiv.OnFaithChanged -= OnFaithChangedHandler;
+            currentCiv.OnPolicyPointsChanged -= OnPolicyPointsChangedHandler;
         }
     }
 
@@ -371,7 +401,35 @@ UpdateTurnChangePanel(civ, round);
 
     private void UpdatePlayerPanel(Civilization civ, int round)
     {
-currentCiv = civ;
+        // If the civ being displayed changed, update subscriptions so UI reflects its live events
+        if (currentCiv != civ)
+        {
+            if (currentCiv != null)
+            {
+                currentCiv.OnTechStarted -= OnTechOrCultureStarted;
+                currentCiv.OnCultureStarted -= OnTechOrCultureStarted;
+                currentCiv.OnTechResearched -= OnTechOrCultureStarted;
+                currentCiv.OnCultureCompleted -= OnTechOrCultureStarted;
+                currentCiv.OnFoodChanged -= OnFoodChangedHandler;
+                currentCiv.OnGoldChanged -= OnGoldChangedHandler;
+                currentCiv.OnFaithChanged -= OnFaithChangedHandler;
+                currentCiv.OnPolicyPointsChanged -= OnPolicyPointsChangedHandler;
+            }
+
+            currentCiv = civ;
+
+            if (currentCiv != null)
+            {
+                currentCiv.OnTechStarted += OnTechOrCultureStarted;
+                currentCiv.OnCultureStarted += OnTechOrCultureStarted;
+                currentCiv.OnTechResearched += OnTechOrCultureStarted;
+                currentCiv.OnCultureCompleted += OnTechOrCultureStarted;
+                currentCiv.OnFoodChanged += OnFoodChangedHandler;
+                currentCiv.OnGoldChanged += OnGoldChangedHandler;
+                currentCiv.OnFaithChanged += OnFaithChangedHandler;
+                currentCiv.OnPolicyPointsChanged += OnPolicyPointsChangedHandler;
+            }
+        }
         
         // Top info
         if (civNameText != null) civNameText.text = civ.civData.civName;
@@ -420,12 +478,14 @@ currentCiv = civ;
             }
         }
 
-        if (foodYieldText != null) foodYieldText.text = $"+{totalFood}";
-        if (goldYieldText != null) goldYieldText.text = $"+{totalGold}";
-        if (scienceYieldText != null) scienceYieldText.text = $"+{totalScience}";
-        if (cultureYieldText != null) cultureYieldText.text = $"+{totalCulture}";
-        if (policyPointYieldText != null) policyPointYieldText.text = $"+{totalPolicyPoints}";
-        if (faithYieldText != null) faithYieldText.text = $"+{totalFaith}";
+        string FormatRate(int rate) => rate >= 0 ? $"+{rate}" : rate.ToString();
+
+        if (foodYieldText != null) foodYieldText.text = $"{civ.food} ({FormatRate(totalFood)})";
+        if (goldYieldText != null) goldYieldText.text = $"{civ.gold} ({FormatRate(totalGold)})";
+        if (scienceYieldText != null) scienceYieldText.text = $"{civ.science} ({FormatRate(totalScience)})";
+        if (cultureYieldText != null) cultureYieldText.text = $"{civ.culture} ({FormatRate(totalCulture)})";
+        if (policyPointYieldText != null) policyPointYieldText.text = $"{civ.policyPoints} ({FormatRate(totalPolicyPoints)})";
+        if (faithYieldText != null) faithYieldText.text = $"{civ.faith} ({FormatRate(totalFaith)})";
 
         // Inventory - Use the existing ResourceManager to get the civilization's resource inventory
         PopulateResourceList(civ);

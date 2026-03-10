@@ -542,7 +542,8 @@ public class UIManager : MonoBehaviour
         var infoUI = unitInfoPanel.GetComponent<UnitInfoPanel>();
         if (infoUI != null)
             infoUI.HidePanel();
-        HidePanel("UnitInfoPanel");
+        // Do not immediately deactivate the panel here; the UnitInfoPanel will animate out
+        // and deactivate itself when the slide-out completes.
     }
 
     /// <summary>

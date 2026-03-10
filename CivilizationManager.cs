@@ -426,9 +426,16 @@ public class CivilizationManager : MonoBehaviour
             foreach (var enemy in otherCiv.combatUnits)
             {
                 if (enemy == null) continue;
-                float dist = Vector3.Distance(unit.transform.position, enemy.transform.position);
-                if (dist <= range * 2f) // approximate tile distance
-                    return true;
+                try
+                {
+                    var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+                    if (ts != null && unit.currentTileIndex >= 0 && enemy.currentTileIndex >= 0)
+                    {
+                        int steps = ts.GetWrappedHexDistance(unit.currentTileIndex, enemy.currentTileIndex);
+                        if (steps >= 0 && steps <= range) return true;
+                    }
+                }
+                catch { }
             }
         }
         return false;
@@ -1738,9 +1745,26 @@ return result;
             return;
         }
 
-        // Get the tile position in flat map space
+        // Get the tile position in flat map space. Move camera two tiles south of the pioneer.
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        Vector3 tileWorldPosition = ts != null ? ts.GetTileCenterFlat(pioneerTileIndex) : Vector3.zero;
+        Vector3 tileWorldPosition = Vector3.zero;
+        if (ts != null)
+        {
+            // Try to compute a tile four rows (south) from the pioneer's tile using the planet grid.
+            var grid = planet.Grid;
+            if (grid != null && grid.IsBuilt && pioneerTileIndex >= 0 && pioneerTileIndex < grid.TileCount)
+            {
+                int row = pioneerTileIndex / Mathf.Max(1, grid.Width);
+                int col = pioneerTileIndex % Mathf.Max(1, grid.Width);
+                int newRow = Mathf.Min(grid.Height - 1, row - 4); // four tiles south (decreasing row => south)
+                int southIndex = newRow * grid.Width + col;
+                tileWorldPosition = ts.GetTileCenterFlat(southIndex);
+            }
+            else
+            {
+                tileWorldPosition = ts.GetTileCenterFlat(pioneerTileIndex);
+            }
+        }
 
         // Focus the camera on the pioneer and zoom in close (like Civilization start)
         cameraManager.JumpToWorldPoint(tileWorldPosition);

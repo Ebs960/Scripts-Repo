@@ -149,7 +149,23 @@ namespace GameCombat
         if (unit != null)
         {
             bool died = unit.ApplyDamage(dmg, attackerUnit, false);
-            // Attacker award handled inside ApplyDamage/RegisterKillFromProjectile
+            if (died && attackerUnit != null)
+            {
+                try
+                {
+                    // Award XP to attacker
+                    attackerUnit.RegisterKillFromProjectile(dmg);
+                    // Award food to attacker's civilization if configured
+                    var cu = attackerUnit as CombatUnit;
+                    if (cu != null && cu.owner != null && unit is CombatUnit deadCU && deadCU.data != null && deadCU.data.foodOnKill > 0)
+                    {
+                        cu.owner.AddFood(deadCU.data.foodOnKill);
+                    }
+                    // Raise killed event with attacker context
+                    GameEventManager.Instance?.RaiseUnitKilledEvent(attackerUnit, unit, dmg);
+                }
+                catch { }
+            }
             return;
         }
     }

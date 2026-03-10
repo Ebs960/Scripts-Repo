@@ -21,21 +21,6 @@ public class ResourceInstance : MonoBehaviour
     {
         // Unregister to avoid stale references and clean up occupancy
         UnitRegistry.Unregister(gameObject);
-        
-        // Clear occupancy when destroyed
-        try
-        {
-            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            TileLayer layer;
-            if (data != null && data.isOrbitalResource)
-                layer = TileLayer.Orbit;
-            else
-            {
-                var td = TileSystem.GetForPlanet(planetIndex)?.GetTileData(tileIndex);
-                layer = (td != null && !td.isLand) ? TileLayer.Underwater : TileLayer.Surface;
-            }
-            occ?.ClearOccupant(tileIndex, layer);
-        }
-        catch { }
+        // Resources do not participate in TileOccupancy. No need to clear occupancy here.
     }
 }
