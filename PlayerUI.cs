@@ -480,12 +480,13 @@ UpdateTurnChangePanel(civ, round);
 
         string FormatRate(int rate) => rate >= 0 ? $"+{rate}" : rate.ToString();
 
-        if (foodYieldText != null) foodYieldText.text = $"{civ.food} ({FormatRate(totalFood)})";
-        if (goldYieldText != null) goldYieldText.text = $"{civ.gold} ({FormatRate(totalGold)})";
-        if (scienceYieldText != null) scienceYieldText.text = $"{civ.science} ({FormatRate(totalScience)})";
-        if (cultureYieldText != null) cultureYieldText.text = $"{civ.culture} ({FormatRate(totalCulture)})";
-        if (policyPointYieldText != null) policyPointYieldText.text = $"{civ.policyPoints} ({FormatRate(totalPolicyPoints)})";
-        if (faithYieldText != null) faithYieldText.text = $"{civ.faith} ({FormatRate(totalFaith)})";
+        if (foodYieldText != null) foodYieldText.text = $"{civ.food}\n{FormatRate(totalFood)}";
+        if (goldYieldText != null) goldYieldText.text = $"{civ.gold}\n{FormatRate(totalGold)}";
+        // Science and Culture: only show per-turn rate (+N), raw totals removed
+        if (scienceYieldText != null) scienceYieldText.text = FormatRate(totalScience);
+        if (cultureYieldText != null) cultureYieldText.text = FormatRate(totalCulture);
+        if (policyPointYieldText != null) policyPointYieldText.text = $"{civ.policyPoints}\n{FormatRate(totalPolicyPoints)}";
+        if (faithYieldText != null) faithYieldText.text = $"{civ.faith}\n{FormatRate(totalFaith)}";
 
         // Inventory - Use the existing ResourceManager to get the civilization's resource inventory
         PopulateResourceList(civ);
