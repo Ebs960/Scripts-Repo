@@ -66,6 +66,73 @@ public abstract class BaseUnit : MonoBehaviour
 
     #endregion
 
+    // --- Attack orchestrator ---
+    public struct AttackContext
+    {
+        public BaseUnit attacker;
+        public BaseUnit defender;
+        public EquipmentData weapon; // may be null for unarmed
+        public int damage;
+        public bool isRanged;
+        public bool isMelee;
+    }
+
+    /// <summary>
+    /// Centralized step that applies damage from attacker to defender and performs
+    /// shared post-hit handling. Returns true if defender died.
+    /// Subclasses may call or override this to customize side-effects.
+    /// </summary>
+    public virtual bool PerformAttack(AttackContext ctx)
+    {
+        if (ctx.defender == null) return false;
+
+        // Ensure attacker has attack points available (centralized enforcement)
+        if (ctx.attacker != null)
+        {
+            try
+            {
+                if (!ctx.attacker.TryConsumeAttackPoint())
+                {
+                    // Not enough AP to perform attack
+                    return false;
+                }
+            }
+            catch { }
+        }
+
+        // Play attack animation on the attacker (centralized)
+        try
+        {
+            if (ctx.attacker != null && ctx.attacker.animator != null)
+            {
+                var au = (BaseUnit)ctx.attacker;
+                if (HasParameter(au.animator, attackHash))
+                    au.animator.SetTrigger(attackHash);
+            }
+        }
+        catch { }
+
+        // Apply damage with attacker context (this will centralize death/reward raising in ApplyDamage)
+        bool died = ctx.defender.ApplyDamage(ctx.damage, ctx.attacker, ctx.isMelee);
+
+        // Centralized XP awarding: attackers that are CombatUnit gain XP for hits and additional XP on kills
+        try
+        {
+            if (ctx.attacker != null && ctx.attacker is CombatUnit cu)
+            {
+                // Award XP for the hit
+                cu.GainExperience(ctx.damage);
+
+                // Award bonus XP for the kill
+                if (died)
+                    cu.GainExperience(ctx.damage);
+            }
+        }
+        catch { }
+
+        return died;
+    }
+
     /// <summary>
     /// Unified attack entry point for all unit types. Subclasses should override
     /// to route to their specialized attack implementations (melee/ranged, worker/combat).
@@ -104,6 +171,38 @@ public abstract class BaseUnit : MonoBehaviour
     [Header("Weather")]
     [Tooltip("If true, this unit takes weather attrition in severe seasons")]
     public bool takesWeatherDamage = true;
+
+    [Header("Action Points")]
+    [Tooltip("How many attacks/actions this unit can perform per turn.")]
+    [SerializeField]
+    protected int attackPointsPerTurn = 1;
+
+    [System.NonSerialized]
+    protected int currentAttackPoints = 0;
+
+    public int CurrentAttackPoints => currentAttackPoints;
+
+    public bool HasAttackPoints() => currentAttackPoints > 0;
+
+    public bool TryConsumeAttackPoint()
+    {
+        if (currentAttackPoints <= 0) return false;
+        currentAttackPoints = Mathf.Max(0, currentAttackPoints - 1);
+        if (currentAttackPoints <= 0)
+        {
+            var cu = this as CombatUnit;
+            if (cu != null) cu.ConsumeAction();
+        }
+        return true;
+    }
+
+    public virtual void ResetAttackPointsForNewTurn()
+    {
+        currentAttackPoints = attackPointsPerTurn;
+    }
+
+    // Public accessor for the per-turn max AP (configurable per-unit via data assets)
+    public int MaxAttackPoints => attackPointsPerTurn;
 
     // Core references
     protected HexGrid grid;
@@ -847,7 +946,61 @@ public abstract class BaseUnit : MonoBehaviour
             // by range/attack logic or explicit code paths.
             engagedInMelee = true;
         }
-        return ApplyDamage(damageAmount);
+
+        // Inline damage application so we can raise the damage event with attacker context (avoid double events)
+        try
+        {
+            var cu = this as CombatUnit;
+            if (cu != null && cu.data != null && cu.data.unitType == CombatCategory.Animal && AnimalManager.Instance != null && AnimalManager.Instance.debugSpawning)
+            {
+                Debug.LogWarning($"[BaseUnit][AnimalDamageDiag] ApplyDamage called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} damage={damageAmount} hpBefore={currentHealth} maxHP={MaxHealth} frame={Time.frameCount} time={Time.time:F3}\nStackTrace:\n{System.Environment.StackTrace}");
+            }
+        }
+        catch { }
+
+        if (animator != null && _hasHitParam)
+            animator.SetTrigger(hitHash);
+
+        currentHealth -= damageAmount;
+        ShowHealthChangePopup(-Mathf.Abs(damageAmount));
+
+        // Update label
+        UpdateUnitLabel();
+
+        // Raise damage event with attacker context
+        try { GameEventManager.Instance?.RaiseDamageAppliedEvent(attacker, this, damageAmount); } catch { }
+
+        if (currentHealth <= 0)
+        {
+            // Centralized kill handling: award foodOnKill to attacker civ and raise killed event
+            try
+            {
+                if (attacker != null)
+                {
+                    int food = 0;
+                    var deadCombat = this as CombatUnit;
+                    if (deadCombat != null && deadCombat.data != null)
+                        food = deadCombat.data.foodOnKill;
+                    else
+                    {
+                        var deadWorker = this as WorkerUnit;
+                        if (deadWorker != null && deadWorker.data != null)
+                            food = deadWorker.data.foodOnKill;
+                    }
+
+                    if (food > 0 && attacker.owner != null)
+                        attacker.owner.AddFood(food);
+                }
+
+                GameEventManager.Instance?.RaiseUnitKilledEvent(attacker, this, damageAmount);
+            }
+            catch { }
+
+            Die();
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

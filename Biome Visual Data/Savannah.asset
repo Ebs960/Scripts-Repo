@@ -24,7 +24,7 @@ MonoBehaviour:
     tint: {r: 0.7735849, g: 0.5463605, b: 0.18536842, a: 0.53333336}
   autumnResponse:
     snow: 0
-    wet: 0
+    wet: 0.673
     dry: 0
     tint: {r: 0, g: 0, b: 0, a: 0}
   winterResponse:
@@ -39,10 +39,8 @@ MonoBehaviour:
   albedo: {fileID: 0}
   normal: {fileID: 0}
   maskMap: {fileID: 0}
-  tiling: 1
+  tiling: 0.5
   tint: {r: 0.9924528, g: 0.7845668, b: 0.4400498, a: 1}
   emissiveTint: {r: 1, g: 1, b: 1, a: 1}
   emissiveIntensity: 0
-  snowRetention: 0.169
-  wetnessResponse: 0.61
   isWaterBiome: 0

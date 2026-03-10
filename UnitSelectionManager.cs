@@ -200,10 +200,10 @@ public class UnitSelectionManager : MonoBehaviour
         ClearAttackHover();
     }
 
-    private void OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
+    private bool OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
     {
         // Left-click selection is routed via TileSystem; select/deselect units here.
-        //
+        // Return true to consume the click (prevents improvements from also handling it).
         // IMPORTANT (Flat map compatibility):
         // In flat equirectangular view, worldPos is on the flat plane, not near the unit's 3D position.
         // The authoritative identity is tileIndex. Use occupantId -> UnitRegistry first, then fall back
@@ -211,20 +211,29 @@ public class UnitSelectionManager : MonoBehaviour
         var clickedUnit = GetUnitOnTile(tileIndex);
         if (clickedUnit == null)
             clickedUnit = GetUnitAtPosition(worldPos);
+
         if (clickedUnit != null)
         {
-            SelectUnit(clickedUnit);
+            // If this click selects a different unit (or selects when nothing was selected),
+            // consume the click so improvements don't open. If the same unit is already selected,
+            // do NOT consume so a second click can be used to open the improvement UI.
+            if (selectedUnit == null || selectedUnit != clickedUnit)
+            {
+                SelectUnit(clickedUnit);
+                return true; // consumed
+            }
+            return false; // allow other subscribers to handle (e.g., improvement)
         }
         else
         {
             // Guard: if a unit was selected this very frame (e.g. via OnMouseDown on the
-            // unit's collider), do NOT deselect it. The tile-click may not resolve the
-            // unit through occupancy/overlap, but the direct click on the unit is authoritative.
+            // unit's collider), do NOT deselect it here. Let that click be authoritative.
             if (lastSelectionFrame == Time.frameCount)
-                return;
+                return false;
 
             DeselectUnit();
             PlayResourceClickSound(tileIndex);
+            return false; // don't consume; allow improvements to open when no unit present
         }
         // Note: Right-click movement remains handled in Update() to detect mouse button 1
     }

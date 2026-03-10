@@ -232,6 +232,8 @@ public class CombatUnit : BaseUnit
             
             // Only recalculate stats if data is valid (properties access data)
             RecalculateStats();
+            // Configure attack points from data asset
+            try { attackPointsPerTurn = data.attackPointsPerTurn; ResetAttackPointsForNewTurn(); } catch { }
         }
         else
         {
@@ -799,10 +801,7 @@ public class CombatUnit : BaseUnit
         }
         else if (isRangedAttack)
         {
-            // Has ammo, fire ranged attack
-            animator.SetTrigger(rangedAttackHash);
-            string triggerName = "RangedAttack";
-    OnAnimationTrigger?.Invoke(triggerName);
+            // Ranged attack visual handled centrally by BaseUnit.PerformAttack (no custom trigger here)
         }
     }
     // Melee attacks use trigger
@@ -859,21 +858,12 @@ public class CombatUnit : BaseUnit
         }
 
     // Melee / instant-hit path: apply damage immediately and provide attacker context so the melee weapon behavior can trigger
-    bool targetDies = target.ApplyDamage(damage, this, true);
+    var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = damage, isMelee = true, isRanged = false };
+    bool targetDies = PerformAttack(ctx);
 
         if (targetDies)
         {
-            // Award food from kill to attacker civ
-            try
-            {
-                if (target.data != null && target.data.foodOnKill > 0 && this.owner != null)
-                {
-                    this.owner.AddFood(target.data.foodOnKill);
-                }
-                // Raise unit killed event with correct attacker
-                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, damage);
-            }
-            catch { }
+            // Post-hit handling centralized in BaseUnit.ApplyDamage(attacker...)
         }
         else
         {
@@ -881,8 +871,6 @@ public class CombatUnit : BaseUnit
             if (target.CanAttack(this))
                 target.CounterAttack(this);
         }
-
-        GainExperience(damage);
         }
         catch (System.Exception e)
         {
@@ -912,9 +900,7 @@ public class CombatUnit : BaseUnit
         bool isRangedAttack = activeWeapon != null && activeWeapon.projectileData != null;
         if (isRangedAttack)
         {
-            animator.SetTrigger(rangedAttackHash);
-            string triggerName = "RangedAttack";
-        OnAnimationTrigger?.Invoke(triggerName);
+            // Ranged visuals handled centrally by BaseUnit.PerformAttack
         }
         // Melee attacks use IsAttacking bool (continuous), not a trigger
 
@@ -949,34 +935,22 @@ public class CombatUnit : BaseUnit
                 // Queue projectile (but target is WorkerUnit, not CombatUnit)
                 // We'll fire immediately since projectile system expects CombatUnit
                 SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                GainExperience(finalDamage);
                 return;
             }
             else
             {
                 SpawnProjectileTowardsWorker(activeWeapon, target.transform.position, finalDamage);
-                GainExperience(finalDamage);
                 return;
             }
         }
 
-        // Melee attack
-        bool targetDied = target.ApplyDamage(finalDamage, this, true);
-        
+        // Melee attack — use unified orchestrator so kill rewards/events are centralized
+        var ctxWorker = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = activeWeapon, damage = finalDamage, isMelee = true, isRanged = false };
+        bool targetDied = PerformAttack(ctxWorker);
+
         if (targetDied)
         {
-            // Award food and notify
-            try
-            {
-                if (target.data != null && target.data.foodOnKill > 0 && this.owner != null)
-                {
-                    this.owner.AddFood(target.data.foodOnKill);
-                }
-                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, finalDamage);
-            }
-            catch { }
-
-            GainExperience(finalDamage * 2); // Extra XP for kills
+            // Post-hit handling centralized in BaseUnit.ApplyDamage(attacker...)
         }
         else
         {
@@ -987,7 +961,7 @@ public class CombatUnit : BaseUnit
             }
         }
 
-        GainExperience(finalDamage);
+        // XP awarded centrally in PerformAttack
     }
 
     /// <summary>
@@ -1053,28 +1027,11 @@ public class CombatUnit : BaseUnit
     public override bool ApplyDamage(int damageAmount)
     {
 // Play hit animation using trigger (one-shot, not continuous)
-        if (animator != null && animator.runtimeAnimatorController != null)
-        {
-            if (HasParameter(animator, hitHash))
-            {
-                animator.SetTrigger(hitHash);
-}
-            else
-            {
-                Debug.LogWarning($"[CombatUnit] {gameObject.name} - Hit trigger parameter not found in animator!");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[CombatUnit] {gameObject.name} - Animator or controller is null!");
-        }
-        
         // currentHealth is protected set in BaseUnit, so we can set it directly
         currentHealth -= damageAmount;
         ShowHealthChangePopup(-Mathf.Abs(damageAmount));
         UpdateUnitLabel();
-// Raise damage event
-        GameEventManager.Instance.RaiseDamageAppliedEvent(null, this, damageAmount);
+        // Damage event is raised centrally in BaseUnit.ApplyDamage when attacker context is available.
         
         // Mark animal as recently attacked for predator/prey behavior system
         if (data != null && data.unitType == CombatCategory.Animal && AnimalManager.Instance != null)
@@ -1130,10 +1087,6 @@ public class CombatUnit : BaseUnit
         // Clear walking/idle state when dead
         UpdateWalkingState(false);
         
-        // Death animation should play fully
-        if (animator != null && HasParameter(animator, deathHash))
-            animator.SetTrigger(deathHash);
-        
         // Fire local death event for listeners (e.g., AnimalManager)
         OnDeath?.Invoke();
         
@@ -1184,8 +1137,8 @@ public class CombatUnit : BaseUnit
             damage = Mathf.Max(0, Mathf.RoundToInt(damage * elevationMultiplier));
         }
 
-    attacker.ApplyDamage(damage, this, true);
-        GainExperience(damage);
+    var ctxCounter = new BaseUnit.AttackContext { attacker = this, defender = attacker, weapon = null, damage = damage, isMelee = true, isRanged = false };
+    bool counterDidKill = PerformAttack(ctxCounter);
     }
 
 
@@ -1452,6 +1405,9 @@ public class CombatUnit : BaseUnit
             
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
+
+        // Reset attack points (unified AP model)
+        ResetAttackPointsForNewTurn();
     }
 
     /// <summary>

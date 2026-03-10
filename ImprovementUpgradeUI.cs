@@ -69,17 +69,18 @@ public class ImprovementUpgradeUI : MonoBehaviour
         eventTileSystem = null;
     }
 
-    private void HandleAnyTileClicked(int clickedTileIndex, Vector3 worldPos)
+    private bool HandleAnyTileClicked(int clickedTileIndex, Vector3 worldPos)
     {
         // Ignore if panel not visible
-        if (upgradePanel == null || !upgradePanel.activeSelf) return;
+        if (upgradePanel == null || !upgradePanel.activeSelf) return false;
         // Ignore clicks over UI
-        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return;
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return false;
         // If clicked tile is different than current, hide the panel
         if (clickedTileIndex != currentTileIndex)
         {
             HidePanel();
         }
+        return false; // do not consume - allow other handlers
     }
 
     public void ShowUpgradePanel(ImprovementData improvement, int tileIndex, Civilization civ, int planetIndex = -1)

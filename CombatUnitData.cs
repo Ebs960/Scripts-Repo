@@ -182,6 +182,11 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("If true, this unit takes weather attrition in severe seasons (e.g., winter)")]
     public bool takesWeatherDamage = true;
 
+    [Header("Action Points")]
+    [Tooltip("How many attacks/actions this unit can perform per turn.")]
+    [Range(0, 10)]
+    public int attackPointsPerTurn = 1;
+
     [Header("Production & Purchase")]
     public int productionCost;
     public int goldCost;

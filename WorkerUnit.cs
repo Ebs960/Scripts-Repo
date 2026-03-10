@@ -19,8 +19,8 @@ public class WorkerUnit : BaseUnit
 
     [Header("Worker Points")]
     public int currentWorkPoints { get; private set; }
-    public int currentAttackPoints { get; private set; }
     public int currentMovePoints { get; private set; }
+    // Compatibility: use `CurrentAttackPoints` on BaseUnit instead of a separate member
 
     [Header("Worker State")]
     [SerializeField] private string persistentId;
@@ -90,6 +90,9 @@ public class WorkerUnit : BaseUnit
 
         // Auto-contribute to jobs at start of turn
         AutoContributeToJobs();
+
+        // Reset attack points (unified in BaseUnit)
+        ResetAttackPointsForNewTurn();
     }
 
     /// <summary>
@@ -219,6 +222,9 @@ public class WorkerUnit : BaseUnit
         currentWorkPoints = Mathf.RoundToInt((unitData.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
         currentMovePoints = Mathf.RoundToInt((unitData.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
         takesWeatherDamage = unitData.takesWeatherDamage;
+
+        // Configure attack points from data asset
+        try { attackPointsPerTurn = unitData.attackPointsPerTurn; ResetAttackPointsForNewTurn(); } catch { }
 
         // Position the unit on the tile
         PositionUnitOnSurface(startTileIndex);
@@ -482,28 +488,15 @@ public class WorkerUnit : BaseUnit
     {
         if (!CanAttack(target)) return;
 
-        // Play attack animation (use Attack trigger if available)
-        try
-        {
-            if (animator != null && HasParameter(animator, attackHash))
-                animator.SetTrigger(attackHash);
-        }
-        catch { }
+        // Attack visuals are handled centrally by BaseUnit.PerformAttack (no local trigger)
 
         int damage = Mathf.Max(1, CurrentAttack);
-        bool died = target.ApplyDamage(damage, this, attackerIsMelee: true);
+        var ctx = new BaseUnit.AttackContext { attacker = this, defender = target, weapon = null, damage = damage, isMelee = true, isRanged = false };
+        bool died = PerformAttack(ctx);
 
         if (died)
         {
-            try
-            {
-                if (target is CombatUnit cu && cu.data != null && cu.data.foodOnKill > 0 && this.owner != null)
-                {
-                    this.owner.AddFood(cu.data.foodOnKill);
-                }
-                GameEventManager.Instance?.RaiseUnitKilledEvent(this, target, damage);
-            }
-            catch { }
+            // Post-hit handling centralized in BaseUnit.ApplyDamage(attacker...)
         }
     }
 

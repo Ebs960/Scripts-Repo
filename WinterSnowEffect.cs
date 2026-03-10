@@ -53,6 +53,8 @@ public class WinterSnowEffect : MonoBehaviour
 
     [Header("References (auto-found if null)")]
     public PlanetaryCameraManager cameraManager;
+    [Tooltip("Optional: assign an existing ParticleSystem to use for snow. If null, the script will use any ParticleSystem on this GameObject or children, or create one.")]
+    public ParticleSystem snowParticleSystem;
 
     // Runtime
     private ParticleSystem _ps;
@@ -350,7 +352,30 @@ public class WinterSnowEffect : MonoBehaviour
 
     private void BuildParticleSystem()
     {
-        // Create child GO so we can control its transform independently
+        // If an explicit ParticleSystem was assigned in the Inspector, use it.
+        if (snowParticleSystem != null)
+        {
+            _ps = snowParticleSystem;
+            _emission = _ps.emission;
+            _shape = _ps.shape;
+            _emission.rateOverTime = 0f;
+            _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            return;
+        }
+
+        // Otherwise prefer any existing ParticleSystem on this GameObject or its children
+        var existing = GetComponentInChildren<ParticleSystem>(true);
+        if (existing != null)
+        {
+            _ps = existing;
+            _emission = _ps.emission;
+            _shape = _ps.shape;
+            _emission.rateOverTime = 0f;
+            _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            return;
+        }
+
+        // Fallback: create a dedicated child particle system (old behavior)
         var go = new GameObject("_WinterSnow");
         go.transform.SetParent(transform, false);
 

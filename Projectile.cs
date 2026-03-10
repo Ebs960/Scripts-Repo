@@ -146,28 +146,24 @@ namespace GameCombat
         var unit = collider.GetComponent<CombatUnit>();
         int dmg = (overrideDamage >= 0) ? overrideDamage : Mathf.RoundToInt(data.damage);
         var attackerUnit = owner != null ? owner.GetComponent<CombatUnit>() : null;
-        if (unit != null)
-        {
-            bool died = unit.ApplyDamage(dmg, attackerUnit, false);
-            if (died && attackerUnit != null)
+            if (unit != null)
             {
-                try
+                if (attackerUnit != null)
                 {
-                    // Award XP to attacker
-                    attackerUnit.RegisterKillFromProjectile(dmg);
-                    // Award food to attacker's civilization if configured
-                    var cu = attackerUnit as CombatUnit;
-                    if (cu != null && cu.owner != null && unit is CombatUnit deadCU && deadCU.data != null && deadCU.data.foodOnKill > 0)
+                    var ctx = new BaseUnit.AttackContext { attacker = attackerUnit, defender = unit, weapon = null, damage = dmg, isMelee = false, isRanged = true };
+                    try
                     {
-                        cu.owner.AddFood(deadCU.data.foodOnKill);
+                        bool died = attackerUnit.PerformAttack(ctx);
+                        // XP and kill rewards handled centrally in PerformAttack/ApplyDamage
                     }
-                    // Raise killed event with attacker context
-                    GameEventManager.Instance?.RaiseUnitKilledEvent(attackerUnit, unit, dmg);
+                    catch { }
                 }
-                catch { }
+                else
+                {
+                    unit.ApplyDamage(dmg, null, false);
+                }
+                return;
             }
-            return;
-        }
     }
 
     private int overrideDamage = -1;

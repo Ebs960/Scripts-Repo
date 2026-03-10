@@ -50,27 +50,28 @@ public class ImprovementInstance : MonoBehaviour
         eventTileSystem = null;
     }
 
-    private void HandleTileClicked(int clickedTileIndex, Vector3 worldPos)
+    private bool HandleTileClicked(int clickedTileIndex, Vector3 worldPos)
     {
-        if (clickedTileIndex != tileIndex) return;
-        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return;
-        if (data == null || tileIndex < 0) return;
+        if (clickedTileIndex != tileIndex) return false;
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return false;
+        if (data == null || tileIndex < 0) return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         if (ts != null && ts.isReady)
         {
             var tileData = ts.GetTileData(tileIndex);
-            if (tileData?.owner == null || !tileData.owner.isPlayerControlled) return;
+            if (tileData?.owner == null || !tileData.owner.isPlayerControlled) return false;
             var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
-            if (upgradeUI != null) upgradeUI.ShowUpgradePanel(data, tileIndex, tileData.owner, planetIndex);
-            else Debug.LogWarning("ImprovementUpgradeUI not found in scene!");
+            if (upgradeUI != null) { upgradeUI.ShowUpgradePanel(data, tileIndex, tileData.owner, planetIndex); return true; }
+            else { Debug.LogWarning("ImprovementUpgradeUI not found in scene!"); return false; }
         }
         else
         {
             var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-            if (tileData?.owner == null || !tileData.owner.isPlayerControlled) return;
+            if (tileData?.owner == null || !tileData.owner.isPlayerControlled) return false;
             var upgradeUI = FindFirstObjectByType<ImprovementUpgradeUI>();
-            if (upgradeUI != null) upgradeUI.ShowUpgradePanel(data, tileIndex, tileData.owner, planetIndex);
+            if (upgradeUI != null) { upgradeUI.ShowUpgradePanel(data, tileIndex, tileData.owner, planetIndex); return true; }
+            return false;
         }
     }
 

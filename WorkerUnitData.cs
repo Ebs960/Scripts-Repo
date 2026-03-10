@@ -34,6 +34,11 @@ public class WorkerUnitData : ScriptableObject
     public int baseAttack = 0;
     public int baseDefense = 0;
     public bool canFoundCity;
+
+    [Header("Action Points")]
+    [Tooltip("How many attacks/actions this unit can perform per turn.")]
+    [Range(0, 10)]
+    public int attackPointsPerTurn = 1;
     
     [Header("Vision")]
     [Tooltip("How many tiles this unit can see (reveals fog of war). Default is 2 tiles.")]

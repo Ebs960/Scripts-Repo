@@ -267,13 +267,15 @@ public class DistrictPlacementController : MonoBehaviour
         currentHoveredTileIndex = -1;
     }
 
-    private void HandleTileClicked(int tileIndex, Vector3 worldPos)
+    private bool HandleTileClicked(int tileIndex, Vector3 worldPos)
     {
-        if (!isPlacingDistrict) return;
+        if (!isPlacingDistrict) return false;
         if (tileIndex >= 0 && validTileIndices.Contains(tileIndex))
         {
             PlaceDistrictOnTile(tileIndex);
+            return true; // consumed
         }
+        return false;
     }
     
     /// <summary>

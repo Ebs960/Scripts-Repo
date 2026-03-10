@@ -18,6 +18,7 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI defenseText;
     [SerializeField] private TextMeshProUGUI healthText;
     [SerializeField] private TextMeshProUGUI movePointsText;
+    [SerializeField] private TextMeshProUGUI attackPointsText;
     [SerializeField] private TextMeshProUGUI rangeText;
     
     [Header("Worker Stats")]
@@ -135,6 +136,7 @@ public class UnitInfoPanel : MonoBehaviour
         if (defenseText == null) Debug.LogWarning("[UnitInfoPanel] defenseText is not assigned in the Inspector.");
         if (healthText == null) Debug.LogWarning("[UnitInfoPanel] healthText is not assigned in the Inspector.");
         if (movePointsText == null) Debug.LogWarning("[UnitInfoPanel] movePointsText is not assigned in the Inspector.");
+        if (attackPointsText == null) Debug.LogWarning("[UnitInfoPanel] attackPointsText is not assigned in the Inspector.");
         if (rangeText == null) Debug.LogWarning("[UnitInfoPanel] rangeText is not assigned in the Inspector.");
 
         // Actions / Construction
@@ -249,6 +251,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (defenseText != null) { defenseText.text = "Defense: -"; defenseText.gameObject.SetActive(true); }
         if (healthText != null) { healthText.text = "Health: -/-"; healthText.gameObject.SetActive(true); }
         if (movePointsText != null) { movePointsText.text = "Move: -"; movePointsText.gameObject.SetActive(true); }
+        if (attackPointsText != null) { attackPointsText.text = "AP: -"; attackPointsText.gameObject.SetActive(true); }
         if (rangeText != null) { rangeText.text = "Range: -"; rangeText.gameObject.SetActive(true); }
         if (workPointsText != null) { workPointsText.text = "Work Points: -"; workPointsText.gameObject.SetActive(false); }
 
@@ -298,6 +301,11 @@ PopulateForWorkerUnit(currentWorkerUnit);
         healthText.text = $"Health: {currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
         if (movePointsText != null) movePointsText.text = $"Move Speed: {currentCombatUnit.moveSpeed:F1}";
         rangeText.text = $"Range: {currentCombatUnit.CurrentRange}";
+        if (attackPointsText != null)
+        {
+            attackPointsText.gameObject.SetActive(true);
+            attackPointsText.text = $"AP: {currentCombatUnit.CurrentAttackPoints}/{currentCombatUnit.MaxAttackPoints}";
+        }
 
         // Orbit status & controls
         UpdateOrbitControls(currentCombatUnit);
@@ -329,6 +337,11 @@ PopulateForWorkerUnit(currentWorkerUnit);
         movePointsText.text = $"Move Points: {currentWorkerUnit.currentMovePoints}";
         attackText.text = $"Attack: {currentWorkerUnit.CurrentAttack}";
         defenseText.text = $"Defense: {currentWorkerUnit.CurrentDefense}";
+        if (attackPointsText != null)
+        {
+            attackPointsText.gameObject.SetActive(true);
+            attackPointsText.text = $"AP: {currentWorkerUnit.CurrentAttackPoints}/{currentWorkerUnit.MaxAttackPoints}";
+        }
 
         if (workPointsText != null)
         {
@@ -394,6 +407,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (defenseText != null) defenseText.gameObject.SetActive(false);
         if (healthText != null) healthText.gameObject.SetActive(false);
         if (movePointsText != null) movePointsText.gameObject.SetActive(false);
+        if (attackPointsText != null) attackPointsText.gameObject.SetActive(false);
         if (rangeText != null) rangeText.gameObject.SetActive(false);
 
         // Hide action buttons

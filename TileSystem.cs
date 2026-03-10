@@ -82,7 +82,9 @@ public class TileSystem : MonoBehaviour
     public event Action<int,List<int>> OnFogChanged;             // (civId, changedTiles)
     public event Action<int,Vector3> OnTileHovered;              // (tile, worldPos)
     public event Action OnTileHoverExited;                       // hover exit
-    public event Action<int,Vector3> OnTileClicked;              // (tile, worldPos)
+    // Consumable tile-click handler: return true to consume the click and stop propagation.
+    public delegate bool TileClickHandler(int tileIndex, Vector3 worldPos);
+    public event TileClickHandler OnTileClicked;                 // (tile, worldPos) -> bool consumed
     // Resource change event: (tileIndex, oldResource, newResource)
     public event Action<int, ResourceData, ResourceData> OnTileResourceChanged;
 
@@ -215,7 +217,24 @@ public class TileSystem : MonoBehaviour
                     return;
                 if (hit.hit && hit.tileIndex >= 0)
                 {
-                    OnTileClicked?.Invoke(hit.tileIndex, hit.worldPosition);
+                    if (OnTileClicked != null)
+                    {
+                        // Invoke each subscriber in order; stop when a subscriber returns true (consumed)
+                        foreach (TileClickHandler h in OnTileClicked.GetInvocationList())
+                        {
+                            try
+                            {
+                                if (h.Invoke(hit.tileIndex, hit.worldPosition))
+                                {
+                                    break;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.LogError($"[TileSystem] Exception in OnTileClicked handler: {ex}");
+                            }
+                        }
+                    }
                 }
             }
         }
