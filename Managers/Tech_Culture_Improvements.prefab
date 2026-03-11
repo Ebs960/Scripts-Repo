@@ -103,3 +103,4 @@ MonoBehaviour:
   roadNetworkVersion: 0
   roadConnectionConfigs:
   - improvement: {fileID: 11400000, guid: ecb0cf50d3baf234fb6e2390de03dd23, type: 2}
+  improvementUpgradeUI: {fileID: 0}
