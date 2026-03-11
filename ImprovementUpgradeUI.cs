@@ -10,6 +10,12 @@ public class ImprovementUpgradeUI : MonoBehaviour
     [Header("Panel References")]
     [SerializeField] private GameObject upgradePanel;
     [SerializeField] private TextMeshProUGUI improvementNameText;
+    [SerializeField] private TextMeshProUGUI improvementYieldsText;
+    [Header("Stored Units UI")]
+    [SerializeField] private Transform storedUnitsContainer;
+    [SerializeField] private GameObject storedUnitButtonPrefab;
+    [SerializeField] private TextMeshProUGUI capacityText;
+        
     [SerializeField] private Transform upgradeButtonContainer;
     [SerializeField] private GameObject upgradeButtonPrefab;
     [SerializeField] private Button closeButton;
@@ -19,6 +25,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private int currentPlanetIndex = -1;
     private Civilization currentCiv;
     private List<GameObject> upgradeButtons = new List<GameObject>();
+    private List<GameObject> storedUnitButtons = new List<GameObject>();
 
     // Slide animation fields
     [Header("Slide Settings")]
@@ -85,7 +92,11 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     public void ShowUpgradePanel(ImprovementData improvement, int tileIndex, Civilization civ, int planetIndex = -1)
     {
-        if (improvement == null || civ == null) return;
+        if (improvement == null || civ == null)
+        {
+            Debug.LogWarning("ImprovementUpgradeUI.ShowUpgradePanel called with null improvement or civ");
+            return;
+        }
 
         currentImprovement = improvement;
         currentTileIndex = tileIndex;
@@ -97,11 +108,84 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
         PopulateUpgradeOptions();
 
-        if (upgradePanel != null)
+        // Populate yields summary
+        if (improvementYieldsText != null)
         {
-            upgradePanel.SetActive(true);
-            StartSlideIn();
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            if (improvement.foodPerTurn != 0) sb.AppendLine($"Food: {improvement.foodPerTurn}/turn");
+            if (improvement.productionPerTurn != 0) sb.AppendLine($"Production: {improvement.productionPerTurn}/turn");
+            if (improvement.goldPerTurn != 0) sb.AppendLine($"Gold: {improvement.goldPerTurn}/turn");
+            if (improvement.sciencePerTurn != 0) sb.AppendLine($"Science: {improvement.sciencePerTurn}/turn");
+            if (improvement.culturePerTurn != 0) sb.AppendLine($"Culture: {improvement.culturePerTurn}/turn");
+            if (improvement.policyPointsPerTurn != 0) sb.AppendLine($"Policy: {improvement.policyPointsPerTurn}/turn");
+            if (improvement.faithPerTurn != 0) sb.AppendLine($"Faith: {improvement.faithPerTurn}/turn");
+            var yieldsStr = sb.Length > 0 ? sb.ToString().TrimEnd('\n','\r') : "No direct yields";
+            improvementYieldsText.text = yieldsStr;
         }
+
+        // If this improvement is a shelter, populate stored-unit buttons (if configured)
+        if (improvement.isShelter)
+        {
+            var ts = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
+            var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+            GameObject instanceObj = tileData?.improvementInstanceObject;
+            if (instanceObj == null)
+            {
+                ClearStoredUnitButtons();
+                if (capacityText != null) capacityText.text = "Capacity: 0/0";
+            }
+            else
+            {
+                var impInstance = instanceObj.GetComponent<ImprovementInstance>();
+                if (impInstance == null || impInstance.storedUnits == null || impInstance.storedUnits.Count == 0)
+                {
+                    ClearStoredUnitButtons();
+                    if (capacityText != null) capacityText.text = $"Capacity: 0/{(impInstance!=null?impInstance.GetShelterCapacity():0)}";
+                }
+                else
+                {
+                    PopulateStoredUnitButtons(impInstance);
+                }
+            }
+        }
+        else
+        {
+            // Not a shelter: clear stored unit UI
+            ClearStoredUnitButtons();
+            if (capacityText != null) capacityText.text = "";
+        }
+
+        // If stored unit buttons are configured, show capacity text
+        bool useButtons = (storedUnitsContainer != null && storedUnitButtonPrefab != null);
+        if (capacityText != null)
+            capacityText.gameObject.SetActive(useButtons);
+
+        if (upgradePanel == null)
+        {
+            Debug.LogWarning("ImprovementUpgradeUI: upgradePanel reference is null. Cannot show panel.");
+            return;
+        }
+
+        // Ensure panel RectTransform is known (Start may not have run yet)
+        if (panelRect == null)
+        {
+            panelRect = upgradePanel.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                targetAnchoredPos = panelRect.anchoredPosition;
+                float width = panelRect.rect.width;
+                hiddenAnchoredPos = targetAnchoredPos + new Vector2(width + offscreenPadding, 0f);
+            }
+        }
+
+        // Activate and force-to-target so it's visible immediately; then animate in for polish
+        upgradePanel.SetActive(true);
+        if (panelRect != null)
+        {
+            panelRect.anchoredPosition = targetAnchoredPos; // snap into view to avoid offscreen layout issues
+        }
+        Debug.Log($"ImprovementUpgradeUI: Showing panel for '{improvement.improvementName}' tile={tileIndex} civ={(civ!=null?civ.civData.civName:"null")} planet={planetIndex}");
+        StartSlideIn();
     }
 
     public void HidePanel()
@@ -387,6 +471,80 @@ return;
                 Destroy(button);
         }
         upgradeButtons.Clear();
+    }
+
+    private void ClearStoredUnitButtons()
+    {
+        foreach (var b in storedUnitButtons)
+        {
+            if (b != null) Destroy(b);
+        }
+        storedUnitButtons.Clear();
+    }
+
+    private void PopulateStoredUnitButtons(ImprovementInstance impInstance)
+    {
+        ClearStoredUnitButtons();
+        if (storedUnitsContainer == null || storedUnitButtonPrefab == null || impInstance == null || impInstance.storedUnits == null) return;
+        foreach (var unit in impInstance.storedUnits)
+        {
+            if (unit == null) continue;
+            var go = Instantiate(storedUnitButtonPrefab, storedUnitsContainer);
+            storedUnitButtons.Add(go);
+            var storedBtn = go.GetComponent<StoredUnitButton>();
+            if (storedBtn != null)
+            {
+                storedBtn.Setup(unit, impInstance);
+            }
+            else
+            {
+                // Fallback: wire a simple button if the prefab doesn't have the StoredUnitButton script
+                var btn = go.GetComponent<UnityEngine.UI.Button>();
+                var txt = go.GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null)
+                {
+                    string name = "Unit";
+                    var cu = unit as CombatUnit;
+                    var wu = unit as WorkerUnit;
+                    if (cu != null && cu.data != null) name = cu.data.unitName;
+                    else if (wu != null && wu.data != null) name = wu.data.unitName;
+                    txt.text = name;
+                }
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(() => { impInstance.TryUnstoreUnit(unit); PopulateStoredUnitButtons(impInstance); });
+                }
+            }
+        }
+
+        // Update capacity text
+        if (capacityText != null)
+        {
+            int current = impInstance.storedUnits != null ? impInstance.storedUnits.Count : 0;
+            int cap = impInstance.GetShelterCapacity();
+            capacityText.text = $"Capacity: {current}/{cap}";
+        }
+    }
+
+    // Public helper for StoredUnitButton to request a refresh after unstoring
+    public void RefreshStoredUnits(ImprovementInstance impInstance)
+    {
+        PopulateStoredUnitButtons(impInstance);
+        // Also update shelteredUnitsText visibility/capacity label
+        if (impInstance != null)
+        {
+            if (capacityText != null)
+            {
+                int current = impInstance.storedUnits != null ? impInstance.storedUnits.Count : 0;
+                int cap = impInstance.GetShelterCapacity();
+                capacityText.text = $"Capacity: {current}/{cap}";
+            }
+        }
+        else
+        {
+            ClearStoredUnitButtons();
+            if (capacityText != null) capacityText.text = "Capacity: 0/0";
+        }
     }
 
     private void OnDestroy()

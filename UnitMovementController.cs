@@ -76,9 +76,10 @@ public class UnitMovementController : MonoBehaviour
 
     void Start()
     {
+        // Resume queued movement when a civ ends its turn (so continuations happen after End Turn)
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnEnded += HandleTurnChanged;
         }
     }
 
@@ -86,7 +87,7 @@ public class UnitMovementController : MonoBehaviour
     {
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnEnded -= HandleTurnChanged;
         }
     }
 
@@ -490,6 +491,18 @@ public class UnitMovementController : MonoBehaviour
                     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, combatUnit);
                 else if (workerUnit != null)
                     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, workerUnit);
+
+                // If the unit was stored by an improvement on arrival, stop movement and finish
+                if (unit.isStored)
+                {
+                    GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
+                    unit.UpdateWalkingState(false);
+                    if (UnitVisionManager.Instance != null && unit.owner != null)
+                    {
+                        UnitVisionManager.Instance.UpdateVisionForCiv(UnitVisionManager.GetCivIndex(unit.owner));
+                    }
+                    yield break;
+                }
 
                 // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
                 if (unit.currentHealth <= 0 || unit.IsTrapped)

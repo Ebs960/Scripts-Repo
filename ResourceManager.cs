@@ -410,12 +410,20 @@ public class ResourceManager : MonoBehaviour
         if (inst == null || inst.data == null) return;
         
         var rd = inst.data;
-        civ.food         += rd.forageFood;
-        civ.gold         += rd.forageGold;
-        civ.science      += rd.forageScience;
-        civ.culture      += rd.forageCulture;
-        civ.policyPoints += rd.foragePolicyPoints;
-        civ.faith        += rd.forageFaith;
+        // Use centralized civ helpers where available so UI events fire immediately.
+        if (rd.forageFood != 0)
+            civ.AddFood(rd.forageFood);
+        if (rd.forageGold != 0)
+            civ.AddGold(rd.forageGold);
+        // Science and culture currently don't have centralized Add helpers; update fields directly.
+        if (rd.forageScience != 0)
+            civ.science += rd.forageScience;
+        if (rd.forageCulture != 0)
+            civ.culture += rd.forageCulture;
+        if (rd.foragePolicyPoints != 0)
+            civ.AddPolicyPoints(rd.foragePolicyPoints);
+        if (rd.forageFaith != 0)
+            civ.AddFaith(rd.forageFaith);
 
         // Request tile-level removal of the resource; TileSystem will raise event and ResourceManager will destroy the instance.
         TileSystem.SetResourceOnTile(null, inst.tileIndex, inst.planetIndex);

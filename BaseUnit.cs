@@ -103,6 +103,15 @@ public abstract class BaseUnit : MonoBehaviour
         // Play attack animation on the attacker (centralized)
         try
         {
+            // Ensure attacker faces defender before attacking
+            if (ctx.attacker != null && ctx.defender != null && ctx.attacker.transform != null && ctx.defender.transform != null)
+            {
+                var fwd = ctx.defender.transform.position - ctx.attacker.transform.position;
+                fwd.y = 0f;
+                if (fwd.sqrMagnitude > 0.0001f)
+                    ctx.attacker.transform.rotation = Quaternion.LookRotation(fwd.normalized, Vector3.up);
+            }
+
             if (ctx.attacker != null && ctx.attacker.animator != null)
             {
                 var au = (BaseUnit)ctx.attacker;
@@ -240,6 +249,11 @@ public abstract class BaseUnit : MonoBehaviour
     // Winter penalty flag
     public bool hasWinterPenalty { get; set; }
 
+    // Stored state when a unit is placed inside a shelter improvement
+    [System.NonSerialized]
+    public bool isStored = false;
+    [System.NonSerialized]
+    public ImprovementInstance storedInImprovement = null;
     #endregion
 
     #region Animation Hashes
@@ -897,42 +911,7 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool ApplyDamage(int damageAmount)
     {
-
-        // DIAGNOSTIC (animal-only): determine whether animals are being killed via damage.
-        try
-        {
-            var cu = this as CombatUnit;
-            if (cu != null &&
-                cu.data != null &&
-                cu.data.unitType == CombatCategory.Animal &&
-                AnimalManager.Instance != null &&
-                AnimalManager.Instance.debugSpawning)
-            {
-                Debug.LogWarning(
-                    $"[BaseUnit][AnimalDamageDiag] ApplyDamage called: name='{name}' id={(gameObject!=null?gameObject.GetInstanceID():0)} " +
-                    $"damage={damageAmount} hpBefore={currentHealth} maxHP={MaxHealth} frame={Time.frameCount} time={Time.time:F3}\n" +
-                    $"StackTrace:\n{System.Environment.StackTrace}"
-                );
-            }
-        }
-        catch { }
-
-        if (animator != null && _hasHitParam)
-            animator.SetTrigger(hitHash);
-
-        currentHealth -= damageAmount;
-        ShowHealthChangePopup(-Mathf.Abs(damageAmount));
-
-        // Update label
-        UpdateUnitLabel();
-
-        if (currentHealth <= 0)
-        {
-            Die();
-            return true;
-        }
-
-        return false;
+        return ApplyDamage(damageAmount, null, false);
     }
 
     /// <summary>
@@ -958,11 +937,38 @@ public abstract class BaseUnit : MonoBehaviour
         }
         catch { }
 
+        // If attacker exists, rotate to face attacker before playing hit animation
+        try
+        {
+            if (attacker != null && attacker.transform != null && transform != null)
+            {
+                var toAttacker = attacker.transform.position - transform.position;
+                toAttacker.y = 0f;
+                if (toAttacker.sqrMagnitude > 0.0001f)
+                    transform.rotation = Quaternion.LookRotation(toAttacker.normalized, Vector3.up);
+            }
+        }
+        catch { }
+
         if (animator != null && _hasHitParam)
             animator.SetTrigger(hitHash);
 
         currentHealth -= damageAmount;
         ShowHealthChangePopup(-Mathf.Abs(damageAmount));
+
+        // Animals remember recent attacks for predator/prey behavior.
+        try
+        {
+            var combatUnit = this as CombatUnit;
+            if (combatUnit != null &&
+                combatUnit.data != null &&
+                combatUnit.data.unitType == CombatCategory.Animal &&
+                AnimalManager.Instance != null)
+            {
+                AnimalManager.Instance.MarkAnimalAsAttacked(combatUnit);
+            }
+        }
+        catch { }
 
         // Update label
         UpdateUnitLabel();

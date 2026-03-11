@@ -3,21 +3,26 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Manages unit reinforcement - units recover soldier count over time
-/// - 10% per turn outside cities
-/// - 35% per turn when garrisoned in cities
+/// - 10% per turn when on owned (occupied) territory
+/// - 15% per turn when in/inside a shelter improvement
+/// - 33% per turn when garrisoned/stored in cities
 /// </summary>
 public class UnitReinforcementManager : MonoBehaviour
 {
     public static UnitReinforcementManager Instance { get; private set; }
     
     [Header("Reinforcement Rates")]
-    [Tooltip("Reinforcement rate per turn for units outside cities (as percentage)")]
+    [Tooltip("Reinforcement rate per turn for units on owned/occupied territory (as percentage)")]
     [Range(0f, 100f)]
-    public float reinforcementRateOutsideCity = 10f; // 10% per turn
-    
+    public float reinforcementRateOccupiedTerritory = 10f; // 10% per turn
+
+    [Tooltip("Reinforcement rate per turn for units in/inside shelter improvements (as percentage)")]
+    [Range(0f, 100f)]
+    public float reinforcementRateInShelter = 15f; // 15% per turn
+
     [Tooltip("Reinforcement rate per turn for units garrisoned in cities (as percentage)")]
     [Range(0f, 100f)]
-    public float reinforcementRateInCity = 35f; // 35% per turn
+    public float reinforcementRateInCity = 33f; // 33% per turn
     
     // Cached FindObjectsByType results to avoid expensive scene searches
     private static Civilization[] cachedAllCivs;
@@ -81,13 +86,53 @@ public class UnitReinforcementManager : MonoBehaviour
         
         foreach (var civ in allCivs)
         {
-            if (civ == null || civ.combatUnits == null) continue;
-            
-            foreach (var unit in civ.combatUnits)
+            if (civ == null) continue;
+
+            if (civ.combatUnits != null)
             {
-                if (unit == null || unit.data == null) continue;
-                
-                ApplyReinforcement(unit);
+                foreach (var unit in civ.combatUnits)
+                {
+                    if (unit == null || unit.data == null) continue;
+                    ApplyReinforcement(unit);
+                }
+            }
+
+            if (civ.workerUnits != null)
+            {
+                foreach (var w in civ.workerUnits)
+                {
+                    if (w == null) continue;
+                    // WorkerUnit inherits BaseUnit and has Heal(int)
+                    var bu = w as BaseUnit;
+                    if (bu == null) continue;
+                    float reinforcementRate = 0f;
+                    if (bu is CombatUnit cu2 && cu2.isGarrisonedInCity)
+                        reinforcementRate = reinforcementRateInCity;
+                    else if (bu.isStored && bu.storedInImprovement != null)
+                        reinforcementRate = reinforcementRateInShelter;
+                    else if (bu.currentTileIndex >= 0)
+                    {
+                        var ts2 = TileSystem.GetForPlanet(bu.planetIndex) ?? TileSystem.Instance;
+                        if (ts2 != null && ts2.IsReady())
+                        {
+                            var td2 = ts2.GetTileData(bu.currentTileIndex);
+                            if (td2 != null)
+                            {
+                                if (td2.improvement != null && td2.improvement.isShelter)
+                                    reinforcementRate = reinforcementRateInShelter;
+                                else if (td2.owner != null && td2.owner == bu.owner)
+                                    reinforcementRate = reinforcementRateOccupiedTerritory;
+                            }
+                        }
+                    }
+
+                    if (reinforcementRate > 0f)
+                    {
+                        int healAmount = Mathf.RoundToInt(bu.MaxHealth * (reinforcementRate / 100f));
+                        int oldHealth = bu.currentHealth;
+                        bu.Heal(healAmount);
+                    }
+                }
             }
         }
 }
@@ -101,9 +146,36 @@ public class UnitReinforcementManager : MonoBehaviour
         if (unit.currentHealth >= unit.MaxHealth) return; // Already at max
         
         // Determine reinforcement rate based on location
-        float reinforcementRate = unit.isGarrisonedInCity 
-            ? reinforcementRateInCity 
-            : reinforcementRateOutsideCity;
+        float reinforcementRate = 0f;
+
+        if (unit.isGarrisonedInCity)
+        {
+            reinforcementRate = reinforcementRateInCity;
+        }
+        else if (unit.isStored && unit.storedInImprovement != null)
+        {
+            // Stored inside a shelter improvement
+            reinforcementRate = reinforcementRateInShelter;
+        }
+        else if (unit.currentTileIndex >= 0)
+        {
+            var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+            if (ts != null && ts.IsReady())
+            {
+                var td = ts.GetTileData(unit.currentTileIndex);
+                if (td != null)
+                {
+                    if (td.improvement != null && td.improvement.isShelter)
+                    {
+                        reinforcementRate = reinforcementRateInShelter;
+                    }
+                    else if (td.owner != null && td.owner == unit.owner)
+                    {
+                        reinforcementRate = reinforcementRateOccupiedTerritory;
+                    }
+                }
+            }
+        }
         
         // Calculate healing amount (percentage of max HP)
         int healAmount = Mathf.RoundToInt(unit.MaxHealth * (reinforcementRate / 100f));

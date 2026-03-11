@@ -315,12 +315,23 @@ Shader "Custom/MenuPlanetPreview"
                 float3 seedOff = float3(_Seed, _Seed * 0.7, _Seed * 1.3);
                 float3 samplePos = objNorm * _LandScale;
                 float n = fbm(samplePos + float3(42.3, 17.1, 83.7) + seedOff);
+
                 // Wide transition (0.12 each side) so coastlines are gentle slopes, not cliffs
                 float edge = smoothstep(_LandThreshold - 0.12, _LandThreshold + 0.12, n);
+
+                // --- Ice cap mask (match fragment logic) ---
+                // Compute latitude and an ice-edge noise to allow jagged ice boundaries
+                float latitude = abs(objNorm.y);
+                float iceEdgeNoise = noise3D(objNorm * 6.0 + float3(11.1, 5.5, 22.2) + seedOff);
+                float capStart = lerp(1.10, 0.15, _IceCapSize);
+                float capMask = smoothstep(capStart - 0.10, capStart + 0.10, latitude + (iceEdgeNoise - 0.5) * 0.15);
+
+                // Combine land edge and ice cap mask so ice caps also receive displacement
+                float combinedEdge = max(edge, capMask);
+
                 float elevNoise = fbm(samplePos * 1.5 + float3(99.1, 55.3, 12.7) + seedOff);
-                // Displace land outward; oceans stay at base radius
-                // Note: _Elevation only affects color banding, NOT geometry displacement
-                return edge * elevNoise * _DisplacementScale;
+                // Displace land and ice outward; oceans stay at base radius
+                return combinedEdge * elevNoise * _DisplacementScale;
             }
 
             // -----------------------------------------------------------------

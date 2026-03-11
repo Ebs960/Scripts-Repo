@@ -1020,64 +1020,6 @@ public class CombatUnit : BaseUnit
     }
 
     /// <summary>
-    /// Apply damage to this unit, which reduces its health
-    /// </summary>
-    /// <param name="damageAmount">Amount of damage to deal</param>
-    /// <returns>True if the unit is destroyed by this damage</returns>
-    public override bool ApplyDamage(int damageAmount)
-    {
-// Play hit animation using trigger (one-shot, not continuous)
-        // currentHealth is protected set in BaseUnit, so we can set it directly
-        currentHealth -= damageAmount;
-        ShowHealthChangePopup(-Mathf.Abs(damageAmount));
-        UpdateUnitLabel();
-        // Damage event is raised centrally in BaseUnit.ApplyDamage when attacker context is available.
-        
-        // Mark animal as recently attacked for predator/prey behavior system
-        if (data != null && data.unitType == CombatCategory.Animal && AnimalManager.Instance != null)
-        {
-            AnimalManager.Instance.MarkAnimalAsAttacked(this);
-        }
-        
-        if (currentHealth <= 0)
-        {
-            Die();
-            return true;
-        }
-        
-        if (owner != null && owner.isPlayerControlled && UIManager.Instance != null)
-        {
-            // Get tile data to show biome in notification
-            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            var tileDataForNotification = ts != null ? ts.GetTileData(currentTileIndex) : null;
-            if (tileDataForNotification != null)
-            {
-                UIManager.Instance.ShowNotification($"{data.unitName} took {damageAmount} damage from {tileDataForNotification.biome} terrain!");
-            }
-        }
-        
-        return false;
-    }
-
-    /// <summary>
-    /// Apply damage with context about the attacker. If the attacker is adjacent (melee) then mark this unit as engaged in melee
-    /// so it will use its melee weapon. Engagement state is now managed by range checks, not a timer.
-    /// </summary>
-    public override bool ApplyDamage(int damageAmount, BaseUnit attacker, bool attackerIsMelee)
-    {
-        if (attackerIsMelee && data != null && data.defaultWeapon != null)
-        {
-            // Mark engaged in melee - range check will maintain this state
-            engagedInMelee = true;
-        }
-
-        return ApplyDamage(damageAmount);
-    }
-    
-    // The specific overloads for CombatUnit/WorkerUnit are now covered by the BaseUnit override above.
-    
-    
-    /// <summary>
     /// Destroy this unit
     /// </summary>
     protected override void Die()

@@ -24,6 +24,10 @@ public class ImprovementManager : MonoBehaviour
     [Tooltip("Define per-improvement connection yields here. If an improvement is listed, its connectionYield will be used when that improvement participates in a city-to-city connection.")]
     public List<RoadConnectionConfig> roadConnectionConfigs = new List<RoadConnectionConfig>();
 
+    [Header("UI References")]
+    [Tooltip("Optional: assign the ImprovementUpgradeUI instance here so ImprovementInstance can open it without a scene search.")]
+    public ImprovementUpgradeUI improvementUpgradeUI;
+
     // All active build jobs on the map
     private readonly List<BuildJob> jobs = new();
     // Parallel pipeline for worker-built combat units
@@ -807,6 +811,31 @@ public class ImprovementManager : MonoBehaviour
         {
             RemoveImprovement(tileIndex, unit.planetIndex);
         }
+
+        // After trap processing, attempt to auto-store unit if tile improvement is a shelter
+        var tsStore = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        var tileDataStore = tsStore != null ? tsStore.GetTileData(tileIndex) : null;
+        if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
+        {
+            var instanceObj = tileDataStore.improvementInstanceObject;
+            if (instanceObj != null)
+            {
+                var impInst = instanceObj.GetComponent<ImprovementInstance>();
+                if (impInst != null && impInst.owner == unit.owner)
+                {
+                    // Only store if capacity allows
+                    if (impInst.storedUnits == null || impInst.storedUnits.Count < impInst.GetShelterCapacity())
+                    {
+                        bool stored = impInst.StoreUnit(unit);
+                        if (stored)
+                        {
+                            // Successfully stored; stop further processing
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -849,6 +878,29 @@ public class ImprovementManager : MonoBehaviour
         if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
         {
             RemoveImprovement(tileIndex, worker.planetIndex);
+        }
+
+        // After trap processing, attempt to auto-store worker if tile improvement is a shelter
+        var tsStore = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
+        var tileDataStore = tsStore != null ? tsStore.GetTileData(tileIndex) : null;
+        if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
+        {
+            var instanceObj = tileDataStore.improvementInstanceObject;
+            if (instanceObj != null)
+            {
+                var impInst = instanceObj.GetComponent<ImprovementInstance>();
+                if (impInst != null && impInst.owner == worker.owner)
+                {
+                    if (impInst.storedUnits == null || impInst.storedUnits.Count < impInst.GetShelterCapacity())
+                    {
+                        bool stored = impInst.StoreUnit(worker);
+                        if (stored)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
         }
     }
 

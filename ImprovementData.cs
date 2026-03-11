@@ -41,6 +41,8 @@ public class ImprovementUpgradeData
     public int additionalScience;
     public int additionalCulture;
     public int additionalFaith;
+    [Tooltip("Increase to shelter capacity when this upgrade is applied (adds to ImprovementData.shelterCapacity)")]
+    public int additionalShelterCapacity = 0;
 
     [Header("Defense Effects")]
     [Tooltip("Flat defense added to combat units standing on this tile when this upgrade is built")]
@@ -139,6 +141,8 @@ public class ImprovementData : ScriptableObject
     [Header("Shelter")]
     [Tooltip("If true, units on this tile are considered sheltered from weather (e.g., winter attrition)")]
     public bool isShelter = false;
+    [Tooltip("How many units this shelter can store inside. 0 = cannot store (only shelters from weather).")]
+    public int shelterCapacity = 0;
     
     [Header("Territory Requirements")]
     [Tooltip("Must be built within a city's direct influence")]

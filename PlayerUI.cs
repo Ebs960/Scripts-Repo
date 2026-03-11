@@ -480,7 +480,9 @@ UpdateTurnChangePanel(civ, round);
 
         string FormatRate(int rate) => rate >= 0 ? $"+{rate}" : rate.ToString();
 
-        if (foodYieldText != null) foodYieldText.text = $"{civ.food}\n{FormatRate(totalFood)}";
+        int consumption = civ.GetFoodConsumptionPerTurn();
+        int netFood = totalFood - consumption;
+        if (foodYieldText != null) foodYieldText.text = $"{civ.food}\n{FormatRate(netFood)}";
         if (goldYieldText != null) goldYieldText.text = $"{civ.gold}\n{FormatRate(totalGold)}";
         // Science and Culture: only show per-turn rate (+N), raw totals removed
         if (scienceYieldText != null) scienceYieldText.text = FormatRate(totalScience);
