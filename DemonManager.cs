@@ -417,6 +417,13 @@ public class DemonManager : MonoBehaviour
         }
 
         var demonGO = Instantiate(demonPrefab, spawnPos, Quaternion.identity);
+        // Register demon with wrap registry so it teleports with columns
+        try
+        {
+            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == GameManager.Instance?.GetPlanetGenerator(spawnPlanetIndex));
+            if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnTileIndex, demonGO);
+        }
+        catch { }
         var demonUnit = demonGO.GetComponent<CombatUnit>();
         if (demonUnit == null)
         {

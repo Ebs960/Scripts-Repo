@@ -268,41 +268,63 @@ public class ImprovementUpgradeUI : MonoBehaviour
         var buttonObj = Instantiate(upgradeButtonPrefab, upgradeButtonContainer);
         upgradeButtons.Add(buttonObj);
 
-        // Setup button components
-        var button = buttonObj.GetComponent<Button>();
-        var nameText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
-        var icon = buttonObj.GetComponentInChildren<Image>();
-
-        if (nameText != null)
-        {
-            string costText = $"Gold: {upgrade.goldCost}";
-            if (upgrade.resourceCosts != null)
-            {
-                foreach (var cost in upgrade.resourceCosts)
-                {
-                    if (cost.resource != null)
-                        costText += $"\n{cost.resource.resourceName}: {cost.amount}";
-                }
-            }
-            nameText.text = $"{upgrade.upgradeName}\n{costText}";
-        }
-
-        if (icon != null && upgrade.icon != null)
-            icon.sprite = upgrade.icon;
-
-        // Check if can build and set button state
+        // Prefer UpgradeButton component on prefab for prefab-driven wiring
         bool canBuild = upgrade.CanBuild(currentCiv);
-        if (button != null)
+        Component prefabComp = null;
+        // Try to find a component named "UpgradeButton" without requiring a compile-time reference
+        foreach (var mb in buttonObj.GetComponents<MonoBehaviour>())
         {
-            button.interactable = canBuild;
-            button.onClick.AddListener(() => OnUpgradeSelected(upgrade));
+            if (mb == null) continue;
+            if (mb.GetType().Name == "UpgradeButton")
+            {
+                prefabComp = mb;
+                break;
+            }
         }
 
-        // Visual feedback for buildable state
-        var buttonImage = buttonObj.GetComponent<Image>();
-        if (buttonImage != null)
+        if (prefabComp != null)
         {
-            buttonImage.color = canBuild ? Color.white : Color.gray;
+            var setupMethod = prefabComp.GetType().GetMethod("Setup", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (setupMethod != null)
+            {
+                setupMethod.Invoke(prefabComp, new object[] { upgrade, (System.Action)(() => OnUpgradeSelected(upgrade)), canBuild });
+            }
+        }
+        else
+        {
+            // Fallback: manual wiring if prefab doesn't have UpgradeButton
+            var button = buttonObj.GetComponent<Button>();
+            var nameText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+            var icon = buttonObj.GetComponentInChildren<Image>();
+
+            if (nameText != null)
+            {
+                string costText = $"Gold: {upgrade.goldCost}";
+                if (upgrade.resourceCosts != null)
+                {
+                    foreach (var cost in upgrade.resourceCosts)
+                    {
+                        if (cost.resource != null)
+                            costText += $"\n{cost.resource.resourceName}: {cost.amount}";
+                    }
+                }
+                nameText.text = $"{upgrade.upgradeName}\n{costText}";
+            }
+
+            if (icon != null && upgrade.icon != null)
+                icon.sprite = upgrade.icon;
+
+            if (button != null)
+            {
+                button.interactable = canBuild;
+                button.onClick.AddListener(() => OnUpgradeSelected(upgrade));
+            }
+
+            var buttonImage = buttonObj.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = canBuild ? Color.white : Color.gray;
+            }
         }
     }
 

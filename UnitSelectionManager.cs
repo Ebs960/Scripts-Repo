@@ -418,6 +418,19 @@ public class UnitSelectionManager : MonoBehaviour
 
         // Use the movement controller's per-turn segmentation API to get turn breakpoints
         var segments = umc.GetPathSegmentsByTurn(selectedUnit, start, previewTargetTile);
+        // Defensive: ensure the first segment reflects the unit's current leftover MP
+        // (TrimPathToAvailableMovement uses the unit's currentMovePoints to trim the path)
+        if (segments != null && segments.Count > 0 && segments[0] != null && selectedUnit != null)
+        {
+            try
+            {
+                var trimmedFirst = umc.TrimPathToAvailableMovement(selectedUnit, segments[0]);
+                // Replace only if trimming shortened the first segment
+                if (trimmedFirst != null && trimmedFirst.Count <= segments[0].Count)
+                    segments[0] = trimmedFirst;
+            }
+            catch { }
+        }
         if (segments == null || segments.Count == 0)
         {
             foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
@@ -912,8 +925,9 @@ public class UnitSelectionManager : MonoBehaviour
 
         if (hovered == null) { ClearAttackHover(); return; }
 
-        // Show the icon if ANY of the player's units can attack this hovered unit
-        if (!CanPlayerAttack(hovered)) { ClearAttackHover(); return; }
+        // Show the icon for any unit not owned by the player (always indicate potential attackable targets)
+        var civMgr = CivilizationManager.Instance;
+        if (civMgr != null && hovered.owner == civMgr.playerCiv) { ClearAttackHover(); return; }
 
         EnsureAttackHover();
         if (attackHoverInstance == null) return;
@@ -1058,6 +1072,8 @@ public class UnitSelectionManager : MonoBehaviour
         // Clear any transient preview state and show persistent queued-path (if any)
         ClearPreviewVisuals();
         ShowQueuedPathPreviewIfAny();
+        // Subscribe to move-points changes for the selected unit so preview/UI updates live
+        try { if (GameEventManager.Instance != null) GameEventManager.Instance.OnMovePointsChanged += OnMovePointsChanged; } catch { }
         if (previewDebug) Debug.Log($"[USM] SelectUnit -> {unit.name} (tile {unit.currentTileIndex})");
 }
 
@@ -1133,6 +1149,22 @@ public class UnitSelectionManager : MonoBehaviour
         ClearAttackHover();
         // Clear any preview visuals when deselecting
         ClearPreviewVisuals();
+        // Unsubscribe from move-points changes
+        try { if (GameEventManager.Instance != null) GameEventManager.Instance.OnMovePointsChanged -= OnMovePointsChanged; } catch { }
+    }
+
+    private void OnMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
+    {
+        if (args == null || args.Unit == null) return;
+        if (selectedUnit == null) return;
+        if (args.Unit != (MonoBehaviour)selectedUnit) return;
+
+        // Rebuild preview and refresh UI when the selected unit's MP changed
+        if (previewDebug) Debug.Log($"[USM] OnMovePointsChanged for selected unit {selectedUnit.name} - refreshing preview/UI");
+        ClearPreviewVisuals();
+        ShowQueuedPathPreviewIfAny();
+        UpdatePreviewVisuals();
+        if (UIManager.Instance != null) UIManager.Instance.ShowUnitInfoPanelForUnit(selectedUnit);
     }
     
     /// <summary>

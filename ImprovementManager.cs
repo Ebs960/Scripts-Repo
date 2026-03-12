@@ -1,5 +1,6 @@
 // Assets/Scripts/Managers/ImprovementManager.cs
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class ImprovementManager : MonoBehaviour
@@ -114,6 +115,13 @@ public class ImprovementManager : MonoBehaviour
         var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
         if (planetGen != null) constructionObject.transform.SetParent(planetGen.transform, true);
 
+        // Register construction visual for wrap teleport
+        try
+        {
+              var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
+            if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, constructionObject);
+        }
+        catch { }
         tileData.improvementInstanceObject = constructionObject;
         ts.SetTileData(tileIndex, tileData);
     }
@@ -497,6 +505,14 @@ public class ImprovementManager : MonoBehaviour
             // Keep hierarchy organized: parent improvements under their planet generator.
             if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
 
+            // Register completed improvement for wrap teleport
+            try
+            {
+                  var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
+                if (mgr != null) mgr.RegisterObjectForWrapAtTile(job.tileIndex, completedImprovement);
+            }
+            catch { }
+
             // Attach ImprovementInstance component to track applied upgrades and attached parts
             var instance = completedImprovement.GetComponent<ImprovementInstance>();
             if (instance == null) instance = completedImprovement.AddComponent<ImprovementInstance>();
@@ -588,6 +604,8 @@ public class ImprovementManager : MonoBehaviour
     var go = Object.Instantiate(unitPrefab, pos, Quaternion.identity);
         // Keep hierarchy organized: parent units under their planet generator.
         if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
+        // Register unit with wrap registry
+        try { var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
         var unit = go.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -633,6 +651,7 @@ public class ImprovementManager : MonoBehaviour
         var go = Object.Instantiate(prefab, pos, Quaternion.identity);
         // Keep hierarchy organized: parent workers under their planet generator.
         if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
+        try { var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen); if (mgr != null) mgr.RegisterObjectForWrapAtTile(spawnIndex, go); } catch { }
         var unit = go.GetComponent<WorkerUnit>();
         if (unit == null)
         {
@@ -774,47 +793,51 @@ public class ImprovementManager : MonoBehaviour
     public void NotifyUnitEnteredTile(int tileIndex, CombatUnit unit)
     {
         if (unit == null) return;
-        long trapKey = ((long)unit.planetIndex << 32) ^ (uint)tileIndex;
-        if (!traps.TryGetValue(trapKey, out var trap)) return;
-        if (!trap.armed || trap.usesLeft <= 0) return;
-
-        // Validate improvement still exists and is a trap
+        // Get tile data up front so both trap processing and store logic can use it
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (tileData?.improvement == null || !tileData.improvement.isTrap)
-            return;
 
-        // Friendly safe
-        if (trap.data.trapFriendlySafe && unit.owner == trap.owner)
-            return;
-
-        // Category filter
-    var cat = unit.data != null ? unit.data.unitType : CombatCategory.Spearman;
-        bool affects = trap.data.trapAffectsAnimalsOnly
-            ? (cat == CombatCategory.Animal)
-            : (trap.data.trapAffectedCategories != null && System.Array.IndexOf(trap.data.trapAffectedCategories, cat) >= 0);
-        if (!affects) return;
-
-        // Apply trap effects
-        int dmg = Mathf.Max(0, trap.data.trapDamage);
-        if (dmg > 0) unit.ApplyDamage(dmg);
-        if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+        // If there's an active trap runtime entry for this tile, process it.
+        long trapKey = ((long)unit.planetIndex << 32) ^ (uint)tileIndex;
+        if (traps.TryGetValue(trapKey, out var trap))
         {
-            unit.ApplyTrap(trap.data.trapImmobilizeTurns);
-            // Movement points removed - trap immobilization handled by IsTrapped flag
+            if (trap.armed && trap.usesLeft > 0)
+            {
+                // Validate improvement still exists and is a trap
+                if (!(tileData?.improvement == null || !tileData.improvement.isTrap))
+                {
+                    // Friendly safe
+                    if (!(trap.data.trapFriendlySafe && unit.owner == trap.owner))
+                    {
+                        // Category filter
+                        var cat = unit.data != null ? unit.data.unitType : CombatCategory.Spearman;
+                        bool affects = trap.data.trapAffectsAnimalsOnly
+                            ? (cat == CombatCategory.Animal)
+                            : (trap.data.trapAffectedCategories != null && System.Array.IndexOf(trap.data.trapAffectedCategories, cat) >= 0);
+                        if (affects)
+                        {
+                            int dmg = Mathf.Max(0, trap.data.trapDamage);
+                            if (dmg > 0) unit.ApplyDamage(dmg);
+                            if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+                            {
+                                unit.ApplyTrap(trap.data.trapImmobilizeTurns);
+                            }
+
+                            // Decrement uses and update or remove
+                            trap.usesLeft--;
+                            traps[trapKey] = trap;
+                            if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
+                            {
+                                RemoveImprovement(tileIndex, unit.planetIndex);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // Decrement uses and update or remove
-        trap.usesLeft--;
-        traps[trapKey] = trap;
-        if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
-        {
-            RemoveImprovement(tileIndex, unit.planetIndex);
-        }
-
-        // After trap processing, attempt to auto-store unit if tile improvement is a shelter
-        var tsStore = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
-        var tileDataStore = tsStore != null ? tsStore.GetTileData(tileIndex) : null;
+        // After trap processing (or if no trap), attempt to auto-store unit if tile improvement is a shelter
+        var tileDataStore = tileData;
         if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
         {
             var instanceObj = tileDataStore.improvementInstanceObject;
@@ -845,44 +868,48 @@ public class ImprovementManager : MonoBehaviour
     public void NotifyUnitEnteredTile(int tileIndex, WorkerUnit worker)
     {
         if (worker == null) return;
-        long trapKey = ((long)worker.planetIndex << 32) ^ (uint)tileIndex;
-        if (!traps.TryGetValue(trapKey, out var trap)) return;
-        if (!trap.armed || trap.usesLeft <= 0) return;
 
-        // Validate improvement still exists and is a trap
+        // Get tile data up front so both trap processing and store logic can use it
         var ts = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (tileData?.improvement == null || !tileData.improvement.isTrap)
-            return;
 
-        // Friendly safe
-        if (trap.data.trapFriendlySafe && worker.owner == trap.owner)
-            return;
-
-        // If trap is animals-only, skip workers
-        if (trap.data.trapAffectsAnimalsOnly)
-            return;
-
-        // Apply trap effects
-        int dmg = Mathf.Max(0, trap.data.trapDamage);
-        if (dmg > 0) worker.ApplyDamage(dmg);
-        if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+        // If there's an active trap runtime entry for this tile, process it.
+        long trapKey = ((long)worker.planetIndex << 32) ^ (uint)tileIndex;
+        if (traps.TryGetValue(trapKey, out var trap))
         {
-            worker.ApplyTrap(trap.data.trapImmobilizeTurns);
-            // Movement points removed - trap immobilization handled by IsTrapped flag
+            if (trap.armed && trap.usesLeft > 0)
+            {
+                // Validate improvement still exists and is a trap
+                if (!(tileData?.improvement == null || !tileData.improvement.isTrap))
+                {
+                    // Friendly safe
+                    if (!(trap.data.trapFriendlySafe && worker.owner == trap.owner))
+                    {
+                        // If trap is animals-only, skip workers
+                        if (!trap.data.trapAffectsAnimalsOnly)
+                        {
+                            int dmg = Mathf.Max(0, trap.data.trapDamage);
+                            if (dmg > 0) worker.ApplyDamage(dmg);
+                            if (trap.data.trapImmobilize && trap.data.trapImmobilizeTurns > 0)
+                            {
+                                worker.ApplyTrap(trap.data.trapImmobilizeTurns);
+                            }
+
+                            // Decrement uses and update or remove
+                            trap.usesLeft--;
+                            traps[trapKey] = trap;
+                            if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
+                            {
+                                RemoveImprovement(tileIndex, worker.planetIndex);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // Decrement uses and update or remove
-        trap.usesLeft--;
-        traps[trapKey] = trap;
-        if (trap.usesLeft <= 0 && trap.data.trapConsumeOnDeplete)
-        {
-            RemoveImprovement(tileIndex, worker.planetIndex);
-        }
-
-        // After trap processing, attempt to auto-store worker if tile improvement is a shelter
-        var tsStore = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
-        var tileDataStore = tsStore != null ? tsStore.GetTileData(tileIndex) : null;
+        // After trap processing (or if no trap), attempt to auto-store worker if tile improvement is a shelter
+        var tileDataStore = tileData;
         if (tileDataStore != null && tileDataStore.improvement != null && tileDataStore.improvement.isShelter)
         {
             var instanceObj = tileDataStore.improvementInstanceObject;
@@ -920,6 +947,7 @@ public class ImprovementManager : MonoBehaviour
         if (data.destroyedPrefab != null)
         {
             var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
+            try { var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
             var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
             if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         }
@@ -971,6 +999,7 @@ public class ImprovementManager : MonoBehaviour
                     Vector3 pos = instanceObj.transform.position;
                     Quaternion rot = instanceObj.transform.rotation;
                     var newObj = Instantiate(found.replacePrefab, pos, rot);
+                    try { var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
                     var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
                     if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                     var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();

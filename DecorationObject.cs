@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Example decoration script that adds some basic functionality to decoration objects
@@ -69,6 +70,9 @@ public class DecorationObject : MonoBehaviour
 
         if (enableSwaying)
             RegisterForSway();
+
+        // Try to register this decoration with the HexMapChunkManager so it follows world-wrap
+        TryRegisterForWrap();
     }
 
     void OnEnable()
@@ -80,11 +84,57 @@ public class DecorationObject : MonoBehaviour
     void OnDisable()
     {
         UnregisterForSway();
+        UnregisterFromWrap();
     }
 
     void OnDestroy()
     {
         UnregisterForSway();
+        UnregisterFromWrap();
+    }
+
+
+    private HexMapChunkManager _wrapMgr;
+    private bool _registeredForWrap = false;
+
+    private void TryRegisterForWrap()
+    {
+        if (_registeredForWrap) return;
+        try
+        {
+            // Prefer parented PlanetGenerator when available
+            var pg = GetComponentInParent<PlanetGenerator>();
+            if (pg == null)
+                pg = FindObjectsOfType<PlanetGenerator>().FirstOrDefault();
+
+            if (pg == null) return;
+            var grid = pg.Grid;
+            if (grid == null) return;
+
+            int tile = grid.GetTileAtPosition(transform.position);
+            if (tile < 0) return;
+
+            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == pg);
+            if (mgr == null) return;
+
+            mgr.RegisterObjectForWrapAtTile(tile, gameObject);
+            _wrapMgr = mgr;
+            _registeredForWrap = true;
+        }
+        catch { }
+    }
+
+    private void UnregisterFromWrap()
+    {
+        if (!_registeredForWrap) return;
+        try
+        {
+            if (_wrapMgr != null)
+                _wrapMgr.UnregisterObjectForWrap(gameObject);
+        }
+        catch { }
+        _registeredForWrap = false;
+        _wrapMgr = null;
     }
 
     private void RegisterForSway()

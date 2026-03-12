@@ -1578,6 +1578,13 @@ break; // Only propose one alliance per turn
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(tile) : Vector3.zero;
         var wgo = Instantiate(resolvedPioneerPrefab, pos, Quaternion.identity);
         if (planet != null) wgo.transform.SetParent(planet.transform, true);
+        // Register pioneer with wrap registry
+        try
+        {
+            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
+            if (mgr != null) mgr.RegisterObjectForWrapAtTile(tile, wgo);
+        }
+        catch { }
         if (wgo == null)
         {
             Debug.LogError($"Failed to instantiate pioneer prefab for {data.civName}");

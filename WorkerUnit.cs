@@ -19,7 +19,6 @@ public class WorkerUnit : BaseUnit
 
     [Header("Worker Points")]
     public int currentWorkPoints { get; private set; }
-    public int currentMovePoints { get; private set; }
     // Compatibility: use `CurrentAttackPoints` on BaseUnit instead of a separate member
 
     [Header("Worker State")]
@@ -66,40 +65,32 @@ public class WorkerUnit : BaseUnit
 
     public override void ResetForNewTurn()
     {
+        // Perform base-class per-turn resets (move points, AP, weather penalties)
+        RestoreMovePointsForNewTurn();
+        ResetAttackPointsForNewTurn();
+
+        // Worker-specific resets
         var wb = AggregateWorkerBonusesLocal(owner, data);
         currentWorkPoints = Mathf.RoundToInt((data.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
-        int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
 
+        // If trapped, decrement trapped duration (was in previous worker logic)
         if (IsTrapped)
         {
-            // trappedTurnsRemaining is inherited from BaseUnit
             var prop = typeof(BaseUnit).GetField("trappedTurnsRemaining", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (prop != null) prop.SetValue(this, Mathf.Max(0, (int)prop.GetValue(this) - 1));
-            currentMovePoints = 0;
-        }
-        else
-        {
-            currentMovePoints = baseMove;
-            if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
-            {
-                currentMovePoints = Mathf.Max(1, currentMovePoints - 1);
-            }
         }
 
         CheckForHazardousBiomeDamage();
 
         // Auto-contribute to jobs at start of turn
         AutoContributeToJobs();
-
-        // Reset attack points (unified in BaseUnit)
-        ResetAttackPointsForNewTurn();
     }
 
     /// <summary>
     /// Get the starting movement points a worker would have at the beginning of a turn,
     /// including civ/tech/equipment bonuses and winter penalty. This does not modify state.
     /// </summary>
-    public int GetStartingMovePoints()
+    public new int GetStartingMovePoints()
     {
         var wb = AggregateWorkerBonusesLocal(owner, data);
         int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
@@ -118,11 +109,12 @@ public class WorkerUnit : BaseUnit
     }
 
     /// <summary>
-    /// Deduct movement points after moving. Called by UnitMovementController.
+    /// Deduct movement points after moving. Uses BaseUnit implementation.
+    /// Kept for compatibility but delegates to the base implementation.
     /// </summary>
-    public void DeductMovePoints(int amount)
+    public new void DeductMovePoints(int amount)
     {
-        currentMovePoints = Mathf.Max(0, currentMovePoints - amount);
+        base.DeductMovePoints(amount);
     }
 
     /// <summary>
@@ -220,7 +212,9 @@ public class WorkerUnit : BaseUnit
         var wb = AggregateWorkerBonusesLocal(unitOwner, unitData);
         currentHealth = MaxHealth;
         currentWorkPoints = Mathf.RoundToInt((unitData.baseWorkPoints + wb.workAdd) * (1f + wb.workPct));
+        int oldMP = currentMovePoints;
         currentMovePoints = Mathf.RoundToInt((unitData.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
+        try { GameEventManager.Instance?.RaiseMovePointsChanged(this, oldMP, currentMovePoints); } catch { }
         takesWeatherDamage = unitData.takesWeatherDamage;
 
         // Configure attack points from data asset
@@ -242,7 +236,9 @@ public class WorkerUnit : BaseUnit
     {
         currentHealth = Mathf.Clamp(savedHealth, 0, MaxHealth);
         currentWorkPoints = savedWorkPoints;
+        int oldMP = currentMovePoints;
         currentMovePoints = savedMovePoints;
+        try { GameEventManager.Instance?.RaiseMovePointsChanged(this, oldMP, currentMovePoints); } catch { }
         currentLayer = savedLayer;
 
         // If unit is in orbit, reposition at current orbit height (not stale saved Y)
@@ -428,26 +424,7 @@ public class WorkerUnit : BaseUnit
         base.Die();
     }
 
-    public override bool CanMoveTo(int tileIndex)
-    {
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        var td = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (td == null || !td.isPassable || !td.isLand) return false;
-        
-        // Cost check
-        int cost = BiomeHelper.GetMovementCost(td, this);
-        if (currentMovePoints < cost) return false;
-
-        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-        var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-        if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
-        {
-            // Block only if the occupant is another unit or a city; allow resources/improvements.
-            if (occObj.GetComponent<BaseUnit>() != null) return false;
-            if (occObj.GetComponent<City>() != null) return false;
-        }
-        return true;
-    }
+    // CanMoveTo is fully consolidated in BaseUnit — no override needed.
 
     /// <summary>
     /// Called when civilization bonuses change (tech/culture research).

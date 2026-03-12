@@ -51,8 +51,8 @@ MonoBehaviour:
   textureWidth: 2048
   textureHeight: 2048
   heightmapAnisoLevel: 16
-  chunksX: 9
-  chunksZ: 6
+  chunksX: 14
+  chunksZ: 9
   meshSubdivisionsPerChunk: 72
   displacementStrength: 1
   flatY: 0
@@ -78,9 +78,9 @@ MonoBehaviour:
   detailFadeStart: 22
   detailFadeEnd: 145
   enableWrap: 1
-  wrapBuffer: 0.35
+  wrapBuffer: 0.45
   debugWrap: 0
-  debugWrapVerbose: 0
+  debugWrapVerbose: 1
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0
@@ -98,9 +98,9 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 1024
-  riverSdfHeight: 512
-  riverHalfWidthMultiplier: 0.78
+  riverSdfWidth: 512
+  riverSdfHeight: 256
+  riverHalfWidthMultiplier: 0.84
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
   riverSurfaceLift: 0.01
@@ -110,7 +110,7 @@ MonoBehaviour:
   chunksPerBatch: 4
   tilesPerBatch: 2048
   enableBuildProfiling: 0
-  enableSeasonMasks: 0
+  enableSeasonMasks: 1
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
   cliffTiling: 31

@@ -15,25 +15,25 @@ MonoBehaviour:
   biomeEntries:
   - biome: 2
     clip: {fileID: 8300000, guid: 4dc145662db4b33438a60f0c70453d3a, type: 3}
-    volume: 0.5
+    volume: 0.2
   - biome: 3
     clip: {fileID: 8300000, guid: 57952386af424894f8ff888faea721f4, type: 3}
-    volume: 0.5
+    volume: 0.2
   - biome: 6
     clip: {fileID: 8300000, guid: 57952386af424894f8ff888faea721f4, type: 3}
-    volume: 0.5
+    volume: 0.2
   - biome: 4
     clip: {fileID: 8300000, guid: f1fa71afc7b0d98408ad67c3b8872425, type: 3}
-    volume: 0.5
+    volume: 0.2
   - biome: 5
     clip: {fileID: 8300000, guid: f1fa71afc7b0d98408ad67c3b8872425, type: 3}
-    volume: 0.5
+    volume: 0.2
   - biome: 8
     clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
-    volume: 0.5
+    volume: 0.4
   - biome: 19
     clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
-    volume: 0.5
+    volume: 0.4
   - biome: 7
     clip: {fileID: 8300000, guid: 8781c0b1c4f964949b10a87363eee0f8, type: 3}
     volume: 0.5
@@ -122,7 +122,7 @@ MonoBehaviour:
   - waterType: 3
     clip: {fileID: 8300000, guid: 755dafab6789a8741a6b58cf2e4abf11, type: 3}
     maxVolume: 0.15
-    audibleRadius: 2
+    audibleRadius: 5
   - waterType: 2
     clip: {fileID: 8300000, guid: 35d14634adfea864da69d2650136cc6c, type: 3}
     maxVolume: 0.15

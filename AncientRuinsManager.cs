@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class AncientRuinsManager : MonoBehaviour
@@ -65,6 +66,21 @@ public class AncientRuinsManager : MonoBehaviour
                     : planetGenerator.transform.position;
                 GameObject ruinGO = Instantiate(ruinPrefab, position, Quaternion.identity, transform);
                 ruins.Add(ruinGO.GetComponent<AncientRuin>());
+                // Register ruin with HexMapChunkManager so it follows wrap teleport
+                try
+                {
+                    var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+                    if (mgr != null)
+                    {
+                        var pg = planetGenerator;
+                        if (pg != null && pg.Grid != null)
+                        {
+                            int tile = pg.Grid.GetTileAtPosition(position);
+                            if (tile >= 0) mgr.RegisterObjectForWrapAtTile(tile, ruinGO);
+                        }
+                    }
+                }
+                catch { }
             }
         }
     }

@@ -978,6 +978,13 @@ if (UIManager.Instance != null)
         var unitGO = Instantiate(prefab, pos, Quaternion.identity);
         // Keep hierarchy organized: parent spawned world objects under their planet generator.
         if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
+        // Register unit with HexMapChunkManager so it moves with wrap teleport
+        try
+        {
+            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+            if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
+        }
+        catch { }
         var unit = unitGO.GetComponent<CombatUnit>();
         if (unit == null)
         {
@@ -1063,6 +1070,12 @@ if (UIManager.Instance != null)
                 }
                 var unitGO = Instantiate(unitPrefab, pos, Quaternion.identity);
                 if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
+                try
+                {
+                    var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+                    if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
+                }
+                catch { }
                 var unit = unitGO.GetComponent<CombatUnit>();
                 if (unit == null)
                 {

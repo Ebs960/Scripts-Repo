@@ -494,75 +494,7 @@ public class CombatUnit : BaseUnit
     }
 
 
-    // Only land units can move on land, naval on water
-    public override bool CanMoveTo(int tileIndex)
-    {
-        // Turn-consuming actions (orbit entry/exit) prevent further movement
-        if (hasActedThisTurn) return false;
-        
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-        if(tileData == null || !tileData.isPassable) return false;
-        
-        // Units in orbit can move to any tile (no terrain restrictions in space)
-        if (currentLayer == TileLayer.Orbit)
-        {
-            // Only check orbit-layer occupancy
-            try
-            {
-                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-                var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, TileLayer.Orbit) : null;
-                if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
-            }
-            catch { }
-            return true;
-        }
-        
-        // Regular planet rules: water check for naval units
-        if (!tileData.isLand)
-        {
-            switch (data.unitType)
-            {
-                case CombatCategory.Ship:
-                case CombatCategory.Boat:
-                case CombatCategory.Submarine:
-                case CombatCategory.SeaCrawler:
-                    break;
-                default:
-                    return false;
-            }
-        }
-
-        // Layer-aware occupancy check: use occupancy manager with legacy fallback
-        try
-        {
-            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
-            {
-                // Block only if the occupant is another unit or a city; allow resources/improvements.
-                if (occObj.GetComponent<BaseUnit>() != null) return false;
-                if (occObj.GetComponent<City>() != null) return false;
-            }
-        }
-        catch { /* ignore and fallback */ }
-
-        return true;
-    }
-
-    public override void MoveTo(int targetTileIndex)
-    {
-        var path = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
-        path = UnitMovementController.Instance.TrimPathToAvailableMovement(this, path);
-        if (path == null || path.Count == 0)
-            return;
-
-        // Reset animation before killing the old coroutine — StopAllCoroutines
-        // would destroy the MoveAlongPath cleanup code that sets isMoving = false
-        UpdateWalkingState(false);
-        StopAllCoroutines();
-        UnitMovementController.Instance?.StartMoveForUnit(this, path);
-    }
+    // CanMoveTo is fully consolidated in BaseUnit — no override needed.
 
     public void MoveAlongPath(List<int> path)
     {
@@ -1330,7 +1262,7 @@ public class CombatUnit : BaseUnit
     // Event fired when multi-tile move finishes
     public event System.Action OnMovementComplete;
 
-    // MoveTo is overridden above (line ~610)
+    // MoveTo uses BaseUnit.MoveTo (canonical multi-turn path logic)
 
     /// <summary>
     /// Resets at start of turn.
@@ -1338,18 +1270,19 @@ public class CombatUnit : BaseUnit
     public override void ResetForNewTurn()
     {
         hasActedThisTurn = false;
-        
+
+        // Base resets (move points, AP, winter penalties)
+        RestoreMovePointsForNewTurn();
+        ResetAttackPointsForNewTurn();
+
         // If trapped, decrement duration (trappedTurnsRemaining is in BaseUnit)
         if (IsTrapped)
         {
             trappedTurnsRemaining = Mathf.Max(0, trappedTurnsRemaining - 1);
         }
-            
+
         // Check for damage from hazardous biomes
         CheckForHazardousBiomeDamage();
-
-        // Reset attack points (unified AP model)
-        ResetAttackPointsForNewTurn();
     }
 
     /// <summary>

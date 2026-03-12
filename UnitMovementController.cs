@@ -24,6 +24,14 @@ public class UnitMovementController : MonoBehaviour
         public int Count => heap.Count;
         public void Clear() => heap.Clear();
 
+        // Deterministic comparison: primary by cost, secondary by tile index to
+        // guarantee the same path is returned for equal-cost alternatives.
+        private static bool LessThan((int tile, float priority) a, (int tile, float priority) b)
+        {
+            if (a.priority != b.priority) return a.priority < b.priority;
+            return a.tile < b.tile;
+        }
+
         public void Enqueue(int tile, float priority)
         {
             heap.Add((tile, priority));
@@ -31,7 +39,7 @@ public class UnitMovementController : MonoBehaviour
             while (i > 0)
             {
                 int p = (i - 1) / 2;
-                if (heap[i].priority < heap[p].priority) { var tmp = heap[i]; heap[i] = heap[p]; heap[p] = tmp; i = p; }
+                if (LessThan(heap[i], heap[p])) { var tmp = heap[i]; heap[i] = heap[p]; heap[p] = tmp; i = p; }
                 else break;
             }
         }
@@ -51,8 +59,8 @@ public class UnitMovementController : MonoBehaviour
             while (true)
             {
                 int l = 2 * i + 1, r = 2 * i + 2, s = i;
-                if (l < n && heap[l].priority < heap[s].priority) s = l;
-                if (r < n && heap[r].priority < heap[s].priority) s = r;
+                if (l < n && LessThan(heap[l], heap[s])) s = l;
+                if (r < n && LessThan(heap[r], heap[s])) s = r;
                 if (s != i) { var tmp = heap[i]; heap[i] = heap[s]; heap[s] = tmp; i = s; }
                 else break;
             }
@@ -95,28 +103,123 @@ public class UnitMovementController : MonoBehaviour
     {
         if (civ == null) return;
 
+        if (Application.isEditor || Debug.isDebugBuild)
+        {
+            string civName = civ?.civData != null ? civ.civData.civName : "null";
+            Debug.Log($"[UnitMoveCtrl] HandleTurnChanged for civ={civName} round={round}");
+        }
+
         // Resume queued movement for units that belong to this civ
         try
         {
+            var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+
             foreach (var cu in UnitRegistry.GetCombatUnits())
             {
                 if (cu == null || cu.owner != civ) continue;
-                if (cu.queuedMovementSegments != null && cu.queuedMovementSegments.Count > 0 && !cu.isMoving)
+                // Prefer consuming from the canonical movementOrderPath when present.
+                if (cu.movementOrderPath != null && cu.movementOrderPathConsumed < cu.movementOrderPath.Count && !cu.isMoving)
                 {
-                    var seg = cu.queuedMovementSegments.Dequeue();
-                    if (seg != null && seg.Count > 0)
-                        StartMoveForUnit(cu, seg);
+                    var remainingFlat = cu.movementOrderPath.Skip(cu.movementOrderPathConsumed).ToList();
+                    var usableSeg = remainingFlat;
+                    try { usableSeg = TrimPathToAvailableMovement(cu, remainingFlat); } catch { usableSeg = remainingFlat; }
+
+                    if (usableSeg != null && usableSeg.Count > 0)
+                    {
+                        // Advance the canonical consumption index by the number of tiles we will move now
+                        cu.movementOrderPathConsumed += usableSeg.Count;
+
+                        // Keep queuedMovementSegments in sync by removing the consumed tiles from its front segments
+                        int toConsume = usableSeg.Count;
+                        while (toConsume > 0 && cu.queuedMovementSegments.Count > 0)
+                        {
+                            var front = cu.queuedMovementSegments.Peek();
+                            if (front == null) { cu.queuedMovementSegments.Dequeue(); continue; }
+                            if (front.Count <= toConsume)
+                            {
+                                cu.queuedMovementSegments.Dequeue();
+                                toConsume -= front.Count;
+                            }
+                            else
+                            {
+                                // Remove the consumed tiles from the beginning of this queued segment
+                                front.RemoveRange(0, toConsume);
+                                toConsume = 0;
+                            }
+                        }
+
+                        StartMoveForUnit(cu, usableSeg);
+                    }
+                }
+                else if (cu.queuedMovementSegments != null && cu.queuedMovementSegments.Count > 0 && !cu.isMoving)
+                {
+                    // Fallback for units that don't have a canonical movementOrderPath: keep existing behavior
+                    var nextSeg = cu.queuedMovementSegments.Peek();
+                    var usableSeg = nextSeg;
+                    try { usableSeg = TrimPathToAvailableMovement(cu, nextSeg); } catch { usableSeg = nextSeg; }
+
+                    if (usableSeg != null && usableSeg.Count > 0)
+                    {
+                        var seg = cu.queuedMovementSegments.Dequeue();
+                        if (usableSeg.Count < seg.Count)
+                        {
+                            var remainder = seg.Skip(usableSeg.Count).ToList();
+                            if (remainder.Count > 0) cu.queuedMovementSegments.Enqueue(remainder);
+                        }
+                        StartMoveForUnit(cu, usableSeg);
+                    }
                 }
             }
 
             foreach (var wu in UnitRegistry.GetWorkerUnits())
             {
                 if (wu == null || wu.owner != civ) continue;
-                if (wu.queuedMovementSegments != null && wu.queuedMovementSegments.Count > 0 && !wu.isMoving)
+                if (wu.movementOrderPath != null && wu.movementOrderPathConsumed < wu.movementOrderPath.Count && !wu.isMoving)
                 {
-                    var seg = wu.queuedMovementSegments.Dequeue();
-                    if (seg != null && seg.Count > 0)
-                        StartMoveForUnit(wu, seg);
+                    var remainingFlat = wu.movementOrderPath.Skip(wu.movementOrderPathConsumed).ToList();
+                    var usableSeg = remainingFlat;
+                    try { usableSeg = TrimPathToAvailableMovement(wu, remainingFlat); } catch { usableSeg = remainingFlat; }
+
+                    if (usableSeg != null && usableSeg.Count > 0)
+                    {
+                        wu.movementOrderPathConsumed += usableSeg.Count;
+
+                        int toConsume = usableSeg.Count;
+                        while (toConsume > 0 && wu.queuedMovementSegments.Count > 0)
+                        {
+                            var front = wu.queuedMovementSegments.Peek();
+                            if (front == null) { wu.queuedMovementSegments.Dequeue(); continue; }
+                            if (front.Count <= toConsume)
+                            {
+                                wu.queuedMovementSegments.Dequeue();
+                                toConsume -= front.Count;
+                            }
+                            else
+                            {
+                                front.RemoveRange(0, toConsume);
+                                toConsume = 0;
+                            }
+                        }
+
+                        StartMoveForUnit(wu, usableSeg);
+                    }
+                }
+                else if (wu.queuedMovementSegments != null && wu.queuedMovementSegments.Count > 0 && !wu.isMoving)
+                {
+                    var nextSeg = wu.queuedMovementSegments.Peek();
+                    var usableSeg = nextSeg;
+                    try { usableSeg = TrimPathToAvailableMovement(wu, nextSeg); } catch { usableSeg = nextSeg; }
+
+                    if (usableSeg != null && usableSeg.Count > 0)
+                    {
+                        var seg = wu.queuedMovementSegments.Dequeue();
+                        if (usableSeg.Count < seg.Count)
+                        {
+                            var remainder = seg.Skip(usableSeg.Count).ToList();
+                            if (remainder.Count > 0) wu.queuedMovementSegments.Enqueue(remainder);
+                        }
+                        StartMoveForUnit(wu, usableSeg);
+                    }
                 }
             }
         }
@@ -234,7 +337,6 @@ public class UnitMovementController : MonoBehaviour
                 Debug.LogWarning($"[UnitMovementController] Aborting path search: expanded > {MaxPathSearchNodes} nodes (start={startIndex} end={endIndex})");
                 return null;
             }
-
             foreach (int neighbor in ts.GetNeighbors(current))
             {
                 var neighborTile = ts.GetTileData(neighbor);
@@ -270,13 +372,14 @@ public class UnitMovementController : MonoBehaviour
     {
         if (unit == null || path == null || path.Count == 0) return path;
         if (unit.currentLayer == TileLayer.Orbit) return path;
-        if (unit is not WorkerUnit workerUnit) return path;
+        // If unit has no movement points (GetStartingMovePoints == 0) treat as full-path (no trimming)
+        if (unit.GetStartingMovePoints() <= 0) return path;
 
         int pIndex = unit.planetIndex;
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null) return path;
 
-        int remainingMovePoints = workerUnit.currentMovePoints;
+        int remainingMovePoints = unit.currentMovePoints;
         List<int> trimmedPath = new List<int>(path.Count);
 
         foreach (int tileIndex in path)
@@ -303,14 +406,14 @@ public class UnitMovementController : MonoBehaviour
         if (path == null || path.Count == 0) return null;
 
         // Non-worker units don't consume turn-based move points; return whole path as single segment
-        if (unit == null || unit is not WorkerUnit)
+        // For non-turn-based units (starting MP <= 0) return single segment
+        if (unit == null || unit.GetStartingMovePoints() <= 0)
         {
             return new List<List<int>> { new List<int>(path) };
         }
 
-        var worker = unit as WorkerUnit;
-        int remaining = worker.currentMovePoints;
-        int fullPerTurn = worker.GetStartingMovePoints();
+        int remaining = unit.currentMovePoints;
+        int fullPerTurn = unit.GetStartingMovePoints();
 
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         var segments = new List<List<int>>();
@@ -322,6 +425,12 @@ public class UnitMovementController : MonoBehaviour
             int cost = td != null ? BiomeHelper.GetMovementCost(td, unit) : 1;
             if (cost >= 99) break;
 
+            // If we don't have enough movement available for this tile,
+            // close the current segment (if any) and then accumulate next-turn
+            // movement until we can pay the tile cost. Accumulation models
+            // leftover MP carrying forward so preview matches runtime behavior
+            // where remaining MP at segment boundaries can be combined with
+            // subsequent turn's MP.
             if (remaining < cost)
             {
                 if (currentSeg.Count > 0)
@@ -329,10 +438,20 @@ public class UnitMovementController : MonoBehaviour
                     segments.Add(new List<int>(currentSeg));
                     currentSeg.Clear();
                 }
-                // reset for next turn
-                remaining = fullPerTurn;
-                // If still can't pay this tile even on a fresh turn, abort
-                if (cost > fullPerTurn) break;
+
+                // Accumulate next-turn movement repeatedly until we can afford the tile.
+                // This allows tiles that require multiple turns to be accounted for.
+                // Guard against non-advancing fullPerTurn (<=0) to avoid infinite loop.
+                if (fullPerTurn <= 0)
+                {
+                    // cannot make progress; abort segmentation
+                    break;
+                }
+
+                while (remaining < cost)
+                {
+                    remaining += fullPerTurn;
+                }
             }
 
             currentSeg.Add(tileIndex);
@@ -371,7 +490,39 @@ public class UnitMovementController : MonoBehaviour
             int previousTileIndex = currentTileIndex;
 
             // Set unit to moving state
-            Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} START path len={path.Count} from tile {currentTileIndex} | type={unit.GetType().Name}");
+            var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+            // Precompute per-tile costs for a start/summary log
+            int pIndexForLog = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+            var tsForLog = TileSystem.GetForPlanet(pIndexForLog) ?? TileSystem.Instance;
+            bool isOrbitForLog = unit != null && unit.currentLayer == TileLayer.Orbit;
+            int orbitCostForLog = BiomeHelper.DefaultOrbitMovementCost;
+            var cuForLog = unit as CombatUnit;
+            if (isOrbitForLog && cuForLog != null && cuForLog.data != null) orbitCostForLog = cuForLog.data.orbitMovementCost;
+
+            var perTileCosts = new System.Collections.Generic.List<int>(path.Count);
+            foreach (int t in path)
+            {
+                if (isOrbitForLog) perTileCosts.Add(orbitCostForLog);
+                else
+                {
+                    var td = tsForLog != null ? tsForLog.GetTileData(t) : null;
+                    perTileCosts.Add(td != null ? BiomeHelper.GetMovementCost(td, unit) : 1);
+                }
+            }
+
+            int mpBefore = unit != null ? unit.currentMovePoints : 0;
+            int tilesMoved = 0;
+            int mpSpent = 0;
+
+            if (Application.isEditor || Debug.isDebugBuild)
+            {
+                if (unit != null && unit.owner == playerCiv)
+                {
+                    string costsStr = string.Join(",", perTileCosts.Select((c, idx) => $"{path[idx]}:{c}"));
+                    Debug.Log($"[UnitMoveCtrl] MOVE ORDER START -> {unit.gameObject.name} from {currentTileIndex} to {path[path.Count - 1]} | pathLen={path.Count} | mpBefore={mpBefore} | perTileCosts={costsStr}");
+                }
+            }
+
             unit.UpdateWalkingState(true);
 
             // Move along each tile in path
@@ -397,9 +548,19 @@ public class UnitMovementController : MonoBehaviour
                     movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
                 }
 
-                if (workerUnit != null && workerUnit.currentMovePoints < movementCost)
+                if (unit != null && unit.currentMovePoints < movementCost)
                 {
-                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {workerUnit.currentMovePoints}, need {movementCost})");
+                    var playerCivLocal = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+                    if (Application.isEditor || Debug.isDebugBuild)
+                    {
+                            if (unit.owner == playerCivLocal)
+                                Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} OUT OF MOVE POINTS at step {i}/{path.Count} (has {unit.currentMovePoints}, need {movementCost})");
+                    }
+                    // Summary for player-owned unit
+                    if ((Application.isEditor || Debug.isDebugBuild) && unit.owner == playerCivLocal)
+                    {
+                        Debug.Log($"[UnitMoveCtrl] MOVE ORDER RESULT -> {unit.gameObject.name} moved={tilesMoved}/{path.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={ (unit!=null?unit.currentMovePoints:0) }");
+                    }
                     unit.UpdateWalkingState(false);
                     if (i > 0)
                         GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
@@ -414,7 +575,17 @@ public class UnitMovementController : MonoBehaviour
 
                 if (unit.currentLayer != TileLayer.Orbit && !unit.CanMoveTo(targetTileIndex))
                 {
-                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
+                    var playerCivLocal = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+                    if (Application.isEditor || Debug.isDebugBuild)
+                    {
+                        if (unit.owner == playerCivLocal)
+                            Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} movement blocked at step {i}/{path.Count} for tile {targetTileIndex}.");
+                    }
+                    // Summary for player-owned unit
+                    if ((Application.isEditor || Debug.isDebugBuild) && unit.owner == playerCivLocal)
+                    {
+                        Debug.Log($"[UnitMoveCtrl] MOVE ORDER RESULT -> {unit.gameObject.name} moved={tilesMoved}/{path.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={ (unit!=null?unit.currentMovePoints:0) }");
+                    }
                     unit.UpdateWalkingState(false);
                     if (i > 0)
                         GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], path[i - 1], i);
@@ -424,7 +595,9 @@ public class UnitMovementController : MonoBehaviour
                 // Deduct movement points for workers (they still use turn-based movement)
                 if (workerUnit != null)
                 {
-                    workerUnit.DeductMovePoints(movementCost);
+                    unit.DeductMovePoints(movementCost);
+                    // Track spent MP and tiles moved for end-of-segment summary
+                    try { mpSpent += movementCost; tilesMoved += 1; } catch { }
                 }
 
                 // Calculate planar positions on the flat map (orbit units stay elevated above surface)
@@ -495,6 +668,11 @@ public class UnitMovementController : MonoBehaviour
                 // If the unit was stored by an improvement on arrival, stop movement and finish
                 if (unit.isStored)
                 {
+                    var playerCivLocal = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+                    if ((Application.isEditor || Debug.isDebugBuild) && unit.owner == playerCivLocal)
+                    {
+                        Debug.Log($"[UnitMoveCtrl] MOVE ORDER RESULT -> {unit.gameObject.name} moved={tilesMoved}/{path.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={ (unit!=null?unit.currentMovePoints:0) }");
+                    }
                     GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
                     unit.UpdateWalkingState(false);
                     if (UnitVisionManager.Instance != null && unit.owner != null)
@@ -507,7 +685,17 @@ public class UnitMovementController : MonoBehaviour
                 // If unit was trapped (immobilized) or killed by a trap, stop further movement this path
                 if (unit.currentHealth <= 0 || unit.IsTrapped)
                 {
-                    Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} TRAPPED/DEAD at step {i} (hp={unit.currentHealth}, trapped={unit.IsTrapped})");
+                    var playerCivLocal = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+                    if (Application.isEditor || Debug.isDebugBuild)
+                    {
+                        if (unit.owner == playerCivLocal)
+                            Debug.Log($"[UnitMoveCtrl] {unit.gameObject.name} TRAPPED/DEAD at step {i} (hp={unit.currentHealth}, trapped={unit.IsTrapped})");
+                    }
+                    // Summary for player-owned unit
+                    if ((Application.isEditor || Debug.isDebugBuild) && unit.owner == playerCivLocal)
+                    {
+                        Debug.Log($"[UnitMoveCtrl] MOVE ORDER RESULT -> {unit.gameObject.name} moved={tilesMoved}/{path.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={ (workerUnit!=null?workerUnit.currentMovePoints:0) }");
+                    }
                     // Fire movement completed event up to this step and exit early
                     GameEventManager.Instance.RaiseMovementCompletedEvent(unit, path[0], targetTileIndex, i + 1);
                     unit.UpdateWalkingState(false);
@@ -529,6 +717,12 @@ public class UnitMovementController : MonoBehaviour
             }
 
             // Set unit back to idle state
+            // Summary for player-owned unit on full completion
+            var playerCivLocalEnd = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+            if ((Application.isEditor || Debug.isDebugBuild) && unit.owner == playerCivLocalEnd)
+            {
+                Debug.Log($"[UnitMoveCtrl] MOVE ORDER RESULT -> {unit.gameObject.name} moved={tilesMoved}/{path.Count} mpBefore={mpBefore} mpSpent={mpSpent} mpRemaining={ (unit!=null?unit.currentMovePoints:0) }");
+            }
             unit.UpdateWalkingState(false);
 
             // Fire movement completed event
@@ -557,6 +751,13 @@ public class UnitMovementController : MonoBehaviour
         if (unit == null) return;
         // Cancel any previous movement for this unit first
         StopMoveForUnit(unit);
+        if (Application.isEditor || Debug.isDebugBuild)
+        {
+            var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+            int queued = unit.queuedMovementSegments != null ? unit.queuedMovementSegments.Count : 0;
+            if (unit.owner == playerCiv)
+                Debug.Log($"[UnitMoveCtrl] StartMoveForUnit {unit.name} pathLen={ (path!=null?path.Count:0) } queuedRemaining={queued}");
+        }
         var c = StartCoroutine(MoveAlongPath(unit, path));
         try { _activeMoveCoroutines[unit.GetInstanceID()] = c; } catch { }
     }

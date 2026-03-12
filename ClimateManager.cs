@@ -500,7 +500,14 @@ planetSeasons.Clear();
         {
             if (IsUnitOnPlanet(unit, planetIndex) && !unit.hasWinterPenalty)
             {
-                unit.hasWinterPenalty = true;
+                try
+                {
+                    int oldPts = unit.GetStartingMovePoints();
+                    unit.hasWinterPenalty = true;
+                    int newPts = unit.GetStartingMovePoints();
+                    try { GameEventManager.Instance?.RaiseMovePointsChanged(unit, oldPts, newPts); } catch { }
+                }
+                catch { unit.hasWinterPenalty = true; }
                 // Movement points removed - winter penalty now affects movement speed via fatigue
             }
         }
@@ -509,7 +516,14 @@ planetSeasons.Clear();
         {
             if (IsUnitOnPlanet(worker, planetIndex) && !worker.hasWinterPenalty)
             {
-                worker.hasWinterPenalty = true;
+                try
+                {
+                    int oldPts = worker.GetStartingMovePoints();
+                    worker.hasWinterPenalty = true;
+                    int newPts = worker.GetStartingMovePoints();
+                    try { GameEventManager.Instance?.RaiseMovePointsChanged(worker, oldPts, newPts); } catch { }
+                }
+                catch { worker.hasWinterPenalty = true; }
                 // Movement points removed - winter penalty now affects movement speed via fatigue
             }
         }
@@ -521,7 +535,14 @@ planetSeasons.Clear();
         {
             if (IsUnitOnPlanet(unit, planetIndex))
             {
-                unit.hasWinterPenalty = false;
+                try
+                {
+                    int oldPts = unit.GetStartingMovePoints();
+                    unit.hasWinterPenalty = false;
+                    int newPts = unit.GetStartingMovePoints();
+                    try { GameEventManager.Instance?.RaiseMovePointsChanged(unit, oldPts, newPts); } catch { }
+                }
+                catch { unit.hasWinterPenalty = false; }
             }
         }
 
@@ -529,7 +550,14 @@ planetSeasons.Clear();
         {
             if (IsUnitOnPlanet(worker, planetIndex))
             {
-                worker.hasWinterPenalty = false;
+                try
+                {
+                    int oldPts = worker.GetStartingMovePoints();
+                    worker.hasWinterPenalty = false;
+                    int newPts = worker.GetStartingMovePoints();
+                    try { GameEventManager.Instance?.RaiseMovePointsChanged(worker, oldPts, newPts); } catch { }
+                }
+                catch { worker.hasWinterPenalty = false; }
             }
         }
     }

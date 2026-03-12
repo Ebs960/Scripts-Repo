@@ -223,6 +223,10 @@ public abstract class BaseUnit : MonoBehaviour
     // Queue of movement segments to execute across turns. Each segment is a list of tile indices
     // representing tiles to traverse during a single turn. Non-serialized because runtime-only.
     [System.NonSerialized] public Queue<System.Collections.Generic.List<int>> queuedMovementSegments = new();
+    // Canonical flat path for the current movement order (single-source-of-truth for movement)
+    [System.NonSerialized] public System.Collections.Generic.List<int> movementOrderPath = null;
+    // Number of tiles from movementOrderPath already consumed (moved)
+    [System.NonSerialized] public int movementOrderPathConsumed = 0;
     public int currentHealth { get; protected set; }
     public int currentTileIndex = -1;
     public TileLayer currentLayer = TileLayer.Surface;
@@ -1257,20 +1261,62 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (UnitMovementController.Instance == null) return;
 
-        // Compute per-turn segments for the full path
-        var segments = UnitMovementController.Instance.GetPathSegmentsByTurn(this, currentTileIndex, targetTileIndex);
-        if (segments == null || segments.Count == 0) return;
+        // Compute the canonical flat path (single source of truth for this order)
+        var fullPath = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
+        if (fullPath == null || fullPath.Count == 0)
+        {
+            try
+            {
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+                var td = ts != null ? ts.GetTileData(targetTileIndex) : null;
+                int cost = td != null ? BiomeHelper.GetMovementCost(td, this) : -1;
+                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                var occObj = occ != null ? occ.GetOccupantObjectWithFallback(targetTileIndex, TileLayer.Surface) : null;
+                var imp = td != null ? td.improvement : null;
+                var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+                if (Application.isEditor || Debug.isDebugBuild)
+                {
+                    if (owner == playerCiv)
+                    {
+                        Debug.LogWarning($"[BaseUnit] MoveTo failed to find path for {name} -> target={targetTileIndex} passable={(td!=null?td.isPassable:false)} cost={cost} improvement={(imp!=null?imp.name:"<none>")} occupant={(occObj!=null?occObj.name:"<none>")}");
+                    }
+                }
+                // Notify the player so movement failure is never silent
+                if (UIManager.Instance != null && owner == playerCiv)
+                {
+                    UIManager.Instance.ShowNotification($"{UnitName} can't reach that tile!");
+                }
+            }
+            catch { }
+            return;
+        }
+
+        // Store canonical order and reset consumption index
+        movementOrderPath = new System.Collections.Generic.List<int>(fullPath);
+        movementOrderPathConsumed = 0;
 
         // Cancel any existing movement/queue for this unit
         UpdateWalkingState(false);
         StopAllCoroutines();
         queuedMovementSegments.Clear();
 
+        // Build per-turn segments from the canonical path for preview/UI and queued execution
+        var segments = UnitMovementController.Instance.GetPathSegmentsByTurn(this, currentTileIndex, targetTileIndex);
+        if (segments == null || segments.Count == 0) return;
+
         // Enqueue remaining segments (segments[1..]) for subsequent turns
         for (int i = 1; i < segments.Count; i++)
         {
             if (segments[i] != null && segments[i].Count > 0)
                 queuedMovementSegments.Enqueue(new System.Collections.Generic.List<int>(segments[i]));
+        }
+
+        // Debug: report queued segments count when issuing a multi-turn move
+        if (Application.isEditor || Debug.isDebugBuild)
+        {
+            var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+            if (owner == playerCiv)
+                Debug.Log($"[BaseUnit] {name} queued {queuedMovementSegments.Count} future movement segments (target={targetTileIndex})");
         }
 
         // Start the first segment immediately
@@ -1281,33 +1327,72 @@ public abstract class BaseUnit : MonoBehaviour
             return;
         }
 
+        // Mark the canonical path tiles consumed by the immediately-starting first segment.
+        movementOrderPathConsumed = first.Count;
         UnitMovementController.Instance?.StartMoveForUnit(this, first);
     }
 
     /// <summary>
-    /// Check if unit can move to a tile. Override in subclasses for specific rules.
+    /// Single source of truth for whether this unit can move to a tile.
+    /// Handles all unit types: orbit, naval, land, worker, move-point checks.
+    /// Uses the same movement-cost threshold (>= 99) as FindPath so the two
+    /// never disagree on passability.
     /// </summary>
-    public virtual bool CanMoveTo(int tileIndex)
+    public bool CanMoveTo(int tileIndex)
     {
+        // CombatUnit: turn-consuming actions (orbit entry/exit) block further movement
+        var cu = this as CombatUnit;
+        if (cu != null && cu.hasActedThisTurn) return false;
+
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var td = ts != null ? ts.GetTileData(tileIndex) : null;
         if (td == null || !td.isPassable) return false;
-        // Layer-aware occupancy check: use occupancy manager with fallback
+
+        // Orbit units: skip terrain rules, only check orbit-layer occupancy
+        if (currentLayer == TileLayer.Orbit)
+        {
+            try
+            {
+                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, TileLayer.Orbit) : null;
+                if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID()) return false;
+            }
+            catch { }
+            return true;
+        }
+
+        // Movement cost — single source of truth shared with FindPath
+        int moveCost = BiomeHelper.GetMovementCost(td, this);
+        if (moveCost >= 99) return false;
+
+        // Land / water rules
+        if (!td.isLand)
+        {
+            // Only specific naval CombatUnit types may enter water
+            bool isNaval = cu != null && cu.data != null &&
+                (cu.data.unitType == CombatCategory.Ship ||
+                 cu.data.unitType == CombatCategory.Boat ||
+                 cu.data.unitType == CombatCategory.Submarine ||
+                 cu.data.unitType == CombatCategory.SeaCrawler);
+            if (!isNaval) return false;
+        }
+
+        // Move-point check for units with turn-based movement
+        if (GetStartingMovePoints() > 0 && currentMovePoints < moveCost) return false;
+
+        // Layer-aware occupancy check
         try
         {
             var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            var obj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
-            if (obj != null && obj.GetInstanceID() != gameObject.GetInstanceID())
+            var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
+            if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
             {
-                // Allow movement onto tiles occupied by resources or improvements.
-                // Block only if the occupant is another unit (BaseUnit-derived).
-                if (obj.GetComponent<BaseUnit>() != null)
-                {
-                    return false;
-                }
+                if (occObj.GetComponent<BaseUnit>() != null) return false;
+                if (occObj.GetComponent<City>() != null) return false;
             }
         }
         catch { }
+
         return true;
     }
 
@@ -1582,6 +1667,74 @@ public abstract class BaseUnit : MonoBehaviour
     /// Reset unit for new turn (restore points, check hazards, etc.)
     /// </summary>
     public abstract void ResetForNewTurn();
+
+    // -------------------------
+    // Movement point APIs (unified for all unit types)
+    // -------------------------
+    /// <summary>
+    /// Current move points remaining this turn. Managed by BaseUnit so all units share the same API.
+    /// </summary>
+    public int currentMovePoints { get; protected set; }
+
+    /// <summary>
+    /// Returns the starting movement points this unit would have at the beginning of a turn.
+    /// Default implementation delegates to known unit types (WorkerUnit, CombatUnit animals).
+    /// </summary>
+    public virtual int GetStartingMovePoints()
+    {
+        // WorkerUnit has its own detailed calculation; delegate to it when available.
+        var w = this as WorkerUnit;
+        if (w != null) return w.GetStartingMovePoints();
+
+        // CombatUnit may have animalMovePoints for animal-type units.
+        var c = this as CombatUnit;
+        if (c != null && c.data != null)
+        {
+            // Prefer a dedicated baseMovePoints if present (backwards-compatible), else fallback to animalMovePoints
+            var fld = typeof(CombatUnitData).GetField("baseMovePoints");
+            if (fld != null)
+            {
+                try { return (int)fld.GetValue(c.data); } catch { }
+            }
+            return c.data.animalMovePoints;
+        }
+
+        // Default: 0 (no turn-based movement by default unless data provides it)
+        return 0;
+    }
+
+    /// <summary>
+    /// Deduct move points (safe to call for any unit). Clamps at zero.
+    /// </summary>
+    public virtual void DeductMovePoints(int amount)
+    {
+        int oldPts = currentMovePoints;
+        currentMovePoints = Mathf.Max(0, currentMovePoints - amount);
+        try { GameEventManager.Instance?.RaiseMovePointsChanged(this, oldPts, currentMovePoints); } catch { }
+    }
+
+    /// <summary>
+    /// Restore movement points for a new turn using `GetStartingMovePoints` and applying global penalties (e.g., winter).
+    /// Call this from subclass `ResetForNewTurn` implementations (recommended at start).
+    /// </summary>
+    public virtual void RestoreMovePointsForNewTurn()
+    {
+        int start = GetStartingMovePoints();
+        if (IsTrapped)
+        {
+            currentMovePoints = 0;
+            return;
+        }
+
+        int move = start;
+        if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
+        {
+            move = Mathf.Max(1, move - 1);
+        }
+        int old = currentMovePoints;
+        currentMovePoints = move;
+        try { GameEventManager.Instance?.RaiseMovePointsChanged(this, old, currentMovePoints); } catch { }
+    }
 
     #endregion
 }

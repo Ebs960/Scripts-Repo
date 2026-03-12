@@ -731,6 +731,17 @@ return true;
 
         try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
+        // Register with HexMapChunkManager so this animal is teleported when its column wraps
+        try
+        {
+            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
+            if (mgr != null)
+            {
+                mgr.RegisterObjectForWrapAtTile(chosenIndex, unit.gameObject);
+            }
+        }
+        catch { }
+
         // Match ResourceManager: ensure prefab pivot/bounds sit on the terrain surface.
         // This prevents "spawned but invisible" cases where the model is buried below the terrain.
         try

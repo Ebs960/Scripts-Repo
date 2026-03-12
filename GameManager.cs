@@ -380,7 +380,7 @@ public class GameManager : MonoBehaviour
         switch (size)
         {
             case MapSize.Small: tilesX = 96; tilesZ = 48; break;
-            case MapSize.Standard: tilesX = 120; tilesZ = 60; break;
+            case MapSize.Standard: tilesX = 120; tilesZ = 69; break;
             case MapSize.Large: tilesX = 256; tilesZ = 128; break;
             default: tilesX = 148; tilesZ = 74; break;
         }

@@ -515,6 +515,18 @@ public class ResourceManager : MonoBehaviour
             inst.planetIndex = planetIndex;
             spawnedResources.Add(inst);
 
+            // Register resource instance with HexMapChunkManager so it moves during wrap teleport
+            try
+            {
+                var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
+                if (mgr != null)
+                {
+                    mgr.RegisterObjectForWrapAtTile(tileIndex, go);
+                }
+            }
+            catch { }
+
             // NOTE: Resources no longer register as tile occupants. Occupancy is reserved for units and cities only.
             // This avoids blocking unit movement and selection when resources are present on a tile.
         }

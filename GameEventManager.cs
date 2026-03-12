@@ -15,6 +15,7 @@ public class GameEventManager : MonoBehaviour
     private Queue<CombatEventArgs> combatEventPool = new Queue<CombatEventArgs>();
     private Queue<ResourceEventArgs> resourceEventPool = new Queue<ResourceEventArgs>();
     private Queue<TileEventArgs> tileEventPool = new Queue<TileEventArgs>();
+    private Queue<MovePointsChangedEventArgs> movePointsEventPool = new Queue<MovePointsChangedEventArgs>();
     
     #region Event Declarations
     
@@ -22,6 +23,8 @@ public class GameEventManager : MonoBehaviour
     public event Action<UnitMovementEventArgs> OnUnitMoved;
     public event Action<UnitMovementEventArgs> OnMovementStarted;
     public event Action<UnitMovementEventArgs> OnMovementCompleted;
+    // Move points changed (unit-level)
+    public event Action<MovePointsChangedEventArgs> OnMovePointsChanged;
     
     // Combat Events
     public event Action<CombatEventArgs> OnCombatStarted;
@@ -84,6 +87,29 @@ public class GameEventManager : MonoBehaviour
             FromTileIndex = -1;
             ToTileIndex = -1;
             MovementCost = 0;
+        }
+    }
+
+    // Move points changed event arguments
+    public class MovePointsChangedEventArgs : GameEventArgs
+    {
+        public MonoBehaviour Unit { get; private set; }
+        public int OldPoints { get; private set; }
+        public int NewPoints { get; private set; }
+
+        public void Setup(MonoBehaviour unit, int oldPts, int newPts)
+        {
+            Initialize();
+            Unit = unit;
+            OldPoints = oldPts;
+            NewPoints = newPts;
+        }
+
+        public override void Reset()
+        {
+            Unit = null;
+            OldPoints = 0;
+            NewPoints = 0;
         }
     }
     
@@ -209,6 +235,7 @@ public class GameEventManager : MonoBehaviour
             combatEventPool.Enqueue(new CombatEventArgs());
             resourceEventPool.Enqueue(new ResourceEventArgs());
             tileEventPool.Enqueue(new TileEventArgs());
+            movePointsEventPool.Enqueue(new MovePointsChangedEventArgs());
         }
     }
     
@@ -223,6 +250,16 @@ public class GameEventManager : MonoBehaviour
         args.Setup(unit, fromTile, toTile, cost);
         OnUnitMoved.Invoke(args);
         ReturnMovementEventArgs(args);
+    }
+
+    public void RaiseMovePointsChanged(MonoBehaviour unit, int oldPts, int newPts)
+    {
+        if (OnMovePointsChanged == null) return;
+
+        var args = GetMovePointsEventArgs();
+        args.Setup(unit, oldPts, newPts);
+        OnMovePointsChanged.Invoke(args);
+        ReturnMovePointsEventArgs(args);
     }
     
     public void RaiseMovementStartedEvent(MonoBehaviour unit, int fromTile, int toTile, int cost)
@@ -380,6 +417,13 @@ public class GameEventManager : MonoBehaviour
             return tileEventPool.Dequeue();
         return new TileEventArgs();
     }
+
+    private MovePointsChangedEventArgs GetMovePointsEventArgs()
+    {
+        if (movePointsEventPool.Count > 0)
+            return movePointsEventPool.Dequeue();
+        return new MovePointsChangedEventArgs();
+    }
     
     // Return event args to pools
     private void ReturnMovementEventArgs(UnitMovementEventArgs args)
@@ -404,6 +448,12 @@ public class GameEventManager : MonoBehaviour
     {
         args.Reset();
         tileEventPool.Enqueue(args);
+    }
+
+    private void ReturnMovePointsEventArgs(MovePointsChangedEventArgs args)
+    {
+        args.Reset();
+        movePointsEventPool.Enqueue(args);
     }
     
     #endregion

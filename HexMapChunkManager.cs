@@ -5,6 +5,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine.AI;
 
 /// <summary>
 /// Burst job that fills a BiomeIndexMap texture (RFloat) from a pre-computed tile-to-slice lookup.
@@ -374,6 +375,22 @@ public class HexMapChunkManager : MonoBehaviour
     // Tile to chunk mapping
     private Dictionary<int, HexMapChunk> tileToChunk = new Dictionary<int, HexMapChunk>();
 
+    // Wrap registry: columnIndex -> GameObjects that need teleport when a column moves
+    private Dictionary<int, HashSet<GameObject>> _wrapRegistryByColumn = new Dictionary<int, HashSet<GameObject>>();
+    // Reverse lookup: GameObject -> columnIndex
+    private Dictionary<GameObject, int> _objectToColumn = new Dictionary<GameObject, int>();
+
+    // Ghost object system: lightweight renderer-only clones of registered objects at wrap edges
+    private struct GhostObjectEntry
+    {
+        public GameObject ghost;
+        public bool isRightGhost;
+    }
+    private readonly Dictionary<GameObject, List<GhostObjectEntry>> _ghostObjects = new Dictionary<GameObject, List<GhostObjectEntry>>();
+    private readonly HashSet<int> _ghostLeftSourceCols = new HashSet<int>();
+    private readonly HashSet<int> _ghostRightSourceCols = new HashSet<int>();
+    private Transform _ghostObjectContainer;
+
     // Seasonal mask sizing
     private int seasonMaskWidth;
     private int seasonMaskHeight;
@@ -487,6 +504,12 @@ public class HexMapChunkManager : MonoBehaviour
                 _lastWrapCamX = camX;
                 UpdateColumnWrapping();
             }
+        }
+
+        // Sync ghost object positions every frame (sources may move via teleport or gameplay)
+        if (enableWrap && ghostColumnsCreated && _ghostObjects.Count > 0)
+        {
+            UpdateGhostObjects();
         }
 
         UpdateSnow();
@@ -3722,13 +3745,15 @@ public class HexMapChunkManager : MonoBehaviour
             ghostColumnsRightSourceIndices[i] = sourceColLeft;
         }
         
+        InitializeGhostSourceColumns();
         ghostColumnsCreated = true;
+        CreateGhostObjectsForAllRegistered();
 
         UpdateGhostSeasonMasks();
 
         if (debugWrap)
         {
-            Debug.Log($"[HexMapChunkManager][WRAP] Created ghost columns: mirror={columnsToMirror}, mapWidth={mapWidth:F3}, chunksX={chunksX}, columnWidth={columnWidth:F3}");
+            Debug.Log($"[HexMapChunkManager][WRAP] Created ghost columns: mirror={columnsToMirror}, mapWidth={mapWidth:F3}, chunksX={chunksX}, columnWidth={columnWidth:F3}, ghostObjects={_ghostObjects.Count}");
         }
 }
     
@@ -3864,7 +3889,16 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 float oldX = colX;
                 float newX = colX + mapWidth;
+                // compute world-space delta for registered objects
+                Vector3 oldLocal = new Vector3(oldX, col.localPosition.y, col.localPosition.z);
+                Vector3 newLocal = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                Vector3 oldWorld = transform.TransformPoint(oldLocal);
+                Vector3 newWorld = transform.TransformPoint(newLocal);
+                Vector3 deltaWorld = newWorld - oldWorld;
+
                 col.localPosition = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                // Move registered objects with this column
+                TeleportRegisteredObjectsForColumn(i, deltaWorld);
                 teleportsThisFrame++;
                 _wrapTeleportEvents++;
                 if (debugWrap)
@@ -3877,7 +3911,14 @@ public class HexMapChunkManager : MonoBehaviour
             {
                 float oldX = colX;
                 float newX = colX - mapWidth;
+                Vector3 oldLocal = new Vector3(oldX, col.localPosition.y, col.localPosition.z);
+                Vector3 newLocal = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                Vector3 oldWorld = transform.TransformPoint(oldLocal);
+                Vector3 newWorld = transform.TransformPoint(newLocal);
+                Vector3 deltaWorld = newWorld - oldWorld;
+
                 col.localPosition = new Vector3(newX, col.localPosition.y, col.localPosition.z);
+                TeleportRegisteredObjectsForColumn(i, deltaWorld);
                 teleportsThisFrame++;
                 _wrapTeleportEvents++;
                 if (debugWrap)
@@ -3908,6 +3949,408 @@ public class HexMapChunkManager : MonoBehaviour
     // Global water meshes (UnifiedWaterVolume/Surface, OceanPlane) are not parented to columns,
     // so they must be shifted by whole map widths to stay aligned with the teleported columns.
     private int _globalWaterWrapOffset = int.MinValue;
+
+    // ------------------------- Wrap registry API -------------------------
+    /// <summary>
+    /// Register a GameObject for wrap teleportation using a tile index (manager will find which column it belongs to).
+    /// Safe to call multiple times for same object.
+    /// </summary>
+    public void RegisterObjectForWrapAtTile(int tileIndex, GameObject go)
+    {
+        if (go == null) return;
+        if (!tileToChunk.TryGetValue(tileIndex, out var chunk) || chunk == null)
+        {
+            return;
+        }
+        RegisterObjectForWrapColumn(chunk.ColumnIndex, go);
+    }
+
+    /// <summary>
+    /// Register a GameObject to be teleported whenever the given column index is teleported.
+    /// </summary>
+    public void RegisterObjectForWrapColumn(int columnIndex, GameObject go)
+    {
+        if (go == null) return;
+        if (columnIndex < 0 || columnIndex >= chunksX) return;
+        if (!_wrapRegistryByColumn.TryGetValue(columnIndex, out var set))
+        {
+            set = new HashSet<GameObject>();
+            _wrapRegistryByColumn[columnIndex] = set;
+        }
+        if (set.Add(go))
+        {
+            _objectToColumn[go] = columnIndex;
+            if (ghostColumnsCreated) CreateGhostObjectsFor(go, columnIndex);
+            // Prevent dynamic occlusion culling from hiding registered objects near wrap seams.
+            // Many decoration/instance prefabs are dynamic and can be incorrectly occlusion-culled
+            // when columns teleport. Force their renderers to stay visible when dynamic.
+            try
+            {
+                var rends = go.GetComponentsInChildren<Renderer>(true);
+                foreach (var r in rends)
+                {
+                    if (r == null) continue;
+                    r.allowOcclusionWhenDynamic = false;
+                }
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Unregister a previously registered GameObject.
+    /// </summary>
+    public void UnregisterObjectForWrap(GameObject go)
+    {
+        if (go == null) return;
+        if (_objectToColumn.TryGetValue(go, out var col))
+        {
+            if (_wrapRegistryByColumn.TryGetValue(col, out var set)) set.Remove(go);
+            _objectToColumn.Remove(go);
+        }
+        DestroyGhostObjectsFor(go);
+    }
+
+    private void TeleportRegisteredObjectsForColumn(int columnIndex, Vector3 deltaWorld)
+    {
+        if (deltaWorld == Vector3.zero) return;
+        if (!_wrapRegistryByColumn.TryGetValue(columnIndex, out var set) || set == null) return;
+
+        var toRemove = new List<GameObject>();
+        foreach (var go in set)
+        {
+            if (go == null) { toRemove.Add(go); continue; }
+
+            try
+            {
+                if (debugWrapVerbose)
+                {
+                    try { LogObjectDiagnostics(go, "BeforeTeleport"); } catch { }
+                }
+                // NavMeshAgent: use Warp to preserve agent state
+                if (go.TryGetComponent<UnityEngine.AI.NavMeshAgent>(out var agent))
+                {
+                    Vector3 target = go.transform.position + deltaWorld;
+                    agent.Warp(target);
+                    if (debugWrapVerbose) try { LogObjectDiagnostics(go, "AfterTeleport"); } catch { }
+                    continue;
+                }
+
+                // Rigidbody: move with physics-aware positioning
+                if (go.TryGetComponent<Rigidbody>(out var rb))
+                {
+                    // Use MovePosition for kinematic Rigidbodies, otherwise set position directly
+                    if (rb.isKinematic)
+                        rb.MovePosition(rb.position + deltaWorld);
+                    else
+                        rb.position = rb.position + deltaWorld;
+                    continue;
+                }
+
+                // Default: adjust transform position
+                go.transform.position = go.transform.position + deltaWorld;
+                // Refresh renderer/animator state to avoid disappearing due to occlusion/animation culling.
+                try { SanitizeRenderers(go); } catch { }
+                if (debugWrapVerbose)
+                {
+                    try { LogObjectDiagnostics(go, "AfterTeleport"); } catch { }
+                }
+            }
+            catch { }
+        }
+
+        // Clean up any collected null entries
+        foreach (var r in toRemove) set.Remove(r);
+    }
+
+    // -------------------- Ghost object system --------------------
+
+    private Transform GetGhostObjectContainer()
+    {
+        if (_ghostObjectContainer == null)
+        {
+            var go = new GameObject("_GhostObjects");
+            go.transform.SetParent(transform, false);
+            _ghostObjectContainer = go.transform;
+        }
+        return _ghostObjectContainer;
+    }
+
+    private void InitializeGhostSourceColumns()
+    {
+        _ghostLeftSourceCols.Clear();
+        _ghostRightSourceCols.Clear();
+
+        int columnsToMirror = Mathf.Max(2, Mathf.CeilToInt(chunksX * 0.25f));
+        for (int i = 0; i < columnsToMirror; i++)
+        {
+            _ghostRightSourceCols.Add(i);
+            _ghostLeftSourceCols.Add(chunksX - 1 - i);
+        }
+    }
+
+    private void CreateGhostObjectsForAllRegistered()
+    {
+        foreach (var kvp in _wrapRegistryByColumn)
+        {
+            int col = kvp.Key;
+            if (!_ghostLeftSourceCols.Contains(col) && !_ghostRightSourceCols.Contains(col)) continue;
+
+            foreach (var go in kvp.Value)
+            {
+                if (go == null) continue;
+                CreateGhostObjectsFor(go, col);
+            }
+        }
+    }
+
+    private void CreateGhostObjectsFor(GameObject source, int columnIndex)
+    {
+        if (source == null || !ghostColumnsCreated) return;
+        if (_ghostObjects.ContainsKey(source)) return;
+
+        bool needsLeft = _ghostLeftSourceCols.Contains(columnIndex);
+        bool needsRight = _ghostRightSourceCols.Contains(columnIndex);
+        if (!needsLeft && !needsRight) return;
+
+        var entries = new List<GhostObjectEntry>();
+
+        if (needsRight)
+        {
+            var ghost = CreateGhostClone(source);
+            if (ghost != null)
+                entries.Add(new GhostObjectEntry { ghost = ghost, isRightGhost = true });
+        }
+        if (needsLeft)
+        {
+            var ghost = CreateGhostClone(source);
+            if (ghost != null)
+                entries.Add(new GhostObjectEntry { ghost = ghost, isRightGhost = false });
+        }
+
+        if (entries.Count > 0)
+            _ghostObjects[source] = entries;
+    }
+
+    /// <summary>
+    /// Create a lightweight renderer-only clone of a source GameObject.
+    /// Copies only MeshFilter+MeshRenderer pairs, preserving the transform hierarchy.
+    /// </summary>
+    private GameObject CreateGhostClone(GameObject source)
+    {
+        if (source == null) return null;
+
+        var ghost = new GameObject(source.name + "_WrapGhost");
+        ghost.transform.SetParent(GetGhostObjectContainer(), false);
+        ghost.transform.position = source.transform.position;
+        ghost.transform.rotation = source.transform.rotation;
+        // Match layer so camera culling masks remain consistent with the source object.
+        try { ghost.layer = source.layer; } catch { }
+
+        BuildGhostHierarchy(source.transform, ghost.transform);
+
+        return ghost;
+    }
+
+    private void BuildGhostHierarchy(Transform sourceNode, Transform ghostNode)
+    {
+        var sourceMF = sourceNode.GetComponent<MeshFilter>();
+        var sourceMR = sourceNode.GetComponent<MeshRenderer>();
+        if (sourceMF != null && sourceMR != null && sourceMF.sharedMesh != null)
+        {
+            var mf = ghostNode.gameObject.AddComponent<MeshFilter>();
+            mf.sharedMesh = sourceMF.sharedMesh;
+
+            var mr = ghostNode.gameObject.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = sourceMR.sharedMaterials;
+            mr.shadowCastingMode = sourceMR.shadowCastingMode;
+            mr.receiveShadows = sourceMR.receiveShadows;
+
+            // Ensure ghosts are not occlusion-culled. Also copy any property block so appearance matches.
+            try { mr.allowOcclusionWhenDynamic = false; } catch { }
+            var block = new MaterialPropertyBlock();
+            sourceMR.GetPropertyBlock(block);
+            if (!block.isEmpty) mr.SetPropertyBlock(block);
+            // Match the layer so the ghost appears under the same camera culling rules as the source.
+            try { ghostNode.gameObject.layer = sourceNode.gameObject.layer; } catch { }
+        }
+
+        for (int i = 0; i < sourceNode.childCount; i++)
+        {
+            var sourceChild = sourceNode.GetChild(i);
+            var ghostChild = new GameObject(sourceChild.name);
+            ghostChild.transform.SetParent(ghostNode, false);
+            ghostChild.transform.localPosition = sourceChild.localPosition;
+            ghostChild.transform.localRotation = sourceChild.localRotation;
+            ghostChild.transform.localScale = sourceChild.localScale;
+            try { ghostChild.layer = sourceChild.gameObject.layer; } catch { }
+            BuildGhostHierarchy(sourceChild, ghostChild.transform);
+        }
+    }
+
+    private void UpdateGhostObjects()
+    {
+        if (_ghostObjects.Count == 0) return;
+
+        Vector3 rightOffset = transform.TransformDirection(new Vector3(mapWidth, 0f, 0f));
+        Vector3 leftOffset = -rightOffset;
+
+        List<GameObject> toRemove = null;
+
+        foreach (var kvp in _ghostObjects)
+        {
+            var source = kvp.Key;
+            if (source == null)
+            {
+                if (toRemove == null) toRemove = new List<GameObject>();
+                toRemove.Add(source);
+                continue;
+            }
+
+            foreach (var entry in kvp.Value)
+            {
+                if (entry.ghost == null) continue;
+                Vector3 offset = entry.isRightGhost ? rightOffset : leftOffset;
+                entry.ghost.transform.position = source.transform.position + offset;
+                entry.ghost.transform.rotation = source.transform.rotation;
+            }
+        }
+
+        if (toRemove != null)
+        {
+            foreach (var key in toRemove)
+            {
+                if (_ghostObjects.TryGetValue(key, out var entries))
+                {
+                    foreach (var e in entries)
+                    {
+                        if (e.ghost != null) Destroy(e.ghost);
+                    }
+                }
+                _ghostObjects.Remove(key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ensure renderers and animators on a teleported object won't be culled or stopped
+    /// by offscreen/occlusion heuristics. This sets conservative flags for runtime
+    /// objects that move with wrap teleports.
+    /// </summary>
+    private void SanitizeRenderers(GameObject go)
+    {
+        if (go == null) return;
+
+        // Disable occlusion-based culling on all renderers and ensure they are enabled
+        var rends = go.GetComponentsInChildren<Renderer>(true);
+        foreach (var r in rends)
+        {
+            if (r == null) continue;
+            try
+            {
+                r.allowOcclusionWhenDynamic = false;
+                if (!r.enabled) r.enabled = true;
+            }
+            catch { }
+
+            // Special-case skinned meshes: make sure they update even offscreen
+            if (r is SkinnedMeshRenderer smr)
+            {
+                try { smr.updateWhenOffscreen = true; } catch { }
+            }
+        }
+
+        // Ensure animators keep animating so skinned meshes don't collapse
+        var animators = go.GetComponentsInChildren<Animator>(true);
+        foreach (var a in animators)
+        {
+            if (a == null) continue;
+            try { a.cullingMode = AnimatorCullingMode.AlwaysAnimate; } catch { }
+        }
+    }
+
+    private void LogObjectDiagnostics(GameObject go, string stage)
+    {
+        if (go == null)
+        {
+            Debug.Log($"[HexMapChunkManager][WRAP][{stage}] GameObject is null");
+            return;
+        }
+
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat("[HexMapChunkManager][WRAP][{0}] ", stage);
+            sb.AppendFormat("name={0} ", go.name);
+            sb.AppendFormat("active={0} ", go.activeInHierarchy);
+            sb.AppendFormat("layer={0} ", go.layer);
+            sb.AppendFormat("pos={0} ", go.transform.position.ToString("F3"));
+            sb.AppendFormat("parent={0} ", GetTransformPath(go.transform.parent));
+
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            sb.AppendFormat("renderers={0} ", rends.Length);
+            Bounds? combined = null;
+            foreach (var r in rends)
+            {
+                if (r == null) continue;
+                try
+                {
+                    var b = r.bounds;
+                    if (combined == null) combined = b;
+                    else { var c = combined.Value; c.Encapsulate(b); combined = c; }
+                }
+                catch { }
+            }
+            if (combined != null) sb.AppendFormat("boundsCenter={0} boundsSize={1} ", combined.Value.center.ToString("F3"), combined.Value.size.ToString("F3"));
+
+            int skinned = go.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length;
+            int anims = go.GetComponentsInChildren<Animator>(true).Length;
+            int agents = go.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true).Length;
+            int rbs = go.GetComponentsInChildren<Rigidbody>(true).Length;
+            int lods = go.GetComponentsInChildren<LODGroup>(true).Length;
+
+            sb.AppendFormat("skinned={0} animators={1} navAgents={2} rigidbodies={3} lods={4}", skinned, anims, agents, rbs, lods);
+
+            Debug.Log(sb.ToString());
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[HexMapChunkManager][WRAP] Failed to log diagnostics for {go?.name}: {ex.Message}");
+        }
+    }
+
+    private void DestroyGhostObjectsFor(GameObject source)
+    {
+        if (_ghostObjects.TryGetValue(source, out var entries))
+        {
+            foreach (var e in entries)
+            {
+                if (e.ghost != null) Destroy(e.ghost);
+            }
+            _ghostObjects.Remove(source);
+        }
+    }
+
+    private void DestroyAllGhostObjects()
+    {
+        foreach (var kvp in _ghostObjects)
+        {
+            foreach (var e in kvp.Value)
+            {
+                if (e.ghost != null) DestroyImmediate(e.ghost);
+            }
+        }
+        _ghostObjects.Clear();
+
+        if (_ghostObjectContainer != null)
+        {
+            DestroyImmediate(_ghostObjectContainer.gameObject);
+            _ghostObjectContainer = null;
+        }
+    }
+
+    // -------------------- End ghost object system --------------------
+
     private float _lastWrapCamX = float.NegativeInfinity;
     private void UpdateGlobalWaterWrap(float cameraXLocal)
     {
@@ -3975,6 +4418,10 @@ public class HexMapChunkManager : MonoBehaviour
     /// </summary>
     private void DestroyGhostColumns()
     {
+        DestroyAllGhostObjects();
+        _ghostLeftSourceCols.Clear();
+        _ghostRightSourceCols.Clear();
+
         if (ghostColumnsLeft != null)
         {
             foreach (var col in ghostColumnsLeft)
@@ -4454,6 +4901,12 @@ public class HexMapChunkManager : MonoBehaviour
         }
         
         tileToChunk.Clear();
+        // Clear wrap registry
+        _wrapRegistryByColumn?.Clear();
+        _objectToColumn?.Clear();
+        _ghostObjects?.Clear();
+        _ghostLeftSourceCols?.Clear();
+        _ghostRightSourceCols?.Clear();
     }
 
     /// <summary>

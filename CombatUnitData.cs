@@ -201,6 +201,8 @@ public class CombatUnitData : ScriptableObject
 
     [Header("Base Stats")]
     public int baseAttack;
+    [Tooltip("Base movement points for this combat unit (per turn). Set to 0 to opt-out of turn-based movement.)")]
+    public int baseMovePoints = 0;
     public int baseDefense;
     public int baseHealth;
     public float baseRange;
