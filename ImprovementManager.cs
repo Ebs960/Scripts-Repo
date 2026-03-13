@@ -395,6 +395,16 @@ public class ImprovementManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Return the ImprovementData for the active build job on the given tile, or null if none.
+    /// </summary>
+    public ImprovementData GetBuildJobDataAtTile(int tileIndex, int planetIndex = -1)
+    {
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var job = FindBuildJob(tileIndex, planetIndex);
+        return job != null ? job.data : null;
+    }
+
+    /// <summary>
     /// Export current job assignments (persistent worker ids) for saving.
     /// </summary>
     public List<JobAssignmentSaveData> ExportJobAssignments()
@@ -524,6 +534,24 @@ public class ImprovementManager : MonoBehaviour
             // Initialize the runtime ImprovementInstance so it can handle clicks and state
             instance.Initialize(job.tileIndex, job.data, job.planetIndex);
 
+            // If this improvement is a shelter and there were assigned workers, automatically
+            // place any assigned worker that is currently on the tile inside the shelter.
+            if (job.data != null && job.data.isShelter && instance != null && job.assignedWorkerPersistentIds != null)
+            {
+                foreach (var pid in job.assignedWorkerPersistentIds)
+                {
+                    var goWorker = UnitRegistry.GetByPersistentId(pid);
+                    if (goWorker == null) continue;
+                    var workerComp = goWorker.GetComponent<WorkerUnit>();
+                    if (workerComp == null) continue;
+                    // Only store if worker is on the same planet and tile
+                    if (workerComp.planetIndex == job.planetIndex && workerComp.currentTileIndex == job.tileIndex)
+                    {
+                        // ImprovementInstance.StoreUnit will handle occupancy clearing and hiding the unit
+                        instance.StoreUnit(workerComp);
+                    }
+                }
+            }
             // Add collider if needed for clicking
             if (completedImprovement.GetComponent<Collider>() == null)
             {

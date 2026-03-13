@@ -581,7 +581,24 @@ UpdateUnitInfoForWorkerUnit();
             suppressBuildOptionCallback = true;
             buildOptionsDropdown.ClearOptions();
             buildOptionsDropdown.AddOptions(displayOptions);
-            buildOptionsDropdown.SetValueWithoutNotify(0);
+
+            // If this worker is already assigned to a build job on this tile, pre-select that option
+            int preselect = 0;
+            if (ImprovementManager.Instance != null && worker != null)
+            {
+                bool assigned = ImprovementManager.Instance.JobAssignedToWorker(worker.currentTileIndex, worker, worker.planetIndex);
+                if (assigned)
+                {
+                    var jobImp = ImprovementManager.Instance.GetBuildJobDataAtTile(worker.currentTileIndex, worker.planetIndex);
+                    if (jobImp != null)
+                    {
+                        int found = buildOptions.FindIndex(b => b.Type == BuildOption.OptionType.Improvement && b.Improvement == jobImp);
+                        if (found >= 0) preselect = found + 1; // +1 because index 0 is the placeholder
+                    }
+                }
+            }
+
+            buildOptionsDropdown.SetValueWithoutNotify(preselect);
             suppressBuildOptionCallback = false;
             buildOptionsDropdown.interactable = true;
             if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }

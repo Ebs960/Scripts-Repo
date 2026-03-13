@@ -19,7 +19,7 @@ MonoBehaviour:
   heightArray: {fileID: 18700000, guid: 0f8dc68d38d710d45bfecea5f5ce3d84, type: 3}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
-  defaultTiling: 1
+  defaultTiling: 1.7
   defaultTint: {r: 1, g: 1, b: 1, a: 1}
   normalStrength: 1
   roughnessOffset: 0
