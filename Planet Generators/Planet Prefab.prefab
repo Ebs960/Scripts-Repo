@@ -207,8 +207,8 @@ MonoBehaviour:
   ridgeStrength: 0.116
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 6
-  moistureFreq: 0.2
+  elevationFreq: 8
+  moistureFreq: 0.3
   moistureBias: 0
   temperatureBias: 0
   latitudeInfluence: 0.766
@@ -216,10 +216,10 @@ MonoBehaviour:
   temperatureNoiseFrequency: 0.19
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
-  usePeriodicClimateNoise: 0
-  climateSmoothingPasses: 3
-  climateSmoothingStrength: 0.106
-  coastalMoistureBoost: 0.098
+  usePeriodicClimateNoise: 1
+  climateSmoothingPasses: 2
+  climateSmoothingStrength: 0.083
+  coastalMoistureBoost: 0.1
   coastalMoistureRange: 1
   flatElevationMin: 5
   flatElevationMax: 5.47

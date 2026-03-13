@@ -65,6 +65,10 @@ public class UnitSelectionManager : MonoBehaviour
     private readonly System.Collections.Generic.List<UnityEngine.Component> previewMarkerLabels = new System.Collections.Generic.List<UnityEngine.Component>();
     // Pooled per-tile prefab instances (used when `pathTilePrefab` is assigned)
     private readonly System.Collections.Generic.List<GameObject> pooledPathTiles = new System.Collections.Generic.List<GameObject>();
+
+    // Preview update guards (coalesce multiple events per-frame and avoid full rebuilds)
+    private int _lastPreviewUpdateFrame = -1;
+    private int _lastQueuedPreviewFrame = -1;
     
 
     // Runtime attack hover instance (single pooled instance)
@@ -394,9 +398,11 @@ public class UnitSelectionManager : MonoBehaviour
             ClearPreviewVisuals();
             return;
         }
+            // Coalesce multiple preview update calls in the same frame
+            if (_lastPreviewUpdateFrame == Time.frameCount) return;
+            _lastPreviewUpdateFrame = Time.frameCount;
 
-        foreach (var m in previewMarkers) if (m != null) m.SetActive(false);
-        foreach (var lbl in previewMarkerLabels) if (lbl != null) lbl.gameObject.SetActive(false);
+        // Do not blanket-disable all markers/labels here; deactivate only extras after incremental update
 
         var umc = UnitMovementController.Instance;
         // Fallback: Instance may not be assigned yet due to initialization order.
@@ -613,6 +619,16 @@ public class UnitSelectionManager : MonoBehaviour
         {
             ShowDestinationMarker(previewTargetTile, ts, segments.Count);
         }
+
+        // Deactivate any extra markers/labels that are no longer used (incremental update)
+        int usedMarkers = segments != null ? segments.Count : 0;
+        for (int i = usedMarkers; i < previewMarkers.Count; i++)
+        {
+            var m = previewMarkers[i];
+            if (m != null) m.SetActive(false);
+            if (i < previewMarkerLabels.Count && previewMarkerLabels[i] != null)
+                previewMarkerLabels[i].gameObject.SetActive(false);
+        }
     }
 
     private void ShowDestinationMarker(int tileIndex, TileSystem ts, int markerIndex)
@@ -755,6 +771,9 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void ShowQueuedPathPreviewIfAny()
     {
+        // Coalesce multiple queued-preview updates in the same frame
+        if (_lastQueuedPreviewFrame == Time.frameCount) return;
+        _lastQueuedPreviewFrame = Time.frameCount;
         if (selectedUnit == null) return;
         var queued = selectedUnit.queuedMovementSegments;
         if (queued == null || queued.Count == 0) return;

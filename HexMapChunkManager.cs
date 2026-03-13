@@ -3958,11 +3958,23 @@ public class HexMapChunkManager : MonoBehaviour
     public void RegisterObjectForWrapAtTile(int tileIndex, GameObject go)
     {
         if (go == null) return;
-        if (!tileToChunk.TryGetValue(tileIndex, out var chunk) || chunk == null)
+
+        if (tileToChunk.TryGetValue(tileIndex, out var chunk) && chunk != null)
         {
+            RegisterObjectForWrapColumn(chunk.ColumnIndex, go);
             return;
         }
-        RegisterObjectForWrapColumn(chunk.ColumnIndex, go);
+
+        // Fallback when tileToChunk not yet populated (e.g. registration during/right after OnPlanetReady
+        // before AssignTilesToChunksCoroutine has run). Derive column from tile index and grid layout
+        // so units/resources/improvements don't silently fail to wrap and "disappear" at the boundary.
+        if (grid != null && grid.Width > 0 && chunksX > 0 && tileIndex >= 0 && tileIndex < grid.TileCount)
+        {
+            int tileCol = tileIndex % grid.Width;
+            float normalizedX = (tileCol + 0.5f) / (float)grid.Width;
+            int columnIndex = Mathf.Clamp(Mathf.FloorToInt(normalizedX * chunksX), 0, chunksX - 1);
+            RegisterObjectForWrapColumn(columnIndex, go);
+        }
     }
 
     /// <summary>

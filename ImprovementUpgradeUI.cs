@@ -18,7 +18,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
         
     [SerializeField] private Transform upgradeButtonContainer;
     [SerializeField] private GameObject upgradeButtonPrefab;
-    [SerializeField] private Button closeButton;
+    // close button removed: panel will close on click-away like UnitInfoPanel
 
     private ImprovementData currentImprovement;
     private int currentTileIndex = -1;
@@ -41,9 +41,6 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
     private void Awake()
     {
-        if (closeButton != null)
-            closeButton.onClick.AddListener(HidePanel);
-        
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
     }
@@ -61,12 +58,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
             if (upgradePanel != null) upgradePanel.SetActive(false);
         }
 
-        // Subscribe to TileSystem clicks so clicking away will hide the panel
-        int desiredPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
-        eventPlanetIndex = desiredPlanet;
-        eventTileSystem = TileSystem.GetForPlanet(desiredPlanet) ?? TileSystem.Instance;
-        if (eventTileSystem != null)
-            eventTileSystem.OnTileClicked += HandleAnyTileClicked;
+        // Initial subscription left minimal here; subscriptions are ensured when showing the panel
     }
 
     private void OnDisable()
@@ -102,6 +94,10 @@ public class ImprovementUpgradeUI : MonoBehaviour
         currentTileIndex = tileIndex;
         currentPlanetIndex = planetIndex;
         currentCiv = civ;
+
+        // Ensure we subscribe to the correct TileSystem for click-away behavior
+        int subscribePlanet = currentPlanetIndex >= 0 ? currentPlanetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        SubscribeToTileSystemForPlanet(subscribePlanet);
 
         if (improvementNameText != null)
             improvementNameText.text = improvement.improvementName;
@@ -234,12 +230,34 @@ public class ImprovementUpgradeUI : MonoBehaviour
     {
         if (upgradePanel != null)
             upgradePanel.SetActive(false);
-
+        // Unsubscribe from tile clicks when panel is hidden
+        UnsubscribeFromTileSystem();
         ClearUpgradeButtons();
         currentImprovement = null;
         currentTileIndex = -1;
         currentPlanetIndex = -1;
         currentCiv = null;
+    }
+
+    private void SubscribeToTileSystemForPlanet(int planetIndex)
+    {
+        // If already subscribed to the correct planet, nothing to do
+        if (eventTileSystem != null && eventPlanetIndex == planetIndex) return;
+        UnsubscribeFromTileSystem();
+        eventPlanetIndex = planetIndex;
+        eventTileSystem = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (eventTileSystem != null)
+            eventTileSystem.OnTileClicked += HandleAnyTileClicked;
+    }
+
+    private void UnsubscribeFromTileSystem()
+    {
+        if (eventTileSystem != null)
+        {
+            try { eventTileSystem.OnTileClicked -= HandleAnyTileClicked; } catch { }
+            eventTileSystem = null;
+            eventPlanetIndex = int.MinValue;
+        }
     }
 
     private void PopulateUpgradeOptions()
@@ -571,7 +589,7 @@ return;
 
     private void OnDestroy()
     {
-        if (closeButton != null)
-            closeButton.onClick.RemoveListener(HidePanel);
+        // Ensure we clean up any tile subscriptions
+        UnsubscribeFromTileSystem();
     }
 }
