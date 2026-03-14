@@ -55,6 +55,8 @@ public class WinterSnowEffect : MonoBehaviour
     public PlanetaryCameraManager cameraManager;
     [Tooltip("Optional: assign an existing ParticleSystem to use for snow. If null, the script will use any ParticleSystem on this GameObject or children, or create one.")]
     public ParticleSystem snowParticleSystem;
+    [Tooltip("Optional: override material to use for snow particles. If null, WinterSnowEffect will pick a compatible default.")]
+    public Material snowMaterial;
 
     // Runtime
     private ParticleSystem _ps;
@@ -359,6 +361,7 @@ public class WinterSnowEffect : MonoBehaviour
             _emission = _ps.emission;
             _shape = _ps.shape;
             _emission.rateOverTime = 0f;
+            EnsureParticleMaterialAssigned(_ps);
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             return;
         }
@@ -371,6 +374,7 @@ public class WinterSnowEffect : MonoBehaviour
             _emission = _ps.emission;
             _shape = _ps.shape;
             _emission.rateOverTime = 0f;
+            EnsureParticleMaterialAssigned(_ps);
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             return;
         }
@@ -434,9 +438,9 @@ public class WinterSnowEffect : MonoBehaviour
         // --- Renderer ---
         var renderer = go.GetComponent<ParticleSystemRenderer>();
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
-        // Use the default particle material (white circle). You can assign a
-        // custom snow-flake material here if you have one.
-        renderer.material = GetDefaultParticleMaterial();
+        // Assign either the explicit override material or a compatible default.
+        if (snowMaterial != null) renderer.material = snowMaterial;
+        else renderer.material = GetDefaultParticleMaterial();
         renderer.sortingOrder = 10;  // draw above terrain
 
         // --- Color over lifetime (fade out near end) ---
@@ -455,6 +459,28 @@ public class WinterSnowEffect : MonoBehaviour
         size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.4f));
 
         _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+    }
+
+    private void EnsureParticleMaterialAssigned(ParticleSystem ps)
+    {
+        if (ps == null) return;
+        var rend = ps.GetComponent<ParticleSystemRenderer>();
+        if (rend == null) return;
+
+        if (snowMaterial != null)
+        {
+            rend.material = snowMaterial;
+            return;
+        }
+
+        var mat = rend.sharedMaterial;
+        bool needAssign = mat == null || mat.shader == null || (mat.shader.name != null && mat.shader.name.Contains("Hidden/InternalErrorShader"));
+        if (needAssign)
+        {
+            var def = GetDefaultParticleMaterial();
+            if (def != null) rend.material = def;
+            Debug.Log("[WinterSnowEffect] Assigned default particle material to snow system.");
+        }
     }
 
     private static Material GetDefaultParticleMaterial()

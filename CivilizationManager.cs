@@ -163,16 +163,59 @@ public class CivilizationManager : MonoBehaviour
         // Wait a small delay to simulate AI thinking (optional)
         yield return new WaitForSeconds(0.5f);
         
-        // Perform AI decisions based on leader agenda and current situation
+        // Release units from shelters when it's not winter so they can forage, hunt, and move
+        PerformUnstoreDecisions(civ);
+        
+        // Food-first for early game (no cities): workers forage/hunt, combat hunts animals
+        bool earlyGame = civ.cities == null || civ.cities.Count == 0;
+        if (earlyGame)
+        {
+            PerformWorkerDecisions(civ);
+            PerformMilitaryDecisions(civ);
+        }
+        // Seasonal planning: build shelter before winter (all phases)
+        PerformSeasonalDecisions(civ);
+        // Apply improvement upgrades when affordable (shelter capacity, defense, etc.)
+        PerformImprovementUpgradeDecisions(civ);
+        // Standard AI decisions
         PerformStrategicDecisions(civ);
         PerformDiplomaticDecisions(civ);
-        PerformMilitaryDecisions(civ);
+        if (!earlyGame) PerformMilitaryDecisions(civ);
         PerformEconomicDecisions(civ);
         PerformTechnologicalDecisions(civ);
         PerformCulturalDecisions(civ);
         PerformReligiousDecisions(civ);
-}
+    }
     
+    /// <summary>
+    /// Release units from shelters when it's not winter so they can act (forage, hunt, move).
+    /// Called at the start of the AI turn so released units can be used in worker/military decisions.
+    /// </summary>
+    private void PerformUnstoreDecisions(Civilization civ)
+    {
+        if (civ == null || ClimateManager.Instance == null) return;
+        // Combat units
+        if (civ.combatUnits != null)
+        {
+            foreach (var unit in civ.combatUnits.ToArray())
+            {
+                if (unit == null || !unit.isStored || unit.storedInImprovement == null) continue;
+                if (ClimateManager.Instance.GetSeasonForPlanet(unit.planetIndex) == Season.Winter) continue;
+                unit.storedInImprovement.TryUnstoreUnit(unit);
+            }
+        }
+        // Worker units
+        if (civ.workerUnits != null)
+        {
+            foreach (var worker in civ.workerUnits.ToArray())
+            {
+                if (worker == null || !worker.isStored || worker.storedInImprovement == null) continue;
+                if (ClimateManager.Instance.GetSeasonForPlanet(worker.planetIndex) == Season.Winter) continue;
+                worker.storedInImprovement.TryUnstoreUnit(worker);
+            }
+        }
+    }
+
     /// <summary>
     /// Make high-level strategic decisions based on leader agenda
     /// </summary>
@@ -403,14 +446,123 @@ public class CivilizationManager : MonoBehaviour
             }
 
             // --- Basic surface combat AI ---
-            // Attack any enemy in range
-            CombatUnit surfaceTarget = FindBestAttackTarget(civ, unit);
+            // Attack any enemy (or animal, for food) in range
+            CombatUnit surfaceTarget = FindBestAttackTargetIncludingAnimals(civ, unit);
             if (surfaceTarget != null && unit.CanAttack(surfaceTarget))
             {
                 unit.Attack(surfaceTarget);
                 continue;
             }
+
+            // Not in range: move toward nearest enemy or animal (hunting for food when no cities / low food)
+            TryMoveCombatUnitTowardTarget(civ, unit);
         }
+    }
+
+    /// <summary>
+    /// Find best attack target: enemies in range first, then animals (for food) when civ has no cities or low food.
+    /// </summary>
+    private CombatUnit FindBestAttackTargetIncludingAnimals(Civilization owner, CombatUnit attacker)
+    {
+        CombatUnit enemy = FindBestAttackTarget(owner, attacker);
+        if (enemy != null) return enemy;
+
+        // Prefer hunting animals when we have no cities or need food (early game)
+        bool needFood = owner.cities == null || owner.cities.Count == 0 || owner.food < 10;
+        if (!needFood) return null;
+
+        if (AnimalManager.Instance == null) return null;
+        var ts = TileSystem.GetForPlanet(attacker.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        CombatUnit bestAnimal = null;
+        float bestScore = float.MinValue;
+        foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+        {
+            if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
+            if (animal.planetIndex != attacker.planetIndex) continue;
+            if (animal.currentTileIndex < 0) continue;
+            if (!attacker.CanAttack(animal)) continue;
+            int dist = ts.GetTileDistance(attacker.currentTileIndex, animal.currentTileIndex);
+            if (dist > 1) continue; // only in-range (adjacent) for melee
+            float score = (animal.data != null && animal.data.foodOnKill > 0) ? animal.data.foodOnKill : 1f;
+            if (score > bestScore) { bestScore = score; bestAnimal = animal; }
+        }
+        return bestAnimal;
+    }
+
+    /// <summary>
+    /// Move a combat unit one turn toward the nearest enemy or animal (for hunting). Does nothing if already acted or no target.
+    /// </summary>
+    private void TryMoveCombatUnitTowardTarget(Civilization civ, CombatUnit unit)
+    {
+        if (unit == null || unit.hasActedThisTurn) return;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        CombatUnit target = FindNearestTargetToApproach(civ, unit);
+        if (target == null || target.currentTileIndex < 0) return;
+
+        int[] neighborIndices = ts.GetNeighbors(target.currentTileIndex);
+        if (neighborIndices == null || neighborIndices.Length == 0) return;
+
+        List<int> bestPath = null;
+        int bestApproachTile = -1;
+        foreach (int neighbor in neighborIndices)
+        {
+            if (!unit.CanMoveTo(neighbor)) continue;
+            var path = UnitMovementController.Instance != null ? UnitMovementController.Instance.FindPath(unit.currentTileIndex, neighbor, unit) : null;
+            if (path == null || path.Count == 0) continue;
+            if (bestPath == null || path.Count < bestPath.Count)
+            {
+                bestPath = path;
+                bestApproachTile = neighbor;
+            }
+        }
+        if (bestApproachTile >= 0 && unit.CanMoveTo(bestApproachTile))
+            unit.MoveTo(bestApproachTile);
+    }
+
+    /// <summary>
+    /// Nearest enemy or animal (for hunting) to approach this turn. Prefers animals when civ has no cities or low food.
+    /// </summary>
+    private CombatUnit FindNearestTargetToApproach(Civilization civ, CombatUnit unit)
+    {
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        bool needFood = civ.cities == null || civ.cities.Count == 0 || civ.food < 15;
+        int myTile = unit.currentTileIndex;
+        if (myTile < 0) return null;
+
+        CombatUnit nearest = null;
+        int nearestDist = int.MaxValue;
+
+        // Enemies
+        foreach (var otherCiv in GetAllCivs())
+        {
+            if (otherCiv == civ || otherCiv.combatUnits == null) continue;
+            foreach (var enemy in otherCiv.combatUnits)
+            {
+                if (enemy == null || enemy.currentTileIndex < 0 || enemy.planetIndex != unit.planetIndex) continue;
+                int d = ts.GetTileDistance(myTile, enemy.currentTileIndex);
+                if (d < nearestDist && d > 1) { nearestDist = d; nearest = enemy; }
+            }
+        }
+
+        // Animals (for food) when no cities or low food
+        if (needFood && AnimalManager.Instance != null)
+        {
+            foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+            {
+                if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
+                if (animal.planetIndex != unit.planetIndex || animal.currentTileIndex < 0) continue;
+                int d = ts.GetTileDistance(myTile, animal.currentTileIndex);
+                if (d > 1 && d < nearestDist) { nearestDist = d; nearest = animal; }
+            }
+        }
+
+        return nearest;
     }
 
     /// <summary>
@@ -502,14 +654,271 @@ public class CivilizationManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Plan for seasons: build a shelter improvement before winter to avoid attrition.
+    /// When turns until winter is at or below one season length, prioritize starting a shelter build.
+    /// </summary>
+    private void PerformSeasonalDecisions(Civilization civ)
+    {
+        if (ClimateManager.Instance == null || !ClimateManager.Instance.enableWinterAttrition) return;
+        if (civ == null || civ.workerUnits == null) return;
+        int turnsPerSeason = ClimateManager.Instance.turnsPerSeason;
+        int winterThreshold = Mathf.Max(1, turnsPerSeason + 1); // build before winter when we're within ~1 season of it
+
+        foreach (var worker in civ.workerUnits)
+        {
+            if (worker == null || worker.data == null || worker.currentWorkPoints <= 0) continue;
+            if (worker.currentTileIndex < 0) continue;
+            int pIndex = worker.planetIndex;
+            int turnsUntilWinter = ClimateManager.Instance.GetTurnsUntilWinter(pIndex);
+            if (turnsUntilWinter > winterThreshold) continue; // winter not soon on this planet
+
+            var available = civ.GetAvailableImprovementsForWorker(worker.data, worker.currentTileIndex, pIndex);
+            if (available == null) continue;
+            ImprovementData shelterToBuild = null;
+            foreach (var imp in available)
+            {
+                if (imp != null && imp.isShelter)
+                {
+                    shelterToBuild = imp;
+                    break;
+                }
+            }
+            if (shelterToBuild == null) continue;
+            if (ImprovementManager.Instance != null && ImprovementManager.Instance.HasBuildJobAtTile(worker.currentTileIndex, pIndex)) continue;
+            worker.StartBuilding(shelterToBuild, worker.currentTileIndex);
+            break; // one shelter per turn
+        }
+    }
+
+    /// <summary>
+    /// AI: apply one affordable improvement upgrade per turn (shelter capacity, defense, yields).
+    /// </summary>
+    private void PerformImprovementUpgradeDecisions(Civilization civ)
+    {
+        if (civ == null || civ.ownedTilesByPlanet == null || ImprovementManager.Instance == null) return;
+        foreach (var kv in civ.ownedTilesByPlanet)
+        {
+            int planetIndex = kv.Key;
+            var tileSet = kv.Value;
+            if (tileSet == null) continue;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            if (ts == null) continue;
+            foreach (int tileIndex in tileSet)
+            {
+                var td = ts.GetTileData(tileIndex);
+                if (td?.improvement == null || td.improvementOwner != civ) continue;
+                if (td.improvement.availableUpgrades == null) continue;
+                foreach (var upgrade in td.improvement.availableUpgrades)
+                {
+                    if (upgrade == null) continue;
+                    string key = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+                    if (td.builtUpgrades != null && td.builtUpgrades.Contains(key)) continue;
+                    if (!upgrade.CanBuild(civ)) continue;
+                    if (!upgrade.ConsumeRequirements(civ)) continue;
+                    if (ImprovementManager.Instance.ApplyUpgradeToTile(tileIndex, planetIndex, upgrade))
+                    {
+                        return; // one upgrade per turn
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Make economic decisions
     /// </summary>
     private void PerformEconomicDecisions(Civilization civ)
     {
-        // Placeholder for economic AI decisions
-        // - Trade route establishment
-        // - Resource management
-        // - City specialization
+        // Workers also forage when we have cities but food is low (no-city case handled in early-game block above)
+        if (civ.workerUnits != null && civ.workerUnits.Count > 0 && civ.food < 20 && civ.cities != null && civ.cities.Count > 0)
+            PerformWorkerDecisions(civ);
+    }
+
+    /// <summary>
+    /// Workers forage on current tile if possible, or move toward nearest forageable resource (food priority, especially with no cities).
+    /// </summary>
+    private void PerformWorkerDecisions(Civilization civ)
+    {
+        if (civ == null || civ.workerUnits == null) return;
+        var rm = ResourceManager.Instance;
+        if (rm == null) return;
+        var ts = TileSystem.GetForPlanet(GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        if (ts == null) ts = TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return;
+
+        bool needFood = civ.cities == null || civ.cities.Count == 0 || civ.food < 20;
+
+        foreach (var worker in civ.workerUnits)
+        {
+            if (worker == null || worker.data == null) continue;
+            if (worker.currentTileIndex < 0) continue;
+            int pIndex = worker.planetIndex;
+            var tsPlanet = TileSystem.GetForPlanet(pIndex) ?? ts;
+            bool didSomething = false;
+
+            // 1) Forage on current tile if possible (uses work points)
+            if (worker.currentWorkPoints > 0)
+            {
+                var inst = rm.GetResourceInstanceAtTile(worker.currentTileIndex, pIndex);
+                if (inst != null && inst.data != null && inst.data.canBeForaged && worker.CanForage(inst.data, worker.currentTileIndex))
+                {
+                    worker.Forage(inst.data, worker.currentTileIndex);
+                    rm.ForageResource(inst, civ);
+                    didSomething = true;
+                }
+            }
+
+            // 2) Workers can attack: hunt animal in range for food (early game / when hungry)
+            if (!didSomething && needFood)
+            {
+                BaseUnit animalTarget = FindBestAnimalTargetInRangeForUnit(worker, civ);
+                if (animalTarget != null && worker.CanAttack(animalTarget))
+                {
+                    worker.Attack(animalTarget);
+                    didSomething = true;
+                }
+            }
+
+            if (didSomething) continue;
+
+            // 3) Move toward nearest forageable resource (prefer food) within range
+            if (worker.currentWorkPoints > 0)
+            {
+                int nearestForageTile = FindNearestForageableTile(worker, pIndex, 5, rm, tsPlanet);
+                if (nearestForageTile >= 0 && nearestForageTile != worker.currentTileIndex && worker.CanMoveTo(nearestForageTile))
+                {
+                    var path = UnitMovementController.Instance != null ? UnitMovementController.Instance.FindPath(worker.currentTileIndex, nearestForageTile, worker) : null;
+                    if (path != null && path.Count > 0)
+                    {
+                        worker.MoveTo(nearestForageTile);
+                        continue;
+                    }
+                }
+            }
+
+            // 4) Move toward nearest animal to hunt (workers need food too; early game only workers exist)
+            if (needFood)
+                TryMoveWorkerTowardAnimal(civ, worker);
+        }
+    }
+
+    /// <summary>
+    /// Find an animal in attack range that this unit can attack (for food). Works for both combat units and workers.
+    /// </summary>
+    private BaseUnit FindBestAnimalTargetInRangeForUnit(BaseUnit unit, Civilization civ)
+    {
+        if (AnimalManager.Instance == null || civ == null) return null;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        CombatUnit best = null;
+        int bestFood = -1;
+        foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+        {
+            if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
+            if (animal.planetIndex != unit.planetIndex || animal.currentTileIndex < 0) continue;
+            if (unit is CombatUnit cu && !cu.CanAttack(animal)) continue;
+            if (unit is WorkerUnit wu && !wu.CanAttack(animal)) continue;
+            int dist = ts.GetTileDistance(unit.currentTileIndex, animal.currentTileIndex);
+            if (dist > 1) continue; // melee range
+            int food = animal.data != null ? animal.data.foodOnKill : 0;
+            if (food > bestFood) { bestFood = food; best = animal; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Move a worker toward the nearest animal so they can hunt for food next turn.
+    /// </summary>
+    private void TryMoveWorkerTowardAnimal(Civilization civ, WorkerUnit worker)
+    {
+        if (worker == null || worker.currentTileIndex < 0) return;
+        var ts = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+
+        CombatUnit target = FindNearestAnimalToApproach(worker.planetIndex, worker.currentTileIndex, ts);
+        if (target == null) return;
+
+        int[] neighborIndices = ts.GetNeighbors(target.currentTileIndex);
+        if (neighborIndices == null || neighborIndices.Length == 0) return;
+
+        int bestApproachTile = -1;
+        int bestPathLength = int.MaxValue;
+        foreach (int neighbor in neighborIndices)
+        {
+            if (!worker.CanMoveTo(neighbor)) continue;
+            var path = UnitMovementController.Instance != null ? UnitMovementController.Instance.FindPath(worker.currentTileIndex, neighbor, worker) : null;
+            if (path == null || path.Count == 0) continue;
+            if (path.Count < bestPathLength) { bestPathLength = path.Count; bestApproachTile = neighbor; }
+        }
+        if (bestApproachTile >= 0 && worker.CanMoveTo(bestApproachTile))
+            worker.MoveTo(bestApproachTile);
+    }
+
+    /// <summary>
+    /// Nearest animal on the given planet to the given tile (for approach movement). Excludes already-adjacent.
+    /// </summary>
+    private CombatUnit FindNearestAnimalToApproach(int planetIndex, int fromTile, TileSystem ts)
+    {
+        if (AnimalManager.Instance == null || ts == null) return null;
+        CombatUnit nearest = null;
+        int nearestDist = int.MaxValue;
+        foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
+        {
+            if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
+            if (animal.planetIndex != planetIndex || animal.currentTileIndex < 0) continue;
+            int d = ts.GetTileDistance(fromTile, animal.currentTileIndex);
+            if (d > 1 && d < nearestDist) { nearestDist = d; nearest = animal; }
+        }
+        return nearest;
+    }
+
+    /// <summary>
+    /// Find nearest tile index that has a forageable resource (prefer food) within maxRange. Returns -1 if none.
+    /// </summary>
+    private int FindNearestForageableTile(WorkerUnit worker, int planetIndex, int maxRange, ResourceManager rm, TileSystem ts)
+    {
+        if (rm == null || ts == null || worker == null) return -1;
+        int start = worker.currentTileIndex;
+        if (start < 0) return -1;
+
+        var visited = new HashSet<int>();
+        var queue = new Queue<(int tile, int dist)>();
+        queue.Enqueue((start, 0));
+        visited.Add(start);
+        int bestTile = -1;
+        int bestFood = -1;
+        int bestDist = int.MaxValue;
+
+        while (queue.Count > 0)
+        {
+            var (tile, dist) = queue.Dequeue();
+            if (dist > maxRange) continue;
+
+            var inst = rm.GetResourceInstanceAtTile(tile, planetIndex);
+            if (inst != null && inst.data != null && inst.data.canBeForaged)
+            {
+                int foodVal = inst.data.forageFood;
+                if (foodVal > bestFood || (foodVal == bestFood && dist < bestDist))
+                {
+                    bestFood = foodVal;
+                    bestDist = dist;
+                    bestTile = tile;
+                }
+            }
+
+            if (dist >= maxRange) continue;
+            int[] neighbors = ts.GetNeighbors(tile);
+            if (neighbors == null) continue;
+            foreach (int n in neighbors)
+            {
+                if (visited.Contains(n)) continue;
+                visited.Add(n);
+                queue.Enqueue((n, dist + 1));
+            }
+        }
+
+        return bestTile;
     }
     
     /// <summary>

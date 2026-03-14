@@ -28,6 +28,8 @@ public class ImprovementManager : MonoBehaviour
     [Header("UI References")]
     [Tooltip("Optional: assign the ImprovementUpgradeUI instance here so ImprovementInstance can open it without a scene search.")]
     public ImprovementUpgradeUI improvementUpgradeUI;
+    [Tooltip("Optional: world-space label prefab to show an icon above instantiated improvements")]
+    public GameObject improvementLabelPrefab;
 
     // All active build jobs on the map
     private readonly List<BuildJob> jobs = new();
@@ -489,6 +491,85 @@ public class ImprovementManager : MonoBehaviour
     {
         // If you want civ-wide auto build, you can iterate jobs owned by civ
         // and automatically deduct workPoints from idle workers here.
+    }
+
+    /// <summary>
+    /// Apply per-turn yields from owned, non-city improvements to a civilization.
+    /// This iterates all planets and tiles and credits the civ with improvement yields
+    /// (excluding resource-node yields which are handled by ResourceManager).
+    /// </summary>
+    public void ApplyImprovementYieldsToCiv(Civilization civ)
+    {
+        if (civ == null || GameManager.Instance == null) return;
+        var planetData = GameManager.Instance.GetPlanetData();
+        foreach (var kvp in planetData)
+        {
+            int planetIndex = kvp.Key;
+            var planetGen = GameManager.Instance.GetPlanetGenerator(planetIndex);
+            int tileCount = planetGen?.Grid?.TileCount ?? 0;
+            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+            for (int ti = 0; ti < tileCount; ti++)
+            {
+                var td = ts != null ? ts.GetTileData(ti) : (planetGen != null ? planetGen.GetHexTileData(ti) : null);
+                if (td == null) continue;
+                if (td.owner != civ) continue;
+                if (td.HasCity) continue; // cities already contribute their tiles
+                if (!td.HasImprovement) continue;
+
+                var ty = td.GetTotalYield();
+                if (td.HasResource && td.resource != null)
+                {
+                    ty.Food -= td.resource.foodPerTurn;
+                    ty.Gold -= td.resource.goldPerTurn;
+                    ty.Science -= td.resource.sciencePerTurn;
+                    ty.Culture -= td.resource.culturePerTurn;
+                    ty.Policy -= td.resource.policyPointsPerTurn;
+                    ty.Faith -= td.resource.faithPerTurn;
+                }
+
+                if (ty.Food != 0) civ.AddFood(ty.Food);
+                if (ty.Gold != 0) civ.AddGold(ty.Gold);
+                if (ty.Science != 0) civ.science += ty.Science;
+                if (ty.Culture != 0) civ.culture += ty.Culture;
+                if (ty.Policy != 0) civ.AddPolicyPoints(ty.Policy);
+                if (ty.Faith != 0) civ.AddFaith(ty.Faith);
+                // Note: production remains city-scoped and is not applied here.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Apply the immediate yields for a single tile improvement to the owning civ.
+    /// Used to give instant UI feedback when an upgrade is built.
+    /// </summary>
+    public void ApplyImprovementYieldsForTile(int tileIndex, Civilization civ, int planetIndex = -1)
+    {
+        if (civ == null) return;
+        int pIndex = ResolvePlanetIndex(planetIndex);
+        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
+        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null;
+        var td = ts != null ? ts.GetTileData(tileIndex) : (planetGen != null ? planetGen.GetHexTileData(tileIndex) : null);
+        if (td == null) return;
+        if (td.owner != civ) return;
+        if (!td.HasImprovement) return;
+        if (td.HasCity) return;
+
+        var ty = td.GetTotalYield();
+        if (td.HasResource && td.resource != null)
+        {
+            ty.Food -= td.resource.foodPerTurn;
+            ty.Gold -= td.resource.goldPerTurn;
+            ty.Science -= td.resource.sciencePerTurn;
+            ty.Culture -= td.resource.culturePerTurn;
+            ty.Policy -= td.resource.policyPointsPerTurn;
+            ty.Faith -= td.resource.faithPerTurn;
+        }
+
+        if (ty.Food != 0) civ.AddFood(ty.Food);
+        if (ty.Gold != 0) civ.AddGold(ty.Gold);
+        if (ty.Culture != 0) civ.culture += ty.Culture;
+        if (ty.Policy != 0) civ.AddPolicyPoints(ty.Policy);
+        if (ty.Faith != 0) civ.AddFaith(ty.Faith);
     }
 
     private void CompleteJob(BuildJob job)
@@ -1073,6 +1154,91 @@ public class ImprovementManager : MonoBehaviour
         tileData.RecomputeImprovementDefenseAggregates();
         if (planetIndex >= 0) ts?.SetTileDataOnPlanet(tileIndex, tileData, planetIndex);
         else ts?.SetTileData(tileIndex, tileData);
+    }
+
+    /// <summary>
+    /// Apply an improvement upgrade to a tile (visual + persist). Caller must have already consumed requirements (ConsumeRequirements).
+    /// Used by AI to upgrade improvements. Returns true if applied.
+    /// </summary>
+    public bool ApplyUpgradeToTile(int tileIndex, int planetIndex, ImprovementUpgradeData upgrade)
+    {
+        if (upgrade == null) return false;
+        planetIndex = ResolvePlanetIndex(planetIndex);
+        var td = GetTileDataAcrossAllPlanets(tileIndex, planetIndex);
+        if (td == null || td.improvement == null || td.improvementInstanceObject == null) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        GameObject instanceObj = td.improvementInstanceObject;
+        var impInstance = instanceObj.GetComponent<ImprovementInstance>();
+        if (impInstance == null) impInstance = instanceObj.AddComponent<ImprovementInstance>();
+        string upgradeKey = !string.IsNullOrEmpty(upgrade.upgradeId) ? upgrade.upgradeId : upgrade.upgradeName;
+        if (impInstance.HasApplied(upgradeKey)) return false;
+        if (td.builtUpgrades != null && td.builtUpgrades.Contains(upgradeKey)) return false;
+
+        if (upgrade.makesVisualChange)
+        {
+            if (upgrade.replacePrefab != null)
+            {
+                Vector3 pos = instanceObj.transform.position;
+                Quaternion rot = instanceObj.transform.rotation;
+                var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
+                try { var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
+                var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
+                var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
+                newInst.tileIndex = tileIndex;
+                newInst.data = impInstance.data;
+                newInst.appliedUpgrades = new System.Collections.Generic.HashSet<string>(impInstance.appliedUpgrades);
+                newInst.owner = impInstance.owner;
+                newInst.Initialize(tileIndex, td.improvement, planetIndex);
+                if (impInstance.attachedParts != null && impInstance.attachedParts.Count > 0)
+                {
+                    newInst.attachedParts = new System.Collections.Generic.List<GameObject>();
+                    foreach (var child in impInstance.attachedParts)
+                    {
+                        if (child == null) continue;
+                        child.transform.SetParent(newObj.transform, true);
+                        newInst.attachedParts.Add(child);
+                    }
+                }
+                td.improvementInstanceObject = newObj;
+                if (planetIndex >= 0 && ts != null) ts.SetTileDataOnPlanet(tileIndex, td, planetIndex);
+                else if (ts != null) ts.SetTileData(tileIndex, td);
+                Destroy(instanceObj);
+                instanceObj = newObj;
+                impInstance = newInst;
+            }
+            else if (upgrade.attachPrefabs != null && upgrade.attachPrefabs.Length > 0)
+            {
+                for (int i = 0; i < upgrade.attachPrefabs.Length; i++)
+                {
+                    var prefab = upgrade.attachPrefabs[i];
+                    if (prefab == null) continue;
+                    bool already = impInstance.attachedParts != null && impInstance.attachedParts.Any(c => c != null && c.name.Contains(prefab.name));
+                    if (already) continue;
+                    var go = Instantiate(prefab, instanceObj.transform);
+                    Vector3 localPos = Vector3.zero;
+                    Quaternion localRot = Quaternion.identity;
+                    if (upgrade.attachLocalPositions != null && i < upgrade.attachLocalPositions.Length) localPos = upgrade.attachLocalPositions[i];
+                    if (upgrade.attachLocalEulerAngles != null && i < upgrade.attachLocalEulerAngles.Length) localRot = Quaternion.Euler(upgrade.attachLocalEulerAngles[i]);
+                    go.transform.localPosition = localPos;
+                    go.transform.localRotation = localRot;
+                    if (impInstance.attachedParts == null) impInstance.attachedParts = new System.Collections.Generic.List<GameObject>();
+                    impInstance.attachedParts.Add(go);
+                }
+            }
+            impInstance.MarkApplied(upgradeKey);
+        }
+        else
+        {
+            impInstance.MarkApplied(upgradeKey);
+        }
+
+        if (td.builtUpgrades == null) td.builtUpgrades = new System.Collections.Generic.List<string>();
+        if (!td.builtUpgrades.Contains(upgradeKey)) td.builtUpgrades.Add(upgradeKey);
+        td.RecomputeImprovementDefenseAggregates();
+        if (planetIndex >= 0 && ts != null) ts.SetTileDataOnPlanet(tileIndex, td, planetIndex);
+        else if (ts != null) ts.SetTileData(tileIndex, td);
+        return true;
     }
 
     /// <summary>

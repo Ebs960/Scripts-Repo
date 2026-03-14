@@ -54,7 +54,7 @@ MonoBehaviour:
     initialCount: 3
     spawnRate: 1
     maxCount: 10
-    allowedBiomes: 0400000003000000090000000600000005000000
+    allowedBiomes: 04000000030000000900000005000000
   - unitData: {fileID: 11400000, guid: cb5f6325b7f612240afec3401ae65710, type: 2}
     initialCount: 2
     spawnRate: 1
@@ -65,6 +65,16 @@ MonoBehaviour:
     spawnRate: 1
     maxCount: 10
     allowedBiomes: 040000000500000008000000
+  - unitData: {fileID: 11400000, guid: d9d2f2af255a9d34e9ccc54329cb7b22, type: 2}
+    initialCount: 2
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 02000000
+  - unitData: {fileID: 11400000, guid: 833915041baa8db4ea6d2d01e1df614b, type: 2}
+    initialCount: 2
+    spawnRate: 1
+    maxCount: 10
+    allowedBiomes: 080000000500000013000000
   debugSpawning: 0
   animalSpawnBatchSize: 10
   animalSpawnFramesBetweenBatches: 0

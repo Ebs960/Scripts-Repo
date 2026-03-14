@@ -483,11 +483,48 @@ return;
             // Recompute aggregated defense modifiers and persist
             tileData.RecomputeImprovementDefenseAggregates();
             ts?.SetTileData(currentTileIndex, tileData);
-}
+        }
 
-        // Apply immediate yield bonuses to the civilization
-        // Note: For per-turn yields, you'd want to track this in the tile data
-        // and apply during yield calculation
+        // Apply immediate yield bonuses to the civilization so UI and civ pools update instantly.
+        var impMgr = ImprovementManager.Instance;
+        if (impMgr != null && tileData != null)
+        {
+            var owner = tileData.improvementOwner;
+            if (owner != null)
+                impMgr.ApplyImprovementYieldsForTile(currentTileIndex, owner, currentPlanetIndex);
+        }
+
+        // Refresh the upgrade panel so the available upgrade buttons and stored-unit UI reflect the new state.
+        PopulateUpgradeOptions();
+        if (currentImprovement != null && currentImprovement.isShelter)
+        {
+            var ts2 = TileSystem.GetForPlanet(currentPlanetIndex) ?? TileSystem.Instance;
+            var td2 = ts2 != null ? ts2.GetTileData(currentTileIndex) : null;
+            GameObject instObj2 = td2?.improvementInstanceObject ?? instanceObj;
+            if (instObj2 == null)
+            {
+                ClearStoredUnitButtons();
+                if (capacityText != null) capacityText.text = "Capacity: 0/0";
+            }
+            else
+            {
+                var ii = instObj2.GetComponent<ImprovementInstance>();
+                if (ii == null || ii.storedUnits == null || ii.storedUnits.Count == 0)
+                {
+                    ClearStoredUnitButtons();
+                    if (capacityText != null) capacityText.text = $"Capacity: 0/{(ii!=null?ii.GetShelterCapacity():0)}";
+                }
+                else
+                {
+                    PopulateStoredUnitButtons(ii);
+                }
+            }
+        }
+        else
+        {
+            ClearStoredUnitButtons();
+            if (capacityText != null) capacityText.text = "";
+        }
     }
 
     private bool HasUpgrade(ImprovementUpgradeData upgrade)

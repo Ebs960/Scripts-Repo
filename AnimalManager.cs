@@ -197,6 +197,9 @@ public class AnimalManager : MonoBehaviour
                     if (!biomeAllowed) continue;
                 }
 
+                // One unit per tile: do not spawn on tiles already occupied by a unit or city
+                if (IsTileOccupiedByUnitOrCity(pIndex, i)) continue;
+
                 candidates.Add(i);
             }
 
@@ -470,7 +473,10 @@ public class AnimalManager : MonoBehaviour
                         break;
                 }
                 
-                // If couldn't move, break out of movement loop
+                // If behavior had nothing to do (no target, nowhere to flee), still move: wander randomly so animals are always active
+                if (!moved)
+                    moved = HandleNeutralMovement(unit);
+                
                 if (!moved)
                     break;
             }
@@ -676,6 +682,9 @@ return true;
                     continue;
                 }
             }
+
+            // One unit per tile: do not spawn on tiles already occupied by a unit or city
+            if (IsTileOccupiedByUnitOrCity(pIndex, i)) continue;
 
             candidates.Add(i);
         }
@@ -894,6 +903,18 @@ return true;
     {
         if (_spawnComponentDumpById.ContainsKey(instanceId))
             _spawnComponentDumpById.Remove(instanceId);
+    }
+
+    /// <summary>
+    /// Returns true if the tile has a unit or city on the surface layer (one unit per tile — used to avoid spawning on occupied tiles).
+    /// </summary>
+    private static bool IsTileOccupiedByUnitOrCity(int planetIndex, int tileIndex)
+    {
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ == null) return false;
+        var obj = occ.GetOccupantObject(tileIndex, TileLayer.Surface);
+        if (obj == null) return false;
+        return obj.GetComponent<BaseUnit>() != null || obj.GetComponent<City>() != null;
     }
     
     /// <summary>

@@ -344,6 +344,8 @@ public class ResourceManager : MonoBehaviour
             civ.policyPoints  += rd.policyPointsPerTurn * count;
             civ.faith         += rd.faithPerTurn * count;
         }
+
+        // Improvement yields are handled centrally by ImprovementManager to cover non-resource improvements.
     }
 
     /// <summary>

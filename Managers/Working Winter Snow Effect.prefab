@@ -56,9 +56,11 @@ MonoBehaviour:
   driftStrength: 0.6
   spawnAreaHalfWidth: 1000
   spawnHeightAboveCamera: 5
-  biomeFadeSpeed: 0
-  fadeDuration: 0
+  biomeFadeSpeed: 1
+  fadeDuration: 0.1
   cameraManager: {fileID: 0}
+  snowParticleSystem: {fileID: 4704786017382577880}
+  snowMaterial: {fileID: 2100000, guid: 5a1a24fb75e6fcd429ccf91e12b7f5ca, type: 2}
 --- !u!1 &3596431559120744975
 GameObject:
   m_ObjectHideFlags: 0

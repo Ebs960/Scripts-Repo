@@ -399,8 +399,7 @@ MonoBehaviour:
   detailScale: 10000
   detailStrength: 0.019
   atmosphereColor: {r: 0.7921569, g: 0.9346622, b: 1, a: 0.46666667}
-  displacementScale: 0.0647
-  cloudRotationSpeed: 5
+  displacementScale: 0.05
   cloudAltitude: 0.0297
   cloudDensity: 0.069
   cloudScale: 3
@@ -420,23 +419,23 @@ MonoBehaviour:
   mapStyle: 0
   equatorialColor: {r: 0.01, g: 0.3, b: 0.04, a: 1}
   desertSand: {r: 1, g: 0.94884163, b: 0.7754717, a: 1}
-  subtropicalColor: {r: 0.6996491, g: 0.79622644, b: 0.23285857, a: 1}
+  subtropicalColor: {r: 0.84200656, g: 0.93207544, b: 0.41327873, a: 1}
   temperateZoneColor: {r: 0.14177993, g: 0.5471698, b: 0.12698464, a: 1}
-  borealColor: {r: 0.06, g: 0.25, b: 0.1, a: 1}
+  borealColor: {r: 0.120291844, g: 0.4113207, b: 0.18562482, a: 1}
   tundraColor: {r: 1, g: 1, b: 1, a: 1}
-  polarColor: {r: 0.93, g: 0.95, b: 0.97, a: 1}
-  oceanColor: {r: 0.06, g: 0.22, b: 0.45, a: 1}
-  mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 1}
+  polarColor: {r: 0.7528302, g: 0.8764151, b: 1, a: 1}
+  oceanColor: {r: 0, g: 0.4465165, b: 0.97735846, a: 1}
+  mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 0.70980394}
   iceCapSize: 0.5
-  biomeBlend: 0.25
-  biomeNoiseScale: 10
+  biomeBlend: 0.389
+  biomeNoiseScale: 8.3
   biomeNoiseStrength: 0.137
-  colorVibrancy: 1.253
-  smoothness: 0.3401596
+  colorVibrancy: 1.69
+  smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1
-  ambientStrength: 0.12
-  brightness: 1.2
+  ambientStrength: 0.269
+  brightness: 1.98
   seed: 0
   randomizeSeed: 1
   spaceBackgroundMaterial: {fileID: 2100000, guid: 061feb8ef101d384cb361af7707ce5d1, type: 2}

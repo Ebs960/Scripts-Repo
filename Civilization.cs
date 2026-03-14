@@ -244,7 +244,7 @@ public class Civilization : MonoBehaviour
     
     [Header("Consumption Settings")]
     [Tooltip("Minimum food stockpile (prevents going below zero with buffer)")]
-    public int minimumFoodStockpile = -10;
+    public int minimumFoodStockpile = -1;
     [Tooltip("Fallback food consumption for units without foodConsumptionPerTurn set")]
     public int defaultFoodPerCombatUnit = 2;
     [Tooltip("Fallback food consumption for workers without foodConsumptionPerTurn set")]

@@ -54,6 +54,24 @@ public class ImprovementInstance : MonoBehaviour
         this.tileIndex = tileIndex;
         this.data = data;
         this.planetIndex = planetIndex;
+        // Create a world-space label (icon) above the improvement if a prefab is configured
+        try
+        {
+            var mgr = ImprovementManager.Instance;
+            if (mgr.improvementLabelPrefab != null)
+            {
+                // Prefer a dedicated label anchor if the improvement prefab provides one
+                Transform anchor = this.transform.Find("LabelAnchor") ?? this.transform.Find("labelAnchor") ?? this.transform;
+                var labelGO = Instantiate(mgr.improvementLabelPrefab, anchor);
+                var ul = labelGO.GetComponent<UnitLabel>();
+                if (ul != null)
+                {
+                    ul.Initialize(anchor, data.improvementName, owner != null && owner.civData != null ? owner.civData.civName : "", 0, 0);
+                    ul.SetIcon(data != null ? data.icon : null);
+                }
+            }
+        }
+        catch { }
     }
 
     /// <summary>

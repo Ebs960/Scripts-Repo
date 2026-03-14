@@ -190,8 +190,17 @@ public class TileOccupancyManager : MonoBehaviour
     public void SetOccupant(int tile, GameObject occupant, TileLayer layer)
     {
         if (!ValidIndex(tile)) return;
+        int layerIdx = (int)layer;
+        int existingId = occupants[tile, layerIdx];
         int id = occupant != null ? occupant.GetInstanceID() : 0;
-        occupants[tile, (int)layer] = id;
+        // One unit per tile: warn when placing a unit on a tile that already has a different occupant (stacking bug)
+        if (occupant != null && existingId != 0 && existingId != id)
+        {
+            var existingObj = UnitRegistry.GetObject(existingId);
+            string existingName = existingObj != null ? existingObj.name : $"id={existingId}";
+            Debug.LogWarning($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer}: overwriting existing occupant '{existingName}' with '{occupant.name}' (two units on same tile).");
+        }
+        occupants[tile, layerIdx] = id;
 
         if (verboseLogging)
         {

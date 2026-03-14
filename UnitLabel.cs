@@ -71,6 +71,16 @@ public class UnitLabel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         }
     }
 
+    /// <summary>
+    /// Explicitly set the icon sprite (useful for non-unit targets like improvements)
+    /// </summary>
+    public void SetIcon(Sprite icon)
+    {
+        if (iconImage == null) return;
+        iconImage.sprite = icon;
+        iconImage.enabled = icon != null;
+    }
+
     private string GetTooltipString()
     {
         return string.IsNullOrEmpty(cachedUnitName)

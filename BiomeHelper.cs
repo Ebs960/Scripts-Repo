@@ -320,17 +320,17 @@ public static class BiomeHelper {
         // === STANDARD EARTH BIOME LOGIC ===
         // Temperature bands: Arctic <0.15, Cold 0.15-0.35, Temperate 0.35-0.55, Warm 0.55-0.75, Hot >0.75
         
-        // Hot climates (>0.82)
-        if (temperature > 0.82f) {
-            if (moisture < 0.22f) return Biome.Desert;
-            if (moisture < 0.40f) return Biome.Savannah;
-            if (moisture < 0.85f) return Biome.Tropical;
+        // Hot climates (>0.91)
+        if (temperature > 0.91f) {
+            if (moisture < 0.38f) return Biome.Desert;
+            if (moisture < 0.50f) return Biome.Savannah;
+            if (moisture < 0.80f) return Biome.Tropical;
             return Biome.Swamp;
         }
 
-        // Temperate climates (0.50-0.82)
-        if (temperature > 0.50f) {
-            if (moisture < 0.35f) return Biome.Plains;
+        // Temperate climates (0.45-0.82)
+        if (temperature > 0.45f) {
+            if (moisture < 0.22f) return Biome.Plains;
             if (moisture < 0.819) return Biome.Temperate;
             return Biome.Swamp;
         }

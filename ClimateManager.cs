@@ -494,6 +494,23 @@ planetSeasons.Clear();
         return planetSeasons.TryGetValue(planetIndex, out var season) ? season : Season.Spring;
     }
 
+    /// <summary>
+    /// Returns how many turns until Winter on the given planet. Used by AI to plan shelter building.
+    /// Returns 0 if already Winter.
+    /// </summary>
+    public int GetTurnsUntilWinter(int planetIndex = 0)
+    {
+        if (turnsPerSeason <= 0) return 999;
+        int currentTurnNow = GameManager.Instance != null ? GameManager.Instance.currentTurn : currentTurn;
+        Season s = GetSeasonForPlanet(planetIndex);
+        if (s == Season.Winter) return 0;
+        if (!planetSeasonStartTurns.TryGetValue(planetIndex, out int start)) return turnsPerSeason * 3;
+        int turnsInCurrentSeason = currentTurnNow - start;
+        int turnsLeftInSeason = Mathf.Max(0, turnsPerSeason - turnsInCurrentSeason);
+        int seasonsUntilWinter = 2 - (int)s; // Autumn=0, Summer=1, Spring=2
+        return turnsLeftInSeason + Mathf.Max(0, seasonsUntilWinter) * turnsPerSeason;
+    }
+
     private void ApplyWinterMovementPenalty(int planetIndex = 0)
     {
         foreach (var unit in UnitRegistry.GetCombatUnits())

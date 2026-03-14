@@ -129,3 +129,4 @@ MonoBehaviour:
   roadConnectionConfigs:
   - improvement: {fileID: 11400000, guid: ecb0cf50d3baf234fb6e2390de03dd23, type: 2}
   improvementUpgradeUI: {fileID: 0}
+  improvementLabelPrefab: {fileID: 2985757512682955238, guid: 34179e55795ab524d985e7c20dba34dd, type: 3}
