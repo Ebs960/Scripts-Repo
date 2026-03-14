@@ -518,12 +518,34 @@ public class AnimalManager : MonoBehaviour
     {
         // Check if predator has movement points
         if (GetAnimalMovePoints(predator) <= 0) return false;
-        
+
         var target = FindNearestCivilizationUnit(predator);
         if (target == null) return false;
-        
-        // Try to move closer to the target
+
         var ts = TileSystem.GetForPlanet(predator.planetIndex) ?? TileSystem.Instance;
+
+        // If we're already adjacent to the target, perform an attack instead of moving
+        float distToTarget = ts != null ? ts.GetTileDistance(predator.currentTileIndex, target.currentTileIndex) : float.MaxValue;
+        if (distToTarget <= 1f)
+        {
+            var dmg = predator is CombatUnit cu ? cu.CurrentAttack : predator.BaseAttack;
+            var ctx = new BaseUnit.AttackContext
+            {
+                attacker = predator,
+                defender = target,
+                weapon = null,
+                damage = dmg,
+                isRanged = false,
+                isMelee = true
+            };
+
+            // Consume one movement point for the attack to avoid infinite attack loops
+            DeductAnimalMovePoints(predator, 1);
+            predator.PerformAttack(ctx);
+            return true;
+        }
+
+        // Not adjacent: try to move closer to the target
         var neighborIndices = ts != null ? ts.GetNeighbors(predator.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
@@ -532,13 +554,13 @@ public class AnimalManager : MonoBehaviour
                 return neighbor != null && predator.CanMoveTo(index);
             })
             .ToList();
-        
+
         if (validDestinations.Count == 0) return false;
-        
+
         // Find the destination that gets us closest to the target
         int bestDestination = validDestinations[0];
         float minDistance = ts != null ? ts.GetTileDistance(bestDestination, target.currentTileIndex) : float.MaxValue;
-        
+
         foreach (var destination in validDestinations)
         {
             float distance = ts != null ? ts.GetTileDistance(destination, target.currentTileIndex) : float.MaxValue;
@@ -548,11 +570,11 @@ public class AnimalManager : MonoBehaviour
                 bestDestination = destination;
             }
         }
-        
+
         // Deduct movement point and move
         DeductAnimalMovePoints(predator, 1);
         predator.MoveTo(bestDestination);
-return true;
+        return true;
     }
     
     /// <summary>
