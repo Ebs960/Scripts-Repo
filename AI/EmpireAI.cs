@@ -30,6 +30,55 @@ public enum DefensePosture
     Defensive    // pull back, protect assets
 }
 
+// ──────────────────────── HTN-lite: Pillars & Objectives ────────────────────────
+
+/// <summary>
+/// Strategic pillars decomposed from the victory path. 2–3 are active at any time.
+/// These tell OperationalPlanner WHAT to invest in without dictating exact unit actions.
+/// </summary>
+public enum StrategicPillar
+{
+    BuildMilitary,      // produce/train combat units, upgrade equipment
+    SecureEconomy,      // food, production, gold stability
+    AdvanceTech,        // prioritize research
+    SpreadCulture,      // invest in culture, great works
+    ExpandTerritory,    // found new cities
+    ControlResources,   // secure key resource tiles
+    ProjectPower,       // position military near frontiers/enemies
+    DevelopInfra,       // build improvements, upgrades
+    FormAlliances       // diplomatic outreach
+}
+
+/// <summary>
+/// A concrete multi-turn operational task derived from strategic pillars.
+/// Lives for several turns until completed or invalidated.
+/// </summary>
+public class OperationalObjective
+{
+    public ObjectiveType Type;
+    public int TargetTile = -1;
+    public int TargetCivId = -1;
+    public int PlanetIndex;
+    public float Priority;
+    public int AssignedTurn;
+    public bool IsComplete;
+
+    public bool IsStale(int currentTurn, int maxAge = 12) => (currentTurn - AssignedTurn) > maxAge;
+}
+
+public enum ObjectiveType
+{
+    RaiseArmy,         // build/recruit military units
+    SettleCity,        // found a city at a specific tile
+    SecureResource,    // claim/improve a resource tile
+    AttackTarget,      // attack a specific civ/city
+    DefendPosition,    // hold a tile or area
+    ExploreFrontier,   // scout unknown territory
+    BuildInfra,        // build improvements on owned tiles
+    ResearchPriority,  // focus science output
+    CulturalPush       // focus culture output
+}
+
 // ──────────────────────── EmpireIntent (output each turn) ────────────────────────
 
 /// <summary>
@@ -45,6 +94,11 @@ public class EmpireIntent
     public float ExplorationPriority;  // 0–1
     public readonly List<WarTarget> WarTargets = new();
     public readonly List<ExpansionTarget> ExpansionTargets = new();
+
+    // HTN-lite: active pillars and objectives
+    public VictoryType VictoryPath;
+    public readonly List<StrategicPillar> ActivePillars = new();
+    public readonly List<OperationalObjective> ActiveObjectives = new();
 
     // Score modifiers applied to all commands of the matching type
     public float AttackBonus;
@@ -92,6 +146,14 @@ public class EmpireAI
     public int TurnsSinceGoalChange { get; private set; }
     public int LastUpdateTurn { get; private set; } = -1;
 
+    // HTN-lite: victory path chosen from leader preference, reassessed periodically
+    public VictoryType CurrentVictoryPath { get; private set; } = VictoryType.Domination;
+    private int turnsSinceVictoryReeval;
+    private const int VICTORY_REEVAL_INTERVAL = 15;
+
+    // Active objectives (persist across turns)
+    private readonly List<OperationalObjective> objectives = new();
+
     // Grudge ledger: civInstanceId → accumulated grievance (decays slowly)
     private readonly Dictionary<int, float> grudges = new();
 
@@ -121,6 +183,15 @@ public class EmpireAI
         if (turn == LastUpdateTurn) return; // already updated
         LastUpdateTurn = turn;
 
+        // HTN Step 1: Choose / reassess victory path
+        UpdateVictoryPath(civ, ctx);
+
+        // HTN Step 2: Derive strategic pillars from victory path + situation
+        var pillars = DerivePillars(civ, ctx);
+
+        // HTN Step 3: Generate/update operational objectives from pillars
+        UpdateObjectives(civ, ctx, pillars);
+
         UpdateGrudges(civ);
         UpdateWarTargets(civ, ctx);
         UpdateExpansionTargets(civ, ctx);
@@ -137,7 +208,7 @@ public class EmpireAI
             TurnsSinceGoalChange++;
         }
 
-        BuildIntent(civ, ctx);
+        BuildIntent(civ, ctx, pillars);
     }
 
     // ════════════════════════════════════════════════════════
@@ -164,6 +235,14 @@ public class EmpireAI
         AddMomentum(StrategicGoal.Develop, ref develop);
         AddMomentum(StrategicGoal.Defend, ref defend);
         AddMomentum(StrategicGoal.Attack, ref attack);
+
+        // HTN: victory path biases long-term goal selection
+        survive += VictoryPathGoalBias(StrategicGoal.Survive);
+        explore += VictoryPathGoalBias(StrategicGoal.Explore);
+        expand  += VictoryPathGoalBias(StrategicGoal.Expand);
+        develop += VictoryPathGoalBias(StrategicGoal.Develop);
+        defend  += VictoryPathGoalBias(StrategicGoal.Defend);
+        attack  += VictoryPathGoalBias(StrategicGoal.Attack);
 
         // Pick highest
         StrategicGoal best = StrategicGoal.Develop;
@@ -475,7 +554,7 @@ public class EmpireAI
     //  Build the intent object with score modifiers
     // ════════════════════════════════════════════════════════
 
-    private void BuildIntent(Civilization civ, AIContext ctx)
+    private void BuildIntent(Civilization civ, AIContext ctx, List<StrategicPillar> pillars)
     {
         intent.Goal = CurrentGoal;
         intent.Economy = ChooseEconomyFocus(civ, ctx);
@@ -483,7 +562,15 @@ public class EmpireAI
         intent.RiskTolerance = ComputeRiskTolerance(civ, ctx);
         intent.ExplorationPriority = ComputeExplorationPriority(ctx);
 
-        // Score modifiers: subtle nudges per goal
+        // HTN: publish pillars and objectives on intent
+        intent.VictoryPath = CurrentVictoryPath;
+        intent.ActivePillars.Clear();
+        intent.ActivePillars.AddRange(pillars);
+        intent.ActiveObjectives.Clear();
+        foreach (var obj in objectives)
+            if (!obj.IsComplete) intent.ActiveObjectives.Add(obj);
+
+        // Score modifiers: base from goal, then additively from pillars
         intent.AttackBonus = 0f;
         intent.ExploreBonus = 0f;
         intent.ForageBonus = 0f;
@@ -517,12 +604,30 @@ public class EmpireAI
                 break;
         }
 
+        // Pillar-driven bonus layering (additive on top of goal bonuses)
+        foreach (var pillar in pillars)
+        {
+            switch (pillar)
+            {
+                case StrategicPillar.BuildMilitary:   intent.AttackBonus  += 2f; break;
+                case StrategicPillar.SecureEconomy:    intent.ForageBonus  += 2f; break;
+                case StrategicPillar.ExpandTerritory:  intent.SettleBonus  += 2f; break;
+                case StrategicPillar.DevelopInfra:     intent.BuildBonus   += 2f; break;
+                case StrategicPillar.ProjectPower:     intent.AttackBonus  += 1f; intent.DefendBonus += 1f; break;
+                case StrategicPillar.ControlResources: intent.ForageBonus  += 1f; intent.BuildBonus  += 1f; break;
+                case StrategicPillar.AdvanceTech:      intent.BuildBonus   += 1f; break;
+                case StrategicPillar.SpreadCulture:    intent.BuildBonus   += 1f; break;
+                case StrategicPillar.FormAlliances:    intent.DefendBonus  += 1f; break;
+            }
+        }
+
         if (Debug.isDebugBuild)
         {
             string civName = civ.civData != null ? civ.civData.civName : "?";
-            Debug.Log($"[EmpireAI] {civName}: Goal={CurrentGoal} Economy={intent.Economy} " +
-                      $"Posture={intent.Posture} Risk={intent.RiskTolerance:F2} " +
-                      $"WarTargets={intent.WarTargets.Count} ExpTargets={intent.ExpansionTargets.Count}");
+            string pillarStr = string.Join(",", pillars);
+            Debug.Log($"[EmpireAI] {civName}: Victory={CurrentVictoryPath} Goal={CurrentGoal} " +
+                      $"Pillars=[{pillarStr}] Economy={intent.Economy} Posture={intent.Posture} " +
+                      $"Risk={intent.RiskTolerance:F2} Objectives={intent.ActiveObjectives.Count}");
         }
     }
 
@@ -603,5 +708,294 @@ public class EmpireAI
         if (CurrentGoal == StrategicGoal.Explore) p = Mathf.Max(p, 0.7f);
         if (CurrentGoal == StrategicGoal.Attack) p *= 0.3f;
         return Mathf.Clamp01(p);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  HTN-lite: Victory Path → Pillars → Objectives
+    //
+    //  Hierarchical task decomposition (lightweight):
+    //    Level 1: ChooseVictoryGoal() — "how do we want to win?"
+    //    Level 2: DerivePillars()     — "what investments support that?"
+    //    Level 3: GenerateObjectives()— "what concrete tasks do we need?"
+    //  OperationalPlanner converts objectives into unit assignments.
+    // ════════════════════════════════════════════════════════
+
+    // ──── Level 1: Victory path ────
+
+    private void UpdateVictoryPath(Civilization civ, AIContext ctx)
+    {
+        turnsSinceVictoryReeval++;
+        if (turnsSinceVictoryReeval < VICTORY_REEVAL_INTERVAL && LastUpdateTurn > 0) return;
+        turnsSinceVictoryReeval = 0;
+
+        // Start from leader preference
+        VictoryType best = civ.leader != null ? civ.leader.preferredVictory : VictoryType.Domination;
+
+        // Reassess based on current progress and situation
+        float bestScore = ScoreVictoryPath(civ, ctx, best);
+        foreach (VictoryType vt in System.Enum.GetValues(typeof(VictoryType)))
+        {
+            if (vt == best) continue;
+            float s = ScoreVictoryPath(civ, ctx, vt);
+            if (s > bestScore + 5f) { bestScore = s; best = vt; } // need significant advantage to switch
+        }
+
+        CurrentVictoryPath = best;
+    }
+
+    private float ScoreVictoryPath(Civilization civ, AIContext ctx, VictoryType vt)
+    {
+        float s = 0f;
+        // Leader preference
+        if (civ.leader != null && civ.leader.preferredVictory == vt) s += 10f;
+
+        switch (vt)
+        {
+            case VictoryType.Domination:
+                s += ctx.TotalMilitaryStrength * 0.3f;
+                if (civ.leader != null) s += civ.leader.militaryFocus * 5f;
+                if (civ.leader != null && civ.leader.aggressiveness >= 7) s += 5f;
+                break;
+            case VictoryType.Science:
+                int techs = civ.researchedTechs?.Count ?? 0;
+                s += techs * 2f;
+                if (civ.leader != null) s += civ.leader.scientificFocus * 5f;
+                break;
+            case VictoryType.Culture:
+                int cultures = civ.researchedCultures?.Count ?? 0;
+                s += cultures * 2f;
+                if (civ.leader != null) s += civ.leader.culturalFocus * 5f;
+                break;
+            case VictoryType.Religious:
+                if (civ.leader != null) s += civ.leader.religiousFocus * 5f;
+                break;
+            case VictoryType.Economic:
+                s += civ.gold * 0.1f;
+                if (civ.leader != null) s += civ.leader.economicFocus * 5f;
+                break;
+            case VictoryType.Diplomatic:
+                int allies = 0;
+                if (civ.relations != null)
+                    foreach (var r in civ.relations.Values)
+                        if (r == DiplomaticState.Alliance) allies++;
+                s += allies * 5f;
+                if (civ.leader != null && civ.leader.prefersAlliance) s += 8f;
+                break;
+        }
+        return s;
+    }
+
+    // ──── Level 2: Strategic pillars ────
+
+    /// <summary>
+    /// Derive 2–3 concurrent strategic pillars from the victory path and current situation.
+    /// Pillars persist implicitly through the intent — they're recalculated each turn but
+    /// are stable because the inputs (victory path, situation) change slowly.
+    /// </summary>
+    private List<StrategicPillar> DerivePillars(Civilization civ, AIContext ctx)
+    {
+        var pillars = new List<StrategicPillar>(3);
+
+        // Primary pillar: always derived from victory path
+        switch (CurrentVictoryPath)
+        {
+            case VictoryType.Domination:
+                pillars.Add(StrategicPillar.BuildMilitary);
+                break;
+            case VictoryType.Science:
+                pillars.Add(StrategicPillar.AdvanceTech);
+                break;
+            case VictoryType.Culture:
+                pillars.Add(StrategicPillar.SpreadCulture);
+                break;
+            case VictoryType.Religious:
+                pillars.Add(StrategicPillar.SpreadCulture); // reuse: culture mechanics similar
+                break;
+            case VictoryType.Economic:
+                pillars.Add(StrategicPillar.SecureEconomy);
+                break;
+            case VictoryType.Diplomatic:
+                pillars.Add(StrategicPillar.FormAlliances);
+                break;
+        }
+
+        // Secondary pillar: situation-driven
+        if (ctx.IsFamine || civ.food < FOOD_CRISIS_THRESHOLD)
+            pillars.Add(StrategicPillar.SecureEconomy);
+        else if (ctx.ExplorationPercent < 0.3f)
+            pillars.Add(StrategicPillar.ExpandTerritory);
+        else if (ctx.TotalEnemyStrength > ctx.TotalMilitaryStrength)
+            pillars.Add(StrategicPillar.BuildMilitary);
+        else if (civ.CanFoundMoreCities() && intent.ExpansionTargets.Count > 0)
+            pillars.Add(StrategicPillar.ExpandTerritory);
+        else
+            pillars.Add(StrategicPillar.DevelopInfra);
+
+        // Tertiary pillar: opportunity-driven
+        bool hasResourceOpportunity = false;
+        foreach (var kv in ctx.ResourceHotspots)
+            if (kv.Value != null && kv.Value.Count > 3) { hasResourceOpportunity = true; break; }
+        if (hasResourceOpportunity && !pillars.Contains(StrategicPillar.ControlResources))
+            pillars.Add(StrategicPillar.ControlResources);
+        else if (intent.WarTargets.Count > 0 && !pillars.Contains(StrategicPillar.ProjectPower))
+            pillars.Add(StrategicPillar.ProjectPower);
+        else if (!pillars.Contains(StrategicPillar.SecureEconomy))
+            pillars.Add(StrategicPillar.SecureEconomy);
+
+        // Deduplicate (can happen if situation matches victory path)
+        var unique = new List<StrategicPillar>();
+        foreach (var p in pillars)
+            if (!unique.Contains(p)) unique.Add(p);
+        return unique;
+    }
+
+    // ──── Level 3: Operational objectives ────
+
+    /// <summary>
+    /// Generate / update concrete multi-turn objectives from pillars.
+    /// Objectives persist across turns — only pruned when complete, stale, or invalid.
+    /// </summary>
+    private void UpdateObjectives(Civilization civ, AIContext ctx, List<StrategicPillar> pillars)
+    {
+        int turn = ctx.TurnNumber;
+
+        // Prune stale/completed
+        objectives.RemoveAll(o => o.IsComplete || o.IsStale(turn));
+
+        // Cap at 6 active objectives
+        if (objectives.Count >= 6) return;
+
+        foreach (var pillar in pillars)
+        {
+            if (objectives.Count >= 6) break;
+            switch (pillar)
+            {
+                case StrategicPillar.BuildMilitary:
+                    if (!HasObjectiveOfType(ObjectiveType.RaiseArmy))
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.RaiseArmy,
+                            Priority = 8f, AssignedTurn = turn
+                        });
+                    break;
+
+                case StrategicPillar.ExpandTerritory:
+                    if (!HasObjectiveOfType(ObjectiveType.SettleCity) && intent.ExpansionTargets.Count > 0)
+                    {
+                        var target = intent.ExpansionTargets[0];
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.SettleCity,
+                            TargetTile = target.TileIndex, PlanetIndex = target.PlanetIndex,
+                            Priority = target.Score * 0.3f, AssignedTurn = turn
+                        });
+                    }
+                    break;
+
+                case StrategicPillar.ControlResources:
+                    if (!HasObjectiveOfType(ObjectiveType.SecureResource))
+                    {
+                        foreach (var kv in ctx.ResourceHotspots)
+                        {
+                            if (kv.Value == null || kv.Value.Count == 0) continue;
+                            var best = kv.Value[0];
+                            objectives.Add(new OperationalObjective
+                            {
+                                Type = ObjectiveType.SecureResource,
+                                TargetTile = best.TileIndex, PlanetIndex = best.PlanetIndex,
+                                Priority = best.Score * 0.4f, AssignedTurn = turn
+                            });
+                            break;
+                        }
+                    }
+                    break;
+
+                case StrategicPillar.ProjectPower:
+                    if (!HasObjectiveOfType(ObjectiveType.AttackTarget) && intent.WarTargets.Count > 0)
+                    {
+                        var wt = intent.WarTargets[0];
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.AttackTarget,
+                            TargetTile = wt.PreferredCityTile, TargetCivId = wt.CivInstanceId,
+                            Priority = wt.Priority * 0.5f, AssignedTurn = turn
+                        });
+                    }
+                    break;
+
+                case StrategicPillar.DevelopInfra:
+                    if (!HasObjectiveOfType(ObjectiveType.BuildInfra))
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.BuildInfra,
+                            Priority = 5f, AssignedTurn = turn
+                        });
+                    break;
+
+                case StrategicPillar.SecureEconomy:
+                    if (!HasObjectiveOfType(ObjectiveType.SecureResource) && !HasObjectiveOfType(ObjectiveType.BuildInfra))
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.BuildInfra,
+                            Priority = 6f, AssignedTurn = turn
+                        });
+                    break;
+
+                case StrategicPillar.AdvanceTech:
+                    if (!HasObjectiveOfType(ObjectiveType.ResearchPriority))
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.ResearchPriority,
+                            Priority = 7f, AssignedTurn = turn
+                        });
+                    break;
+
+                case StrategicPillar.SpreadCulture:
+                    if (!HasObjectiveOfType(ObjectiveType.CulturalPush))
+                        objectives.Add(new OperationalObjective
+                        {
+                            Type = ObjectiveType.CulturalPush,
+                            Priority = 6f, AssignedTurn = turn
+                        });
+                    break;
+            }
+        }
+
+        // Ensure at least one exploration objective if map is largely unknown
+        if (ctx.ExplorationPercent < 0.5f && !HasObjectiveOfType(ObjectiveType.ExploreFrontier) && objectives.Count < 6)
+        {
+            objectives.Add(new OperationalObjective
+            {
+                Type = ObjectiveType.ExploreFrontier,
+                Priority = 4f, AssignedTurn = turn
+            });
+        }
+    }
+
+    private bool HasObjectiveOfType(ObjectiveType type)
+    {
+        foreach (var o in objectives) if (o.Type == type && !o.IsComplete) return true;
+        return false;
+    }
+
+    // ──── Victory path influence on goal scoring ────
+    // These biases make the strategic goal evaluation "aware" of the long-term plan.
+
+    private float VictoryPathGoalBias(StrategicGoal goal)
+    {
+        return (CurrentVictoryPath, goal) switch
+        {
+            (VictoryType.Domination, StrategicGoal.Attack)  => 5f,
+            (VictoryType.Domination, StrategicGoal.Defend)  => 2f,
+            (VictoryType.Science,    StrategicGoal.Develop) => 5f,
+            (VictoryType.Science,    StrategicGoal.Explore) => 2f,
+            (VictoryType.Culture,    StrategicGoal.Develop) => 5f,
+            (VictoryType.Religious,  StrategicGoal.Develop) => 4f,
+            (VictoryType.Economic,   StrategicGoal.Develop) => 5f,
+            (VictoryType.Economic,   StrategicGoal.Expand)  => 3f,
+            (VictoryType.Diplomatic, StrategicGoal.Defend)  => 3f,
+            (VictoryType.Diplomatic, StrategicGoal.Develop) => 3f,
+            _ => 0f
+        };
     }
 }

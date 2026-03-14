@@ -33,6 +33,9 @@ public class AIContext
     public bool HasCities;
     public float ExplorationPercent;  // 0–1
 
+    // Budget (controls scan limits)
+    private AiBudget _budget;
+
     // ──────────────── Structs ────────────────
 
     public struct ResourceHotspot
@@ -76,8 +79,12 @@ public class AIContext
 
     // ──────────────── Build (call once per AI turn) ────────────────
 
-    public void Build(Civilization civ, Dictionary<int, DangerMap> dangerMaps)
+    /// <summary>
+    /// Rebuild all caches for this turn. Optional AiBudget controls scan limits.
+    /// </summary>
+    public void Build(Civilization civ, Dictionary<int, DangerMap> dangerMaps, AiBudget budget = null)
     {
+        _budget = budget;
         Civ = civ;
         TurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
 
@@ -266,7 +273,7 @@ public class AIContext
     // ──────────────── City site candidates ────────────────
     // Scans explored land tiles for settlement quality. Expensive, so capped.
 
-    private const int MAX_CITY_SITE_SCAN = 300;
+    private int MaxCitySiteScan => _budget?.CitySiteScanLimit ?? 300;
 
     private void BuildCitySites(Civilization civ, int planetIndex)
     {
@@ -285,7 +292,7 @@ public class AIContext
         var candidates = new List<CityCandidate>();
         int scanned = 0;
 
-        for (int i = 0; i < fog.Length && scanned < MAX_CITY_SITE_SCAN; i++)
+        for (int i = 0; i < fog.Length && scanned < MaxCitySiteScan; i++)
         {
             if (fog[i] == 0) continue;
             var td = ts.GetTileData(i);

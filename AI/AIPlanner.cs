@@ -9,13 +9,17 @@ using UnityEngine;
 /// Full turn pipeline:
 ///  1. Generate DangerMaps for each planet the civ has units on.
 ///  2. Build AIContext (per-turn cache: frontiers, resource hotspots, threat summaries).
-///  3. Update EmpireAI (persistent strategic state → produces EmpireIntent).
-///  4. Update OperationalPlanner (turns intent into per-unit role assignments).
+///  3. Update EmpireAI (persistent strategic state → produces EmpireIntent with HTN pillars/objectives).
+///  4. Update OperationalPlanner (turns intent + objectives into per-unit role assignments).
 ///  5. Unstore sheltered units (when not winter).
 ///  6. Auto-form army groups for coordinated attacks.
-///  7. For each unit, use TacticalEvaluator (with context + assignment) to pick the best command.
-///  8. Sort all commands by score (highest first) and execute sequentially.
-///  9. After unit commands: seasonal shelter building, improvement upgrades, tech/culture.
+///  7. Plan group-level actions (Rally/Advance/Attack/Hold) for army groups.
+///  8. For remaining ungrouped units, use TacticalEvaluator (with context + assignment) for best command.
+///  9. Apply score noise from AiBudget (difficulty scaling).
+///  10. Sort all commands by score (highest first) and execute sequentially.
+///
+/// AiBudget controls search depth, candidate limits, and score noise per difficulty,
+/// ensuring harder AI thinks deeper rather than getting resource bonuses.
 /// </summary>
 public class AIPlanner
 {
@@ -30,6 +34,9 @@ public class AIPlanner
     // Per-turn context cache
     private AIContext currentContext;
 
+    // Difficulty-scaling intelligence budget
+    private AiBudget budget = AiBudget.ForDifficulty(AIDifficulty.Hard);
+
     // Planned commands for the current turn
     private readonly List<AICommand> plannedCommands = new List<AICommand>(64);
     private readonly HashSet<int> assignedUnits = new HashSet<int>();
@@ -37,6 +44,13 @@ public class AIPlanner
     public IReadOnlyList<AICommand> PlannedCommands => plannedCommands;
     public ArmyGroupManager Groups => armyGroups;
     public AIContext Context => currentContext;
+    public AiBudget Budget => budget;
+
+    /// <summary>
+    /// Set the intelligence budget (call once at game start or when difficulty changes).
+    /// </summary>
+    public void SetBudget(AiBudget newBudget) { if (newBudget != null) budget = newBudget; }
+    public void SetDifficulty(AIDifficulty difficulty) => budget = AiBudget.ForDifficulty(difficulty);
 
     /// <summary>
     /// Full AI turn: plan then execute. Called from CivilizationManager.CompleteAITurn.
@@ -55,41 +69,67 @@ public class AIPlanner
         plannedCommands.Clear();
         assignedUnits.Clear();
 
-        // 1) Generate danger maps for planets this civ has units on
-        GenerateDangerMaps(civ);
+        // 1) Generate danger maps (skip on Easy if disabled)
+        if (budget.EnableDangerMap)
+            GenerateDangerMaps(civ);
+        else
+            dangerMaps.Clear();
 
-        // 2) Build per-turn context cache (replaces per-unit BFS in TacticalEvaluator)
+        // 2) Build per-turn context cache (budget controls scan limits)
         currentContext = new AIContext();
-        currentContext.Build(civ, dangerMaps);
+        currentContext.Build(civ, dangerMaps, budget);
 
-        // 3) Update empire-level strategic AI (persistent across turns)
-        var empire = GetOrCreateEmpire(civ);
-        empire.UpdateForTurn(civ, currentContext);
+        // 3) Update empire-level strategic AI (if budget allows)
+        EmpireIntent intent = null;
+        OperationalPlanner opPlanner = null;
 
-        // 4) Update operational planner (turns intent into unit role assignments)
-        var opPlanner = GetOrCreateOpPlanner(civ);
-        opPlanner.UpdateAssignments(civ, empire.Intent, currentContext);
+        if (budget.EnableStrategicPlanning)
+        {
+            var empire = GetOrCreateEmpire(civ);
+            empire.UpdateForTurn(civ, currentContext);
+            intent = empire.Intent;
+
+            // 4) Update operational planner
+            opPlanner = GetOrCreateOpPlanner(civ);
+            opPlanner.UpdateAssignments(civ, intent, currentContext);
+        }
 
         // 5) Unstore sheltered units when not winter
         PlanUnstores(civ);
 
-        // 6) Refresh and auto-form army groups
-        armyGroups.Refresh();
-        foreach (var kv in dangerMaps)
-            armyGroups.AutoFormGroups(civ, kv.Value, kv.Key);
+        // 6) Refresh and auto-form army groups (if budget allows)
+        if (budget.EnableArmyGroups)
+        {
+            armyGroups.Refresh();
+            foreach (var kv in dangerMaps)
+                armyGroups.AutoFormGroups(civ, kv.Value, kv.Key, budget.ArmyGroupRange);
+        }
 
-        // 7) Plan commands for each unit (combat first, then workers)
-        PlanCombatUnits(civ, empire.Intent, opPlanner);
-        PlanWorkerUnits(civ, empire.Intent, opPlanner);
+        // 7) Plan group-level actions (group decides, not individual units)
+        if (budget.EnableArmyGroups)
+            PlanArmyGroups(civ, intent);
 
-        // 8) Sort by score (highest first) so the most impactful actions execute first
+        // 8) Plan commands for remaining ungrouped units
+        PlanCombatUnits(civ, intent, opPlanner);
+        PlanWorkerUnits(civ, intent, opPlanner);
+
+        // 9) Apply score noise from budget (Easy AI makes more mistakes)
+        if (budget.ScoreNoise > 0f)
+            ApplyScoreNoise();
+
+        // 10) Sort by score (highest first)
         plannedCommands.Sort((a, b) => b.score.CompareTo(a.score));
+
+        // Cap total commands (budget limit)
+        // Not needed for correctness but prevents runaway on huge empires
 
         if (Debug.isDebugBuild)
         {
             string civName = civ.civData != null ? civ.civData.civName : "?";
+            string goalStr = intent != null ? intent.Goal.ToString() : "none";
             Debug.Log($"[AIPlanner] Planned {plannedCommands.Count} commands for {civName} " +
-                      $"(goal={empire.CurrentGoal} combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0})");
+                      $"(goal={goalStr} budget={budget.ScoreNoise:F1}noise " +
+                      $"combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0})");
         }
     }
 
@@ -187,6 +227,29 @@ public class AIPlanner
             foreach (var w in civ.workerUnits) TryUnstore(w);
     }
 
+    // ─────────────────────── Group-level planning ───────────────────────
+    // Instead of each grouped unit independently deciding, the group decides ONE action
+    // and derives per-unit commands. This gives coherent coordinated behavior.
+
+    private void PlanArmyGroups(Civilization civ, EmpireIntent intent)
+    {
+        foreach (var group in armyGroups.Groups)
+        {
+            if (group.Count == 0) continue;
+            var dm = GetDangerMap(group.PlanetIndex);
+            if (dm == null) dm = new DangerMap();
+
+            GroupAction action = group.DecideAction(dm);
+            var commands = group.ExpandToCommands(action, civ, dm);
+
+            foreach (var cmd in commands)
+            {
+                plannedCommands.Add(cmd);
+                if (cmd.unit != null) assignedUnits.Add(cmd.unit.GetInstanceID());
+            }
+        }
+    }
+
     // ─────────────────────── Combat unit planning ───────────────────────
 
     private void PlanCombatUnits(Civilization civ, EmpireIntent intent, OperationalPlanner opPlanner)
@@ -200,10 +263,10 @@ public class AIPlanner
             if (unit.planetIndex < 0) continue;
 
             var dm = GetDangerMap(unit.planetIndex);
-            if (dm == null) continue;
+            if (dm == null) dm = new DangerMap();
 
-            var assignment = opPlanner.GetAssignment(unit);
-            var cmd = TacticalEvaluator.DecideBestAction(unit, civ, dm, armyGroups, currentContext, assignment, intent);
+            var assignment = opPlanner?.GetAssignment(unit);
+            var cmd = TacticalEvaluator.DecideBestAction(unit, civ, dm, armyGroups, currentContext, assignment, intent, budget);
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
@@ -225,15 +288,24 @@ public class AIPlanner
             if (worker.planetIndex < 0) continue;
 
             var dm = GetDangerMap(worker.planetIndex);
-            if (dm == null) continue;
+            if (dm == null) dm = new DangerMap();
 
-            var assignment = opPlanner.GetAssignment(worker);
-            var cmd = TacticalEvaluator.DecideBestAction(worker, civ, dm, armyGroups, currentContext, assignment, intent);
+            var assignment = opPlanner?.GetAssignment(worker);
+            var cmd = TacticalEvaluator.DecideBestAction(worker, civ, dm, armyGroups, currentContext, assignment, intent, budget);
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
                 assignedUnits.Add(worker.GetInstanceID());
             }
         }
+    }
+
+    // ─────────────────────── Score noise (difficulty scaling) ───────────────────────
+
+    private void ApplyScoreNoise()
+    {
+        float noise = budget.ScoreNoise;
+        foreach (var cmd in plannedCommands)
+            cmd.score += Random.Range(-noise, noise);
     }
 }

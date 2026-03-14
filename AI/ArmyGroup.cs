@@ -2,9 +2,26 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+// ──────────────────────── Group-level action ────────────────────────
+
+/// <summary>
+/// Instead of each unit independently deciding, the group decides one action.
+/// Per-unit commands are derived from the group action — giving coherent coordinated behavior.
+/// </summary>
+public enum GroupAction
+{
+    Rally,    // group not ready — all members move toward rally tile
+    Advance,  // group ready — all members advance toward target
+    Attack,   // group at target — all members engage nearby enemies
+    Hold      // group defending a position — fortify or attack nearby threats
+}
+
 /// <summary>
 /// A coordinated group of combat units that share a target. Units gather at a rally point
 /// before advancing, preventing suicidal trickle attacks.
+///
+/// Group-level decisions reduce micromanagement: one decision per group instead of per-unit.
+/// The group chooses Rally/Advance/Attack/Hold, then emits per-unit AICommands accordingly.
 /// </summary>
 public class ArmyGroup
 {
@@ -41,6 +58,268 @@ public class ArmyGroup
     public void CleanupDead()
     {
         members.RemoveAll(u => u == null || u.currentHealth <= 0);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  Group-level decision + command expansion
+    // ════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Decide the group's collective action based on readiness and proximity to target.
+    /// </summary>
+    public GroupAction DecideAction(DangerMap dangerMap)
+    {
+        if (Count == 0) return GroupAction.Hold;
+        var ts = TileSystem.GetForPlanet(PlanetIndex) ?? TileSystem.Instance;
+        if (ts == null) return GroupAction.Hold;
+
+        // Average distance of members to target
+        float avgDistToTarget = 0f;
+        int count = 0;
+        foreach (var u in members)
+        {
+            if (u == null || u.currentTileIndex < 0) continue;
+            avgDistToTarget += ts.GetTileDistance(u.currentTileIndex, TargetTile);
+            count++;
+        }
+        if (count > 0) avgDistToTarget /= count;
+
+        // At target: Attack
+        if (avgDistToTarget <= 2f) return GroupAction.Attack;
+
+        // Ready and can advance: Advance
+        if (IsReady) return GroupAction.Advance;
+
+        // Not ready: Rally (gather at rally point)
+        return GroupAction.Rally;
+    }
+
+    /// <summary>
+    /// Expand the group action into per-unit AICommands. Returns commands for all members.
+    /// This replaces per-unit TacticalEvaluator calls for grouped units.
+    /// </summary>
+    public List<AICommand> ExpandToCommands(GroupAction action, Civilization civ, DangerMap dangerMap)
+    {
+        var commands = new List<AICommand>(members.Count);
+        var ts = TileSystem.GetForPlanet(PlanetIndex) ?? TileSystem.Instance;
+        if (ts == null) return commands;
+
+        switch (action)
+        {
+            case GroupAction.Rally:
+                ExpandRally(commands, ts, dangerMap);
+                break;
+            case GroupAction.Advance:
+                ExpandAdvance(commands, ts, dangerMap);
+                break;
+            case GroupAction.Attack:
+                ExpandAttack(commands, civ, ts, dangerMap);
+                break;
+            case GroupAction.Hold:
+                ExpandHold(commands, ts, dangerMap);
+                break;
+        }
+        return commands;
+    }
+
+    private void ExpandRally(List<AICommand> commands, TileSystem ts, DangerMap dangerMap)
+    {
+        int target = RallyTile >= 0 ? RallyTile : TargetTile;
+        foreach (var unit in members)
+        {
+            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
+            int dist = ts.GetTileDistance(unit.currentTileIndex, target);
+            if (dist <= 1)
+            {
+                // Already at rally — fortify while waiting
+                commands.Add(new AIFortifyCommand
+                {
+                    unit = unit, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreFortify(unit, dangerMap) + 3f
+                });
+            }
+            else
+            {
+                // Move toward rally point via best adjacent tile
+                int bestTile = FindBestStepToward(unit, target, ts, dangerMap);
+                if (bestTile >= 0)
+                {
+                    commands.Add(new AIMoveCommand
+                    {
+                        unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                        score = AIScorer.ScoreTileForMovement(unit, bestTile, target, dangerMap) + 8f
+                    });
+                }
+            }
+        }
+    }
+
+    private void ExpandAdvance(List<AICommand> commands, TileSystem ts, DangerMap dangerMap)
+    {
+        foreach (var unit in members)
+        {
+            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
+
+            // Can we attack something adjacent? Opportunistic attacks while advancing.
+            var adjacent = FindAdjacentEnemy(unit, ts);
+            if (adjacent != null && CanAttackTarget(unit, adjacent))
+            {
+                commands.Add(new AIAttackCommand
+                {
+                    unit = unit, target = adjacent, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreAttack(unit, adjacent, dangerMap) + 5f
+                });
+                continue;
+            }
+
+            // Otherwise move toward target
+            int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
+            if (bestTile >= 0)
+            {
+                commands.Add(new AIMoveCommand
+                {
+                    unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 10f
+                });
+            }
+        }
+    }
+
+    private void ExpandAttack(List<AICommand> commands, Civilization civ, TileSystem ts, DangerMap dangerMap)
+    {
+        // Collect all attackable enemies near the target
+        var enemies = new List<BaseUnit>();
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs != null)
+        {
+            foreach (var other in allCivs)
+            {
+                if (other == civ) continue;
+                if (other.combatUnits != null)
+                    foreach (var e in other.combatUnits)
+                        if (e != null && e.planetIndex == PlanetIndex &&
+                            ts.GetTileDistance(e.currentTileIndex, TargetTile) <= 3)
+                            enemies.Add(e);
+                if (other.workerUnits != null)
+                    foreach (var w in other.workerUnits)
+                        if (w != null && w.planetIndex == PlanetIndex &&
+                            ts.GetTileDistance(w.currentTileIndex, TargetTile) <= 3)
+                            enemies.Add(w);
+            }
+        }
+
+        // Sort enemies by threat (highest attack first) — focus fire
+        enemies.Sort((a, b) => b.CurrentAttack.CompareTo(a.CurrentAttack));
+
+        foreach (var unit in members)
+        {
+            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
+
+            // Find best target this unit can attack
+            AICommand bestCmd = null;
+            float bestScore = float.MinValue;
+
+            foreach (var enemy in enemies)
+            {
+                if (enemy == null || !CanAttackTarget(unit, enemy)) continue;
+                float s = AIScorer.ScoreAttack(unit, enemy, dangerMap) + 5f;
+                // Focus fire bonus: higher score if other group members can also hit this target
+                s += 3f;
+                if (s > bestScore) { bestScore = s; bestCmd = new AIAttackCommand { unit = unit, target = enemy, planetIndex = PlanetIndex, score = s }; }
+            }
+
+            if (bestCmd != null)
+            {
+                commands.Add(bestCmd);
+            }
+            else
+            {
+                // No one in range — move closer
+                int bestTile = FindBestStepToward(unit, TargetTile, ts, dangerMap);
+                if (bestTile >= 0)
+                    commands.Add(new AIMoveCommand
+                    {
+                        unit = unit, targetTileIndex = bestTile, planetIndex = PlanetIndex,
+                        score = AIScorer.ScoreTileForMovement(unit, bestTile, TargetTile, dangerMap) + 6f
+                    });
+            }
+        }
+    }
+
+    private void ExpandHold(List<AICommand> commands, TileSystem ts, DangerMap dangerMap)
+    {
+        foreach (var unit in members)
+        {
+            if (unit == null || unit.hasActedThisTurn || unit.isStored) continue;
+
+            // Attack adjacent enemies if any
+            var adjacent = FindAdjacentEnemy(unit, ts);
+            if (adjacent != null && CanAttackTarget(unit, adjacent))
+            {
+                commands.Add(new AIAttackCommand
+                {
+                    unit = unit, target = adjacent, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreAttack(unit, adjacent, dangerMap) + 4f
+                });
+            }
+            else
+            {
+                commands.Add(new AIFortifyCommand
+                {
+                    unit = unit, planetIndex = PlanetIndex,
+                    score = AIScorer.ScoreFortify(unit, dangerMap) + 5f
+                });
+            }
+        }
+    }
+
+    // ──── Helpers ────
+
+    private static bool CanAttackTarget(CombatUnit attacker, BaseUnit target)
+    {
+        if (target is CombatUnit ct) return attacker.CanAttack(ct);
+        if (target is WorkerUnit wt) return attacker.CanAttack(wt);
+        return false;
+    }
+
+    private static int FindBestStepToward(BaseUnit unit, int target, TileSystem ts, DangerMap dangerMap)
+    {
+        int[] neighbors = ts.GetNeighbors(unit.currentTileIndex);
+        if (neighbors == null) return -1;
+        int best = -1;
+        float bestScore = float.MinValue;
+        foreach (int n in neighbors)
+        {
+            if (n < 0 || !unit.CanMoveTo(n)) continue;
+            float s = AIScorer.ScoreTileForMovement(unit, n, target, dangerMap);
+            if (s > bestScore) { bestScore = s; best = n; }
+        }
+        return best;
+    }
+
+    private static BaseUnit FindAdjacentEnemy(CombatUnit unit, TileSystem ts)
+    {
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null) return null;
+        int[] neighbors = ts.GetNeighbors(unit.currentTileIndex);
+        if (neighbors == null) return null;
+
+        var adjacent = new HashSet<int>(neighbors);
+        adjacent.Add(unit.currentTileIndex);
+
+        foreach (var civ in allCivs)
+        {
+            if (civ == unit.owner) continue;
+            if (civ.combatUnits != null)
+                foreach (var e in civ.combatUnits)
+                    if (e != null && e.planetIndex == unit.planetIndex && adjacent.Contains(e.currentTileIndex))
+                        return e;
+            if (civ.workerUnits != null)
+                foreach (var w in civ.workerUnits)
+                    if (w != null && w.planetIndex == unit.planetIndex && adjacent.Contains(w.currentTileIndex))
+                        return w;
+        }
+        return null;
     }
 }
 
