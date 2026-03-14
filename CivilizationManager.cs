@@ -13,6 +13,9 @@ public class CivilizationManager : MonoBehaviour
 {
     public static CivilizationManager Instance { get; private set; }
 
+    // The new command-based AI planner (plan-then-execute architecture)
+    private readonly AIPlanner aiPlanner = new AIPlanner();
+
     [Header("Prefabs & Data")]
     [Tooltip("Prefab with a Civilization component")]
     public GameObject civilizationPrefab;
@@ -156,32 +159,26 @@ public class CivilizationManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Coroutine for handling the completion of an AI turn with sophisticated decision making
+    /// Coroutine for handling the completion of an AI turn with sophisticated decision making.
+    /// Uses the command-based AIPlanner for tactical unit decisions (move, attack, forage, hunt,
+    /// retreat, settle, build, fortify) and retains the existing high-level strategic methods
+    /// (diplomacy, tech, culture, religion, improvement upgrades).
     /// </summary>
     private IEnumerator CompleteAITurn(Civilization civ)
     {
-        // Wait a small delay to simulate AI thinking (optional)
         yield return new WaitForSeconds(0.5f);
-        
-        // Release units from shelters when it's not winter so they can forage, hunt, and move
-        PerformUnstoreDecisions(civ);
-        
-        // Food-first for early game (no cities): workers forage/hunt, combat hunts animals
-        bool earlyGame = civ.cities == null || civ.cities.Count == 0;
-        if (earlyGame)
-        {
-            PerformWorkerDecisions(civ);
-            PerformMilitaryDecisions(civ);
-        }
-        // Seasonal planning: build shelter before winter (all phases)
+
+        // ───── Phase 1: Command-based tactical AI (plan-then-execute) ─────
+        // The AIPlanner handles: danger maps, unstoring, army groups,
+        // and per-unit decisions (attack, move, forage, hunt, build, settle, retreat, fortify).
+        aiPlanner.ExecuteTurn(civ);
+
+        // ───── Phase 2: High-level strategic decisions (retained) ─────
+        // These handle empire-wide choices that don't map to single-unit commands.
         PerformSeasonalDecisions(civ);
-        // Apply improvement upgrades when affordable (shelter capacity, defense, etc.)
         PerformImprovementUpgradeDecisions(civ);
-        // Standard AI decisions
         PerformStrategicDecisions(civ);
         PerformDiplomaticDecisions(civ);
-        if (!earlyGame) PerformMilitaryDecisions(civ);
-        PerformEconomicDecisions(civ);
         PerformTechnologicalDecisions(civ);
         PerformCulturalDecisions(civ);
         PerformReligiousDecisions(civ);
@@ -1149,70 +1146,55 @@ public class CivilizationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Consider declaring war on weak neighbors
+    /// Consider declaring war using the utility-scored war timing system.
+    /// Evaluates every potential target with AIScorer.ScoreWarDecision and only
+    /// declares war when the score is positive AND exceeds a threshold.
+    /// Replaces the old probability-based dice roll with deterministic scoring.
     /// </summary>
     private void ConsiderWarDeclarations(Civilization civ)
     {
         if (civ == null || civ.leader == null) return;
-        
-        var leader = civ.leader;
-        var myStrength = ComputeMilitaryStrength(civ);
-        var weakNeighbors = FindWeakNeighbors(civ);
-        
-        if (weakNeighbors == null || weakNeighbors.Count == 0) return;
-        
-        // Check leader traits
-        float warChance = 0.1f; // Base 10% chance
-        if (leader.isWarmonger) warChance *= 2f; // Warmongers more likely
-        if (leader.primaryAgenda == LeaderAgenda.Militaristic) warChance *= 1.5f;
-        
-        // Consider each weak neighbor
-        foreach (var target in weakNeighbors)
+        if (DiplomacyManager.Instance == null) return;
+
+        var allCivs = GetAllCivs();
+        Civilization bestTarget = null;
+        float bestScore = 5f; // minimum threshold to declare war
+
+        foreach (var target in allCivs)
         {
-            if (target == null) continue;
-            
-            // Check current relationship
-            var currentRelation = DiplomacyManager.Instance != null 
-                ? DiplomacyManager.Instance.GetRelationship(civ, target) 
-                : DiplomaticState.Peace;
-            
-            if (currentRelation != DiplomaticState.Peace) continue; // Already at war or allied
-            
-            // Check diplomatic memory
-            if (DiplomacyManager.Instance != null)
+            if (target == civ || target == null) continue;
+            var rel = DiplomacyManager.Instance.GetRelationship(civ, target);
+            if (rel == DiplomaticState.War || rel == DiplomaticState.Alliance) continue;
+
+            float warScore = AIScorer.ScoreWarDecision(civ, target);
+
+            // Diplomatic memory modifiers
+            try
             {
                 var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
                 var reputation = memory.GetReputation(target);
                 var trustLevel = memory.GetTrustLevel(target);
-                
-                // Less likely to declare war on trusted allies
-                if (trustLevel >= 7) warChance *= 0.3f;
-                if (reputation > 20f) warChance *= 0.5f;
-                
-                // More likely if they have negative reputation
-                if (reputation < -20f) warChance *= 1.5f;
+                if (trustLevel >= 7) warScore -= 15f;
+                if (reputation > 20f) warScore -= 8f;
+                if (reputation < -30f) warScore += 10f;
             }
-            
-            // Check military strength ratio
-            var targetStrength = ComputeMilitaryStrength(target);
-            float strengthRatio = myStrength / Mathf.Max(targetStrength, 1f);
-            
-            // More likely if we're significantly stronger
-            if (strengthRatio >= 1.5f) warChance *= 1.5f;
-            if (strengthRatio >= 2.0f) warChance *= 2f;
-            
-            // Check for shared borders (casus belli)
-            bool sharesBorder = CheckSharedBorders(civ, target);
-            if (sharesBorder) warChance *= 1.3f;
-            
-            // Roll the dice
-            if (UnityEngine.Random.value < warChance)
+            catch { }
+
+            if (warScore > bestScore)
             {
-                if (DiplomacyManager.Instance != null)
-                {
-                    DiplomacyManager.Instance.ProposeDeal(civ, target, DealType.War);
-}
-                break; // Only declare one war per turn
+                bestScore = warScore;
+                bestTarget = target;
+            }
+        }
+
+        if (bestTarget != null)
+        {
+            DiplomacyManager.Instance.ProposeDeal(civ, bestTarget, DealType.War);
+            if (Debug.isDebugBuild)
+            {
+                string aName = civ.civData?.civName ?? "?";
+                string tName = bestTarget.civData?.civName ?? "?";
+                Debug.Log($"[AIWarTiming] {aName} declares war on {tName} (score={bestScore:F1})");
             }
         }
     }
@@ -1990,7 +1972,7 @@ break; // Only propose one alliance per turn
         // Register pioneer with wrap registry
         try
         {
-            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planet);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tile, wgo);
         }
         catch { }

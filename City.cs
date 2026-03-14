@@ -981,7 +981,7 @@ if (UIManager.Instance != null)
         // Register unit with HexMapChunkManager so it moves with wrap teleport
         try
         {
-            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
         }
         catch { }
@@ -1072,7 +1072,7 @@ if (UIManager.Instance != null)
                 if (planetGenerator != null) unitGO.transform.SetParent(planetGenerator.transform, true);
                 try
                 {
-                    var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+                    var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
                     if (mgr != null) mgr.RegisterObjectForWrapAtTile(centerTileIndex, unitGO);
                 }
                 catch { }

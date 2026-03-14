@@ -105,7 +105,7 @@ public class DecorationObject : MonoBehaviour
             // Prefer parented PlanetGenerator when available
             var pg = GetComponentInParent<PlanetGenerator>();
             if (pg == null)
-                pg = FindObjectsOfType<PlanetGenerator>().FirstOrDefault();
+                pg = FindObjectsByType<PlanetGenerator>(FindObjectsSortMode.None).FirstOrDefault();
 
             if (pg == null) return;
             var grid = pg.Grid;
@@ -114,7 +114,7 @@ public class DecorationObject : MonoBehaviour
             int tile = grid.GetTileAtPosition(transform.position);
             if (tile < 0) return;
 
-            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == pg);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == pg);
             if (mgr == null) return;
 
             mgr.RegisterObjectForWrapAtTile(tile, gameObject);

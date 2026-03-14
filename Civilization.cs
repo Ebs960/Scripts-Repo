@@ -2281,7 +2281,7 @@ return true;
         }
         // Register city GameObject with HexMapChunkManager so it follows world-wrap columns
         try {
-            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetToUse);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetToUse);
             if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, cityGO);
         } catch { }
 // --- Position and orient the city on the correct tile ---

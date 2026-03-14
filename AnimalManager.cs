@@ -765,7 +765,7 @@ return true;
         // Register with HexMapChunkManager so this animal is teleported when its column wraps
         try
         {
-            var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planet);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planet);
             if (mgr != null)
             {
                 mgr.RegisterObjectForWrapAtTile(chosenIndex, unit.gameObject);

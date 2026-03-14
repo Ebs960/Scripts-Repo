@@ -521,7 +521,7 @@ public class ResourceManager : MonoBehaviour
             try
             {
                 var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
-                var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
+                var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
                 if (mgr != null)
                 {
                     mgr.RegisterObjectForWrapAtTile(tileIndex, go);

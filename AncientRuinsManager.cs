@@ -69,7 +69,7 @@ public class AncientRuinsManager : MonoBehaviour
                 // Register ruin with HexMapChunkManager so it follows wrap teleport
                 try
                 {
-                    var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
+                    var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator);
                     if (mgr != null)
                     {
                         var pg = planetGenerator;
