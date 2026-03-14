@@ -4,28 +4,48 @@ using UnityEngine;
 
 /// <summary>
 /// Decides the best action for a single unit by generating all legal commands,
-/// scoring them with AIScorer, and returning the highest-scoring option.
+/// scoring them with AIScorer, applying operational role bonuses and empire intent bonuses,
+/// and returning the highest-scoring option.
+///
+/// When an AIContext is provided, cached data (frontiers, resource hotspots, forage targets)
+/// is used instead of per-unit BFS scans — significantly reducing repeated work.
 /// </summary>
 public static class TacticalEvaluator
 {
-    private const int MAX_APPROACH_SEARCH = 8;  // max hex distance for approach targets
-    private const int MAX_FORAGE_SEARCH   = 5;  // BFS range for nearby forageable tiles
+    private const int MAX_APPROACH_SEARCH = 8;
+    private const int MAX_FORAGE_SEARCH   = 5;
+    private const int MAX_EXPLORE_BFS     = 6;
+    private const int MAX_CITY_SITE_SEARCH = 8;
     private const float RETREAT_HP_THRESHOLD = 0.35f;
 
     /// <summary>
     /// Main entry: returns the best command for this unit, or null if nothing useful to do.
     /// </summary>
-    public static AICommand DecideBestAction(BaseUnit unit, Civilization civ, DangerMap dangerMap, ArmyGroupManager groups)
+    public static AICommand DecideBestAction(
+        BaseUnit unit, Civilization civ, DangerMap dangerMap, ArmyGroupManager groups,
+        AIContext context = null, UnitAssignment assignment = null, EmpireIntent intent = null)
     {
-        var candidates = GenerateAllCommands(unit, civ, dangerMap, groups);
+        var candidates = GenerateAllCommands(unit, civ, dangerMap, groups, context);
         if (candidates.Count == 0) return null;
+
+        // Apply operational role bonuses (steers toward assigned role)
+        if (assignment != null && context != null)
+            OperationalPlanner.ApplyRoleBonuses(candidates, unit, assignment, context);
+
+        // Apply empire-wide intent bonuses (subtle global nudge)
+        if (intent != null)
+            OperationalPlanner.ApplyIntentBonuses(candidates, intent);
+
         return candidates.OrderByDescending(c => c.score).First();
     }
 
     /// <summary>
     /// Generates every legal command for a unit and pre-scores them.
+    /// Uses AIContext caches when available to avoid repeated BFS scans.
     /// </summary>
-    public static List<AICommand> GenerateAllCommands(BaseUnit unit, Civilization civ, DangerMap dangerMap, ArmyGroupManager groups)
+    public static List<AICommand> GenerateAllCommands(
+        BaseUnit unit, Civilization civ, DangerMap dangerMap, ArmyGroupManager groups,
+        AIContext context = null)
     {
         var commands = new List<AICommand>(16);
         if (unit == null || unit.isStored) return commands;
@@ -46,24 +66,18 @@ public static class TacticalEvaluator
         // ───── CombatUnit-specific ─────
         if (unit is CombatUnit cu && !cu.hasActedThisTurn)
         {
-            // Direct attacks in range
             GenerateAttacks(cu, civ, dangerMap, commands, needFood);
-
-            // Approach targets out of range
             GenerateApproaches(cu, civ, dangerMap, ts, commands, needFood);
         }
 
         // ───── WorkerUnit-specific ─────
         if (unit is WorkerUnit wu)
         {
-            // Forage on current tile
             GenerateForage(wu, civ, dangerMap, commands);
 
-            // Worker attack (hunting animals for food)
             if (needFood)
                 GenerateWorkerHunting(wu, civ, dangerMap, commands);
 
-            // Settle city (on current tile or scout for a good site)
             if (wu.CanFoundCityOnCurrentTile())
             {
                 var sc = new AISettleCityCommand { unit = wu, planetIndex = pIndex };
@@ -72,32 +86,39 @@ public static class TacticalEvaluator
             }
             else if (wu.data != null && wu.data.canFoundCity && civ.CanFoundMoreCities())
             {
-                GenerateMoveTowardCitySite(wu, civ, dangerMap, ts, commands);
+                GenerateMoveTowardCitySite(wu, civ, dangerMap, ts, commands, context);
             }
 
-            // Build improvement (shelter, farms, etc.)
             GenerateBuildCommands(wu, civ, dangerMap, commands);
 
-            // Move toward forage (with resource prioritization)
-            GenerateMoveTowardForage(wu, civ, dangerMap, ts, commands);
+            // Use cached forage targets when available, fall back to BFS
+            if (context != null)
+                GenerateMoveTowardForageCached(wu, civ, dangerMap, ts, commands, context);
+            else
+                GenerateMoveTowardForage(wu, civ, dangerMap, ts, commands);
 
-            // Move toward high-value resource tiles
-            GenerateMoveTowardResource(wu, civ, dangerMap, ts, commands);
+            // Use cached resource hotspots when available
+            if (context != null)
+                GenerateMoveTowardResourceCached(wu, civ, dangerMap, ts, commands, context);
+            else
+                GenerateMoveTowardResource(wu, civ, dangerMap, ts, commands);
 
-            // Move toward animals to hunt
             if (needFood)
                 GenerateMoveTowardAnimal(wu, dangerMap, ts, commands);
         }
 
-        // ───── Exploration: move toward fog-of-war frontier ─────
-        GenerateExploration(unit, civ, dangerMap, ts, commands);
+        // ───── Exploration: use cached frontiers when available ─────
+        if (context != null)
+            GenerateExplorationCached(unit, civ, dangerMap, ts, commands, context);
+        else
+            GenerateExploration(unit, civ, dangerMap, ts, commands);
 
         // ───── Fortify (always an option, lowest-priority fallback) ─────
         var fortify = new AIFortifyCommand { unit = unit, planetIndex = pIndex };
         fortify.score = AIScorer.ScoreFortify(unit, dangerMap);
         commands.Add(fortify);
 
-        // ───── Group coordination: if part of an army group, boost approach toward group target ─────
+        // ───── Group coordination: boost approach toward group target ─────
         if (groups != null && unit is CombatUnit groupCu)
         {
             var group = groups.GetGroupForUnit(groupCu);
@@ -109,7 +130,7 @@ public static class TacticalEvaluator
                     {
                         int distToTarget = ts.GetTileDistance(mv.targetTileIndex, group.TargetTile);
                         if (distToTarget < ts.GetTileDistance(unit.currentTileIndex, group.TargetTile))
-                            mv.score += 5f; // bonus for moving toward group target
+                            mv.score += 5f;
                     }
                 }
             }
@@ -118,11 +139,117 @@ public static class TacticalEvaluator
         return commands;
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  Cache-backed generators (use AIContext to skip BFS)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Uses AIContext.FrontierTiles to find the best exploration target without per-unit BFS.
+    /// </summary>
+    private static void GenerateExplorationCached(BaseUnit unit, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, AIContext ctx)
+    {
+        var frontier = ctx.GetFrontier(unit.planetIndex);
+        if (frontier == null || frontier.Count == 0) return;
+
+        int bestTile = -1;
+        float bestScore = float.MinValue;
+        int moveRange = MAX_EXPLORE_BFS;
+
+        foreach (int tile in frontier)
+        {
+            int dist = ts.GetTileDistance(unit.currentTileIndex, tile);
+            if (dist > moveRange || dist == 0) continue;
+            if (!unit.CanMoveTo(tile)) continue;
+
+            // Count unexplored neighbors for this frontier tile
+            int civId = UnitVisionManager.GetCivIndex(civ);
+            byte[] fog = civId >= 0 ? ts.GetFogForCiv(civId) : null;
+            int unexplored = 0;
+            if (fog != null)
+            {
+                int[] neighbors = ts.GetNeighbors(tile);
+                if (neighbors != null)
+                    foreach (int n in neighbors)
+                        if (n >= 0 && n < fog.Length && fog[n] == 0) unexplored++;
+            }
+            if (unexplored == 0) continue;
+
+            float s = AIScorer.ScoreExplore(unit, tile, unexplored, dangerMap);
+            if (s > bestScore) { bestScore = s; bestTile = tile; }
+        }
+
+        if (bestTile >= 0)
+        {
+            var cmd = new AIExploreCommand { unit = unit, targetTileIndex = bestTile, planetIndex = unit.planetIndex };
+            cmd.score = bestScore;
+            commands.Add(cmd);
+        }
+    }
+
+    /// <summary>
+    /// Uses AIContext.ForageTargets to find the best forage destination without per-unit BFS.
+    /// </summary>
+    private static void GenerateMoveTowardForageCached(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, AIContext ctx)
+    {
+        var forages = ctx.GetForageTargets(wu.planetIndex);
+        if (forages == null || forages.Count == 0) return;
+
+        int bestTile = -1;
+        float bestScore = float.MinValue;
+
+        foreach (var f in forages)
+        {
+            if (f.TileIndex == wu.currentTileIndex) continue;
+            int dist = ts.GetTileDistance(wu.currentTileIndex, f.TileIndex);
+            if (dist > MAX_FORAGE_SEARCH) continue;
+            float s = f.Score - dist * 1.5f;
+            if (s > bestScore) { bestScore = s; bestTile = f.TileIndex; }
+        }
+
+        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        {
+            var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
+            cmd.score = bestScore;
+            commands.Add(cmd);
+        }
+    }
+
+    /// <summary>
+    /// Uses AIContext.ResourceHotspots to find the best resource tile without per-unit BFS.
+    /// </summary>
+    private static void GenerateMoveTowardResourceCached(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, AIContext ctx)
+    {
+        var hotspots = ctx.GetResourceHotspots(wu.planetIndex);
+        if (hotspots == null || hotspots.Count == 0) return;
+
+        int bestTile = -1;
+        float bestScore = 3f; // threshold
+
+        foreach (var h in hotspots)
+        {
+            if (h.TileIndex == wu.currentTileIndex) continue;
+            int dist = ts.GetTileDistance(wu.currentTileIndex, h.TileIndex);
+            if (dist > MAX_FORAGE_SEARCH) continue;
+            float s = h.Score - dist * 1f;
+            if (s > bestScore) { bestScore = s; bestTile = h.TileIndex; }
+        }
+
+        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        {
+            var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
+            cmd.score = bestScore;
+            commands.Add(cmd);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Original generators (BFS-based fallbacks when no AIContext)
+    // ═══════════════════════════════════════════════════════════════════
+
     // ─────────────────────── Attack generation ───────────────────────
 
     private static void GenerateAttacks(CombatUnit cu, Civilization civ, DangerMap dangerMap, List<AICommand> commands, bool needFood)
     {
-        // Enemies
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs != null)
         {
@@ -130,7 +257,6 @@ public static class TacticalEvaluator
             {
                 if (otherCiv == civ) continue;
                 if (otherCiv.combatUnits != null)
-                {
                     foreach (var enemy in otherCiv.combatUnits)
                     {
                         if (enemy == null || !cu.CanAttack(enemy)) continue;
@@ -138,9 +264,7 @@ public static class TacticalEvaluator
                         cmd.score = AIScorer.ScoreAttack(cu, enemy, dangerMap);
                         commands.Add(cmd);
                     }
-                }
                 if (otherCiv.workerUnits != null)
-                {
                     foreach (var ew in otherCiv.workerUnits)
                     {
                         if (ew == null || !cu.CanAttack(ew)) continue;
@@ -148,11 +272,9 @@ public static class TacticalEvaluator
                         cmd.score = AIScorer.ScoreAttack(cu, ew, dangerMap);
                         commands.Add(cmd);
                     }
-                }
             }
         }
 
-        // Animals (for food when needed)
         if (needFood && AnimalManager.Instance != null)
         {
             foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
@@ -176,7 +298,6 @@ public static class TacticalEvaluator
         BaseUnit bestTarget = null;
         int bestDist = int.MaxValue;
 
-        // Nearest enemy
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs != null)
         {
@@ -192,7 +313,6 @@ public static class TacticalEvaluator
             }
         }
 
-        // Nearest animal when food is needed
         if (needFood && AnimalManager.Instance != null)
         {
             foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
@@ -206,7 +326,6 @@ public static class TacticalEvaluator
 
         if (bestTarget == null) return;
 
-        // Find best adjacent tile to target to move toward
         int[] targetNeighbors = ts.GetNeighbors(bestTarget.currentTileIndex);
         if (targetNeighbors == null) return;
         int bestApproach = -1;
@@ -283,7 +402,6 @@ public static class TacticalEvaluator
         if (wu.currentWorkPoints <= 0 || civ == null) return;
         var available = civ.GetAvailableImprovementsForWorker(wu.data, wu.currentTileIndex, wu.planetIndex);
         if (available == null) return;
-        // Skip if tile already has a build job
         if (ImprovementManager.Instance != null && ImprovementManager.Instance.HasBuildJobAtTile(wu.currentTileIndex, wu.planetIndex)) return;
 
         foreach (var imp in available)
@@ -295,14 +413,13 @@ public static class TacticalEvaluator
         }
     }
 
-    // ─────────────────────── Worker: move toward forage ───────────────────────
+    // ─────────────────────── Worker: move toward forage (BFS fallback) ───────────────────────
 
     private static void GenerateMoveTowardForage(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands)
     {
         var rm = ResourceManager.Instance;
         if (rm == null) return;
 
-        // BFS from worker tile
         var visited = new HashSet<int>();
         var queue = new Queue<(int tile, int dist)>();
         queue.Enqueue((wu.currentTileIndex, 0));
@@ -323,9 +440,7 @@ public static class TacticalEvaluator
             }
             if (dist >= MAX_FORAGE_SEARCH) continue;
             foreach (int n in ts.GetNeighbors(tile))
-            {
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
-            }
         }
 
         if (bestTile >= 0 && wu.CanMoveTo(bestTile))
@@ -372,20 +487,46 @@ public static class TacticalEvaluator
 
     // ─────────────────────── Worker: move toward good city site ───────────────────────
 
-    private const int MAX_CITY_SITE_SEARCH = 8;
-
-    /// <summary>
-    /// For settlers (canFoundCity workers): BFS for the best nearby city site and move toward it.
-    /// </summary>
-    private static void GenerateMoveTowardCitySite(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands)
+    private static void GenerateMoveTowardCitySite(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands, AIContext context)
     {
-        var visited = new System.Collections.Generic.HashSet<int>();
-        var queue = new System.Collections.Generic.Queue<(int tile, int dist)>();
+        // Use cached city sites when available
+        if (context != null)
+        {
+            var sites = context.GetCitySites(wu.planetIndex);
+            if (sites != null && sites.Count > 0)
+            {
+                int bestTile = -1;
+                float bestScore = 8f;
+                foreach (var site in sites)
+                {
+                    int dist = ts.GetTileDistance(wu.currentTileIndex, site.TileIndex);
+                    if (dist > MAX_CITY_SITE_SEARCH) continue;
+                    float s = site.Score - dist * 0.5f;
+                    if (s > bestScore) { bestScore = s; bestTile = site.TileIndex; }
+                }
+                if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+                {
+                    var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
+                    cmd.score = bestScore;
+                    commands.Add(cmd);
+                    return;
+                }
+            }
+        }
+
+        // BFS fallback
+        GenerateMoveTowardCitySiteBFS(wu, civ, dangerMap, ts, commands);
+    }
+
+    private static void GenerateMoveTowardCitySiteBFS(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands)
+    {
+        var visited = new HashSet<int>();
+        var queue = new Queue<(int tile, int dist)>();
         queue.Enqueue((wu.currentTileIndex, 0));
         visited.Add(wu.currentTileIndex);
 
         int bestTile = -1;
-        float bestScore = 8f; // minimum threshold — only move if the site is good enough
+        float bestScore = 8f;
 
         while (queue.Count > 0)
         {
@@ -397,7 +538,6 @@ public static class TacticalEvaluator
                 var td = ts.GetTileData(tile);
                 if (td != null && td.isLand)
                 {
-                    // Check minimum city distance (same check as CanFoundCityOnCurrentTile)
                     bool tooClose = false;
                     var allCivs = CivilizationManager.Instance?.GetAllCivs();
                     if (allCivs != null)
@@ -426,9 +566,7 @@ public static class TacticalEvaluator
             int[] neighbors = ts.GetNeighbors(tile);
             if (neighbors == null) continue;
             foreach (int n in neighbors)
-            {
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
-            }
         }
 
         if (bestTile >= 0 && wu.CanMoveTo(bestTile))
@@ -439,21 +577,17 @@ public static class TacticalEvaluator
         }
     }
 
-    // ─────────────────────── Worker: move toward high-value resource ───────────────────────
+    // ─────────────────────── Worker: move toward high-value resource (BFS fallback) ───────────────────────
 
-    /// <summary>
-    /// Uses resource prioritization scoring to route workers toward the most valuable
-    /// unimproved resource within range (prefer tiles the civ already owns or neutral).
-    /// </summary>
     private static void GenerateMoveTowardResource(WorkerUnit wu, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands)
     {
-        var visited = new System.Collections.Generic.HashSet<int>();
-        var queue = new System.Collections.Generic.Queue<(int tile, int dist)>();
+        var visited = new HashSet<int>();
+        var queue = new Queue<(int tile, int dist)>();
         queue.Enqueue((wu.currentTileIndex, 0));
         visited.Add(wu.currentTileIndex);
 
         int bestTile = -1;
-        float bestScore = 3f; // threshold
+        float bestScore = 3f;
 
         while (queue.Count > 0)
         {
@@ -465,7 +599,6 @@ public static class TacticalEvaluator
                 var td = ts.GetTileData(tile);
                 if (td != null && td.resource != null && td.isLand)
                 {
-                    // Prefer tiles owned by us or neutral (not enemy)
                     bool accessible = td.owner == null || td.owner == civ;
                     if (accessible)
                     {
@@ -479,9 +612,7 @@ public static class TacticalEvaluator
             int[] neighbors = ts.GetNeighbors(tile);
             if (neighbors == null) continue;
             foreach (int n in neighbors)
-            {
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
-            }
         }
 
         if (bestTile >= 0 && bestTile != wu.currentTileIndex && wu.CanMoveTo(bestTile))
@@ -492,15 +623,8 @@ public static class TacticalEvaluator
         }
     }
 
-    // ─────────────────────── Exploration: fog frontier ───────────────────────
+    // ─────────────────────── Exploration: fog frontier (BFS fallback) ───────────────────────
 
-    private const int MAX_EXPLORE_BFS = 6;
-
-    /// <summary>
-    /// Generates exploration move commands toward tiles on the fog-of-war frontier.
-    /// Prefers moveable tiles that border the most unexplored (fog=0) neighbors,
-    /// so the unit maximizes map reveal per move.
-    /// </summary>
     private static void GenerateExploration(BaseUnit unit, Civilization civ, DangerMap dangerMap, TileSystem ts, List<AICommand> commands)
     {
         if (UnitVisionManager.Instance == null) return;
@@ -509,7 +633,6 @@ public static class TacticalEvaluator
         byte[] fog = ts.GetFogForCiv(civId);
         if (fog == null) return;
 
-        // BFS from the unit to find the best frontier tile within range
         var visited = new HashSet<int>();
         var queue = new Queue<(int tile, int dist)>();
         queue.Enqueue((unit.currentTileIndex, 0));
@@ -522,19 +645,13 @@ public static class TacticalEvaluator
         {
             var (tile, dist) = queue.Dequeue();
 
-            // Only consider tiles we can actually move to (skip start tile)
             if (dist > 0 && unit.CanMoveTo(tile))
             {
-                // Count how many neighbors of this tile are unexplored (fog == 0)
                 int unexploredCount = 0;
                 int[] tileNeighbors = ts.GetNeighbors(tile);
                 if (tileNeighbors != null)
-                {
                     foreach (int nn in tileNeighbors)
-                    {
                         if (nn >= 0 && nn < fog.Length && fog[nn] == 0) unexploredCount++;
-                    }
-                }
 
                 if (unexploredCount > 0)
                 {
@@ -550,7 +667,6 @@ public static class TacticalEvaluator
             {
                 if (n >= 0 && !visited.Contains(n))
                 {
-                    // Only BFS through explored tiles (fog > 0) — avoid pathing through fog
                     if (n < fog.Length && fog[n] > 0)
                     {
                         visited.Add(n);
@@ -558,7 +674,7 @@ public static class TacticalEvaluator
                     }
                     else
                     {
-                        visited.Add(n); // mark as visited so we don't revisit
+                        visited.Add(n);
                     }
                 }
             }

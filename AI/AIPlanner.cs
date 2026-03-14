@@ -6,13 +6,16 @@ using UnityEngine;
 /// The main AI orchestrator. Plans an entire turn's worth of commands for a civilization,
 /// then executes them in priority order. This is the single entry point called by CivilizationManager.
 ///
-/// Turn flow:
-///  1. Generate DangerMap for each planet the civ has units on.
-///  2. Unstore sheltered units (when not winter).
-///  3. Auto-form army groups for coordinated attacks.
-///  4. For each unit, use TacticalEvaluator to pick the best command.
-///  5. Sort all commands by score (highest first) and execute sequentially.
-///  6. After unit commands: seasonal shelter building, improvement upgrades, tech/culture.
+/// Full turn pipeline:
+///  1. Generate DangerMaps for each planet the civ has units on.
+///  2. Build AIContext (per-turn cache: frontiers, resource hotspots, threat summaries).
+///  3. Update EmpireAI (persistent strategic state → produces EmpireIntent).
+///  4. Update OperationalPlanner (turns intent into per-unit role assignments).
+///  5. Unstore sheltered units (when not winter).
+///  6. Auto-form army groups for coordinated attacks.
+///  7. For each unit, use TacticalEvaluator (with context + assignment) to pick the best command.
+///  8. Sort all commands by score (highest first) and execute sequentially.
+///  9. After unit commands: seasonal shelter building, improvement upgrades, tech/culture.
 /// </summary>
 public class AIPlanner
 {
@@ -20,13 +23,20 @@ public class AIPlanner
     private readonly Dictionary<int, DangerMap> dangerMaps = new Dictionary<int, DangerMap>();
     private readonly ArmyGroupManager armyGroups = new ArmyGroupManager();
 
+    // Empire layer: persistent per-civ strategic state
+    private readonly Dictionary<int, EmpireAI> empireStates = new Dictionary<int, EmpireAI>();
+    // Operational layer: persistent per-civ role assignments
+    private readonly Dictionary<int, OperationalPlanner> opPlanners = new Dictionary<int, OperationalPlanner>();
+    // Per-turn context cache
+    private AIContext currentContext;
+
     // Planned commands for the current turn
     private readonly List<AICommand> plannedCommands = new List<AICommand>(64);
-    // Track which units already received a command this turn
     private readonly HashSet<int> assignedUnits = new HashSet<int>();
 
     public IReadOnlyList<AICommand> PlannedCommands => plannedCommands;
     public ArmyGroupManager Groups => armyGroups;
+    public AIContext Context => currentContext;
 
     /// <summary>
     /// Full AI turn: plan then execute. Called from CivilizationManager.CompleteAITurn.
@@ -48,26 +58,38 @@ public class AIPlanner
         // 1) Generate danger maps for planets this civ has units on
         GenerateDangerMaps(civ);
 
-        // 2) Unstore sheltered units when not winter
+        // 2) Build per-turn context cache (replaces per-unit BFS in TacticalEvaluator)
+        currentContext = new AIContext();
+        currentContext.Build(civ, dangerMaps);
+
+        // 3) Update empire-level strategic AI (persistent across turns)
+        var empire = GetOrCreateEmpire(civ);
+        empire.UpdateForTurn(civ, currentContext);
+
+        // 4) Update operational planner (turns intent into unit role assignments)
+        var opPlanner = GetOrCreateOpPlanner(civ);
+        opPlanner.UpdateAssignments(civ, empire.Intent, currentContext);
+
+        // 5) Unstore sheltered units when not winter
         PlanUnstores(civ);
 
-        // 3) Refresh and auto-form army groups
+        // 6) Refresh and auto-form army groups
         armyGroups.Refresh();
         foreach (var kv in dangerMaps)
             armyGroups.AutoFormGroups(civ, kv.Value, kv.Key);
 
-        // 4) Plan commands for each unit (combat first, then workers)
-        PlanCombatUnits(civ);
-        PlanWorkerUnits(civ);
+        // 7) Plan commands for each unit (combat first, then workers)
+        PlanCombatUnits(civ, empire.Intent, opPlanner);
+        PlanWorkerUnits(civ, empire.Intent, opPlanner);
 
-        // 5) Sort by score (highest first) so the most impactful actions execute first
+        // 8) Sort by score (highest first) so the most impactful actions execute first
         plannedCommands.Sort((a, b) => b.score.CompareTo(a.score));
 
         if (Debug.isDebugBuild)
         {
             string civName = civ.civData != null ? civ.civData.civName : "?";
             Debug.Log($"[AIPlanner] Planned {plannedCommands.Count} commands for {civName} " +
-                      $"(combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0})");
+                      $"(goal={empire.CurrentGoal} combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0})");
         }
     }
 
@@ -90,6 +112,30 @@ public class AIPlanner
         }
         plannedCommands.Clear();
         assignedUnits.Clear();
+    }
+
+    // ─────────────────────── Per-civ persistent state ───────────────────────
+
+    private EmpireAI GetOrCreateEmpire(Civilization civ)
+    {
+        int id = civ.GetInstanceID();
+        if (!empireStates.TryGetValue(id, out var e))
+        {
+            e = new EmpireAI();
+            empireStates[id] = e;
+        }
+        return e;
+    }
+
+    private OperationalPlanner GetOrCreateOpPlanner(Civilization civ)
+    {
+        int id = civ.GetInstanceID();
+        if (!opPlanners.TryGetValue(id, out var p))
+        {
+            p = new OperationalPlanner();
+            opPlanners[id] = p;
+        }
+        return p;
     }
 
     // ─────────────────────── Danger map generation ───────────────────────
@@ -143,7 +189,7 @@ public class AIPlanner
 
     // ─────────────────────── Combat unit planning ───────────────────────
 
-    private void PlanCombatUnits(Civilization civ)
+    private void PlanCombatUnits(Civilization civ, EmpireIntent intent, OperationalPlanner opPlanner)
     {
         if (civ.combatUnits == null) return;
         foreach (var unit in civ.combatUnits)
@@ -156,7 +202,8 @@ public class AIPlanner
             var dm = GetDangerMap(unit.planetIndex);
             if (dm == null) continue;
 
-            var cmd = TacticalEvaluator.DecideBestAction(unit, civ, dm, armyGroups);
+            var assignment = opPlanner.GetAssignment(unit);
+            var cmd = TacticalEvaluator.DecideBestAction(unit, civ, dm, armyGroups, currentContext, assignment, intent);
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
@@ -167,7 +214,7 @@ public class AIPlanner
 
     // ─────────────────────── Worker unit planning ───────────────────────
 
-    private void PlanWorkerUnits(Civilization civ)
+    private void PlanWorkerUnits(Civilization civ, EmpireIntent intent, OperationalPlanner opPlanner)
     {
         if (civ.workerUnits == null) return;
         foreach (var worker in civ.workerUnits)
@@ -180,7 +227,8 @@ public class AIPlanner
             var dm = GetDangerMap(worker.planetIndex);
             if (dm == null) continue;
 
-            var cmd = TacticalEvaluator.DecideBestAction(worker, civ, dm, armyGroups);
+            var assignment = opPlanner.GetAssignment(worker);
+            var cmd = TacticalEvaluator.DecideBestAction(worker, civ, dm, armyGroups, currentContext, assignment, intent);
             if (cmd != null)
             {
                 plannedCommands.Add(cmd);
