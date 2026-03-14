@@ -597,11 +597,11 @@ public class ImprovementManager : MonoBehaviour
             if (planetGen != null) completedImprovement.transform.SetParent(planetGen.transform, true);
 
             // Register completed improvement for wrap teleport
-            try
-            {
-                  var mgr = FindObjectsOfType<HexMapChunkManager>().FirstOrDefault(m => m.PlanetGenerator == planetGen);
-                if (mgr != null) mgr.RegisterObjectForWrapAtTile(job.tileIndex, completedImprovement);
-            }
+                        try
+                        {
+                                    var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
+                                if (mgr != null) mgr.RegisterObjectForWrapAtTile(job.tileIndex, completedImprovement);
+                        }
             catch { }
 
             // Attach ImprovementInstance component to track applied upgrades and attached parts
