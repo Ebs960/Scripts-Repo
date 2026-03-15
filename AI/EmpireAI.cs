@@ -76,7 +76,11 @@ public enum ObjectiveType
     ExploreFrontier,   // scout unknown territory
     BuildInfra,        // build improvements on owned tiles
     ResearchPriority,  // focus science output
-    CulturalPush       // focus culture output
+    CulturalPush,      // focus culture output
+    FrontDefense,      // maintain defensive line at border
+    InvasionStaging,   // gather forces at rally point before attack
+    EscortSettler,     // protect settler en route to city site
+    ClearWildlife      // eliminate dangerous predators near settlements
 }
 
 // ──────────────────────── EmpireIntent (output each turn) ────────────────────────
@@ -168,6 +172,12 @@ public class EmpireAI
     private const int   FOOD_CRISIS_THRESHOLD = 5;
     private const float WAR_DESIRE_THRESHOLD = 12f;   // minimum ScoreWarDecision to add war target
 
+    // ──── Commitment windows ────
+    // Goals persist for a minimum number of turns to prevent flip-flopping.
+    // Only explicit replan triggers can override the commitment.
+    private const int COMMITMENT_WINDOW = 5;          // minimum turns before voluntary goal change
+    private bool replanTriggered;
+
     // ════════════════════════════════════════════════════════
     //  Public API
     // ════════════════════════════════════════════════════════
@@ -196,12 +206,23 @@ public class EmpireAI
         UpdateWarTargets(civ, ctx);
         UpdateExpansionTargets(civ, ctx);
 
+        // Check replan triggers (override commitment window)
+        replanTriggered = CheckReplanTriggers(civ, ctx);
+
         StrategicGoal chosen = EvaluateGoal(civ, ctx);
         if (chosen != CurrentGoal)
         {
-            PreviousGoal = CurrentGoal;
-            CurrentGoal = chosen;
-            TurnsSinceGoalChange = 0;
+            // Commitment window: only change goal if committed long enough OR triggered
+            if (TurnsSinceGoalChange >= COMMITMENT_WINDOW || replanTriggered)
+            {
+                PreviousGoal = CurrentGoal;
+                CurrentGoal = chosen;
+                TurnsSinceGoalChange = 0;
+            }
+            else
+            {
+                TurnsSinceGoalChange++;
+            }
         }
         else
         {
@@ -376,6 +397,63 @@ public class EmpireAI
             if (warScore >= WAR_DESIRE_THRESHOLD) count++;
         }
         return count;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  Commitment window: replan triggers
+    //  These are "circuit breakers" that force goal re-evaluation
+    //  even within a commitment window.
+    // ════════════════════════════════════════════════════════
+
+    private int lastKnownCityCount = -1;
+    private int lastKnownFood = int.MaxValue;
+
+    private bool CheckReplanTriggers(Civilization civ, AIContext ctx)
+    {
+        bool triggered = false;
+
+        // City lost since last turn
+        int cities = civ.cities?.Count ?? 0;
+        if (lastKnownCityCount >= 0 && cities < lastKnownCityCount)
+            triggered = true;
+        lastKnownCityCount = cities;
+
+        // Sudden famine (food dropped below crisis)
+        if (civ.food <= 0 && lastKnownFood > FOOD_CRISIS_THRESHOLD)
+            triggered = true;
+        lastKnownFood = civ.food;
+
+        // Invasion threat: enemy combat units within 3 tiles of any city
+        if (!triggered && ctx.HasCities)
+        {
+            foreach (var kv in ctx.NearestEnemyByPlanet)
+            {
+                if (kv.Value.Distance <= 3) { triggered = true; break; }
+            }
+        }
+
+        // War declared on us this turn
+        if (!triggered && civ.relations != null)
+        {
+            try
+            {
+                if (DiplomacyManager.Instance != null)
+                {
+                    var memory = DiplomacyManager.Instance.GetDiplomaticMemory(civ);
+                    var allCivs = CivilizationManager.Instance?.GetAllCivs();
+                    if (allCivs != null)
+                        foreach (var other in allCivs)
+                        {
+                            if (other == civ) continue;
+                            if (memory.HasRecentEvent(other, DiplomaticEventType.DeclaredWar, 1))
+                            { triggered = true; break; }
+                        }
+                }
+            }
+            catch { }
+        }
+
+        return triggered;
     }
 
     // ════════════════════════════════════════════════════════
@@ -969,6 +1047,76 @@ public class EmpireAI
                 Type = ObjectiveType.ExploreFrontier,
                 Priority = 4f, AssignedTurn = turn
             });
+        }
+
+        // ── Situation-driven objectives ──
+
+        // FrontDefense: if enemies are near our territory
+        if (objectives.Count < 6 && !HasObjectiveOfType(ObjectiveType.FrontDefense))
+        {
+            foreach (var kv in ctx.NearestEnemyByPlanet)
+            {
+                if (kv.Value.Distance <= 5)
+                {
+                    objectives.Add(new OperationalObjective
+                    {
+                        Type = ObjectiveType.FrontDefense,
+                        TargetTile = kv.Value.TileIndex, PlanetIndex = kv.Key,
+                        Priority = 7f, AssignedTurn = turn
+                    });
+                    break;
+                }
+            }
+        }
+
+        // InvasionStaging: when attacking, create staging objective
+        if (objectives.Count < 6 && !HasObjectiveOfType(ObjectiveType.InvasionStaging) && intent.WarTargets.Count > 0)
+        {
+            var wt = intent.WarTargets[0];
+            if (wt.PreferredCityTile >= 0)
+            {
+                objectives.Add(new OperationalObjective
+                {
+                    Type = ObjectiveType.InvasionStaging,
+                    TargetTile = wt.PreferredCityTile, TargetCivId = wt.CivInstanceId,
+                    Priority = 8f, AssignedTurn = turn
+                });
+            }
+        }
+
+        // EscortSettler: if we have a settler objective, add escort
+        if (objectives.Count < 6 && HasObjectiveOfType(ObjectiveType.SettleCity) && !HasObjectiveOfType(ObjectiveType.EscortSettler))
+        {
+            foreach (var obj in objectives)
+            {
+                if (obj.Type == ObjectiveType.SettleCity && !obj.IsComplete)
+                {
+                    objectives.Add(new OperationalObjective
+                    {
+                        Type = ObjectiveType.EscortSettler,
+                        TargetTile = obj.TargetTile, PlanetIndex = obj.PlanetIndex,
+                        Priority = 6f, AssignedTurn = turn
+                    });
+                    break;
+                }
+            }
+        }
+
+        // ClearWildlife: predators near cities
+        if (objectives.Count < 6 && !HasObjectiveOfType(ObjectiveType.ClearWildlife))
+        {
+            foreach (var kv in ctx.ThreatByPlanet)
+            {
+                if (kv.Value.PredatorAnimals >= 2)
+                {
+                    objectives.Add(new OperationalObjective
+                    {
+                        Type = ObjectiveType.ClearWildlife, PlanetIndex = kv.Key,
+                        Priority = 4f, AssignedTurn = turn
+                    });
+                    break;
+                }
+            }
         }
     }
 

@@ -40,6 +40,11 @@ public static class TacticalEvaluator
             candidates.RemoveRange(maxCandidates, candidates.Count - maxCandidates);
         }
 
+        // Role gating: filter commands that conflict with the unit's assigned role.
+        // Escort units shouldn't chase wildlife; frontline units shouldn't explore.
+        if (assignment != null)
+            ApplyRoleGating(candidates, unit, assignment);
+
         // Apply operational role bonuses (steers toward assigned role)
         if (assignment != null && context != null)
             OperationalPlanner.ApplyRoleBonuses(candidates, unit, assignment, context);
@@ -48,7 +53,132 @@ public static class TacticalEvaluator
         if (intent != null)
             OperationalPlanner.ApplyIntentBonuses(candidates, intent);
 
-        return candidates.OrderByDescending(c => c.score).First();
+        // Top-K stochastic choice: when top actions have similar scores,
+        // pick randomly among them weighted by score — reduces predictability
+        // without making the AI appear irrational.
+        return SelectTopK(candidates, budget);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Top-K stochastic selection ("bounded randomness")
+    // ═══════════════════════════════════════════════════════════════════
+
+    private const float TOP_K_THRESHOLD = 0.85f; // actions within 85% of best score are candidates
+    private const int   TOP_K_MAX       = 4;      // max pool size
+
+    /// <summary>
+    /// If the top N actions have scores within 15% of the best, randomly pick among them
+    /// weighted by score. Otherwise pick the clear winner deterministically.
+    /// This prevents exploitable predictability while keeping decisions rational.
+    /// </summary>
+    private static AICommand SelectTopK(List<AICommand> candidates, AiBudget budget)
+    {
+        if (candidates.Count == 0) return null;
+        if (candidates.Count == 1) return candidates[0];
+
+        candidates.Sort((a, b) => b.score.CompareTo(a.score));
+        var best = candidates[0];
+
+        // If budget noise is zero (Expert), always pick deterministically
+        if (budget != null && budget.ScoreNoise <= 0f) return best;
+
+        float threshold = best.score * TOP_K_THRESHOLD;
+        if (threshold < 0f) threshold = best.score + Mathf.Abs(best.score) * (1f - TOP_K_THRESHOLD);
+
+        // Collect near-best candidates
+        int poolSize = 1;
+        for (int i = 1; i < candidates.Count && i < TOP_K_MAX; i++)
+        {
+            if (candidates[i].score >= threshold) poolSize++;
+            else break;
+        }
+
+        if (poolSize <= 1) return best;
+
+        // Weighted random selection among top K
+        float totalWeight = 0f;
+        for (int i = 0; i < poolSize; i++)
+            totalWeight += Mathf.Max(0.1f, candidates[i].score);
+        float roll = Random.Range(0f, totalWeight);
+        float cumulative = 0f;
+        for (int i = 0; i < poolSize; i++)
+        {
+            cumulative += Mathf.Max(0.1f, candidates[i].score);
+            if (roll <= cumulative) return candidates[i];
+        }
+        return best;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Role gating (operational-tactical seam)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Removes commands that conflict with the unit's assigned role.
+    /// This prevents "escort units chasing wildlife" and "frontline units wandering off."
+    /// Self-defense (retreat) is never gated — survival always allowed.
+    /// </summary>
+    private static void ApplyRoleGating(List<AICommand> candidates, BaseUnit unit, UnitAssignment assignment)
+    {
+        if (assignment.Role == UnitRole.Unassigned) return;
+
+        candidates.RemoveAll(cmd =>
+        {
+            // Retreat and fortify are always allowed (survival)
+            if (cmd is AIRetreatCommand || cmd is AIFortifyCommand || cmd is AIUnstoreCommand)
+                return false;
+
+            switch (assignment.Role)
+            {
+                case UnitRole.Scout:
+                    // Scouts shouldn't attack (except self-defense handled by retreat above)
+                    // or build. They explore and move.
+                    if (cmd is AIAttackCommand || cmd is AIBuildImprovementCommand ||
+                        cmd is AISettleCityCommand || cmd is AIForageCommand)
+                        return true;
+                    break;
+
+                case UnitRole.Defender:
+                    // Defenders shouldn't explore or settle — they hold position.
+                    if (cmd is AIExploreCommand || cmd is AISettleCityCommand)
+                        return true;
+                    break;
+
+                case UnitRole.Attacker:
+                    // Attackers shouldn't explore, forage, build, or settle.
+                    if (cmd is AIExploreCommand || cmd is AIForageCommand ||
+                        cmd is AIBuildImprovementCommand || cmd is AISettleCityCommand)
+                        return true;
+                    break;
+
+                case UnitRole.Gatherer:
+                    // Gatherers shouldn't explore far or settle.
+                    if (cmd is AIExploreCommand || cmd is AISettleCityCommand)
+                        return true;
+                    // Can attack animals (hunting) but not other civs
+                    if (cmd is AIAttackCommand atk && atk.target != null)
+                    {
+                        if (atk.target is CombatUnit cu && cu.data != null && cu.data.unitType != CombatCategory.Animal)
+                            return true;
+                    }
+                    break;
+
+                case UnitRole.Builder:
+                    // Builders shouldn't explore or attack (except wildlife self-defense)
+                    if (cmd is AIExploreCommand || cmd is AISettleCityCommand)
+                        return true;
+                    if (cmd is AIAttackCommand) return true;
+                    break;
+
+                case UnitRole.Settler:
+                    // Settlers should only move toward target and settle. No combat, no exploring.
+                    if (cmd is AIAttackCommand || cmd is AIExploreCommand ||
+                        cmd is AIBuildImprovementCommand || cmd is AIForageCommand)
+                        return true;
+                    break;
+            }
+            return false;
+        });
     }
 
     /// <summary>

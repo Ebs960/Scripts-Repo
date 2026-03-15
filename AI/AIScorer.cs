@@ -45,6 +45,93 @@ public static class AIScorer
     public static float W_EXPLORE_UNEXPLORED = 2f;
     public static float W_EXPLORE_DISTANCE   = -0.5f;
 
+    // ──────────────────────── Procedural Persona System ────────────────────────
+    // Modulates weights per-civ based on leader personality.
+    // Applied at the start of a civ's turn and restored at the end.
+    // Uses response curves rather than crisp if/then transitions.
+
+    private static float[] _savedWeights;
+
+    private static float[] SnapshotWeights() => new float[]
+    {
+        W_KILL_BONUS, W_FOOD_ON_KILL, W_DAMAGE_DEALT, W_DAMAGE_TAKEN,
+        W_TARGET_VALUE, W_LOW_HEALTH_TARGET, W_DANGER_PENALTY, W_DISTANCE_PENALTY,
+        W_TERRAIN_DEFENSE, W_HILL_BONUS, W_FORAGE_FOOD, W_FORAGE_OTHER,
+        W_SETTLE_YIELD, W_SETTLE_DISTANCE, W_SHELTER_URGENCY, W_UPGRADE_VALUE,
+        W_RETREAT_HEALTH, W_RETREAT_SAFETY, W_FORTIFY_BASE,
+        W_RESOURCE_YIELD, W_RESOURCE_STRATEGIC, W_RESOURCE_UNIQUE,
+        W_EXPLORE_BASE, W_EXPLORE_UNEXPLORED, W_EXPLORE_DISTANCE
+    };
+
+    private static void RestoreFromSnapshot(float[] s)
+    {
+        if (s == null || s.Length < 25) return;
+        W_KILL_BONUS = s[0]; W_FOOD_ON_KILL = s[1]; W_DAMAGE_DEALT = s[2]; W_DAMAGE_TAKEN = s[3];
+        W_TARGET_VALUE = s[4]; W_LOW_HEALTH_TARGET = s[5]; W_DANGER_PENALTY = s[6]; W_DISTANCE_PENALTY = s[7];
+        W_TERRAIN_DEFENSE = s[8]; W_HILL_BONUS = s[9]; W_FORAGE_FOOD = s[10]; W_FORAGE_OTHER = s[11];
+        W_SETTLE_YIELD = s[12]; W_SETTLE_DISTANCE = s[13]; W_SHELTER_URGENCY = s[14]; W_UPGRADE_VALUE = s[15];
+        W_RETREAT_HEALTH = s[16]; W_RETREAT_SAFETY = s[17]; W_FORTIFY_BASE = s[18];
+        W_RESOURCE_YIELD = s[19]; W_RESOURCE_STRATEGIC = s[20]; W_RESOURCE_UNIQUE = s[21];
+        W_EXPLORE_BASE = s[22]; W_EXPLORE_UNEXPLORED = s[23]; W_EXPLORE_DISTANCE = s[24];
+    }
+
+    /// <summary>
+    /// Apply a procedural persona based on leader personality. Modulates scoring weights
+    /// using smooth response curves (not binary if/then). Call at the start of a civ's turn.
+    /// </summary>
+    public static void ApplyPersona(LeaderData leader)
+    {
+        _savedWeights = SnapshotWeights();
+        if (leader == null) return;
+
+        // Response curve: lerp(1.0, multiplier, focus) where focus is 0–2
+        float Curve(float focus, float baseMultiplier) => Mathf.Lerp(1f, baseMultiplier, focus / 2f);
+
+        // Military persona: aggressive leaders value kills more, fear danger less
+        W_KILL_BONUS        *= Curve(leader.militaryFocus, 1.4f);
+        W_DAMAGE_DEALT      *= Curve(leader.militaryFocus, 1.3f);
+        W_TARGET_VALUE      *= Curve(leader.militaryFocus, 1.3f);
+        W_DANGER_PENALTY    *= Curve(leader.militaryFocus, 0.7f);   // less afraid
+        W_RETREAT_HEALTH    *= Curve(leader.militaryFocus, 0.8f);   // retreat less eagerly
+
+        // Risk from aggressiveness (0–10 scale, 5 is neutral)
+        float riskFactor = (leader.aggressiveness - 5f) / 10f; // -0.5 to +0.5
+        W_DANGER_PENALTY    *= (1f - riskFactor * 0.4f);
+        W_RETREAT_HEALTH    *= (1f - riskFactor * 0.3f);
+        W_FORTIFY_BASE      *= (1f + riskFactor * 0.3f); // cautious leaders fortify more
+
+        // Economic persona: values resources and food gathering
+        W_FORAGE_FOOD       *= Curve(leader.economicFocus, 1.3f);
+        W_RESOURCE_YIELD    *= Curve(leader.economicFocus, 1.4f);
+        W_RESOURCE_STRATEGIC *= Curve(leader.economicFocus, 1.3f);
+
+        // Scientific persona: values tech-enabling resources and exploration
+        W_EXPLORE_BASE      *= Curve(leader.scientificFocus, 1.3f);
+        W_EXPLORE_UNEXPLORED *= Curve(leader.scientificFocus, 1.2f);
+
+        // Cultural persona: values settle and build more
+        W_SETTLE_YIELD      *= Curve(leader.culturalFocus, 1.3f);
+        W_UPGRADE_VALUE     *= Curve(leader.culturalFocus, 1.2f);
+
+        // Expansion persona
+        W_SETTLE_YIELD      *= Curve(leader.expansion / 5f, 1.3f); // 0–10 → 0–2 range
+        W_EXPLORE_BASE      *= Curve(leader.expansion / 5f, 1.2f);
+
+        // Diplomacy modulates risk (diplomatic leaders are more cautious)
+        float dipFactor = leader.diplomacy / 10f; // 0–1
+        W_DANGER_PENALTY    *= (1f + dipFactor * 0.2f); // more careful
+        W_RETREAT_HEALTH    *= (1f + dipFactor * 0.15f);
+    }
+
+    /// <summary>
+    /// Restore default weights after a civ's turn completes.
+    /// </summary>
+    public static void ResetPersona()
+    {
+        RestoreFromSnapshot(_savedWeights);
+        _savedWeights = null;
+    }
+
     // ──────────────────────── Attack scoring ────────────────────────
 
     /// <summary>

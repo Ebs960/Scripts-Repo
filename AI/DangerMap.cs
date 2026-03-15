@@ -3,12 +3,32 @@ using UnityEngine;
 
 /// <summary>
 /// Per-planet heatmap of how dangerous each tile is based on enemy attack ranges and animal threats.
-/// Recalculated at the start of each AI turn so the planner can route units safely.
+///
+/// Supports two modes:
+///   1. Full rebuild — Generate() clears and recomputes everything (used first turn or after many changes).
+///   2. Incremental — subscribes to GameEventManager for unit moved/killed events and
+///      only updates affected tiles. Much cheaper when few units moved since last rebuild.
+///
+/// The map tracks per-threat contributions so individual threats can be removed and re-added
+/// without rebuilding the entire map.
 /// </summary>
 public class DangerMap
 {
     private readonly Dictionary<int, float> dangerValues = new Dictionary<int, float>(512);
     public int PlanetIndex { get; private set; }
+
+    // Per-threat contribution tracking for incremental updates
+    // threatKey → list of (tileIndex, dangerContribution) pairs
+    private readonly Dictionary<int, List<(int tile, float amount)>> threatContributions = new(64);
+    private Civilization perspective;
+    private int lastGenerateTurn = -1;
+    private bool isSubscribed;
+
+    // Reusable BFS structures (avoid GC pressure)
+    private readonly HashSet<int> bfsVisited = new(64);
+    private readonly Queue<(int tile, int dist)> bfsQueue = new(64);
+
+    // ──────────────── Public API ────────────────
 
     public float GetDanger(int tileIndex)
     {
@@ -20,9 +40,6 @@ public class DangerMap
         return GetDanger(tileIndex) >= threshold;
     }
 
-    /// <summary>
-    /// Returns the tile with the least danger from the given set, or -1 if empty.
-    /// </summary>
     public int GetSafestTile(IEnumerable<int> tiles)
     {
         int best = -1;
@@ -35,17 +52,19 @@ public class DangerMap
         return best;
     }
 
-    /// <summary>
-    /// Regenerate the danger map for a planet from the perspective of a given civilization.
-    /// </summary>
+    // ──────────────── Full rebuild ────────────────
+
     public void Generate(Civilization perspective, int planetIndex)
     {
         dangerValues.Clear();
+        threatContributions.Clear();
+        this.perspective = perspective;
         PlanetIndex = planetIndex;
+        lastGenerateTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady()) return;
 
-        // Enemy combat units
         var allCivs = CivilizationManager.Instance != null ? CivilizationManager.Instance.GetAllCivs() : null;
         if (allCivs != null)
         {
@@ -55,33 +74,29 @@ public class DangerMap
                 foreach (var enemy in civ.combatUnits)
                 {
                     if (enemy == null || enemy.currentTileIndex < 0 || enemy.planetIndex != planetIndex) continue;
-                    MarkThreatRadius(ts, enemy.currentTileIndex, enemy.CurrentAttack, Mathf.FloorToInt(enemy.CurrentRange), 1f);
+                    int key = enemy.GetInstanceID();
+                    MarkThreatRadiusTracked(ts, key, enemy.currentTileIndex, enemy.CurrentAttack,
+                        Mathf.FloorToInt(enemy.CurrentRange), 1f);
                 }
-                // Workers can also attack (weakly)
                 if (civ.workerUnits != null)
-                {
                     foreach (var w in civ.workerUnits)
                     {
                         if (w == null || w.currentTileIndex < 0 || w.planetIndex != planetIndex) continue;
-                        MarkThreatRadius(ts, w.currentTileIndex, w.CurrentAttack, 1, 0.5f);
+                        MarkThreatRadiusTracked(ts, w.GetInstanceID(), w.currentTileIndex, w.CurrentAttack, 1, 0.5f);
                     }
-                }
             }
         }
 
-        // Animals (reduced weight — they are threats but not strategic enemies)
         if (AnimalManager.Instance != null)
         {
             foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
             {
                 if (animal == null || animal.data == null || animal.currentTileIndex < 0 || animal.planetIndex != planetIndex) continue;
-                bool isPredator = animal.data.animalBehavior == AnimalBehaviorType.Predator;
-                float weight = isPredator ? 0.7f : 0.15f;
-                MarkThreatRadius(ts, animal.currentTileIndex, animal.CurrentAttack, 1, weight);
+                float weight = animal.data.animalBehavior == AnimalBehaviorType.Predator ? 0.7f : 0.15f;
+                MarkThreatRadiusTracked(ts, animal.GetInstanceID(), animal.currentTileIndex, animal.CurrentAttack, 1, weight);
             }
         }
 
-        // Enemy cities (bombardment radius — mark 2 tiles around each enemy city)
         if (allCivs != null)
         {
             foreach (var civ in allCivs)
@@ -90,45 +105,135 @@ public class DangerMap
                 foreach (var city in civ.cities)
                 {
                     if (city == null || city.planetIndex != planetIndex) continue;
-                    MarkThreatRadius(ts, city.centerTileIndex, 5, 2, 0.8f);
+                    MarkThreatRadiusTracked(ts, city.GetInstanceID(), city.centerTileIndex, 5, 2, 0.8f);
                 }
             }
         }
+
+        SubscribeToEvents();
     }
 
-    private void MarkThreatRadius(TileSystem ts, int centerTile, float attackPower, int range, float weight)
+    // ──────────────── Incremental updates ────────────────
+
+    /// <summary>
+    /// Remove a specific threat's contribution (call when unit moves or dies).
+    /// </summary>
+    public void RemoveThreat(int threatKey)
     {
+        if (!threatContributions.TryGetValue(threatKey, out var contributions)) return;
+        foreach (var (tile, amount) in contributions)
+        {
+            if (dangerValues.TryGetValue(tile, out float current))
+            {
+                float newVal = current - amount;
+                if (newVal <= 0.001f) dangerValues.Remove(tile);
+                else dangerValues[tile] = newVal;
+            }
+        }
+        threatContributions.Remove(threatKey);
+    }
+
+    /// <summary>
+    /// Add/update a threat at a new position (call after unit moves).
+    /// </summary>
+    public void UpdateThreat(int threatKey, int centerTile, float attackPower, int range, float weight)
+    {
+        RemoveThreat(threatKey);
+        var ts = TileSystem.GetForPlanet(PlanetIndex) ?? TileSystem.Instance;
+        if (ts == null) return;
+        MarkThreatRadiusTracked(ts, threatKey, centerTile, attackPower, range, weight);
+    }
+
+    // ──────────────── Event handlers ────────────────
+
+    private void SubscribeToEvents()
+    {
+        if (isSubscribed || GameEventManager.Instance == null) return;
+        GameEventManager.Instance.OnUnitMoved += OnUnitMoved;
+        GameEventManager.Instance.OnUnitKilled += OnUnitKilled;
+        isSubscribed = true;
+    }
+
+    public void Unsubscribe()
+    {
+        if (!isSubscribed || GameEventManager.Instance == null) return;
+        GameEventManager.Instance.OnUnitMoved -= OnUnitMoved;
+        GameEventManager.Instance.OnUnitKilled -= OnUnitKilled;
+        isSubscribed = false;
+    }
+
+    private void OnUnitMoved(GameEventManager.UnitMovementEventArgs args)
+    {
+        var unit = args.Unit as BaseUnit;
+        if (unit == null || unit.planetIndex != PlanetIndex) return;
+        // Only care about enemies (not our own units)
+        var owner = GetOwner(unit);
+        if (owner == perspective) return;
+
+        int key = unit.GetInstanceID();
+        float weight = 1f;
+        int range = 1;
+        if (unit is CombatUnit cu)
+        {
+            range = Mathf.FloorToInt(cu.CurrentRange);
+            if (cu.data != null && cu.data.unitType == CombatCategory.Animal)
+                weight = cu.data.animalBehavior == AnimalBehaviorType.Predator ? 0.7f : 0.15f;
+        }
+        else if (unit is WorkerUnit) { weight = 0.5f; }
+
+        UpdateThreat(key, args.ToTileIndex, unit.CurrentAttack, range, weight);
+    }
+
+    private void OnUnitKilled(GameEventManager.CombatEventArgs args)
+    {
+        var defender = args.Defender as BaseUnit;
+        if (defender == null || defender.planetIndex != PlanetIndex) return;
+        if (!args.IsLethal) return;
+        RemoveThreat(defender.GetInstanceID());
+    }
+
+    // ──────────────── Tracked BFS ────────────────
+
+    private void MarkThreatRadiusTracked(TileSystem ts, int threatKey, int centerTile, float attackPower, int range, float weight)
+    {
+        var contributions = new List<(int, float)>(range <= 0 ? 1 : 7 * range);
+
         if (range <= 0)
         {
-            AddDanger(centerTile, attackPower * weight);
+            float amt = attackPower * weight;
+            AddDanger(centerTile, amt);
+            contributions.Add((centerTile, amt));
+            threatContributions[threatKey] = contributions;
             return;
         }
 
-        // BFS from center up to range
-        var visited = new HashSet<int>();
-        var queue = new Queue<(int tile, int dist)>();
-        queue.Enqueue((centerTile, 0));
-        visited.Add(centerTile);
+        bfsVisited.Clear();
+        bfsQueue.Clear();
+        bfsQueue.Enqueue((centerTile, 0));
+        bfsVisited.Add(centerTile);
 
-        while (queue.Count > 0)
+        while (bfsQueue.Count > 0)
         {
-            var (tile, dist) = queue.Dequeue();
-            // Danger falls off with distance: full at center, halved per step
+            var (tile, dist) = bfsQueue.Dequeue();
             float falloff = 1f / (1f + dist);
-            AddDanger(tile, attackPower * weight * falloff);
+            float amt = attackPower * weight * falloff;
+            AddDanger(tile, amt);
+            contributions.Add((tile, amt));
 
             if (dist >= range) continue;
             int[] neighbors = ts.GetNeighbors(tile);
             if (neighbors == null) continue;
             foreach (int n in neighbors)
             {
-                if (n >= 0 && !visited.Contains(n))
+                if (n >= 0 && !bfsVisited.Contains(n))
                 {
-                    visited.Add(n);
-                    queue.Enqueue((n, dist + 1));
+                    bfsVisited.Add(n);
+                    bfsQueue.Enqueue((n, dist + 1));
                 }
             }
         }
+
+        threatContributions[threatKey] = contributions;
     }
 
     private void AddDanger(int tile, float amount)
@@ -137,5 +242,12 @@ public class DangerMap
             dangerValues[tile] += amount;
         else
             dangerValues[tile] = amount;
+    }
+
+    private static Civilization GetOwner(BaseUnit unit)
+    {
+        if (unit is CombatUnit cu) return cu.owner;
+        if (unit is WorkerUnit wu) return wu.owner;
+        return null;
     }
 }

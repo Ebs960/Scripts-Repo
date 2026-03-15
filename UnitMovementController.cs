@@ -17,6 +17,31 @@ public class UnitMovementController : MonoBehaviour
 
     private const int MaxPathSearchNodes = 10000;
 
+    // A* mode: when true, uses hex distance heuristic for faster pathfinding.
+    // Admissible heuristic = GetWrappedHexDistance * minMoveCost guarantees optimality.
+    [Header("Pathfinding")]
+    [SerializeField] private bool useAStarHeuristic = true;
+    private const float MIN_MOVE_COST = 1f; // minimum possible single-step cost (Plains = 1)
+
+    // Path cache: avoids recomputing identical paths within the same turn.
+    // Key = (start, end, unitInstanceId), Value = (path, turn).
+    private readonly Dictionary<(int, int, int), (List<int> path, int turn)> pathCache = new(32);
+    private const int PATH_CACHE_MAX = 64;
+
+    // Telemetry counters (reset each turn, readable by AIDebugOverlay)
+    public int PathExpansions { get; private set; }
+    public int PathAborts { get; private set; }
+    public int PathCacheHits { get; private set; }
+    public int PathQueries { get; private set; }
+
+    public void ResetPathTelemetry()
+    {
+        PathExpansions = 0;
+        PathAborts = 0;
+        PathCacheHits = 0;
+        PathQueries = 0;
+    }
+
     private sealed class MinHeap
     {
         private readonly List<(int tile, float priority)> heap = new List<(int, float)>();
@@ -266,7 +291,8 @@ public class UnitMovementController : MonoBehaviour
     /// </summary>
     public List<int> FindPath(int startIndex, int endIndex, BaseUnit unit = null)
     {
-        // Multi-planet: FindPath without unit context uses the current planet.
+        PathQueries++;
+
         int pIndex = unit != null ? unit.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady())
@@ -287,6 +313,16 @@ public class UnitMovementController : MonoBehaviour
         if (startIndex == endIndex)
             return new List<int>();
 
+        // ── Path cache lookup ──
+        int unitId = unit != null ? unit.GetInstanceID() : 0;
+        int currentTurn = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+        var cacheKey = (startIndex, endIndex, unitId);
+        if (pathCache.TryGetValue(cacheKey, out var cached) && cached.turn == currentTurn)
+        {
+            PathCacheHits++;
+            return cached.path != null ? new List<int>(cached.path) : null;
+        }
+
         bool isOrbit = unit != null && unit.currentLayer == TileLayer.Orbit;
         int orbitCost = BiomeHelper.DefaultOrbitMovementCost;
         if (isOrbit)
@@ -296,13 +332,16 @@ public class UnitMovementController : MonoBehaviour
                 orbitCost = cu.data.orbitMovementCost;
         }
 
-        // Dijkstra (h=0) guarantees optimal paths regardless of hex spacing or map wrapping.
+        // A* when heuristic enabled, Dijkstra (h=0) otherwise.
+        // Heuristic: hex distance * min move cost is admissible (never overestimates).
+        bool useHeuristic = useAStarHeuristic && !isOrbit;
         openSet.Clear();
         bestCost.Clear();
         cameFrom.Clear();
 
         bestCost[startIndex] = 0f;
-        openSet.Enqueue(startIndex, 0f);
+        float h0 = useHeuristic ? ts.GetWrappedHexDistance(startIndex, endIndex) * MIN_MOVE_COST : 0f;
+        openSet.Enqueue(startIndex, h0);
 
         int expanded = 0;
 
@@ -312,7 +351,6 @@ public class UnitMovementController : MonoBehaviour
 
             float currentG = bestCost.TryGetValue(current, out float cg) ? cg : float.MaxValue;
 
-            // Skip stale heap entries: if we already found a cheaper way to this tile, ignore
             if (bestCost.TryGetValue(current, out float best) && currentG > best)
                 continue;
 
@@ -324,19 +362,28 @@ public class UnitMovementController : MonoBehaviour
                 {
                     path.Add(trace);
                     if (!cameFrom.TryGetValue(trace, out int prev))
+                    {
+                        CacheResult(cacheKey, null, currentTurn);
                         return null;
+                    }
                     trace = prev;
                 }
                 path.Reverse();
+                PathExpansions += expanded;
+                CacheResult(cacheKey, path, currentTurn);
                 return path;
             }
 
             expanded++;
             if (expanded > MaxPathSearchNodes)
             {
+                PathAborts++;
+                PathExpansions += expanded;
                 Debug.LogWarning($"[UnitMovementController] Aborting path search: expanded > {MaxPathSearchNodes} nodes (start={startIndex} end={endIndex})");
+                CacheResult(cacheKey, null, currentTurn);
                 return null;
             }
+
             foreach (int neighbor in ts.GetNeighbors(current))
             {
                 var neighborTile = ts.GetTileData(neighbor);
@@ -360,12 +407,21 @@ public class UnitMovementController : MonoBehaviour
 
                 bestCost[neighbor] = tentativeG;
                 cameFrom[neighbor] = current;
-                openSet.Enqueue(neighbor, tentativeG);
+
+                float h = useHeuristic ? ts.GetWrappedHexDistance(neighbor, endIndex) * MIN_MOVE_COST : 0f;
+                openSet.Enqueue(neighbor, tentativeG + h);
             }
         }
 
-        // No path found
+        PathExpansions += expanded;
+        CacheResult(cacheKey, null, currentTurn);
         return null;
+    }
+
+    private void CacheResult((int, int, int) key, List<int> path, int turn)
+    {
+        if (pathCache.Count >= PATH_CACHE_MAX) pathCache.Clear();
+        pathCache[key] = (path, turn);
     }
 
     public List<int> TrimPathToAvailableMovement(BaseUnit unit, List<int> path)

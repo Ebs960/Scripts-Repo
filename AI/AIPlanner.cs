@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// The main AI orchestrator. Plans an entire turn's worth of commands for a civilization,
@@ -46,6 +48,14 @@ public class AIPlanner
     public AIContext Context => currentContext;
     public AiBudget Budget => budget;
 
+    // Phase timing telemetry (ms per phase, readable by debug overlay)
+    public float TimeDangerMap { get; private set; }
+    public float TimeContext { get; private set; }
+    public float TimeStrategic { get; private set; }
+    public float TimeOperational { get; private set; }
+    public float TimeTactical { get; private set; }
+    public float TimeTotal { get; private set; }
+
     /// <summary>
     /// Set the intelligence budget (call once at game start or when difficulty changes).
     /// </summary>
@@ -66,70 +76,81 @@ public class AIPlanner
 
     public void PlanTurn(Civilization civ)
     {
+        var totalSw = Stopwatch.StartNew();
+        var phaseSw = new Stopwatch();
         plannedCommands.Clear();
         assignedUnits.Clear();
 
-        // 1) Generate danger maps (skip on Easy if disabled)
+        // ── Apply procedural persona (modulates AIScorer weights for this civ) ──
+        AIScorer.ApplyPersona(civ.leader);
+
+        // ── Phase 1: Danger Maps ──
+        phaseSw.Restart();
         if (budget.EnableDangerMap)
             GenerateDangerMaps(civ);
         else
             dangerMaps.Clear();
+        TimeDangerMap = phaseSw.ElapsedMilliseconds;
 
-        // 2) Build per-turn context cache (budget controls scan limits)
+        // ── Phase 2: Context Cache ──
+        phaseSw.Restart();
         currentContext = new AIContext();
         currentContext.Build(civ, dangerMaps, budget);
+        TimeContext = phaseSw.ElapsedMilliseconds;
 
-        // 3) Update empire-level strategic AI (if budget allows)
+        // ── Phase 3: Strategic (EmpireAI) ──
+        phaseSw.Restart();
         EmpireIntent intent = null;
         OperationalPlanner opPlanner = null;
-
         if (budget.EnableStrategicPlanning)
         {
             var empire = GetOrCreateEmpire(civ);
             empire.UpdateForTurn(civ, currentContext);
             intent = empire.Intent;
+        }
+        TimeStrategic = phaseSw.ElapsedMilliseconds;
 
-            // 4) Update operational planner
+        // ── Phase 4: Operational (OperationalPlanner) ──
+        phaseSw.Restart();
+        if (budget.EnableStrategicPlanning)
+        {
             opPlanner = GetOrCreateOpPlanner(civ);
             opPlanner.UpdateAssignments(civ, intent, currentContext);
         }
-
-        // 5) Unstore sheltered units when not winter
         PlanUnstores(civ);
-
-        // 6) Refresh and auto-form army groups (if budget allows)
         if (budget.EnableArmyGroups)
         {
             armyGroups.Refresh();
             foreach (var kv in dangerMaps)
                 armyGroups.AutoFormGroups(civ, kv.Value, kv.Key, budget.ArmyGroupRange);
         }
-
-        // 7) Plan group-level actions (group decides, not individual units)
         if (budget.EnableArmyGroups)
             PlanArmyGroups(civ, intent);
+        TimeOperational = phaseSw.ElapsedMilliseconds;
 
-        // 8) Plan commands for remaining ungrouped units
+        // ── Phase 5: Tactical (per-unit TacticalEvaluator) ──
+        phaseSw.Restart();
         PlanCombatUnits(civ, intent, opPlanner);
         PlanWorkerUnits(civ, intent, opPlanner);
-
-        // 9) Apply score noise from budget (Easy AI makes more mistakes)
         if (budget.ScoreNoise > 0f)
             ApplyScoreNoise();
-
-        // 10) Sort by score (highest first)
         plannedCommands.Sort((a, b) => b.score.CompareTo(a.score));
+        TimeTactical = phaseSw.ElapsedMilliseconds;
 
-        // Cap total commands (budget limit)
-        // Not needed for correctness but prevents runaway on huge empires
+        // ── Restore default scoring weights ──
+        AIScorer.ResetPersona();
+
+        totalSw.Stop();
+        TimeTotal = totalSw.ElapsedMilliseconds;
 
         if (Debug.isDebugBuild)
         {
             string civName = civ.civData != null ? civ.civData.civName : "?";
             string goalStr = intent != null ? intent.Goal.ToString() : "none";
-            Debug.Log($"[AIPlanner] Planned {plannedCommands.Count} commands for {civName} " +
-                      $"(goal={goalStr} budget={budget.ScoreNoise:F1}noise " +
-                      $"combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0})");
+            Debug.Log($"[AIPlanner] {civName}: {plannedCommands.Count} cmds, goal={goalStr}, " +
+                      $"timing: danger={TimeDangerMap:F0}ms ctx={TimeContext:F0}ms " +
+                      $"strat={TimeStrategic:F0}ms ops={TimeOperational:F0}ms " +
+                      $"tact={TimeTactical:F0}ms total={TimeTotal:F0}ms");
         }
     }
 
