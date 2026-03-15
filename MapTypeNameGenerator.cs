@@ -4,36 +4,36 @@ using UnityEngine;
 public static class MapTypeNameGenerator
 {
     private static readonly string[][] baseNames = {
-        new[] { "Polar", "Arctic", "Frozen", "Glacial", "Ice", "Frost" },
-        new[] { "Northern", "Boreal", "Taiga", "Pine", "Snow", "Frost" },
-        new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald" },
-        new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon" },
-        new[] { "Desert", "Arid", "Sweltering", "Oasis", "Tropical", "Steamlands" },
-        new[] { "Scorched", "Barren", "Burning", "Mirage", "Infernal", "Demonic" }
+        new[] { "Polar", "Arctic", "Frozen", "Glacial", "Ice", "Frost", "Permafrost", "White" },
+        new[] { "Northern", "Boreal", "Taiga", "Pine", "Snow", "Frost", "Evergreen", "Fir" },
+        new[] { "Dry", "Grassy", "Temperate", "Lush", "Misty", "Emerald", "Verdant", "Meadow" },
+        new[] { "Savanna", "Sunlit", "Tropical", "Fertile", "Rainforest", "Monsoon", "Verdure", "Canopy" },
+        new[] { "Desert", "Arid", "Sweltering", "Oasis", "Tropical", "Steamlands", "Sahara", "Sandsea" },
+        new[] { "Scorched", "Barren", "Burning", "Mirage", "Infernal", "Demonic", "Charred", "Ashen" }
     };
 
-    private static readonly string[] oceanTerrain = { "Shards", "Atoll", "Isles", "Archipelago", "Seas", "Chain" };
+    private static readonly string[] oceanTerrain = { "Shards", "Atoll", "Isles", "Archipelago", "Seas", "Chain", "Cays", "Banks" };
     
-    private static readonly string[] waterTerrain = { "Ponds", "Waters", "Lagoons", "Rivers", "Lakes", "Coves"};
+    private static readonly string[] waterTerrain = { "Ponds", "Waters", "Lagoons", "Rivers", "Lakes", "Coves", "Bights", "Estuaries" };
 
     private static readonly string[][] elevationTerrain = {
-        new[] { "Basin", "Plains", "Lowlands", "Valley", "Flats", "Coasts" },
-        new[] { "Hills", "Highlands", "Ridges", "Heights", "Uplands", "Cliffs" },
-        new[] { "Peaks", "Range", "Mountains", "Summit", "Crags", "Alps" }
+        new[] { "Basin", "Plains", "Lowlands", "Valley", "Flats", "Coasts", "Meadow", "Fen" },
+        new[] { "Hills", "Highlands", "Ridges", "Heights", "Uplands", "Cliffs", "Bluffs", "Escarpment" },
+        new[] { "Peaks", "Range", "Mountains", "Summit", "Crags", "Alps", "Spire", "Highland" }
     };
 
     private static readonly string[][] elevationTerrainContinents = {
-        new[] { "Tablelands", "Plains", "Low Plateaus", "Country", "Steppes", "Coastal Plain" }, // Low elevation
-        new[] { "Plateaus", "Uplands", "Escarpments", "Highlands", "Continental Rise", "Shield" }, // Hilly
-        new[] { "Massif", "Peaks", "Continental Divide", "Great Range", "Crest", "Summits" } // Mountainous
+        new[] { "Tablelands", "Plains", "Low Plateaus", "Country", "Steppes", "Coastal Plain", "Heartland", "Lowlands" }, // Low elevation
+        new[] { "Plateaus", "Uplands", "Escarpments", "Highlands", "Continental Rise", "Shield", "Buttes", "Badlands" }, // Hilly
+        new[] { "Massif", "Peaks", "Continental Divide", "Great Range", "Crest", "Summits", "High Range", "Pinnacles" } // Mountainous
     };
 
-    private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland" };
+    private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland", "Realm", "Union" };
 
     private static readonly string[][] pangaeaMods = {
-        new[] { "Great", "Endless", "Vast", "Boundless", "Sweeping", "Ancient" },
-        new[] { "Rolling", "Rugged", "Forested", "Windswept", "Untamed", "Wild" },
-        new[] { "Towering", "Majestic", "Colossal", "Mighty", "Stony", "Sheer" }
+        new[] { "Great", "Endless", "Vast", "Boundless", "Sweeping", "Ancient", "Primal", "Primeval" },
+        new[] { "Rolling", "Rugged", "Forested", "Windswept", "Untamed", "Wild", "Verdant", "Broad" },
+        new[] { "Towering", "Majestic", "Colossal", "Mighty", "Stony", "Sheer", "Monolithic", "Skyborne" }
     };
 
     public static string GetMapTypeName(int climate, int moisture, int land, int elevation)

@@ -29,8 +29,7 @@ public class AnimalManager : MonoBehaviour
     private Dictionary<CombatUnit, int> recentlyAttackedAnimals = new Dictionary<CombatUnit, int>();
     private const int PREY_MEMORY_TURNS = 2;
     
-    // Track animal movement points (keyed by animal instance)
-    private Dictionary<CombatUnit, int> animalMovePoints = new Dictionary<CombatUnit, int>();
+    // Animals now use the unified BaseUnit movement API (`currentMovePoints`, `RestoreMovePointsForNewTurn`, `DeductMovePoints`).
 
     private readonly List<CombatUnit> activeAnimals = new List<CombatUnit>();
 
@@ -438,22 +437,20 @@ public class AnimalManager : MonoBehaviour
             if (unit == null)
             {
                 activeAnimals.Remove(unit);
-                animalMovePoints.Remove(unit);
                 continue;
             }
 
             unit.ResetForNewTurn();
             
-            // Reset movement points for this animal based on its data
-            int baseMovePoints = unit.data != null ? unit.data.animalMovePoints : 1;
-            animalMovePoints[unit] = baseMovePoints;
+            // Restore movement points for this animal using BaseUnit API (respects animalMovePoints fallback in GetStartingMovePoints)
+            try { unit.RestoreMovePointsForNewTurn(); } catch { /* ignore if override not present */ }
 
             var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
             var tileData = ts != null ? ts.GetTileData(unit.currentTileIndex) : null;
             if (tileData == null) continue;
 
             // Animals can move multiple times per turn based on their movement points
-            while (GetAnimalMovePoints(unit) > 0)
+            while (unit.currentMovePoints > 0)
             {
                 // Determine movement behavior based on animal type
                 bool moved = false;
@@ -483,22 +480,7 @@ public class AnimalManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Get remaining movement points for an animal this turn
-    /// </summary>
-    private int GetAnimalMovePoints(CombatUnit animal)
-    {
-        return animalMovePoints.TryGetValue(animal, out int points) ? points : 0;
-    }
-    
-    /// <summary>
-    /// Deduct movement points for an animal after moving
-    /// </summary>
-    private void DeductAnimalMovePoints(CombatUnit animal, int cost)
-    {
-        if (animalMovePoints.ContainsKey(animal))
-            animalMovePoints[animal] = Mathf.Max(0, animalMovePoints[animal] - cost);
-    }
+    // Movement now uses BaseUnit.currentMovePoints and BaseUnit.DeductMovePoints
     
     /// <summary>
     /// Clean up attack records older than PREY_MEMORY_TURNS
@@ -523,7 +505,7 @@ public class AnimalManager : MonoBehaviour
     private bool HandlePredatorMovement(CombatUnit predator)
     {
         // Check if predator has movement points
-        if (GetAnimalMovePoints(predator) <= 0) return false;
+    if (predator.currentMovePoints <= 0) return false;
 
         var target = FindNearestCivilizationUnit(predator);
         if (target == null) return false;
@@ -546,7 +528,7 @@ public class AnimalManager : MonoBehaviour
             };
 
             // Consume one movement point for the attack to avoid infinite attack loops
-            DeductAnimalMovePoints(predator, 1);
+            predator.DeductMovePoints(1);
             predator.PerformAttack(ctx);
             return true;
         }
@@ -578,7 +560,7 @@ public class AnimalManager : MonoBehaviour
         }
 
         // Deduct movement point and move
-        DeductAnimalMovePoints(predator, 1);
+        predator.DeductMovePoints(1);
         predator.MoveTo(bestDestination);
         return true;
     }
@@ -589,25 +571,68 @@ public class AnimalManager : MonoBehaviour
     private bool HandlePreyMovement(CombatUnit prey)
     {
         // Check if prey has movement points
-        if (GetAnimalMovePoints(prey) <= 0) return false;
+        if (prey.currentMovePoints <= 0) return false;
         
         bool wasAttacked = WasRecentlyAttacked(prey);
-        
+
         if (wasAttacked)
         {
             // Prey was recently attacked, so it's aggressive and will hunt like a predator
-return HandlePredatorMovement(prey); // Use predator logic for aggressive behavior
+            return HandlePredatorMovement(prey); // Use predator logic for aggressive behavior
         }
-        else
+
+        // If not aggressive, check for nearby traps that attract animals
+        if (ImprovementManager.Instance != null)
         {
-            // Normal prey behavior - try to flee from civilization units
-            int? fleeDestination = GetFleeDirection(prey);
-            if (fleeDestination.HasValue)
+            int? trapTile = ImprovementManager.Instance.GetNearestTrapForAnimals(prey.planetIndex, prey.currentTileIndex, 6);
+            if (trapTile.HasValue)
             {
-                DeductAnimalMovePoints(prey, 1);
-                prey.MoveTo(fleeDestination.Value);
-return true;
+                var ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
+                float dist = ts != null ? ts.GetTileDistance(prey.currentTileIndex, trapTile.Value) : float.MaxValue;
+                if (dist <= 1f)
+                {
+                    prey.DeductMovePoints(1);
+                    prey.MoveTo(trapTile.Value);
+                    return true;
+                }
+
+                var neighborIndices = ts != null ? ts.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
+                var validDestinations = neighborIndices
+                    .Where(index =>
+                    {
+                        var neighbor = ts != null ? ts.GetTileData(index) : null;
+                        return neighbor != null && prey.CanMoveTo(index);
+                    })
+                    .ToList();
+
+                if (validDestinations.Count > 0)
+                {
+                    int bestDestination = validDestinations[0];
+                    float minDistance = ts != null ? ts.GetTileDistance(bestDestination, trapTile.Value) : float.MaxValue;
+                    foreach (var destination in validDestinations)
+                    {
+                        float distance = ts != null ? ts.GetTileDistance(destination, trapTile.Value) : float.MaxValue;
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            bestDestination = destination;
+                        }
+                    }
+
+                    prey.DeductMovePoints(1);
+                    prey.MoveTo(bestDestination);
+                    return true;
+                }
             }
+        }
+
+        // Normal prey behavior - try to flee from civilization units
+        int? fleeDestination = GetFleeDirection(prey);
+        if (fleeDestination.HasValue)
+        {
+            prey.DeductMovePoints(1);
+            prey.MoveTo(fleeDestination.Value);
+            return true;
         }
         
         return false;
@@ -619,9 +644,53 @@ return true;
     private bool HandleNeutralMovement(CombatUnit unit)
     {
         // Check if unit has movement points
-        if (GetAnimalMovePoints(unit) <= 0) return false;
+        if (unit.currentMovePoints <= 0) return false;
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         
+        // First, check for nearby traps that attract animals
+        if (ImprovementManager.Instance != null)
+        {
+            int? trapTile = ImprovementManager.Instance.GetNearestTrapForAnimals(unit.planetIndex, unit.currentTileIndex, 6);
+            if (trapTile.HasValue)
+            {
+                float dist = ts != null ? ts.GetTileDistance(unit.currentTileIndex, trapTile.Value) : float.MaxValue;
+                if (dist <= 1f)
+                {
+                    unit.DeductMovePoints(1);
+                    unit.MoveTo(trapTile.Value);
+                    return true;
+                }
+
+                var trapNeighborIndices = ts != null ? ts.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
+                var trapValidDestinations = trapNeighborIndices
+                    .Where(index =>
+                    {
+                        var neighbor = ts != null ? ts.GetTileData(index) : null;
+                        return neighbor != null && unit.CanMoveTo(index);
+                    })
+                    .ToList();
+
+                if (trapValidDestinations.Count > 0)
+                {
+                    int bestDestination = trapValidDestinations[0];
+                    float minDistance = ts != null ? ts.GetTileDistance(bestDestination, trapTile.Value) : float.MaxValue;
+                    foreach (var destination in trapValidDestinations)
+                    {
+                        float distance = ts != null ? ts.GetTileDistance(destination, trapTile.Value) : float.MaxValue;
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            bestDestination = destination;
+                        }
+                    }
+
+                    unit.DeductMovePoints(1);
+                    unit.MoveTo(bestDestination);
+                    return true;
+                }
+            }
+        }
+
         var neighborIndices = ts != null ? ts.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
         var validDestinations = neighborIndices
             .Where(index =>
@@ -634,7 +703,7 @@ return true;
         if (validDestinations.Count > 0)
         {
             int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
-            DeductAnimalMovePoints(unit, 1);
+            unit.DeductMovePoints(1);
             unit.MoveTo(targetTile);
             return true;
         }
@@ -861,7 +930,6 @@ return true;
         {
             activeAnimals.Remove(unit);
             recentlyAttackedAnimals.Remove(unit);
-            animalMovePoints.Remove(unit);
             UnitRegistry.Unregister(unit.gameObject);
         };
 
@@ -926,7 +994,6 @@ return true;
         
         activeAnimals.Remove(animal);
         recentlyAttackedAnimals.Remove(animal);
-        animalMovePoints.Remove(animal);
         UnitRegistry.Unregister(animal.gameObject);
 }
     

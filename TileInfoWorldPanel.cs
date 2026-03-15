@@ -22,6 +22,8 @@ public class TileInfoWorldPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI biomeText;
     [SerializeField] private TextMeshProUGUI yieldsText;
     [SerializeField] private TextMeshProUGUI elevationText;
+    [SerializeField] private TextMeshProUGUI moistureText;
+    [SerializeField] private TextMeshProUGUI temperatureText;
     [SerializeField] private TextMeshProUGUI resourceText;
 
     [Header("Styling")]
@@ -191,6 +193,25 @@ public class TileInfoWorldPanel : MonoBehaviour
         else if (yieldsText != null)
         {
             yieldsText.text += "\n" + elevInfo;
+        }
+
+        // Moisture and temperature
+        if (moistureText != null)
+        {
+            moistureText.text = $"Moisture: {tileData.moisture:F2}";
+        }
+        else if (yieldsText != null)
+        {
+            yieldsText.text += $"\nMoisture: {tileData.moisture:F2}";
+        }
+
+        if (temperatureText != null)
+        {
+            temperatureText.text = $"Temperature: {tileData.temperature:F1}°C";
+        }
+        else if (yieldsText != null)
+        {
+            yieldsText.text += $"\nTemperature: {tileData.temperature:F1}°C";
         }
     }
 

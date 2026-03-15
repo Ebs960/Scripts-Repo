@@ -952,12 +952,30 @@ public class UnitSelectionManager : MonoBehaviour
         if (attackHoverInstance == null) return;
 
         attackHoverInstance.SetActive(true);
-        attackHoverInstance.transform.position = hovered.transform.position + Vector3.up * attackHoverYOffset;
+
+        // Prefer placing the hover icon above the unit's world-space label (if present)
+        var ul = hovered.GetComponentInChildren<UnitLabel>();
+        if (ul != null)
+        {
+            // Parent to the UnitLabel so the icon is physically positioned above it
+            attackHoverInstance.transform.SetParent(ul.transform, false);
+            attackHoverInstance.transform.localPosition = Vector3.up * 0.25f;
+            attackHoverInstance.transform.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            // Ensure it's parented to manager root so it isn't stuck under previous label
+            attackHoverInstance.transform.SetParent(transform, true);
+            attackHoverInstance.transform.position = hovered.transform.position + Vector3.up * attackHoverYOffset;
+        }
 
         // If prefab provided and it uses a SpriteRenderer child, try to set sprite as override
-        if (attackHoverSpriteRenderer != null && attackHoverIcon != null && attackHoverSpriteRenderer.sprite == null)
+        if (attackHoverSpriteRenderer != null)
         {
-            attackHoverSpriteRenderer.sprite = attackHoverIcon;
+            if (attackHoverIcon != null && attackHoverSpriteRenderer.sprite == null)
+                attackHoverSpriteRenderer.sprite = attackHoverIcon;
+            // Ensure the hover sprite renders above most UI/world elements
+            try { attackHoverSpriteRenderer.sortingOrder = 5000; } catch { }
         }
     }
 
@@ -965,6 +983,8 @@ public class UnitSelectionManager : MonoBehaviour
     {
         if (attackHoverInstance != null)
         {
+            // Unparent to avoid remaining attached to a destroyed label
+            try { attackHoverInstance.transform.SetParent(transform, true); } catch { }
             attackHoverInstance.SetActive(false);
         }
     }

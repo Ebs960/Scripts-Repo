@@ -1157,6 +1157,39 @@ public class ImprovementManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Return the nearest armed trap tile on the given planet that can affect animals within maxRange.
+    /// Returns null if none found.
+    /// </summary>
+    public int? GetNearestTrapForAnimals(int planetIndex, int fromTile, int maxRange)
+    {
+        if (GameManager.Instance == null) return null;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return null;
+
+        int bestTile = -1;
+        int bestDist = int.MaxValue;
+        foreach (var kv in traps)
+        {
+            var t = kv.Value;
+            if (t.planetIndex != planetIndex) continue;
+            if (!t.armed || t.usesLeft <= 0) continue;
+            var data = t.data;
+            if (data == null) continue;
+
+            bool affectsAnimals = data.trapAffectsAnimalsOnly ||
+                (data.trapAffectedCategories != null && System.Array.IndexOf(data.trapAffectedCategories, CombatCategory.Animal) >= 0);
+            if (!affectsAnimals) continue;
+
+            int d = ts.GetTileDistance(fromTile, t.tileIndex);
+            if (d < 0) continue;
+            if (d > maxRange) continue;
+            if (d < bestDist) { bestDist = d; bestTile = t.tileIndex; }
+        }
+
+        return bestTile >= 0 ? bestTile : (int?)null;
+    }
+
+    /// <summary>
     /// Apply an improvement upgrade to a tile (visual + persist). Caller must have already consumed requirements (ConsumeRequirements).
     /// Used by AI to upgrade improvements. Returns true if applied.
     /// </summary>
