@@ -127,6 +127,8 @@ public class CombatUnitData : ScriptableObject
     [Tooltip("Movement points consumed when entering orbit from surface.")]
     [Range(1, 10)]
     public int orbitEntryCost = 2;
+    [Tooltip("Explicitly allow this unit to enter orbit. If false, legacy Spaceship category still allows orbit.")]
+    public bool canEnterOrbit = false;
     [Tooltip("Movement points consumed when landing from orbit to surface.")]
     [Range(1, 10)]
     public int orbitExitCost = 1;

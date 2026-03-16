@@ -1104,9 +1104,22 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool CanEnterOrbit()
     {
+        // Prefer an explicit data-driven flag when available.
         var cu = this as CombatUnit;
-        if (cu == null || cu.data == null) return false;
-        return cu.data.unitType == CombatCategory.Spaceship;
+        if (cu != null && cu.data != null)
+        {
+            if (cu.data.canEnterOrbit) return true;
+            // Backwards-compat: treat Spaceship category as allowed if explicit flag not set.
+            return cu.data.unitType == CombatCategory.Spaceship;
+        }
+
+        var wu = this as WorkerUnit;
+        if (wu != null && wu.data != null)
+        {
+            return wu.data.canEnterOrbit;
+        }
+
+        return false;
     }
 
     /// <summary>

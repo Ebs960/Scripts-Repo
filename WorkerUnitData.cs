@@ -29,6 +29,8 @@ public class WorkerUnitData : ScriptableObject
     public float selectPitchVariation = 0.08f;
 
     [Header("Stats")] public int baseWorkPoints;
+    [Tooltip("Whether this worker unit can enter orbit (landing/launch).")]
+    public bool canEnterOrbit = false;
     public int baseMovePoints;
     public int baseHealth;
     public int baseAttack = 0;

@@ -76,6 +76,16 @@ public class ClimateManager : MonoBehaviour
     [Tooltip("If true, apply winter attrition to units that are not sheltered")]
     public bool enableWinterAttrition = true;
 
+    [Header("Drought Settings")]
+    [Tooltip("Chance (0-1) that a planet experiences a drought when Summer starts")]
+    [Range(0f,1f)] public float summerDroughtChance = 0.25f;
+    [Tooltip("Default drought severity applied to food yields when a drought occurs (0.35 = -35% food)")]
+    [Range(0f,1f)] public float summerDroughtSeverity = 0.35f;
+
+    // Per-planet drought state
+    private Dictionary<int, bool> planetDroughtActive = new Dictionary<int, bool>();
+    private Dictionary<int, float> planetDroughtSeverity = new Dictionary<int, float>();
+
     public event Action<Season> OnSeasonChanged;
 
     void Awake()
@@ -321,6 +331,48 @@ planetSeasons.Clear();
             if (verboseLogs) Debug.Log($"[ClimateManager] Applying wetness/dryness handling for {season}.");
             RemoveWinterMovementPenalty(planetIndex);
         }
+
+        // Drought handling: if Summer begins on this planet, maybe trigger a drought.
+        if (season == Season.Summer)
+        {
+            MaybeTriggerSummerDrought(planetIndex);
+        }
+        else
+        {
+            // Clear drought outside of Summer
+            if (planetDroughtActive.ContainsKey(planetIndex)) planetDroughtActive[planetIndex] = false;
+            if (planetDroughtSeverity.ContainsKey(planetIndex)) planetDroughtSeverity[planetIndex] = 0f;
+        }
+    }
+
+    private void MaybeTriggerSummerDrought(int planetIndex)
+    {
+        try
+        {
+            bool triggered = UnityEngine.Random.value < summerDroughtChance;
+            if (triggered)
+            {
+                planetDroughtActive[planetIndex] = true;
+                planetDroughtSeverity[planetIndex] = summerDroughtSeverity;
+                if (seasonChangeDebug) Debug.Log($"[ClimateManager] Drought triggered on planet {planetIndex} (severity={summerDroughtSeverity})");
+            }
+            else
+            {
+                planetDroughtActive[planetIndex] = false;
+                planetDroughtSeverity[planetIndex] = 0f;
+            }
+        }
+        catch { }
+    }
+
+    public bool IsDroughtActive(int planetIndex = 0)
+    {
+        return planetDroughtActive.TryGetValue(planetIndex, out var v) && v;
+    }
+
+    public float GetDroughtSeverity(int planetIndex = 0)
+    {
+        return planetDroughtSeverity.TryGetValue(planetIndex, out var v) ? v : 0f;
     }
 
     // Apply HP damage to units that are outdoors (not in shelter) during winter
@@ -416,6 +468,21 @@ planetSeasons.Clear();
             biome = biome,
             season = season
         };
+    }
+
+    /// <summary>
+    /// Overload that considers planet-level climate events (e.g., drought).
+    /// </summary>
+    public BiomeSeasonResponse GetSeasonResponse(Biome biome, Season season, int planetIndex)
+    {
+        var resp = GetSeasonResponse(biome, season);
+        if (season == Season.Summer && IsDroughtActive(planetIndex))
+        {
+            float drought = GetDroughtSeverity(planetIndex);
+            // Reduce food yields by drought severity via the yieldMultiplier
+            resp.yieldMultiplier = resp.yieldMultiplier * (1f - drought);
+        }
+        return resp;
     }
 
     /// <summary>

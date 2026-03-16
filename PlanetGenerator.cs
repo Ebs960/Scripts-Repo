@@ -833,7 +833,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         foreach (var tile in data.Values)
         {
-            var response = mgr.GetSeasonResponse(tile.biome, newSeason);
+            var response = mgr.GetSeasonResponse(tile.biome, newSeason, planetIndex);
             tile.season = newSeason;
             tile.seasonalYieldModifier = response.yieldMultiplier;
             tile.hasSnow = response.snow > 0f && tile.isLand;
