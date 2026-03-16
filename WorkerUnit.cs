@@ -94,18 +94,8 @@ public class WorkerUnit : BaseUnit
     {
         var wb = AggregateWorkerBonusesLocal(owner, data);
         int baseMove = Mathf.RoundToInt((data.baseMovePoints + wb.moveAdd) * (1f + wb.movePct));
-
-        if (IsTrapped)
-        {
-            return 0;
-        }
-
-        int move = baseMove;
-        if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
-        {
-            move = Mathf.Max(1, move - 1);
-        }
-        return move;
+        // Winter/trapped penalties are handled centrally in BaseUnit.RestoreMovePointsForNewTurn()
+        return baseMove;
     }
 
     /// <summary>
@@ -399,8 +389,8 @@ public class WorkerUnit : BaseUnit
                 var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
                 if (td != null)
                 {
-                    valF += td.improvementDefenseAddWorker;
-                    valF *= (1f + td.improvementDefensePctWorker);
+                    valF += td.improvementDefenseAdd;
+                    valF *= (1f + td.improvementDefensePct);
                 }
             }
             return Mathf.RoundToInt(valF);

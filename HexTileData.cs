@@ -327,16 +327,12 @@ public class HexTileData
         return y;
     }
 
-    // --- Defense modifiers applied by improvements/upgrades ---
-    // These fields are runtime-persistent (serialized) so they save with tile data and are cheap to read by units.
-    [Tooltip("Flat defense added to combat units on this tile by built upgrades")]
-    public int improvementDefenseAddCombat = 0;
-    [Tooltip("Percent multiplier applied to combat unit defense on this tile by built upgrades (0.25 = +25%)")]
-    public float improvementDefensePctCombat = 0f;
-    [Tooltip("Flat defense added to worker units on this tile by built upgrades")]
-    public int improvementDefenseAddWorker = 0;
-    [Tooltip("Percent multiplier applied to worker unit defense on this tile by built upgrades (0.25 = +25%)")]
-    public float improvementDefensePctWorker = 0f;
+    // --- Defense modifiers applied by improvements/upgrades (UNIFIED) ---
+    // Unified fields apply to all unit types.
+    [Tooltip("Flat defense added to units on this tile by built upgrades")]
+    public int improvementDefenseAdd = 0;
+    [Tooltip("Percent multiplier applied to unit defense on this tile by built upgrades (0.25 = +25%)")]
+    public float improvementDefensePct = 0f;
 
     /// <summary>
     /// Recomputes the tile's aggregated defense modifiers from its builtUpgrades list and improvement.availableUpgrades.
@@ -344,10 +340,8 @@ public class HexTileData
     /// </summary>
     public void RecomputeImprovementDefenseAggregates()
     {
-        improvementDefenseAddCombat = 0;
-        improvementDefensePctCombat = 0f;
-        improvementDefenseAddWorker = 0;
-        improvementDefensePctWorker = 0f;
+        improvementDefenseAdd = 0;
+        improvementDefensePct = 0f;
 
         if (improvement == null || builtUpgrades == null || builtUpgrades.Count == 0) return;
 
@@ -356,10 +350,8 @@ public class HexTileData
             var found = System.Array.Find(improvement.availableUpgrades, u => (!string.IsNullOrEmpty(u.upgradeId) ? u.upgradeId == built : u.upgradeName == built));
             if (found == null) continue;
 
-            improvementDefenseAddCombat += found.defenseAddCombat;
-            improvementDefensePctCombat += found.defensePctCombat;
-            improvementDefenseAddWorker += found.defenseAddWorker;
-            improvementDefensePctWorker += found.defensePctWorker;
+            improvementDefenseAdd += found.defenseAdd;
+            improvementDefensePct += found.defensePct;
         }
     }
 }

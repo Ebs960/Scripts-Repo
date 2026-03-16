@@ -186,7 +186,7 @@ public static class AIScorer
                 var defenderTile = ts.GetTileData(defender.currentTileIndex);
                 if (defenderTile != null)
                 {
-                    score -= (defenderTile.improvementDefenseAddCombat * 0.5f + defenderTile.improvementDefensePctCombat * 5f);
+                    score -= (defenderTile.improvementDefenseAdd * 0.5f + defenderTile.improvementDefensePct * 5f);
                 }
             }
         }
@@ -225,7 +225,7 @@ public static class AIScorer
         var td = ts.GetTileData(tileIndex);
         if (td != null)
         {
-            score += (td.improvementDefenseAddCombat + td.improvementDefensePctCombat * 10f) * W_TERRAIN_DEFENSE;
+            score += (td.improvementDefenseAdd + td.improvementDefensePct * 10f) * W_TERRAIN_DEFENSE;
             if (td.isHill) score += W_HILL_BONUS;
         }
 
@@ -461,7 +461,7 @@ public static class AIScorer
         float score = 0f;
         score += upgrade.additionalFood * W_FORAGE_FOOD * 0.5f;
         score += (upgrade.additionalProduction + upgrade.additionalGold) * W_UPGRADE_VALUE * 0.3f;
-        score += (upgrade.defenseAddCombat + upgrade.defensePctCombat * 10f) * W_TERRAIN_DEFENSE;
+        score += (upgrade.defenseAdd + upgrade.defensePct * 10f) * W_TERRAIN_DEFENSE;
         score += upgrade.additionalShelterCapacity * W_SHELTER_URGENCY * 0.3f;
         return score;
     }
@@ -478,7 +478,7 @@ public static class AIScorer
             var td = ts.GetTileData(unit.currentTileIndex);
             if (td != null)
             {
-                score += (td.improvementDefenseAddCombat + td.improvementDefensePctCombat * 10f) * W_TERRAIN_DEFENSE;
+                score += (td.improvementDefenseAdd + td.improvementDefensePct * 10f) * W_TERRAIN_DEFENSE;
                 if (td.isHill) score += W_HILL_BONUS;
             }
         }

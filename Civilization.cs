@@ -2633,6 +2633,9 @@ return true;
                 AddEquipment(item, 5); // Start with a default quantity
             }
         }
+
+        // Starting food stockpile for all civilizations
+        food = 7;
     }
 
     // --- Consolidated bonus aggregation & calculation (moved from BonusAggregator.cs / BonusCalculator.cs) ---

@@ -45,14 +45,10 @@ public class ImprovementUpgradeData
     public int additionalShelterCapacity = 0;
 
     [Header("Defense Effects")]
-    [Tooltip("Flat defense added to combat units standing on this tile when this upgrade is built")]
-    public int defenseAddCombat = 0;
-    [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to combat units on this tile")]
-    public float defensePctCombat = 0f;
-    [Tooltip("Flat defense added to worker units standing on this tile when this upgrade is built")]
-    public int defenseAddWorker = 0;
-    [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to worker units on this tile")]
-    public float defensePctWorker = 0f;
+    [Tooltip("Flat defense added to any unit standing on this tile when this upgrade is built")]
+    public int defenseAdd = 0;
+    [Tooltip("Percent (0.25 = +25%) multiplicative defense applied to any unit on this tile")]
+    public float defensePct = 0f;
 
     [Tooltip("If true, this upgrade can only be built once per improvement")]
     public bool uniqueUpgrade = true;

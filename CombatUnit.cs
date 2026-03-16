@@ -1033,8 +1033,8 @@ public class CombatUnit : BaseUnit
             var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
             if (tileData != null)
             {
-                val += tileData.improvementDefenseAddCombat;
-                val = val * (1f + tileData.improvementDefensePctCombat);
+                val += tileData.improvementDefenseAdd;
+                val = val * (1f + tileData.improvementDefensePct);
             }
         }
         return val;

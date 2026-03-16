@@ -428,8 +428,6 @@ public class UnitMovementController : MonoBehaviour
     {
         if (unit == null || path == null || path.Count == 0) return path;
         if (unit.currentLayer == TileLayer.Orbit) return path;
-        // If unit has no movement points (GetStartingMovePoints == 0) treat as full-path (no trimming)
-        if (unit.GetStartingMovePoints() <= 0) return path;
 
         int pIndex = unit.planetIndex;
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
@@ -461,12 +459,6 @@ public class UnitMovementController : MonoBehaviour
         var path = FindPath(startIndex, endIndex, unit);
         if (path == null || path.Count == 0) return null;
 
-        // Non-worker units don't consume turn-based move points; return whole path as single segment
-        // For non-turn-based units (starting MP <= 0) return single segment
-        if (unit == null || unit.GetStartingMovePoints() <= 0)
-        {
-            return new List<List<int>> { new List<int>(path) };
-        }
 
         int remaining = unit.currentMovePoints;
         int fullPerTurn = unit.GetStartingMovePoints();
@@ -483,10 +475,8 @@ public class UnitMovementController : MonoBehaviour
 
             // If we don't have enough movement available for this tile,
             // close the current segment (if any) and then accumulate next-turn
-            // movement until we can pay the tile cost. Accumulation models
-            // leftover MP carrying forward so preview matches runtime behavior
-            // where remaining MP at segment boundaries can be combined with
-            // subsequent turn's MP.
+            // movement until we can pay the tile cost. If the unit's per-turn
+            // movement is zero or negative, we cannot accumulate and must stop.
             if (remaining < cost)
             {
                 if (currentSeg.Count > 0)
@@ -495,12 +485,9 @@ public class UnitMovementController : MonoBehaviour
                     currentSeg.Clear();
                 }
 
-                // Accumulate next-turn movement repeatedly until we can afford the tile.
-                // This allows tiles that require multiple turns to be accounted for.
-                // Guard against non-advancing fullPerTurn (<=0) to avoid infinite loop.
                 if (fullPerTurn <= 0)
                 {
-                    // cannot make progress; abort segmentation
+                    // Unit cannot gain movement next turn; stop segmentation here.
                     break;
                 }
 
@@ -648,11 +635,10 @@ public class UnitMovementController : MonoBehaviour
                     yield break;
                 }
 
-                // Deduct movement points for workers (they still use turn-based movement)
-                if (workerUnit != null)
+                // Deduct movement points for traversal (all units use the same MP API).
+                if (unit != null)
                 {
                     unit.DeductMovePoints(movementCost);
-                    // Track spent MP and tiles moved for end-of-segment summary
                     try { mpSpent += movementCost; tilesMoved += 1; } catch { }
                 }
 

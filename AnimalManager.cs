@@ -476,6 +476,8 @@ public class AnimalManager : MonoBehaviour
                 
                 if (!moved)
                     break;
+                // If movement started and the unit is now moving (coroutine started), stop issuing more orders this update
+                try { if (unit.isMoving) break; } catch { }
             }
         }
     }
@@ -527,8 +529,10 @@ public class AnimalManager : MonoBehaviour
                 isMelee = true
             };
 
-            // Consume one movement point for the attack to avoid infinite attack loops
-            predator.DeductMovePoints(1);
+            // Use an attack point for melee attacks (consistent with all units)
+            if (!predator.TryConsumeAttackPoint())
+                return false; // no AP available, cannot attack
+
             predator.PerformAttack(ctx);
             return true;
         }
@@ -559,8 +563,11 @@ public class AnimalManager : MonoBehaviour
             }
         }
 
-        // Deduct movement point and move
-        predator.DeductMovePoints(1);
+        // Compute movement cost for the chosen destination and deduct then move
+        int moveCostPred = 1;
+        var tdPred = ts != null ? ts.GetTileData(bestDestination) : null;
+        moveCostPred = tdPred != null ? BiomeHelper.GetMovementCost(tdPred, predator) : 1;
+        if (predator.currentMovePoints < moveCostPred) return false;
         predator.MoveTo(bestDestination);
         return true;
     }
@@ -575,6 +582,8 @@ public class AnimalManager : MonoBehaviour
         
         bool wasAttacked = WasRecentlyAttacked(prey);
 
+        var ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
+
         if (wasAttacked)
         {
             // Prey was recently attacked, so it's aggressive and will hunt like a predator
@@ -587,11 +596,14 @@ public class AnimalManager : MonoBehaviour
             int? trapTile = ImprovementManager.Instance.GetNearestTrapForAnimals(prey.planetIndex, prey.currentTileIndex, 6);
             if (trapTile.HasValue)
             {
-                var ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
+                ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
                 float dist = ts != null ? ts.GetTileDistance(prey.currentTileIndex, trapTile.Value) : float.MaxValue;
                 if (dist <= 1f)
                 {
-                    prey.DeductMovePoints(1);
+                    int moveCostTrap = 1;
+                    var tdTrap = ts != null ? ts.GetTileData(trapTile.Value) : null;
+                    moveCostTrap = tdTrap != null ? BiomeHelper.GetMovementCost(tdTrap, prey) : 1;
+                    if (prey.currentMovePoints < moveCostTrap) return false;
                     prey.MoveTo(trapTile.Value);
                     return true;
                 }
@@ -619,7 +631,10 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    prey.DeductMovePoints(1);
+                    int moveCostNeighbor = 1;
+                    var tdNeighbor = ts != null ? ts.GetTileData(bestDestination) : null;
+                    moveCostNeighbor = tdNeighbor != null ? BiomeHelper.GetMovementCost(tdNeighbor, prey) : 1;
+                    if (prey.currentMovePoints < moveCostNeighbor) return false;
                     prey.MoveTo(bestDestination);
                     return true;
                 }
@@ -630,7 +645,10 @@ public class AnimalManager : MonoBehaviour
         int? fleeDestination = GetFleeDirection(prey);
         if (fleeDestination.HasValue)
         {
-            prey.DeductMovePoints(1);
+            int moveCostFlee = 1;
+            var tdFlee = ts != null ? ts.GetTileData(fleeDestination.Value) : null;
+            moveCostFlee = tdFlee != null ? BiomeHelper.GetMovementCost(tdFlee, prey) : 1;
+            if (prey.currentMovePoints < moveCostFlee) return false;
             prey.MoveTo(fleeDestination.Value);
             return true;
         }
@@ -656,7 +674,10 @@ public class AnimalManager : MonoBehaviour
                 float dist = ts != null ? ts.GetTileDistance(unit.currentTileIndex, trapTile.Value) : float.MaxValue;
                 if (dist <= 1f)
                 {
-                    unit.DeductMovePoints(1);
+                    int moveCostTrap = 1;
+                    var tdTrap = ts != null ? ts.GetTileData(trapTile.Value) : null;
+                    moveCostTrap = tdTrap != null ? BiomeHelper.GetMovementCost(tdTrap, unit) : 1;
+                    if (unit.currentMovePoints < moveCostTrap) return false;
                     unit.MoveTo(trapTile.Value);
                     return true;
                 }
@@ -684,7 +705,10 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    unit.DeductMovePoints(1);
+                    int moveCostNeighbor = 1;
+                    var tdNeighbor = ts != null ? ts.GetTileData(bestDestination) : null;
+                    moveCostNeighbor = tdNeighbor != null ? BiomeHelper.GetMovementCost(tdNeighbor, unit) : 1;
+                    if (unit.currentMovePoints < moveCostNeighbor) return false;
                     unit.MoveTo(bestDestination);
                     return true;
                 }
@@ -703,7 +727,10 @@ public class AnimalManager : MonoBehaviour
         if (validDestinations.Count > 0)
         {
             int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
-            unit.DeductMovePoints(1);
+            int moveCostRand = 1;
+            var tdRand = ts != null ? ts.GetTileData(targetTile) : null;
+            moveCostRand = tdRand != null ? BiomeHelper.GetMovementCost(tdRand, unit) : 1;
+            if (unit.currentMovePoints < moveCostRand) return false;
             unit.MoveTo(targetTile);
             return true;
         }

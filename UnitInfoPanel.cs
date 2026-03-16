@@ -34,10 +34,9 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Button exitOrbitButton;
     [Header("Worker Build Units UI")] 
     [SerializeField] private TMP_Dropdown buildOptionsDropdown; // TMP dropdown for build options
-    [SerializeField] private Button contributeWorkButton; // applies work points this turn to current tile job (improvement or unit)
     [Header("Unit Build UI")]
     [SerializeField] private TMP_Dropdown unitBuildDropdown; // separate dropdown specifically for unit builds
-    [SerializeField] private Button startUnitBuildButton; // starts a unit build directly
+    
 
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
@@ -64,8 +63,7 @@ public class UnitInfoPanel : MonoBehaviour
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
 
-        if (contributeWorkButton != null)
-            contributeWorkButton.onClick.AddListener(OnContributeWorkClicked);
+        // Contribute work actions are routed through the primary Start/Contribute button now
 
         if (forageButton != null)
             forageButton.onClick.AddListener(OnForageClicked);
@@ -81,28 +79,27 @@ public class UnitInfoPanel : MonoBehaviour
         {
             buildOptionsDropdown.onValueChanged.RemoveAllListeners();
             buildOptionsDropdown.onValueChanged.AddListener(OnBuildOptionSelected);
-            buildOptionsDropdown.gameObject.SetActive(false);
+            // Keep visible at all times per UI requirement; start disabled until populated
+            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.interactable = false;
         }
         if (unitBuildDropdown != null)
         {
             unitBuildDropdown.onValueChanged.RemoveAllListeners();
             unitBuildDropdown.onValueChanged.AddListener(OnUnitBuildOptionSelected);
-            unitBuildDropdown.gameObject.SetActive(false);
+            // Keep visible at all times per UI requirement; start disabled until populated
+            unitBuildDropdown.gameObject.SetActive(true);
+            unitBuildDropdown.interactable = false;
         }
         if (startBuildButton != null)
         {
             startBuildButton.onClick.RemoveAllListeners();
             startBuildButton.onClick.AddListener(OnStartBuildButtonClicked);
-            startBuildButton.gameObject.SetActive(false);
+            // Keep the primary build button visible; disable until an action is available
+            startBuildButton.gameObject.SetActive(true);
             startBuildButton.interactable = false;
         }
-        if (startUnitBuildButton != null)
-        {
-            startUnitBuildButton.onClick.RemoveAllListeners();
-            startUnitBuildButton.onClick.AddListener(OnStartUnitBuildButtonClicked);
-            startUnitBuildButton.gameObject.SetActive(false);
-            startUnitBuildButton.interactable = false;
-        }
+        // Legacy unit-build button removed; unit builds go through startBuildButton
 
         // Validate serialized fields at startup so missing inspector wiring is obvious in Console
         ValidateSerializedFields();
@@ -163,9 +160,8 @@ public class UnitInfoPanel : MonoBehaviour
         if (settleCityButton == null) Debug.LogWarning("[UnitInfoPanel] settleCityButton is not assigned in the Inspector.");
         if (forageButton == null) Debug.LogWarning("[UnitInfoPanel] forageButton is not assigned in the Inspector.");
         // (Removed obsolete buildUnitsContainer/buildUnitButtonPrefab warnings)
-        if (contributeWorkButton == null) Debug.LogWarning("[UnitInfoPanel] contributeWorkButton is not assigned in the Inspector.");
         if (unitBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] unitBuildDropdown is not assigned in the Inspector.");
-        if (startUnitBuildButton == null) Debug.LogWarning("[UnitInfoPanel] startUnitBuildButton is not assigned in the Inspector.");
+        // Legacy startUnitBuildButton removed; use startBuildButton instead
     }
 
     public void ShowPanel(object unitObject)
@@ -282,21 +278,19 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (buildOptionsDropdown != null)
         {
             buildOptionsDropdown.ClearOptions();
-            buildOptionsDropdown.gameObject.SetActive(false);
+            // Keep visible but disabled when empty
+            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.interactable = false;
         }
         if (unitBuildDropdown != null)
         {
             unitBuildDropdown.ClearOptions();
-            unitBuildDropdown.gameObject.SetActive(false);
+            // Keep visible but disabled when empty
+            unitBuildDropdown.gameObject.SetActive(true);
+            unitBuildDropdown.interactable = false;
         }
-        if (startUnitBuildButton != null)
-        {
-            startUnitBuildButton.gameObject.SetActive(false);
-            startUnitBuildButton.interactable = false;
-        }
-        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
-        if (unitBuildDropdown != null) unitBuildDropdown.gameObject.SetActive(false);
-        if (startUnitBuildButton != null) startUnitBuildButton.gameObject.SetActive(false);
+        // Primary start/contribute button: keep visible but disabled when no action
+        if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
 
         // Hide orbit controls
         if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
@@ -345,7 +339,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
             unitBuildDropdown.options = new List<TMP_Dropdown.OptionData> { new TMP_Dropdown.OptionData("No unit build options") };
             unitBuildDropdown.SetValueWithoutNotify(0);
             unitBuildDropdown.interactable = false;
-            if (startUnitBuildButton != null) startUnitBuildButton.gameObject.SetActive(false);
+            // Use primary Start/Contribute button for unit actions; keep it visible but disabled
+            if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
             return;
         }
 
@@ -354,28 +349,14 @@ PopulateForWorkerUnit(currentWorkerUnit);
         unitBuildDropdown.SetValueWithoutNotify(0);
         unitBuildDropdown.interactable = true;
         pendingUnitBuildIndex = -1;
-        if (startUnitBuildButton != null) { startUnitBuildButton.gameObject.SetActive(true); startUnitBuildButton.interactable = false; }
+        if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
     }
 
     private void OnUnitBuildOptionSelected(int idx)
     {
-        if (idx <= 0 || unitBuildOptions == null) { pendingUnitBuildIndex = -1; if (startUnitBuildButton != null) startUnitBuildButton.interactable = false; return; }
+        if (idx <= 0 || unitBuildOptions == null) { pendingUnitBuildIndex = -1; if (startBuildButton != null) startBuildButton.interactable = false; return; }
         pendingUnitBuildIndex = idx - 1;
-        if (startUnitBuildButton != null) startUnitBuildButton.interactable = true;
-    }
-
-    private void OnStartUnitBuildButtonClicked()
-    {
-        if (currentWorkerUnit == null) return;
-        if (pendingUnitBuildIndex < 0 || unitBuildOptions == null || pendingUnitBuildIndex >= unitBuildOptions.Count) return;
-        var entry = unitBuildOptions[pendingUnitBuildIndex];
-        pendingUnitBuildIndex = -1;
-        if (startUnitBuildButton != null) startUnitBuildButton.interactable = false;
-        if (entry.isCombat && entry.combatData != null)
-            currentWorkerUnit.StartBuildingUnit(entry.combatData, currentWorkerUnit.currentTileIndex);
-        else if (!entry.isCombat && entry.workerData != null)
-            currentWorkerUnit.StartBuildingWorker(entry.workerData, currentWorkerUnit.currentTileIndex);
-        UpdateUnitInfoForWorkerUnit();
+        if (startBuildButton != null) startBuildButton.interactable = true;
     }
 
     private void UpdateUnitInfoForCombatUnit()
@@ -469,8 +450,6 @@ PopulateForWorkerUnit(currentWorkerUnit);
     {
         if (settleCityButton != null)
             settleCityButton.onClick.RemoveListener(OnSettleCityClicked);
-        if (contributeWorkButton != null)
-            contributeWorkButton.onClick.RemoveListener(OnContributeWorkClicked);
         if (forageButton != null)
             forageButton.onClick.RemoveListener(OnForageClicked);
         if (enterOrbitButton != null)
@@ -479,8 +458,6 @@ PopulateForWorkerUnit(currentWorkerUnit);
             exitOrbitButton.onClick.RemoveListener(OnExitOrbitClicked);
         if (unitBuildDropdown != null)
             unitBuildDropdown.onValueChanged.RemoveAllListeners();
-        if (startUnitBuildButton != null)
-            startUnitBuildButton.onClick.RemoveAllListeners();
 
         // Unsubscribe from movement events
         if (GameEventManager.Instance != null)
@@ -489,6 +466,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
             GameEventManager.Instance.OnMovementCompleted -= HandleUnitMovedEvent;
         }
     }
+    
 
     private void HandleUnitMovedEvent(GameEventManager.UnitMovementEventArgs args)
     {
@@ -522,7 +500,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Hide action buttons
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
         if (forageButton != null) forageButton.gameObject.SetActive(false);
-        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
+        // Keep primary build button visible but disabled when hidden sections are active
+        if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
 
         // Hide orbit controls
         if (orbitStatusText != null) orbitStatusText.gameObject.SetActive(false);
@@ -591,8 +570,7 @@ UpdateUnitInfoForWorkerUnit();
             if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Build";
             startBuildButton.interactable = hasJob ? (workerUnit.currentWorkPoints > 0) : (buildOptions != null && buildOptions.Count > 0 && workerUnit.currentWorkPoints > 0);
         }
-        // Hide legacy contribute button to avoid duplicate actions
-        if (contributeWorkButton != null) contributeWorkButton.gameObject.SetActive(false);
+        // Legacy contribute button removed; primary start button handles contribute/start behavior
     }
 
 
@@ -748,6 +726,18 @@ UpdateUnitInfoForWorkerUnit();
         }
 
         // Otherwise behave as Start Build (require a pending selection)
+        // First, check if a unit build is pending (unitBuildDropdown)
+        if (pendingUnitBuildIndex >= 0 && unitBuildOptions != null && pendingUnitBuildIndex < unitBuildOptions.Count)
+        {
+            var entry = unitBuildOptions[pendingUnitBuildIndex];
+            pendingUnitBuildIndex = -1;
+            if (startBuildButton != null) startBuildButton.interactable = false;
+            if (entry.isCombat && entry.combatData != null) OnStartWorkerBuildUnit(entry.combatData);
+            else if (!entry.isCombat && entry.workerData != null) OnStartWorkerBuildWorker(entry.workerData);
+            return;
+        }
+
+        // Otherwise, check standard build options
         if (pendingBuildIndex < 0 || buildOptions == null || pendingBuildIndex >= buildOptions.Count) return;
         var opt = buildOptions[pendingBuildIndex];
         // Clear pending and disable button
