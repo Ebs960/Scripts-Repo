@@ -541,7 +541,9 @@ public abstract class BaseUnit : MonoBehaviour
         if (planetIndex < 0 && GameManager.Instance != null) planetIndex = GameManager.Instance.currentPlanetIndex;
         if (planetIndex < 0) planetIndex = 0;
 
-        planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        // Prefer owner-bound planet generator when available (multi-planet civs).
+        planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator())
+                       : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator());
         if (planet != null) grid = planet.Grid;
 
         // Register with UnitRegistry

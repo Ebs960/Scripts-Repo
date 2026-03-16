@@ -100,7 +100,8 @@ public class AncientRuinsManager : MonoBehaviour
             bool usedTileCheck = false;
             if (ts != null && ts.IsReady())
             {
-                var pg = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                var pg = civilization != null ? civilization.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null)
+                                                   : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
                 if (pg != null && pg.Grid != null)
                 {
                     unitTile = pg.Grid.GetTileAtPosition(unitPosition);

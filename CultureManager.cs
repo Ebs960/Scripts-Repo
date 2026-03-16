@@ -78,6 +78,9 @@ public class CultureManager : MonoBehaviour
             }
             if (!meetsBiomeReq) continue;
 
+            // Age gating: civ must have reached the culture's age via tech research
+            if (civ.GetCurrentAge() < cult.cultureAge) continue;
+
             available.Add(cult);
         }
 

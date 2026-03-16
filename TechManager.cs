@@ -25,41 +25,56 @@ public class TechManager : MonoBehaviour
     public List<TechData> GetAvailableTechs(Civilization civ)
     {
         var available = new List<TechData>();
+
+        if (civ == null) return available;
+
+        // Defensive nulls for civ collections
+        var civResearched = civ.researchedTechs ?? new List<TechData>();
+        int civCityCount = civ.cities != null ? civ.cities.Count : 0;
+
         foreach (var tech in allTechs)
         {
-            // skip already researched
-            if (civ.researchedTechs.Contains(tech)) continue;
+            if (tech == null) continue;
 
-            // check tech prerequisites
+            // skip already researched
+            if (civResearched.Contains(tech)) continue;
+
+            // check tech prerequisites (safe if null)
             bool meetsTechReqs = true;
-            foreach (var req in tech.requiredTechnologies)
+            if (tech.requiredTechnologies != null)
             {
-                if (!civ.researchedTechs.Contains(req))
+                foreach (var req in tech.requiredTechnologies)
                 {
-                    meetsTechReqs = false;
-                    break;
+                    if (req != null && !civResearched.Contains(req))
+                    {
+                        meetsTechReqs = false;
+                        break;
+                    }
                 }
             }
             if (!meetsTechReqs) continue;
 
             // check city count
-            if (civ.cities.Count < tech.requiredCityCount) continue;
+            if (civCityCount < tech.requiredCityCount) continue;
 
-            // check controlled biomes
+            // check controlled biomes (safe if null)
             bool meetsBiomeReq = true;
-            foreach (var biome in tech.requiredControlledBiomes)
+            if (tech.requiredControlledBiomes != null)
             {
-                // O(1) check via Civilization-owned biome aggregates (maintained by TileSystem.SetTileOwner).
-                if (!civ.HasControlledBiome(biome))
+                foreach (var biome in tech.requiredControlledBiomes)
                 {
-                    meetsBiomeReq = false;
-                    break;
+                    if (!civ.HasControlledBiome(biome))
+                    {
+                        meetsBiomeReq = false;
+                        break;
+                    }
                 }
             }
             if (!meetsBiomeReq) continue;
 
             available.Add(tech);
         }
+
         return available;
     }
 

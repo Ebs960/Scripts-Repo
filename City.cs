@@ -161,8 +161,11 @@ public class City : MonoBehaviour
 
         CreateLabelUI();
         
-        // Cache reference: bind to the correct planet generator for this city
-        planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        // Cache reference: prefer owner's planet generator helper, then GameManager fallbacks
+        planetGenerator = owner?.GetPlanetGeneratorForIndex(planetIndex)
+                   ?? GameManager.Instance?.GetPlanetGenerator(planetIndex)
+                   ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planetGenerator != null) planetIndex = planetGenerator.planetIndex;
     }
 
     /// <summary>
@@ -457,7 +460,7 @@ if (UIManager.Instance != null)
 
         // 5) Reassign map-ownership of the city's tiles
         // Use this city's planet context (multi-planet support)
-        var planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        var planet = ResolvePlanetGenerator();
         if (planet != null)
         {
             // Get territory radius based on number of remaining cities
@@ -511,6 +514,19 @@ if (UIManager.Instance != null)
         }
         
         return tiles;
+    }
+
+    /// <summary>
+    /// Resolve an appropriate PlanetGenerator for this city, preferring the owner's helper.
+    /// Also updates `planetIndex` when a generator with a concrete index is found.
+    /// </summary>
+    private PlanetGenerator ResolvePlanetGenerator()
+    {
+        var gen = owner?.GetPlanetGeneratorForIndex(planetIndex)
+                  ?? GameManager.Instance?.GetPlanetGenerator(planetIndex)
+                  ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (gen != null) planetIndex = gen.planetIndex;
+        return gen;
     }
 
     void ProcessProduction()
@@ -964,7 +980,7 @@ if (UIManager.Instance != null)
         owner.faith -= unitData.faithCost;
         
         // Spawn the unit
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
         var ts = TileSys;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
         
@@ -1032,14 +1048,14 @@ if (UIManager.Instance != null)
         
         // Terrains
         if (reqTerrains != null && reqTerrains.Length > 0) {
-            if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+            if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
             var ts = TileSys;
             if (ts == null) return false;
             
             // gather city‐radius tiles (1 tile for simplicity)
             bool found = false;
             foreach (int n in ts.GetNeighbors(centerTileIndex)) {
-                if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+                if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
                 var tdOpt = ts.GetTileData(n);
                 
                 if (tdOpt == null) continue;
@@ -1056,7 +1072,7 @@ if (UIManager.Instance != null)
     /// Completes the item and adds it to the appropriate collection or instantiates it.
     /// </summary>
     private void CompleteItem(ScriptableObject d) {
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
         var ts = TileSys;
         Vector3 pos = ts != null ? ts.GetTileCenterFlat(centerTileIndex) : transform.position;
 
@@ -1466,7 +1482,7 @@ Destroy(oldTuple.instance);
     int SumYield(System.Func<HexTileData,int> selector)
     {
         int total = 0;
-        if (planetGenerator == null) planetGenerator = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+        if (planetGenerator == null) planetGenerator = ResolvePlanetGenerator();
         if (planetGenerator == null) return 0; // Safety check
         var ts = TileSys;
         if (ts == null) return 0;

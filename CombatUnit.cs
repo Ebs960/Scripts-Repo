@@ -148,8 +148,9 @@ public class CombatUnit : BaseUnit
         }
         
         // BaseUnit.Awake already binds planet/grid using planetIndex.
-        // Keep planet/grid consistent with this unit's assigned planet.
-        planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet;
+        // Prefer owner-bound planet generator when available (multi-planet civs).
+        planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet)
+                       : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet);
         if (planet != null) grid = planet.Grid;
         UnitRegistry.Register(gameObject);
 
@@ -1162,8 +1163,9 @@ public class CombatUnit : BaseUnit
         // Ensure grid is initialized before calling PositionUnitOnSurface
         if (grid == null)
         {
-            // Use GameManager API for multi-planet support
-            planet = GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator();
+            // Prefer owner-bound generator when available, otherwise fall back to GameManager.
+            planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator())
+                                   : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator());
             if (planet != null)
             {
                 grid = planet.Grid;

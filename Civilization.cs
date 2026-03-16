@@ -419,6 +419,21 @@ public class Civilization : MonoBehaviour
 
         OnUnlocksChanged?.Invoke();
     }
+
+    /// <summary>
+    /// Returns true if this civilization has researched at least one technology
+    /// whose TechAge is at or after the given age.
+    /// </summary>
+    public bool HasReachedTechAge(TechAge age)
+    {
+        if (researchedTechs == null || researchedTechs.Count == 0) return false;
+        foreach (var t in researchedTechs)
+        {
+            if (t == null) continue;
+            if (t.techAge >= age) return true;
+        }
+        return false;
+    }
     
 
     // Increase the number of governors this civ can create
@@ -1103,6 +1118,8 @@ OnTechStarted?.Invoke(tech); // Fire event for UI
         if (cult == null) return false;
         if (currentCulture != null) return false;
         if (researchedCultures.Contains(cult)) return false;
+        // Cannot adopt a culture that belongs to an age we haven't unlocked via tech research
+        if (cult.cultureAge > GetCurrentAge()) return false;
         // if (culture <= 0) { Debug.Log($"[Civilization] CanCultivate ({cult.cultureName}): Culture output is <= 0."); return false; }
         if (cult.requiredTechnologies != null)
         {
@@ -2602,9 +2619,11 @@ return true;
         civData = data;
         leader = leaderData; // Set the leader for this civilization instance
         isPlayerControlled = isPlayer;
-        // Use GameManager API for multi-planet support
-        planetGenerator = planet ?? GameManager.Instance?.GetCurrentPlanetGenerator();
-        planetGrid = grid ?? planetGenerator?.Grid;
+        // For multi-planet support: only assign planet-specific references when explicitly provided.
+        // Do NOT bind this Civilization to the current GameManager planet by default.
+        if (planet != null) planetGenerator = planet;
+        if (grid != null) planetGrid = grid;
+        else if (planet != null) planetGrid = planet.Grid;
         
         // --- Ensure cityPrefab is set from CivData ---
         if (cityPrefab == null && civData != null && civData.cityPrefabsByAge != null && civData.cityPrefabsByAge.Length > 0)
@@ -3170,6 +3189,43 @@ return true;
 
     public HexGrid planetGrid; // Add this field to store the main planet's grid
     public PlanetGenerator planetGenerator; // Add this field to store the main planet's generator
+
+    /// <summary>
+    /// Return the authoritative PlanetGenerator for the given planet index, or a sensible fallback.
+    /// This helper allows code to stop assuming a Civilization is tied to a single PlanetGenerator.
+    /// </summary>
+    public PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
+    {
+        // Prefer GameManager's registered generator for the requested planet
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            var gen = gm.GetPlanetGenerator(planetIndex);
+            if (gen != null) return gen;
+        }
+
+        // If this civ owns tiles on other planets, prefer one of those planet generators
+        if (ownedTilesByPlanet != null && ownedTilesByPlanet.Count > 0 && gm != null)
+        {
+            foreach (var kv in ownedTilesByPlanet)
+            {
+                var gen = gm.GetPlanetGenerator(kv.Key);
+                if (gen != null) return gen;
+            }
+        }
+
+        // Fallback to the current active planet generator
+        return gm?.GetCurrentPlanetGenerator();
+    }
+
+    /// <summary>
+    /// Convenience: get the HexGrid for a specific planet index (may return null).
+    /// </summary>
+    public HexGrid GetGridForPlanetIndex(int planetIndex)
+    {
+        var gen = GetPlanetGeneratorForIndex(planetIndex);
+        return gen != null ? gen.Grid : null;
+    }
 
     /// <summary>
     /// Invalidate availability cache when techs/cultures change

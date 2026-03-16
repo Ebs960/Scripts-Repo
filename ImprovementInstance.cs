@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -173,7 +174,17 @@ public class ImprovementInstance : MonoBehaviour
 
     private void OnEnable()
     {
-        if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (planetIndex < 0)
+        {
+            if (owner != null && owner.ownedTilesByPlanet != null && owner.ownedTilesByPlanet.Count > 0)
+            {
+                planetIndex = owner.ownedTilesByPlanet.Keys.First();
+            }
+            else
+            {
+                planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+            }
+        }
         eventTileSystem = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         if (eventTileSystem != null)
         {

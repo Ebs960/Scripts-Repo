@@ -49,6 +49,8 @@ MonoBehaviour:
   cities: []
   combatUnits: []
   workerUnits: []
+  interplanetaryTradeRoutes: []
+  tradeEnabled: 0
   startingEquipment: []
   cityPrefab: {fileID: 0}
   researchedTechs: []
@@ -73,6 +75,9 @@ MonoBehaviour:
   culture: 0
   policyPoints: 0
   faith: 0
+  minimumFoodStockpile: -1
+  defaultFoodPerCombatUnit: 2
+  defaultFoodPerWorkerUnit: 1
   attackBonus: 0
   defenseBonus: 0
   movementBonus: 0
@@ -80,15 +85,20 @@ MonoBehaviour:
   productionModifier: 0
   goldModifier: 0
   faithModifier: 0
-  foundedPantheon: {fileID: 0}
-  chosenFounderBelief: {fileID: 0}
+  foundedPantheons: []
   foundedReligion: {fileID: 0}
-  hasFoundedPantheon: 0
   hasFoundedReligion: 0
+  cultureUnlockedPantheons: []
+  cultureUnlockedBeliefs: []
+  basePantheonCap: 1
+  pantheonCapFromBonuses: 0
   unlockedCombatUnits: []
   unlockedWorkerUnits: []
   unlockedBuildings: []
   unlockedAbilities: []
   governorCount: 1
+  governorsEnabled: 0
   unlockedGovernorTraits: []
+  baseCityCap: 0
+  cityCapFromBonuses: 0
   planetGenerator: {fileID: 0}

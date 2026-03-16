@@ -114,7 +114,9 @@ public class ImprovementManager : MonoBehaviour
 
         Vector3 pos = ts.GetTileSurfacePosition(tileIndex);
         GameObject constructionObject = Instantiate(data.constructionPrefab, pos, Quaternion.identity);
-        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+        // Prefer the tile's owner civ to determine the correct planet generator when available
+        Civilization owner = tileData != null ? tileData.improvementOwner : null;
+        var planetGen = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
         if (planetGen != null) constructionObject.transform.SetParent(planetGen.transform, true);
 
         // Register construction visual for wrap teleport
@@ -547,7 +549,8 @@ public class ImprovementManager : MonoBehaviour
         if (civ == null) return;
         int pIndex = ResolvePlanetIndex(planetIndex);
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null;
+        var planetGen = civ != null ? civ.GetPlanetGeneratorForIndex(pIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null)
+                       : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null);
         var td = ts != null ? ts.GetTileData(tileIndex) : (planetGen != null ? planetGen.GetHexTileData(tileIndex) : null);
         if (td == null) return;
         if (td.owner != civ) return;
@@ -576,7 +579,8 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         Vector3 pos = ts != null ? ts.GetTileSurfacePosition(job.tileIndex) : Vector3.zero;
-        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
+        var planetGen = job.owner != null ? job.owner.GetPlanetGeneratorForIndex(job.planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null)
+                         : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null);
         GameObject completedImprovement = null;
 
         var tileData = ts != null ? ts.GetTileData(job.tileIndex) : null;
@@ -697,7 +701,8 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
-        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
+        var planetGen = job.owner != null ? job.owner.GetPlanetGeneratorForIndex(job.planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null)
+                         : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null);
         // Spawn the unit and register occupancy
         var unitPrefab = job.data.GetPrefab();
         if (unitPrefab == null)
@@ -745,7 +750,8 @@ public class ImprovementManager : MonoBehaviour
     {
         var ts = TileSystem.GetForPlanet(job.planetIndex) ?? TileSystem.Instance;
         var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
-        var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null;
+        var planetGen = job.owner != null ? job.owner.GetPlanetGeneratorForIndex(job.planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null)
+                         : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null);
         // Spawn the worker unit and register occupancy
         var prefab = job.data.prefab;
         if (prefab == null)
@@ -1057,7 +1063,7 @@ public class ImprovementManager : MonoBehaviour
         {
             var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
             try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
-            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+            var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
             if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         }
 
@@ -1109,7 +1115,7 @@ public class ImprovementManager : MonoBehaviour
                     Quaternion rot = instanceObj.transform.rotation;
                     var newObj = Instantiate(found.replacePrefab, pos, rot);
                     try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
-                    var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                    var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                     if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                     var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
                     newInst.tileIndex = tileIndex;
@@ -1215,7 +1221,7 @@ public class ImprovementManager : MonoBehaviour
                 Quaternion rot = instanceObj.transform.rotation;
                 var newObj = Instantiate(upgrade.replacePrefab, pos, rot);
                 try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, newObj); } catch { }
-                var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                var planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null; // no civ context here
                 if (planetGen != null) newObj.transform.SetParent(planetGen.transform, true);
                 var newInst = newObj.GetComponent<ImprovementInstance>() ?? newObj.AddComponent<ImprovementInstance>();
                 newInst.tileIndex = tileIndex;

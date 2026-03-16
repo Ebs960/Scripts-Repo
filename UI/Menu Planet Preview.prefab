@@ -424,13 +424,13 @@ MonoBehaviour:
   borealColor: {r: 0.120291844, g: 0.4113207, b: 0.18562482, a: 1}
   tundraColor: {r: 1, g: 1, b: 1, a: 1}
   polarColor: {r: 0.7528302, g: 0.8764151, b: 1, a: 1}
-  oceanColor: {r: 0, g: 0.4465165, b: 0.97735846, a: 1}
+  oceanColor: {r: 0.003921569, g: 0.31764707, b: 0.6862745, a: 1}
   mountainColor: {r: 0.72, g: 0.58, b: 0.38, a: 0.70980394}
   iceCapSize: 0.5
-  biomeBlend: 0.389
-  biomeNoiseScale: 8.3
-  biomeNoiseStrength: 0.137
-  colorVibrancy: 1.69
+  biomeBlend: 0.1
+  biomeNoiseScale: 4
+  biomeNoiseStrength: 0.2
+  colorVibrancy: 1.5
   smoothness: 0.096
   metallic: 0
   ambientOcclusion: 1

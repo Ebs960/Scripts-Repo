@@ -17,10 +17,17 @@ public enum DealType
 [System.Serializable]
 public class DiplomaticMemory
 {
+    public Civilization owner;
     public Dictionary<Civilization, List<DiplomaticEvent>> events = new Dictionary<Civilization, List<DiplomaticEvent>>();
     public Dictionary<Civilization, float> reputation = new Dictionary<Civilization, float>(); // -100 to +100
     public Dictionary<Civilization, int> trustLevel = new Dictionary<Civilization, int>(); // 0-10
-    
+    public DiplomaticMemory() { }
+
+    public DiplomaticMemory(Civilization owner)
+    {
+        this.owner = owner;
+    }
+
     public void RecordEvent(Civilization other, DiplomaticEventType eventType, int severity = 1)
     {
         if (!events.ContainsKey(other))
@@ -38,6 +45,13 @@ public class DiplomaticMemory
             reputation[other] = 0f;
             
         float reputationChange = GetReputationChange(eventType, severity);
+        // Apply leader/trait modifiers if owner exists
+        if (owner != null && owner.leader != null)
+        {
+            LeaderData ld = owner.leader;
+            float leaderModifier = 1.0f - (ld.aggressiveness / 20f) + (ld.diplomacy / 20f);
+            reputationChange *= leaderModifier;
+        }
         reputation[other] = Mathf.Clamp(reputation[other] + reputationChange, -100f, 100f);
         
         // Update trust level
@@ -46,19 +60,32 @@ public class DiplomaticMemory
     
     private float GetReputationChange(DiplomaticEventType eventType, int severity)
     {
-        return eventType switch
+        // Warmonger-style penalties only apply if the observing civilization has reached SteamAge.
+        bool observerIsSteam = owner != null && owner.HasReachedTechAge(TechAge.SteamAge);
+
+        switch (eventType)
         {
-            DiplomaticEventType.BrokePeace => -20f * severity,
-            DiplomaticEventType.DeclaredWar => -15f * severity,
-            DiplomaticEventType.Denounced => -10f * severity,
-            DiplomaticEventType.RefusedTrade => -2f * severity,
-            DiplomaticEventType.AcceptedAlliance => 15f * severity,
-            DiplomaticEventType.HonoredTreaty => 5f * severity,
-            DiplomaticEventType.SharedInformation => 3f * severity,
-            DiplomaticEventType.ProvidedAid => 10f * severity,
-            DiplomaticEventType.AttackedAlly => -25f * severity,
-            _ => 0f
-        };
+            case DiplomaticEventType.BrokePeace:
+                return observerIsSteam ? -20f * severity : 0f;
+            case DiplomaticEventType.DeclaredWar:
+                return observerIsSteam ? -15f * severity : 0f;
+            case DiplomaticEventType.AttackedAlly:
+                return observerIsSteam ? -25f * severity : 0f;
+            case DiplomaticEventType.Denounced:
+                return -10f * severity; // Denouncements are lower-impact and always recognized
+            case DiplomaticEventType.RefusedTrade:
+                return -2f * severity;
+            case DiplomaticEventType.AcceptedAlliance:
+                return 15f * severity;
+            case DiplomaticEventType.HonoredTreaty:
+                return 5f * severity;
+            case DiplomaticEventType.SharedInformation:
+                return 3f * severity;
+            case DiplomaticEventType.ProvidedAid:
+                return 10f * severity;
+            default:
+                return 0f;
+        }
     }
     
     private void UpdateTrustLevel(Civilization other)
@@ -147,7 +174,7 @@ public class DiplomacyManager : MonoBehaviour
         foreach (var civ in CivilizationManager.Instance.GetAllCivs())
         {
             relations[civ] = new Dictionary<Civilization, DiplomaticState>();
-            diplomaticMemories[civ] = new DiplomaticMemory();
+            diplomaticMemories[civ] = new DiplomaticMemory(civ);
             
             foreach (var other in CivilizationManager.Instance.GetAllCivs())
             {
@@ -173,7 +200,7 @@ public class DiplomacyManager : MonoBehaviour
     public DiplomaticMemory GetDiplomaticMemory(Civilization civ)
     {
         if (!diplomaticMemories.ContainsKey(civ))
-            diplomaticMemories[civ] = new DiplomaticMemory();
+            diplomaticMemories[civ] = new DiplomaticMemory(civ);
         return diplomaticMemories[civ];
     }
 
