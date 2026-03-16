@@ -541,9 +541,36 @@ public abstract class BaseUnit : MonoBehaviour
         if (planetIndex < 0 && GameManager.Instance != null) planetIndex = GameManager.Instance.currentPlanetIndex;
         if (planetIndex < 0) planetIndex = 0;
 
-        // Prefer owner-bound planet generator when available (multi-planet civs).
-        planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator())
-                       : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator());
+        // Resolve planet generator with diagnostics so we can detect when fallbacks are used.
+        PlanetGenerator resolved = null;
+        if (owner != null)
+        {
+            try { resolved = owner.GetPlanetGeneratorForIndex(planetIndex); } catch { resolved = null; }
+            if (resolved == null)
+            {
+                Debug.LogWarning($"[BaseUnit] Owner '{owner.civData?.civName ?? owner.name}' returned null for GetPlanetGeneratorForIndex({planetIndex}); falling back to GameManager.");
+            }
+        }
+
+        if (resolved == null)
+        {
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                resolved = gm.GetPlanetGenerator(planetIndex);
+                if (resolved == null)
+                {
+                    Debug.LogWarning($"[BaseUnit] GameManager has no generator for planetIndex {planetIndex}; falling back to current planet generator.");
+                    resolved = gm.GetCurrentPlanetGenerator();
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[BaseUnit] GameManager.Instance is null; cannot resolve PlanetGenerator.");
+            }
+        }
+
+        planet = resolved;
         if (planet != null) grid = planet.Grid;
 
         // Register with UnitRegistry

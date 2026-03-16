@@ -142,7 +142,6 @@ public static class CivDescriptionGenerator
     private static readonly Dictionary<TechAge, string> techAgeFlavors = new Dictionary<TechAge, string> {
         { TechAge.PaleolithicAge, "They dwell in the Paleolithic Age, where fire and stone shape their destiny." },
         { TechAge.NeolithicAge, "They are in the Neolithic Age, bound by kinship and ancient rites." },
-        { TechAge.MonumentAge, "They build wonders in the Monument Age, etching their mark in stone." },
         { TechAge.CopperAge, "They wield copper tools, forging ahead in the Copper Age." },
         { TechAge.BronzeAge, "They are in the Bronze Age, where empires rise and fall on the strength of metal." },
         { TechAge.IronAge, "They march through the Iron Age, their weapons sharp and ambitions sharper." },

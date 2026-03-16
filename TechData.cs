@@ -6,7 +6,6 @@ public enum TechAge
 {
     PaleolithicAge,
     NeolithicAge,
-    MonumentAge,
     CopperAge,
     BronzeAge,
     IronAge,

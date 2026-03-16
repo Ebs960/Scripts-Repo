@@ -100,8 +100,19 @@ public class AncientRuinsManager : MonoBehaviour
             bool usedTileCheck = false;
             if (ts != null && ts.IsReady())
             {
-                var pg = civilization != null ? civilization.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null)
-                                                   : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
+                PlanetGenerator pg = null;
+                if (civilization != null)
+                {
+                    try { pg = civilization.GetPlanetGeneratorForIndex(planetIndex); } catch { pg = null; }
+                    if (pg == null)
+                        Debug.LogWarning($"[AncientRuinsManager] Civilization '{civilization.civData?.civName ?? civilization.name}' returned null for planet {planetIndex}; falling back to GameManager.");
+                }
+                if (pg == null)
+                {
+                    pg = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+                    if (pg == null)
+                        Debug.LogWarning($"[AncientRuinsManager] GameManager has no PlanetGenerator for index {planetIndex} when checking ruins.");
+                }
                 if (pg != null && pg.Grid != null)
                 {
                     unitTile = pg.Grid.GetTileAtPosition(unitPosition);

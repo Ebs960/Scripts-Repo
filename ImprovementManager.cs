@@ -116,7 +116,19 @@ public class ImprovementManager : MonoBehaviour
         GameObject constructionObject = Instantiate(data.constructionPrefab, pos, Quaternion.identity);
         // Prefer the tile's owner civ to determine the correct planet generator when available
         Civilization owner = tileData != null ? tileData.improvementOwner : null;
-        var planetGen = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
+        PlanetGenerator planetGen = null;
+        if (owner != null)
+        {
+            try { planetGen = owner.GetPlanetGeneratorForIndex(planetIndex); } catch { planetGen = null; }
+            if (planetGen == null)
+                Debug.LogWarning($"[ImprovementManager] Owner civ '{owner.civData?.civName ?? owner.name}' returned null for planet {planetIndex}; falling back to GameManager.");
+        }
+        if (planetGen == null)
+        {
+            planetGen = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null;
+            if (planetGen == null)
+                Debug.LogWarning($"[ImprovementManager] GameManager has no PlanetGenerator for index {planetIndex} when spawning construction visual.");
+        }
         if (planetGen != null) constructionObject.transform.SetParent(planetGen.transform, true);
 
         // Register construction visual for wrap teleport

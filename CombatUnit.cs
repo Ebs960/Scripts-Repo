@@ -148,9 +148,36 @@ public class CombatUnit : BaseUnit
         }
         
         // BaseUnit.Awake already binds planet/grid using planetIndex.
-        // Prefer owner-bound planet generator when available (multi-planet civs).
-        planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet)
-                       : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? planet);
+        // Resolve planet generator with diagnostics: prefer owner helper, then GameManager, then current.
+        PlanetGenerator resolved = null;
+        if (owner != null)
+        {
+            try { resolved = owner.GetPlanetGeneratorForIndex(planetIndex); } catch { resolved = null; }
+            if (resolved == null)
+            {
+                Debug.LogWarning($"[CombatUnit] Owner '{owner.civData?.civName ?? owner.name}' returned null for GetPlanetGeneratorForIndex({planetIndex}); falling back to GameManager.");
+            }
+        }
+
+        if (resolved == null)
+        {
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                resolved = gm.GetPlanetGenerator(planetIndex);
+                if (resolved == null)
+                {
+                    Debug.LogWarning($"[CombatUnit] GameManager has no generator for planetIndex {planetIndex}; falling back to current planet generator.");
+                    resolved = gm.GetCurrentPlanetGenerator();
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[CombatUnit] GameManager.Instance is null; cannot resolve PlanetGenerator.");
+            }
+        }
+
+        planet = resolved ?? planet;
         if (planet != null) grid = planet.Grid;
         UnitRegistry.Register(gameObject);
 
@@ -1163,9 +1190,32 @@ public class CombatUnit : BaseUnit
         // Ensure grid is initialized before calling PositionUnitOnSurface
         if (grid == null)
         {
-            // Prefer owner-bound generator when available, otherwise fall back to GameManager.
-            planet = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator())
-                                   : (GameManager.Instance?.GetPlanetGenerator(planetIndex) ?? GameManager.Instance?.GetCurrentPlanetGenerator());
+            // Resolve with diagnostics similar to Awake.
+            PlanetGenerator resolved2 = null;
+            if (owner != null)
+            {
+                try { resolved2 = owner.GetPlanetGeneratorForIndex(planetIndex); } catch { resolved2 = null; }
+                if (resolved2 == null)
+                    Debug.LogWarning($"[CombatUnit] InitializeAndReturn: owner '{owner.civData?.civName ?? owner.name}' returned null for planet {planetIndex}; falling back to GameManager.");
+            }
+            if (resolved2 == null)
+            {
+                var gm2 = GameManager.Instance;
+                if (gm2 != null)
+                {
+                    resolved2 = gm2.GetPlanetGenerator(planetIndex);
+                    if (resolved2 == null)
+                    {
+                        Debug.LogWarning($"[CombatUnit] InitializeAndReturn: GameManager has no generator for planetIndex {planetIndex}; falling back to current planet generator.");
+                        resolved2 = gm2.GetCurrentPlanetGenerator();
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[CombatUnit] InitializeAndReturn: GameManager.Instance is null; cannot resolve PlanetGenerator.");
+                }
+            }
+            planet = resolved2 ?? planet;
             if (planet != null)
             {
                 grid = planet.Grid;

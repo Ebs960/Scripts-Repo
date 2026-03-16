@@ -3196,12 +3196,17 @@ return true;
     /// </summary>
     public PlanetGenerator GetPlanetGeneratorForIndex(int planetIndex)
     {
-        // Prefer GameManager's registered generator for the requested planet
+        // Prefer GameManager's registered generator for the requested planet.
         var gm = GameManager.Instance;
         if (gm != null)
         {
             var gen = gm.GetPlanetGenerator(planetIndex);
             if (gen != null) return gen;
+            Debug.LogWarning($"[Civilization] GetPlanetGeneratorForIndex: no generator for requested index {planetIndex} on GameManager; will try owned planets as fallback.");
+        }
+        else
+        {
+            Debug.LogWarning("[Civilization] GetPlanetGeneratorForIndex: GameManager.Instance is null; cannot resolve requested planet generator directly.");
         }
 
         // If this civ owns tiles on other planets, prefer one of those planet generators
@@ -3210,12 +3215,24 @@ return true;
             foreach (var kv in ownedTilesByPlanet)
             {
                 var gen = gm.GetPlanetGenerator(kv.Key);
-                if (gen != null) return gen;
+                if (gen != null)
+                {
+                    Debug.LogWarning($"[Civilization] GetPlanetGeneratorForIndex: falling back to owned planet generator for planetIndex {kv.Key}.");
+                    return gen;
+                }
             }
         }
 
         // Fallback to the current active planet generator
-        return gm?.GetCurrentPlanetGenerator();
+        var current = gm?.GetCurrentPlanetGenerator();
+        if (current != null)
+        {
+            Debug.LogWarning($"[Civilization] GetPlanetGeneratorForIndex: falling back to current planet generator (index {gm?.currentPlanetIndex}).");
+            return current;
+        }
+
+        Debug.LogWarning("[Civilization] GetPlanetGeneratorForIndex: unable to resolve any PlanetGenerator (returning null).");
+        return null;
     }
 
     /// <summary>
