@@ -1204,7 +1204,13 @@ public abstract class BaseUnit : MonoBehaviour
             return;
         }
 
-        // Clear current occupancy first (if any), then set Orbit occupancy.
+        if (!occ.TrySetOccupant(tileIndex, gameObject, TileLayer.Orbit))
+        {
+            Debug.LogWarning($"[BaseUnit] {name} could not claim orbit occupancy on tile {tileIndex}.");
+            return;
+        }
+
+        // Claim the destination first so orbit entry fails closed if another unit won the race.
         try
         {
             if (currentTileIndex >= 0)
@@ -1216,7 +1222,6 @@ public abstract class BaseUnit : MonoBehaviour
 
         currentTileIndex = tileIndex;
         currentLayer = TileLayer.Orbit;
-        occ.SetOccupant(tileIndex, gameObject, TileLayer.Orbit);
 
         // Position above the tile surface at the configured orbit height.
         Vector3 surface = ts.GetTileSurfacePosition(tileIndex);
@@ -1281,7 +1286,13 @@ public abstract class BaseUnit : MonoBehaviour
             return;
         }
 
-        // Clear orbit occupancy, set surface occupancy
+        if (!occ.TrySetOccupant(landingTileIndex, gameObject, TileLayer.Surface))
+        {
+            Debug.LogWarning($"[BaseUnit] {name} could not claim surface occupancy on tile {landingTileIndex} while exiting orbit.");
+            return;
+        }
+
+        // Claim the surface first so landing cannot clear orbit occupancy and then fail the destination write.
         try
         {
             occ.ClearOccupant(currentTileIndex, TileLayer.Orbit);
@@ -1290,7 +1301,6 @@ public abstract class BaseUnit : MonoBehaviour
 
         currentTileIndex = landingTileIndex;
         currentLayer = TileLayer.Surface;
-        occ.SetOccupant(landingTileIndex, gameObject, TileLayer.Surface);
 
         // Position back on terrain surface
         PositionUnitOnSurface(landingTileIndex);
@@ -1537,7 +1547,10 @@ public abstract class BaseUnit : MonoBehaviour
                 {
                     occ.ClearOccupant(currentTileIndex, currentLayer);
                 }
-                occ.SetOccupant(tileIndex, gameObject, currentLayer);
+                if (!occ.TrySetOccupant(tileIndex, gameObject, currentLayer))
+                {
+                    Debug.LogWarning($"[BaseUnit] RegisterOccupancy could not claim tile {tileIndex} for {name} on layer {currentLayer}.");
+                }
             }
         }
         catch (System.Exception ex) { Debug.LogWarning($"[BaseUnit] RegisterOccupancy failed for {name}: {ex.Message}"); }

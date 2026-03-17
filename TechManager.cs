@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 
 public class TechManager : MonoBehaviour
 {
@@ -17,6 +18,23 @@ public class TechManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        EnsureTechListLoaded();
+    }
+
+    private void EnsureTechListLoaded()
+    {
+        if (allTechs != null && allTechs.Any(t => t != null)) return;
+
+        var loadedTechs = ResourceCache.GetAllTechData();
+        allTechs = loadedTechs != null
+            ? new List<TechData>(loadedTechs.Where(t => t != null))
+            : new List<TechData>();
+
+        if (allTechs.Count == 0)
+        {
+            Debug.LogWarning("[TechManager] No TechData assets were loaded into allTechs.");
+        }
     }
 
     /// <summary>
@@ -24,6 +42,7 @@ public class TechManager : MonoBehaviour
     /// </summary>
     public List<TechData> GetAvailableTechs(Civilization civ)
     {
+        EnsureTechListLoaded();
         var available = new List<TechData>();
 
         if (civ == null) return available;
@@ -83,6 +102,7 @@ public class TechManager : MonoBehaviour
     /// </summary>
     public void StartResearch(Civilization civ, TechData tech)
     {
+        EnsureTechListLoaded();
         if (civ == null || tech == null) return;
         
         // First check if it's already researched

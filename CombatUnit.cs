@@ -548,12 +548,18 @@ public class CombatUnit : BaseUnit
             if (IsInOrbit) pos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
             transform.position = pos;
 
-            // Clear previous tile occupancy before setting new one
+            // Claim the destination first so helper movement cannot stack units.
             try
             {
+                bool claimed = occ == null || occ.TrySetOccupant(idx, gameObject, currentLayer);
+                if (!claimed)
+                {
+                    Debug.LogWarning($"[CombatUnit] MoveAlongPath could not claim tile {idx} for {name}; aborting helper movement.");
+                    break;
+                }
+
                 if (currentTileIndex >= 0 && currentTileIndex != idx)
                     occ?.ClearOccupant(currentTileIndex, currentLayer);
-                occ?.SetOccupant(idx, gameObject, currentLayer);
             }
             catch (System.Exception ex) { Debug.LogWarning($"[CombatUnit] Occupancy update failed: {ex.Message}"); }
 
@@ -1496,7 +1502,22 @@ public class CombatUnit : BaseUnit
         if (!unit.CanMoveTo(targetTileIndex))
             return false;
             
-        // Remove from transport
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null) {
+            Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
+            return false;
+        }
+
+        // Update tile occupancy using layered occupancy manager
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        try
+        {
+            if (occ != null && !occ.TrySetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer))
+                return false;
+        }
+        catch { return false; }
+
+        // Remove from transport only after the destination claim succeeds.
         transportedUnits.Remove(unit);
         
         // Update the unloaded unit's state
@@ -1506,18 +1527,8 @@ public class CombatUnit : BaseUnit
         
         // Position the unit at the target tile and show it
         unit.gameObject.SetActive(true);
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        if (ts == null) {
-            Debug.LogError("[CombatUnit] TileSystem not ready; cannot unload unit in flat-only mode.");
-            return false;
-        }
-        var targetTileData = ts.GetTileData(targetTileIndex);
         unit.transform.position = ts.GetTileSurfacePosition(targetTileIndex);
         unit.currentTileIndex = targetTileIndex;
-        
-        // Update tile occupancy using layered occupancy manager
-        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-        try { occ?.SetOccupant(targetTileIndex, unit.gameObject, unit.currentLayer); } catch { }
 
     // Trigger trap if unloading onto a trapped tile
     ImprovementManager.Instance?.NotifyUnitEnteredTile(targetTileIndex, unit);

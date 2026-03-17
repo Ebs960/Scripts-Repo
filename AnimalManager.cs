@@ -326,15 +326,8 @@ public class AnimalManager : MonoBehaviour
 
         int pIndex = prey != null ? prey.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-        
-        var neighborIndices = ts != null ? ts.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
-        var validDestinations = neighborIndices
-            .Where(index =>
-            {
-                var neighbor = ts != null ? ts.GetTileData(index) : null;
-                return neighbor != null && prey.CanMoveTo(index);
-            })
-            .ToList();
+
+        var validDestinations = GetReachableAnimalDestinations(prey, GetAnimalSearchRange(prey, 4, 8));
         
         if (validDestinations.Count == 0) return null;
         
@@ -353,6 +346,88 @@ public class AnimalManager : MonoBehaviour
         }
         
         return bestDestination;
+    }
+
+    private int GetAnimalSearchRange(CombatUnit unit, int minimumRange = 3, int maximumRange = 8)
+    {
+        int movePoints = unit != null ? Mathf.Max(1, unit.currentMovePoints) : 1;
+        return Mathf.Clamp(movePoints * 3, minimumRange, maximumRange);
+    }
+
+    private List<int> GetTilesWithinRange(CombatUnit unit, int maxRange)
+    {
+        var result = new List<int>();
+        if (unit == null || maxRange <= 0) return result;
+
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return result;
+
+        var visited = new HashSet<int> { unit.currentTileIndex };
+        var queue = new Queue<(int tile, int dist)>();
+        queue.Enqueue((unit.currentTileIndex, 0));
+
+        while (queue.Count > 0)
+        {
+            var (tile, dist) = queue.Dequeue();
+            if (dist >= maxRange) continue;
+
+            var neighbors = ts.GetNeighbors(tile);
+            if (neighbors == null) continue;
+
+            foreach (int neighbor in neighbors)
+            {
+                if (!visited.Add(neighbor)) continue;
+                result.Add(neighbor);
+                queue.Enqueue((neighbor, dist + 1));
+            }
+        }
+
+        return result;
+    }
+
+    private bool TryGetReachablePathThisTurn(CombatUnit unit, int targetTileIndex, out List<int> reachablePath)
+    {
+        reachablePath = null;
+        if (unit == null || targetTileIndex < 0) return false;
+        if (targetTileIndex == unit.currentTileIndex) return false;
+        if (UnitMovementController.Instance == null) return false;
+
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
+
+        var fullPath = UnitMovementController.Instance.FindPath(unit.currentTileIndex, targetTileIndex, unit);
+        if (fullPath == null || fullPath.Count == 0) return false;
+
+        int remainingMovePoints = unit.currentMovePoints;
+        var validatedPath = new List<int>(fullPath.Count);
+
+        foreach (int tileIndex in fullPath)
+        {
+            var tileData = ts.GetTileData(tileIndex);
+            int movementCost = tileData != null ? BiomeHelper.GetMovementCost(tileData, unit) : 1;
+            if (movementCost >= 99 || remainingMovePoints < movementCost) return false;
+            if (!unit.CanMoveTo(tileIndex)) return false;
+
+            validatedPath.Add(tileIndex);
+            remainingMovePoints -= movementCost;
+        }
+
+        reachablePath = validatedPath;
+        return validatedPath.Count > 0;
+    }
+
+    private List<int> GetReachableAnimalDestinations(CombatUnit unit, int maxRange)
+    {
+        var reachable = new List<int>();
+        if (unit == null || unit.currentMovePoints <= 0) return reachable;
+
+        foreach (int candidate in GetTilesWithinRange(unit, maxRange))
+        {
+            if (TryGetReachablePathThisTurn(unit, candidate, out _))
+                reachable.Add(candidate);
+        }
+
+        return reachable;
     }
 
     public void ProcessTurn()
@@ -537,15 +612,8 @@ public class AnimalManager : MonoBehaviour
             return true;
         }
 
-        // Not adjacent: try to move closer to the target
-        var neighborIndices = ts != null ? ts.GetNeighbors(predator.currentTileIndex) : System.Array.Empty<int>();
-        var validDestinations = neighborIndices
-            .Where(index =>
-            {
-                var neighbor = ts != null ? ts.GetTileData(index) : null;
-                return neighbor != null && predator.CanMoveTo(index);
-            })
-            .ToList();
+        // Not adjacent: choose the best reachable tile this turn, not just a neighbor.
+        var validDestinations = GetReachableAnimalDestinations(predator, GetAnimalSearchRange(predator));
 
         if (validDestinations.Count == 0) return false;
 
@@ -563,11 +631,6 @@ public class AnimalManager : MonoBehaviour
             }
         }
 
-        // Compute movement cost for the chosen destination and deduct then move
-        int moveCostPred = 1;
-        var tdPred = ts != null ? ts.GetTileData(bestDestination) : null;
-        moveCostPred = tdPred != null ? BiomeHelper.GetMovementCost(tdPred, predator) : 1;
-        if (predator.currentMovePoints < moveCostPred) return false;
         predator.MoveTo(bestDestination);
         return true;
     }
@@ -597,25 +660,13 @@ public class AnimalManager : MonoBehaviour
             if (trapTile.HasValue)
             {
                 ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
-                float dist = ts != null ? ts.GetTileDistance(prey.currentTileIndex, trapTile.Value) : float.MaxValue;
-                if (dist <= 1f)
+                if (TryGetReachablePathThisTurn(prey, trapTile.Value, out _))
                 {
-                    int moveCostTrap = 1;
-                    var tdTrap = ts != null ? ts.GetTileData(trapTile.Value) : null;
-                    moveCostTrap = tdTrap != null ? BiomeHelper.GetMovementCost(tdTrap, prey) : 1;
-                    if (prey.currentMovePoints < moveCostTrap) return false;
                     prey.MoveTo(trapTile.Value);
                     return true;
                 }
 
-                var neighborIndices = ts != null ? ts.GetNeighbors(prey.currentTileIndex) : System.Array.Empty<int>();
-                var validDestinations = neighborIndices
-                    .Where(index =>
-                    {
-                        var neighbor = ts != null ? ts.GetTileData(index) : null;
-                        return neighbor != null && prey.CanMoveTo(index);
-                    })
-                    .ToList();
+                var validDestinations = GetReachableAnimalDestinations(prey, GetAnimalSearchRange(prey, 4, 8));
 
                 if (validDestinations.Count > 0)
                 {
@@ -631,10 +682,6 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    int moveCostNeighbor = 1;
-                    var tdNeighbor = ts != null ? ts.GetTileData(bestDestination) : null;
-                    moveCostNeighbor = tdNeighbor != null ? BiomeHelper.GetMovementCost(tdNeighbor, prey) : 1;
-                    if (prey.currentMovePoints < moveCostNeighbor) return false;
                     prey.MoveTo(bestDestination);
                     return true;
                 }
@@ -645,10 +692,6 @@ public class AnimalManager : MonoBehaviour
         int? fleeDestination = GetFleeDirection(prey);
         if (fleeDestination.HasValue)
         {
-            int moveCostFlee = 1;
-            var tdFlee = ts != null ? ts.GetTileData(fleeDestination.Value) : null;
-            moveCostFlee = tdFlee != null ? BiomeHelper.GetMovementCost(tdFlee, prey) : 1;
-            if (prey.currentMovePoints < moveCostFlee) return false;
             prey.MoveTo(fleeDestination.Value);
             return true;
         }
@@ -671,25 +714,13 @@ public class AnimalManager : MonoBehaviour
             int? trapTile = ImprovementManager.Instance.GetNearestTrapForAnimals(unit.planetIndex, unit.currentTileIndex, 6);
             if (trapTile.HasValue)
             {
-                float dist = ts != null ? ts.GetTileDistance(unit.currentTileIndex, trapTile.Value) : float.MaxValue;
-                if (dist <= 1f)
+                if (TryGetReachablePathThisTurn(unit, trapTile.Value, out _))
                 {
-                    int moveCostTrap = 1;
-                    var tdTrap = ts != null ? ts.GetTileData(trapTile.Value) : null;
-                    moveCostTrap = tdTrap != null ? BiomeHelper.GetMovementCost(tdTrap, unit) : 1;
-                    if (unit.currentMovePoints < moveCostTrap) return false;
                     unit.MoveTo(trapTile.Value);
                     return true;
                 }
 
-                var trapNeighborIndices = ts != null ? ts.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
-                var trapValidDestinations = trapNeighborIndices
-                    .Where(index =>
-                    {
-                        var neighbor = ts != null ? ts.GetTileData(index) : null;
-                        return neighbor != null && unit.CanMoveTo(index);
-                    })
-                    .ToList();
+                var trapValidDestinations = GetReachableAnimalDestinations(unit, GetAnimalSearchRange(unit, 4, 8));
 
                 if (trapValidDestinations.Count > 0)
                 {
@@ -705,32 +736,17 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    int moveCostNeighbor = 1;
-                    var tdNeighbor = ts != null ? ts.GetTileData(bestDestination) : null;
-                    moveCostNeighbor = tdNeighbor != null ? BiomeHelper.GetMovementCost(tdNeighbor, unit) : 1;
-                    if (unit.currentMovePoints < moveCostNeighbor) return false;
                     unit.MoveTo(bestDestination);
                     return true;
                 }
             }
         }
 
-        var neighborIndices = ts != null ? ts.GetNeighbors(unit.currentTileIndex) : System.Array.Empty<int>();
-        var validDestinations = neighborIndices
-            .Where(index =>
-            {
-                var neighbor = ts != null ? ts.GetTileData(index) : null;
-                return neighbor != null && unit.CanMoveTo(index);
-            })
-            .ToList();
+        var validDestinations = GetReachableAnimalDestinations(unit, GetAnimalSearchRange(unit));
 
         if (validDestinations.Count > 0)
         {
             int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
-            int moveCostRand = 1;
-            var tdRand = ts != null ? ts.GetTileData(targetTile) : null;
-            moveCostRand = tdRand != null ? BiomeHelper.GetMovementCost(tdRand, unit) : 1;
-            if (unit.currentMovePoints < moveCostRand) return false;
             unit.MoveTo(targetTile);
             return true;
         }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 
 public class CultureManager : MonoBehaviour
 {
@@ -13,6 +14,23 @@ public class CultureManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        EnsureCultureListLoaded();
+    }
+
+    private void EnsureCultureListLoaded()
+    {
+        if (allCultures != null && allCultures.Any(c => c != null)) return;
+
+        var loadedCultures = ResourceCache.GetAllCultureData();
+        allCultures = loadedCultures != null
+            ? new List<CultureData>(loadedCultures.Where(c => c != null))
+            : new List<CultureData>();
+
+        if (allCultures.Count == 0)
+        {
+            Debug.LogWarning("[CultureManager] No CultureData assets were loaded into allCultures.");
+        }
     }
 
     /// <summary>
@@ -20,6 +38,7 @@ public class CultureManager : MonoBehaviour
     /// </summary>
     public List<CultureData> GetAvailableCultures(Civilization civ)
     {
+        EnsureCultureListLoaded();
         var available = new List<CultureData>();
 
         foreach (var cult in allCultures)
@@ -92,6 +111,7 @@ public class CultureManager : MonoBehaviour
     /// </summary>
     public void StartCulture(Civilization civ, CultureData cult)
     {
+        EnsureCultureListLoaded();
         if (civ == null || cult == null) return;
         if (!civ.CanCultivate(cult)) return;
         civ.StartCulture(cult);

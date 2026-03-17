@@ -297,8 +297,11 @@ public class DemonManager : MonoBehaviour
         if (remainingMovePoints.ContainsKey(demon))
             remainingMovePoints[demon]--;
 
-        // Clear old occupancy
         var occ = TileOccupancyManager.GetForPlanet(demon.planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null && !occ.TrySetOccupant(targetTile, demon.gameObject, TileLayer.Surface))
+            return;
+
+        // Clear old occupancy only after the destination claim succeeds.
         if (occ != null)
             occ.ClearOccupant(demon.currentTileIndex, TileLayer.Surface);
 
@@ -306,10 +309,6 @@ public class DemonManager : MonoBehaviour
         demon.currentTileIndex = targetTile;
         Vector3 worldPos = ts.GetTileSurfacePosition(targetTile);
         demon.transform.position = worldPos;
-
-        // Set new occupancy
-        if (occ != null)
-            occ.SetOccupant(targetTile, demon.gameObject, TileLayer.Surface);
 
         // Check for encounters
         CheckForEncounters(demon);

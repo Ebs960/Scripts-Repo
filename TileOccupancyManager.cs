@@ -184,22 +184,31 @@ public class TileOccupancyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Set the occupant for a tile on a specific layer.
-    /// This is the ONLY way to set occupancy - do not write to HexTileData.occupantId directly.
+    /// Strict occupancy setter. Returns false instead of silently overwriting a different occupant.
     /// </summary>
-    public void SetOccupant(int tile, GameObject occupant, TileLayer layer)
+    public bool TrySetOccupant(int tile, GameObject occupant, TileLayer layer, bool allowOverwrite = false, string reason = null)
     {
-        if (!ValidIndex(tile)) return;
+        if (!ValidIndex(tile)) return false;
+
         int layerIdx = (int)layer;
         int existingId = occupants[tile, layerIdx];
         int id = occupant != null ? occupant.GetInstanceID() : 0;
-        // One unit per tile: warn when placing a unit on a tile that already has a different occupant (stacking bug)
+
         if (occupant != null && existingId != 0 && existingId != id)
         {
             var existingObj = UnitRegistry.GetObject(existingId);
             string existingName = existingObj != null ? existingObj.name : $"id={existingId}";
-            Debug.LogWarning($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer}: overwriting existing occupant '{existingName}' with '{occupant.name}' (two units on same tile).");
+
+            if (!allowOverwrite)
+            {
+                Debug.LogWarning($"[TileOccupancyManager] TrySetOccupant rejected tile={tile} layer={layer}: existing occupant '{existingName}' blocks '{occupant.name}'.");
+                return false;
+            }
+
+            string overwriteReason = string.IsNullOrWhiteSpace(reason) ? "no reason provided" : reason;
+            Debug.LogWarning($"[TileOccupancyManager] TrySetOccupant forced overwrite tile={tile} layer={layer}: replacing '{existingName}' with '{occupant.name}'. reason={overwriteReason}");
         }
+
         occupants[tile, layerIdx] = id;
 
         if (verboseLogging)
@@ -207,6 +216,18 @@ public class TileOccupancyManager : MonoBehaviour
             string name = occupant != null ? occupant.name : "null";
             Debug.Log($"[TileOccupancyManager] SetOccupant tile={tile} layer={layer} occupant={name} id={id}");
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Set the occupant for a tile on a specific layer.
+    /// This is the ONLY way to set occupancy - do not write to HexTileData.occupantId directly.
+    /// Conflicting writes fail closed instead of overwriting another occupant.
+    /// </summary>
+    public void SetOccupant(int tile, GameObject occupant, TileLayer layer)
+    {
+        TrySetOccupant(tile, occupant, layer);
     }
 
     public void ClearOccupant(int tile, TileLayer layer)
