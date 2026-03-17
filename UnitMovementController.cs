@@ -115,7 +115,7 @@ public class UnitMovementController : MonoBehaviour
         // Resume queued movement when a civ ends its turn (so continuations happen after End Turn)
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnCivTurnStarted += HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnEnded += HandleTurnChanged;
         }
     }
 
@@ -123,7 +123,7 @@ public class UnitMovementController : MonoBehaviour
     {
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnCivTurnStarted -= HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnEnded -= HandleTurnChanged;
         }
     }
 
