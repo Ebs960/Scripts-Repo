@@ -960,16 +960,20 @@ public class UnitSelectionManager : MonoBehaviour
         var ul = hovered.GetComponentInChildren<UnitLabel>();
         if (ul != null)
         {
-            // Parent to the UnitLabel so the icon is physically positioned above it
-            attackHoverInstance.transform.SetParent(ul.transform, false);
-            attackHoverInstance.transform.localPosition = Vector3.up * 0.25f;
-            attackHoverInstance.transform.localRotation = Quaternion.identity;
+            // Do not parent to UnitLabel (avoids inheriting the label's scale).
+            // Position the hover icon in world space above the label instead.
+            attackHoverInstance.transform.SetParent(transform, true);
+            attackHoverInstance.transform.position = ul.transform.position + Vector3.up * 0.25f;
+            attackHoverInstance.transform.rotation = Quaternion.identity;
+            // Force a consistent world-scale so different unit/label scales don't change size
+            attackHoverInstance.transform.localScale = Vector3.one * 0.22f;
         }
         else
         {
             // Ensure it's parented to manager root so it isn't stuck under previous label
             attackHoverInstance.transform.SetParent(transform, true);
             attackHoverInstance.transform.position = hovered.transform.position + Vector3.up * attackHoverYOffset;
+            attackHoverInstance.transform.localScale = Vector3.one * 0.22f;
         }
 
         // If prefab provided and it uses a SpriteRenderer child, try to set sprite as override
