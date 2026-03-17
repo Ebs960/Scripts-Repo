@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: Pottery
+  m_EditorClassIdentifier: 
+  techName: Pottery
+  techAge: 1
+  description: Store stuff easier
+  techIcon: {fileID: 21300000, guid: 45b948fd5c15ff949891c7e4e952e3ee, type: 3}
+  positionHint: 0
+  category: 0
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 20
+  requiredTechnologies:
+  - {fileID: 11400000, guid: a075269bdca0b7c41b2b2c11d2465be2, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedUnits: []
+  unlockedWorkerUnits: []
+  unlocksImprovements: []
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 16b5afa2768512f49876c84841ab59ad, type: 2}
+  unlockedEquipment: []
+  unlockedPolicies: []
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  flatFoodBonus: 2
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  genericYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 0

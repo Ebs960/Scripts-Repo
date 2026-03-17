@@ -15,6 +15,34 @@ using UnityEditor;
 /// </summary>
 public static class ResourceCache
 {
+    // Optional ResearchDatabase instance. Can be set at runtime via SetResearchDatabase()
+    private static ResearchDatabase _researchDatabase = null;
+
+    /// <summary>
+    /// Assign a ResearchDatabase at runtime (useful for GameManager/TechManager wiring).
+    /// If set, `GetAllTechData()` and `GetAllCultureData()` will prefer the database contents.
+    /// </summary>
+    public static void SetResearchDatabase(ResearchDatabase db)
+    {
+        _researchDatabase = db;
+        if (_researchDatabase != null)
+        {
+            _allTechData = _researchDatabase.techs ?? new TechData[0];
+            _allCultureData = _researchDatabase.cultures ?? new CultureData[0];
+            _techDataLoaded = true;
+            _cultureDataLoaded = true;
+        }
+        else
+        {
+            _techDataLoaded = false;
+            _cultureDataLoaded = false;
+            _allTechData = null;
+            _allCultureData = null;
+        }
+    }
+
+    public static ResearchDatabase GetResearchDatabase() => _researchDatabase;
+
     private static bool _initialized = false;
     
     // Cached resource arrays - loaded lazily on first access
@@ -409,9 +437,39 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_techDataLoaded)
         {
-            // Use correct path: Resources/Tech
-            _allTechData = Resources.LoadAll<TechData>("Tech");
-            _techDataLoaded = true;
+            // Prefer an assigned ResearchDatabase (settable at runtime or found in editor)
+            if (_researchDatabase != null && _researchDatabase.techs != null && _researchDatabase.techs.Length > 0)
+            {
+                _allTechData = _researchDatabase.techs;
+                _techDataLoaded = true;
+            }
+            else
+            {
+                // In editor, try to find a ResearchDatabase asset anywhere in the project
+#if UNITY_EDITOR
+                if (_researchDatabase == null)
+                {
+                    string[] guids = AssetDatabase.FindAssets("t:ResearchDatabase");
+                    if (guids != null && guids.Length > 0)
+                    {
+                        var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                        var db = AssetDatabase.LoadAssetAtPath<ResearchDatabase>(path);
+                        if (db != null)
+                        {
+                            _researchDatabase = db;
+                            _allTechData = _researchDatabase.techs ?? new TechData[0];
+                            _techDataLoaded = true;
+                        }
+                    }
+                }
+#endif
+                // Fallback: load from Resources/Tech (backward compatibility)
+                if (!_techDataLoaded)
+                {
+                    _allTechData = Resources.LoadAll<TechData>("Tech");
+                    _techDataLoaded = true;
+                }
+            }
         }
         return _allTechData ?? new TechData[0];
     }
@@ -425,9 +483,39 @@ public static class ResourceCache
         EnsureInitialized();
         if (!_cultureDataLoaded)
         {
-            // Use correct path: Resources/Culture
-            _allCultureData = Resources.LoadAll<CultureData>("Culture");
-            _cultureDataLoaded = true;
+            // Prefer an assigned ResearchDatabase
+            if (_researchDatabase != null && _researchDatabase.cultures != null && _researchDatabase.cultures.Length > 0)
+            {
+                _allCultureData = _researchDatabase.cultures;
+                _cultureDataLoaded = true;
+            }
+            else
+            {
+                // In editor, try to find a ResearchDatabase asset anywhere in the project
+#if UNITY_EDITOR
+                if (_researchDatabase == null)
+                {
+                    string[] guids = AssetDatabase.FindAssets("t:ResearchDatabase");
+                    if (guids != null && guids.Length > 0)
+                    {
+                        var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                        var db = AssetDatabase.LoadAssetAtPath<ResearchDatabase>(path);
+                        if (db != null)
+                        {
+                            _researchDatabase = db;
+                            _allCultureData = _researchDatabase.cultures ?? new CultureData[0];
+                            _cultureDataLoaded = true;
+                        }
+                    }
+                }
+#endif
+                // Fallback: load from Resources/Culture (backward compatibility)
+                if (!_cultureDataLoaded)
+                {
+                    _allCultureData = Resources.LoadAll<CultureData>("Culture");
+                    _cultureDataLoaded = true;
+                }
+            }
         }
         return _allCultureData ?? new CultureData[0];
     }

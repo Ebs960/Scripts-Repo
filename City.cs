@@ -1019,7 +1019,8 @@ if (UIManager.Instance != null)
         {
             unit.currentTileIndex = centerTileIndex;
         }
-        // Register with occupancy manager so tile-based selection works
+        // Register in the global unit registry, then register with occupancy manager so tile-based selection works
+        try { unit.RegisterToRegistry(); } catch { }
         var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null)
         {
@@ -1109,6 +1110,7 @@ if (UIManager.Instance != null)
                 {
                     unit.currentTileIndex = centerTileIndex;
                 }
+                try { unit.RegisterToRegistry(); } catch { }
                 var prodOcc = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
                 if (prodOcc != null)
                 {

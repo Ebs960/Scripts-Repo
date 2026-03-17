@@ -1,0 +1,214 @@
+{
+    "techPositions": [
+        {
+            "techName": "Fire",
+            "position": {
+                "x": 115.0,
+                "y": -150.0
+            }
+        },
+        {
+            "techName": "Shelter",
+            "position": {
+                "x": 345.0,
+                "y": -450.0
+            }
+        },
+        {
+            "techName": "Tools",
+            "position": {
+                "x": 345.0,
+                "y": -250.0
+            }
+        },
+        {
+            "techName": "Tents",
+            "position": {
+                "x": 805.0,
+                "y": -450.0
+            }
+        },
+        {
+            "techName": "Wood Cutting",
+            "position": {
+                "x": 575.0,
+                "y": -350.0
+            }
+        },
+        {
+            "techName": "Trapping",
+            "position": {
+                "x": 575.0,
+                "y": -150.0
+            }
+        },
+        {
+            "techName": "Throwing Spear",
+            "position": {
+                "x": 840.0,
+                "y": -320.0
+            }
+        },
+        {
+            "techName": "Fishing",
+            "position": {
+                "x": 920.0,
+                "y": -160.0
+            }
+        },
+        {
+            "techName": "The Hut",
+            "position": {
+                "x": 1840.0,
+                "y": -440.0
+            }
+        },
+        {
+            "techName": "Domestication",
+            "position": {
+                "x": 2520.0,
+                "y": -480.0
+            }
+        },
+        {
+            "techName": "Composite Tools",
+            "position": {
+                "x": 1955.0,
+                "y": -250.0
+            }
+        },
+        {
+            "techName": "Bow and Arrow",
+            "position": {
+                "x": 2600.0,
+                "y": -160.0
+            }
+        },
+        {
+            "techName": "Agriculture",
+            "position": {
+                "x": 2415.0,
+                "y": -650.0
+            }
+        },
+        {
+            "techName": "Animal Husbandry",
+            "position": {
+                "x": 2840.0,
+                "y": -560.0
+            }
+        },
+        {
+            "techName": "Pottery",
+            "position": {
+                "x": 2440.0,
+                "y": -320.0
+            }
+        },
+        {
+            "techName": "Weaving",
+            "position": {
+                "x": 3105.0,
+                "y": -550.0
+            }
+        },
+        {
+            "techName": "Quarry",
+            "position": {
+                "x": 3400.0,
+                "y": -520.0
+            }
+        },
+        {
+            "techName": "Flint Working",
+            "position": {
+                "x": 2185.0,
+                "y": -150.0
+            }
+        },
+        {
+            "techName": "Monuments",
+            "position": {
+                "x": 4440.0,
+                "y": -560.0
+            }
+        },
+        {
+            "techName": "Path Making",
+            "position": {
+                "x": 3040.0,
+                "y": -400.0
+            }
+        },
+        {
+            "techName": "Housing",
+            "position": {
+                "x": 3840.0,
+                "y": -440.0
+            }
+        },
+        {
+            "techName": "Village Defense",
+            "position": {
+                "x": 2960.0,
+                "y": -200.0
+            }
+        },
+        {
+            "techName": "Canoe",
+            "position": {
+                "x": 1725.0,
+                "y": -150.0
+            }
+        },
+        {
+            "techName": "Mining",
+            "position": {
+                "x": 3335.0,
+                "y": -250.0
+            }
+        },
+        {
+            "techName": "Copper Working",
+            "position": {
+                "x": 3800.0,
+                "y": -320.0
+            }
+        },
+        {
+            "techName": "Masonry",
+            "position": {
+                "x": 3760.0,
+                "y": -600.0
+            }
+        },
+        {
+            "techName": "Annealing",
+            "position": {
+                "x": 4160.0,
+                "y": -240.0
+            }
+        },
+        {
+            "techName": "Sails",
+            "position": {
+                "x": 4560.0,
+                "y": -360.0
+            }
+        },
+        {
+            "techName": "The Sling",
+            "position": {
+                "x": 4240.0,
+                "y": -360.0
+            }
+        },
+        {
+            "techName": "Earthworks",
+            "position": {
+                "x": 4080.0,
+                "y": -560.0
+            }
+        }
+    ]
+}

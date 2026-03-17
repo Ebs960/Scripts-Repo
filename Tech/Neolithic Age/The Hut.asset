@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: The Hut
+  m_EditorClassIdentifier: 
+  techName: The Hut
+  techAge: 1
+  description: Tents really suck, lets try something sturdier.
+  techIcon: {fileID: 21300000, guid: 632081b3788d67c4cacfe9ad37f64c18, type: 3}
+  positionHint: 0
+  category: 0
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 35
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 46a63724e058a4e4b95339e72ec1c10d, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  flatFoodBonus: 1
+  flatProductionBonus: 1
+  flatGoldBonus: 1
+  flatScienceBonus: 1
+  flatCultureBonus: 1
+  flatFaithBonus: 1
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  genericYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 1
+  pantheonCapIncrease: 0

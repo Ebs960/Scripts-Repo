@@ -179,7 +179,8 @@ public class CombatUnit : BaseUnit
 
         planet = resolved ?? planet;
         if (planet != null) grid = planet.Grid;
-        UnitRegistry.Register(gameObject);
+        // Do not auto-register here; registration is performed explicitly by spawners
+        // after initialization and placement to avoid premature occupancy claims.
 
         // Improved fallback: Auto-assign defaults if data exists
         if (data != null)

@@ -2940,6 +2940,8 @@ public class GameManager : MonoBehaviour
 
                 if (!civ.combatUnits.Contains(unit))
                     civ.combatUnits.Add(unit);
+                try { unit.RegisterToRegistry(); } catch { }
+                try { (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(unit.currentTileIndex, unit.gameObject, (TileLayer)usd.currentLayer); } catch { }
             }
         }
 
@@ -2989,6 +2991,8 @@ public class GameManager : MonoBehaviour
 
                 if (!civ.workerUnits.Contains(worker))
                     civ.workerUnits.Add(worker);
+                try { worker.RegisterToRegistry(); } catch { }
+                try { (TileOccupancyManager.GetForPlanet(worker.planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(worker.currentTileIndex, worker.gameObject, (TileLayer)wsd.currentLayer); } catch { }
             }
         }
 

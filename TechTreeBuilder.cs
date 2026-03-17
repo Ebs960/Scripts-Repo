@@ -17,6 +17,9 @@ public class TechTreeBuilder : MonoBehaviour
     [Header("Background Settings")]
     [Tooltip("ScriptableObject containing age-based background images")]
     public TechTreeBackgroundData backgroundData;
+    [Header("Research Database (optional)")]
+    [Tooltip("Optional: assign a ResearchDatabase to provide techs at runtime/editor. If set, the builder will use its tech list instead of scanning or Resources.")]
+    public ResearchDatabase researchDatabase;
     
     [Header("Builder UI")]
     public ScrollRect builderScrollRect;
@@ -351,32 +354,47 @@ return;
     {
         availableTechs.Clear();
         techByName.Clear();
-
+        
+        // Prefer an explicitly assigned ResearchDatabase
+        if (researchDatabase != null && researchDatabase.techs != null && researchDatabase.techs.Length > 0)
+        {
+            foreach (var tech in researchDatabase.techs)
+            {
+                if (tech != null && !availableTechs.Contains(tech))
+                {
+                    availableTechs.Add(tech);
+                    if (!techByName.ContainsKey(tech.name)) techByName[tech.name] = tech;
+                }
+            }
+        }
+        else
+        {
 #if UNITY_EDITOR
-        // Editor: find all TechData assets anywhere in the project
-        string[] guids = AssetDatabase.FindAssets("t:TechData");
-        foreach (var guid in guids)
-        {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            var tech = AssetDatabase.LoadAssetAtPath<TechData>(path);
-            if (tech != null && !availableTechs.Contains(tech))
+            // Editor: find all TechData assets anywhere in the project
+            string[] guids = AssetDatabase.FindAssets("t:TechData");
+            foreach (var guid in guids)
             {
-                availableTechs.Add(tech);
-                if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var tech = AssetDatabase.LoadAssetAtPath<TechData>(path);
+                if (tech != null && !availableTechs.Contains(tech))
+                {
+                    availableTechs.Add(tech);
+                    if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                }
             }
-        }
 #else
-        // Runtime: look in Resources (place TechData assets under a Resources folder)
-        var found = ResourceCache.GetAllTechData();
-        foreach (var tech in found)
-        {
-            if (tech != null && !availableTechs.Contains(tech))
+            // Runtime: look in Resources (place TechData assets under a Resources folder)
+            var found = ResourceCache.GetAllTechData();
+            foreach (var tech in found)
             {
-                availableTechs.Add(tech);
-                if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                if (tech != null && !availableTechs.Contains(tech))
+                {
+                    availableTechs.Add(tech);
+                    if (!techByName.ContainsKey(tech.name)) techByName.Add(tech.name, tech);
+                }
             }
-        }
 #endif
+        }
 
         // Populate palette
         if (availableTechs.Count == 0)

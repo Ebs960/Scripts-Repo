@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: Earthworks
+  m_EditorClassIdentifier: Assembly-CSharp::TechData
+  techName: Earthworks
+  techAge: 3
+  description: Lets defend this town a little harder now
+  techIcon: {fileID: 21300000, guid: b0f7ae296e115c14b83ea315e58c0529, type: 3}
+  positionHint: 0
+  category: 0
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 50
+  requiredTechnologies:
+  - {fileID: 11400000, guid: 5f3e0d72a1f67af4c8915a7a5f4ceebd, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedUnits: []
+  unlockedWorkerUnits: []
+  unlocksImprovements: []
+  unlockedBuildings:
+  - {fileID: 11400000, guid: 7fa681544050c5b438fa60c17fde1373, type: 2}
+  unlockedPolicies: []
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  flatFoodBonus: 0
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 1
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses:
+  - improvement: {fileID: 11400000, guid: 8dfeadddea77f02418273dc671eff90b, type: 2}
+    foodAdd: 0
+    productionAdd: 1
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 0
+    faithAdd: 0
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  buildingBonuses: []
+  genericYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 0

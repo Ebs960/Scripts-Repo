@@ -17,6 +17,9 @@ public class CultureTreeBuilder : MonoBehaviour
     [Header("Background Settings")]
     [Tooltip("ScriptableObject containing age-based background images")]
     public CultureTreeBackgroundData backgroundData;
+    [Header("Research Database (optional)")]
+    [Tooltip("Optional: assign a ResearchDatabase to provide cultures at runtime/editor. If set, the builder will use its culture list instead of scanning or Resources.")]
+    public ResearchDatabase researchDatabase;
     
     [Header("Builder UI")]
     public ScrollRect builderScrollRect;
@@ -43,7 +46,7 @@ public class CultureTreeBuilder : MonoBehaviour
     public Color occupiedCellColor = new Color(0.4f, 0.2f, 0.4f, 0.5f); // Purple tint for culture
     
     [Header("Node Prefab")]
-    [Tooltip("Optional prefab for culture tree nodes. Must have a CultureBuilderNode component with " +
+    [Tooltip("Optional prefab for culture tree nodes. Must have a CulturePaletteItem component with " +
              "cultureIcon, cultureNameText, and backgroundImage wired up. If left empty, nodes are " +
              "created procedurally in code (plain rectangles).")]
     public GameObject cultureNodePrefab;
@@ -61,17 +64,17 @@ public class CultureTreeBuilder : MonoBehaviour
     private readonly List<CultureData> availableCultures = new List<CultureData>();
     private readonly Dictionary<string, CultureData> cultureByName = new Dictionary<string, CultureData>();
 
-    private Dictionary<CultureData, CultureBuilderNode> cultureNodes = new Dictionary<CultureData, CultureBuilderNode>();
+    private Dictionary<CultureData, CulturePaletteItem> cultureNodes = new Dictionary<CultureData, CulturePaletteItem>();
     private List<GameObject> connectionLines = new List<GameObject>();
-    private CultureBuilderNode selectedNode;
-    private CultureBuilderNode draggedNode;
+    private CulturePaletteItem selectedNode;
+    private CulturePaletteItem draggedNode;
     private bool isConnecting = false;
     private GameObject connectionPreviewLine;
     private Image connectionPreviewImage;
     
     // Grid system
     private GameObject[,] gridCells;
-    private Dictionary<Vector2Int, CultureBuilderNode> gridOccupancy = new Dictionary<Vector2Int, CultureBuilderNode>();
+    private Dictionary<Vector2Int, CulturePaletteItem> gridOccupancy = new Dictionary<Vector2Int, CulturePaletteItem>();
     
     public static CultureTreeBuilder Instance { get; private set; }
     
@@ -352,31 +355,46 @@ return;
         availableCultures.Clear();
         cultureByName.Clear();
 
+        // Prefer an explicitly assigned ResearchDatabase
+        if (researchDatabase != null && researchDatabase.cultures != null && researchDatabase.cultures.Length > 0)
+        {
+            foreach (var culture in researchDatabase.cultures)
+            {
+                if (culture != null && !availableCultures.Contains(culture))
+                {
+                    availableCultures.Add(culture);
+                    if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
+                }
+            }
+        }
+        else
+        {
 #if UNITY_EDITOR
-        // Editor: find all CultureData assets anywhere in the project
-        string[] guids = AssetDatabase.FindAssets("t:CultureData");
-        foreach (var guid in guids)
-        {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            var culture = AssetDatabase.LoadAssetAtPath<CultureData>(path);
-            if (culture != null && !availableCultures.Contains(culture))
+            // Editor: find all CultureData assets anywhere in the project
+            string[] guids = AssetDatabase.FindAssets("t:CultureData");
+            foreach (var guid in guids)
             {
-                availableCultures.Add(culture);
-                if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var culture = AssetDatabase.LoadAssetAtPath<CultureData>(path);
+                if (culture != null && !availableCultures.Contains(culture))
+                {
+                    availableCultures.Add(culture);
+                    if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
+                }
             }
-        }
 #else
-        // Runtime: look in Resources (place CultureData assets under a Resources folder)
-        var found = ResourceCache.GetAllCultureData();
-        foreach (var culture in found)
-        {
-            if (culture != null && !availableCultures.Contains(culture))
+            // Runtime: look in ResourceCache/Resources
+            var found = ResourceCache.GetAllCultureData();
+            foreach (var culture in found)
             {
-                availableCultures.Add(culture);
-                if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
+                if (culture != null && !availableCultures.Contains(culture))
+                {
+                    availableCultures.Add(culture);
+                    if (!cultureByName.ContainsKey(culture.name)) cultureByName.Add(culture.name, culture);
+                }
             }
-        }
 #endif
+        }
 
         // Populate palette
         if (availableCultures.Count == 0)
@@ -514,7 +532,7 @@ return;
         Vector2 snapPosition = GetCellWorldPosition(finalGridPos.x, finalGridPos.y);
 
         GameObject nodeObj;
-        CultureBuilderNode node;
+        CulturePaletteItem node;
 
         if (cultureNodePrefab != null)
         {
@@ -525,10 +543,10 @@ return;
             nodeObj = Instantiate(cultureNodePrefab, builderContent);
             nodeObj.name = $"CultureNode_{culture.cultureName}";
 
-            node = nodeObj.GetComponent<CultureBuilderNode>();
+            node = nodeObj.GetComponent<CulturePaletteItem>();
             if (node == null)
             {
-                Debug.LogError($"[CultureTreeBuilder] cultureNodePrefab is missing a CultureBuilderNode component! Falling back to code creation.");
+                Debug.LogError($"[CultureTreeBuilder] cultureNodePrefab is missing a CulturePaletteItem component! Falling back to code creation.");
                 Destroy(nodeObj);
                 nodeObj = null;
                 node = null;
@@ -546,6 +564,7 @@ return;
                 rect.anchoredPosition = snapPosition;
 
                 node.Initialize(culture, this);
+                node.isBuilderNode = true;
                 node.SetGridPosition(finalGridPos);
             }
         }
@@ -602,11 +621,12 @@ return;
             text.color = Color.white;
             text.alignment = TMPro.TextAlignmentOptions.Left;
 
-            node = nodeObj.AddComponent<CultureBuilderNode>();
+            node = nodeObj.AddComponent<CulturePaletteItem>();
             node.cultureIcon = iconImage;
             node.cultureNameText = text;
             node.backgroundImage = backgroundImage;
             node.Initialize(culture, this);
+            node.isBuilderNode = true;
             node.SetGridPosition(finalGridPos);
         }
         
@@ -625,7 +645,7 @@ return;
     
     public void RemoveCultureFromBuilder(CultureData culture)
     {
-        if (cultureNodes.TryGetValue(culture, out CultureBuilderNode node))
+        if (cultureNodes.TryGetValue(culture, out CulturePaletteItem node))
         {
             if (selectedNode == node)
                 selectedNode = null;
@@ -644,7 +664,7 @@ return;
         }
     }
     
-    public void SelectNode(CultureBuilderNode node)
+    public void SelectNode(CulturePaletteItem node)
     {
         if (selectedNode != null)
             selectedNode.SetSelected(false);
@@ -657,7 +677,7 @@ return;
         }
     }
     
-    public void StartConnection(CultureBuilderNode fromNode)
+    public void StartConnection(CulturePaletteItem fromNode)
     {
         if (selectedNode != null && selectedNode != fromNode)
         {
@@ -719,7 +739,7 @@ return;
             {
                 foreach (var prerequisite in culture.requiredCultures)
                 {
-                    if (prerequisite != null && cultureNodes.TryGetValue(prerequisite, out CultureBuilderNode depNode))
+                    if (prerequisite != null && cultureNodes.TryGetValue(prerequisite, out var depNode))
                     {
                         CreateConnectionLine(depNode, node);
                     }
@@ -728,7 +748,7 @@ return;
         }
     }
     
-    private void CreateConnectionLine(CultureBuilderNode fromNode, CultureBuilderNode toNode)
+    private void CreateConnectionLine(CulturePaletteItem fromNode, CulturePaletteItem toNode)
     {
         if (builderContent == null || fromNode == null || toNode == null) return;
 
@@ -862,6 +882,20 @@ isConnecting = false;
 #if UNITY_EDITOR
         string path = UnityEditor.EditorUtility.OpenFilePanel(
             "Load Culture Tree Layout", Application.dataPath, "json");
+        // Prefer an explicitly assigned ResearchDatabase
+        if (researchDatabase != null && researchDatabase.cultures != null && researchDatabase.cultures.Length > 0)
+        {
+            foreach (var culture in researchDatabase.cultures)
+            {
+                if (culture != null && !availableCultures.Contains(culture))
+                {
+                    availableCultures.Add(culture);
+                    if (!cultureByName.ContainsKey(culture.name)) cultureByName[culture.name] = culture;
+                }
+            }
+        }
+        else
+        {
         
         if (!string.IsNullOrEmpty(path))
         {
@@ -880,6 +914,7 @@ isConnecting = false;
             UpdateStatus($"Layout loaded from {path}");
         }
 #endif
+    }
     }
     
     public void ClearLayout()

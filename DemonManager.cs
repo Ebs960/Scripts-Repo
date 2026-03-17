@@ -437,7 +437,8 @@ public class DemonManager : MonoBehaviour
         demonUnit.currentTileIndex = spawnTileIndex;
         demonUnit.planetIndex = spawnPlanetIndex;
 
-        // Register occupancy
+        // Register this demon in the global registry, then register occupancy
+        try { demonUnit.RegisterToRegistry(); } catch { }
         var occ = TileOccupancyManager.GetForPlanet(spawnPlanetIndex) ?? TileOccupancyManager.Instance;
         if (occ != null)
             occ.SetOccupant(spawnTileIndex, demonGO, TileLayer.Surface);

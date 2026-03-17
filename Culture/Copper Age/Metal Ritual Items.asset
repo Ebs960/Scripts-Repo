@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
+  m_Name: Metal Ritual Items
+  m_EditorClassIdentifier: Assembly-CSharp::CultureData
+  cultureName: Metal Ritual Items
+  cultureAge: 2
+  description: Now we can use metal to please the gods
+  cultureIcon: {fileID: 21300000, guid: 896a88eb3bdd29b46b7113bb0f5c31bb, type: 3}
+  positionHint: 0
+  category: 3
+  cultureColor: {r: 1, g: 1, b: 1, a: 1}
+  enablesTradeSystem: 0
+  cultureCost: 50
+  requiredTechnologies:
+  - {fileID: 11400000, guid: d934f6c5ae95bf54b93bb8d0cdd8e857, type: 2}
+  requiredCultures:
+  - {fileID: 11400000, guid: cb5bcf4cf5624c14f84b78eb896e09ec, type: 2}
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0.15
+  unlocksPantheon: 0
+  unlocksReligion: 0
+  flatFoodBonus: 0
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 1
+  flatFaithBonus: 2
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  enablesGovernors: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses:
+  - building: {fileID: 11400000, guid: 6a825f6be0ed69e438a32a3697e7ddf9, type: 2}
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 1
+    faithAdd: 1
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  - building: {fileID: 11400000, guid: e0d635fb32e29cf44a36f8466086629c, type: 2}
+    foodAdd: 0
+    productionAdd: 0
+    goldAdd: 0
+    scienceAdd: 0
+    cultureAdd: 1
+    faithAdd: 2
+    policyPointsAdd: 0
+    foodPct: 0
+    productionPct: 0
+    goldPct: 0
+    sciencePct: 0
+    culturePct: 0
+    faithPct: 0
+    policyPointsPct: 0
+  genericYieldBonuses: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 0
+  unlocksPantheons: []
+  unlocksBeliefs: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []

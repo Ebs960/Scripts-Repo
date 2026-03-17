@@ -20,20 +20,12 @@ public static class UnitRegistry
             combatUnits.Add(cu);
         if (obj.TryGetComponent<WorkerUnit>(out var wu))
             workerUnits.Add(wu);
-
-        // If this is a unit with tile state, register occupancy in the occupancy manager
-        if (obj.TryGetComponent<BaseUnit>(out var bu))
-        {
-            try
-            {
-                var occ = TileOccupancyManager.GetForPlanet(bu.planetIndex) ?? TileOccupancyManager.Instance;
-                if (occ != null && bu.currentTileIndex >= 0)
-                {
-                    occ.SetOccupant(bu.currentTileIndex, obj, bu.currentLayer);
-                }
-            }
-            catch { /* defensive: avoid throwing during registration */ }
-        }
+        // NOTE: Do NOT set tile occupancy here.
+        // Registration happens during Awake which runs immediately on Instantiate; at that
+        // point many spawners haven't set the unit's correct `currentTileIndex` yet and
+        // aggressively writing occupancy from Register() causes false claims/overwrites.
+        // Occupancy must be explicitly set by spawners/placement code after the unit has
+        // been initialized (see BaseUnit.RegisterOccupancy / PositionUnitOnSurface).
     }
 
     public static void Unregister(GameObject obj)

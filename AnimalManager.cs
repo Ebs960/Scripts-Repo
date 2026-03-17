@@ -856,6 +856,9 @@ public class AnimalManager : MonoBehaviour
         unit.currentLayer = occLayer;
         unit.PositionUnitOnSurface(null, chosenIndex);
 
+        // Ensure the unit is registered in the global registry before claiming occupancy.
+        try { unit.RegisterToRegistry(); } catch { }
+
         try { (TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(chosenIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         // Register with HexMapChunkManager so this animal is teleported when its column wraps
@@ -898,7 +901,7 @@ public class AnimalManager : MonoBehaviour
 
         activeAnimals.Add(unit);
         // Ensure registry contains the instance and emit diagnostics to help track disappearing animals
-        try { UnitRegistry.Register(unit.gameObject); } catch { }
+        try { unit.RegisterToRegistry(); } catch { }
         unit.gameObject.SetActive(true);
         if (debugSpawning)
         {

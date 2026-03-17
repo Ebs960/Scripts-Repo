@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09e5a6921e64d94ebd0410d5fea81b5, type: 3}
+  m_Name: Wood Cutting
+  m_EditorClassIdentifier: 
+  techName: Wood Cutting
+  techAge: 0
+  description: Cut tree down. Ooga Booga.
+  techIcon: {fileID: 21300000, guid: c3eeb6be0cecdee419e192948240109c, type: 3}
+  positionHint: 0
+  category: 0
+  techColor: {r: 1, g: 1, b: 1, a: 1}
+  scienceCost: 22
+  requiredTechnologies:
+  - {fileID: 11400000, guid: e17df6d84b75e0a4ca54b5e6f6819008, type: 2}
+  requiredCultures: []
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  unlocksReligion: 0
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  flatFoodBonus: 1
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses:
+  - worker: {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
+    workPointsAdd: 3
+    movePointsAdd: 0
+    healthAdd: 0
+    workPointsPct: 0
+    movePointsPct: 0
+    healthPct: 0
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  genericYieldBonuses: []
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 0

@@ -573,7 +573,19 @@ public abstract class BaseUnit : MonoBehaviour
         planet = resolved;
         if (planet != null) grid = planet.Grid;
 
-        // Register with UnitRegistry
+        // NOTE: registration with the global UnitRegistry must now be performed
+        // explicitly by spawn/placement code after the unit has been properly
+        // initialized and positioned. This avoids claiming tile occupancy using
+        // prefab-serialized values during Awake/registration time.
+    }
+
+    /// <summary>
+    /// Register this unit with the global `UnitRegistry`.
+    /// Spawners and placement code should call this after initialization and
+    /// before assigning tile occupancy.
+    /// </summary>
+    public void RegisterToRegistry()
+    {
         UnitRegistry.Register(gameObject);
     }
 

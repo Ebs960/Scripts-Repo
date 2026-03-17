@@ -1677,6 +1677,7 @@ return false;
             {
                 missionaryUnit.currentTileIndex = city.centerTileIndex;
             }
+            try { missionaryUnit.RegisterToRegistry(); } catch { }
             var occ = TileOccupancyManager.GetForPlanet(missionaryUnit.planetIndex) ?? TileOccupancyManager.Instance;
             if (occ != null)
             {

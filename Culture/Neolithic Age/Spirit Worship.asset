@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8e355c3a50fb0e4887a3539abca9b9c, type: 3}
+  m_Name: Spirit Worship
+  m_EditorClassIdentifier: 
+  cultureName: Spirit Worship
+  cultureAge: 1
+  description: Worship the ancestor spirits
+  cultureIcon: {fileID: 21300000, guid: f68dbb6d5dd18344da85472adae57117, type: 3}
+  positionHint: 0
+  category: 3
+  cultureColor: {r: 1, g: 1, b: 1, a: 1}
+  enablesTradeSystem: 0
+  cultureCost: 50
+  requiredTechnologies: []
+  requiredCultures:
+  - {fileID: 11400000, guid: a2ae3a7b17417624e86738e7f590b363, type: 2}
+  - {fileID: 11400000, guid: f86da6138de743f4bbb67c4c59e4dd81, type: 2}
+  requiredCityCount: 0
+  requiredControlledBiomes: 
+  unlockedGovernments: []
+  unlockedReligions: []
+  unlockedLeaders: []
+  attackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  unlocksPantheon: 1
+  unlocksReligion: 0
+  flatFoodBonus: 0
+  flatProductionBonus: 0
+  flatGoldBonus: 0
+  flatScienceBonus: 0
+  flatCultureBonus: 0
+  flatFaithBonus: 0
+  additionalGovernorSlots: 0
+  unlockedGovernorTraits: []
+  enablesGovernors: 0
+  unitBonuses: []
+  unitYieldBonuses: []
+  workerBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  buildingBonuses: []
+  genericYieldBonuses: []
+  cityCapIncrease: 0
+  pantheonCapIncrease: 1
+  unlocksPantheons:
+  - {fileID: 11400000, guid: 82795ae18808b8a449fc0d0129028aed, type: 2}
+  - {fileID: 11400000, guid: 7d1ad9a69f9fc464cb3ee2a8a9233d5a, type: 2}
+  unlocksBeliefs: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []

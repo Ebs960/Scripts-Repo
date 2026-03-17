@@ -161,6 +161,7 @@ public class ImprovementInstance : MonoBehaviour
         }
 
         unit.currentTileIndex = tile;
+        try { unit.RegisterToRegistry(); } catch { }
         if (occ != null)
             occ.SetOccupant(tile, unit.gameObject, TileLayer.Surface);
 

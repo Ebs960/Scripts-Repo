@@ -1,0 +1,165 @@
+{
+    "culturePositions": [
+        {
+            "cultureName": "Family",
+            "position": {
+                "x": 150.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Drums",
+            "position": {
+                "x": 450.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Language",
+            "position": {
+                "x": 450.0,
+                "y": -550.0
+            }
+        },
+        {
+            "cultureName": "Dancing",
+            "position": {
+                "x": 750.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Singing",
+            "position": {
+                "x": 750.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Storytelling",
+            "position": {
+                "x": 1050.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Tribalism",
+            "position": {
+                "x": 1350.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Hierarchy",
+            "position": {
+                "x": 1650.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Folklore",
+            "position": {
+                "x": 1650.0,
+                "y": -500.0
+            }
+        },
+        {
+            "cultureName": "Warrior Society",
+            "position": {
+                "x": 1950.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Beads",
+            "position": {
+                "x": 1950.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Barter",
+            "position": {
+                "x": 2250.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Shrines",
+            "position": {
+                "x": 1950.0,
+                "y": -500.0
+            }
+        },
+        {
+            "cultureName": "Oral History",
+            "position": {
+                "x": 1950.0,
+                "y": -700.0
+            }
+        },
+        {
+            "cultureName": "Shamanism",
+            "position": {
+                "x": 2250.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Spirit Worship",
+            "position": {
+                "x": 2250.0,
+                "y": -700.0
+            }
+        },
+        {
+            "cultureName": "Ritual Items",
+            "position": {
+                "x": 2550.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Ritual Feasting",
+            "position": {
+                "x": 2550.0,
+                "y": -500.0
+            }
+        },
+        {
+            "cultureName": "Primitive Currency",
+            "position": {
+                "x": 2850.0,
+                "y": -100.0
+            }
+        },
+        {
+            "cultureName": "Idols",
+            "position": {
+                "x": 2850.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Metal Ritual Items",
+            "position": {
+                "x": 3150.0,
+                "y": -300.0
+            }
+        },
+        {
+            "cultureName": "Sacrifice",
+            "position": {
+                "x": 2850.0,
+                "y": -500.0
+            }
+        },
+        {
+            "cultureName": "Symbolism",
+            "position": {
+                "x": 3150.0,
+                "y": -500.0
+            }
+        }
+    ]
+}

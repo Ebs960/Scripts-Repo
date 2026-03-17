@@ -752,7 +752,8 @@ public class ImprovementManager : MonoBehaviour
         unit.currentLayer = occLayer;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
-        // Register occupancy in occupancy manager (defensive)
+        // Register this unit in the global registry, then claim occupancy
+        try { unit.RegisterToRegistry(); } catch { }
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         unitJobs.Remove(job);
@@ -797,6 +798,7 @@ public class ImprovementManager : MonoBehaviour
         unit.currentLayer = occLayerW;
         unit.planetIndex = job.planetIndex;
         unit.currentTileIndex = spawnIndex;
+        try { unit.RegisterToRegistry(); } catch { }
         try { occ?.SetOccupant(spawnIndex, unit.gameObject, unit.currentLayer); } catch { }
 
         workerJobs.Remove(job);
