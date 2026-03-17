@@ -24,7 +24,7 @@ public class AIMoveCommand : AICommand
     {
         if (unit == null || unit.isStored) return false;
         if (targetTileIndex < 0 || targetTileIndex == unit.currentTileIndex) return false;
-        return unit.CanMoveTo(targetTileIndex);
+        return unit.CanReachTile(targetTileIndex);
     }
 
     public override void Execute()
@@ -80,7 +80,7 @@ public class AIApproachCommand : AICommand
     {
         if (unit == null || target == null || unit.isStored) return false;
         if (approachTileIndex < 0) return false;
-        return unit.CanMoveTo(approachTileIndex);
+        return unit.CanReachTile(approachTileIndex);
     }
 
     public override void Execute()
@@ -119,7 +119,7 @@ public class AIRetreatCommand : AICommand
     {
         if (unit == null || unit.isStored) return false;
         if (retreatTileIndex < 0) return false;
-        return unit.CanMoveTo(retreatTileIndex);
+        return unit.CanReachTile(retreatTileIndex);
     }
 
     public override void Execute()
@@ -227,7 +227,7 @@ public class AIExploreCommand : AICommand
     {
         if (unit == null || unit.isStored) return false;
         if (targetTileIndex < 0 || targetTileIndex == unit.currentTileIndex) return false;
-        return unit.CanMoveTo(targetTileIndex);
+        return unit.CanReachTile(targetTileIndex);
     }
 
     public override void Execute()

@@ -1397,6 +1397,39 @@ public abstract class BaseUnit : MonoBehaviour
     }
 
     /// <summary>
+    /// Whether the tile is a valid destination in principle for this unit (passable,
+    /// correct terrain type, not impassable cost). Does NOT check movement points or
+    /// current occupancy, so it is safe to use for multi-turn move orders where the
+    /// unit will not enter the tile this turn.
+    /// </summary>
+    public bool CanReachTile(int tileIndex)
+    {
+        var cu = this as CombatUnit;
+        if (cu != null && cu.hasActedThisTurn) return false;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var td = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (td == null || !td.isPassable) return false;
+
+        if (currentLayer == TileLayer.Orbit) return true;
+
+        int moveCost = BiomeHelper.GetMovementCost(td, this);
+        if (moveCost >= 99) return false;
+
+        if (!td.isLand)
+        {
+            bool isNaval = cu != null && cu.data != null &&
+                (cu.data.unitType == CombatCategory.Ship ||
+                 cu.data.unitType == CombatCategory.Boat ||
+                 cu.data.unitType == CombatCategory.Submarine ||
+                 cu.data.unitType == CombatCategory.SeaCrawler);
+            if (!isNaval) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Single source of truth for whether this unit can move to a tile.
     /// Handles all unit types: orbit, naval, land, worker, move-point checks.
     /// Uses the same movement-cost threshold (>= 99) as FindPath so the two

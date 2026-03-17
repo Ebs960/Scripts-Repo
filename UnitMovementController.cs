@@ -115,7 +115,7 @@ public class UnitMovementController : MonoBehaviour
         // Resume queued movement when a civ ends its turn (so continuations happen after End Turn)
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnCivTurnEnded += HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnStarted += HandleTurnChanged;
         }
     }
 
@@ -123,7 +123,7 @@ public class UnitMovementController : MonoBehaviour
     {
         if (TurnManager.Instance != null)
         {
-            TurnManager.Instance.OnCivTurnEnded -= HandleTurnChanged;
+            TurnManager.Instance.OnCivTurnStarted -= HandleTurnChanged;
         }
     }
 
@@ -845,7 +845,16 @@ public class UnitMovementController : MonoBehaviour
         }
         finally
         {
-            try { _activeMoveCoroutines.Remove(unit != null ? unit.GetInstanceID() : -1); } catch { }
+            try
+            {
+                _activeMoveCoroutines.Remove(unit != null ? unit.GetInstanceID() : -1);
+                int uncommittedTiles = path.Count - tilesMoved;
+                if (uncommittedTiles > 0 && unit != null && unit.movementOrderPathConsumed > 0)
+                {
+                    unit.movementOrderPathConsumed = Mathf.Max(0, unit.movementOrderPathConsumed - uncommittedTiles);
+                }
+            }
+            catch { }
         }
     }
 

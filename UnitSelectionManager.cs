@@ -1298,16 +1298,15 @@ public class UnitSelectionManager : MonoBehaviour
                     }
                     if (approachTile >= 0)
                     {
-                        // Move to approach tile and set pending attack target
                         pendingAttackTarget = targetUnit;
                         if (selectedUnit is CombatUnit approachCombat)
                         {
-                            if (approachCombat.CanMoveTo(approachTile)) approachCombat.MoveTo(approachTile);
+                            if (approachCombat.CanReachTile(approachTile)) approachCombat.MoveTo(approachTile);
                             else pendingAttackTarget = null;
                         }
                         else if (selectedUnit is WorkerUnit workerUnit)
                         {
-                            if (workerUnit.CanMoveTo(approachTile)) workerUnit.MoveTo(approachTile);
+                            if (workerUnit.CanReachTile(approachTile)) workerUnit.MoveTo(approachTile);
                             else pendingAttackTarget = null;
                         }
                         return;
