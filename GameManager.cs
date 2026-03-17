@@ -2544,6 +2544,41 @@ public class GameManager : MonoBehaviour
                         foreach (var belief in civ.cultureUnlockedBeliefs)
                             if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
 
+                    // Serialize governors for this civilization
+                    if (civ.governors != null)
+                    {
+                        for (int g = 0; g < civ.governors.Count; g++)
+                        {
+                            var gov = civ.governors[g];
+                            if (gov == null) continue;
+                            var gsd = new PauseMenuManager.GovernorSaveData();
+                            gsd.id = gov.Id;
+                            gsd.name = gov.Name;
+                            gsd.specialization = gov.specialization;
+                            gsd.level = gov.Level;
+                            gsd.experience = gov.Experience;
+                            // Assigned cities as indices into this civ's cities list
+                            if (gov.Cities != null && civ.cities != null)
+                            {
+                                foreach (var city in gov.Cities)
+                                {
+                                    if (city == null) continue;
+                                    int idx = civ.cities.IndexOf(city);
+                                    if (idx >= 0) gsd.assignedCityIndices.Add(idx);
+                                }
+                            }
+                            // Traits
+                            if (gov.Traits != null)
+                            {
+                                foreach (var t in gov.Traits)
+                                {
+                                    if (t != null) gsd.traitNames.Add(t.traitName);
+                                }
+                            }
+                            civProgress.governors.Add(gsd);
+                        }
+                    }
+
                     saveData.civilizationProgress.Add(civProgress);
                     if (civ.combatUnits != null)
                     {
@@ -2831,6 +2866,63 @@ public class GameManager : MonoBehaviour
                 unlockedGovernorTraits,
                 unlockedPantheons,
                 unlockedBeliefs);
+
+            // Reconstruct governors from save data for this civilization
+            try
+            {
+                // Clear any existing governors and recreate from saved entries
+                civ.governors = civ.governors ?? new System.Collections.Generic.List<Governor>();
+                civ.governors.Clear();
+                if (progress.governors != null)
+                {
+                    foreach (var gsd in progress.governors)
+                    {
+                        if (gsd == null) continue;
+                        // Create governor (this will respect governorsEnabled and governorCount)
+                        var newGov = civ.CreateGovernor(gsd.name ?? "Governor", gsd.specialization);
+                        if (newGov == null) continue;
+                        // Restore level and experience via reflection (Level/Experience have private setters)
+                        var govType = typeof(Governor);
+                        var levelProp = govType.GetProperty("Level", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                        var expProp = govType.GetProperty("Experience", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                        try
+                        {
+                            if (levelProp != null) levelProp.SetValue(newGov, gsd.level);
+                            if (expProp != null) expProp.SetValue(newGov, gsd.experience);
+                        }
+                        catch { }
+
+                        // Restore traits
+                        if (gsd.traitNames != null && gsd.traitNames.Count > 0)
+                        {
+                            foreach (var tname in gsd.traitNames)
+                            {
+                                if (string.IsNullOrWhiteSpace(tname)) continue;
+                                if (governorTraitLookup.TryGetValue(tname, out var trait) && trait != null && !newGov.Traits.Contains(trait))
+                                    newGov.Traits.Add(trait);
+                            }
+                        }
+
+                        // Assign to cities by saved indices
+                        if (gsd.assignedCityIndices != null && civ.cities != null && civ.cities.Count > 0)
+                        {
+                            foreach (var cityIdx in gsd.assignedCityIndices)
+                            {
+                                if (cityIdx < 0 || cityIdx >= civ.cities.Count) continue;
+                                var assignCity = civ.cities[cityIdx];
+                                if (assignCity != null)
+                                {
+                                    civ.AssignGovernorToCity(newGov, assignCity);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[SaveLoad] Failed to restore governors for civ {civ.civData?.civName ?? progress.civIndex.ToString()}: {ex}");
+            }
         }
     }
 

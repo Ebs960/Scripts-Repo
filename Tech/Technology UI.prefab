@@ -118,11 +118,11 @@ MonoBehaviour:
   techPanel: {fileID: 2641457031237876301}
   techScrollRect: {fileID: 8099367705376717884}
   techContent: {fileID: 6462512842241935721}
-  techButtonPrefab: {fileID: 775882823123382107, guid: 2bdf8f7ff0efa0347b1db56960e4fe8e, type: 3}
+  techButtonPrefab: {fileID: 775882823123382107, guid: 3cdfe2fe4ed26e94587ee15787a32455, type: 3}
   backgroundData: {fileID: 11400000, guid: ae1a488d51498ae42a37026965672825, type: 2}
   useCustomLayout: 1
   layoutJson: {fileID: 4900000, guid: 20bfd133f61bc29439ac55055f7966ee, type: 3}
-  techNodeSize: {x: 180, y: 90}
+  techNodeSize: {x: 300, y: 200}
   gridSpacing: {x: 200, y: 100}
   selectedTechNameText: {fileID: 7975351787395115534}
   selectedTechDescriptionText: {fileID: 3613012985550846384}
@@ -501,8 +501,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 8314918587078827695}
   m_HandleRect: {fileID: 4039101895771039323}
   m_Direction: 2
-  m_Value: 0
-  m_Size: 1
+  m_Value: 1
+  m_Size: 0.999954
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -1113,7 +1113,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.00095738604, y: -0.000014662743}
+  m_AnchoredPosition: {x: 0.000020503998, y: -0.00089947804}
   m_SizeDelta: {x: -833, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &5055915431217645331

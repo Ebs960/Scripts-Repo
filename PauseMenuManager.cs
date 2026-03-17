@@ -125,6 +125,22 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> unlockedGovernorTraitNames = new List<string>();
         public List<string> cultureUnlockedPantheonNames = new List<string>();
         public List<string> cultureUnlockedBeliefNames = new List<string>();
+        // Per-civ governor state
+        public List<GovernorSaveData> governors = new List<GovernorSaveData>();
+    }
+
+    [Serializable]
+    public class GovernorSaveData
+    {
+        public int id;
+        public string name;
+        public Governor.Specialization specialization;
+        public int level;
+        public int experience;
+        // Indices into the parent civilization's `cities` list for assigned cities
+        public List<int> assignedCityIndices = new List<int>();
+        // Trait names assigned to this governor
+        public List<string> traitNames = new List<string>();
     }
 
     [Serializable]

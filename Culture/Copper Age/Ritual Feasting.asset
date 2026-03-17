@@ -24,6 +24,7 @@ MonoBehaviour:
   requiredTechnologies: []
   requiredCultures:
   - {fileID: 11400000, guid: 6dbe0dc7b19e6eb4eb574b775082f1e6, type: 2}
+  - {fileID: 11400000, guid: a2ae3a7b17417624e86738e7f590b363, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []

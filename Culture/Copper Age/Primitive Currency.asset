@@ -23,7 +23,7 @@ MonoBehaviour:
   cultureCost: 50
   requiredTechnologies: []
   requiredCultures:
-  - {fileID: 11400000, guid: b3a6618e587d681439d411441ff6d468, type: 2}
+  - {fileID: 11400000, guid: 1bc5f7e9408a4974090e176d711f4d1f, type: 2}
   requiredCityCount: 0
   requiredControlledBiomes: 
   unlockedGovernments: []

@@ -913,6 +913,8 @@ public class UnitSelectionManager : MonoBehaviour
         {
             attackHoverInstance = Instantiate(attackHoverPrefab, transform);
             attackHoverSpriteRenderer = attackHoverInstance.GetComponentInChildren<SpriteRenderer>();
+            // Make prefab-based attack icon smaller for less visual weight
+            if (attackHoverInstance != null) attackHoverInstance.transform.localScale = Vector3.one * 0.22f;
         }
         else
         {
@@ -930,7 +932,8 @@ public class UnitSelectionManager : MonoBehaviour
                 var mat = new Material(shader);
                 attackHoverSpriteRenderer.material = mat;
             }
-            attackHoverInstance.transform.localScale = Vector3.one * 0.4f;
+            // Smaller by default so it doesn't overpower the scene
+            attackHoverInstance.transform.localScale = Vector3.one * 0.22f;
         }
 
         attackHoverInstance.SetActive(false);
