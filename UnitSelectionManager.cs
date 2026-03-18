@@ -422,21 +422,8 @@ public class UnitSelectionManager : MonoBehaviour
             return;
         }
 
-        // Use the movement controller's per-turn segmentation API to get turn breakpoints
-        var segments = umc.GetPathSegmentsByTurn(selectedUnit, start, previewTargetTile);
-        // Defensive: ensure the first segment reflects the unit's current leftover MP
-        // (TrimPathToAvailableMovement uses the unit's currentMovePoints to trim the path)
-        if (segments != null && segments.Count > 0 && segments[0] != null && selectedUnit != null)
-        {
-            try
-            {
-                var trimmedFirst = umc.TrimPathToAvailableMovement(selectedUnit, segments[0]);
-                // Replace only if trimming shortened the first segment
-                if (trimmedFirst != null && trimmedFirst.Count <= segments[0].Count)
-                    segments[0] = trimmedFirst;
-            }
-            catch { }
-        }
+        var previewPath = umc.FindPath(start, previewTargetTile, selectedUnit);
+        var segments = umc.GetPathSegmentsForDisplay(selectedUnit, previewPath);
         if (segments == null || segments.Count == 0)
         {
             foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
@@ -775,21 +762,22 @@ public class UnitSelectionManager : MonoBehaviour
         if (_lastQueuedPreviewFrame == Time.frameCount) return;
         _lastQueuedPreviewFrame = Time.frameCount;
         if (selectedUnit == null) return;
-        var queued = selectedUnit.queuedMovementSegments;
-        if (queued == null || queued.Count == 0) return;
+        var umc = UnitMovementController.Instance;
+        if (umc == null) return;
+        var segments = umc.GetPathSegmentsForPreview(selectedUnit);
+        if (segments == null || segments.Count == 0) return;
 
         EnsurePreviewObjects();
         var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
         if (ts == null) return;
 
-        // Build positions and breakpoint numbers from the queued segments (do not dequeue)
         var positions = new System.Collections.Generic.List<Vector3>();
         var breakpointNumbers = new System.Collections.Generic.List<int>();
-        int segIndex = 0;
         int lastTile = -1;
-        foreach (var seg in queued)
+        for (int segIndex = 0; segIndex < segments.Count; segIndex++)
         {
-            if (seg == null || seg.Count == 0) { segIndex++; continue; }
+            var seg = segments[segIndex];
+            if (seg == null || seg.Count == 0) continue;
             for (int i = 0; i < seg.Count; i++)
             {
                 int tile = seg[i];
@@ -799,7 +787,6 @@ public class UnitSelectionManager : MonoBehaviour
                 breakpointNumbers.Add(isBreakpoint ? (segIndex + 1) : 0);
                 lastTile = tile;
             }
-            segIndex++;
         }
 
         if (positions.Count == 0)
@@ -874,30 +861,29 @@ public class UnitSelectionManager : MonoBehaviour
             foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
         }
 
-        // Place per-turn markers at the last tile of each queued segment
-        segIndex = 0;
-        foreach (var seg in queued)
+        // Place per-turn markers at the last tile of each segment
+        for (int mi = 0; mi < segments.Count; mi++)
         {
-            if (seg == null || seg.Count == 0) { segIndex++; continue; }
+            var seg = segments[mi];
+            if (seg == null || seg.Count == 0) continue;
             int markerTile = seg[seg.Count - 1];
             Vector3 mpos = ts.GetTileSurfacePosition(markerTile) + Vector3.up * 0.25f;
-            GameObject marker = GetOrCreateMarker(segIndex);
+            GameObject marker = GetOrCreateMarker(mi);
             marker.transform.position = mpos;
             marker.transform.forward = Vector3.up;
             marker.SetActive(true);
-            if (segIndex < previewMarkerLabels.Count && previewMarkerLabels[segIndex] != null)
+            if (mi < previewMarkerLabels.Count && previewMarkerLabels[mi] != null)
             {
-                var lblComp = previewMarkerLabels[segIndex];
-                if (lblComp is TextMeshPro lbl3d) { lbl3d.text = (segIndex + 1).ToString(); lbl3d.gameObject.SetActive(true); }
-                else if (lblComp is TMPro.TextMeshProUGUI lblUI) { lblUI.text = (segIndex + 1).ToString(); lblUI.gameObject.SetActive(true); }
+                var lblComp = previewMarkerLabels[mi];
+                if (lblComp is TextMeshPro lbl3d) { lbl3d.text = (mi + 1).ToString(); lbl3d.gameObject.SetActive(true); }
+                else if (lblComp is TMPro.TextMeshProUGUI lblUI) { lblUI.text = (mi + 1).ToString(); lblUI.gameObject.SetActive(true); }
             }
-            segIndex++;
         }
 
         // Destination marker at the final queued tile
         if (lastTile >= 0)
         {
-            ShowDestinationMarker(lastTile, ts, queued.Count);
+            ShowDestinationMarker(lastTile, ts, segments.Count);
             previewTargetTile = lastTile;
         }
     }
@@ -1137,7 +1123,7 @@ public class UnitSelectionManager : MonoBehaviour
         if (args.Unit == (MonoBehaviour)selectedUnit)
         {
             if (previewDebug) Debug.Log($"[USM] OnUnitMovementCompleted for selected unit {selectedUnit.name} - refreshing queued preview/UI");
-            // Rebuild persistent preview from queuedMovementSegments
+            // Rebuild persistent preview from moveOrderPath
             ClearPreviewVisuals();
             ShowQueuedPathPreviewIfAny();
             // Refresh the unit info panel so it reflects new movement points immediately
@@ -1263,7 +1249,12 @@ public class UnitSelectionManager : MonoBehaviour
             bool canAttack = (selectedUnit is CombatUnit cc) ? (targetUnit is CombatUnit tc ? cc.CanAttack(tc) : (targetUnit is WorkerUnit tw ? cc.CanAttack(tw) : false)) : (selectedUnit is WorkerUnit ww ? ww.CanAttack(targetUnit) : false);
             if (canAttack)
             {
+                selectedUnit.moveOrderPath = null;
+                selectedUnit.moveOrderNextStep = 0;
+                pendingAttackTarget = null;
+                ClearPreviewVisuals();
                 selectedUnit.Attack(targetUnit);
+                ShowQueuedPathPreviewIfAny();
                 return;
             }
         }

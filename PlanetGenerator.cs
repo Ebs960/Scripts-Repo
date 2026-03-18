@@ -390,6 +390,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public bool enableDiagnostics = false;
     [SerializeField] private bool debugDrawContinents = true;
 
+    private bool ShouldLogDiagnostics()
+    {
+        if (!enableDiagnostics) return false;
+        if (GameManager.Instance == null) return true;
+        if (!GameManager.Instance.restrictDiagnosticsToFirstPlanet) return true;
+        return GameManager.Instance.currentPlanetIndex == planetIndex;
+    }
+
 
     [Header("Map Settings")] 
     public bool randomSeed = true;
@@ -1399,7 +1407,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             shapedNoisePerTile[i] = (shapedNoisePerTile[i] - noiseMin) / noiseSpan;
         }
 
-        Debug.Log($"[PlanetGenerator] Noise pre-pass: raw shaped range [{noiseMin:F4}..{noiseMax:F4}], normalized to [0..1]");
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] Noise pre-pass: raw shaped range [{noiseMin:F4}..{noiseMax:F4}], normalized to [0..1]");
 
         // Convert a normalized 0-1 noise value into a world-space elevation using
         // the discrete tier system: Flat / Hill / Mountain.
@@ -1774,6 +1783,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 isHill = isHill,
                 isMountain = isMountain,
                 elevation = finalElevation,
+                originalElevation = finalElevation,
                 elevationTier = elevTier,
                 temperature = temperature,
                 moisture = moisture,
@@ -1821,7 +1831,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
 }
 
-        Debug.Log($"[PlanetGenerator] Land elevation range (initial, pre-coast/river): {landElevMin:F4} to {landElevMax:F4}");
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] Land elevation range (initial, pre-coast/river): {landElevMin:F4} to {landElevMax:F4}");
 
         // ---------- 5.5. Compute Render Elevation — MOVED to section 6.6 ----------
         // Render elevation normalization now runs AFTER coast/seas/river post-processing
@@ -2061,6 +2072,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
+        // Snapshot the finalized land elevation BEFORE freshwater metadata/river surfaces are built.
+        // Heightmap rendering uses this on land adjacent to rivers/lakes so banks stay aligned with
+        // the intended pre-freshwater terrain instead of defaulting to an uninitialized value.
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!data.TryGetValue(i, out var td)) continue;
+            if (!td.isLand || td.isLake || td.isRiver) continue;
+            if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
+
+            td.originalElevation = td.elevation;
+            data[i] = td;
+            baseData[i] = td;
+        }
+
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
@@ -2072,7 +2097,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // No normalization needed. The elevation field on each tile IS the world-space
         // height offset from the flat plane. The heightmap texture stores these values
         // directly (RHalf supports the full float range including negatives).
-        Debug.Log($"[PlanetGenerator] Elevation is world-space. ocean={oceanElevation:F2}, seas={seasElevation:F2}, coast={coastElevation:F2}, flat={flatElevationMin:F2}-{flatElevationMax:F2}, hills={hillElevationMin:F2}-{hillElevationMax:F2}, mountains={mountainElevationMin:F2}-{mountainElevationMax:F2}");
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] Elevation is world-space. ocean={oceanElevation:F2}, seas={seasElevation:F2}, coast={coastElevation:F2}, flat={flatElevationMin:F2}-{flatElevationMax:F2}, hills={hillElevationMin:F2}-{hillElevationMax:F2}, mountains={mountainElevationMin:F2}-{mountainElevationMax:F2}");
 
         // Set authoritative sea level world Y for this planet.
         // With world-space elevation, sea level is simply flatY + coastElevation.
@@ -2085,7 +2111,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         {
             SeaLevelWorldY = manualSeaLevelWorldY;
         }
-        Debug.Log($"[PlanetGenerator] SeaLevelWorldY={SeaLevelWorldY:F3} (flatY={flatY:F3} coastElev={coastElevation:F3} matchCoast={seaLevelMatchCoast})");
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] SeaLevelWorldY={SeaLevelWorldY:F3} (flatY={flatY:F3} coastElev={coastElevation:F3} matchCoast={seaLevelMatchCoast})");
 
         if (loadingPanelController != null)
         {
@@ -3442,7 +3469,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 tileData[lakeIdx] = td2;
             }
             
-            Debug.Log($"[PlanetGenerator] Lake {lid}: tiles={lakeBody.Count} spillRim={spillElevation:F3} waterElev={waterElev:F3} bedRange=[{minBed:F3}..{maxBed:F3}]");
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Lake {lid}: tiles={lakeBody.Count} spillRim={spillElevation:F3} waterElev={waterElev:F3} bedRange=[{minBed:F3}..{maxBed:F3}]");
         }
 
         // --- Pass 3: River tiles — water height + flow direction ---
@@ -3583,7 +3611,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             else if (td.underwaterBiome == Biome.Trench) trenchCount++;
         }
 
-        Debug.Log($"[PlanetGenerator] ComputeWaterMetadata: {nextLakeId} lake bodies labeled, river/ocean tiles tagged, abyssal={abyssalCount}, trench={trenchCount}.");
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] ComputeWaterMetadata: {nextLakeId} lake bodies labeled, river/ocean tiles tagged, abyssal={abyssalCount}, trench={trenchCount}.");
     }
 
     /// <summary>

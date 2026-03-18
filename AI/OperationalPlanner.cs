@@ -10,6 +10,7 @@ public enum UnitRole
     Defender,     // stay near / protect a tile (usually a city)
     Scout,        // explore the map
     Gatherer,     // forage / hunt for food
+    HunterGatherer, // nomadic survival: hunt, forage, and seek food/resources before scouting
     Builder,      // build improvements
     Settler       // found a city at a specific location
 }
@@ -88,12 +89,20 @@ public class OperationalPlanner
         switch (intent.Goal)
         {
             case StrategicGoal.Survive:
-                AssignGatherers(freeWorkers, civ, ctx, turn);
+                if (!ctx.HasCities || ctx.NeedFood) AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                else AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignDefenders(freeCombat, civ, ctx, turn);
                 AssignScouts(freeCombat, freeWorkers, ctx, turn);
                 break;
 
             case StrategicGoal.Explore:
+                // Early nomadic starts must prioritize survival/expansion work before scouting.
+                if (!ctx.HasCities || ctx.NeedFood)
+                {
+                    AssignSettlers(freeWorkers, civ, intent, ctx, turn);
+                    AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                    AssignBuilders(freeWorkers, civ, ctx, turn);
+                }
                 AssignScouts(freeCombat, freeWorkers, ctx, turn);
                 AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignDefenders(freeCombat, civ, ctx, turn);
@@ -101,28 +110,32 @@ public class OperationalPlanner
 
             case StrategicGoal.Expand:
                 AssignSettlers(freeWorkers, civ, intent, ctx, turn);
-                AssignGatherers(freeWorkers, civ, ctx, turn);
+                if (!ctx.HasCities || ctx.NeedFood) AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                else AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignDefenders(freeCombat, civ, ctx, turn);
                 AssignScouts(freeCombat, freeWorkers, ctx, turn);
                 break;
 
             case StrategicGoal.Develop:
                 AssignBuilders(freeWorkers, civ, ctx, turn);
-                AssignGatherers(freeWorkers, civ, ctx, turn);
+                if (!ctx.HasCities || ctx.NeedFood) AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                else AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignDefenders(freeCombat, civ, ctx, turn);
                 AssignScouts(freeCombat, freeWorkers, ctx, turn);
                 break;
 
             case StrategicGoal.Defend:
                 AssignDefenders(freeCombat, civ, ctx, turn);
-                AssignGatherers(freeWorkers, civ, ctx, turn);
+                if (!ctx.HasCities || ctx.NeedFood) AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                else AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignBuilders(freeWorkers, civ, ctx, turn);
                 break;
 
             case StrategicGoal.Attack:
                 AssignAttackers(freeCombat, civ, intent, ctx, turn);
                 AssignDefenders(freeCombat, civ, ctx, turn);
-                AssignGatherers(freeWorkers, civ, ctx, turn);
+                if (!ctx.HasCities || ctx.NeedFood) AssignHunterGatherers(freeWorkers, civ, ctx, turn);
+                else AssignGatherers(freeWorkers, civ, ctx, turn);
                 AssignSettlers(freeWorkers, civ, intent, ctx, turn);
                 break;
         }
@@ -137,7 +150,7 @@ public class OperationalPlanner
             string civName = civ.civData != null ? civ.civData.civName : "?";
             Debug.Log($"[OpPlanner] {civName}: Atk={counts[(int)UnitRole.Attacker]} " +
                       $"Def={counts[(int)UnitRole.Defender]} Scout={counts[(int)UnitRole.Scout]} " +
-                      $"Gather={counts[(int)UnitRole.Gatherer]} Build={counts[(int)UnitRole.Builder]} " +
+                      $"Gather={counts[(int)UnitRole.Gatherer]} HG={counts[(int)UnitRole.HunterGatherer]} Build={counts[(int)UnitRole.Builder]} " +
                       $"Settle={counts[(int)UnitRole.Settler]} Free={counts[(int)UnitRole.Unassigned]}");
         }
     }
@@ -294,11 +307,16 @@ public class OperationalPlanner
             Assign(unit, UnitRole.Scout, target, turn, 3f);
         }
 
+        // Use remaining free workers as scouts only when the civ is stable enough
+        // that workers are not urgently needed for settling/food/build tasks.
+        if (!ctx.HasCities || ctx.NeedFood) return;
+
         // Use remaining free workers as scouts if combat pool exhausted
         for (int i = 0; i < scoutsWanted && workerPool.Count > 0; i++)
         {
             // Only workers that don't have better things to do
             var w = workerPool[workerPool.Count - 1];
+            if (w != null && w.data != null && w.data.canFoundCity) continue;
             workerPool.RemoveAt(workerPool.Count - 1);
             int target = FindFrontierTarget(w, ctx);
             Assign(w, UnitRole.Scout, target, turn, 2f);
@@ -359,6 +377,47 @@ public class OperationalPlanner
             if (s > bestScore) { bestScore = s; best = f.TileIndex; }
         }
         return best;
+    }
+
+    // ──── Hunter-gatherers ────
+
+    private void AssignHunterGatherers(List<WorkerUnit> pool, Civilization civ, AIContext ctx, int turn)
+    {
+        if (pool.Count == 0) return;
+
+        int wanted = !ctx.HasCities ? pool.Count : (ctx.IsFamine ? pool.Count : Mathf.CeilToInt(pool.Count * 0.8f));
+        wanted = Mathf.Clamp(wanted, 1, pool.Count);
+
+        for (int i = 0; i < wanted && pool.Count > 0; i++)
+        {
+            var worker = pool[0];
+            pool.RemoveAt(0);
+            int target = FindBestHunterGathererTarget(worker, ctx);
+            Assign(worker, UnitRole.HunterGatherer, target, turn, !ctx.HasCities ? 9f : 7f);
+        }
+    }
+
+    private static int FindBestHunterGathererTarget(WorkerUnit unit, AIContext ctx)
+    {
+        int forageTarget = FindBestForageTarget(unit, ctx);
+        if (forageTarget >= 0) return forageTarget;
+
+        var hotspots = ctx.GetResourceHotspots(unit.planetIndex);
+        if (hotspots != null && hotspots.Count > 0)
+        {
+            var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+            int best = -1;
+            float bestScore = float.MinValue;
+            foreach (var h in hotspots)
+            {
+                int dist = ts != null ? ts.GetTileDistance(unit.currentTileIndex, h.TileIndex) : 0;
+                float score = h.Score - dist;
+                if (score > bestScore) { bestScore = score; best = h.TileIndex; }
+            }
+            if (best >= 0) return best;
+        }
+
+        return FindFrontierTarget(unit, ctx);
     }
 
     // ──── Builders ────
@@ -523,6 +582,22 @@ public class OperationalPlanner
                         int distBefore = ts.GetTileDistance(unit.currentTileIndex, assignment.TargetTile);
                         if (distAfter < distBefore) bonus += 4f;
                     }
+                    break;
+
+                case UnitRole.HunterGatherer:
+                    if (cmd is AIForageCommand) bonus += 10f;
+                    else if (cmd is AIAttackCommand atkHg)
+                    {
+                        if (atkHg.target is CombatUnit cuHg && cuHg.data != null && cuHg.data.unitType == CombatCategory.Animal)
+                            bonus += 8f;
+                    }
+                    else if (cmd is AIMoveCommand mvHg && assignment.TargetTile >= 0 && ts != null)
+                    {
+                        int distAfter = ts.GetTileDistance(mvHg.targetTileIndex, assignment.TargetTile);
+                        int distBefore = ts.GetTileDistance(unit.currentTileIndex, assignment.TargetTile);
+                        if (distAfter < distBefore) bonus += 6f;
+                    }
+                    else if (cmd is AIExploreCommand) bonus += 2f; // fallback only when survival targets are absent
                     break;
 
                 case UnitRole.Builder:

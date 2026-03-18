@@ -22,9 +22,19 @@ public class AIMoveCommand : AICommand
 
     public override bool CanExecute()
     {
-        if (unit == null || unit.isStored) return false;
-        if (targetTileIndex < 0 || targetTileIndex == unit.currentTileIndex) return false;
-        return unit.CanReachTile(targetTileIndex);
+        if (unit == null || unit.isStored)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[AIMoveCommand] Cannot execute: unit null or stored (unit={(unit!=null?unit.name:"null")}) target={targetTileIndex}");
+            return false;
+        }
+        if (targetTileIndex < 0 || targetTileIndex == unit.currentTileIndex)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[AIMoveCommand] Cannot execute: invalid targetTileIndex={targetTileIndex} current={unit.currentTileIndex} unit={unit.name}");
+            return false;
+        }
+        bool can = unit.CanReachTile(targetTileIndex);
+        if (!can && (Application.isEditor || Debug.isDebugBuild)) Debug.LogWarning($"[AIMoveCommand] CanReachTile returned false for unit={unit.name} target={targetTileIndex} tileOwner={(unit.owner!=null?unit.owner.civData?.civName:"null")}");
+        return can;
     }
 
     public override void Execute()
@@ -41,14 +51,38 @@ public class AIAttackCommand : AICommand
 
     public override bool CanExecute()
     {
-        if (unit == null || target == null || unit.isStored) return false;
+        if (unit == null || target == null || unit.isStored)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[AIAttackCommand] Cannot execute: unit/target null or unit stored (unit={(unit!=null?unit.name:"null")}, target={(target!=null?target.name:"null")})");
+            return false;
+        }
         if (unit is CombatUnit cu)
         {
-            if (cu.hasActedThisTurn) return false;
-            if (target is CombatUnit ct) return cu.CanAttack(ct);
-            if (target is WorkerUnit wt) return cu.CanAttack(wt);
+            if (cu.hasActedThisTurn)
+            {
+                if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[AIAttackCommand] Cannot execute: attacker hasActedThisTurn unit={cu.name}");
+                return false;
+            }
+            if (target is CombatUnit ct)
+            {
+                bool ok = cu.CanAttack(ct);
+                if (!ok && (Application.isEditor || Debug.isDebugBuild)) Debug.LogWarning($"[AIAttackCommand] CanAttack returned false for attacker={cu.name} targetCombat={ct.name}");
+                return ok;
+            }
+            if (target is WorkerUnit wt)
+            {
+                bool ok = cu.CanAttack(wt);
+                if (!ok && (Application.isEditor || Debug.isDebugBuild)) Debug.LogWarning($"[AIAttackCommand] CanAttack returned false for attacker={cu.name} targetWorker={wt.name}");
+                return ok;
+            }
         }
-        if (unit is WorkerUnit wu) return wu.CanAttack(target);
+        if (unit is WorkerUnit wu)
+        {
+            bool ok = wu.CanAttack(target);
+            if (!ok && (Application.isEditor || Debug.isDebugBuild)) Debug.LogWarning($"[AIAttackCommand] Worker CanAttack returned false for attacker={wu.name} target={target.name}");
+            return ok;
+        }
+        if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[AIAttackCommand] Cannot execute: unsupported unit type {unit.GetType().Name} for attack");
         return false;
     }
 
@@ -104,8 +138,7 @@ public class AIFortifyCommand : AICommand
 
     public override void Execute()
     {
-        // Fortify = intentionally do nothing. Unit holds position.
-        // CombatUnit.hasActedThisTurn is NOT set so the unit retains its defensive stance.
+        unit.Fortify();
     }
 }
 

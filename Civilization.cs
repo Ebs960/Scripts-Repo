@@ -555,6 +555,8 @@ public class Civilization : MonoBehaviour
                 }
             }
         }
+
+        RefreshUnlockedContentLists();
     }
     
     /// <summary>
@@ -585,6 +587,80 @@ public class Civilization : MonoBehaviour
             if (uniqueBuildingDef != null && uniqueBuildingDef.replacesBuilding != null && uniqueBuildingDef.uniqueBuilding != null)
             {
                 uniqueBuildingReplacements[uniqueBuildingDef.replacesBuilding] = uniqueBuildingDef.uniqueBuilding;
+            }
+        }
+    }
+
+    private void RefreshUnlockedContentLists()
+    {
+        // Preserve any inspector-serialized entries so they aren't lost at runtime
+        var prefabCombatEntries = unlockedCombatUnits != null ? new List<CombatUnitData>(unlockedCombatUnits) : new List<CombatUnitData>();
+        var prefabWorkerEntries = unlockedWorkerUnits != null ? new List<WorkerUnitData>(unlockedWorkerUnits) : new List<WorkerUnitData>();
+        var prefabBuildingEntries = unlockedBuildings != null ? new List<BuildingData>(unlockedBuildings) : new List<BuildingData>();
+
+        unlockedCombatUnits.Clear();
+        unlockedWorkerUnits.Clear();
+        unlockedBuildings.Clear();
+
+        var seenCombat = new HashSet<CombatUnitData>();
+        foreach (var baseUnit in ResourceCache.GetAllCombatUnits())
+        {
+            if (baseUnit == null || !baseUnit.AreRequirementsMet(this)) continue;
+            var resolvedUnit = GetUnitData(baseUnit);
+            if (resolvedUnit == null || seenCombat.Contains(resolvedUnit)) continue;
+            seenCombat.Add(resolvedUnit);
+            unlockedCombatUnits.Add(resolvedUnit);
+        }
+
+        // Merge any prefab-specified combat units that weren't included by the resource scan
+        if (prefabCombatEntries != null)
+        {
+            foreach (var pref in prefabCombatEntries)
+            {
+                if (pref == null) continue;
+                if (seenCombat.Contains(pref)) continue;
+                seenCombat.Add(pref);
+                unlockedCombatUnits.Add(pref);
+            }
+        }
+
+        var seenWorkers = new HashSet<WorkerUnitData>();
+        foreach (var workerUnit in ResourceCache.GetAllWorkerUnits())
+        {
+            if (workerUnit == null || !workerUnit.AreRequirementsMet(this) || seenWorkers.Contains(workerUnit)) continue;
+            seenWorkers.Add(workerUnit);
+            unlockedWorkerUnits.Add(workerUnit);
+        }
+
+        // Merge any prefab-specified worker units that weren't included by the resource scan
+        if (prefabWorkerEntries != null)
+        {
+            foreach (var pref in prefabWorkerEntries)
+            {
+                if (pref == null) continue;
+                if (seenWorkers.Contains(pref)) continue;
+                seenWorkers.Add(pref);
+                unlockedWorkerUnits.Add(pref);
+            }
+        }
+
+        var seenBuildings = new HashSet<BuildingData>();
+        foreach (var building in ResourceCache.GetAllBuildings())
+        {
+            if (building == null || !building.AreRequirementsMet(this) || seenBuildings.Contains(building)) continue;
+            seenBuildings.Add(building);
+            unlockedBuildings.Add(building);
+        }
+
+        // Merge any prefab-specified buildings that weren't included by the resource scan
+        if (prefabBuildingEntries != null)
+        {
+            foreach (var pref in prefabBuildingEntries)
+            {
+                if (pref == null) continue;
+                if (seenBuildings.Contains(pref)) continue;
+                seenBuildings.Add(pref);
+                unlockedBuildings.Add(pref);
             }
         }
     }
@@ -1307,6 +1383,23 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         }
         
         return standardUnit;
+    }
+
+    /// <summary>
+    /// Given a resolved/actual combat unit asset, return the standard archetype it replaces.
+    /// If this is not a unique replacement, returns the same unit.
+    /// </summary>
+    public CombatUnitData GetBaseUnitData(CombatUnitData actualUnit)
+    {
+        if (actualUnit == null) return null;
+
+        foreach (var kvp in uniqueUnitReplacements)
+        {
+            if (kvp.Value == actualUnit)
+                return kvp.Key;
+        }
+
+        return actualUnit;
     }
     
     /// <summary>
@@ -2467,6 +2560,48 @@ return true;
         return list;
     }
 
+    public List<CombatUnitData> GetAvailableCombatUnitsForWorker(WorkerUnit worker, int tileIndex = -1)
+    {
+        var list = new List<CombatUnitData>();
+        if (worker == null) return list;
+
+        var seen = new HashSet<CombatUnitData>();
+        foreach (var resolvedUnit in unlockedCombatUnits)
+        {
+            if (resolvedUnit == null || !resolvedUnit.buildableByWorker) continue;
+            if (seen.Contains(resolvedUnit)) continue;
+
+            int candidateTile = tileIndex >= 0 ? tileIndex : worker.currentTileIndex;
+            if (!worker.CanBuildUnit(resolvedUnit, candidateTile)) continue;
+
+            seen.Add(resolvedUnit);
+            list.Add(resolvedUnit);
+        }
+
+        return list;
+    }
+
+    public List<WorkerUnitData> GetAvailableWorkerUnitsForWorker(WorkerUnit worker, int tileIndex = -1)
+    {
+        var list = new List<WorkerUnitData>();
+        if (worker == null) return list;
+
+        var seen = new HashSet<WorkerUnitData>();
+        foreach (var workerUnit in unlockedWorkerUnits)
+        {
+            if (!workerUnit.buildableByWorker) continue;
+            if (seen.Contains(workerUnit)) continue;
+
+            int candidateTile = tileIndex >= 0 ? tileIndex : worker.currentTileIndex;
+            if (!worker.CanBuildWorker(workerUnit, candidateTile)) continue;
+
+            seen.Add(workerUnit);
+            list.Add(workerUnit);
+        }
+
+        return list;
+    }
+
     public TechAge GetCurrentAge()
     {
         // If no techs researched, default to Paleolithic (first defined age)
@@ -3256,6 +3391,7 @@ return true;
         _buildingAvailabilityCache.Clear();
         _equipmentAvailabilityCache.Clear();
         _canEquipByUnitTypeCache.Clear();
+        RefreshUnlockedContentLists();
     }
 
     /// <summary>

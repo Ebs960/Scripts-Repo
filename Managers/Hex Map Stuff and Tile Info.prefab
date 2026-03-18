@@ -80,7 +80,7 @@ MonoBehaviour:
   enableWrap: 1
   wrapBuffer: 0.45
   debugWrap: 0
-  debugWrapVerbose: 1
+  debugWrapVerbose: 0
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
   debugTransformChanges: 0

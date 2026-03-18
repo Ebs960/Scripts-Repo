@@ -563,14 +563,14 @@ public class ResourceManager : MonoBehaviour
                 {
                     // Create missing instance to match tile data
                     HandleTileResourceChanged(i, null, td.resource, planetIndex);
-                    Debug.Log($"[ResourceManager][Reconcile] Created ResourceInstance for tile {i} resource '{td.resource.resourceName}' on planet {planetIndex}");
+                    if (ShouldLogForPlanet(planetIndex)) Debug.Log($"[ResourceManager][Reconcile] Created ResourceInstance for tile {i} resource '{td.resource.resourceName}' on planet {planetIndex}");
                     fixes++;
                 }
                 else if (!tileHas && inst != null)
                 {
                     // Remove stray instance
                     HandleTileResourceChanged(i, inst.data, null, planetIndex);
-                    Debug.Log($"[ResourceManager][Reconcile] Destroyed stray ResourceInstance at tile {i} on planet {planetIndex}");
+                    if (ShouldLogForPlanet(planetIndex)) Debug.Log($"[ResourceManager][Reconcile] Destroyed stray ResourceInstance at tile {i} on planet {planetIndex}");
                     fixes++;
                 }
             }
@@ -588,15 +588,25 @@ public class ResourceManager : MonoBehaviour
                 if (!tileHas || td.resource != inst.data)
                 {
                     HandleTileResourceChanged(inst.tileIndex, inst.data, null, planetIndex);
-                    Debug.Log($"[ResourceManager][Reconcile] Destroyed mismatched ResourceInstance at tile {inst.tileIndex} on planet {planetIndex}");
+                    if (ShouldLogForPlanet(planetIndex)) Debug.Log($"[ResourceManager][Reconcile] Destroyed mismatched ResourceInstance at tile {inst.tileIndex} on planet {planetIndex}");
                     fixes++;
                 }
             }
         }
 
-        if (fixes > 0)
-            Debug.Log($"[ResourceManager][Reconcile] Fixed {fixes} resource mismatches on planet {planetIndex}");
-        else
-            Debug.Log($"[ResourceManager][Reconcile] No mismatches found on planet {planetIndex}");
+        if (ShouldLogForPlanet(planetIndex))
+        {
+            if (fixes > 0)
+                Debug.Log($"[ResourceManager][Reconcile] Fixed {fixes} resource mismatches on planet {planetIndex}");
+            else
+                Debug.Log($"[ResourceManager][Reconcile] No mismatches found on planet {planetIndex}");
+        }
+    }
+
+    private bool ShouldLogForPlanet(int planetIndex)
+    {
+        if (GameManager.Instance == null) return true;
+        if (!GameManager.Instance.restrictDiagnosticsToFirstPlanet) return true;
+        return GameManager.Instance.currentPlanetIndex == planetIndex;
     }
 }

@@ -550,7 +550,8 @@ planetSeasons.Clear();
             catch { /* ignore per-tile failures */ }
         }
 
-        Debug.Log($"[ClimateManager] Precomputed season responses for {tileSeasonCache.Count} tiles.");
+        if (GameManager.Instance == null || !GameManager.Instance.restrictDiagnosticsToFirstPlanet || GameManager.Instance.currentPlanetIndex == generator.planetIndex)
+            Debug.Log($"[ClimateManager] Precomputed season responses for {tileSeasonCache.Count} tiles.");
     }
 
     /// <summary>

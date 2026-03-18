@@ -93,7 +93,8 @@ MonoBehaviour:
   basePantheonCap: 1
   pantheonCapFromBonuses: 0
   unlockedCombatUnits: []
-  unlockedWorkerUnits: []
+  unlockedWorkerUnits:
+  - {fileID: 11400000, guid: 0dc889308c746344e994cebce9a5b343, type: 2}
   unlockedBuildings: []
   unlockedAbilities: []
   governorCount: 1

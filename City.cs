@@ -1136,6 +1136,7 @@ if (UIManager.Instance != null)
                 var worker = wGO.GetComponent<WorkerUnit>();
                 worker.Initialize(w, owner, centerTileIndex);
                 owner.workerUnits.Add(worker);
+                try { worker.RegisterToRegistry(); } catch { }
 
                 // Fog of War: immediately refresh vision for this civ after producing a worker.
                 if (UnitVisionManager.Instance != null && owner != null)

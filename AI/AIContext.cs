@@ -193,10 +193,19 @@ public class AIContext
         if (fog == null) return (0, 0);
 
         int explored = 0;
+        int unseen = 0;
+        int dim = 0;
+        int visible = 0;
         var frontier = new HashSet<int>();
         for (int i = 0; i < fog.Length; i++)
         {
-            if (fog[i] == 0) continue;
+            if (fog[i] == 0)
+            {
+                unseen++;
+                continue;
+            }
+            if (fog[i] == 1) dim++;
+            else if (fog[i] == 2) visible++;
             explored++;
             int[] neighbors = ts.GetNeighbors(i);
             if (neighbors == null) continue;
@@ -204,6 +213,11 @@ public class AIContext
                 if (n >= 0 && n < fog.Length && fog[n] == 0) { frontier.Add(i); break; }
         }
         FrontierTiles[planetIndex] = frontier;
+        if (Debug.isDebugBuild)
+        {
+            string civName = civ != null && civ.civData != null ? civ.civData.civName : "?";
+            Debug.Log($"[AIContext] {civName} planet={planetIndex} fogSummary: enableFog={(ts.enableFogOfWar ? "on" : "off")} total={fog.Length} unseen={unseen} dim={dim} visible={visible} explored={explored} frontier={frontier.Count}");
+        }
         return (explored, fog.Length);
     }
 

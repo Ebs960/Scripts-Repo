@@ -278,6 +278,23 @@ public class HexTileData
             y.Faith += fa;
         }
 
+        // Add contributions from any built upgrades on this improvement (additional yields)
+        if (HasImprovement && builtUpgrades != null && builtUpgrades.Count > 0 && improvement != null && improvement.availableUpgrades != null)
+        {
+            foreach (var built in builtUpgrades)
+            {
+                if (string.IsNullOrEmpty(built)) continue;
+                var found = System.Array.Find(improvement.availableUpgrades, u => (!string.IsNullOrEmpty(u.upgradeId) ? u.upgradeId == built : u.upgradeName == built));
+                if (found == null) continue;
+                y.Food += found.additionalFood;
+                y.Production += found.additionalProduction;
+                y.Gold += found.additionalGold;
+                y.Science += found.additionalScience;
+                y.Culture += found.additionalCulture;
+                y.Faith += found.additionalFaith;
+            }
+        }
+
         if (HasResource)
         {
             y.Food += resource.foodPerTurn;

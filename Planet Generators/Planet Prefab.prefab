@@ -217,10 +217,10 @@ MonoBehaviour:
   temperatureDetailMultiplier: 2
   temperatureDetailStrength: 0.21
   usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 2
-  climateSmoothingStrength: 0.083
+  climateSmoothingPasses: 3
+  climateSmoothingStrength: 0.156
   coastalMoistureBoost: 0.1
-  coastalMoistureRange: 1
+  coastalMoistureRange: 2
   flatElevationMin: 5
   flatElevationMax: 5.47
   hillElevationMin: 8.1

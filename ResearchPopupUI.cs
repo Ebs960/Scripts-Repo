@@ -17,6 +17,7 @@ public class ResearchPopupUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI titleText;
     [SerializeField] private TextMeshProUGUI descriptionText;
     [SerializeField] private TextMeshProUGUI detailsText; // bonuses / unlocks list
+    [SerializeField] private UnityEngine.UI.Button closeButton;
 
     [Header("Behavior")]
     [Tooltip("How long (seconds) the popup remains visible. 0 = wait for click to dismiss.")]
@@ -29,12 +30,14 @@ public class ResearchPopupUI : MonoBehaviour
         if (popupRoot != null) popupRoot.SetActive(false);
     }
 
+
     void OnEnable()
     {
         if (TechManager.Instance != null)
             TechManager.Instance.OnTechResearchCompleted += OnTechCompleted;
         if (CultureManager.Instance != null)
             CultureManager.Instance.OnCultureResearchCompleted += OnCultureCompleted;
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
     }
 
     void OnDisable()
@@ -43,6 +46,7 @@ public class ResearchPopupUI : MonoBehaviour
             TechManager.Instance.OnTechResearchCompleted -= OnTechCompleted;
         if (CultureManager.Instance != null)
             CultureManager.Instance.OnCultureResearchCompleted -= OnCultureCompleted;
+        if (closeButton != null) closeButton.onClick.RemoveListener(Hide);
     }
 
     private void OnTechCompleted(Civilization civ, TechData tech)

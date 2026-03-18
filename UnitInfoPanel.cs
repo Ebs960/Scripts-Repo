@@ -27,6 +27,7 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Actions")]
     [SerializeField] private Button settleCityButton;
     [SerializeField] private Button forageButton; // new forage action for workers
+    [SerializeField] private Button fortifyButton;
     [SerializeField] private Button startBuildButton; // starts selected build option (optional)
     [Header("Orbit Controls")]
     [SerializeField] private TextMeshProUGUI orbitStatusText;
@@ -49,12 +50,13 @@ public class UnitInfoPanel : MonoBehaviour
         public CombatUnitData CombatUnit;
         public WorkerUnitData WorkerUnit;
         public string Display;
+        public bool IsAvailable;
     }
     private List<BuildOption> buildOptions = new List<BuildOption>();
     private int pendingBuildIndex = -1;
     private bool suppressBuildOptionCallback;
     // Unit-build specific list and pending index
-    private struct UnitBuildEntry { public bool isCombat; public CombatUnitData combatData; public WorkerUnitData workerData; public string display; }
+    private struct UnitBuildEntry { public bool isCombat; public CombatUnitData combatData; public WorkerUnitData workerData; public string display; public bool isAvailable; }
     private List<UnitBuildEntry> unitBuildOptions = new List<UnitBuildEntry>();
     private int pendingUnitBuildIndex = -1;
 
@@ -67,6 +69,8 @@ public class UnitInfoPanel : MonoBehaviour
 
         if (forageButton != null)
             forageButton.onClick.AddListener(OnForageClicked);
+        if (fortifyButton != null)
+            fortifyButton.onClick.AddListener(OnFortifyClicked);
 
         if (enterOrbitButton != null)
             enterOrbitButton.onClick.AddListener(OnEnterOrbitClicked);
@@ -109,6 +113,8 @@ public class UnitInfoPanel : MonoBehaviour
         {
             GameEventManager.Instance.OnUnitMoved += HandleUnitMovedEvent;
             GameEventManager.Instance.OnMovementCompleted += HandleUnitMovedEvent;
+            GameEventManager.Instance.OnDamageApplied += HandleCombatEvent;
+            GameEventManager.Instance.OnUnitKilled += HandleCombatEvent;
         }
     }
 
@@ -159,6 +165,7 @@ public class UnitInfoPanel : MonoBehaviour
         // Actions / Construction
         if (settleCityButton == null) Debug.LogWarning("[UnitInfoPanel] settleCityButton is not assigned in the Inspector.");
         if (forageButton == null) Debug.LogWarning("[UnitInfoPanel] forageButton is not assigned in the Inspector.");
+        if (fortifyButton == null) Debug.LogWarning("[UnitInfoPanel] fortifyButton is not assigned in the Inspector.");
         // (Removed obsolete buildUnitsContainer/buildUnitButtonPrefab warnings)
         if (unitBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] unitBuildDropdown is not assigned in the Inspector.");
         // Legacy startUnitBuildButton removed; use startBuildButton instead
@@ -275,6 +282,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         // Hide buttons that require a unit
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
+        if (fortifyButton != null) fortifyButton.gameObject.SetActive(false);
         if (buildOptionsDropdown != null)
         {
             buildOptionsDropdown.ClearOptions();
@@ -311,25 +319,27 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         var options = new List<string> { "Select unit to build..." };
 
-        var units = civ.unlockedCombatUnits;
-        if (units != null)
+        var units = GetWorkerBuildableCombatUnits(worker);
+        if (units.Count > 0)
         {
             foreach (var u in units)
             {
-                if (u == null || !u.buildableByWorker || !worker.CanBuildUnit(u, worker.currentTileIndex)) continue;
-                unitBuildOptions.Add(new UnitBuildEntry { isCombat = true, combatData = u, workerData = null, display = $"{u.unitName} ({u.workerWorkCost} WP)" });
-                options.Add($"Combat: {u.unitName} ({u.workerWorkCost} WP)");
+                bool isAvailable = worker.CanBuildUnit(u, worker.currentTileIndex);
+                string label = $"Combat: {u.unitName} ({u.workerWorkCost} WP)";
+                unitBuildOptions.Add(new UnitBuildEntry { isCombat = true, combatData = u, workerData = null, display = label, isAvailable = isAvailable });
+                options.Add(FormatDisabledDropdownLabel(label, isAvailable));
             }
         }
 
-        var workerUnits = civ.unlockedWorkerUnits;
-        if (workerUnits != null)
+        var workerUnits = GetWorkerBuildableWorkerUnits(worker);
+        if (workerUnits.Count > 0)
         {
             foreach (var wu in workerUnits)
             {
-                if (wu == null || !wu.buildableByWorker || !worker.CanBuildWorker(wu, worker.currentTileIndex)) continue;
-                unitBuildOptions.Add(new UnitBuildEntry { isCombat = false, combatData = null, workerData = wu, display = $"{wu.unitName} ({wu.workerWorkCost} WP)" });
-                options.Add($"Worker: {wu.unitName} ({wu.workerWorkCost} WP)");
+                bool isAvailable = worker.CanBuildWorker(wu, worker.currentTileIndex);
+                string label = $"Worker: {wu.unitName} ({wu.workerWorkCost} WP)";
+                unitBuildOptions.Add(new UnitBuildEntry { isCombat = false, combatData = null, workerData = wu, display = label, isAvailable = isAvailable });
+                options.Add(FormatDisabledDropdownLabel(label, isAvailable));
             }
         }
 
@@ -349,14 +359,128 @@ PopulateForWorkerUnit(currentWorkerUnit);
         unitBuildDropdown.SetValueWithoutNotify(0);
         unitBuildDropdown.interactable = true;
         pendingUnitBuildIndex = -1;
-        if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
+        RefreshStartBuildButtonState(worker);
     }
 
     private void OnUnitBuildOptionSelected(int idx)
     {
-        if (idx <= 0 || unitBuildOptions == null) { pendingUnitBuildIndex = -1; if (startBuildButton != null) startBuildButton.interactable = false; return; }
+        if (idx <= 0 || unitBuildOptions == null)
+        {
+            pendingUnitBuildIndex = -1;
+            RefreshStartBuildButtonState(currentWorkerUnit);
+            return;
+        }
+
         pendingUnitBuildIndex = idx - 1;
-        if (startBuildButton != null) startBuildButton.interactable = true;
+        pendingBuildIndex = -1;
+        RefreshStartBuildButtonState(currentWorkerUnit);
+    }
+
+    private List<CombatUnitData> GetWorkerBuildableCombatUnits(WorkerUnit worker)
+    {
+        var result = new List<CombatUnitData>();
+        if (worker == null || worker.owner == null) return result;
+
+        var seen = new HashSet<CombatUnitData>();
+        foreach (var unit in worker.owner.unlockedCombatUnits)
+        {
+            if (unit == null || !unit.buildableByWorker || seen.Contains(unit)) continue;
+            seen.Add(unit);
+            result.Add(unit);
+        }
+
+        return result;
+    }
+
+    private List<WorkerUnitData> GetWorkerBuildableWorkerUnits(WorkerUnit worker)
+    {
+        var result = new List<WorkerUnitData>();
+        if (worker == null || worker.owner == null) return result;
+
+        var seen = new HashSet<WorkerUnitData>();
+        foreach (var unit in worker.owner.unlockedWorkerUnits)
+        {
+            if (unit == null || !unit.buildableByWorker || seen.Contains(unit)) continue;
+            seen.Add(unit);
+            result.Add(unit);
+        }
+
+        return result;
+    }
+
+    private static string FormatDisabledDropdownLabel(string label, bool isAvailable)
+    {
+        return isAvailable ? label : $"<color=#808080>{label}</color>";
+    }
+
+    private string GetCombatBuildabilityReason(WorkerUnit worker, CombatUnitData unitData)
+    {
+        if (worker == null) return "worker null";
+        if (unitData == null) return "unit null";
+        if (worker.owner == null) return "owner null";
+        if (!unitData.buildableByWorker) return "buildableByWorker=false";
+        if (worker.currentWorkPoints <= 0) return "no work points";
+        if (worker.currentTileIndex < 0) return "invalid worker tile";
+        if (!unitData.AreRequirementsMet(worker.owner)) return "requirements unmet";
+        if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateCombatUnit(worker.owner, unitData)) return "combat unit limit reached";
+        return "buildable";
+    }
+
+    private string GetWorkerBuildabilityReason(WorkerUnit worker, WorkerUnitData workerData)
+    {
+        if (worker == null) return "worker null";
+        if (workerData == null) return "unit null";
+        if (worker.owner == null) return "owner null";
+        if (!workerData.buildableByWorker) return "buildableByWorker=false";
+        if (worker.currentWorkPoints <= 0) return "no work points";
+        if (worker.currentTileIndex < 0) return "invalid worker tile";
+        if (!workerData.AreRequirementsMet(worker.owner)) return "requirements unmet";
+        if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateWorkerUnit(worker.owner, workerData)) return "worker unit limit reached";
+        return "buildable";
+    }
+
+    private void LogWorkerBuildDebug(WorkerUnit worker)
+    {
+        if (worker == null || worker.owner == null) return;
+
+        string unlockedCombat = worker.owner.unlockedCombatUnits != null && worker.owner.unlockedCombatUnits.Count > 0
+            ? string.Join(", ", worker.owner.unlockedCombatUnits.ConvertAll(u => u != null ? $"{u.unitName}[workerBuild={u.buildableByWorker}]" : "<null>"))
+            : "<none>";
+        string unlockedWorkers = worker.owner.unlockedWorkerUnits != null && worker.owner.unlockedWorkerUnits.Count > 0
+            ? string.Join(", ", worker.owner.unlockedWorkerUnits.ConvertAll(u => u != null ? $"{u.unitName}[workerBuild={u.buildableByWorker}]" : "<null>"))
+            : "<none>";
+
+        Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] worker={worker.UnitName} tile={worker.currentTileIndex} planet={worker.planetIndex} wp={worker.currentWorkPoints} owner={worker.owner.civData?.civName ?? "<null>"} | unlockedCombat={unlockedCombat} | unlockedWorkers={unlockedWorkers}");
+
+        var visibleCombat = GetWorkerBuildableCombatUnits(worker);
+        if (visibleCombat.Count == 0)
+        {
+            Debug.Log("[UnitInfoPanel][WorkerBuildDebug] visibleCombat=<none>");
+        }
+        else
+        {
+            foreach (var unit in visibleCombat)
+            {
+                string reason = GetCombatBuildabilityReason(worker, unit);
+                bool available = reason == "buildable";
+                Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] combatOption unit={unit.unitName} visible=True available={available} reason={reason}");
+            }
+        }
+
+        var visibleWorkers = GetWorkerBuildableWorkerUnits(worker);
+        if (visibleWorkers.Count == 0)
+        {
+            Debug.Log("[UnitInfoPanel][WorkerBuildDebug] visibleWorkers=<none>");
+        }
+        else
+        {
+            foreach (var unit in visibleWorkers)
+            {
+                string reason = GetWorkerBuildabilityReason(worker, unit);
+                bool available = reason == "buildable";
+                Debug.Log($"[UnitInfoPanel][WorkerBuildDebug] workerOption unit={unit.unitName} visible=True available={available} reason={reason}");
+            }
+        }
     }
 
     private void UpdateUnitInfoForCombatUnit()
@@ -394,6 +518,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         // Orbit status & controls
         UpdateOrbitControls(currentCombatUnit);
+        UpdateFortifyActionState(currentCombatUnit);
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -432,18 +557,32 @@ PopulateForWorkerUnit(currentWorkerUnit);
         {
             workPointsText.text = $"Work Points: {currentWorkerUnit.currentWorkPoints}/{currentWorkerUnit.data.baseWorkPoints}";
         }
+        LogWorkerBuildDebug(currentWorkerUnit);
         PopulateWorkerBuildUnits(currentWorkerUnit);
         PopulateUnitBuildDropdown(currentWorkerUnit);
         UpdateWorkerActionStates(currentWorkerUnit);
+        UpdateFortifyActionState(currentWorkerUnit);
     }
     
     private void OnSettleCityClicked()
     {
         if (currentWorkerUnit != null)
         {
+            currentWorkerUnit.ClearFortify();
             currentWorkerUnit.FoundCity();
             HidePanel(); // Hide the panel, as the unit is consumed.
         }
+    }
+
+    private void OnFortifyClicked()
+    {
+        BaseUnit unit = currentCombatUnit != null ? (BaseUnit)currentCombatUnit : currentWorkerUnit;
+        if (unit == null) return;
+
+        unit.Fortify();
+
+        if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
+        else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
     }
 
     private void OnDestroy()
@@ -452,6 +591,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
             settleCityButton.onClick.RemoveListener(OnSettleCityClicked);
         if (forageButton != null)
             forageButton.onClick.RemoveListener(OnForageClicked);
+        if (fortifyButton != null)
+            fortifyButton.onClick.RemoveListener(OnFortifyClicked);
         if (enterOrbitButton != null)
             enterOrbitButton.onClick.RemoveListener(OnEnterOrbitClicked);
         if (exitOrbitButton != null)
@@ -464,6 +605,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
         {
             GameEventManager.Instance.OnUnitMoved -= HandleUnitMovedEvent;
             GameEventManager.Instance.OnMovementCompleted -= HandleUnitMovedEvent;
+            GameEventManager.Instance.OnDamageApplied -= HandleCombatEvent;
+            GameEventManager.Instance.OnUnitKilled -= HandleCombatEvent;
         }
     }
     
@@ -478,6 +621,22 @@ PopulateForWorkerUnit(currentWorkerUnit);
             UpdateUnitInfoForWorkerUnit();
         }
         else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
+        {
+            UpdateUnitInfoForCombatUnit();
+        }
+    }
+
+    private void HandleCombatEvent(GameEventManager.CombatEventArgs args)
+    {
+        if (args == null) return;
+
+        if (currentWorkerUnit != null &&
+            (args.Attacker == currentWorkerUnit || args.Defender == currentWorkerUnit))
+        {
+            UpdateUnitInfoForWorkerUnit();
+        }
+        else if (currentCombatUnit != null &&
+                 (args.Attacker == currentCombatUnit || args.Defender == currentCombatUnit))
         {
             UpdateUnitInfoForCombatUnit();
         }
@@ -500,6 +659,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Hide action buttons
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
         if (forageButton != null) forageButton.gameObject.SetActive(false);
+        if (fortifyButton != null) fortifyButton.gameObject.SetActive(false);
         // Keep primary build button visible but disabled when hidden sections are active
         if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
 
@@ -568,15 +728,52 @@ UpdateUnitInfoForWorkerUnit();
             startBuildButton.gameObject.SetActive(true);
             var txt = startBuildButton.GetComponentInChildren<TextMeshProUGUI>();
             if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Build";
-            startBuildButton.interactable = hasJob ? (workerUnit.currentWorkPoints > 0) : (buildOptions != null && buildOptions.Count > 0 && workerUnit.currentWorkPoints > 0);
         }
+        RefreshStartBuildButtonState(workerUnit);
         // Legacy contribute button removed; primary start button handles contribute/start behavior
+    }
+
+    private void RefreshStartBuildButtonState(WorkerUnit workerUnit)
+    {
+        if (startBuildButton == null) return;
+
+        bool hasJob = workerUnit != null && ImprovementManager.Instance != null &&
+                      ImprovementManager.Instance.HasAnyJobAtTile(workerUnit.currentTileIndex, workerUnit.planetIndex);
+        if (hasJob)
+        {
+            startBuildButton.interactable = workerUnit.currentWorkPoints > 0;
+            return;
+        }
+
+        bool canStart = false;
+        if (workerUnit != null && workerUnit.currentWorkPoints > 0)
+        {
+            if (pendingUnitBuildIndex >= 0 && pendingUnitBuildIndex < unitBuildOptions.Count)
+                canStart = unitBuildOptions[pendingUnitBuildIndex].isAvailable;
+            else if (pendingBuildIndex >= 0 && pendingBuildIndex < buildOptions.Count)
+                canStart = buildOptions[pendingBuildIndex].IsAvailable;
+        }
+
+        startBuildButton.interactable = canStart;
+    }
+
+    private void UpdateFortifyActionState(BaseUnit unit)
+    {
+        if (fortifyButton == null) return;
+
+        fortifyButton.gameObject.SetActive(unit != null);
+        fortifyButton.interactable = unit != null && !unit.isStored && !unit.isMoving && !unit.IsFortified;
+
+        var txt = fortifyButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (txt != null)
+            txt.text = unit != null && unit.IsFortified ? "Fortified" : "Fortify";
     }
 
 
     private void OnForageClicked()
     {
         if (currentWorkerUnit == null) return;
+        currentWorkerUnit.ClearFortify();
 
         // Try current tile first then adjacent tiles
         var rm = ResourceManager.Instance;
@@ -613,43 +810,16 @@ UpdateUnitInfoForWorkerUnit();
                 buildOptions.Add(new BuildOption {
                     Type = BuildOption.OptionType.Improvement,
                     Improvement = imp,
-                    Display = $"Build {imp.improvementName} ({imp.workCost} WP)"
+                    Display = $"Build {imp.improvementName} ({imp.workCost} WP)",
+                    IsAvailable = true
                 });
                 options.Add($"Build {imp.improvementName} ({imp.workCost} WP)");
             }
         }
 
-        // Combat Units
-        var units = civ.unlockedCombatUnits;
-        if (units != null)
-        {
-            foreach (var u in units)
-            {
-                if (u == null || !u.buildableByWorker || !worker.CanBuildUnit(u, worker.currentTileIndex)) continue;
-                buildOptions.Add(new BuildOption {
-                    Type = BuildOption.OptionType.CombatUnit,
-                    CombatUnit = u,
-                    Display = $"Build {u.unitName} ({u.workerWorkCost} WP)"
-                });
-                options.Add($"Build {u.unitName} ({u.workerWorkCost} WP)");
-            }
-        }
-
-        // Worker Units
-        var workerUnits = civ.unlockedWorkerUnits;
-        if (workerUnits != null)
-        {
-            foreach (var wu in workerUnits)
-            {
-                if (wu == null || !wu.buildableByWorker || !worker.CanBuildWorker(wu, worker.currentTileIndex)) continue;
-                buildOptions.Add(new BuildOption {
-                    Type = BuildOption.OptionType.WorkerUnit,
-                    WorkerUnit = wu,
-                    Display = $"Build {wu.unitName} ({wu.workerWorkCost} WP)"
-                });
-                options.Add($"Build {wu.unitName} ({wu.workerWorkCost} WP)");
-            }
-        }
+        // Note: unit builds are intentionally NOT included in the general "build options"
+        // dropdown. Units have their own dedicated `unitBuildDropdown` populated by
+        // `PopulateUnitBuildDropdown()` so remove units from here to avoid duplication.
 
         if (options.Count == 0)
         {
@@ -688,9 +858,10 @@ UpdateUnitInfoForWorkerUnit();
             buildOptionsDropdown.SetValueWithoutNotify(preselect);
             suppressBuildOptionCallback = false;
             buildOptionsDropdown.interactable = true;
-            if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
+            if (startBuildButton != null) startBuildButton.gameObject.SetActive(true);
         }
         buildOptionsDropdown.gameObject.SetActive(true);
+        RefreshStartBuildButtonState(worker);
     }
 
     private void OnBuildOptionSelected(int idx)
@@ -700,21 +871,20 @@ UpdateUnitInfoForWorkerUnit();
         {
             // clear pending selection
             pendingBuildIndex = -1;
-            if (startBuildButton != null) startBuildButton.interactable = false;
+            RefreshStartBuildButtonState(currentWorkerUnit);
             return;
         }
 
         // Store pending build selection; do not start immediately. User must press the Start button.
         pendingBuildIndex = idx - 1;
-        if (startBuildButton != null)
-        {
-            startBuildButton.interactable = true;
-        }
+        pendingUnitBuildIndex = -1;
+        RefreshStartBuildButtonState(currentWorkerUnit);
     }
 
     private void OnStartBuildButtonClicked()
     {
         if (currentWorkerUnit == null) return;
+        currentWorkerUnit.ClearFortify();
 
         // If there's an existing job on this tile, treat the button as "Contribute Work"
         bool hasJob = ImprovementManager.Instance != null &&
@@ -731,7 +901,8 @@ UpdateUnitInfoForWorkerUnit();
         {
             var entry = unitBuildOptions[pendingUnitBuildIndex];
             pendingUnitBuildIndex = -1;
-            if (startBuildButton != null) startBuildButton.interactable = false;
+            RefreshStartBuildButtonState(currentWorkerUnit);
+            if (!entry.isAvailable) return;
             if (entry.isCombat && entry.combatData != null) OnStartWorkerBuildUnit(entry.combatData);
             else if (!entry.isCombat && entry.workerData != null) OnStartWorkerBuildWorker(entry.workerData);
             return;
@@ -742,7 +913,8 @@ UpdateUnitInfoForWorkerUnit();
         var opt = buildOptions[pendingBuildIndex];
         // Clear pending and disable button
         pendingBuildIndex = -1;
-        if (startBuildButton != null) startBuildButton.interactable = false;
+        RefreshStartBuildButtonState(currentWorkerUnit);
+        if (!opt.IsAvailable) return;
 
         switch (opt.Type)
         {
@@ -852,6 +1024,7 @@ UpdateUnitInfoForWorkerUnit();
         if (!currentCombatUnit.CanEnterOrbit()) return;
         if (currentCombatUnit.IsInOrbit) return;
 
+        currentCombatUnit.ClearFortify();
         currentCombatUnit.EnterOrbit(currentCombatUnit.currentTileIndex);
         currentCombatUnit.ConsumeAction();
         UpdateUnitInfoForCombatUnit();
@@ -863,6 +1036,7 @@ UpdateUnitInfoForWorkerUnit();
         if (currentCombatUnit.hasActedThisTurn) return;
         if (!currentCombatUnit.IsInOrbit) return;
 
+        currentCombatUnit.ClearFortify();
         currentCombatUnit.ExitOrbit(currentCombatUnit.currentTileIndex);
         currentCombatUnit.ConsumeAction();
         UpdateUnitInfoForCombatUnit();

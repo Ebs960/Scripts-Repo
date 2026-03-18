@@ -2804,7 +2804,7 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         // Helper: mark a seed at UV (0..1)
-        void MarkSeed(bool[] seed, int[] owner, float u, float v, int tileIndex)
+        void MarkSeed(bool[] seed, int[] owner, float u, float v, int tileIndex, float isoRadius)
         {
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
@@ -2818,7 +2818,7 @@ public class HexMapChunkManager : MonoBehaviour
             int radius = 0;
             float minCell = Mathf.Min(dx, dz);
             if (minCell > 0f)
-                radius = Mathf.CeilToInt(isoRiver / minCell);
+                radius = Mathf.CeilToInt(Mathf.Max(0.001f, isoRadius) / minCell);
 
             for (int oy = py - radius; oy <= py + radius; oy++)
             {
@@ -2843,7 +2843,7 @@ public class HexMapChunkManager : MonoBehaviour
 
             if (td.waterType == TileWaterType.River)
             {
-                MarkSeed(seedRiver, ownerRiver, u0, v0, ti);
+                MarkSeed(seedRiver, ownerRiver, u0, v0, ti, isoRiver);
 
                 // Sample toward river neighbors for continuity
                 var nbrs = grid.neighbors[ti];
@@ -2861,7 +2861,7 @@ public class HexMapChunkManager : MonoBehaviour
                             Vector3 p = Vector3.Lerp(c, nc, t);
                             float uu = (p.x - minX) / worldW;
                             float vv = (p.z - minZ) / worldH;
-                            MarkSeed(seedRiver, ownerRiver, uu, vv, ti);
+                            MarkSeed(seedRiver, ownerRiver, uu, vv, ti, isoRiver);
                         }
                     }
                 }
@@ -2869,25 +2869,25 @@ public class HexMapChunkManager : MonoBehaviour
             else if (continuousWaterIncludesLakes && td.waterType == TileWaterType.Lake)
             {
                 // Lakes: seed center + corners so the lake area fills the whole hex reliably.
-                MarkSeed(seedLake, ownerLake, u0, v0, ti);
+                MarkSeed(seedLake, ownerLake, u0, v0, ti, isoLake);
                 for (int k = 0; k < 6; k++)
                 {
                     Vector3 p = c + new Vector3(hexSize * HexCornerCos[k], 0f, hexSize * HexCornerSin[k]);
                     float uu = (p.x - minX) / worldW;
                     float vv = (p.z - minZ) / worldH;
-                    MarkSeed(seedLake, ownerLake, uu, vv, ti);
+                    MarkSeed(seedLake, ownerLake, uu, vv, ti, isoLake);
                 }
             }
             else if (continuousWaterIncludesOcean && td.waterType == TileWaterType.Ocean)
             {
                 // Ocean: seed center + corners so the SDF fully covers each ocean hex (prevents holes between tile centers).
-                MarkSeed(seedOcean, ownerOcean, u0, v0, ti);
+                MarkSeed(seedOcean, ownerOcean, u0, v0, ti, isoOcean);
                 for (int k = 0; k < 6; k++)
                 {
                     Vector3 p = c + new Vector3(hexSize * HexCornerCos[k], 0f, hexSize * HexCornerSin[k]);
                     float uu = (p.x - minX) / worldW;
                     float vv = (p.z - minZ) / worldH;
-                    MarkSeed(seedOcean, ownerOcean, uu, vv, ti);
+                    MarkSeed(seedOcean, ownerOcean, uu, vv, ti, isoOcean);
                 }
             }
         }
@@ -3018,6 +3018,9 @@ public class HexMapChunkManager : MonoBehaviour
         if (distOcean != null) DistanceTransformInPlace(distOcean, ownerOcean);
         yield return null; // Yield after distance transform (heavy)
 
+        int lutW = bakeResult.width > 0 ? bakeResult.width : textureWidth;
+        int lutH = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+
         // Scalar field: f = min(distRiver - isoRiver, distLake - isoLake, distOcean - isoOcean). Inside when f <= 0.
         float FAt(int ix, int iy)
         {
@@ -3025,6 +3028,24 @@ public class HexMapChunkManager : MonoBehaviour
             float f = distRiver[idx] - isoRiver;
             if (distLake != null) f = Mathf.Min(f, distLake[idx] - isoLake);
             if (distOcean != null) f = Mathf.Min(f, distOcean[idx] - isoOcean);
+
+            // Hard-clip the continuous water mesh to tiles that are actually marked as water.
+            // Without this, the SDF can smoothly expand across hex borders and visually flood
+            // adjacent land, especially around steep elevation changes.
+            float u = (float)ix / wCells;
+            float v = (float)iy / hCells;
+            u = Mathf.Repeat(u, 1f);
+            v = Mathf.Clamp01(v);
+            int px = Mathf.Clamp(Mathf.FloorToInt(u * lutW), 0, lutW - 1);
+            int py = Mathf.Clamp(Mathf.FloorToInt(v * lutH), 0, lutH - 1);
+            int pixelIndex = py * lutW + px;
+            if (pixelIndex < 0 || pixelIndex >= bakeResult.lut.Length)
+                return Mathf.Max(f, 0.001f);
+
+            int tileIndex = bakeResult.lut[pixelIndex];
+            if (tileIndex < 0 || !planetGenerator.data.TryGetValue(tileIndex, out var tileAtUv) || tileAtUv.waterType == TileWaterType.None)
+                return Mathf.Max(f, 0.001f);
+
             return f;
         }
 
@@ -3055,8 +3076,7 @@ public class HexMapChunkManager : MonoBehaviour
         for (int i = 0; i < wCells * (hCells + 1); i++) horizEdge[i] = -1;
         for (int i = 0; i < (wCells + 1) * hCells; i++) vertEdge[i] = -1;
 
-        int lutW = bakeResult.width > 0 ? bakeResult.width : textureWidth;
-        int lutH = bakeResult.height > 0 ? bakeResult.height : textureHeight;
+        
 
         // Classify the water type at a UV using the SDF (not the LUT).
         // Returns: 0=river, 1=lake, 2=ocean
@@ -3984,14 +4004,32 @@ public class HexMapChunkManager : MonoBehaviour
     {
         if (go == null) return;
         if (columnIndex < 0 || columnIndex >= chunksX) return;
+        if (_objectToColumn.TryGetValue(go, out var previousColumn))
+        {
+            if (previousColumn == columnIndex)
+            {
+                if (_wrapRegistryByColumn.TryGetValue(previousColumn, out var existingSet) && !existingSet.Contains(go))
+                    existingSet.Add(go);
+            }
+            else
+            {
+                if (_wrapRegistryByColumn.TryGetValue(previousColumn, out var previousSet))
+                    previousSet.Remove(go);
+                DestroyGhostObjectsFor(go);
+            }
+        }
+
         if (!_wrapRegistryByColumn.TryGetValue(columnIndex, out var set))
         {
             set = new HashSet<GameObject>();
             _wrapRegistryByColumn[columnIndex] = set;
         }
-        if (set.Add(go))
+
+        bool addedToSet = set.Add(go);
+        _objectToColumn[go] = columnIndex;
+
+        if (addedToSet || previousColumn != columnIndex)
         {
-            _objectToColumn[go] = columnIndex;
             if (ghostColumnsCreated) CreateGhostObjectsFor(go, columnIndex);
             // Prevent dynamic occlusion culling from hiding registered objects near wrap seams.
             // Many decoration/instance prefabs are dynamic and can be incorrectly occlusion-culled

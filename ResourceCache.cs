@@ -312,12 +312,61 @@ public static class ResourceCache
     public static WorkerUnitData[] GetAllWorkerUnits()
     {
         EnsureInitialized();
+        EnsureWorkerUnitsLoaded();
+        return _allWorkerUnits ?? new WorkerUnitData[0];
+    }
+
+    private static void EnsureWorkerUnitsLoaded()
+    {
         if (!_workerUnitsLoaded)
         {
-            _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+#if UNITY_EDITOR
+            string[] guids = AssetDatabase.FindAssets("t:WorkerUnitData", new[] { "Assets/Workers" });
+            List<WorkerUnitData> units = new List<WorkerUnitData>();
+
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                WorkerUnitData unit = AssetDatabase.LoadAssetAtPath<WorkerUnitData>(path);
+                if (unit != null)
+                {
+                    units.Add(unit);
+                }
+            }
+
+            _allWorkerUnits = units.ToArray();
+#else
+            try
+            {
+                var handle = Addressables.LoadAssetsAsync<WorkerUnitData>("WorkerUnitData", null);
+                handle.WaitForCompletion();
+
+                if (handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+                {
+                    _allWorkerUnits = handle.Result.ToArray();
+                    Addressables.Release(handle);
+                }
+                else
+                {
+                    Debug.LogWarning("[ResourceCache] Addressables failed, falling back to Resources/Workers/");
+                    _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+                }
+            }
+            catch
+            {
+                Debug.LogWarning("[ResourceCache] Addressables not available, falling back to Resources/Workers/");
+                _allWorkerUnits = Resources.LoadAll<WorkerUnitData>("Workers");
+            }
+#endif
+
             _workerUnitsLoaded = true;
+
+            int count = _allWorkerUnits?.Length ?? 0;
+            if (count == 0)
+            {
+                Debug.LogError("[ResourceCache] WARNING: No WorkerUnitData found in Assets/Workers/ folder! Make sure your ScriptableObjects are in Assets/Workers/ or marked as Addressable with label 'WorkerUnitData'.");
+            }
         }
-        return _allWorkerUnits ?? new WorkerUnitData[0];
     }
     
     /// <summary>

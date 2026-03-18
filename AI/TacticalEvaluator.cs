@@ -45,6 +45,26 @@ public static class TacticalEvaluator
         if (assignment != null)
             ApplyRoleGating(candidates, unit, assignment);
 
+        // Non-combat worker/scout roles should only fortify as a true fallback.
+        // If they already have any actionable command, remove fortify so they
+        // actually move/forage/settle/build instead of idling.
+        if (assignment != null &&
+            (assignment.Role == UnitRole.Scout ||
+             assignment.Role == UnitRole.Gatherer ||
+             assignment.Role == UnitRole.HunterGatherer ||
+             assignment.Role == UnitRole.Builder ||
+             assignment.Role == UnitRole.Settler))
+        {
+            bool hasActionableCommand = candidates.Exists(cmd =>
+                cmd != null &&
+                !(cmd is AIFortifyCommand) &&
+                !(cmd is AIRetreatCommand) &&
+                !(cmd is AIUnstoreCommand));
+
+            if (hasActionableCommand)
+                candidates.RemoveAll(cmd => cmd is AIFortifyCommand);
+        }
+
         // Apply operational role bonuses (steers toward assigned role)
         if (assignment != null && context != null)
             OperationalPlanner.ApplyRoleBonuses(candidates, unit, assignment, context);
@@ -159,6 +179,18 @@ public static class TacticalEvaluator
                     if (cmd is AIAttackCommand atk && atk.target != null)
                     {
                         if (atk.target is CombatUnit cu && cu.data != null && cu.data.unitType != CombatCategory.Animal)
+                            return true;
+                    }
+                    break;
+
+                case UnitRole.HunterGatherer:
+                    // Nomadic survival role: prioritize food and nearby survival movement.
+                    // Do not spend turns on city work or generic enemy combat.
+                    if (cmd is AISettleCityCommand || cmd is AIBuildImprovementCommand)
+                        return true;
+                    if (cmd is AIAttackCommand atkHg && atkHg.target != null)
+                    {
+                        if (atkHg.target is CombatUnit cuHg && cuHg.data != null && cuHg.data.unitType != CombatCategory.Animal)
                             return true;
                     }
                     break;
@@ -308,7 +340,7 @@ public static class TacticalEvaluator
         {
             int dist = ts.GetTileDistance(unit.currentTileIndex, tile);
             if (dist > moveRange || dist == 0) continue;
-            if (!unit.CanMoveTo(tile)) continue;
+            if (!unit.CanReachTile(tile)) continue;
 
             // Count unexplored neighbors for this frontier tile
             int civId = UnitVisionManager.GetCivIndex(civ);
@@ -355,7 +387,7 @@ public static class TacticalEvaluator
             if (s > bestScore) { bestScore = s; bestTile = f.TileIndex; }
         }
 
-        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        if (bestTile >= 0 && wu.CanReachTile(bestTile))
         {
             var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
             cmd.score = bestScore;
@@ -383,7 +415,7 @@ public static class TacticalEvaluator
             if (s > bestScore) { bestScore = s; bestTile = h.TileIndex; }
         }
 
-        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        if (bestTile >= 0 && wu.CanReachTile(bestTile))
         {
             var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
             cmd.score = bestScore;
@@ -481,7 +513,7 @@ public static class TacticalEvaluator
         float bestApproachScore = float.MinValue;
         foreach (int n in targetNeighbors)
         {
-            if (!cu.CanMoveTo(n)) continue;
+            if (!cu.CanReachTile(n)) continue;
             float s = AIScorer.ScoreTileForMovement(cu, n, bestTarget.currentTileIndex, dangerMap);
             if (s > bestApproachScore) { bestApproachScore = s; bestApproach = n; }
         }
@@ -592,7 +624,7 @@ public static class TacticalEvaluator
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
         }
 
-        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        if (bestTile >= 0 && wu.CanReachTile(bestTile))
         {
             var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
             cmd.score = bestScore;
@@ -622,7 +654,7 @@ public static class TacticalEvaluator
         float bestScore = float.MinValue;
         foreach (int n in targetNeighbors)
         {
-            if (!wu.CanMoveTo(n)) continue;
+            if (!wu.CanReachTile(n)) continue;
             float s = AIScorer.ScoreTileForMovement(wu, n, nearest.currentTileIndex, dangerMap);
             if (s > bestScore) { bestScore = s; bestApproach = n; }
         }
@@ -653,7 +685,7 @@ public static class TacticalEvaluator
                     float s = site.Score - dist * 0.5f;
                     if (s > bestScore) { bestScore = s; bestTile = site.TileIndex; }
                 }
-                if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+                if (bestTile >= 0 && wu.CanReachTile(bestTile))
                 {
                     var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
                     cmd.score = bestScore;
@@ -718,7 +750,7 @@ public static class TacticalEvaluator
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
         }
 
-        if (bestTile >= 0 && wu.CanMoveTo(bestTile))
+        if (bestTile >= 0 && wu.CanReachTile(bestTile))
         {
             var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
             cmd.score = bestScore;
@@ -764,7 +796,7 @@ public static class TacticalEvaluator
                 if (n >= 0 && !visited.Contains(n)) { visited.Add(n); queue.Enqueue((n, dist + 1)); }
         }
 
-        if (bestTile >= 0 && bestTile != wu.currentTileIndex && wu.CanMoveTo(bestTile))
+        if (bestTile >= 0 && bestTile != wu.currentTileIndex && wu.CanReachTile(bestTile))
         {
             var cmd = new AIMoveCommand { unit = wu, targetTileIndex = bestTile, planetIndex = wu.planetIndex };
             cmd.score = bestScore;
@@ -794,7 +826,7 @@ public static class TacticalEvaluator
         {
             var (tile, dist) = queue.Dequeue();
 
-            if (dist > 0 && unit.CanMoveTo(tile))
+            if (dist > 0 && unit.CanReachTile(tile))
             {
                 int unexploredCount = 0;
                 int[] tileNeighbors = ts.GetNeighbors(tile);

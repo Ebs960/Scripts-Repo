@@ -20,7 +20,7 @@ MonoBehaviour:
   category: 3
   cultureColor: {r: 1, g: 1, b: 1, a: 1}
   enablesTradeSystem: 0
-  cultureCost: 18
+  cultureCost: 6
   requiredTechnologies: []
   requiredCultures: []
   requiredCityCount: 0

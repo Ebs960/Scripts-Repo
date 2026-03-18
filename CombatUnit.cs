@@ -133,6 +133,14 @@ public class CombatUnit : BaseUnit
         // CRITICAL FIX: Ensure animator is properly configured
         if (animator != null)
         {
+            animator.applyRootMotion = false;
+            // BaseUnit cached animator parameter availability during base.Awake().
+            // CombatUnit can rebind/adjust its animator after that, so refresh the cache
+            // against the final animator instance used by this combat unit.
+            _hasWalkParam = HasParameter(animator, isWalkingHash);
+            _hasHitParam = HasParameter(animator, hitHash);
+            _hasDeathParam = HasParameter(animator, deathHash);
+            _hasFortifyParam = HasParameter(animator, isFortifiedHash);
             // Set update mode to Normal (updates every frame with Time.deltaTime)
             animator.updateMode = AnimatorUpdateMode.Normal;
             // Ensure culling mode allows animation even when off-screen during setup
@@ -286,6 +294,11 @@ public class CombatUnit : BaseUnit
         // Ensure animator is not null before trying to set a trigger
         if (animator != null) 
         {
+            animator.applyRootMotion = false;
+            _hasWalkParam = HasParameter(animator, isWalkingHash);
+            _hasHitParam = HasParameter(animator, hitHash);
+            _hasDeathParam = HasParameter(animator, deathHash);
+            _hasFortifyParam = HasParameter(animator, isFortifiedHash);
             // Animator controller check removed (no longer needed for debugging)
 
             // Initialize as not moving (idle state)
@@ -468,20 +481,24 @@ public class CombatUnit : BaseUnit
     {
         get
         {
-            float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
-            if (owner != null && data != null)
-            {
-                var u = AggregateUnitBonusesLocal(owner, data);
-                valF = (valF + u.defenseAdd) * (1f + u.defensePct);
-            }
-            if (owner != null)
-            {
-                var e = AggregateAllEquippedBonusesLocal(owner);
-                valF = (valF + e.defenseAdd) * (1f + e.defensePct);
-            }
-            
-            return Mathf.RoundToInt(valF);
+            return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
         }
+    }
+
+    protected override float ApplyOwnerDefenseBonuses(float defenseValue)
+    {
+        float valF = defenseValue;
+        if (owner != null && data != null)
+        {
+            var u = AggregateUnitBonusesLocal(owner, data);
+            valF = (valF + u.defenseAdd) * (1f + u.defensePct);
+        }
+        if (owner != null)
+        {
+            var e = AggregateAllEquippedBonusesLocal(owner);
+            valF = (valF + e.defenseAdd) * (1f + e.defensePct);
+        }
+        return valF;
     }
 
     public override int MaxHealth
@@ -525,55 +542,7 @@ public class CombatUnit : BaseUnit
 
     // CanMoveTo is fully consolidated in BaseUnit — no override needed.
 
-    public void MoveAlongPath(List<int> path)
-    {
-        // Flat-only movement: rely on TileSystem for planar centers
-        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-
-        UpdateWalkingState(true);
-
-        foreach (int idx in path)
-        {
-            var currentTileData = ts != null ? ts.GetTileData(idx) : null;
-
-            // Movement points removed
-
-            if (ts == null) {
-                Debug.LogWarning("[CombatUnit] TileSystem not ready; skipping movement step.");
-                continue;
-            }
-            Vector3 pos = ts.GetTileSurfacePosition(idx);
-            // Orbit units stay at configured orbit height above surface
-            if (IsInOrbit) pos.y += PlanetGenerator.GetOrbitHeight(planetIndex);
-            transform.position = pos;
-
-            // Claim the destination first so helper movement cannot stack units.
-            try
-            {
-                bool claimed = occ == null || occ.TrySetOccupant(idx, gameObject, currentLayer);
-                if (!claimed)
-                {
-                    Debug.LogWarning($"[CombatUnit] MoveAlongPath could not claim tile {idx} for {name}; aborting helper movement.");
-                    break;
-                }
-
-                if (currentTileIndex >= 0 && currentTileIndex != idx)
-                    occ?.ClearOccupant(currentTileIndex, currentLayer);
-            }
-            catch (System.Exception ex) { Debug.LogWarning($"[CombatUnit] Occupancy update failed: {ex.Message}"); }
-
-            currentTileIndex = idx;
-        }
-
-        UpdateWalkingState(false);
-
-        // Raise movement completed event
-        if (path.Count > 0)
-        {
-            GameEventManager.Instance?.RaiseMovementCompletedEvent(this, path[0], path[path.Count - 1], path.Count);
-        }
-    }
+    // MoveAlongPath removed -- all movement now goes through UnitMovementController.ExecuteMovement
 
     // ===== COMBAT UNIT VS COMBAT UNIT =====
     
@@ -1060,19 +1029,7 @@ public class CombatUnit : BaseUnit
 
     private float GetBaseDefenseFloat()
     {
-        float val = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
-        // Include tile-based improvement defense modifiers
-        if (currentTileIndex >= 0)
-        {
-            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
-            if (tileData != null)
-            {
-                val += tileData.improvementDefenseAdd;
-                val = val * (1f + tileData.improvementDefensePct);
-            }
-        }
-        return val;
+        return GetCurrentDefenseValueFloat();
     }
 
     private float GetEquipmentAttackBonusAgainst(CombatCategory targetType)
@@ -1143,6 +1100,11 @@ public class CombatUnit : BaseUnit
         }
         if (animator != null)
         {
+            animator.applyRootMotion = false;
+            _hasWalkParam = HasParameter(animator, isWalkingHash);
+            _hasHitParam = HasParameter(animator, hitHash);
+            _hasDeathParam = HasParameter(animator, deathHash);
+            _hasFortifyParam = HasParameter(animator, isFortifiedHash);
             // Update idle animation if not moving
             if (!isMoving)
             {

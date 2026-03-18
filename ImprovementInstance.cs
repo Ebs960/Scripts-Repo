@@ -63,7 +63,8 @@ public class ImprovementInstance : MonoBehaviour
             {
                 // Prefer a dedicated label anchor if the improvement prefab provides one
                 Transform anchor = this.transform.Find("LabelAnchor") ?? this.transform.Find("labelAnchor") ?? this.transform;
-                var labelGO = Instantiate(mgr.improvementLabelPrefab, anchor);
+                var labelGO = Instantiate(mgr.improvementLabelPrefab, anchor.position, anchor.rotation);
+                labelGO.transform.SetParent(anchor, true);
                 var ul = labelGO.GetComponent<UnitLabel>();
                 if (ul != null)
                 {

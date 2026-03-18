@@ -29,6 +29,7 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedCultureUnlocksText;
     [SerializeField] private TextMeshProUGUI selectedCultureBuildingsText;
     [SerializeField] private TextMeshProUGUI selectedCultureImprovementsText;
+    [SerializeField] private UnityEngine.UI.Image selectedCultureIconImage;
     [SerializeField] private Button closeButton;
 
     private Civilization playerCiv;
@@ -81,19 +82,9 @@ public class CultureUI : MonoBehaviour
 
         UIManager.Instance.ShowPanel("culturePanel");
         PopulateCultureTree();
-
-        if (playerCiv.currentCulture != null)
-        {
-            SelectCultureInfoOnly(playerCiv.currentCulture);
-        }
-        else
-        {
-            var firstAvailable = CultureManager.Instance.allCultures.FirstOrDefault(c => c != null && playerCiv.CanCultivate(c));
-            if (firstAvailable != null)
-                SelectCultureInfoOnly(firstAvailable);
-            else
-                ClearInfoPanel();
-        }
+        // Do not auto-select any culture when opening the UI; start blank
+        currentlySelectedCulture = null;
+        ClearInfoPanel();
     }
 
     public void Hide()
@@ -432,6 +423,12 @@ public class CultureUI : MonoBehaviour
         {
             ClearInfoPanel();
             return;
+        }
+
+        if (selectedCultureIconImage != null)
+        {
+            selectedCultureIconImage.gameObject.SetActive(culture.cultureIcon != null);
+            selectedCultureIconImage.sprite = culture.cultureIcon;
         }
 
         selectedCultureNameText.text = culture.cultureName;

@@ -304,16 +304,15 @@ public static class BiomeHelper {
             }
             if (temperature > 0.7f) {
                 if (moisture < 0.2f) return Biome.Scorched; // Very hot, very dry
-                if (moisture < 0.4f) return Biome.Ashlands; // Very hot, dry
-                if (moisture < 0.7f) return Biome.Ashlands; // Very hot, medium-wet
+                if (moisture < 0.65f) return Biome.Ashlands; // Very hot, dry
                 return Biome.Steamlands; // Very hot, wet
             }
         }
 
         // For extremely high temperatures in infernal maps
-        if (mapType == MapType.Infernal && temperature > 0.85f) {
-            if (moisture > 0.75f) return Biome.Steamlands;
-            if (moisture > 0.5f) return Biome.Ashlands; // Hot + Very Wet = Steamlands vents
+        if (mapType == MapType.Infernal && temperature > 0.35f) {
+            if (moisture > 0.95f) return Biome.Steamlands;
+            if (moisture > 0.85f) return Biome.Ashlands; // Hot + Very Wet = Steamlands vents
             return Biome.Volcanic;                          // Very hot = Volcanic terrain
         }
 
@@ -500,6 +499,7 @@ public static class BiomeHelper {
         Biome.Ocean => 1,
         Biome.Seas => 1,
         Biome.Lake => 2,
+        Biome.River => 3,
 
         Biome.Volcanic => 3,
         Biome.Steamlands => 2,
@@ -608,6 +608,7 @@ public static class BiomeHelper {
             Biome.Hellscape => true,
             Biome.Arctic => true,
             Biome.IcicleField => true,
+            Biome.Desert => true,
 
             // Planet-specific damaging biomes
             Biome.VenusLava => true,
@@ -637,6 +638,7 @@ public static class BiomeHelper {
             Biome.Hellscape => 0.30f,
             Biome.Arctic => 0.05f,
             Biome.IcicleField => 0.15f,
+            Biome.Desert => 0.10f,
 
             // Planet-specific values
             Biome.VenusLava => 0.50f,

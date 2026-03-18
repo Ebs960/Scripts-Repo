@@ -715,8 +715,10 @@ public class ImprovementManager : MonoBehaviour
         var occ = TileOccupancyManager.GetForPlanet(job.planetIndex) ?? TileOccupancyManager.Instance;
         var planetGen = job.owner != null ? job.owner.GetPlanetGeneratorForIndex(job.planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null)
                          : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(job.planetIndex) : null);
+        // Resolve unit data for this civilization (apply unique/unit replacements) and spawn
+        var resolvedData = job.owner != null ? job.owner.GetUnitData(job.data) : job.data;
         // Spawn the unit and register occupancy
-        var unitPrefab = job.data.GetPrefab();
+        var unitPrefab = resolvedData.GetPrefab();
         if (unitPrefab == null)
         {
             Debug.LogError($"Unit {job.data?.unitName} has no prefab; cannot spawn.");
@@ -741,10 +743,10 @@ public class ImprovementManager : MonoBehaviour
             return;
         }
 
-        unit.Initialize(job.data, job.owner);
-        unit.InitializeAndReturn(job.data, job.owner, spawnIndex);
+        unit.Initialize(resolvedData, job.owner);
+        unit.InitializeAndReturn(resolvedData, job.owner, spawnIndex);
         job.owner.combatUnits.Add(unit);
-        LimitManager.Instance.AddCombatUnit(job.owner, job.data);
+        LimitManager.Instance.AddCombatUnit(job.owner, resolvedData);
         // Determine layer (centralized rules) and convert to occupancy layer
         var tdata = ts != null ? ts.GetTileData(spawnIndex) : null;
         var spawnLayer = UnitLayerRules.GetSpawnLayerForUnit(unit, tdata);

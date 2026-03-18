@@ -86,6 +86,21 @@ public abstract class BaseUnit : MonoBehaviour
     {
         if (ctx.defender == null) return false;
 
+        // Any attack order supersedes queued movement. Clear the existing move order
+        // immediately so attacking does not leave stale continuation/path-preview state behind.
+        if (ctx.attacker != null)
+        {
+            try
+            {
+                ctx.attacker.moveOrderPath = null;
+                ctx.attacker.moveOrderNextStep = 0;
+                UnitMovementController.Instance?.StopMoveForUnit(ctx.attacker);
+                ctx.attacker.UpdateWalkingState(false);
+                ctx.attacker.ClearFortify();
+            }
+            catch { }
+        }
+
         // Ensure attacker has attack points available (centralized enforcement)
         if (ctx.attacker != null)
         {
@@ -220,13 +235,10 @@ public abstract class BaseUnit : MonoBehaviour
 
     // Runtime state
     public Civilization owner { get; protected set; }
-    // Queue of movement segments to execute across turns. Each segment is a list of tile indices
-    // representing tiles to traverse during a single turn. Non-serialized because runtime-only.
-    [System.NonSerialized] public Queue<System.Collections.Generic.List<int>> queuedMovementSegments = new();
-    // Canonical flat path for the current movement order (single-source-of-truth for movement)
-    [System.NonSerialized] public System.Collections.Generic.List<int> movementOrderPath = null;
-    // Number of tiles from movementOrderPath already consumed (moved)
-    [System.NonSerialized] public int movementOrderPathConsumed = 0;
+    // Single source of truth for queued movement: full path and cursor.
+    [System.NonSerialized] public System.Collections.Generic.List<int> moveOrderPath = null;
+    [System.NonSerialized] public int moveOrderNextStep = 0;
+    [System.NonSerialized] private bool isFortified = false;
     public int currentHealth { get; protected set; }
     public int currentTileIndex = -1;
     public TileLayer currentLayer = TileLayer.Surface;
@@ -234,6 +246,7 @@ public abstract class BaseUnit : MonoBehaviour
     public int planetIndex = -1;
     public float moveSpeed = 2f;
     public bool isMoving { get; set; }
+    public bool IsFortified => isFortified;
 
     // Projectile queueing
     [Header("Projectiles")]
@@ -268,11 +281,13 @@ public abstract class BaseUnit : MonoBehaviour
     protected static readonly int hitHash = Animator.StringToHash("Hit");
     protected static readonly int deathHash = Animator.StringToHash("Death");
     protected static readonly int routHash = Animator.StringToHash("Rout");
+    protected static readonly int isFortifiedHash = Animator.StringToHash("IsFortified");
 
     // Cached parameter-existence flags (set once in Awake, avoids allocating parameters array each call)
     protected bool _hasWalkParam;
     protected bool _hasHitParam;
     protected bool _hasDeathParam;
+    protected bool _hasFortifyParam;
 
     #endregion
 
@@ -484,19 +499,35 @@ public abstract class BaseUnit : MonoBehaviour
     {
         get
         {
-            float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
-            // Include tile-based defense bonus
-            var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-            if (currentTileIndex >= 0 && ts != null)
-            {
-                var tileData = ts.GetTileData(currentTileIndex);
-                if (tileData != null)
-                {
-                    // Subclasses can add their own tile bonuses
-                }
-            }
-            return Mathf.RoundToInt(valF);
+            return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
         }
+    }
+
+    protected virtual float GetCurrentDefenseValueFloat()
+    {
+        float valF = BaseDefense + EquipmentDefenseBonus + GetAbilityDefenseModifier();
+        valF = ApplyOwnerDefenseBonuses(valF);
+        valF = ApplyTileDefenseBonuses(valF);
+        valF = ApplyFortifyDefenseBonus(valF);
+        return valF;
+    }
+
+    protected virtual float ApplyOwnerDefenseBonuses(float defenseValue)
+    {
+        return defenseValue;
+    }
+
+    protected virtual float ApplyTileDefenseBonuses(float defenseValue)
+    {
+        if (currentTileIndex < 0) return defenseValue;
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(currentTileIndex) : null;
+        if (tileData == null) return defenseValue;
+
+        defenseValue += tileData.improvementDefenseAdd;
+        defenseValue *= (1f + tileData.improvementDefensePct);
+        return defenseValue;
     }
 
     public virtual float CurrentRange
@@ -522,9 +553,11 @@ public abstract class BaseUnit : MonoBehaviour
         // Cache parameter existence once so we never iterate anim.parameters at runtime
         if (animator != null)
         {
+            animator.applyRootMotion = false;
             _hasWalkParam  = HasParameter(animator, isWalkingHash);
             _hasHitParam   = HasParameter(animator, hitHash);
             _hasDeathParam = HasParameter(animator, deathHash);
+            _hasFortifyParam = HasParameter(animator, isFortifiedHash);
         }
 
         // Bind to the correct planet/grid for multi-planet gameplay.
@@ -1319,81 +1352,42 @@ public abstract class BaseUnit : MonoBehaviour
     public bool IsInOrbit => currentLayer == TileLayer.Orbit;
 
     /// <summary>
-    /// Request movement to target tile. Uses UnitMovementController.
+    /// Request movement to target tile. Delegates entirely to UnitMovementController.
     /// </summary>
     public virtual void MoveTo(int targetTileIndex)
     {
         if (UnitMovementController.Instance == null) return;
+        ClearFortify();
+        UnitMovementController.Instance.IssueMove(this, targetTileIndex);
+    }
 
-        // Compute the canonical flat path (single source of truth for this order)
-        var fullPath = UnitMovementController.Instance.FindPath(currentTileIndex, targetTileIndex, this);
-        if (fullPath == null || fullPath.Count == 0)
-        {
-            try
-            {
-                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-                var td = ts != null ? ts.GetTileData(targetTileIndex) : null;
-                int cost = td != null ? BiomeHelper.GetMovementCost(td, this) : -1;
-                var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-                var occObj = occ != null ? occ.GetOccupantObjectWithFallback(targetTileIndex, TileLayer.Surface) : null;
-                var imp = td != null ? td.improvement : null;
-                var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
-                if (Application.isEditor || Debug.isDebugBuild)
-                {
-                    if (owner == playerCiv)
-                    {
-                        Debug.LogWarning($"[BaseUnit] MoveTo failed to find path for {name} -> target={targetTileIndex} passable={(td!=null?td.isPassable:false)} cost={cost} improvement={(imp!=null?imp.name:"<none>")} occupant={(occObj!=null?occObj.name:"<none>")}");
-                    }
-                }
-                // Notify the player so movement failure is never silent
-                if (UIManager.Instance != null && owner == playerCiv)
-                {
-                    UIManager.Instance.ShowNotification($"{UnitName} can't reach that tile!");
-                }
-            }
-            catch { }
-            return;
-        }
-
-        // Store canonical order and reset consumption index
-        movementOrderPath = new System.Collections.Generic.List<int>(fullPath);
-        movementOrderPathConsumed = 0;
-
-        // Cancel any existing movement/queue for this unit
+    public virtual void Fortify()
+    {
+        moveOrderPath = null;
+        moveOrderNextStep = 0;
+        try { UnitMovementController.Instance?.StopMoveForUnit(this); } catch { }
         UpdateWalkingState(false);
-        StopAllCoroutines();
-        queuedMovementSegments.Clear();
+        SetFortified(true);
+    }
 
-        // Build per-turn segments from the canonical path for preview/UI and queued execution
-        var segments = UnitMovementController.Instance.GetPathSegmentsByTurn(this, currentTileIndex, targetTileIndex);
-        if (segments == null || segments.Count == 0) return;
+    public virtual void ClearFortify()
+    {
+        SetFortified(false);
+    }
 
-        // Enqueue remaining segments (segments[1..]) for subsequent turns
-        for (int i = 1; i < segments.Count; i++)
-        {
-            if (segments[i] != null && segments[i].Count > 0)
-                queuedMovementSegments.Enqueue(new System.Collections.Generic.List<int>(segments[i]));
-        }
+    protected void SetFortified(bool fortified)
+    {
+        if (isFortified == fortified) return;
+        isFortified = fortified;
+        if (animator != null && _hasFortifyParam)
+            animator.SetBool(isFortifiedHash, fortified);
 
-        // Debug: report queued segments count when issuing a multi-turn move
-        if (Application.isEditor || Debug.isDebugBuild)
-        {
-            var playerCiv = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
-            if (owner == playerCiv)
-                Debug.Log($"[BaseUnit] {name} queued {queuedMovementSegments.Count} future movement segments (target={targetTileIndex})");
-        }
+        try { GameEventManager.Instance?.RaiseMovePointsChanged(this, currentMovePoints, currentMovePoints); } catch { }
+    }
 
-        // Start the first segment immediately
-        var first = segments[0];
-        if (first == null || first.Count == 0)
-        {
-            // Nothing to do
-            return;
-        }
-
-        // Mark the canonical path tiles consumed by the immediately-starting first segment.
-        movementOrderPathConsumed = first.Count;
-        UnitMovementController.Instance?.StartMoveForUnit(this, first);
+    protected float ApplyFortifyDefenseBonus(float defenseValue)
+    {
+        return isFortified ? defenseValue * 1.10f : defenseValue;
     }
 
     /// <summary>
@@ -1405,16 +1399,28 @@ public abstract class BaseUnit : MonoBehaviour
     public bool CanReachTile(int tileIndex)
     {
         var cu = this as CombatUnit;
-        if (cu != null && cu.hasActedThisTurn) return false;
+        if (cu != null && cu.hasActedThisTurn)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: hasActedThisTurn unit={name} tile={tileIndex}");
+            return false;
+        }
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var td = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (td == null || !td.isPassable) return false;
+        if (td == null || !td.isPassable)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: tileData null or not passable unit={name} tile={tileIndex}");
+            return false;
+        }
 
         if (currentLayer == TileLayer.Orbit) return true;
 
         int moveCost = BiomeHelper.GetMovementCost(td, this);
-        if (moveCost >= 99) return false;
+        if (moveCost >= 99)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: impassable cost={moveCost} unit={name} tile={tileIndex}");
+            return false;
+        }
 
         if (!td.isLand)
         {
@@ -1423,7 +1429,11 @@ public abstract class BaseUnit : MonoBehaviour
                  cu.data.unitType == CombatCategory.Boat ||
                  cu.data.unitType == CombatCategory.Submarine ||
                  cu.data.unitType == CombatCategory.SeaCrawler);
-            if (!isNaval) return false;
+            if (!isNaval)
+            {
+                if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanReachTile false: requires naval unit unit={name} tile={tileIndex}");
+                return false;
+            }
         }
 
         return true;
@@ -1439,11 +1449,19 @@ public abstract class BaseUnit : MonoBehaviour
     {
         // CombatUnit: turn-consuming actions (orbit entry/exit) block further movement
         var cu = this as CombatUnit;
-        if (cu != null && cu.hasActedThisTurn) return false;
+        if (cu != null && cu.hasActedThisTurn)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: hasActedThisTurn unit={name} tile={tileIndex}");
+            return false;
+        }
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var td = ts != null ? ts.GetTileData(tileIndex) : null;
-        if (td == null || !td.isPassable) return false;
+        if (td == null || !td.isPassable)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tileData null or not passable unit={name} tile={tileIndex}");
+            return false;
+        }
 
         // Orbit units: skip terrain rules, only check orbit-layer occupancy
         if (currentLayer == TileLayer.Orbit)
@@ -1460,7 +1478,11 @@ public abstract class BaseUnit : MonoBehaviour
 
         // Movement cost — single source of truth shared with FindPath
         int moveCost = BiomeHelper.GetMovementCost(td, this);
-        if (moveCost >= 99) return false;
+        if (moveCost >= 99)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: impassable cost={moveCost} unit={name} tile={tileIndex}");
+            return false;
+        }
 
         // Land / water rules
         if (!td.isLand)
@@ -1471,11 +1493,19 @@ public abstract class BaseUnit : MonoBehaviour
                  cu.data.unitType == CombatCategory.Boat ||
                  cu.data.unitType == CombatCategory.Submarine ||
                  cu.data.unitType == CombatCategory.SeaCrawler);
-            if (!isNaval) return false;
+            if (!isNaval)
+            {
+                if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: requires naval unit unit={name} tile={tileIndex}");
+                return false;
+            }
         }
 
         // Move-point check for units with turn-based movement
-        if (GetStartingMovePoints() > 0 && currentMovePoints < moveCost) return false;
+        if (GetStartingMovePoints() > 0 && currentMovePoints < moveCost)
+        {
+            if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: insufficient MP current={currentMovePoints} required={moveCost} unit={name} tile={tileIndex}");
+            return false;
+        }
 
         // Layer-aware occupancy check
         try
@@ -1484,8 +1514,16 @@ public abstract class BaseUnit : MonoBehaviour
             var occObj = occ != null ? occ.GetOccupantObjectWithFallback(tileIndex, currentLayer) : null;
             if (occObj != null && occObj.GetInstanceID() != gameObject.GetInstanceID())
             {
-                if (occObj.GetComponent<BaseUnit>() != null) return false;
-                if (occObj.GetComponent<City>() != null) return false;
+                if (occObj.GetComponent<BaseUnit>() != null)
+                {
+                    if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile occupied by unit={occObj.name} unit={name} tile={tileIndex}");
+                    return false;
+                }
+                if (occObj.GetComponent<City>() != null)
+                {
+                    if (Application.isEditor || Debug.isDebugBuild) Debug.LogWarning($"[BaseUnit] CanMoveTo false: tile occupied by city={occObj.name} unit={name} tile={tileIndex}");
+                    return false;
+                }
             }
         }
         catch { }
@@ -1526,7 +1564,14 @@ public abstract class BaseUnit : MonoBehaviour
         // force-clear the walking state. This catches coroutine interruption edge cases.
         if (isMoving)
         {
-            if (Vector3.SqrMagnitude(transform.position - _lastFailsafePos) < 0.0001f)
+            bool hasActiveMove = false;
+            try { hasActiveMove = UnitMovementController.Instance != null && UnitMovementController.Instance.HasActiveMove(this); } catch { }
+
+            if (hasActiveMove)
+            {
+                _walkingStuckFrames = 0;
+            }
+            else if (Vector3.SqrMagnitude(transform.position - _lastFailsafePos) < 0.0001f)
             {
                 _walkingStuckFrames++;
                 if (_walkingStuckFrames > 30) // ~0.5s at 60fps

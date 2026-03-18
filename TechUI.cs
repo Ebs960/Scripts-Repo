@@ -28,6 +28,7 @@ public class TechUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI selectedTechUnlocksText;
     [SerializeField] private TextMeshProUGUI selectedTechBuildingsText;
     [SerializeField] private TextMeshProUGUI selectedTechImprovementsText;
+    [SerializeField] private UnityEngine.UI.Image selectedTechIconImage;
     [SerializeField] private Button closeButton;
 
     private Civilization playerCiv;
@@ -80,20 +81,9 @@ public class TechUI : MonoBehaviour
         }
         UIManager.Instance.ShowPanel("techPanel");
         PopulateTechTree();
-        // Auto-select current research or first available tech so info panel is never blank
-        if (playerCiv.currentTech != null)
-        {
-            SelectTechInfoOnly(playerCiv.currentTech);
-        }
-        else
-        {
-            // Show first available tech
-            var firstAvailable = TechManager.Instance.allTechs.FirstOrDefault(t => t != null && playerCiv.CanResearch(t));
-            if (firstAvailable != null)
-                SelectTechInfoOnly(firstAvailable);
-            else
-                ClearInfoPanel();
-        }
+        // Do not auto-select any technology when opening the UI; start with a blank info panel
+        currentlySelectedTech = null;
+        ClearInfoPanel();
     }
 
     public void Hide()
@@ -491,6 +481,12 @@ playerCiv.StartResearch(tech);
         {
             ClearInfoPanel();
             return;
+        }
+        // Set icon if assigned
+        if (selectedTechIconImage != null)
+        {
+            selectedTechIconImage.gameObject.SetActive(tech.techIcon != null);
+            selectedTechIconImage.sprite = tech.techIcon;
         }
 
         selectedTechNameText.text = tech.techName;

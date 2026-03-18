@@ -382,18 +382,7 @@ public class WorkerUnit : BaseUnit
     {
         get
         {
-            float valF = base.CurrentDefense;
-            if (currentTileIndex >= 0)
-            {
-                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-                var td = ts != null ? ts.GetTileData(currentTileIndex) : null;
-                if (td != null)
-                {
-                    valF += td.improvementDefenseAdd;
-                    valF *= (1f + td.improvementDefensePct);
-                }
-            }
-            return Mathf.RoundToInt(valF);
+            return Mathf.RoundToInt(GetCurrentDefenseValueFloat());
         }
     }
 
@@ -498,6 +487,9 @@ public class WorkerUnit : BaseUnit
         if (owner == null) return false;
         if (currentWorkPoints <= 0) return false;
         if (tileIndex != currentTileIndex) return false;
+        if (!unitData.buildableByWorker) return false;
+        if (!unitData.AreRequirementsMet(owner)) return false;
+        if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateCombatUnit(owner, unitData)) return false;
         return true;
     }
 
@@ -507,6 +499,9 @@ public class WorkerUnit : BaseUnit
         if (owner == null) return false;
         if (currentWorkPoints <= 0) return false;
         if (tileIndex != currentTileIndex) return false;
+        if (!workerData.buildableByWorker) return false;
+        if (!workerData.AreRequirementsMet(owner)) return false;
+        if (LimitManager.Instance != null && !LimitManager.Instance.CanCreateWorkerUnit(owner, workerData)) return false;
         return true;
     }
 

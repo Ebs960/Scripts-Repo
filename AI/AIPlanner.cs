@@ -151,6 +151,12 @@ public class AIPlanner
                       $"timing: danger={TimeDangerMap:F0}ms ctx={TimeContext:F0}ms " +
                       $"strat={TimeStrategic:F0}ms ops={TimeOperational:F0}ms " +
                       $"tact={TimeTactical:F0}ms total={TimeTotal:F0}ms");
+            if (plannedCommands.Count > 0)
+            {
+                var top = plannedCommands.Take(5)
+                    .Select(cmd => $"{cmd.GetType().Name}:{cmd.unit?.name ?? "<null>"}:{cmd.score:F1}");
+                Debug.Log($"[AIPlanner] {civName} top cmds -> {string.Join(", ", top)}");
+            }
         }
     }
 
@@ -158,21 +164,70 @@ public class AIPlanner
 
     public void ExecuteCommands()
     {
+        int executed = 0;
+        int skipped = 0;
         foreach (var cmd in plannedCommands)
         {
             if (cmd == null) continue;
             try
             {
-                if (cmd.CanExecute())
+                bool canExecute = cmd.CanExecute();
+                if (canExecute)
+                {
                     cmd.Execute();
+                    executed++;
+                    if (Debug.isDebugBuild)
+                        Debug.Log($"[AIPlanner] Executed {DescribeCommand(cmd)}");
+                }
+                else
+                {
+                    skipped++;
+                    if (Debug.isDebugBuild)
+                        Debug.LogWarning($"[AIPlanner] Skipped {DescribeCommand(cmd)} because CanExecute() returned false.");
+                }
             }
             catch (System.Exception ex)
             {
                 Debug.LogWarning($"[AIPlanner] Command failed for {cmd.unit?.name}: {ex.Message}");
             }
         }
+        if (Debug.isDebugBuild)
+            Debug.Log($"[AIPlanner] ExecuteCommands summary: planned={plannedCommands.Count} executed={executed} skipped={skipped}");
         plannedCommands.Clear();
         assignedUnits.Clear();
+    }
+
+    private static string DescribeCommand(AICommand cmd)
+    {
+        if (cmd == null) return "<null cmd>";
+
+        string target = "";
+        switch (cmd)
+        {
+            case AIMoveCommand mv:
+                target = $" targetTile={mv.targetTileIndex}";
+                break;
+            case AIExploreCommand ex:
+                target = $" targetTile={ex.targetTileIndex}";
+                break;
+            case AIApproachCommand ap:
+                target = $" approachTile={ap.approachTileIndex} targetUnit={ap.target?.name ?? "<null>"}";
+                break;
+            case AIRetreatCommand rt:
+                target = $" retreatTile={rt.retreatTileIndex}";
+                break;
+            case AIAttackCommand atk:
+                target = $" targetUnit={atk.target?.name ?? "<null>"}";
+                break;
+            case AIBuildImprovementCommand build:
+                target = $" improvement={build.improvement?.improvementName ?? "<null>"}";
+                break;
+            case AIForageCommand forage:
+                target = $" resource={forage.resource?.resourceName ?? "<null>"}";
+                break;
+        }
+
+        return $"{cmd.GetType().Name} unit={cmd.unit?.name ?? "<null>"} score={cmd.score:F2}{target}";
     }
 
     // ─────────────────────── Per-civ persistent state ───────────────────────

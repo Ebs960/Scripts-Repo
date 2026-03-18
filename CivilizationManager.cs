@@ -1993,6 +1993,7 @@ break; // Only propose one alliance per turn
         pioneer.Initialize(resolvedPioneerData, civ, tile);
         pioneer.planetIndex = planetIndex;
         civ.workerUnits.Add(pioneer);
+        try { pioneer.RegisterToRegistry(); } catch { }
         
     }
 

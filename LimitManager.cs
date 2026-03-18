@@ -35,6 +35,7 @@ public class LimitManager : MonoBehaviour
         if (unit.unitLimit < 0) return -1; // Unlimited
         
         int effectiveLimit = unit.unitLimit;
+        CombatUnitData baseUnit = civ != null ? civ.GetBaseUnitData(unit) : unit;
         
         // Add modifiers from technologies
         if (civ.researchedTechs != null)
@@ -45,7 +46,7 @@ public class LimitManager : MonoBehaviour
                 {
                     foreach (var modifier in tech.unitLimitModifiers)
                     {
-                        if (modifier.AppliesTo(unit))
+                        if (modifier.AppliesTo(unit) || (baseUnit != null && baseUnit != unit && modifier.AppliesTo(baseUnit)))
                         {
                             effectiveLimit += modifier.limitIncrease;
                         }
@@ -63,7 +64,7 @@ public class LimitManager : MonoBehaviour
                 {
                     foreach (var modifier in culture.unitLimitModifiers)
                     {
-                        if (modifier.AppliesTo(unit))
+                        if (modifier.AppliesTo(unit) || (baseUnit != null && baseUnit != unit && modifier.AppliesTo(baseUnit)))
                         {
                             effectiveLimit += modifier.limitIncrease;
                         }
