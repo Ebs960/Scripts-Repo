@@ -280,13 +280,14 @@ public class AnimalManager : MonoBehaviour
     /// <summary>
     /// Find the nearest civilization unit within movement range for predators to hunt
     /// </summary>
-    private CombatUnit FindNearestCivilizationUnit(CombatUnit predator, int maxSearchRange = 3)
+    private BaseUnit FindNearestCivilizationUnit(CombatUnit predator, int maxSearchRange = 3)
     {
-        CombatUnit nearestTarget = null;
+        BaseUnit nearestTarget = null;
         float nearestDistance = float.MaxValue;
         int pIndex = predator != null ? predator.planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
         var tileSystem = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
 
+        // Search combat units first
         foreach (var civUnit in UnitRegistry.GetCombatUnits())
         {
             if (civUnit == null || civUnit == predator)
@@ -310,6 +311,32 @@ public class AnimalManager : MonoBehaviour
             {
                 nearestDistance = distance;
                 nearestTarget = civUnit;
+            }
+        }
+
+        // Also consider worker units (workers belong to civilizations too)
+        foreach (var worker in UnitRegistry.GetWorkerUnits())
+        {
+            if (worker == null)
+                continue;
+
+            if (worker == predator)
+                continue;
+
+            if (worker.owner == null || worker.currentTileIndex < 0)
+                continue;
+
+            if (worker.planetIndex != pIndex)
+                continue;
+
+            float distance = tileSystem != null
+                ? tileSystem.GetTileDistance(predator.currentTileIndex, worker.currentTileIndex)
+                : float.MaxValue;
+
+            if (distance <= maxSearchRange && distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestTarget = worker;
             }
         }
 
