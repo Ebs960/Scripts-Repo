@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
@@ -37,7 +38,6 @@ public class UnitInfoPanel : MonoBehaviour
     [Header("Worker Build Units UI")] 
     [SerializeField] private TMP_Dropdown buildOptionsDropdown; // TMP dropdown for build options
     [Header("Herd Build UI")]
-    [SerializeField] private TMP_Dropdown herdBuildDropdown; // Dropdown to pick herd-buildable buildings
     [SerializeField] private Button buildHerdButton; // Button to construct selected herd building using worker's work points
     [Header("Unit Build UI")]
     [SerializeField] private TMP_Dropdown unitBuildDropdown; // separate dropdown specifically for unit builds
@@ -69,17 +69,24 @@ public class UnitInfoPanel : MonoBehaviour
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
 
+        // Tooltips for unit UI buttons
+        AddTooltipToButton(settleCityButton, "Found City", "Found a new city on this tile. Consumes the worker.");
+
         // Contribute work actions are routed through the primary Start/Contribute button now
 
         if (forageButton != null)
             forageButton.onClick.AddListener(OnForageClicked);
+        AddTooltipToButton(forageButton, "Forage", "Forage resources from this tile if available.");
         if (fortifyButton != null)
             fortifyButton.onClick.AddListener(OnFortifyClicked);
+        AddTooltipToButton(fortifyButton, "Fortify", "Fortify to gain defense and skip this unit's action.");
 
         if (enterOrbitButton != null)
             enterOrbitButton.onClick.AddListener(OnEnterOrbitClicked);
+        AddTooltipToButton(enterOrbitButton, "Enter Orbit", "Enter orbit from this tile if available.");
         if (exitOrbitButton != null)
             exitOrbitButton.onClick.AddListener(OnExitOrbitClicked);
+        AddTooltipToButton(exitOrbitButton, "Exit Orbit", "Exit orbit and land on this tile.");
 
         // On start, clear the panel to show a "no unit selected" state.
         ClearPanelInfo();
@@ -106,6 +113,7 @@ public class UnitInfoPanel : MonoBehaviour
             // Keep the primary build button visible; disable until an action is available
             startBuildButton.gameObject.SetActive(true);
             startBuildButton.interactable = false;
+            AddTooltipToButton(startBuildButton, "Work / Build", "Start or contribute to building improvements or training units on this tile.");
         }
         // Legacy unit-build button removed; unit builds go through startBuildButton
 
@@ -120,6 +128,30 @@ public class UnitInfoPanel : MonoBehaviour
             GameEventManager.Instance.OnDamageApplied += HandleCombatEvent;
             GameEventManager.Instance.OnUnitKilled += HandleCombatEvent;
         }
+    }
+
+    private void AddTooltipToButton(Button btn, string title, string description)
+    {
+        if (btn == null || TooltipSystem.Instance == null) return;
+        // Ensure an EventTrigger exists
+        var trig = btn.GetComponent<EventTrigger>();
+        if (trig == null) trig = btn.gameObject.AddComponent<EventTrigger>();
+
+        // Clear existing entries for safety (don't remove other unrelated triggers)
+        // Remove only PointerEnter/PointerExit to avoid interfering with other handlers
+        for (int i = trig.triggers.Count - 1; i >= 0; --i)
+        {
+            if (trig.triggers[i].eventID == EventTriggerType.PointerEnter || trig.triggers[i].eventID == EventTriggerType.PointerExit)
+                trig.triggers.RemoveAt(i);
+        }
+
+        var entryEnter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        entryEnter.callback.AddListener((data) => { TooltipSystem.Instance.ShowSimpleTooltip(title, description); });
+        trig.triggers.Add(entryEnter);
+
+        var entryExit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        entryExit.callback.AddListener((data) => { TooltipSystem.Instance.HideTooltip(); });
+        trig.triggers.Add(entryExit);
     }
 
     // --- Slide animation settings ---
@@ -173,7 +205,6 @@ public class UnitInfoPanel : MonoBehaviour
         if (captureButton == null) Debug.LogWarning("[UnitInfoPanel] captureButton is not assigned in the Inspector.");
         // (Removed obsolete buildUnitsContainer/buildUnitButtonPrefab warnings)
         if (unitBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] unitBuildDropdown is not assigned in the Inspector.");
-        if (herdBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] herdBuildDropdown is not assigned in the Inspector.");
         if (buildHerdButton == null) Debug.LogWarning("[UnitInfoPanel] buildHerdButton is not assigned in the Inspector.");
         // Legacy startUnitBuildButton removed; use startBuildButton instead
     }
@@ -581,6 +612,15 @@ PopulateForWorkerUnit(currentWorkerUnit);
         }
     }
 
+    private void OnBuildHerdClicked()
+    {
+        if (currentWorkerUnit == null) return;
+        currentWorkerUnit.ClearFortify();
+        // WorkerUnit.StartBuildingHerd will instantiate the herd prefab at the worker's tile
+        currentWorkerUnit.StartBuildingHerd(null);
+        UpdateUnitInfoForWorkerUnit();
+    }
+
     private void OnFortifyClicked()
     {
         BaseUnit unit = currentCombatUnit != null ? (BaseUnit)currentCombatUnit : currentWorkerUnit;
@@ -683,13 +723,17 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Implement the logic to populate the panel for a CombatUnit
         // This is a placeholder and should be replaced with the actual implementation
 UpdateUnitInfoForCombatUnit();
-        // Capture button: if another selected unit (actor) exists and the displayed unit is captureable
+        // Capture button: if another selected unit (actor) exists, the displayed unit is captureable,
+        // and the actor is adjacent to the target.
         if (captureButton != null)
         {
             captureButton.onClick.RemoveAllListeners();
             var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
-            bool canCapture = actor != null && actor != combatUnit && combatUnit.data != null && combatUnit.data.captureable;
-            captureButton.gameObject.SetActive(canCapture);
+            bool canCapture = actor != null && actor != combatUnit && combatUnit.data != null && combatUnit.data.captureable && AreAdjacent(actor, combatUnit);
+            // Always show capture button; grey out (non-interactable) when not possible
+            captureButton.gameObject.SetActive(true);
+            captureButton.interactable = canCapture;
+            AddTooltipToButton(captureButton, "Capture", "Capture an adjacent animal or worker into a herd (requires adjacency).");
             if (canCapture)
             {
                 captureButton.onClick.AddListener(() => OnCaptureClicked(actor, combatUnit));
@@ -721,33 +765,46 @@ UpdateUnitInfoForWorkerUnit();
             forageButton.interactable = canForageNow;
         }
 
-        // Worker-driven herd builds are disabled; herd buildings are queued via the Herd UI only.
-        if (herdBuildDropdown != null)
-        {
-            herdBuildDropdown.onValueChanged.RemoveAllListeners();
-            herdBuildDropdown.ClearOptions();
-            herdBuildDropdown.interactable = false;
-            herdBuildDropdown.gameObject.SetActive(false);
-        }
+        // Worker herd creation: use a single herd button (behaves like SettleCity)
         if (buildHerdButton != null)
         {
             buildHerdButton.onClick.RemoveAllListeners();
-            buildHerdButton.interactable = false;
-            buildHerdButton.gameObject.SetActive(false);
+            buildHerdButton.gameObject.SetActive(true);
+            bool canCreateHerd = false;
+            if (workerUnit != null && workerUnit.owner != null)
+            {
+                canCreateHerd = workerUnit.owner.herdsEnabled && (workerUnit.owner.civData != null && workerUnit.owner.civData.herdPrefab != null);
+            }
+            buildHerdButton.interactable = canCreateHerd;
+            AddTooltipToButton(buildHerdButton, "Create Herd", "Create a herd at this tile (requires a civ herd prefab and herding tech). Herds cannot share the same tile.");
+            if (canCreateHerd)
+                buildHerdButton.onClick.AddListener(OnBuildHerdClicked);
         }
 
-        // Capture button: allow other selected unit to capture this worker if captureable
+        // Capture button: allow other selected unit to capture this worker if captureable and adjacent
         if (captureButton != null)
         {
             captureButton.onClick.RemoveAllListeners();
             var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
-            bool canCapture = actor != null && actor != workerUnit && workerUnit.data != null && workerUnit.data.captureable;
-            captureButton.gameObject.SetActive(canCapture);
+            bool canCapture = actor != null && actor != workerUnit && workerUnit.data != null && workerUnit.data.captureable && AreAdjacent(actor, workerUnit);
+            // Always show capture button; grey out (non-interactable) when not possible
+            captureButton.gameObject.SetActive(true);
+            captureButton.interactable = canCapture;
             if (canCapture)
             {
                 captureButton.onClick.AddListener(() => OnCaptureClicked(actor, workerUnit));
             }
         }
+
+    }
+
+    private bool AreAdjacent(BaseUnit a, BaseUnit b)
+    {
+        if (a == null || b == null) return false;
+        if (a.planetIndex != b.planetIndex) return false;
+        var ts = TileSystem.GetForPlanet(a.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) return false;
+        try { return ts.GetTileDistance(a.currentTileIndex, b.currentTileIndex) == 1; } catch { return false; }
     }
 
     private void UpdateWorkerActionStates(WorkerUnit workerUnit)

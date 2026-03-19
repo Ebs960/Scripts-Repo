@@ -458,11 +458,24 @@ public static class TacticalEvaluator
 
         if (needFood && AnimalManager.Instance != null)
         {
+            var ts = TileSystem.GetForPlanet(cu.planetIndex) ?? TileSystem.Instance;
             foreach (var animal in AnimalManager.Instance.GetActiveAnimals())
             {
                 if (animal == null || animal.data == null || animal.data.unitType != CombatCategory.Animal) continue;
                 if (animal.planetIndex != cu.planetIndex) continue;
-                if (cu.CanAttack(animal))
+                if (!cu.CanAttack(animal)) continue;
+
+                int dist = -1;
+                try { dist = ts != null ? ts.GetTileDistance(cu.currentTileIndex, animal.currentTileIndex) : -1; } catch { }
+
+                // If adjacent and animal is captureable, prefer a non-lethal capture action
+                if (animal.data.captureable && dist == 1)
+                {
+                    var cap = new AICaptureCommand { unit = cu, target = animal, planetIndex = cu.planetIndex };
+                    cap.score = AIScorer.ScoreAttack(cu, animal, dangerMap) + 8f; // bias toward capture when available
+                    commands.Add(cap);
+                }
+                else
                 {
                     var cmd = new AIAttackCommand { unit = cu, target = animal, planetIndex = cu.planetIndex };
                     cmd.score = AIScorer.ScoreAttack(cu, animal, dangerMap);

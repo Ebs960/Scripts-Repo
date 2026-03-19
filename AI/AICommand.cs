@@ -100,6 +100,60 @@ public class AIAttackCommand : AICommand
     }
 }
 
+// ─────────────────────────── Capture (non-lethal convert to herd) ───────────────────────────
+
+public class AICaptureCommand : AICommand
+{
+    public BaseUnit target;
+
+    public override bool CanExecute()
+    {
+        if (unit == null || target == null || unit.isStored) return false;
+        if (unit is CombatUnit cu)
+        {
+            if (cu.hasActedThisTurn) return false;
+            if (target.planetIndex != cu.planetIndex) return false;
+            var ts = TileSystem.GetForPlanet(cu.planetIndex) ?? TileSystem.Instance;
+            if (ts == null) return false;
+            int d = ts.GetTileDistance(cu.currentTileIndex, target.currentTileIndex);
+            if (d != 1) return false; // must be adjacent
+
+            if (target is CombatUnit ct && ct.data != null && ct.data.captureable) return true;
+            if (target is WorkerUnit wt && wt.data != null && wt.data.captureable) return true;
+        }
+        return false;
+    }
+
+    public override void Execute()
+    {
+        if (unit == null || target == null) return;
+        var cu = unit as CombatUnit;
+        var attackerCiv = unit.owner;
+        if (attackerCiv == null) return;
+
+        CombatUnitData targetCombatData = target is CombatUnit ? (target as CombatUnit).data : null;
+        WorkerUnitData targetWorkerData = target is WorkerUnit ? (target as WorkerUnit).data : null;
+        int herdCount = 0;
+        if (targetCombatData != null) herdCount = targetCombatData.captureHerdCount;
+        else if (targetWorkerData != null) herdCount = targetWorkerData.captureHerdCount;
+        if (herdCount > 0)
+        {
+            if (targetCombatData != null)
+                attackerCiv.AddAnimalsToNearestHerd(targetCombatData, herdCount, target.planetIndex, target.currentTileIndex);
+            else if (targetWorkerData != null)
+                attackerCiv.AddAnimalsToNearestHerd(targetWorkerData, herdCount, target.planetIndex, target.currentTileIndex);
+        }
+
+        // Destroy the captured unit GameObject without triggering normal kill flow
+        try { Object.Destroy(target.gameObject); } catch { }
+
+        if (cu != null)
+        {
+            try { cu.ConsumeAction(); } catch { }
+        }
+    }
+}
+
 // ─────────────────────── Approach Then Attack ───────────────────────
 
 /// <summary>

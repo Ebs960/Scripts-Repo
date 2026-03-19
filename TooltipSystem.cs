@@ -141,6 +141,18 @@ public class TooltipSystem : MonoBehaviour
         ShowTooltip();
     }
 
+    /// <summary>
+    /// Show a simple tooltip with a title and description. Hides other sections.
+    /// </summary>
+    public void ShowSimpleTooltip(string title, string description)
+    {
+        if (tooltipTitle != null) tooltipTitle.text = title ?? "";
+        if (tooltipDescription != null) tooltipDescription.text = description ?? "";
+        if (tooltipBonuses != null) tooltipBonuses.text = "";
+        if (tooltipUnlocks != null) tooltipUnlocks.text = "";
+        ShowTooltip();
+    }
+
     void ShowTooltip()
     {
         if (tooltipPanel != null)

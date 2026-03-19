@@ -1064,26 +1064,16 @@ public abstract class BaseUnit : MonoBehaviour
                     var deadCombat = this as CombatUnit;
                     var deadWorker = this as WorkerUnit;
 
-                    // Prefer converting killed captureable animals/workers into herd animals if configured
-                    if (deadCombat != null && deadCombat.data != null && deadCombat.data.captureable && deadCombat.data.captureHerdCount > 0 && attacker.owner != null)
-                    {
-                        try { attacker.owner.AddAnimalsToNearestHerd(deadCombat.data, deadCombat.data.captureHerdCount, this.planetIndex, this.currentTileIndex); } catch { }
-                    }
-                    else if (deadWorker != null && deadWorker.data != null && deadWorker.data.captureable && deadWorker.data.captureHerdCount > 0 && attacker.owner != null)
-                    {
-                        try { attacker.owner.AddAnimalsToNearestHerd(deadWorker.data, deadWorker.data.captureHerdCount, this.planetIndex, this.currentTileIndex); } catch { }
-                    }
-                    else
-                    {
-                        int food = 0;
-                        if (deadCombat != null && deadCombat.data != null)
-                            food = deadCombat.data.foodOnKill;
-                        else if (deadWorker != null && deadWorker.data != null)
-                            food = deadWorker.data.foodOnKill;
+                    // Dead animals/workers are NOT automatically captured anymore.
+                    // Award foodOnKill as before (if configured).
+                    int food = 0;
+                    if (deadCombat != null && deadCombat.data != null)
+                        food = deadCombat.data.foodOnKill;
+                    else if (deadWorker != null && deadWorker.data != null)
+                        food = deadWorker.data.foodOnKill;
 
-                        if (food > 0 && attacker.owner != null)
-                            attacker.owner.AddFood(food);
-                    }
+                    if (food > 0 && attacker.owner != null)
+                        attacker.owner.AddFood(food);
                 }
 
                 GameEventManager.Instance?.RaiseUnitKilledEvent(attacker, this, damageAmount);

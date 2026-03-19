@@ -551,8 +551,73 @@ public class WorkerUnit : BaseUnit
     /// </summary>
     public void StartBuildingHerd(BuildingData building)
     {
-        Debug.LogWarning("[WorkerUnit] StartBuildingHerd is disabled: worker-driven herd builds are not supported. Use the Herd UI to queue herd buildings like cities.");
-        // No-op for compatibility; herd building must be queued from the Herd UI which uses Herd.QueueProduction.
+        // Allow workers to found/create a herd prefab at their current tile (behaves like FoundCity but does not consume the worker).
+        if (owner == null)
+        {
+            Debug.LogWarning("[WorkerUnit] StartBuildingHerd failed: owner civ null");
+            return;
+        }
+
+        if (!owner.herdsEnabled)
+        {
+            Debug.LogWarning("[WorkerUnit] StartBuildingHerd failed: herding not enabled for civ");
+            return;
+        }
+
+        var prefabToUse = owner.civData != null ? owner.civData.herdPrefab : null;
+        if (prefabToUse == null)
+        {
+            Debug.LogWarning($"[WorkerUnit] Cannot create herd: civData.herdPrefab is not assigned for {owner.civData?.civName ?? owner.name}");
+            return;
+        }
+
+        // Prevent creating a herd on a tile that already has any occupant (unit, city, or herd)
+        try
+        {
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            if (occ != null)
+            {
+                var existing = TileOccupancyManager.GetOccupantObjectForTileWithFallback(currentTileIndex, TileLayer.Surface, planetIndex);
+                if (existing != null)
+                {
+                    Debug.LogWarning($"[WorkerUnit] Cannot create herd: tile {currentTileIndex} is already occupied by '{existing.name}'.");
+                    return;
+                }
+            }
+        }
+        catch { }
+
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var spawnPos = (ts != null && currentTileIndex >= 0) ? ts.GetTileSurfacePosition(currentTileIndex) : Vector3.zero;
+
+        // Instantiate inactive so we can assign ownership before OnEnable runs
+        GameObject go = Instantiate(prefabToUse);
+        go.transform.position = spawnPos;
+        go.SetActive(false);
+
+        var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
+        herd.owner = owner;
+        herd.planetIndex = planetIndex;
+        herd.currentTileIndex = currentTileIndex;
+
+        if (building != null)
+        {
+            try { herd.BuildStructure(building); } catch { }
+        }
+
+        go.SetActive(true);
+        // Register herd as tile occupant like cities/units
+        try
+        {
+            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+            if (occ != null)
+            {
+                occ.SetOccupant(currentTileIndex, go, TileLayer.Surface);
+            }
+        }
+        catch { }
+
+        Debug.Log($"[WorkerUnit] Created herd at tile {currentTileIndex} for civ {owner.civData?.civName ?? owner.name}");
     }
 
     #endregion
