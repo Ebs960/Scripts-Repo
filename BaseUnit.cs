@@ -271,6 +271,8 @@ public abstract class BaseUnit : MonoBehaviour
     public bool isStored = false;
     [System.NonSerialized]
     public ImprovementInstance storedInImprovement = null;
+    [System.NonSerialized]
+    public Herd storedInHerd = null;
     #endregion
 
     #region Animation Hashes

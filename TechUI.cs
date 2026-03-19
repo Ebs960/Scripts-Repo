@@ -81,9 +81,9 @@ public class TechUI : MonoBehaviour
         }
         UIManager.Instance.ShowPanel("techPanel");
         PopulateTechTree();
-        // Do not auto-select any technology when opening the UI; start with a blank info panel
-        currentlySelectedTech = null;
-        ClearInfoPanel();
+        // Preserve any prior explicit selection when reopening the UI.
+        // RefreshUI will reapply selection for `playerCiv.currentTech` or `currentlySelectedTech` if set.
+        RefreshUI();
     }
 
     public void Hide()
@@ -710,11 +710,12 @@ if (playerCiv == null) return;
         if (playerCiv == null) return;
         
         // Update the visual state based on research status
-        Image background = buttonUI.GetComponent<Image>();
+        Image background = null;
+        // Prefer the explicit background image exposed by the button UI component
+        try { background = buttonUI.BackgroundImage; } catch { background = null; }
+        if (background == null) background = buttonUI.GetComponent<Image>();
         if (background != null)
-        {
             background.color = GetTechStateColor(tech);
-        }
 
         if (playerCiv.researchedTechs.Contains(tech))
         {

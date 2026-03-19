@@ -267,6 +267,8 @@ public class CombatUnitData : ScriptableObject
     public bool captureable = false;
     [Tooltip("If >0, number of herd 'animals' added to a herd when this unit is captured/killed and converted")]
     public int captureHerdCount = 0;
+    [Tooltip("If set, explicit species this capture converts to (overrides name-matching).")]
+    public Herd.HerdSpecies captureSpecies = Herd.HerdSpecies.Other;
     
     [Header("Per-Turn Consumption")]
     [Tooltip("Food this unit consumes each turn (subtracted from civilization stockpile)")]

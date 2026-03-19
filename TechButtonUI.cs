@@ -30,6 +30,9 @@ public class TechButtonUI : MonoBehaviour
     private Button button;
     private bool isSelected;
     private TechState currentState;
+    
+    // Expose background image for external callers that need to update its color
+    public Image BackgroundImage => backgroundImage;
 
     /// <summary>
     /// Initializes the button with the tech data and owning TechUI.
@@ -83,8 +86,8 @@ public class TechButtonUI : MonoBehaviour
         if (button == null) button = GetComponent<Button>();
         if (button != null)
         {
-            // Only allow interaction if not researched
-            button.interactable = (state != TechState.Researched);
+            // Allow interaction only when the tech is available or currently researching
+            button.interactable = (state == TechState.Available || state == TechState.Researching);
         }
         RefreshButtonColorBlock();
         RefreshColor();
@@ -102,23 +105,24 @@ public class TechButtonUI : MonoBehaviour
         if (backgroundImage == null) return;
         if (isSelected)
         {
-            backgroundImage.color = selectedColor;
+            Color c = selectedColor; c.a = 1f;
+            backgroundImage.color = c;
             return;
         }
 
         switch (currentState)
         {
             case TechState.Researched:
-                backgroundImage.color = researchedColor;
+                { Color c = researchedColor; c.a = 1f; backgroundImage.color = c; }
                 break;
             case TechState.Researching:
-                backgroundImage.color = researchingColor;
+                { Color c = researchingColor; c.a = 1f; backgroundImage.color = c; }
                 break;
             case TechState.Available:
-                backgroundImage.color = availableColor;
+                { Color c = availableColor; c.a = 1f; backgroundImage.color = c; }
                 break;
             case TechState.Locked:
-                backgroundImage.color = lockedColor;
+                { Color c = lockedColor; c.a = 1f; backgroundImage.color = c; }
                 break;
         }
     }
@@ -128,12 +132,15 @@ public class TechButtonUI : MonoBehaviour
         if (button == null) return;
 
         Color baseColor = GetDisplayColorForCurrentState();
+        baseColor.a = 1f;
         Color hoverColor = currentState == TechState.Locked || isSelected
             ? baseColor
             : Color.Lerp(baseColor, Color.white, 0.18f);
+        hoverColor.a = 1f;
         Color pressedColor = currentState == TechState.Locked || isSelected
             ? baseColor
             : Color.Lerp(baseColor, Color.black, 0.12f);
+        pressedColor.a = 1f;
 
         ColorBlock colors = button.colors;
         colors.colorMultiplier = 1f;

@@ -91,6 +91,8 @@ public class WorkerUnitData : ScriptableObject
     public bool captureable = false;
     [Tooltip("If >0, number of herd 'animals' added to a herd when this worker is captured/killed and converted")]
     public int captureHerdCount = 0;
+    [Tooltip("If set, explicit species this capture converts to (overrides name-matching).")]
+    public Herd.HerdSpecies captureSpecies = Herd.HerdSpecies.Other;
 
     [Header("Build Options")]
     public RouteType[] buildableRoutes;

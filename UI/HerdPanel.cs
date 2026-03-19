@@ -4,6 +4,11 @@ using UnityEngine.UI;
 
 public class HerdPanel : MonoBehaviour
 {
+    private void Awake()
+    {
+        // Ensure the herd panel starts hidden like other panels
+        gameObject.SetActive(false);
+    }
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI animalsText;
     public TextMeshProUGUI foodText;

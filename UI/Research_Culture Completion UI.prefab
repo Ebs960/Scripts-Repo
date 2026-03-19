@@ -394,7 +394,7 @@ MonoBehaviour:
   titleText: {fileID: 1204619212621286382}
   descriptionText: {fileID: 2035755178790885817}
   detailsText: {fileID: 3384702153162592355}
-  closeButton: {fileID: 0}
+  closeButton: {fileID: 8918055073512183548}
   autoHideSeconds: 60
 --- !u!1 &3809305424106741947
 GameObject:

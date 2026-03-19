@@ -671,9 +671,67 @@ public class Civilization : MonoBehaviour
     // Backwards-compatible overload accepting WorkerUnitData (some code paths may pass worker data when converting captures).
     public void AddAnimalsToNearestHerd(WorkerUnitData type, int count, int planetIndex, int tileIndex, int maxSearchDistance = 10)
     {
-        // Currently no conversion from WorkerUnitData to CombatUnitData is implemented.
-        // Log and skip to avoid runtime errors when worker data is supplied for captures.
         if (type == null || count <= 0) return;
+        // If WorkerUnitData specifies a capture species, convert and add directly to nearest herd
+        try
+        {
+            var s = type.captureSpecies;
+            if (s != Herd.HerdSpecies.Other)
+            {
+                Herd best = null;
+                int bestDist = int.MaxValue;
+                var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+
+                foreach (var h in herds)
+                {
+                    if (h == null) continue;
+                    if (h.planetIndex != planetIndex) continue;
+                    int d = int.MaxValue;
+                    try
+                    {
+                        if (ts != null && h.currentTileIndex >= 0 && tileIndex >= 0)
+                            d = ts.GetTileDistance(h.currentTileIndex, tileIndex);
+                    }
+                    catch { }
+
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = h;
+                    }
+                }
+
+                if (best != null && bestDist <= maxSearchDistance)
+                {
+                    best.AddAnimals(s, count);
+                    return;
+                }
+
+                // Create new herd if none nearby
+                try
+                {
+                    GameObject go;
+                    var spawnPos = (ts != null && tileIndex >= 0) ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero;
+                    var prefabToUse = (civData != null) ? civData.herdPrefab : null;
+                    if (prefabToUse == null)
+                    {
+                        Debug.LogWarning($"[Civilization] Cannot spawn herd: civData.herdPrefab is not assigned for {(civData != null ? civData.civName : name)}. Aborting spawn.");
+                        return;
+                    }
+                    go = Instantiate(prefabToUse, spawnPos, Quaternion.identity);
+
+                    var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
+                    herd.owner = this;
+                    herd.planetIndex = planetIndex;
+                    herd.currentTileIndex = tileIndex;
+                    herd.AddAnimals(s, count);
+                }
+                catch { }
+                return;
+            }
+        }
+        catch { }
+
         Debug.LogWarning("[Civilization] AddAnimalsToNearestHerd called with WorkerUnitData — no animal conversion implemented.");
     }
 

@@ -578,7 +578,8 @@ public class WorkerUnit : BaseUnit
             if (occ != null)
             {
                 var existing = TileOccupancyManager.GetOccupantObjectForTileWithFallback(currentTileIndex, TileLayer.Surface, planetIndex);
-                if (existing != null)
+                // Allow herd creation if the only occupant is this worker (we will store the worker in the herd)
+                if (existing != null && existing != this.gameObject)
                 {
                     Debug.LogWarning($"[WorkerUnit] Cannot create herd: tile {currentTileIndex} is already occupied by '{existing.name}'.");
                     return;
@@ -606,13 +607,23 @@ public class WorkerUnit : BaseUnit
         }
 
         go.SetActive(true);
-        // Register herd as tile occupant like cities/units
+
+        // Attempt to store the worker inside the new herd (behaves like garrisoning)
         try
         {
-            var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
-            if (occ != null)
+            if (herd.StoreUnit(this))
             {
-                occ.SetOccupant(currentTileIndex, go, TileLayer.Surface);
+                // Now register herd as tile occupant like cities/units
+                var occ2 = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                if (occ2 != null)
+                    occ2.SetOccupant(currentTileIndex, go, TileLayer.Surface);
+            }
+            else
+            {
+                // Fallback: if storing failed, still register herd as occupant
+                var occ2 = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+                if (occ2 != null)
+                    occ2.SetOccupant(currentTileIndex, go, TileLayer.Surface);
             }
         }
         catch { }

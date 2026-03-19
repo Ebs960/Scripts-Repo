@@ -15,6 +15,10 @@ public class Herd : MonoBehaviour
     [System.Serializable]
     public class HerdEntry { public HerdSpecies species; public int count = 0; }
 
+    [Header("Stored Units")]
+    // Units stored inside this herd (e.g., worker who founded the herd)
+    public System.Collections.Generic.List<BaseUnit> storedUnits = new System.Collections.Generic.List<BaseUnit>();
+
     [Header("Animals (counts, abstract)")]
     public List<HerdEntry> animals = new List<HerdEntry>();
 
@@ -156,14 +160,104 @@ public class Herd : MonoBehaviour
     public void AddAnimals(CombatUnitData type, int count)
     {
         if (type == null || count <= 0) return;
-        var name = (type.unitName ?? "").ToLowerInvariant();
+        // Prefer explicit species set on unit data
         HerdSpecies s = HerdSpecies.Other;
-        if (name.Contains("chicken")) s = HerdSpecies.Chicken;
-        else if (name.Contains("cow")) s = HerdSpecies.Cow;
-        else if (name.Contains("pig")) s = HerdSpecies.Pig;
-        else if (name.Contains("sheep") || name.Contains("ewe") || name.Contains("ram")) s = HerdSpecies.Sheep;
+        try { s = type.captureSpecies; } catch { s = HerdSpecies.Other; }
+        if (s == HerdSpecies.Other)
+        {
+            var name = (type.unitName ?? "").ToLowerInvariant();
+            if (name.Contains("chicken")) s = HerdSpecies.Chicken;
+            else if (name.Contains("cow")) s = HerdSpecies.Cow;
+            else if (name.Contains("pig")) s = HerdSpecies.Pig;
+            else if (name.Contains("sheep") || name.Contains("ewe") || name.Contains("ram")) s = HerdSpecies.Sheep;
+        }
 
         AddAnimals(s, count);
+    }
+
+    /// <summary>
+    /// Store a unit inside this herd (e.g., the worker who founded it).
+    /// Unit will be deactivated and marked as stored until unstored.
+    /// </summary>
+    public bool StoreUnit(BaseUnit unit)
+    {
+        if (unit == null) return false;
+        if (owner != null && unit.owner != owner) return false;
+        if (storedUnits == null) storedUnits = new System.Collections.Generic.List<BaseUnit>();
+        if (storedUnits.Contains(unit)) return false;
+        if (unit.currentTileIndex != currentTileIndex) return false;
+
+        var occ = TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
+        {
+            occ.ClearOccupant(currentTileIndex, TileLayer.Surface);
+        }
+
+        unit.isStored = true;
+        unit.storedInHerd = this;
+        unit.currentTileIndex = -1;
+        unit.gameObject.SetActive(false);
+
+        storedUnits.Add(unit);
+        return true;
+    }
+
+    /// <summary>
+    /// Try to unstore a unit back to the herd tile or an adjacent free tile.
+    /// </summary>
+    public bool TryUnstoreUnit(BaseUnit unit)
+    {
+        if (unit == null || storedUnits == null || !storedUnits.Contains(unit)) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+
+        // First try herd tile
+        if (occ != null && occ.GetOccupantObject(currentTileIndex, TileLayer.Surface) == null)
+            return UnstoreToTile(unit, currentTileIndex);
+
+        // Then try neighbors
+        if (ts != null)
+        {
+            var neighbors = ts.GetNeighbors(currentTileIndex);
+            if (neighbors != null)
+            {
+                foreach (var n in neighbors)
+                {
+                    if (n < 0) continue;
+                    var td = ts.GetTileData(n);
+                    if (td == null || !td.isPassable) continue;
+                    if (occ != null && occ.GetOccupantObject(n, TileLayer.Surface) != null) continue;
+                    return UnstoreToTile(unit, n);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool UnstoreToTile(BaseUnit unit, int tile)
+    {
+        if (unit == null) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+
+        if (ts != null)
+        {
+            Vector3 pos = ts.GetTileCenterFlat(tile);
+            unit.transform.position = pos;
+        }
+
+        unit.currentTileIndex = tile;
+        try { unit.RegisterToRegistry(); } catch { }
+        if (occ != null)
+            occ.SetOccupant(tile, unit.gameObject, TileLayer.Surface);
+
+        unit.gameObject.SetActive(true);
+        unit.isStored = false;
+        unit.storedInHerd = null;
+
+        storedUnits.Remove(unit);
+        return true;
     }
 
     /// <summary>
