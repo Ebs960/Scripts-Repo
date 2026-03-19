@@ -544,6 +544,17 @@ public class WorkerUnit : BaseUnit
         currentWorkPoints = 0;
     }
 
+    /// <summary>
+    /// Build a herd-capable building using this worker's current work points.
+    /// This consumes the worker's `currentWorkPoints` immediately and attaches the building to the nearest herd owned by the worker's civ.
+    /// If no herd exists nearby, a new herd is created at the worker's tile and the building is attached.
+    /// </summary>
+    public void StartBuildingHerd(BuildingData building)
+    {
+        Debug.LogWarning("[WorkerUnit] StartBuildingHerd is disabled: worker-driven herd builds are not supported. Use the Herd UI to queue herd buildings like cities.");
+        // No-op for compatibility; herd building must be queued from the Herd UI which uses Herd.QueueProduction.
+    }
+
     #endregion
 
     #region Helper Methods

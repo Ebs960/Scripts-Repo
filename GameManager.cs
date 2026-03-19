@@ -2567,6 +2567,18 @@ public class GameManager : MonoBehaviour
                                     if (idx >= 0) gsd.assignedCityIndices.Add(idx);
                                 }
                             }
+                            // Assigned herds as refs (planet+tile)
+                            if (gov.Herds != null)
+                            {
+                                foreach (var herd in gov.Herds)
+                                {
+                                    if (herd == null) continue;
+                                    var hr = new PauseMenuManager.HerdRef();
+                                    hr.planetIndex = herd.planetIndex;
+                                    hr.tileIndex = herd.currentTileIndex;
+                                    gsd.assignedHerdRefs.Add(hr);
+                                }
+                            }
                             // Traits
                             if (gov.Traits != null)
                             {
@@ -2867,6 +2879,73 @@ public class GameManager : MonoBehaviour
                 unlockedPantheons,
                 unlockedBeliefs);
 
+            // Restore herd production queues saved for this civilization
+            try
+            {
+                if (progress.herdQueues != null && progress.herdQueues.Count > 0)
+                {
+                    // Build lookup for buildings by asset name
+                    var buildingLookup = BuildAssetLookup(ResourceCache.GetAllBuildings(), b => b.buildingName);
+
+                    foreach (var hq in progress.herdQueues)
+                    {
+                        if (hq == null) continue;
+                        Herd targetHerd = null;
+                        if (civ.herds != null)
+                        {
+                            foreach (var h in civ.herds)
+                            {
+                                if (h == null) continue;
+                                if (h.planetIndex == hq.planetIndex && h.currentTileIndex == hq.tileIndex)
+                                {
+                                    targetHerd = h; break;
+                                }
+                            }
+                        }
+
+                        // If no existing herd found, create one at the saved tile
+                        if (targetHerd == null)
+                        {
+                            try
+                            {
+                                var go = new GameObject($"Herd_{(civ.civData != null ? civ.civData.civName : civ.name)}_{hq.tileIndex}");
+                                var herd = go.AddComponent<Herd>();
+                                herd.owner = civ;
+                                herd.planetIndex = hq.planetIndex;
+                                herd.currentTileIndex = hq.tileIndex;
+                                targetHerd = herd;
+                            }
+                            catch { }
+                        }
+
+                        if (targetHerd == null) continue;
+                        // Clear existing queue and repopulate
+                        try
+                        {
+                            targetHerd.productionQueue = targetHerd.productionQueue ?? new System.Collections.Generic.List<Herd.ProdEntry>();
+                            targetHerd.productionQueue.Clear();
+                            if (hq.queue != null)
+                            {
+                                foreach (var pe in hq.queue)
+                                {
+                                    if (pe == null || string.IsNullOrWhiteSpace(pe.dataName)) continue;
+                                    if (!buildingLookup.TryGetValue(pe.dataName, out var bd) || bd == null) continue;
+                                    var entry = new Herd.ProdEntry(bd, bd.productionCost, bd.goldCost, bd.requiredResources, bd.requiredTerrains);
+                                    entry.remainingPts = pe.remainingPts;
+                                    entry.goldCost = pe.goldCost;
+                                    targetHerd.productionQueue.Add(entry);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[SaveLoad] Failed to restore herd queues for civ {civ.civData?.civName ?? progress.civIndex.ToString()}: {ex}");
+            }
+
             // Reconstruct governors from save data for this civilization
             try
             {
@@ -2914,6 +2993,38 @@ public class GameManager : MonoBehaviour
                                 {
                                     civ.AssignGovernorToCity(newGov, assignCity);
                                 }
+                            }
+                        }
+                        // Assign to herds by saved refs (planet+tile)
+                        if (gsd.assignedHerdRefs != null && gsd.assignedHerdRefs.Count > 0)
+                        {
+                            foreach (var href in gsd.assignedHerdRefs)
+                            {
+                                if (href == null) continue;
+                                Herd targetHerd = null;
+                                try
+                                {
+                                    // Try to find an existing herd matching planet+tile
+                                    if (civ.herds != null)
+                                    {
+                                        foreach (var hh in civ.herds)
+                                            if (hh != null && hh.planetIndex == href.planetIndex && hh.currentTileIndex == href.tileIndex)
+                                                { targetHerd = hh; break; }
+                                    }
+                                    // If not found, create one at the saved tile
+                                    if (targetHerd == null)
+                                    {
+                                        var go = new GameObject($"Herd_{(civ.civData != null ? civ.civData.civName : civ.name)}_{href.tileIndex}");
+                                        var herd = go.AddComponent<Herd>();
+                                        herd.owner = civ;
+                                        herd.planetIndex = href.planetIndex;
+                                        herd.currentTileIndex = href.tileIndex;
+                                        targetHerd = herd;
+                                    }
+                                }
+                                catch { }
+
+                                if (targetHerd != null) civ.AssignGovernorToHerd(newGov, targetHerd);
                             }
                         }
                     }

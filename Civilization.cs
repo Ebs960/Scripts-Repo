@@ -242,6 +242,65 @@ public class Civilization : MonoBehaviour
     public int policyPoints;
     public int faith;
     
+    [Header("Herds")]
+    public bool herdsEnabled = false; // set by techs/cultures when herd mechanic becomes available
+    public List<Herd> herds = new List<Herd>();
+
+    /// <summary>
+    /// Add captured/purchased animals to the nearest herd owned by this civilization on the same planet.
+    /// If no nearby herd is found within `maxSearchDistance`, a new Herd GameObject is created at `tileIndex`.
+    /// </summary>
+    public void AddAnimalsToNearestHerd(CombatUnitData type, int count, int planetIndex, int tileIndex, int maxSearchDistance = 10)
+    {
+        if (type == null || count <= 0) return;
+
+        Herd best = null;
+        int bestDist = int.MaxValue;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+
+        foreach (var h in herds)
+        {
+            if (h == null) continue;
+            if (h.planetIndex != planetIndex) continue;
+            int d = int.MaxValue;
+            try
+            {
+                if (ts != null && h.currentTileIndex >= 0 && tileIndex >= 0)
+                    d = ts.GetTileDistance(h.currentTileIndex, tileIndex);
+            }
+            catch { }
+
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = h;
+            }
+        }
+
+        if (best != null && bestDist <= maxSearchDistance)
+        {
+            best.AddAnimals(type, count);
+            return;
+        }
+
+        // Create a new herd at the tile
+        try
+        {
+            var go = new GameObject($"Herd_{(civData != null ? civData.civName : name)}_{tileIndex}");
+            var herd = go.AddComponent<Herd>();
+            herd.owner = this;
+            herd.planetIndex = planetIndex;
+            herd.currentTileIndex = tileIndex;
+            // set position if tile system available
+            if (ts != null && tileIndex >= 0)
+            {
+                try { go.transform.position = ts.GetTileSurfacePosition(tileIndex); } catch { }
+            }
+            herd.AddAnimals(type, count);
+        }
+        catch { }
+    }
+    
     [Header("Consumption Settings")]
     [Tooltip("Minimum food stockpile (prevents going below zero with buffer)")]
     public int minimumFoodStockpile = -1;
@@ -488,10 +547,54 @@ public class Civilization : MonoBehaviour
         return false;
     }
 
+    // Assign a governor to a herd (removes from previous herd if needed)
+    public bool AssignGovernorToHerd(Governor governor, Herd herd)
+    {
+        if (!governorsEnabled) return false;
+        if (governor == null || herd == null) return false;
+        // Remove from any previous herd assignments
+        // Remove this herd from any governor that currently references it
+        foreach (var g in governors)
+        {
+            if (g == null) continue;
+            if (g.Herds.Contains(herd))
+            {
+                g.Herds.Remove(herd);
+                herd.governor = null;
+            }
+        }
+        // Assign
+        herd.governor = governor;
+        if (!governor.Herds.Contains(herd)) governor.Herds.Add(herd);
+        // Notify the herd to apply governor bonuses
+        try { herd.RefreshGovernorBonuses(); } catch { }
+        return true;
+    }
+
+    // Remove a governor from a herd
+    public bool RemoveGovernorFromHerd(Governor governor, Herd herd)
+    {
+        if (governor == null || herd == null) return false;
+        if (herd.governor == governor)
+        {
+            herd.governor = null;
+            governor.Herds.Remove(herd);
+            try { herd.RefreshGovernorBonuses(); } catch { }
+            return true;
+        }
+        return false;
+    }
+
     // Get all cities in a province (all cities assigned to a governor)
     public List<City> GetProvinceCities(Governor governor)
     {
         return governor?.Cities ?? new List<City>();
+    }
+
+    // Get all herds assigned to a governor
+    public List<Herd> GetGovernorHerds(Governor governor)
+    {
+        return governor?.Herds ?? new List<Herd>();
     }
 
     void Awake()
@@ -501,6 +604,68 @@ public class Civilization : MonoBehaviour
         {
             InitializeLeaderUniques();
         }
+    }
+
+    /// <summary>
+    /// Attach a building to the nearest herd owned by this civ on the same planet.
+    /// If none found within `maxSearchDistance`, create a new herd at the tile and attach the building.
+    /// </summary>
+    public void AddStructureToNearestHerd(BuildingData building, int planetIndex, int tileIndex, int maxSearchDistance = 10)
+    {
+        if (building == null) return;
+
+        Herd best = null;
+        int bestDist = int.MaxValue;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+
+        foreach (var h in herds)
+        {
+            if (h == null) continue;
+            if (h.planetIndex != planetIndex) continue;
+            int d = int.MaxValue;
+            try
+            {
+                if (ts != null && h.currentTileIndex >= 0 && tileIndex >= 0)
+                    d = ts.GetTileDistance(h.currentTileIndex, tileIndex);
+            }
+            catch { }
+
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = h;
+            }
+        }
+
+        if (best != null && bestDist <= maxSearchDistance)
+        {
+            best.BuildStructure(building);
+            return;
+        }
+
+        try
+        {
+            var go = new GameObject($"Herd_{(civData != null ? civData.civName : name)}_{tileIndex}");
+            var herd = go.AddComponent<Herd>();
+            herd.owner = this;
+            herd.planetIndex = planetIndex;
+            herd.currentTileIndex = tileIndex;
+            if (ts != null && tileIndex >= 0)
+            {
+                try { go.transform.position = ts.GetTileSurfacePosition(tileIndex); } catch { }
+            }
+            herd.BuildStructure(building);
+        }
+        catch { }
+    }
+
+    // Backwards-compatible overload accepting WorkerUnitData (some code paths may pass worker data when converting captures).
+    public void AddAnimalsToNearestHerd(WorkerUnitData type, int count, int planetIndex, int tileIndex, int maxSearchDistance = 10)
+    {
+        // Currently no conversion from WorkerUnitData to CombatUnitData is implemented.
+        // Log and skip to avoid runtime errors when worker data is supplied for captures.
+        if (type == null || count <= 0) return;
+        Debug.LogWarning("[Civilization] AddAnimalsToNearestHerd called with WorkerUnitData — no animal conversion implemented.");
     }
 
     void Start()
@@ -826,6 +991,106 @@ public class Civilization : MonoBehaviour
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
             policyPoints += addPol; // no global modifier currently
+        }
+
+        // 3.75) Herd yields & grazing
+        if (herds != null && herds.Count > 0)
+        {
+            foreach (var h in herds.ToArray())
+            {
+                if (h == null) continue;
+                try
+                {
+                    // Process herd-local production (herd acts like a mobile city)
+                    try { h.ProcessProduction(); } catch { }
+                    h.ProcessGrazingTick(round);
+
+                    // Sum animal per-turn yields using herd rules (per-100 species contributions)
+                    int totalAnimalConsumption = 0;
+                    int totalAnimals = 0;
+                    foreach (var ae in h.animals)
+                    {
+                        if (ae == null) continue;
+                        int cnt = Mathf.Max(0, ae.count);
+                        totalAnimals += cnt;
+                        totalAnimalConsumption += cnt * Herd.GetFoodConsumptionPerAnimal(ae.species);
+                    }
+
+                    // Animal yields (food/gold/production) computed by herd per-100 rules
+                    var ay = h.GetAnimalYields();
+                    // Apply civilization modifiers to herd yields (food/gold/science/culture/faith)
+                    gold += Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
+                    food += Mathf.RoundToInt(ay.Food * (1 + foodModifier));
+                    totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
+                    totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
+                    faith += Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
+                    policyPoints += ay.Policy;
+                    // Herd production may be consumed locally for herd builds; add its production to civ stats as well
+                    // (optional display/aggregation)
+                    // production += h.GetProductionPerTurn();
+
+                    // Consume from herd's foodReserve (herd grazing provides food, not civ stockpile)
+                    if (totalAnimalConsumption > 0)
+                    {
+                        if (h.foodReserve >= totalAnimalConsumption)
+                        {
+                            h.foodReserve -= totalAnimalConsumption;
+                        }
+                        else
+                        {
+                            int deficit = totalAnimalConsumption - h.foodReserve;
+                            h.foodReserve = 0;
+
+                            // Default starvation percent loss
+                            float baseStarvePercent = 0.25f;
+                            // Sum reductions from researched techs and cultures
+                            float reduction = 0f;
+                            if (researchedTechs != null)
+                                foreach (var t in researchedTechs) if (t != null) reduction += t.herdStarvationPercentReduction;
+                            if (researchedCultures != null)
+                                foreach (var c in researchedCultures) if (c != null) reduction += c.herdStarvationPercentReduction;
+
+                            float netPercent = Mathf.Max(0f, baseStarvePercent - reduction);
+
+                            // If there are animals, remove netPercent of total animals (round up)
+                            if (totalAnimals > 0 && netPercent > 0f)
+                            {
+                                int animalsToLose = Mathf.CeilToInt(totalAnimals * netPercent);
+                                int remainingToRemove = animalsToLose;
+
+                                // Remove proportionally from each animal entry
+                                for (int i = h.animals.Count - 1; i >= 0 && remainingToRemove > 0; i--)
+                                {
+                                    var ae = h.animals[i];
+                                    if (ae == null || ae.count <= 0) { h.animals.RemoveAt(i); continue; }
+                                    int remove = Mathf.FloorToInt(((float)ae.count / (float)totalAnimals) * animalsToLose);
+                                    // Ensure we remove at least 1 when needed
+                                    if (remove <= 0) remove = 1;
+                                    remove = Mathf.Min(remove, ae.count);
+                                    ae.count -= remove;
+                                    remainingToRemove -= remove;
+                                    if (ae.count == 0) h.animals.RemoveAt(i);
+                                }
+
+                                // If rounding left some remaining, remove from largest stacks
+                                while (remainingToRemove > 0 && h.animals.Count > 0)
+                                {
+                                    var largest = h.animals[0];
+                                    foreach (var ae in h.animals) if (ae.count > largest.count) largest = ae;
+                                    if (largest == null) break;
+                                    largest.count = Mathf.Max(0, largest.count - 1);
+                                    if (largest.count == 0) h.animals.Remove(largest);
+                                    remainingToRemove--;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[Civilization] Error processing herd grazing: {ex.Message}");
+                }
+            }
         }
 
         // Commit computed per-turn science & culture yields into their fields (do not accumulate across turns)
@@ -1875,6 +2140,13 @@ return true;
 
     // Notify listeners that unlock-driven availability may have changed
     OnUnlocksChanged?.Invoke();
+
+    // If this tech enables herding, toggle the civ-level flag and notify player
+    if (tech.enablesHerding)
+    {
+        herdsEnabled = true;
+        UIManager.Instance?.ShowNotification($"{(civData!=null?civData.civName:"A civ")} has unlocked Herding!");
+    }
     }
 
     // Compute aggregated flat work points granted to ALL workers by techs/cultures/policies/government

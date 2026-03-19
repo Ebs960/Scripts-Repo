@@ -61,6 +61,7 @@ public class ImprovementManager : MonoBehaviour
         public bool armed;
     }
 
+
     // Get a reference to the planet generator (for legacy compatibility)
     private void InitializeReferences()
     {
@@ -388,6 +389,8 @@ public class ImprovementManager : MonoBehaviour
         return job != null && (data == null || job.data == data);
     }
 
+    // Legacy herd job pipeline removed; herds now manage their own production queues.
+
     public bool HasUnitJobAtTile(int tileIndex, int planetIndex = -1, CombatUnitData data = null)
     {
         planetIndex = ResolvePlanetIndex(planetIndex);
@@ -503,8 +506,7 @@ public class ImprovementManager : MonoBehaviour
     /// </summary>
     public void ProcessTurn(Civilization civ)
     {
-        // If you want civ-wide auto build, you can iterate jobs owned by civ
-        // and automatically deduct workPoints from idle workers here.
+        // Herd production is handled by Herd.ProcessProduction called from Civilization per-turn loop.
     }
 
     /// <summary>
@@ -708,6 +710,8 @@ public class ImprovementManager : MonoBehaviour
 
         jobs.Remove(job);
     }
+
+    // Legacy herd job completion removed; herds handle their own build completion.
 
     private void CompleteUnitJob(UnitJob job)
     {

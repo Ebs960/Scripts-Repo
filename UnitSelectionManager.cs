@@ -232,6 +232,23 @@ public class UnitSelectionManager : MonoBehaviour
         {
             // Guard: if a unit was selected this very frame (e.g. via OnMouseDown on the
             // unit's collider), do NOT deselect it here. Let that click be authoritative.
+            // Try herd selection: if a Herd is occupying this tile, open the Herd panel
+            try
+            {
+                var herd = GetHerdOnTile(tileIndex);
+                if (herd == null)
+                    herd = GetHerdAtPosition(worldPos);
+                if (herd != null)
+                {
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.ShowHerdPanelForHerd(herd);
+                    }
+                    return true; // consume click when selecting herd
+                }
+            }
+            catch { }
+
             if (lastSelectionFrame == Time.frameCount)
                 return false;
 
@@ -262,6 +279,26 @@ public class UnitSelectionManager : MonoBehaviour
             }
         }
         catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetUnitOnTile({tileIndex}) failed: {ex.Message}"); }
+        return null;
+    }
+
+    /// <summary>
+    /// Get a herd occupying the given tile index (if any).
+    /// </summary>
+    private Herd GetHerdOnTile(int tileIndex)
+    {
+        int pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        try
+        {
+            var occ = TileOccupancyManager.GetForPlanet(pIndex) ?? TileOccupancyManager.Instance;
+            var obj = occ != null ? occ.TryGetAnyOccupantObject(tileIndex) : null;
+            if (obj != null)
+            {
+                var herd = obj.GetComponent<Herd>();
+                return herd;
+            }
+        }
+        catch (System.Exception ex) { Debug.LogWarning($"[UnitSelectionManager] GetHerdOnTile({tileIndex}) failed: {ex.Message}"); }
         return null;
     }
     
@@ -1072,6 +1109,38 @@ public class UnitSelectionManager : MonoBehaviour
             }
         }
         
+        return null;
+    }
+
+    /// <summary>
+    /// Find a Herd near the given world position.
+    /// </summary>
+    private Herd GetHerdAtPosition(Vector3 worldPosition)
+    {
+        Collider[] colliders = Physics.OverlapSphere(worldPosition, 1.5f);
+        foreach (var collider in colliders)
+        {
+            var herd = collider.GetComponentInParent<Herd>();
+            if (herd != null)
+            {
+                if (previewDebug) Debug.Log($"[USM] GetHerdAtPosition hit collider={collider.name} herd={herd.name}");
+                return herd;
+            }
+        }
+
+        // orbit layer check (if herds are represented in orbit - unlikely but keep parity)
+        Vector3 orbitPosition = worldPosition + Vector3.up * PlanetGenerator.GetOrbitHeight();
+        Collider[] orbitColliders = Physics.OverlapSphere(orbitPosition, 1f);
+        foreach (var collider in orbitColliders)
+        {
+            var herd = collider.GetComponentInParent<Herd>();
+            if (herd != null)
+            {
+                if (previewDebug) Debug.Log($"[USM] GetHerdAtPosition orbit hit collider={collider.name} herd={herd.name}");
+                return herd;
+            }
+        }
+
         return null;
     }
     

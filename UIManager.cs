@@ -12,6 +12,7 @@ public class UIManager : MonoBehaviour
     public GameObject cityPanel;
     public GameObject techPanel;
     public GameObject culturePanel;
+    public GameObject herdPanel;
     public GameObject governmentPanel;
     public GameObject religionPanel;
     public GameObject tradePanel;
@@ -74,6 +75,8 @@ public class UIManager : MonoBehaviour
             { "equipmentPanel", equipmentPanel },
             { "UnitInfoPanel", unitInfoPanel },
             { "unitInfoPanel", unitInfoPanel },
+            { "HerdPanel", herdPanel },
+            { "herdPanel", herdPanel },
             { "GovernmentPanel", governmentPanel },
             { "governmentPanel", governmentPanel },
             { "PauseMenuPanel", pauseMenuPanel },
@@ -534,6 +537,22 @@ public class UIManager : MonoBehaviour
         var infoUI = unitInfoPanel.GetComponent<UnitInfoPanel>();
         if (infoUI != null)
             infoUI.ShowPanel(unit);
+    }
+
+    public void ShowHerdPanelForHerd(Herd herd)
+    {
+        if (herdPanel == null || herd == null) return;
+        ShowPanel("HerdPanel");
+        var hp = herdPanel.GetComponent<HerdPanel>();
+        if (hp != null)
+            hp.ShowPanel(herd);
+    }
+
+    public void HideHerdPanel()
+    {
+        if (herdPanel == null) return;
+        var hp = herdPanel.GetComponent<HerdPanel>();
+        if (hp != null) hp.HidePanel();
     }
 
     public void HideUnitInfoPanel()

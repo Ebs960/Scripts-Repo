@@ -127,6 +127,24 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> cultureUnlockedBeliefNames = new List<string>();
         // Per-civ governor state
         public List<GovernorSaveData> governors = new List<GovernorSaveData>();
+        // Herd queues owned by this civilization (per-herd, identified by planet & tile)
+        public List<HerdQueueSaveData> herdQueues = new List<HerdQueueSaveData>();
+    }
+
+    [Serializable]
+    public class HerdQueueSaveData
+    {
+        public int planetIndex;
+        public int tileIndex;
+        public List<HerdProdEntrySaveData> queue = new List<HerdProdEntrySaveData>();
+    }
+
+    [Serializable]
+    public class HerdProdEntrySaveData
+    {
+        public string dataName; // BuildingData asset name
+        public int remainingPts;
+        public int goldCost;
     }
 
     [Serializable]
@@ -139,8 +157,17 @@ public class PauseMenuManager : MonoBehaviour
         public int experience;
         // Indices into the parent civilization's `cities` list for assigned cities
         public List<int> assignedCityIndices = new List<int>();
+        // Herd references (planet + tile) for assigned herds
+        public List<HerdRef> assignedHerdRefs = new List<HerdRef>();
         // Trait names assigned to this governor
         public List<string> traitNames = new List<string>();
+    }
+
+    [Serializable]
+    public class HerdRef
+    {
+        public int planetIndex;
+        public int tileIndex;
     }
 
     [Serializable]
@@ -636,6 +663,34 @@ HideSaveLoadUI();
                             if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
 
                     saveData.civilizationProgress.Add(civProgress);
+                    // Export herd production queues for this civ
+                    try
+                    {
+                        if (civ.herds != null)
+                        {
+                            foreach (var h in civ.herds)
+                            {
+                                if (h == null) continue;
+                                var hq = new HerdQueueSaveData();
+                                hq.planetIndex = h.planetIndex;
+                                hq.tileIndex = h.currentTileIndex;
+                                if (h.productionQueue != null && h.productionQueue.Count > 0)
+                                {
+                                    foreach (var e in h.productionQueue)
+                                    {
+                                        if (e == null || e.data == null) continue;
+                                        var pe = new HerdProdEntrySaveData();
+                                        pe.dataName = e.data.name;
+                                        pe.remainingPts = e.remainingPts;
+                                        pe.goldCost = e.goldCost;
+                                        hq.queue.Add(pe);
+                                    }
+                                }
+                                civProgress.herdQueues.Add(hq);
+                            }
+                        }
+                    }
+                    catch { }
 
                     // Combat units
                     if (civ.combatUnits != null)

@@ -77,6 +77,11 @@ public class BuildingData : ScriptableObject
     [Header("Other Effects")]
     public float defenseBonus;
     public float happinessBonus;
+    [Header("Herd / Nomad Options")]
+    [Tooltip("If true, this building may be constructed by/for herds (mobile structures)")]
+    public bool buildableByHerd = false;
+    [Tooltip("If >0, increases herd food storage capacity when this building is present for a herd")]
+    public int herdStorageBonus = 0;
 }
 
 [System.Serializable]

@@ -29,12 +29,16 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Button forageButton; // new forage action for workers
     [SerializeField] private Button fortifyButton;
     [SerializeField] private Button startBuildButton; // starts selected build option (optional)
+    [SerializeField] private Button captureButton; // capture action for animals/workers
     [Header("Orbit Controls")]
     [SerializeField] private TextMeshProUGUI orbitStatusText;
     [SerializeField] private Button enterOrbitButton;
     [SerializeField] private Button exitOrbitButton;
     [Header("Worker Build Units UI")] 
     [SerializeField] private TMP_Dropdown buildOptionsDropdown; // TMP dropdown for build options
+    [Header("Herd Build UI")]
+    [SerializeField] private TMP_Dropdown herdBuildDropdown; // Dropdown to pick herd-buildable buildings
+    [SerializeField] private Button buildHerdButton; // Button to construct selected herd building using worker's work points
     [Header("Unit Build UI")]
     [SerializeField] private TMP_Dropdown unitBuildDropdown; // separate dropdown specifically for unit builds
     
@@ -166,8 +170,11 @@ public class UnitInfoPanel : MonoBehaviour
         if (settleCityButton == null) Debug.LogWarning("[UnitInfoPanel] settleCityButton is not assigned in the Inspector.");
         if (forageButton == null) Debug.LogWarning("[UnitInfoPanel] forageButton is not assigned in the Inspector.");
         if (fortifyButton == null) Debug.LogWarning("[UnitInfoPanel] fortifyButton is not assigned in the Inspector.");
+        if (captureButton == null) Debug.LogWarning("[UnitInfoPanel] captureButton is not assigned in the Inspector.");
         // (Removed obsolete buildUnitsContainer/buildUnitButtonPrefab warnings)
         if (unitBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] unitBuildDropdown is not assigned in the Inspector.");
+        if (herdBuildDropdown == null) Debug.LogWarning("[UnitInfoPanel] herdBuildDropdown is not assigned in the Inspector.");
+        if (buildHerdButton == null) Debug.LogWarning("[UnitInfoPanel] buildHerdButton is not assigned in the Inspector.");
         // Legacy startUnitBuildButton removed; use startBuildButton instead
     }
 
@@ -676,6 +683,18 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Implement the logic to populate the panel for a CombatUnit
         // This is a placeholder and should be replaced with the actual implementation
 UpdateUnitInfoForCombatUnit();
+        // Capture button: if another selected unit (actor) exists and the displayed unit is captureable
+        if (captureButton != null)
+        {
+            captureButton.onClick.RemoveAllListeners();
+            var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
+            bool canCapture = actor != null && actor != combatUnit && combatUnit.data != null && combatUnit.data.captureable;
+            captureButton.gameObject.SetActive(canCapture);
+            if (canCapture)
+            {
+                captureButton.onClick.AddListener(() => OnCaptureClicked(actor, combatUnit));
+            }
+        }
     }
 
     private void PopulateForWorkerUnit(WorkerUnit workerUnit)
@@ -700,6 +719,34 @@ UpdateUnitInfoForWorkerUnit();
                 }
             }
             forageButton.interactable = canForageNow;
+        }
+
+        // Worker-driven herd builds are disabled; herd buildings are queued via the Herd UI only.
+        if (herdBuildDropdown != null)
+        {
+            herdBuildDropdown.onValueChanged.RemoveAllListeners();
+            herdBuildDropdown.ClearOptions();
+            herdBuildDropdown.interactable = false;
+            herdBuildDropdown.gameObject.SetActive(false);
+        }
+        if (buildHerdButton != null)
+        {
+            buildHerdButton.onClick.RemoveAllListeners();
+            buildHerdButton.interactable = false;
+            buildHerdButton.gameObject.SetActive(false);
+        }
+
+        // Capture button: allow other selected unit to capture this worker if captureable
+        if (captureButton != null)
+        {
+            captureButton.onClick.RemoveAllListeners();
+            var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
+            bool canCapture = actor != null && actor != workerUnit && workerUnit.data != null && workerUnit.data.captureable;
+            captureButton.gameObject.SetActive(canCapture);
+            if (canCapture)
+            {
+                captureButton.onClick.AddListener(() => OnCaptureClicked(actor, workerUnit));
+            }
         }
     }
 
@@ -788,6 +835,47 @@ UpdateUnitInfoForWorkerUnit();
             rm.ForageResource(inst, currentWorkerUnit.owner);
             UpdateUnitInfoForWorkerUnit();
         }
+    }
+
+    private void OnCaptureClicked(BaseUnit actor, BaseUnit target)
+    {
+        if (actor == null || target == null) return;
+
+        var attackerCiv = actor.owner;
+        if (attackerCiv == null) return;
+
+        CombatUnitData targetCombatData = target as CombatUnit != null ? (target as CombatUnit).data : null;
+        WorkerUnitData targetWorkerData = target as WorkerUnit != null ? (target as WorkerUnit).data : null;
+        var targetData = (CombatUnitData)targetCombatData ?? (CombatUnitData)(object)targetWorkerData; // prefer combat data shape; worker data may be null
+        if ((targetCombatData == null && targetWorkerData == null) || !( (targetCombatData!=null && targetCombatData.captureable) || (targetWorkerData!=null && targetWorkerData.captureable) ))
+        {
+            Destroy(target.gameObject);
+            return;
+        }
+
+        int herdCount = 0;
+        if (targetCombatData != null) herdCount = targetCombatData.captureHerdCount;
+        else if (targetWorkerData != null) herdCount = targetWorkerData.captureHerdCount;
+        if (herdCount > 0)
+        {
+            if (targetCombatData != null)
+                attackerCiv.AddAnimalsToNearestHerd(targetCombatData, herdCount, target.planetIndex, target.currentTileIndex);
+            else if (targetWorkerData != null)
+                attackerCiv.AddAnimalsToNearestHerd(targetWorkerData, herdCount, target.planetIndex, target.currentTileIndex);
+        }
+
+        // Destroy the captured unit GameObject without triggering normal kill flow
+        Destroy(target.gameObject);
+
+        // Consume action if actor is a CombatUnit
+        if (actor is CombatUnit combatActor)
+        {
+            try { combatActor.ConsumeAction(); } catch { }
+        }
+
+        // Refresh displayed info
+        if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
+        if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
     }
 
     private void PopulateWorkerBuildUnits(WorkerUnit worker)

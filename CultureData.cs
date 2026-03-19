@@ -105,6 +105,10 @@ public class CultureData : ScriptableObject
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
 
+    [Header("Herd Modifiers")]
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g., 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
+
     [Header("Limits")]
     [Tooltip("How much this culture increases the maximum number of cities a civilization may found.")]
     public int cityCapIncrease = 0;

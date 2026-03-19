@@ -27,6 +27,8 @@ public class Governor
 
     // List of assigned cities (or, each city references its governor)
     public List<City> Cities { get; private set; } = new List<City>();
+    // List of assigned herds (new)
+    public List<Herd> Herds { get; private set; } = new List<Herd>();
 
     // Traits (ScriptableObjects)
     public List<GovernorTrait> Traits { get; private set; } = new List<GovernorTrait>();
@@ -42,6 +44,7 @@ public class Governor
         Level = 1;
         Experience = 0;
         Cities = new List<City>();
+        Herds = new List<Herd>();
         Traits = new List<GovernorTrait>();
         stats = new Dictionary<TraitTrigger, int>();
         
@@ -74,7 +77,7 @@ public class Governor
     private void CheckTraitUnlocks()
     {
         // Get all unlockable traits from the civilization
-        var civ = Cities.FirstOrDefault()?.owner;
+        var civ = Cities.FirstOrDefault()?.owner ?? Herds.FirstOrDefault()?.owner;
         if (civ == null) return;
 
         foreach (var trait in civ.unlockedGovernorTraits)
@@ -108,6 +111,11 @@ public class Governor
         {
             // You might want to refresh city UI or apply new bonuses here
             city.RefreshGovernorBonuses();
+        }
+        // Also notify any herds this governor is assigned to
+        foreach (var herd in Herds)
+        {
+            if (herd != null) herd.RefreshGovernorBonuses();
         }
     }
 

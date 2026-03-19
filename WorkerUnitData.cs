@@ -86,6 +86,12 @@ public class WorkerUnitData : ScriptableObject
     [Tooltip("Food this worker consumes each turn (subtracted from civilization stockpile)")]
     public int foodConsumptionPerTurn = 1;
 
+    [Header("Capture")]
+    [Tooltip("If true this worker/animal can be captured into a herd")]
+    public bool captureable = false;
+    [Tooltip("If >0, number of herd 'animals' added to a herd when this worker is captured/killed and converted")]
+    public int captureHerdCount = 0;
+
     [Header("Build Options")]
     public RouteType[] buildableRoutes;
 

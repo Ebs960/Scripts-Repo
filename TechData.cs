@@ -137,6 +137,12 @@ public class TechData : ScriptableObject
     [Tooltip("Generic yield bonuses for other ScriptableObject targets (e.g., districts).")]
     public GenericYieldBonus[] genericYieldBonuses;
 
+    [Header("Herd Modifiers")]
+    [Tooltip("Reduces the percent of herd animals lost to starvation (e.g., 0.05 = -5 percentage points)")]
+    public float herdStarvationPercentReduction = 0f;
+    [Tooltip("If true, this technology enables the Herding game mechanic for the civ that researches it.")]
+    public bool enablesHerding = false;
+
     [Header("Governor Bonuses")]
     public int additionalGovernorSlots;
     public GovernorTrait[] unlockedGovernorTraits;

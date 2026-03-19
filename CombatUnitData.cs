@@ -257,6 +257,12 @@ public class CombatUnitData : ScriptableObject
     public int culturePerTurn;
     public int policyPointsPerTurn;
     public int faithPerTurn;
+
+    [Header("Capture")]
+    [Tooltip("If true this animal can be captured by capture actions and converted into herd counts")]
+    public bool captureable = false;
+    [Tooltip("If >0, number of herd 'animals' added to a herd when this unit is captured/killed and converted")]
+    public int captureHerdCount = 0;
     
     [Header("Per-Turn Consumption")]
     [Tooltip("Food this unit consumes each turn (subtracted from civilization stockpile)")]
