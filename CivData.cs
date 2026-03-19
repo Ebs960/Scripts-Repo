@@ -72,6 +72,10 @@ public class CivData : ScriptableObject
     [Tooltip("City prefabs for different tech ages")]
     public CityPrefabByAge[] cityPrefabsByAge;
 
+    [Header("Herds")]
+    [Tooltip("Prefab used to visually represent a herd when spawned for this civ (optional)")]
+    public GameObject herdPrefab;
+
     // Additional fields for future expansion:
     // public RouteType[] allowedRoutes;
     // public EquipmentData[] uniqueEquipment;

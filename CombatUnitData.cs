@@ -223,6 +223,10 @@ public class CombatUnitData : ScriptableObject
     public TechData[] requiredTechs;
     [Tooltip("All these cultures must be adopted to unlock this unit")]
     public CultureData[] requiredCultures;
+    [Tooltip("At least one of these governments must be active to allow this unit (optional)")]
+    public GovernmentData[] requiredGovernments;
+    [Tooltip("All of these policies must be active to allow this unit (optional)")]
+    public PolicyData[] requiredPolicies;
 
     [Header("Unit Limits")]
     [Tooltip("Maximum number of this unit type a civilization can have (-1 = unlimited)")]
@@ -298,6 +302,27 @@ public class CombatUnitData : ScriptableObject
                 // Check if this culture has been adopted
                 if (!civ.researchedCultures.Contains(culture))
                     return false;
+            }
+        }
+        // Government requirement (any-of)
+        if (requiredGovernments != null && requiredGovernments.Length > 0)
+        {
+            bool govOk = false;
+            foreach (var gov in requiredGovernments)
+            {
+                if (gov == null) continue;
+                if (civ.currentGovernment == gov) { govOk = true; break; }
+            }
+            if (!govOk) return false;
+        }
+
+        // Policy requirements (all-of)
+        if (requiredPolicies != null && requiredPolicies.Length > 0)
+        {
+            foreach (var pol in requiredPolicies)
+            {
+                if (pol == null) continue;
+                if (!civ.activePolicies.Contains(pol)) return false;
             }
         }
         

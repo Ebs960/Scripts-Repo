@@ -56,6 +56,10 @@ public class BuildingData : ScriptableObject
     [Tooltip("All these cultures must be adopted to build this building")]
     public CultureData[] requiredCultures;
     public int requiredPopulation;
+    [Tooltip("One of these governments must be active to build this building (optional)")]
+    public GovernmentData[] requiredGovernments;
+    [Tooltip("All of these policies must be active to build this building (optional)")]
+    public PolicyData[] requiredPolicies;
 
     [Header("Building Limits")]
     [Tooltip("Maximum number of this building type a civilization can have (-1 = unlimited)")]
@@ -119,6 +123,28 @@ public static class BuildingDataExtensions
                 if (culture == null) continue;
                 if (!civ.researchedCultures.Contains(culture))
                     return false;
+            }
+        }
+
+        // Government requirement (any-of)
+        if (building.requiredGovernments != null && building.requiredGovernments.Length > 0)
+        {
+            bool govOk = false;
+            foreach (var gov in building.requiredGovernments)
+            {
+                if (gov == null) continue;
+                if (civ.currentGovernment == gov) { govOk = true; break; }
+            }
+            if (!govOk) return false;
+        }
+
+        // Policy requirements (all-of)
+        if (building.requiredPolicies != null && building.requiredPolicies.Length > 0)
+        {
+            foreach (var pol in building.requiredPolicies)
+            {
+                if (pol == null) continue;
+                if (!civ.activePolicies.Contains(pol)) return false;
             }
         }
 

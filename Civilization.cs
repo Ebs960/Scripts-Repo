@@ -283,19 +283,23 @@ public class Civilization : MonoBehaviour
             return;
         }
 
-        // Create a new herd at the tile
+        // Create a new herd at the tile (use prefab if assigned)
         try
         {
-            var go = new GameObject($"Herd_{(civData != null ? civData.civName : name)}_{tileIndex}");
-            var herd = go.AddComponent<Herd>();
+            GameObject go;
+            var spawnPos = (ts != null && tileIndex >= 0) ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero;
+            var prefabToUse = (civData != null) ? civData.herdPrefab : null;
+            if (prefabToUse == null)
+            {
+                Debug.LogWarning($"[Civilization] Cannot spawn herd: civData.herdPrefab is not assigned for {(civData != null ? civData.civName : name)}. Aborting spawn.");
+                return;
+            }
+            go = Instantiate(prefabToUse, spawnPos, Quaternion.identity);
+
+            var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
             herd.owner = this;
             herd.planetIndex = planetIndex;
             herd.currentTileIndex = tileIndex;
-            // set position if tile system available
-            if (ts != null && tileIndex >= 0)
-            {
-                try { go.transform.position = ts.GetTileSurfacePosition(tileIndex); } catch { }
-            }
             herd.AddAnimals(type, count);
         }
         catch { }
@@ -645,15 +649,20 @@ public class Civilization : MonoBehaviour
 
         try
         {
-            var go = new GameObject($"Herd_{(civData != null ? civData.civName : name)}_{tileIndex}");
-            var herd = go.AddComponent<Herd>();
+            GameObject go;
+            var spawnPos = (ts != null && tileIndex >= 0) ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero;
+            var prefabToUse = (civData != null) ? civData.herdPrefab : null;
+            if (prefabToUse == null)
+            {
+                Debug.LogWarning($"[Civilization] Cannot spawn herd: civData.herdPrefab is not assigned for {(civData != null ? civData.civName : name)}. Aborting spawn.");
+                return;
+            }
+            go = Instantiate(prefabToUse, spawnPos, Quaternion.identity);
+
+            var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
             herd.owner = this;
             herd.planetIndex = planetIndex;
             herd.currentTileIndex = tileIndex;
-            if (ts != null && tileIndex >= 0)
-            {
-                try { go.transform.position = ts.GetTileSurfacePosition(tileIndex); } catch { }
-            }
             herd.BuildStructure(building);
         }
         catch { }
