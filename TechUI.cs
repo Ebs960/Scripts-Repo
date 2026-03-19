@@ -599,6 +599,44 @@ playerCiv.StartResearch(tech);
             selectedTechImprovementsText.text = FormatUnlockField("Improvements", improvementUnlocks);
 
         selectedTechUnlocksText.text = FormatUnlockField("Unlocks", unlockItems);
+        // Append yield modifiers (percent + flat) to unlocks section so players see immediate benefits
+        string techYieldInfo = FormatYieldInfo(tech);
+        if (!string.IsNullOrEmpty(techYieldInfo) && selectedTechUnlocksText != null)
+            selectedTechUnlocksText.text = selectedTechUnlocksText.text + "\n" + techYieldInfo;
+    }
+
+    private string FormatYieldInfo(TechData tech)
+    {
+        if (tech == null) return string.Empty;
+        var parts = new System.Collections.Generic.List<string>();
+        void AddPct(float val, string label)
+        {
+            if (Mathf.Approximately(val, 0f)) return;
+            string sign = val > 0 ? "+" : "";
+            parts.Add($"{sign}{(val * 100f):0.#}% {label}");
+        }
+        void AddFlat(int val, string label)
+        {
+            if (val == 0) return;
+            string sign = val > 0 ? "+" : "";
+            parts.Add($"{sign}{val} {label}");
+        }
+
+        AddPct(tech.foodModifier, "Food");
+        AddFlat(tech.flatFoodBonus, "Food");
+        AddPct(tech.productionModifier, "Production");
+        AddFlat(tech.flatProductionBonus, "Production");
+        AddPct(tech.goldModifier, "Gold");
+        AddFlat(tech.flatGoldBonus, "Gold");
+        AddPct(tech.scienceModifier, "Science");
+        AddFlat(tech.flatScienceBonus, "Science");
+        AddPct(tech.cultureModifier, "Culture");
+        AddFlat(tech.flatCultureBonus, "Culture");
+        AddPct(tech.faithModifier, "Faith");
+        AddFlat(tech.flatFaithBonus, "Faith");
+
+        if (parts.Count == 0) return string.Empty;
+        return "Yields: " + string.Join(", ", parts);
     }
 
     private int GetTotalSciencePerTurn(Civilization civ)

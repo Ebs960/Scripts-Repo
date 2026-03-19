@@ -554,6 +554,44 @@ public class CultureUI : MonoBehaviour
             selectedCultureImprovementsText.text = FormatUnlockField("Improvements", improvementUnlocks);
 
         selectedCultureUnlocksText.text = FormatUnlockField("Unlocks", unlockItems);
+        // Append yield modifiers (percent + flat) to unlocks so players can see what this culture changes
+        string cultYieldInfo = FormatYieldInfo(culture);
+        if (!string.IsNullOrEmpty(cultYieldInfo) && selectedCultureUnlocksText != null)
+            selectedCultureUnlocksText.text = selectedCultureUnlocksText.text + "\n" + cultYieldInfo;
+    }
+
+    private string FormatYieldInfo(CultureData culture)
+    {
+        if (culture == null) return string.Empty;
+        var parts = new System.Collections.Generic.List<string>();
+        void AddPct(float val, string label)
+        {
+            if (Mathf.Approximately(val, 0f)) return;
+            string sign = val > 0 ? "+" : "";
+            parts.Add($"{sign}{(val * 100f):0.#}% {label}");
+        }
+        void AddFlat(int val, string label)
+        {
+            if (val == 0) return;
+            string sign = val > 0 ? "+" : "";
+            parts.Add($"{sign}{val} {label}");
+        }
+
+        AddPct(culture.foodModifier, "Food");
+        AddFlat(culture.flatFoodBonus, "Food");
+        AddPct(culture.productionModifier, "Production");
+        AddFlat(culture.flatProductionBonus, "Production");
+        AddPct(culture.goldModifier, "Gold");
+        AddFlat(culture.flatGoldBonus, "Gold");
+        AddPct(culture.scienceModifier, "Science");
+        AddFlat(culture.flatScienceBonus, "Science");
+        AddPct(culture.cultureModifier, "Culture");
+        AddFlat(culture.flatCultureBonus, "Culture");
+        AddPct(culture.faithModifier, "Faith");
+        AddFlat(culture.flatFaithBonus, "Faith");
+
+        if (parts.Count == 0) return string.Empty;
+        return "Yields: " + string.Join(", ", parts);
     }
 
     private int GetTotalCulturePerTurn(Civilization civ)

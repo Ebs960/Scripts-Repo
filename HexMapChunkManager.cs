@@ -1652,11 +1652,23 @@ public class HexMapChunkManager : MonoBehaviour
         if (biomeTintArray != null)
         {
             sharedMaterial.SetVectorArray("_BiomeTints", biomeTintArray);
+            if (debugTransformChanges)
+            {
+                try
+                {
+                    Debug.Log($"[HexMapChunkManager] Pushed _BiomeTints count={biomeTintArray.Length} first={biomeTintArray[0]}");
+                }
+                catch { }
+            }
         }
 
         if (biomeParamsArray != null)
         {
             sharedMaterial.SetVectorArray("_BiomeParams", biomeParamsArray);
+            if (debugTransformChanges)
+            {
+                try { Debug.Log($"[HexMapChunkManager] Pushed _BiomeParams count={biomeParamsArray.Length} first={biomeParamsArray[0]}"); } catch { }
+            }
         }
 
         if (biomeSurfaceMapArray != null)

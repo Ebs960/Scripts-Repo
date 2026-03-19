@@ -65,19 +65,25 @@ public class TooltipSystem : MonoBehaviour
         if (tooltipTitle != null) tooltipTitle.text = tech.techName;
         if (tooltipDescription != null) tooltipDescription.text = tech.description;
 
-        // Build bonuses text
+        // Build bonuses text (percent modifiers shown as percentages; include flat bonuses)
         StringBuilder bonuses = new StringBuilder();
-        if (tech.attackBonus > 0) bonuses.AppendLine($"+{tech.attackBonus}% Attack");
-        if (tech.defenseBonus > 0) bonuses.AppendLine($"+{tech.defenseBonus}% Defense");
-        if (tech.movementBonus > 0) bonuses.AppendLine($"+{tech.movementBonus} Movement");
-        if (tech.foodModifier > 0) bonuses.AppendLine($"+{tech.foodModifier}% Food");
-        if (tech.productionModifier > 0) bonuses.AppendLine($"+{tech.productionModifier}% Production");
-        if (tech.goldModifier > 0) bonuses.AppendLine($"+{tech.goldModifier}% Gold");
-        if (tech.scienceModifier > 0) bonuses.AppendLine($"+{tech.scienceModifier}% Science");
-        if (tech.cultureModifier > 0) bonuses.AppendLine($"+{tech.cultureModifier}% Culture");
-        if (tech.faithModifier > 0) bonuses.AppendLine($"+{tech.faithModifier}% Faith");
+        if (tech.attackBonus != 0) bonuses.AppendLine($"{(tech.attackBonus>0?"+":"")}{tech.attackBonus}% Attack");
+        if (tech.defenseBonus != 0) bonuses.AppendLine($"{(tech.defenseBonus>0?"+":"")}{tech.defenseBonus}% Defense");
+        if (tech.movementBonus != 0) bonuses.AppendLine($"{(tech.movementBonus>0?"+":"")}{tech.movementBonus} Movement");
+        if (!Mathf.Approximately(tech.foodModifier, 0f)) bonuses.AppendLine($"{(tech.foodModifier>0?"+":"")}{(tech.foodModifier*100f):0.#}% Food");
+        if (tech.flatFoodBonus != 0) bonuses.AppendLine($"{(tech.flatFoodBonus>0?"+":"")}{tech.flatFoodBonus} Food");
+        if (!Mathf.Approximately(tech.productionModifier, 0f)) bonuses.AppendLine($"{(tech.productionModifier>0?"+":"")}{(tech.productionModifier*100f):0.#}% Production");
+        if (tech.flatProductionBonus != 0) bonuses.AppendLine($"{(tech.flatProductionBonus>0?"+":"")}{tech.flatProductionBonus} Production");
+        if (!Mathf.Approximately(tech.goldModifier, 0f)) bonuses.AppendLine($"{(tech.goldModifier>0?"+":"")}{(tech.goldModifier*100f):0.#}% Gold");
+        if (tech.flatGoldBonus != 0) bonuses.AppendLine($"{(tech.flatGoldBonus>0?"+":"")}{tech.flatGoldBonus} Gold");
+        if (!Mathf.Approximately(tech.scienceModifier, 0f)) bonuses.AppendLine($"{(tech.scienceModifier>0?"+":"")}{(tech.scienceModifier*100f):0.#}% Science");
+        if (tech.flatScienceBonus != 0) bonuses.AppendLine($"{(tech.flatScienceBonus>0?"+":"")}{tech.flatScienceBonus} Science");
+        if (!Mathf.Approximately(tech.cultureModifier, 0f)) bonuses.AppendLine($"{(tech.cultureModifier>0?"+":"")}{(tech.cultureModifier*100f):0.#}% Culture");
+        if (tech.flatCultureBonus != 0) bonuses.AppendLine($"{(tech.flatCultureBonus>0?"+":"")}{tech.flatCultureBonus} Culture");
+        if (!Mathf.Approximately(tech.faithModifier, 0f)) bonuses.AppendLine($"{(tech.faithModifier>0?"+":"")}{(tech.faithModifier*100f):0.#}% Faith");
+        if (tech.flatFaithBonus != 0) bonuses.AppendLine($"{(tech.flatFaithBonus>0?"+":"")}{tech.flatFaithBonus} Faith");
 
-        if (tooltipBonuses != null) 
+        if (tooltipBonuses != null)
             tooltipBonuses.text = bonuses.Length > 0 ? bonuses.ToString().TrimEnd() : "No bonuses";
 
         // Build unlocks text
@@ -100,17 +106,23 @@ public class TooltipSystem : MonoBehaviour
         if (tooltipTitle != null) tooltipTitle.text = culture.cultureName;
         if (tooltipDescription != null) tooltipDescription.text = culture.description;
 
-        // Build bonuses text
+        // Build bonuses text (percent modifiers shown as percentages; include flat bonuses)
         StringBuilder bonuses = new StringBuilder();
-        if (culture.attackBonus > 0) bonuses.AppendLine($"+{culture.attackBonus}% Attack");
-        if (culture.defenseBonus > 0) bonuses.AppendLine($"+{culture.defenseBonus}% Defense");
-        if (culture.movementBonus > 0) bonuses.AppendLine($"+{culture.movementBonus} Movement");
-        if (culture.foodModifier > 0) bonuses.AppendLine($"+{culture.foodModifier}% Food");
-        if (culture.productionModifier > 0) bonuses.AppendLine($"+{culture.productionModifier}% Production");
-        if (culture.goldModifier > 0) bonuses.AppendLine($"+{culture.goldModifier}% Gold");
-        if (culture.scienceModifier > 0) bonuses.AppendLine($"+{culture.scienceModifier}% Science");
-        if (culture.cultureModifier > 0) bonuses.AppendLine($"+{culture.cultureModifier}% Culture");
-        if (culture.faithModifier > 0) bonuses.AppendLine($"+{culture.faithModifier}% Faith");
+        if (culture.attackBonus != 0) bonuses.AppendLine($"{(culture.attackBonus>0?"+":"")}{culture.attackBonus}% Attack");
+        if (culture.defenseBonus != 0) bonuses.AppendLine($"{(culture.defenseBonus>0?"+":"")}{culture.defenseBonus}% Defense");
+        if (culture.movementBonus != 0) bonuses.AppendLine($"{(culture.movementBonus>0?"+":"")}{culture.movementBonus} Movement");
+        if (!Mathf.Approximately(culture.foodModifier, 0f)) bonuses.AppendLine($"{(culture.foodModifier>0?"+":"")}{(culture.foodModifier*100f):0.#}% Food");
+        if (culture.flatFoodBonus != 0) bonuses.AppendLine($"{(culture.flatFoodBonus>0?"+":"")}{culture.flatFoodBonus} Food");
+        if (!Mathf.Approximately(culture.productionModifier, 0f)) bonuses.AppendLine($"{(culture.productionModifier>0?"+":"")}{(culture.productionModifier*100f):0.#}% Production");
+        if (culture.flatProductionBonus != 0) bonuses.AppendLine($"{(culture.flatProductionBonus>0?"+":"")}{culture.flatProductionBonus} Production");
+        if (!Mathf.Approximately(culture.goldModifier, 0f)) bonuses.AppendLine($"{(culture.goldModifier>0?"+":"")}{(culture.goldModifier*100f):0.#}% Gold");
+        if (culture.flatGoldBonus != 0) bonuses.AppendLine($"{(culture.flatGoldBonus>0?"+":"")}{culture.flatGoldBonus} Gold");
+        if (!Mathf.Approximately(culture.scienceModifier, 0f)) bonuses.AppendLine($"{(culture.scienceModifier>0?"+":"")}{(culture.scienceModifier*100f):0.#}% Science");
+        if (culture.flatScienceBonus != 0) bonuses.AppendLine($"{(culture.flatScienceBonus>0?"+":"")}{culture.flatScienceBonus} Science");
+        if (!Mathf.Approximately(culture.cultureModifier, 0f)) bonuses.AppendLine($"{(culture.cultureModifier>0?"+":"")}{(culture.cultureModifier*100f):0.#}% Culture");
+        if (culture.flatCultureBonus != 0) bonuses.AppendLine($"{(culture.flatCultureBonus>0?"+":"")}{culture.flatCultureBonus} Culture");
+        if (!Mathf.Approximately(culture.faithModifier, 0f)) bonuses.AppendLine($"{(culture.faithModifier>0?"+":"")}{(culture.faithModifier*100f):0.#}% Faith");
+        if (culture.flatFaithBonus != 0) bonuses.AppendLine($"{(culture.flatFaithBonus>0?"+":"")}{culture.flatFaithBonus} Faith");
 
         if (tooltipBonuses != null)
             tooltipBonuses.text = bonuses.Length > 0 ? bonuses.ToString().TrimEnd() : "No bonuses";
