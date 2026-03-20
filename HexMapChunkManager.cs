@@ -3125,20 +3125,33 @@ public class HexMapChunkManager : MonoBehaviour
             if (distOcean != null) f = Mathf.Min(f, distOcean[idx] - isoOcean);
 
             // Hard-clip the continuous water mesh to tiles that are actually marked as water.
-            // Without this, the SDF can smoothly expand across hex borders and visually flood
-            // adjacent land, especially around steep elevation changes.
+            // Check a 2x2 LUT neighborhood to tolerate rounding mismatches between
+            // the SDF grid and the LUT pixel grid at tile boundaries.
             float u = (float)ix / wCells;
             float v = (float)iy / hCells;
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
-            int px = Mathf.Clamp(Mathf.FloorToInt(u * lutW), 0, lutW - 1);
-            int py = Mathf.Clamp(Mathf.FloorToInt(v * lutH), 0, lutH - 1);
-            int pixelIndex = py * lutW + px;
-            if (pixelIndex < 0 || pixelIndex >= bakeResult.lut.Length)
-                return Mathf.Max(f, 0.001f);
+            int px0 = Mathf.Clamp(Mathf.FloorToInt(u * lutW), 0, lutW - 1);
+            int py0 = Mathf.Clamp(Mathf.FloorToInt(v * lutH), 0, lutH - 1);
+            int px1 = Mathf.Min(px0 + 1, lutW - 1);
+            int py1 = Mathf.Min(py0 + 1, lutH - 1);
 
-            int tileIndex = bakeResult.lut[pixelIndex];
-            if (tileIndex < 0 || !planetGenerator.data.TryGetValue(tileIndex, out var tileAtUv) || tileAtUv.waterType == TileWaterType.None)
+            bool anyWater = false;
+            for (int py = py0; py <= py1 && !anyWater; py++)
+            {
+                for (int px = px0; px <= px1 && !anyWater; px++)
+                {
+                    int pixelIndex = py * lutW + px;
+                    if (pixelIndex >= 0 && pixelIndex < bakeResult.lut.Length)
+                    {
+                        int tileIndex = bakeResult.lut[pixelIndex];
+                        if (tileIndex >= 0 && planetGenerator.data.TryGetValue(tileIndex, out var tileAtUv) && tileAtUv.waterType != TileWaterType.None)
+                            anyWater = true;
+                    }
+                }
+            }
+
+            if (!anyWater)
                 return Mathf.Max(f, 0.001f);
 
             return f;
@@ -3207,29 +3220,56 @@ public class HexMapChunkManager : MonoBehaviour
             return new Color(0.5f, 0.5f, 0f, 1f);
         }
 
+        // Helper: compute water Y for a specific SDF grid point from its owner tile's waterElevation.
+        float OwnerWaterYAt(int gx, int gy, int wt)
+        {
+            int ci = gy * wPts + gx;
+            int tIdx = (wt == 1 && ownerLake != null) ? ownerLake[ci]
+                     : (ownerRiver != null) ? ownerRiver[ci] : -1;
+            if (tIdx >= 0 && planetGenerator.data.TryGetValue(tIdx, out var t)
+                && (t.waterType == TileWaterType.River || t.waterType == TileWaterType.Lake))
+                return flatY + t.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
+            float eu = Mathf.Repeat((float)gx / wCells, 1f);
+            float ev = Mathf.Clamp01((float)gy / hCells);
+            float el = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(eu, ev).r : 0f;
+            return flatY + el * displacementStrength + waterYOffset + riverSurfaceLift;
+        }
+
         float SampleWaterY(float u, float v)
         {
             u = Mathf.Repeat(u, 1f);
             v = Mathf.Clamp01(v);
             int wType = ClassifyWaterAt(u, v);
-            int ix = Mathf.Clamp(Mathf.RoundToInt(u * wCells), 0, wCells);
-            int iy = Mathf.Clamp(Mathf.RoundToInt(v * hCells), 0, hCells);
-            int idx = iy * wPts + ix;
 
             if (wType == 2) // ocean — flat at sea level
                 return (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset + riverSurfaceLift;
 
-            // Lake or river: use propagated owner tile for waterElevation
-            int tIndex = -1;
-            if (wType == 1 && ownerLake != null) tIndex = ownerLake[idx];
-            else if (ownerRiver != null) tIndex = ownerRiver[idx];
+            // Bilinear blend of water elevation from 4 nearest SDF grid corners.
+            // Smooths the Y staircase that occurs at tile-ownership boundaries
+            // where adjacent owner tiles have different waterElevation values.
+            float fx = u * wCells;
+            float fy = v * hCells;
+            int x0 = Mathf.Clamp((int)fx, 0, wCells - 1);
+            int y0 = Mathf.Clamp((int)fy, 0, hCells - 1);
+            int x1 = Mathf.Min(x0 + 1, wCells);
+            int y1 = Mathf.Min(y0 + 1, hCells);
+            float tx = fx - x0;
+            float ty = fy - y0;
 
-            if (tIndex >= 0 && planetGenerator.data.TryGetValue(tIndex, out var td) && (td.waterType == TileWaterType.River || td.waterType == TileWaterType.Lake))
-                return flatY + td.waterElevation * displacementStrength + waterYOffset + riverSurfaceLift;
+            float y00 = OwnerWaterYAt(x0, y0, wType);
+            float y10 = OwnerWaterYAt(x1, y0, wType);
+            float y01 = OwnerWaterYAt(x0, y1, wType);
+            float y11 = OwnerWaterYAt(x1, y1, wType);
 
-            // Fallback to hugging terrain
-            float elev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
-            return flatY + elev * displacementStrength + waterYOffset + riverSurfaceLift;
+            float blendedY = Mathf.Lerp(
+                Mathf.Lerp(y00, y10, tx),
+                Mathf.Lerp(y01, y11, tx),
+                ty);
+
+            // Ensure water never dips below the displaced terrain surface
+            float terrainElev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
+            float terrainY = flatY + terrainElev * displacementStrength + waterYOffset + riverSurfaceLift;
+            return Mathf.Max(blendedY, terrainY);
         }
 
         int GetCorner(int x, int y)

@@ -13,13 +13,29 @@ public class HerdPanel : MonoBehaviour
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(HidePanel);
         }
+        if (packButton != null)
+        {
+            packButton.onClick.RemoveAllListeners();
+        }
     }
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI animalsText;
     public TextMeshProUGUI foodText;
+    public TextMeshProUGUI populationText;
+    public TextMeshProUGUI movePointsText;
     public TextMeshProUGUI storageText;
     public TextMeshProUGUI structuresText;
     public TextMeshProUGUI productionText;
+    [Header("Yields")]
+    public TextMeshProUGUI goldText;
+    public TextMeshProUGUI faithText;
+    public TextMeshProUGUI scienceText;
+    public TextMeshProUGUI cultureText;
+    public TextMeshProUGUI policyText;
+    
+    [Header("Mode")]
+    public TextMeshProUGUI modeText;
+    public Button packButton;
     
     [Header("Governor UI")]
     public TextMeshProUGUI governorNameText;
@@ -37,8 +53,6 @@ public class HerdPanel : MonoBehaviour
     public Transform buildListContainer; // container to populate build entries
     public GameObject buildEntryPrefab; // prefab: should contain a TextMeshProUGUI and a Button
     [Header("Move Herd")]
-    public Transform moveTargetsContainer; // container to populate neighbor move buttons
-    public GameObject moveTargetButtonPrefab; // optional prefab: should contain a Button and TextMeshProUGUI
     public Button closeButton;
 
     public void ShowPanel(Herd herd)
@@ -59,7 +73,10 @@ public class HerdPanel : MonoBehaviour
     {
         if (currentHerd == null) return;
         if (titleText != null)
-            titleText.text = currentHerd.name;
+        {
+            var display = string.IsNullOrEmpty(currentHerd.herdName) ? currentHerd.gameObject.name : currentHerd.herdName;
+            titleText.text = display;
+        }
 
             if (animalsText != null)
             {
@@ -76,6 +93,8 @@ public class HerdPanel : MonoBehaviour
             UpdateGovernorDisplay();
 
         if (foodText != null) foodText.text = $"Food: {currentHerd.foodReserve} (last +{currentHerd.lastGrazedAmount})";
+        if (populationText != null) populationText.text = $"Population: {currentHerd.GetPopulation()}";
+        if (movePointsText != null) movePointsText.text = $"Move: {currentHerd.movementPoints}/{currentHerd.maxMovementPoints}";
         if (storageText != null) storageText.text = $"Storage: {currentHerd.storageCapacity}";
 
         if (structuresText != null)
@@ -210,6 +229,46 @@ public class HerdPanel : MonoBehaviour
         // If there is an active herd production entry, show its progress
         if (productionText != null) productionText.text = $"Herd Prod: {currentHerd.GetProductionPerTurn()}";
 
+        // Show other yields (from animals / herd yields) and potential tile yields when settled
+        var yields = currentHerd.GetAnimalYields();
+        var tileYields = currentHerd.GetNeighborhoodTileYields();
+        if (goldText != null) goldText.text = $"Gold: {yields.Gold:+#;-#;0}/turn";
+        if (faithText != null) faithText.text = $"Faith: {yields.Faith:+#;-#;0}/turn";
+        if (scienceText != null) scienceText.text = $"Science: {yields.Science:+#;-#;0}/turn";
+        if (cultureText != null) cultureText.text = $"Culture: {yields.Culture:+#;-#;0}/turn";
+        if (policyText != null) policyText.text = $"Policy: {yields.Policy:+#;-#;0}/turn";
+
+        // Show potential tile yields (what settling here would access)
+        if (goldText != null)
+        {
+            // append tile yield info on a second line
+            goldText.text += $"  (Tiles: {tileYields.Gold:+#;-#;0}/turn)";
+        }
+        if (foodText != null)
+        {
+            foodText.text += $"  (Tiles: {tileYields.Food:+#;-#;0}/turn)";
+        }
+
+        // Mode display and Pack/Settle button
+        if (modeText != null) modeText.text = currentHerd.isPacked ? "Mode: Packed (mobile)" : "Mode: Settled (camp)";
+        if (packButton != null)
+        {
+            packButton.onClick.RemoveAllListeners();
+            packButton.onClick.AddListener(() => {
+                if (currentHerd == null) return;
+                if (currentHerd.isPacked) currentHerd.Settle(); else currentHerd.Pack();
+                Refresh();
+            });
+            var btTxt = packButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (btTxt != null) btTxt.text = currentHerd.isPacked ? "Settle" : "Pack Up";
+        }
+
+        // Toggle build/production UI when packed (packed = mobile => limited yields and no production/build)
+        if (buildListContainer != null) buildListContainer.gameObject.SetActive(!currentHerd.isPacked);
+        if (queueContainer != null) queueContainer.gameObject.SetActive(!currentHerd.isPacked);
+        if (productionText != null) productionText.gameObject.SetActive(!currentHerd.isPacked);
+        if (structuresText != null) structuresText.gameObject.SetActive(!currentHerd.isPacked);
+
         
 
         if (currentHerd.productionQueue != null && currentHerd.productionQueue.Count > 0)
@@ -229,58 +288,7 @@ public class HerdPanel : MonoBehaviour
                 structuresText.text = "(none)";
         }
         
-        // Populate move targets (neighbors)
-        if (moveTargetsContainer != null)
-        {
-            for (int i = moveTargetsContainer.childCount - 1; i >= 0; i--)
-            {
-                var c = moveTargetsContainer.GetChild(i);
-                if (Application.isPlaying) Destroy(c.gameObject); else DestroyImmediate(c.gameObject);
-            }
-
-            var ts = TileSystem.GetForPlanet(currentHerd.planetIndex) ?? TileSystem.Instance;
-            if (ts != null && currentHerd.currentTileIndex >= 0)
-            {
-                var neigh = ts.GetNeighbors(currentHerd.currentTileIndex);
-                if (neigh != null)
-                {
-                    foreach (var n in neigh)
-                    {
-                        if (n < 0) continue;
-                        var td = ts.GetTileData(n);
-                        if (td == null || !td.isPassable) continue;
-                        // Check occupancy
-                        var occ = TileOccupancyManager.GetForPlanet(currentHerd.planetIndex) ?? TileOccupancyManager.Instance;
-                        if (occ != null && occ.GetOccupantObject(n, TileLayer.Surface) != null) continue;
-
-                        if (moveTargetButtonPrefab != null)
-                        {
-                            var go = Instantiate(moveTargetButtonPrefab, moveTargetsContainer);
-                            var btn = go.GetComponentInChildren<UnityEngine.UI.Button>();
-                            var txt = go.GetComponentInChildren<TextMeshProUGUI>();
-                            if (txt != null) txt.text = $"Move -> {n}";
-                            if (btn != null)
-                            {
-                                int captured = n;
-                                btn.onClick.RemoveAllListeners();
-                                btn.onClick.AddListener(() => OnMoveTargetClicked(captured));
-                            }
-                        }
-                        else
-                        {
-                            var go = new GameObject("MoveTarget_" + n, typeof(RectTransform));
-                            go.transform.SetParent(moveTargetsContainer, false);
-                            var btn = go.AddComponent<UnityEngine.UI.Button>();
-                            var img = go.AddComponent<UnityEngine.UI.Image>(); img.color = new Color(0.2f,0.6f,0.9f,1f);
-                            var txtGO = new GameObject("Text", typeof(RectTransform)); txtGO.transform.SetParent(go.transform, false);
-                            var tmp = txtGO.AddComponent<TextMeshProUGUI>(); tmp.text = $"Move -> {n}"; tmp.fontSize = 16;
-                            int captured = n;
-                            btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(() => OnMoveTargetClicked(captured));
-                        }
-                    }
-                }
-            }
-        }
+        // (Move-target UI removed - new movement system replaces per-panel neighbor buttons)
     }
 
     private void UpdateGovernorDisplay()
@@ -411,12 +419,6 @@ public class HerdPanel : MonoBehaviour
 
     public void OnMoveTargetClicked(int tileIndex)
     {
-        if (currentHerd == null) return;
-        bool ok = currentHerd.MoveToTile(tileIndex);
-        if (!ok)
-        {
-            UIManager.Instance?.ShowNotification("Cannot move herd to selected tile.");
-        }
-        Refresh();
+        // Deprecated: move-target button handler removed. Movement is handled by the new movement system.
     }
 }

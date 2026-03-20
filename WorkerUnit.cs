@@ -598,6 +598,7 @@ public class WorkerUnit : BaseUnit
 
         var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
         herd.owner = owner;
+        try { herd.herdName = owner != null ? owner.GetNewHerdName() : null; } catch { }
         herd.planetIndex = planetIndex;
         herd.currentTileIndex = currentTileIndex;
 

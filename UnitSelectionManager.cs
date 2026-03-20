@@ -34,6 +34,8 @@ public class UnitSelectionManager : MonoBehaviour
     
     // Currently selected unit - now uses BaseUnit as common type
     private BaseUnit selectedUnit; // Can be CombatUnit or WorkerUnit (both inherit from BaseUnit)
+    // Selected herd (packed/mobile)
+    private Herd selectedHerd;
     private GameObject selectionIndicator;
     // Frame guard: prevent OnTileClickedTileSystem from deselecting a unit
     // that was just selected by OnMouseDown in the same frame.
@@ -236,13 +238,16 @@ public class UnitSelectionManager : MonoBehaviour
             try
             {
                 var herd = GetHerdOnTile(tileIndex);
-                if (herd == null)
-                    herd = GetHerdAtPosition(worldPos);
+                if (herd == null) herd = GetHerdAtPosition(worldPos);
                 if (herd != null)
                 {
-                    if (UIManager.Instance != null)
+                    if (herd.isPacked)
                     {
-                        UIManager.Instance.ShowHerdPanelForHerd(herd);
+                        SelectHerd(herd);
+                    }
+                    else
+                    {
+                        if (UIManager.Instance != null) UIManager.Instance.ShowHerdPanelForHerd(herd);
                     }
                     return true; // consume click when selecting herd
                 }
@@ -376,7 +381,7 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void StartPathPreview()
     {
-        if (selectedUnit == null) return;
+        if (selectedUnit == null && selectedHerd == null) return;
         isPreviewing = true;
         previewTargetTile = ResolvePreviewTargetTile();
         EnsurePreviewObjects();
@@ -385,7 +390,7 @@ public class UnitSelectionManager : MonoBehaviour
 
     private void UpdatePathPreviewWhileDragging()
     {
-        if (!isPreviewing || selectedUnit == null) return;
+        if (!isPreviewing || (selectedUnit == null && selectedHerd == null)) return;
 
         int target = ResolvePreviewTargetTile();
 
@@ -404,7 +409,7 @@ public class UnitSelectionManager : MonoBehaviour
 
         if (previewTargetTile >= 0)
         {
-            MoveSelectedUnitToTile(previewTargetTile);
+            if (selectedHerd != null) MoveSelectedHerdToTile(previewTargetTile); else MoveSelectedUnitToTile(previewTargetTile);
         }
 
         // Clear transient preview visuals, then immediately show persistent queued path if still selected
@@ -452,15 +457,25 @@ public class UnitSelectionManager : MonoBehaviour
                 return;
             }
         }
-        int start = selectedUnit.currentTileIndex;
-        var ts = TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance;
+        int start = selectedUnit != null ? selectedUnit.currentTileIndex : (selectedHerd != null ? selectedHerd.currentTileIndex : -1);
+        var ts = (selectedUnit != null) ? (TileSystem.GetForPlanet(selectedUnit.planetIndex) ?? TileSystem.Instance) : (selectedHerd != null ? (TileSystem.GetForPlanet(selectedHerd.planetIndex) ?? TileSystem.Instance) : TileSystem.Instance);
         if (ts == null)
         {
             return;
         }
 
-        var previewPath = umc.FindPath(start, previewTargetTile, selectedUnit);
-        var segments = umc.GetPathSegmentsForDisplay(selectedUnit, previewPath);
+        System.Collections.Generic.List<int> previewPath = null;
+        System.Collections.Generic.List<System.Collections.Generic.List<int>> segments = null;
+        if (selectedHerd != null)
+        {
+            previewPath = umc.FindPath(start, previewTargetTile, null);
+            segments = umc.GetPathSegmentsForHerd(selectedHerd, previewPath);
+        }
+        else
+        {
+            previewPath = umc.FindPath(start, previewTargetTile, selectedUnit);
+            segments = umc.GetPathSegmentsForDisplay(selectedUnit, previewPath);
+        }
         if (segments == null || segments.Count == 0)
         {
             foreach (var p in pooledPathTiles) if (p != null) p.SetActive(false);
@@ -1176,7 +1191,26 @@ public class UnitSelectionManager : MonoBehaviour
         // Subscribe to move-points changes for the selected unit so preview/UI updates live
         try { if (GameEventManager.Instance != null) GameEventManager.Instance.OnMovePointsChanged += OnMovePointsChanged; } catch { }
         if (previewDebug) Debug.Log($"[USM] SelectUnit -> {unit.name} (tile {unit.currentTileIndex})");
-}
+    }
+
+    /// <summary>
+    /// Select a packed herd (acts like a movable unit)
+    /// </summary>
+    public void SelectHerd(Herd herd)
+    {
+        if (herd == null) return;
+        // Deselect previous selections
+        DeselectUnit();
+        DeselectHerd();
+
+        selectedHerd = herd;
+        lastSelectionFrame = Time.frameCount;
+
+        // Create visual indicator
+        CreateSelectionIndicator();
+
+        if (previewDebug) Debug.Log($"[USM] SelectHerd -> {herd.name} (tile {herd.currentTileIndex})");
+    }
 
     /// <summary>
     /// Called when any unit finishes movement. If it's the currently selected unit,
@@ -1252,6 +1286,25 @@ public class UnitSelectionManager : MonoBehaviour
         ClearPreviewVisuals();
         // Unsubscribe from move-points changes
         try { if (GameEventManager.Instance != null) GameEventManager.Instance.OnMovePointsChanged -= OnMovePointsChanged; } catch { }
+        // Also deselect any herd selection
+        DeselectHerd();
+    }
+
+    /// <summary>
+    /// Deselect any selected herd.
+    /// </summary>
+    public void DeselectHerd()
+    {
+        if (selectedHerd == null) return;
+        if (previewDebug) Debug.Log($"[USM] DeselectHerd -> {selectedHerd.name}");
+        selectedHerd = null;
+        if (selectionIndicator != null)
+        {
+            Destroy(selectionIndicator);
+            selectionIndicator = null;
+        }
+        // Clear preview visuals as well
+        ClearPreviewVisuals();
     }
 
     private void OnMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
@@ -1404,26 +1457,47 @@ public class UnitSelectionManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Move the selected herd (packed) to the target tile using UnitMovementController's herd flow.
+    /// </summary>
+    private void MoveSelectedHerdToTile(int targetTileIndex)
+    {
+        if (selectedHerd == null) return;
+        if (!selectedHerd.isPacked)
+        {
+            if (UIManager.Instance != null) UIManager.Instance.ShowNotification("Herd must be packed to move.");
+            return;
+        }
+
+        // Simple check: ensure a path exists then issue herd move
+        if (UnitMovementController.Instance != null)
+        {
+            UnitMovementController.Instance.IssueHerdMove(selectedHerd, targetTileIndex);
+        }
+    }
     
     /// <summary>
     /// Create a visual selection indicator for the selected unit
     /// </summary>
     private void CreateSelectionIndicator()
     {
-        if (selectedUnit == null)
-            return;
+        // Support selection indicator for either a unit or a selected herd
+        if (selectedUnit == null && selectedHerd == null) return;
+        Transform parentTransform = selectedUnit != null ? selectedUnit.transform : (selectedHerd != null ? (selectedHerd.visualInstance != null ? selectedHerd.visualInstance.transform : selectedHerd.transform) : null);
+        if (parentTransform == null) return;
         
         // Simple approach: create a colored sphere as selection indicator
         if (selectionIndicatorPrefab != null)
         {
-            selectionIndicator = Instantiate(selectionIndicatorPrefab, selectedUnit.transform);
+            selectionIndicator = Instantiate(selectionIndicatorPrefab, parentTransform);
         }
         else
         {
             // Fallback: create a simple colored sphere and reuse a shared material to avoid allocations
             selectionIndicator = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             selectionIndicator.name = "SelectionIndicator";
-            selectionIndicator.transform.SetParent(selectedUnit.transform);
+            selectionIndicator.transform.SetParent(parentTransform);
             selectionIndicator.transform.localPosition = Vector3.up * 0.5f;
             selectionIndicator.transform.localScale = Vector3.one * 0.3f;
 
@@ -1434,7 +1508,9 @@ public class UnitSelectionManager : MonoBehaviour
                     renderer.sharedMaterial = s_selectionIndicatorMaterial;
 
                 // Set color using MaterialPropertyBlock to avoid creating instance materials
-                s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
+                float hue = 0f;
+                if (selectedUnit != null) s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
+                else s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
                 renderer.SetPropertyBlock(s_selectionMPB);
             }
 

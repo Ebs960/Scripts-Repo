@@ -26,6 +26,7 @@ public class CivData : ScriptableObject
     public string civName;
     public Sprite icon;
     public List<string> cityNames; // List of historical or thematic city names
+    public List<string> herdNames; // List of thematic herd names (used when spawning new herds)
     public List<LeaderData> availableLeaders; // Replaced single leader with a list
 
     [Header("Culture & Diplomacy")]
@@ -75,6 +76,10 @@ public class CivData : ScriptableObject
     [Header("Herds")]
     [Tooltip("Prefab used to visually represent a herd when spawned for this civ (optional)")]
     public GameObject herdPrefab;
+    [Tooltip("Prefab used when the herd is packed/mobile (optional)")]
+    public GameObject herdPackedPrefab;
+    [Tooltip("Prefab used when the herd is settled/camp (optional). If null, `herdPrefab` is used.")]
+    public GameObject herdSettledPrefab;
 
     // Additional fields for future expansion:
     // public RouteType[] allowedRoutes;

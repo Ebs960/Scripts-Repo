@@ -2911,6 +2911,7 @@ public class GameManager : MonoBehaviour
                                 var go = new GameObject($"Herd_{(civ.civData != null ? civ.civData.civName : civ.name)}_{hq.tileIndex}");
                                 var herd = go.AddComponent<Herd>();
                                 herd.owner = civ;
+                                try { herd.herdName = civ.GetNewHerdName(); } catch { }
                                 herd.planetIndex = hq.planetIndex;
                                 herd.currentTileIndex = hq.tileIndex;
                                 targetHerd = herd;
@@ -3017,6 +3018,7 @@ public class GameManager : MonoBehaviour
                                         var go = new GameObject($"Herd_{(civ.civData != null ? civ.civData.civName : civ.name)}_{href.tileIndex}");
                                         var herd = go.AddComponent<Herd>();
                                         herd.owner = civ;
+                                        try { herd.herdName = civ.GetNewHerdName(); } catch { }
                                         herd.planetIndex = href.planetIndex;
                                         herd.currentTileIndex = href.tileIndex;
                                         targetHerd = herd;

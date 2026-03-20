@@ -752,6 +752,111 @@ public class UnitMovementController : MonoBehaviour
     }
 
     /// <summary>
+    /// Issue movement for a packed Herd. Finds a path and animates the herd visual along it.
+    /// This is a lightweight movement flow separate from BaseUnit movement semantics.
+    /// </summary>
+    public void IssueHerdMove(Herd herd, int targetTileIndex)
+    {
+        if (herd == null) return;
+        var fullPath = FindPath(herd.currentTileIndex, targetTileIndex, null);
+        if (fullPath == null || fullPath.Count == 0)
+        {
+            try { if (UIManager.Instance != null && herd.owner == CivilizationManager.Instance?.playerCiv) UIManager.Instance.ShowNotification("Herd can't reach that tile!"); } catch { }
+            return;
+        }
+
+        // Start visual animation coroutine
+        StartCoroutine(AnimateHerdAlongPath(herd, fullPath));
+    }
+
+    /// <summary>
+    /// Segment a herd path into per-turn groups using simple per-tile costs (1 per tile) and herd MP.
+    /// Used for preview display.
+    /// </summary>
+    public List<System.Collections.Generic.List<int>> GetPathSegmentsForHerd(Herd herd, System.Collections.Generic.List<int> path)
+    {
+        if (herd == null || path == null || path.Count == 0) return null;
+        int remaining = herd.movementPoints;
+        int fullPerTurn = herd.maxMovementPoints;
+        var segments = new System.Collections.Generic.List<System.Collections.Generic.List<int>>();
+        var currentSeg = new System.Collections.Generic.List<int>();
+
+        foreach (int tileIndex in path)
+        {
+            int cost = 1;
+            if (remaining < cost)
+            {
+                if (currentSeg.Count > 0)
+                {
+                    segments.Add(new System.Collections.Generic.List<int>(currentSeg));
+                    currentSeg.Clear();
+                }
+                if (fullPerTurn <= 0) break;
+                while (remaining < cost) remaining += fullPerTurn;
+            }
+
+            currentSeg.Add(tileIndex);
+            remaining -= cost;
+        }
+
+        if (currentSeg.Count > 0) segments.Add(currentSeg);
+        return segments;
+    }
+
+    private System.Collections.IEnumerator AnimateHerdAlongPath(Herd herd, System.Collections.Generic.List<int> path)
+    {
+        if (herd == null || path == null || path.Count == 0) yield break;
+        var ts = TileSystem.GetForPlanet(herd.planetIndex) ?? TileSystem.Instance;
+        if (ts == null) yield break;
+
+        // Ensure occupancy manager updates
+        var occ = TileOccupancyManager.GetForPlanet(herd.planetIndex) ?? TileOccupancyManager.Instance;
+
+        Vector3 startPos = herd.transform.position;
+        for (int i = 0; i < path.Count; i++)
+        {
+            int tile = path[i];
+            Vector3 targetPos = ts.GetTileSurfacePosition(tile) + Vector3.up * 0.02f;
+
+            float distance = Vector3.Distance(herd.transform.position, targetPos);
+            float duration = Mathf.Max(0.01f, distance / moveSpeed);
+            float elapsed = 0f;
+            Vector3 from = herd.transform.position;
+
+            // Clear old occupancy before stepping onto new tile (best-effort)
+            try { if (occ != null) occ.ClearOccupant(herd.currentTileIndex, TileLayer.Surface); } catch { }
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float curved = movementCurve.Evaluate(t);
+                herd.transform.position = Vector3.Lerp(from, targetPos, curved);
+
+                // simple rotation to face movement direction
+                Vector3 dir = (targetPos - herd.transform.position);
+                if (dir.sqrMagnitude > 0.001f)
+                {
+                    herd.transform.rotation = Quaternion.Slerp(herd.transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * rotationSpeed);
+                }
+                yield return null;
+            }
+
+            // snap to tile center
+            herd.transform.position = targetPos;
+            int previous = herd.currentTileIndex;
+            herd.currentTileIndex = tile;
+
+            try { if (occ != null) occ.SetOccupant(tile, herd.gameObject, TileLayer.Surface); } catch { }
+            try { if (previous >= 0 && occ != null) occ.ClearOccupant(previous, TileLayer.Surface); } catch { }
+
+            yield return null;
+        }
+
+        yield break;
+    }
+
+    /// <summary>
     /// Stop any active movement coroutine for the provided unit.
     /// Safe to call even if no coroutine is active.
     /// </summary>

@@ -83,8 +83,8 @@ MonoBehaviour:
   debugWrapVerbose: 0
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
-  debugTransformChanges: 1
-  debugBiomeDetails: 1
+  debugTransformChanges: 0
+  debugBiomeDetails: 0
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
@@ -99,12 +99,12 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 256
-  riverSdfHeight: 128
-  riverHalfWidthMultiplier: 1
+  riverSdfWidth: 768
+  riverSdfHeight: 384
+  riverHalfWidthMultiplier: 0.77
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
-  riverSurfaceLift: 0.13
+  riverSurfaceLift: 0.5
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
   preBuildOnPlanetReady: 1

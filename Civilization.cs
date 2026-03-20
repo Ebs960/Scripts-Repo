@@ -133,6 +133,21 @@ public class Civilization : MonoBehaviour
     }
 
     /// <summary>
+    /// Determine a new herd display name for this civilization.
+    /// Prefers an unused entry from `civData.herdNames` if available; otherwise falls back to a generated name.
+    /// </summary>
+    public string GetNewHerdName()
+    {
+        string civBase = civData != null && !string.IsNullOrEmpty(civData.civName) ? civData.civName : (name ?? "HerdOwner");
+        var existing = herds != null ? herds.Select(h => string.IsNullOrEmpty(h.herdName) ? h.gameObject.name : h.herdName).ToList() : new List<string>();
+        string fromList = civData?.herdNames?.FirstOrDefault(n => !existing.Contains(n));
+        if (!string.IsNullOrEmpty(fromList)) return fromList;
+        if (herds == null || herds.Count == 0)
+            return civBase + " Herd 1";
+        return civBase + " Herd " + (herds.Count + 1);
+    }
+
+    /// <summary>
     /// Incremental update hook used by TileSystem.SetTileOwner().
     /// Keeps owned biome aggregates in sync without rescanning the entire map.
     /// </summary>
@@ -298,9 +313,10 @@ public class Civilization : MonoBehaviour
 
             var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
             herd.owner = this;
-            herd.planetIndex = planetIndex;
-            herd.currentTileIndex = tileIndex;
-            herd.AddAnimals(type, count);
+                try { herd.herdName = GetNewHerdName(); } catch { }
+                herd.planetIndex = planetIndex;
+                herd.currentTileIndex = tileIndex;
+                herd.AddAnimals(type, count);
         }
         catch { }
     }
@@ -661,6 +677,7 @@ public class Civilization : MonoBehaviour
 
             var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
             herd.owner = this;
+            try { herd.herdName = GetNewHerdName(); } catch { }
             herd.planetIndex = planetIndex;
             herd.currentTileIndex = tileIndex;
             herd.BuildStructure(building);
@@ -722,6 +739,7 @@ public class Civilization : MonoBehaviour
 
                     var herd = go.GetComponent<Herd>() ?? go.AddComponent<Herd>();
                     herd.owner = this;
+                    try { herd.herdName = GetNewHerdName(); } catch { }
                     herd.planetIndex = planetIndex;
                     herd.currentTileIndex = tileIndex;
                     herd.AddAnimals(s, count);

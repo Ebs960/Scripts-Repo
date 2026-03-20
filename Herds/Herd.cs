@@ -10,6 +10,8 @@ public class Herd : MonoBehaviour
     public Civilization owner;
     public int planetIndex = 0;
     public int currentTileIndex = -1;
+    [Tooltip("Optional human-readable name for this herd (displayed in UI). If empty, GameObject name is used.")]
+    public string herdName;
 
     public enum HerdSpecies { Chicken, Cow, Pig, Sheep, Other }
 
@@ -43,6 +45,16 @@ public class Herd : MonoBehaviour
     [Header("Governor")]
     [Tooltip("Governor assigned to this herd (can be null)")]
     public Governor governor;
+
+    [Header("Pack/Settle")]
+    [Tooltip("When true the herd is packed and may move; when false the herd is settled (camp) and generates full yields.")]
+    public bool isPacked = true;
+
+    [Header("Movement")]
+    [Tooltip("Current movement points available for this herd (reset per turn)")]
+    public int movementPoints = 2;
+    [Tooltip("Maximum movement points this herd has per turn")]
+    public int maxMovementPoints = 2;
 
     // Default per-animal food consumption per turn by species (used for herd starvation calculations)
     public static int GetFoodConsumptionPerAnimal(HerdSpecies s)
@@ -81,6 +93,8 @@ public class Herd : MonoBehaviour
         try { storageCapacity = Mathf.Max(1, baseStorage); } catch { }
         // create label UI for this herd
         try { CreateLabelUI(); UpdateLabelUI(); } catch { }
+        // ensure visual prefab matches pack/settle state
+        try { UpdateVisualRepresentation(); } catch { }
     }
 
     void OnDisable()
@@ -90,6 +104,7 @@ public class Herd : MonoBehaviour
         {
             try { owner.herds.Remove(this); } catch { }
         }
+        try { if (visualInstance != null) Destroy(visualInstance); visualInstance = null; } catch { }
     }
 
     /// <summary>
@@ -305,6 +320,10 @@ public class Herd : MonoBehaviour
     [Header("Label Prefab")]
     [Tooltip("Optional prefab to use for herd world labels. Prefab should contain child objects named 'HerdName' (Text), 'HerdOwner' (Text) and optional 'HerdIcon' (Image). If not assigned, a default generated label is created.")]
     public GameObject herdLabelPrefab;
+    
+    // Runtime visual instance for this herd (packed/settled prefab)
+    [HideInInspector] public GameObject visualInstance;
+    [HideInInspector] public HerdWorldUI worldUI;
 
     private void CreateLabelUI()
     {
@@ -328,7 +347,8 @@ public class Herd : MonoBehaviour
                 // Initialize now with available values
                 var ownerName = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
                 var ownerIcon = owner != null && owner.civData != null ? owner.civData.icon : null;
-                herdLabelInstance.Initialize(transform, name, ownerName, ownerIcon, governor != null ? governor.Name : null);
+                var displayName = string.IsNullOrEmpty(herdName) ? gameObject.name : herdName;
+                herdLabelInstance.Initialize(transform, displayName, ownerName, ownerIcon, governor != null ? governor.Name : null);
             }
 
             // Named children lookup (fallbacks) for prefab without HerdLabel
@@ -390,15 +410,16 @@ public class Herd : MonoBehaviour
     private void UpdateLabelUI()
     {
         // Prefer HerdLabel component when present
+        var displayName = string.IsNullOrEmpty(herdName) ? gameObject.name : herdName;
         if (herdLabelInstance != null)
         {
             var ownerName = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
             var ownerIcon = owner != null && owner.civData != null ? owner.civData.icon : null;
-            herdLabelInstance.UpdateLabel(name, ownerName, ownerIcon, governor != null ? governor.Name : null);
+            herdLabelInstance.UpdateLabel(displayName, ownerName, ownerIcon, governor != null ? governor.Name : null);
             return;
         }
 
-        if (nameTextLabel != null) nameTextLabel.text = name;
+        if (nameTextLabel != null) nameTextLabel.text = displayName;
         // Owner: use owner.civData.civName if available
         if (ownerTextLabel != null)
             ownerTextLabel.text = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
@@ -419,6 +440,13 @@ public class Herd : MonoBehaviour
     /// </summary>
     public bool MoveToTile(int tileIndex)
     {
+        // Herd must be packed (mobile) to move
+        if (!isPacked)
+        {
+            Debug.Log("Herd.MoveToTile: cannot move while settled (unpack first).");
+            return false;
+        }
+
         if (tileIndex < 0) return false;
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady()) return false;
@@ -569,7 +597,7 @@ public class Herd : MonoBehaviour
                 default: break;
             }
         }
-
+    
         AnimalYields y = new AnimalYields();
         y.Food = (chickenCount / 100) * 2 + (pigCount / 100) * 3 + (sheepCount / 100) * 1;
         y.Gold = (chickenCount / 100) * 1 + (cowCount / 100) * 1 + (sheepCount / 100) * 2;
@@ -594,7 +622,105 @@ public class Herd : MonoBehaviour
             }
         }
         catch { }
+        // When packed (mobile) the herd only receives food from grazing/animals; other yields are suppressed
+        if (isPacked)
+        {
+            y.Gold = 0;
+            y.Production = 0;
+            y.Science = 0;
+            y.Culture = 0;
+            y.Faith = 0;
+            y.Policy = 0;
+        }
         return y;
+    }
+
+    /// <summary>
+    /// Returns total population represented by this herd: stored units + animal counts.
+    /// </summary>
+    public int GetPopulation()
+    {
+        int pop = 0;
+        if (storedUnits != null) pop += storedUnits.Count;
+        if (animals != null)
+        {
+            foreach (var e in animals) if (e != null) pop += e.count;
+        }
+        return pop;
+    }
+
+    /// <summary>
+    /// Sum tile-based yields from the herd tile and its neighbors.
+    /// Food uses HerdManager.ComputeHerdForageShare to estimate per-herd food from each tile.
+    /// </summary>
+    public AnimalYields GetNeighborhoodTileYields()
+    {
+        AnimalYields y = new AnimalYields();
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null || currentTileIndex < 0) return y;
+
+        var tiles = new System.Collections.Generic.List<int>();
+        tiles.Add(currentTileIndex);
+        var neigh = ts.GetNeighbors(currentTileIndex);
+        if (neigh != null) tiles.AddRange(neigh);
+
+        foreach (var t in tiles)
+        {
+            if (t < 0) continue;
+            var td = ts.GetTileData(t);
+            if (td == null) continue;
+            // Food: use shared forage share if HerdManager present
+            int f = td.food;
+            if (HerdManager.Instance != null) f = HerdManager.Instance.ComputeHerdForageShare(planetIndex, t, this);
+            y.Food += Mathf.Max(0, f);
+            y.Gold += Mathf.Max(0, td.gold);
+            y.Production += Mathf.Max(0, td.production);
+            y.Science += td.science;
+            y.Culture += td.culture;
+            y.Faith += td.faithYield;
+            // Policy points not represented per-tile in current design
+        }
+        return y;
+    }
+
+    /// <summary>
+    /// Returns gold per turn generated by this herd (animals + governor/building contributions).
+    ///</summary>
+    public int GetGoldPerTurn()
+    {
+        return GetAnimalYields().Gold;
+    }
+
+    /// <summary>
+    /// Returns faith per turn generated by this herd.
+    ///</summary>
+    public int GetFaithPerTurn()
+    {
+        return GetAnimalYields().Faith;
+    }
+
+    /// <summary>
+    /// Returns science per turn generated by this herd.
+    ///</summary>
+    public int GetSciencePerTurn()
+    {
+        return GetAnimalYields().Science;
+    }
+
+    /// <summary>
+    /// Returns culture per turn generated by this herd.
+    ///</summary>
+    public int GetCulturePerTurn()
+    {
+        return GetAnimalYields().Culture;
+    }
+
+    /// <summary>
+    /// Returns policy points per turn generated by this herd.
+    ///</summary>
+    public int GetPolicyPerTurn()
+    {
+        return GetAnimalYields().Policy;
     }
 
     /// <summary>
@@ -717,5 +843,58 @@ public class Herd : MonoBehaviour
         productionQueue.RemoveAt(fromIndex);
         productionQueue.Insert(toIndex, item);
         return true;
+    }
+
+    // Pack the herd (make it mobile)
+    public void Pack()
+    {
+        if (isPacked) return;
+        isPacked = true;
+        try { UpdateVisualRepresentation(); } catch { }
+    }
+
+    // Settle the herd (establish camp)
+    public void Settle()
+    {
+        if (!isPacked) return;
+        isPacked = false;
+        try { UpdateVisualRepresentation(); } catch { }
+    }
+
+    // Instantiate or swap visual prefab according to isPacked and civ settings
+    public void UpdateVisualRepresentation()
+    {
+        GameObject prefab = null;
+        if (owner != null && owner.civData != null)
+        {
+            if (isPacked && owner.civData.herdPackedPrefab != null) prefab = owner.civData.herdPackedPrefab;
+            else if (!isPacked && owner.civData.herdSettledPrefab != null) prefab = owner.civData.herdSettledPrefab;
+            else prefab = owner.civData.herdPrefab;
+        }
+        if (prefab == null) return;
+
+        if (visualInstance != null)
+        {
+            // If current visual is same prefab name, keep it
+            if (visualInstance.name.StartsWith(prefab.name)) return;
+            Destroy(visualInstance);
+            visualInstance = null;
+            worldUI = null;
+        }
+
+        visualInstance = Instantiate(prefab, transform.position, Quaternion.identity, transform);
+        visualInstance.name = prefab.name + "_inst";
+
+        // Try to find or create a world UI component
+        worldUI = visualInstance.GetComponentInChildren<HerdWorldUI>(true);
+        if (worldUI == null)
+        {
+            // create a small placeholder object for world UI (user should supply proper prefab)
+            var go = new GameObject("HerdWorldUI", typeof(RectTransform));
+            go.transform.SetParent(visualInstance.transform, false);
+            go.transform.localPosition = Vector3.up * 1.2f;
+            worldUI = go.AddComponent<HerdWorldUI>();
+        }
+        worldUI.Initialize(this);
     }
 }

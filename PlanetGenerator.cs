@@ -3588,8 +3588,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     }
                     
                     // Only raise water level, never lower it — ensures continuity
-                    // Cap the raise so water doesn't go above the river bed + full riverDepth
-                    float maxAllowed = td.elevation + riverDepth;
+                    // Allow water to rise up to 3x riverDepth above the carved bed.
+                    // This gives headroom to bridge moderate elevation transitions
+                    // between adjacent river tiles (the mesh blending handles the rest).
+                    float maxAllowed = td.elevation + riverDepth * 3f;
                     float newWaterElev = Mathf.Min(maxNeighborWater, maxAllowed);
                     
                     if (newWaterElev > td.waterElevation + 0.001f)
