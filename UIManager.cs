@@ -541,11 +541,43 @@ public class UIManager : MonoBehaviour
 
     public void ShowHerdPanelForHerd(Herd herd)
     {
-        if (herdPanel == null || herd == null) return;
-        ShowPanel("HerdPanel");
+        if (herd == null)
+        {
+            Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herd is null");
+            return;
+        }
+
+        if (herdPanel == null)
+        {
+            Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herdPanel is not assigned in Inspector. Attempting to locate in scene.");
+            var found = FindObjectOfType<HerdPanel>();
+            if (found != null)
+                herdPanel = found.gameObject;
+            else
+            {
+                Debug.LogError("UIManager.ShowHerdPanelForHerd: No HerdPanel found in scene. Cannot show herd UI.");
+                return;
+            }
+        }
+
+        // Make the Herd panel modal: hide all managed panels (including playerUI),
+        // then activate the herd panel and populate it.
+        foreach (var kv in panelDict)
+        {
+            if (kv.Value != null)
+                kv.Value.SetActive(false);
+        }
+
+        herdPanel.SetActive(true);
+        WireUIInteractions(herdPanel);
+
         var hp = herdPanel.GetComponent<HerdPanel>();
         if (hp != null)
             hp.ShowPanel(herd);
+        else
+            Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herdPanel GameObject has no HerdPanel component.");
+
+        Debug.Log($"UIManager: Opened HerdPanel for herd={herd.name}");
     }
 
     public void HideHerdPanel()

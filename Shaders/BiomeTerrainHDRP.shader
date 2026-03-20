@@ -468,6 +468,7 @@ Shader "Custom/BiomeTerrainHDRP"
 
     // ===================== Shared Helpers =====================
 
+    // Legacy fallback: only used if biomeIdx was not stored directly in the index map.
     int GetBiomeIndexFromSlice(float sliceIndex)
     {
         float u = (sliceIndex + 0.5) / max(_TotalSlices, 1.0);
@@ -687,11 +688,10 @@ Shader "Custom/BiomeTerrainHDRP"
                 float height;
             };
 
-            BiomeSample SampleFullBiome(float sliceIndex, float3 worldPos,
+            BiomeSample SampleFullBiome(float sliceIndex, int biomeIdx, float3 worldPos,
                 float3 displacedNormal, float3 triWeights, float camDist, float2 mapUV)
             {
                 BiomeSample s;
-                int biomeIdx = GetBiomeIndexFromSlice(sliceIndex);
                 biomeIdx = clamp(biomeIdx, 0, 63);
 
                 float4 biomeTint = _BiomeTints[biomeIdx];
@@ -757,31 +757,41 @@ Shader "Custom/BiomeTerrainHDRP"
 
                 // ==========================================================
                 // BIOME INDEX & TRANSITION BLENDING (#3, #7)
+                // _BiomeIndexMap: R = surface slice index, G = biome index
                 // ==========================================================
-                float centerSlice = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0).r);
+                float4 centerSample = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap, uv, 0);
+                float centerSlice = round(centerSample.r);
+                int centerBiome = (int)(centerSample.g + 0.5);
 
                 // Sample neighbors to detect biome boundaries
                 float2 biomeStep = _BiomeIndexMap_TexelSize.xy * max(_BiomeBlendRadius, 0.5);
-                float sliceR = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv + float2(biomeStep.x, 0), 0).r);
-                float sliceL = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv - float2(biomeStep.x, 0), 0).r);
-                float sliceU = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv + float2(0, biomeStep.y), 0).r);
-                float sliceD = round(SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
-                    uv - float2(0, biomeStep.y), 0).r);
+
+                float4 sampleR = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
+                    uv + float2(biomeStep.x, 0), 0);
+                float4 sampleL = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
+                    uv - float2(biomeStep.x, 0), 0);
+                float4 sampleU = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
+                    uv + float2(0, biomeStep.y), 0);
+                float4 sampleD = SAMPLE_TEXTURE2D_LOD(_BiomeIndexMap, sampler_BiomeIndexMap,
+                    uv - float2(0, biomeStep.y), 0);
+
+                float sliceR = round(sampleR.r);
+                float sliceL = round(sampleL.r);
+                float sliceU = round(sampleU.r);
+                float sliceD = round(sampleD.r);
 
                 // Find secondary biome for blending
                 float secondarySlice = centerSlice;
+                int secondaryBiome = centerBiome;
                 int diffCount = 0;
                 float2 neighborOffset = float2(0.0, 0.0);
-                if (sliceR != centerSlice) { secondarySlice = sliceR; neighborOffset = float2(biomeStep.x, 0); diffCount++; }
-                if (sliceL != centerSlice) { if (diffCount == 0) { secondarySlice = sliceL; neighborOffset = float2(-biomeStep.x, 0); } diffCount++; }
-                if (sliceU != centerSlice) { if (diffCount == 0) { secondarySlice = sliceU; neighborOffset = float2(0, biomeStep.y); } diffCount++; }
-                if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
+                if (sliceR != centerSlice) { secondarySlice = sliceR; secondaryBiome = (int)(sampleR.g + 0.5); neighborOffset = float2(biomeStep.x, 0); diffCount++; }
+                if (sliceL != centerSlice) { if (diffCount == 0) { secondarySlice = sliceL; secondaryBiome = (int)(sampleL.g + 0.5); neighborOffset = float2(-biomeStep.x, 0); } diffCount++; }
+                if (sliceU != centerSlice) { if (diffCount == 0) { secondarySlice = sliceU; secondaryBiome = (int)(sampleU.g + 0.5); neighborOffset = float2(0, biomeStep.y); } diffCount++; }
+                if (sliceD != centerSlice) { if (diffCount == 0) { secondarySlice = sliceD; secondaryBiome = (int)(sampleD.g + 0.5); neighborOffset = float2(0, -biomeStep.y); } diffCount++; }
 
                 // Sample primary biome
-                BiomeSample primary = SampleFullBiome(centerSlice, worldPos, displacedNormal, triWeights, camDist, uv);
+                BiomeSample primary = SampleFullBiome(centerSlice, centerBiome, worldPos, displacedNormal, triWeights, camDist, uv);
 
                 float3 albedo;
                 float3 normalWS;
@@ -793,7 +803,7 @@ Shader "Custom/BiomeTerrainHDRP"
                 // Height-based biome blending at boundaries (#3, #7: mask.b = height)
                 if (diffCount > 0 && secondarySlice != centerSlice && _BiomeBlendRadius > 0.01)
                 {
-                    BiomeSample secondary = SampleFullBiome(secondarySlice, worldPos, displacedNormal, triWeights, camDist, uv);
+                    BiomeSample secondary = SampleFullBiome(secondarySlice, secondaryBiome, worldPos, displacedNormal, triWeights, camDist, uv);
 
                     // Use generated global _Heightmap for height-based blend (sample center and neighbor)
                     float hPrimary = SAMPLE_TEXTURE2D_LOD(_Heightmap, sampler_Heightmap, uv, 0).r;

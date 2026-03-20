@@ -58,18 +58,28 @@ public class PolicyManager : MonoBehaviour
     public List<GovernmentData> GetAvailableGovernments(Civilization civ)
     {
         var avail = new List<GovernmentData>();
-        foreach (var g in allGovernments)
+        // Available governments are those the civ has unlocked (via techs/cultures) but hasn't adopted yet.
+        if (civ == null || civ.unlockedGovernments == null) return avail;
+
+        foreach (var g in civ.unlockedGovernments)
         {
-            if (civ.unlockedGovernments.Contains(g) || civ.currentGovernment == g) 
-                continue;
-            if (civ.policyPoints < g.policyPointCost) 
-                continue;
+            if (g == null) continue;
+            if (civ.currentGovernment == g) continue;
+            if (civ.policyPoints < g.policyPointCost) continue;
             bool ok = true;
-            foreach (var req in g.requiredTechs)
-                if (!civ.researchedTechs.Contains(req)) { ok = false; break; }
-            foreach (var req in g.requiredCultures)
-                if (!civ.researchedCultures.Contains(req)) { ok = false; break; }
-            if (civ.cities.Count < g.requiredCityCount) ok = false;
+            if (g.requiredTechs != null)
+            {
+                foreach (var req in g.requiredTechs)
+                    if (req != null && !civ.researchedTechs.Contains(req)) { ok = false; break; }
+            }
+            if (!ok) continue;
+            if (g.requiredCultures != null)
+            {
+                foreach (var req in g.requiredCultures)
+                    if (req != null && !civ.researchedCultures.Contains(req)) { ok = false; break; }
+            }
+            if (!ok) continue;
+            if (civ.cities == null || civ.cities.Count < g.requiredCityCount) ok = false;
             if (ok) avail.Add(g);
         }
         return avail;

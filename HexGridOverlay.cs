@@ -11,6 +11,8 @@ public class HexGridOverlay : MonoBehaviour
     [Header("Grid Settings")]
     [Tooltip("Show or hide the hex grid overlay")]
     [SerializeField] private bool showGrid = false;
+    [Tooltip("Enable verbose debug logs for the overlay (disabled by default)")]
+    [SerializeField] private bool debugLogs = false;
     
     [Tooltip("Color of the hex grid lines")]
     [SerializeField] private Color gridColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
@@ -73,7 +75,7 @@ public class HexGridOverlay : MonoBehaviour
     void Start()
     {
         mainCamera = Camera.main;
-        Debug.Log($"[HexGridOverlay] Start() — showGrid={showGrid}, mainCamera={(mainCamera != null ? mainCamera.name : "NULL")}, gameObject={gameObject.name}, active={gameObject.activeInHierarchy}");
+        if (debugLogs) Debug.Log($"[HexGridOverlay] Start() — showGrid={showGrid}, mainCamera={(mainCamera != null ? mainCamera.name : "NULL")}, gameObject={gameObject.name}, active={gameObject.activeInHierarchy}");
         
         // Create parent for line renderers
         lineRendererParent = new GameObject("HexGridLines").transform;
@@ -82,15 +84,15 @@ public class HexGridOverlay : MonoBehaviour
         lineRendererParent.localRotation = Quaternion.identity;
         
         // Create default material if not assigned
-        if (lineMaterial == null)
-        {
-            lineMaterial = CreateDefaultLineMaterial();
-            Debug.Log($"[HexGridOverlay] Created default line material: shader={lineMaterial?.shader?.name ?? "NULL"}, color={lineMaterial?.color}");
-        }
-        else
-        {
-            Debug.Log($"[HexGridOverlay] Using assigned material: {lineMaterial.name}, shader={lineMaterial.shader?.name ?? "NULL"}");
-        }
+            if (lineMaterial == null)
+            {
+                lineMaterial = CreateDefaultLineMaterial();
+                if (debugLogs) Debug.Log($"[HexGridOverlay] Created default line material: shader={lineMaterial?.shader?.name ?? "NULL"}, color={lineMaterial?.color}");
+            }
+            else
+            {
+                if (debugLogs) Debug.Log($"[HexGridOverlay] Using assigned material: {lineMaterial.name}, shader={lineMaterial.shader?.name ?? "NULL"}");
+            }
         
         // Try to find references silently at startup (avoid noisy warnings while systems initialize)
         FindReferences(silent: true);
@@ -110,7 +112,7 @@ public class HexGridOverlay : MonoBehaviour
         
         if (!showGrid)
         {
-            Debug.LogWarning("[HexGridOverlay] showGrid is FALSE — grid lines are hidden by default. Call SetGridVisible(true) or enable 'Show Grid' in the Inspector to display them.");
+            if (debugLogs) Debug.LogWarning("[HexGridOverlay] showGrid is FALSE — grid lines are hidden by default. Call SetGridVisible(true) or enable 'Show Grid' in the Inspector to display them.");
         }
     }
     
@@ -243,7 +245,7 @@ public class HexGridOverlay : MonoBehaviour
         }
         else
         {
-            if (!silent)
+            if (!silent && debugLogs)
                 Debug.LogWarning($"[HexGridOverlay] FindReferences — HexMapChunkManager NOT found on '{gameObject.name}' or parents. " +
                     $"Hierarchy: {GetHierarchyPath(transform)}");
         }
@@ -261,10 +263,10 @@ public class HexGridOverlay : MonoBehaviour
         if (planetGenerator != null && grid == null)
         {
             grid = planetGenerator.Grid;
-            // Debug.Log — FindReferences using PlanetGenerator (disabled to reduce console noise)
+            if (debugLogs) Debug.Log("[HexGridOverlay] FindReferences using PlanetGenerator");
         }
-        
-        if (grid == null && !silent)
+
+        if (grid == null && !silent && debugLogs)
         {
             Debug.LogWarning("[HexGridOverlay] FindReferences — Could NOT find a valid HexGrid from either HexMapChunkManager or PlanetGenerator. Grid lines will not render until grid is available.");
         }

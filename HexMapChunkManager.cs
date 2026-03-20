@@ -8,23 +8,26 @@ using Unity.Mathematics;
 using UnityEngine.AI;
 
 /// <summary>
-/// Burst job that fills a BiomeIndexMap texture (RFloat) from a pre-computed tile-to-slice lookup.
-/// Each pixel reads the LUT for its tile index, then looks up the slice in a flat array.
+/// Burst job that fills a BiomeIndexMap texture (RGFloat) from pre-computed tile-to-slice
+/// and tile-to-biome lookups. R = surface slice index, G = biome index.
+/// Storing the biome index directly avoids the lossy SliceToBiomeMap reverse lookup
+/// which fails when multiple biomes share the same surface family/slice.
 /// </summary>
 [BurstCompile]
 struct FillBiomeIndexMapJob : IJobParallelFor
 {
     [ReadOnly] public NativeArray<int> lut;
     [ReadOnly] public NativeArray<int> tileSliceIndex;
-    public NativeArray<float> pixels;
+    [ReadOnly] public NativeArray<int> tileBiomeIndex;
+    public NativeArray<float2> pixels;
 
     public void Execute(int i)
     {
         int tileIndex = lut[i];
         if (tileIndex >= 0 && tileIndex < tileSliceIndex.Length)
-            pixels[i] = (float)tileSliceIndex[tileIndex];
+            pixels[i] = new float2((float)tileSliceIndex[tileIndex], (float)tileBiomeIndex[tileIndex]);
         else
-            pixels[i] = 0f;
+            pixels[i] = new float2(0f, 0f);
     }
 }
 
@@ -209,6 +212,8 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private bool logTransformChainOnBuild = true;
     [Tooltip("Logs whenever this manager's transform changes at runtime (position/rotation/scale).")]
     [SerializeField] private bool debugTransformChanges = false;
+    [Tooltip("When enabled, dump per-biome tint values and slice->biome map samples to the Console for debugging.")]
+    [SerializeField] private bool debugBiomeDetails = false;
     [Tooltip("When enabled, logs detailed water/SDF diagnostics: pre-build tile counts, SDF seed counts, per-chunk mesh stats, post-build summary. Helps diagnose gaps or missing water.")]
     [SerializeField] private bool debugWaterVerbose = false;
     private Vector3 _lastTransformPos;
@@ -898,6 +903,23 @@ public class HexMapChunkManager : MonoBehaviour
         int count = visuals.Count;
         if (count == 0) return;
 
+        if (debugBiomeDetails)
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append($"[HexMapChunkManager] Building textures for {count} visual entries:\n");
+                for (int i = 0; i < count; i++)
+                {
+                    var e = visuals[i];
+                    if (e == null) sb.AppendLine($"  [{i}] <null>");
+                    else sb.AppendLine($"  [{i}] {e.name} (biome={e.biome}) tint={e.tint}");
+                }
+                Debug.Log(sb.ToString());
+            }
+            catch { }
+        }
+
         // IMPORTANT:
         // `textureWidth/textureHeight` are used for the equirect LUT + baked planet textures (often 2:1 like 2048x1024).
         // Terrain surface Texture2DArrays should be square (e.g., 2048x2048). Do NOT tie them to the LUT height.
@@ -1062,9 +1084,10 @@ public class HexMapChunkManager : MonoBehaviour
 
         if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
         {
-            // Store slice index directly as float (RFloat) so Shader Graph sampling does NOT require *255 decoding.
-            // This is a stability/UX win: fewer fragile packing/unpacking assumptions.
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
+            // RGFloat: R = surface slice index, G = biome index.
+            // Storing biome index directly avoids the lossy SliceToBiomeMap reverse lookup
+            // which fails when multiple biomes share the same surface family/slice.
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -1072,18 +1095,12 @@ public class HexMapChunkManager : MonoBehaviour
             };
         }
 
-        // NOTE:
-        // Despite the name, this map is now used as a *surface slice index map* (families/variants),
-        // because the Shader Graph version looks better and is simpler when it samples arrays by a single index.
-        // Values are written as float slice indices (RFloat), and shader code can use them directly (round if needed).
         bool warnedSliceOutOfRange = false;
         int minVal = int.MaxValue;
         int maxVal = 0;
 
         int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
-        // MEMORY OPT: Process in row strips instead of one huge Color[width*height] (~67 MB for 2048x2048).
-        // Each strip is only width × rowsPerStrip Colors, keeping peak allocation under ~1 MB.
         int rowsPerStrip = 64;
         var stripPixels = new Color[width * rowsPerStrip];
 
@@ -1111,7 +1128,6 @@ public class HexMapChunkManager : MonoBehaviour
                 var visual = biomeVisualDatabase.Get(tile.biome);
                 int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
 
-                // Convert biomeIndex -> surface slice index (startSlice + chosenVariant)
                 int sliceIndex = 0;
                 if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
                 {
@@ -1127,7 +1143,6 @@ public class HexMapChunkManager : MonoBehaviour
                     }
                     else
                     {
-                        // Deterministic per-tile variant selection (stable across runs)
                         unchecked
                         {
                             int h = tileIndex * 1103515245 + 12345;
@@ -1152,7 +1167,7 @@ public class HexMapChunkManager : MonoBehaviour
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
 
-                stripPixels[localIdx] = new Color(sliceIndex, 0f, 0f, 1f);
+                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, 0f, 1f);
             }
 
             biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
@@ -1163,7 +1178,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (ShouldRunDiagnostics())
         {
             if (minVal == int.MaxValue) minVal = 0;
-            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RFloat).");
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGFloat).");
         }
     }
 
@@ -1178,7 +1193,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
         {
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -1258,12 +1273,11 @@ public class HexMapChunkManager : MonoBehaviour
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
 
-                stripPixels[localIdx] = new Color(sliceIndex, 0f, 0f, 1f);
+                stripPixels[localIdx] = new Color(sliceIndex, biomeIndex, 0f, 1f);
             }
 
             biomeIndexMap.SetPixels(0, startRow, width, rowsThisStrip, stripPixels);
             
-            // Yield after each strip to spread work across frames
             yield return null;
         }
 
@@ -1272,7 +1286,7 @@ public class HexMapChunkManager : MonoBehaviour
         if (ShouldRunDiagnostics())
         {
             if (minVal == int.MaxValue) minVal = 0;
-            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RFloat) [batched].");
+            Debug.Log($"[HexMapChunkManager][Diag] BiomeIndexMap(slice) range: {minVal}..{maxVal} (RGFloat) [batched].");
         }
     }
 
@@ -1423,17 +1437,19 @@ public class HexMapChunkManager : MonoBehaviour
     /// Doing this once over ~tens of thousands of tiles eliminates millions of
     /// Dictionary.TryGetValue + biome resolution calls in the per-pixel loop.
     /// </summary>
-    private int[] PrecomputeTileSliceIndices()
+    private void PrecomputeTileSliceAndBiomeIndices(out int[] sliceIndices, out int[] biomeIndices)
     {
         int tileCount = grid.TileCount;
-        var result = ArrayPoolUtils.RentInt(tileCount);
+        sliceIndices = ArrayPoolUtils.RentInt(tileCount);
+        biomeIndices = ArrayPoolUtils.RentInt(tileCount);
         int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
         for (int ti = 0; ti < tileCount; ti++)
         {
             if (!planetGenerator.data.TryGetValue(ti, out var tile))
             {
-                result[ti] = 0;
+                sliceIndices[ti] = 0;
+                biomeIndices[ti] = 0;
                 continue;
             }
 
@@ -1450,6 +1466,7 @@ public class HexMapChunkManager : MonoBehaviour
             }
 
             int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
+            biomeIndices[ti] = biomeIndex;
 
             int sliceIndex = 0;
             if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
@@ -1477,10 +1494,8 @@ public class HexMapChunkManager : MonoBehaviour
 
             if (maxSlice >= 0 && sliceIndex > maxSlice) sliceIndex = maxSlice;
             if (sliceIndex < 0) sliceIndex = 0;
-            result[ti] = sliceIndex;
+            sliceIndices[ti] = sliceIndex;
         }
-
-        return result;
     }
 
     /// <summary>
@@ -1506,7 +1521,7 @@ public class HexMapChunkManager : MonoBehaviour
 
         if (biomeIndexMap == null || biomeIndexMap.width != width || biomeIndexMap.height != height)
         {
-            biomeIndexMap = new Texture2D(width, height, TextureFormat.RFloat, false, true)
+            biomeIndexMap = new Texture2D(width, height, TextureFormat.RGFloat, false, true)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Repeat,
@@ -1515,17 +1530,20 @@ public class HexMapChunkManager : MonoBehaviour
         }
 
         int pixelCount = width * height;
-        var tileSlice = PrecomputeTileSliceIndices();
+        PrecomputeTileSliceAndBiomeIndices(out var tileSlice, out var tileBiome);
 
         var lutNative = new NativeArray<int>(bakeResult.lut, Allocator.TempJob);
         var sliceNative = new NativeArray<int>(tileSlice, Allocator.TempJob);
-        ArrayPoolUtils.ReturnInt(tileSlice); // return to pool after NativeArray copy
-        var pixelsNative = new NativeArray<float>(pixelCount, Allocator.TempJob);
+        var biomeNative = new NativeArray<int>(tileBiome, Allocator.TempJob);
+        ArrayPoolUtils.ReturnInt(tileSlice);
+        ArrayPoolUtils.ReturnInt(tileBiome);
+        var pixelsNative = new NativeArray<float2>(pixelCount, Allocator.TempJob);
 
         new FillBiomeIndexMapJob
         {
             lut = lutNative,
             tileSliceIndex = sliceNative,
+            tileBiomeIndex = biomeNative,
             pixels = pixelsNative,
         }.Schedule(pixelCount, 4096).Complete();
 
@@ -1533,6 +1551,7 @@ public class HexMapChunkManager : MonoBehaviour
         biomeIndexMap.Apply(false, false);
 
         pixelsNative.Dispose();
+        biomeNative.Dispose();
         sliceNative.Dispose();
         lutNative.Dispose();
     }
@@ -1749,6 +1768,70 @@ public class HexMapChunkManager : MonoBehaviour
         sharedMaterial.SetFloat("_BiomeCount", (float)biomeCount);
         int totalSlices = (biomeAlbedoArray != null) ? biomeAlbedoArray.depth : 1;
         sharedMaterial.SetFloat("_TotalSlices", (float)totalSlices);
+
+        if (debugBiomeDetails)
+        {
+            try
+            {
+                // Dump first several tint entries to help diagnose why tinting appears as white
+                int dumpN = Mathf.Min(16, biomeCount);
+                var parts = new System.Text.StringBuilder();
+                parts.Append($"[HexMapChunkManager] BiomeCount={biomeCount} TotalSlices={totalSlices} Tints[:{dumpN}]=");
+                for (int i = 0; i < dumpN; i++)
+                {
+                    parts.Append(biomeTintArray[i].ToString());
+                    if (i < dumpN - 1) parts.Append(",");
+                }
+                Debug.Log(parts.ToString());
+
+                // Sample a few slice->biome mappings (first 32 slices or totalSlices)
+                int sampleSlices = Mathf.Min(32, totalSlices);
+                var sp = new System.Text.StringBuilder();
+                sp.Append($"[HexMapChunkManager] SliceToBiomeMap samples[:{sampleSlices}]=");
+                if (sliceToBiomeMap != null)
+                {
+                    for (int si = 0; si < sampleSlices; si++)
+                    {
+                        // Read pixel from texture (may be valid only in main thread during Apply)
+                        try
+                        {
+                            var c = sliceToBiomeMap.GetPixel(si, 0);
+                            sp.Append(((int)c.r).ToString());
+                        }
+                        catch { sp.Append("?"); }
+                        if (si < sampleSlices - 1) sp.Append(",");
+                    }
+                }
+                else sp.Append("<null>");
+                Debug.Log(sp.ToString());
+                // Also attempt to read back what was written to the material instance (one-shot)
+                try
+                {
+                    if (sharedMaterial != null && sharedMaterial.HasProperty("_BiomeTints"))
+                    {
+                        // GetVectorArray exists in supported Unity versions where SetVectorArray is available
+                        var matVecs = sharedMaterial.GetVectorArray("_BiomeTints");
+                        if (matVecs != null)
+                        {
+                            var mb = new System.Text.StringBuilder();
+                            mb.Append("[HexMapChunkManager] Material._BiomeTints[:" + Mathf.Min(16, matVecs.Length) + "]=");
+                            for (int i = 0; i < Mathf.Min(16, matVecs.Length); i++)
+                            {
+                                mb.Append(matVecs[i].ToString());
+                                if (i < Mathf.Min(16, matVecs.Length) - 1) mb.Append(",");
+                            }
+                            Debug.Log(mb.ToString());
+                        }
+                        else Debug.Log("[HexMapChunkManager] Material.GetVectorArray returned null");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[HexMapChunkManager] Failed to GetVectorArray from material: {ex.Message}");
+                }
+            }
+            catch (System.Exception ex) { Debug.LogWarning($"[HexMapChunkManager] debugBiomeDetails error: {ex.Message}"); }
+        }
     }
     
     /// <summary>

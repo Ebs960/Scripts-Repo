@@ -229,20 +229,20 @@ MonoBehaviour:
   mountainElevationMax: 17.8
   oceanElevation: 0
   seasElevation: 23
-  coastElevation: 30
+  coastElevation: 29
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
-  riverDepth: 0.85
+  riverDepth: 2.7
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
   lakeMaxRadiusTiles: 3
   lakeMinDistanceFromCoast: 6
-  coastBiteCount: 11
+  coastBiteCount: 13
   coastBiteRadiusMin: 1
   coastBiteRadiusMax: 2
-  coastSpurCount: 10
+  coastSpurCount: 12
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 100

@@ -1597,7 +1597,7 @@ GameObject:
   - component: {fileID: 6014796906627762230}
   - component: {fileID: 7799460440131121764}
   m_Layer: 5
-  m_Name: City UI
+  m_Name: Herd Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2779,7 +2779,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 6295414387512729389}
   m_HandleRect: {fileID: 4089532403135190205}
   m_Direction: 0
-  m_Value: 1.0000086
+  m_Value: 0
   m_Size: 0.8225
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -3491,7 +3491,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2405809672362104765}
   m_HandleRect: {fileID: 5084536409280194448}
   m_Direction: 0
-  m_Value: 1.0000086
+  m_Value: 0
   m_Size: 0.8225
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -4251,7 +4251,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 6515962243325446427}
   m_HandleRect: {fileID: 2282053041425265215}
   m_Direction: 0
-  m_Value: 1.0000086
+  m_Value: 0
   m_Size: 0.8225
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -4292,7 +4292,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -71.00058, y: -0.0006866455}
+  m_AnchoredPosition: {x: 0.000030517578, y: -0.0006866455}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &330694871283438109
@@ -4841,7 +4841,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -71.000595, y: -0.0006866455}
+  m_AnchoredPosition: {x: 0.000015258789, y: -0.0006866455}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &739416585873364240
@@ -5323,7 +5323,7 @@ GameObject:
   - component: {fileID: 3240047205436504962}
   - component: {fileID: 5442200409200083922}
   m_Layer: 5
-  m_Name: X Button
+  m_Name: Close Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6026,7 +6026,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -71.000595, y: -0.00033569336}
+  m_AnchoredPosition: {x: 0.000015258789, y: -0.00033569336}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &4449078668074821246
@@ -7007,7 +7007,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -71.00058, y: -0.00033569336}
+  m_AnchoredPosition: {x: 0.000030517578, y: -0.00033569336}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &7807891390341531002
@@ -7363,7 +7363,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 3219271381049820923}
   m_HandleRect: {fileID: 6157826299992704488}
   m_Direction: 0
-  m_Value: 1.0000086
+  m_Value: 0
   m_Size: 0.8225
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -8211,14 +8211,17 @@ MonoBehaviour:
   storageText: {fileID: 1573158104452963288}
   structuresText: {fileID: 4817893709170669884}
   productionText: {fileID: 7813222689662167235}
-  cancelCurrentButton: {fileID: 0}
-  deprioritizeButton: {fileID: 0}
   governorNameText: {fileID: 636633373773124320}
   governorLevelText: {fileID: 9204723703156630324}
   governorExperienceText: {fileID: 3024444321823194324}
   governorDropdown: {fileID: 2689379150563893762}
+  queueContainer: {fileID: 0}
+  queueEntryPrefab: {fileID: 0}
   buildListContainer: {fileID: 3264371394827400019}
   buildEntryPrefab: {fileID: 2975033316595543686, guid: 6e8e155abe500ae4b99fe326847d3724, type: 3}
+  moveTargetsContainer: {fileID: 0}
+  moveTargetButtonPrefab: {fileID: 0}
+  closeButton: {fileID: 5442200409200083922}
 --- !u!1 &7645192701281817570
 GameObject:
   m_ObjectHideFlags: 0

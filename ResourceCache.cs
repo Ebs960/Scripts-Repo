@@ -321,7 +321,8 @@ public static class ResourceCache
         if (!_workerUnitsLoaded)
         {
 #if UNITY_EDITOR
-            string[] guids = AssetDatabase.FindAssets("t:WorkerUnitData", new[] { "Assets/Workers" });
+            // Search the whole project for WorkerUnitData assets to avoid depending on a specific folder.
+            string[] guids = AssetDatabase.FindAssets("t:WorkerUnitData");
             List<WorkerUnitData> units = new List<WorkerUnitData>();
 
             foreach (string guid in guids)

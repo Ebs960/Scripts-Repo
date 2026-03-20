@@ -8,6 +8,11 @@ public class HerdPanel : MonoBehaviour
     {
         // Ensure the herd panel starts hidden like other panels
         gameObject.SetActive(false);
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveAllListeners();
+            closeButton.onClick.AddListener(HidePanel);
+        }
     }
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI animalsText;
@@ -31,6 +36,10 @@ public class HerdPanel : MonoBehaviour
     [Header("Build UI")]
     public Transform buildListContainer; // container to populate build entries
     public GameObject buildEntryPrefab; // prefab: should contain a TextMeshProUGUI and a Button
+    [Header("Move Herd")]
+    public Transform moveTargetsContainer; // container to populate neighbor move buttons
+    public GameObject moveTargetButtonPrefab; // optional prefab: should contain a Button and TextMeshProUGUI
+    public Button closeButton;
 
     public void ShowPanel(Herd herd)
     {
@@ -219,6 +228,59 @@ public class HerdPanel : MonoBehaviour
             if (structuresText != null && (currentHerd.builtStructures == null || currentHerd.builtStructures.Count == 0))
                 structuresText.text = "(none)";
         }
+        
+        // Populate move targets (neighbors)
+        if (moveTargetsContainer != null)
+        {
+            for (int i = moveTargetsContainer.childCount - 1; i >= 0; i--)
+            {
+                var c = moveTargetsContainer.GetChild(i);
+                if (Application.isPlaying) Destroy(c.gameObject); else DestroyImmediate(c.gameObject);
+            }
+
+            var ts = TileSystem.GetForPlanet(currentHerd.planetIndex) ?? TileSystem.Instance;
+            if (ts != null && currentHerd.currentTileIndex >= 0)
+            {
+                var neigh = ts.GetNeighbors(currentHerd.currentTileIndex);
+                if (neigh != null)
+                {
+                    foreach (var n in neigh)
+                    {
+                        if (n < 0) continue;
+                        var td = ts.GetTileData(n);
+                        if (td == null || !td.isPassable) continue;
+                        // Check occupancy
+                        var occ = TileOccupancyManager.GetForPlanet(currentHerd.planetIndex) ?? TileOccupancyManager.Instance;
+                        if (occ != null && occ.GetOccupantObject(n, TileLayer.Surface) != null) continue;
+
+                        if (moveTargetButtonPrefab != null)
+                        {
+                            var go = Instantiate(moveTargetButtonPrefab, moveTargetsContainer);
+                            var btn = go.GetComponentInChildren<UnityEngine.UI.Button>();
+                            var txt = go.GetComponentInChildren<TextMeshProUGUI>();
+                            if (txt != null) txt.text = $"Move -> {n}";
+                            if (btn != null)
+                            {
+                                int captured = n;
+                                btn.onClick.RemoveAllListeners();
+                                btn.onClick.AddListener(() => OnMoveTargetClicked(captured));
+                            }
+                        }
+                        else
+                        {
+                            var go = new GameObject("MoveTarget_" + n, typeof(RectTransform));
+                            go.transform.SetParent(moveTargetsContainer, false);
+                            var btn = go.AddComponent<UnityEngine.UI.Button>();
+                            var img = go.AddComponent<UnityEngine.UI.Image>(); img.color = new Color(0.2f,0.6f,0.9f,1f);
+                            var txtGO = new GameObject("Text", typeof(RectTransform)); txtGO.transform.SetParent(go.transform, false);
+                            var tmp = txtGO.AddComponent<TextMeshProUGUI>(); tmp.text = $"Move -> {n}"; tmp.fontSize = 16;
+                            int captured = n;
+                            btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(() => OnMoveTargetClicked(captured));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void UpdateGovernorDisplay()
@@ -344,6 +406,17 @@ public class HerdPanel : MonoBehaviour
         toIndex = Mathf.Clamp(toIndex, 0, Mathf.Max(0, currentHerd.productionQueue.Count - 1));
         if (fromIndex == toIndex) { Refresh(); return; }
         currentHerd.ReorderProduction(fromIndex, toIndex);
+        Refresh();
+    }
+
+    public void OnMoveTargetClicked(int tileIndex)
+    {
+        if (currentHerd == null) return;
+        bool ok = currentHerd.MoveToTile(tileIndex);
+        if (!ok)
+        {
+            UIManager.Instance?.ShowNotification("Cannot move herd to selected tile.");
+        }
         Refresh();
     }
 }

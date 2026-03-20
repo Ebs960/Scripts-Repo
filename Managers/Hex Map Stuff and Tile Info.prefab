@@ -83,7 +83,8 @@ MonoBehaviour:
   debugWrapVerbose: 0
   debugLogCooldownSeconds: 0.5
   logTransformChainOnBuild: 0
-  debugTransformChanges: 0
+  debugTransformChanges: 1
+  debugBiomeDetails: 1
   debugWaterVerbose: 0
   waterMaterial: {fileID: 2100000, guid: 0084ab047cea17047a2ee33ac80d5ab8, type: 2}
   waterYOffset: 0.01
@@ -98,12 +99,12 @@ MonoBehaviour:
   enableContinuousRiverSurface: 1
   continuousWaterIncludesLakes: 1
   continuousWaterIncludesOcean: 1
-  riverSdfWidth: 512
-  riverSdfHeight: 256
-  riverHalfWidthMultiplier: 0.84
+  riverSdfWidth: 256
+  riverSdfHeight: 128
+  riverHalfWidthMultiplier: 1
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
-  riverSurfaceLift: 0.01
+  riverSurfaceLift: 0.13
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
   preBuildOnPlanetReady: 1
@@ -132,6 +133,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexGridOverlay
   showGrid: 0
+  debugLogs: 0
   gridColor: {r: 0, g: 0, b: 0, a: 0.85882354}
   lineWidth: 0.01
   heightOffset: 2.5

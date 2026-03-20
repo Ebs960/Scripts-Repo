@@ -20,12 +20,13 @@ MonoBehaviour:
   positionHint: 0
   category: 0
   techColor: {r: 1, g: 1, b: 1, a: 1}
-  scienceCost: 10
+  scienceCost: 4
   requiredTechnologies: []
   requiredCultures: []
   requiredCityCount: 0
   requiredControlledBiomes: 
-  unlockedGovernments: []
+  unlockedGovernments:
+  - {fileID: 11400000, guid: f0edbcbede4a85340bba0325c37d8596, type: 2}
   unlockedReligions: []
   unlockedLeaders: []
   unlocksReligion: 0
@@ -54,6 +55,8 @@ MonoBehaviour:
   improvementBonuses: []
   buildingBonuses: []
   genericYieldBonuses: []
+  herdStarvationPercentReduction: 0
+  enablesHerding: 1
   additionalGovernorSlots: 0
   unlockedGovernorTraits: []
   unitLimitModifiers: []

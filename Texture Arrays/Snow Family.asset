@@ -20,6 +20,6 @@ MonoBehaviour:
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1
-  defaultTint: {r: 1, g: 1, b: 1, a: 1}
+  defaultTint: {r: 0.04274108, g: 0.2404362, b: 0.98490566, a: 1}
   normalStrength: 1
   roughnessOffset: 0

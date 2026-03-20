@@ -48,6 +48,7 @@ MonoBehaviour:
   cityPanel: {fileID: 0}
   techPanel: {fileID: 0}
   culturePanel: {fileID: 0}
+  herdPanel: {fileID: 0}
   governmentPanel: {fileID: 0}
   religionPanel: {fileID: 0}
   tradePanel: {fileID: 0}
@@ -55,7 +56,6 @@ MonoBehaviour:
   diplomacyPanel: {fileID: 0}
   equipmentPanel: {fileID: 0}
   unitInfoPanel: {fileID: 0}
-  armyPanel: {fileID: 0}
   pauseMenuPanel: {fileID: 0}
   playerUI: {fileID: 0}
   spaceMapUI: {fileID: 0}

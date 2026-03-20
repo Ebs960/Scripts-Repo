@@ -631,10 +631,7 @@ public class AnimalManager : MonoBehaviour
                 isMelee = true
             };
 
-            // Use an attack point for melee attacks (consistent with all units)
-            if (!predator.TryConsumeAttackPoint())
-                return false; // no AP available, cannot attack
-
+            // Perform attack — PerformAttack will consume attack points itself.
             predator.PerformAttack(ctx);
             return true;
         }

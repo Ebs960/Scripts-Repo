@@ -2214,6 +2214,15 @@ return true;
         herdsEnabled = true;
         UIManager.Instance?.ShowNotification($"{(civData!=null?civData.civName:"A civ")} has unlocked Herding!");
     }
+        // Add any governments unlocked by this tech to the civ's unlocked governments list
+        if (tech.unlockedGovernments != null && tech.unlockedGovernments.Length > 0)
+        {
+            if (unlockedGovernments == null) unlockedGovernments = new List<GovernmentData>();
+            foreach (var g in tech.unlockedGovernments)
+            {
+                if (g != null && !unlockedGovernments.Contains(g)) unlockedGovernments.Add(g);
+            }
+        }
     }
 
     // Compute aggregated flat work points granted to ALL workers by techs/cultures/policies/government
@@ -2290,6 +2299,16 @@ return true;
             foreach (var b in cult.unlocksBeliefs)
             {
                 if (b != null && !cultureUnlockedBeliefs.Contains(b)) cultureUnlockedBeliefs.Add(b);
+            }
+        }
+
+        // Add any governments unlocked by this culture to the civ's unlocked governments list
+        if (cult.unlockedGovernments != null && cult.unlockedGovernments.Length > 0)
+        {
+            if (unlockedGovernments == null) unlockedGovernments = new List<GovernmentData>();
+            foreach (var g in cult.unlockedGovernments)
+            {
+                if (g != null && !unlockedGovernments.Contains(g)) unlockedGovernments.Add(g);
             }
         }
 

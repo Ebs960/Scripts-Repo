@@ -76,7 +76,8 @@ public class CultureButtonUI : MonoBehaviour
         if (button == null) button = GetComponent<Button>();
         if (button != null)
         {
-            button.interactable = (state != CultureState.Researched);
+            // Only allow interaction when the culture is Available or currently Researching
+            button.interactable = (state == CultureState.Available || state == CultureState.Researching);
         }
         RefreshButtonColorBlock();
         RefreshColor();

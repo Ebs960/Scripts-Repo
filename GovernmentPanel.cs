@@ -56,10 +56,12 @@ public class GovernmentPanel : MonoBehaviour
     public void ShowForCivilization(Civilization civ)
     {
         this.civ = civ;
-        // Use UIManager to show panel so other panels are hidden consistently
+        // Use UIManager to show panel so other panels are hidden consistently.
+        // Also explicitly hide the Player UI so the government panel is modal.
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowPanel("governmentPanel");
+            UIManager.Instance.HidePanel("playerUI");
         }
         else if (panelRoot != null)
             panelRoot.SetActive(true);
@@ -271,78 +273,80 @@ public class GovernmentPanel : MonoBehaviour
         // Governments
     if (governmentsContentRoot != null && PolicyManager.Instance != null)
     {
-        var govs = PolicyManager.Instance.GetAvailableGovernments(civ);
-            if (govs != null && govs.Count > 0)
+        // Show all unlocked governments in the UI, but disable the Adopt button when the civ
+        // cannot currently adopt (e.g. lacks policy points or other requirements).
+        var unlocked = civ.unlockedGovernments;
+        if (unlocked != null && unlocked.Count > 0)
+        {
+            // Compute available set once to avoid repeated calls
+            var avail = new HashSet<GovernmentData>(PolicyManager.Instance.GetAvailableGovernments(civ));
+            foreach (var g in unlocked)
             {
-                foreach (var g in govs)
-                {
-                    // Create a simple row: Text + Button
-            var rowGO = new GameObject($"Government_{g.governmentName}");
-            rowGO.transform.SetParent(governmentsContentRoot, false);
-                    spawned.Add(rowGO);
+                if (g == null) continue;
+                var rowGO = new GameObject($"Government_{g.governmentName}");
+                rowGO.transform.SetParent(governmentsContentRoot, false);
+                spawned.Add(rowGO);
 
-                    // Add Horizontal Layout Group
-                    var layout = rowGO.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
-                    layout.childControlWidth = true;
-                    layout.childControlHeight = true;
-                    layout.childForceExpandWidth = false;
-                    layout.childForceExpandHeight = false;
+                var layout = rowGO.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+                layout.childControlWidth = true;
+                layout.childControlHeight = true;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
 
-                    // Add Text
-                    var textGO = new GameObject("Text");
-                    textGO.transform.SetParent(rowGO.transform, false);
-                    var txt = textGO.AddComponent<TextMeshProUGUI>();
-                    txt.text = g.governmentName + "\n" + g.description;
-                    txt.fontSize = 18;
-                    txt.color = Color.white;
-                    var textRect = textGO.AddComponent<RectTransform>();
-                    textRect.sizeDelta = new Vector2(200, 60); // Increased height for description
+                var textGO = new GameObject("Text");
+                textGO.transform.SetParent(rowGO.transform, false);
+                var txt = textGO.AddComponent<TextMeshProUGUI>();
+                txt.text = g.governmentName + "\n" + g.description;
+                txt.fontSize = 18;
+                txt.color = Color.white;
+                var textRect = textGO.AddComponent<RectTransform>();
+                textRect.sizeDelta = new Vector2(200, 60);
 
-                    // Add Button
-                    var btnGO = new GameObject("Button");
-                    btnGO.transform.SetParent(rowGO.transform, false);
-                    var btn = btnGO.AddComponent<Button>();
-                    var btnTxt = btnGO.AddComponent<TextMeshProUGUI>();
-                    btnTxt.text = "Adopt";
-                    btnTxt.fontSize = 16;
-                    btnTxt.color = Color.black;
-                    btnTxt.alignment = TextAlignmentOptions.Center;
-                    var btnRect = btnGO.AddComponent<RectTransform>();
-                    btnRect.sizeDelta = new Vector2(80, 30);
+                var btnGO = new GameObject("Button");
+                btnGO.transform.SetParent(rowGO.transform, false);
+                var btn = btnGO.AddComponent<Button>();
+                var btnTxt = btnGO.AddComponent<TextMeshProUGUI>();
+                btnTxt.text = "Adopt";
+                btnTxt.fontSize = 16;
+                // Gray out when not currently adoptable
+                bool canAdopt = avail.Contains(g);
+                btnTxt.color = canAdopt ? Color.black : Color.gray;
+                btnTxt.alignment = TextAlignmentOptions.Center;
+                var btnRect = btnGO.AddComponent<RectTransform>();
+                btnRect.sizeDelta = new Vector2(80, 30);
 
-                    // Wire button to confirmation dialog
-                    btn.interactable = PolicyManager.Instance.GetAvailableGovernments(civ).Contains(g);
-                    btn.onClick.AddListener(() => {
-                        pendingGovernment = g;
-                        pendingPolicy = null;
-                        EnsureRuntimeUI();
-                        if (confirmMessageText != null) confirmMessageText.text = $"Adopt government '{g.governmentName}'? Cost: {g.policyPointCost} policy points.";
-                        // Populate an effects breakdown in the confirm dialog when available
-                        PopulateConfirmDialogEffects(g, null);
-                        if (confirmOkButton != null)
-                        {
-                            confirmOkButton.onClick.RemoveAllListeners();
-                            confirmOkButton.onClick.AddListener(() => {
-                                TryChangeGovernment(pendingGovernment);
-                                pendingGovernment = null;
-                                confirmDialog.SetActive(false);
-                            });
-                        }
-                        if (confirmCancelButton != null)
-                        {
-                            confirmCancelButton.onClick.RemoveAllListeners();
-                            confirmCancelButton.onClick.AddListener(() => { pendingGovernment = null; confirmDialog.SetActive(false); });
-                        }
-                        confirmDialog.SetActive(true);
-                    });
-                }
-            }
-            else
-            {
-                // No governments available
-                if (governmentsHeaderText != null) governmentsHeaderText.text = "No Governments Available";
+                // Wire button to confirmation dialog; button stays visible but disabled when unaffordable
+                btn.interactable = canAdopt;
+                btn.onClick.AddListener(() => {
+                    pendingGovernment = g;
+                    pendingPolicy = null;
+                    EnsureRuntimeUI();
+                    if (confirmMessageText != null) confirmMessageText.text = $"Adopt government '{g.governmentName}'? Cost: {g.policyPointCost} policy points.";
+                    PopulateConfirmDialogEffects(g, null);
+                    if (confirmOkButton != null)
+                    {
+                        confirmOkButton.onClick.RemoveAllListeners();
+                        confirmOkButton.onClick.AddListener(() => {
+                            TryChangeGovernment(pendingGovernment);
+                            pendingGovernment = null;
+                            confirmDialog.SetActive(false);
+                        });
+                    }
+                    if (confirmCancelButton != null)
+                    {
+                        confirmCancelButton.onClick.RemoveAllListeners();
+                        confirmCancelButton.onClick.AddListener(() => { pendingGovernment = null; confirmDialog.SetActive(false); });
+                    }
+                    confirmDialog.SetActive(true);
+                });
             }
         }
+        else
+        {
+            // No unlocked governments at all
+            if (governmentsHeaderText != null) governmentsHeaderText.text = "No Governments Available";
+        }
+    }
 
         // Policies
     if (policiesContentRoot != null && PolicyManager.Instance != null)

@@ -82,9 +82,8 @@ public class CultureUI : MonoBehaviour
 
         UIManager.Instance.ShowPanel("culturePanel");
         PopulateCultureTree();
-        // Do not auto-select any culture when opening the UI; start blank
-        currentlySelectedCulture = null;
-        ClearInfoPanel();
+        // Preserve any prior explicit selection when reopening the UI.
+        RefreshUI();
     }
 
     public void Hide()
@@ -638,26 +637,7 @@ public class CultureUI : MonoBehaviour
         return $"{label}: {string.Join(", ", items)}";
     }
 
-    public void RefreshUI()
-    {
-        if (playerCiv == null) return;
-
-        RefreshCultureButtonStates();
-        if (playerCiv.currentCulture != null)
-        {
-            UpdateInfoPanel(playerCiv.currentCulture);
-            foreach (var btnUI in cultureButtons)
-                btnUI.SetSelected(playerCiv.currentCulture == btnUI.RepresentedCulture);
-        }
-        else if (currentlySelectedCulture != null)
-        {
-            UpdateInfoPanel(currentlySelectedCulture);
-        }
-        else
-        {
-            ClearInfoPanel();
-        }
-    }
+    // NOTE: RefreshUI is implemented further below; duplicate removed.
 
     private void UpdateCultureButtonState(CultureButtonUI buttonUI, CultureData culture)
     {
@@ -685,6 +665,30 @@ public class CultureUI : MonoBehaviour
     {
         foreach (var btnUI in cultureButtons)
             UpdateCultureButtonState(btnUI, btnUI.RepresentedCulture);
+    }
+
+    /// <summary>
+    /// Refresh the whole UI: button states and info panel (preserves selection/current research).
+    /// </summary>
+    public void RefreshUI()
+    {
+        if (playerCiv == null) return;
+        RefreshCultureButtonStates();
+
+        if (playerCiv.currentCulture != null)
+        {
+            UpdateInfoPanel(playerCiv.currentCulture);
+            foreach (var btnUI in cultureButtons)
+                btnUI.SetSelected(playerCiv.currentCulture == btnUI.RepresentedCulture);
+        }
+        else if (currentlySelectedCulture != null)
+        {
+            UpdateInfoPanel(currentlySelectedCulture);
+        }
+        else
+        {
+            ClearInfoPanel();
+        }
     }
 
     private CultureTreeLayout LoadLayoutFromFile()

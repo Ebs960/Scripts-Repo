@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -298,48 +299,162 @@ public class Herd : MonoBehaviour
     private Canvas labelCanvas;
     private TextMeshProUGUI nameTextLabel;
     private TextMeshProUGUI governorTextLabel;
+    private TextMeshProUGUI ownerTextLabel;
+    private UnityEngine.UI.Image ownerIconImage;
+    private HerdLabel herdLabelInstance;
+    [Header("Label Prefab")]
+    [Tooltip("Optional prefab to use for herd world labels. Prefab should contain child objects named 'HerdName' (Text), 'HerdOwner' (Text) and optional 'HerdIcon' (Image). If not assigned, a default generated label is created.")]
+    public GameObject herdLabelPrefab;
 
     private void CreateLabelUI()
     {
         if (labelCanvas != null) return;
-        GameObject canvasGO = new GameObject("HerdLabelCanvas");
-        canvasGO.transform.SetParent(transform);
-        labelCanvas = canvasGO.AddComponent<Canvas>();
-        labelCanvas.renderMode = RenderMode.WorldSpace;
-        labelCanvas.worldCamera = Camera.main;
-        var scaler = canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 10;
-        canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-        var rect = canvasGO.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(2.5f, 0.9f);
-        rect.localScale = Vector3.one * 0.08f;
 
-        var bgGO = new GameObject("BG"); bgGO.transform.SetParent(canvasGO.transform, false);
-        var bg = bgGO.AddComponent<UnityEngine.UI.Image>(); bg.color = new Color(0,0,0,0.4f);
-        var bgRect = bgGO.GetComponent<RectTransform>(); bgRect.anchorMin = Vector2.zero; bgRect.anchorMax = Vector2.one; bgRect.offsetMin = Vector2.zero; bgRect.offsetMax = Vector2.zero;
+        if (herdLabelPrefab != null)
+        {
+            var labelGO = Instantiate(herdLabelPrefab, transform);
+            // Find Canvas on prefab (or its children)
+            labelCanvas = labelGO.GetComponentInChildren<Canvas>();
+            if (labelCanvas != null)
+            {
+                labelCanvas.renderMode = RenderMode.WorldSpace;
+                if (labelCanvas.worldCamera == null) labelCanvas.worldCamera = Camera.main;
+            }
 
-        var nameGO = new GameObject("HerdName"); nameGO.transform.SetParent(canvasGO.transform, false);
-        nameTextLabel = nameGO.AddComponent<TextMeshProUGUI>(); nameTextLabel.fontSize = 22; nameTextLabel.alignment = TMPro.TextAlignmentOptions.Center;
-        var nameRect = nameGO.GetComponent<RectTransform>(); nameRect.anchoredPosition = new Vector2(0, 8); nameRect.sizeDelta = new Vector2(220, 28);
+            // Try to find HerdLabel component first (preferred)
+            herdLabelInstance = labelGO.GetComponentInChildren<HerdLabel>(true);
+            if (herdLabelInstance != null)
+            {
+                // Initialize now with available values
+                var ownerName = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
+                var ownerIcon = owner != null && owner.civData != null ? owner.civData.icon : null;
+                herdLabelInstance.Initialize(transform, name, ownerName, ownerIcon, governor != null ? governor.Name : null);
+            }
 
-        var govGO = new GameObject("HerdGovernor"); govGO.transform.SetParent(canvasGO.transform, false);
-        governorTextLabel = govGO.AddComponent<TextMeshProUGUI>(); governorTextLabel.fontSize = 16; governorTextLabel.alignment = TMPro.TextAlignmentOptions.Center;
-        var govRect = govGO.GetComponent<RectTransform>(); govRect.anchoredPosition = new Vector2(0, -8); govRect.sizeDelta = new Vector2(220, 20);
+            // Named children lookup (fallbacks) for prefab without HerdLabel
+            var nameTf = labelGO.transform.Find("HerdName");
+            if (nameTf != null) nameTextLabel = nameTf.GetComponent<TextMeshProUGUI>();
+            var ownerTf = labelGO.transform.Find("HerdOwner");
+            if (ownerTf != null) ownerTextLabel = ownerTf.GetComponent<TextMeshProUGUI>();
+            var iconTf = labelGO.transform.Find("HerdIcon");
+            if (iconTf != null) ownerIconImage = iconTf.GetComponent<UnityEngine.UI.Image>();
 
-        // clickable area
-        var btn = canvasGO.AddComponent<UnityEngine.UI.Button>(); btn.onClick.AddListener(OnLabelClicked);
+            // Fallbacks: pick first/second TMP child if named ones not present
+            var tmps = labelGO.GetComponentsInChildren<TextMeshProUGUI>(true);
+            if (nameTextLabel == null && tmps.Length > 0) nameTextLabel = tmps[0];
+            if (ownerTextLabel == null && tmps.Length > 1) ownerTextLabel = tmps[1];
+
+            // Wire click if prefab contains a Button
+            var btn = labelGO.GetComponentInChildren<UnityEngine.UI.Button>(true);
+            if (btn != null) btn.onClick.AddListener(OnLabelClicked);
+            else
+            {
+                // If no Button, add one to the root canvas for click handling
+                var rootGO = labelCanvas != null ? labelCanvas.gameObject : labelGO;
+                var added = rootGO.GetComponent<UnityEngine.UI.Button>();
+                if (added == null) added = rootGO.AddComponent<UnityEngine.UI.Button>();
+                added.onClick.AddListener(OnLabelClicked);
+            }
+        }
+        else
+        {
+            GameObject canvasGO = new GameObject("HerdLabelCanvas");
+            canvasGO.transform.SetParent(transform);
+            labelCanvas = canvasGO.AddComponent<Canvas>();
+            labelCanvas.renderMode = RenderMode.WorldSpace;
+            labelCanvas.worldCamera = Camera.main;
+            var scaler = canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.dynamicPixelsPerUnit = 10;
+            canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            var rect = canvasGO.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(2.5f, 0.9f);
+            rect.localScale = Vector3.one * 0.08f;
+
+            var bgGO = new GameObject("BG"); bgGO.transform.SetParent(canvasGO.transform, false);
+            var bg = bgGO.AddComponent<UnityEngine.UI.Image>(); bg.color = new Color(0,0,0,0.4f);
+            var bgRect = bgGO.GetComponent<RectTransform>(); bgRect.anchorMin = Vector2.zero; bgRect.anchorMax = Vector2.one; bgRect.offsetMin = Vector2.zero; bgRect.offsetMax = Vector2.zero;
+
+            var nameGO = new GameObject("HerdName"); nameGO.transform.SetParent(canvasGO.transform, false);
+            nameTextLabel = nameGO.AddComponent<TextMeshProUGUI>(); nameTextLabel.fontSize = 22; nameTextLabel.alignment = TMPro.TextAlignmentOptions.Center;
+            var nameRect = nameGO.GetComponent<RectTransform>(); nameRect.anchoredPosition = new Vector2(0, 8); nameRect.sizeDelta = new Vector2(220, 28);
+
+            var govGO = new GameObject("HerdGovernor"); govGO.transform.SetParent(canvasGO.transform, false);
+            governorTextLabel = govGO.AddComponent<TextMeshProUGUI>(); governorTextLabel.fontSize = 16; governorTextLabel.alignment = TMPro.TextAlignmentOptions.Center;
+            var govRect = govGO.GetComponent<RectTransform>(); govRect.anchoredPosition = new Vector2(0, -8); govRect.sizeDelta = new Vector2(220, 20);
+
+            // clickable area
+            var btn = canvasGO.AddComponent<UnityEngine.UI.Button>(); btn.onClick.AddListener(OnLabelClicked);
+        }
     }
 
     private void UpdateLabelUI()
     {
+        // Prefer HerdLabel component when present
+        if (herdLabelInstance != null)
+        {
+            var ownerName = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
+            var ownerIcon = owner != null && owner.civData != null ? owner.civData.icon : null;
+            herdLabelInstance.UpdateLabel(name, ownerName, ownerIcon, governor != null ? governor.Name : null);
+            return;
+        }
+
         if (nameTextLabel != null) nameTextLabel.text = name;
+        // Owner: use owner.civData.civName if available
+        if (ownerTextLabel != null)
+            ownerTextLabel.text = owner != null && owner.civData != null ? owner.civData.civName : "(No Owner)";
         if (governorTextLabel != null) governorTextLabel.text = governor != null ? governor.Name : "(No Governor)";
+        if (ownerIconImage != null && owner != null && owner.civData != null && owner.civData.icon != null)
+            ownerIconImage.sprite = owner.civData.icon;
     }
 
     private void OnLabelClicked()
     {
         // Open HerdPanel if available
         UIManager.Instance?.ShowHerdPanelForHerd(this);
+    }
+
+    /// <summary>
+    /// Move this herd to the specified tile index on the same planet if possible.
+    /// Returns true if move succeeded.
+    /// </summary>
+    public bool MoveToTile(int tileIndex)
+    {
+        if (tileIndex < 0) return false;
+        var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
+        if (ts == null || !ts.IsReady()) return false;
+
+        var td = ts.GetTileData(tileIndex);
+        if (td == null || !td.isPassable) return false;
+
+        var occ = TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance;
+        if (occ != null)
+        {
+            var existing = occ.GetOccupantObject(tileIndex, TileLayer.Surface);
+            if (existing != null && existing != this.gameObject) return false; // occupied
+        }
+
+        // Clear old occupancy
+        try { (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.ClearOccupant(currentTileIndex, TileLayer.Surface); } catch { }
+
+        // Move transform to tile center
+        try { transform.position = ts.GetTileCenterFlat(tileIndex); } catch { }
+
+        currentTileIndex = tileIndex;
+
+        try { (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, this.gameObject, TileLayer.Surface); } catch { }
+
+        // Re-register with chunk manager for wrapping if present
+        try
+        {
+            var planetGen = owner != null ? owner.GetPlanetGeneratorForIndex(planetIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null)
+                                       : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(planetIndex) : null);
+            var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGen);
+            if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, gameObject);
+        }
+        catch { }
+
+        UpdateLabelUI();
+        return true;
     }
 
     // ------------------------- Production (herd-local, city-like) -------------------------
