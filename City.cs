@@ -372,7 +372,8 @@ if (UIManager.Instance != null)
     }
 
     /// <summary>
-    /// Adjusts loyalty based on owner's war-weariness, famine and governor bonus.
+    /// Adjusts loyalty based on owner's war-weariness, famine, governor specialization,
+    /// and governor personality/opinion (CK-lite system).
     /// </summary>
     private void ProcessLoyalty()
     {
@@ -382,31 +383,24 @@ if (UIManager.Instance != null)
         // Famine penalty: a flat 5% loyalty loss if owner ran out of food
         float faminePenaltyPercent = owner.famineActive ? 5f : 0f;
         
-        // Calculate governor bonus
+        // Calculate governor specialization bonus (base)
         float governorBonus = 0f;
         if (governor != null)
         {
             switch (governor.specialization)
             {
-                case Governor.Specialization.Military:
-                    governorBonus = 10f;
-                    break;
-                case Governor.Specialization.Economic:
-                    governorBonus = 8f;
-                    break;
-                case Governor.Specialization.Scientific:
-                    governorBonus = 5f;
-                    break;
-                case Governor.Specialization.Cultural:
-                    governorBonus = 12f;
-                    break;
-                case Governor.Specialization.Religious:
-                    governorBonus = 15f;
-                    break;
-                case Governor.Specialization.Industrial:
-                    governorBonus = 7f;
-                    break;
+                case Governor.Specialization.Military:   governorBonus = 10f; break;
+                case Governor.Specialization.Economic:    governorBonus = 8f;  break;
+                case Governor.Specialization.Scientific:  governorBonus = 5f;  break;
+                case Governor.Specialization.Cultural:    governorBonus = 12f; break;
+                case Governor.Specialization.Religious:   governorBonus = 15f; break;
+                case Governor.Specialization.Industrial:  governorBonus = 7f;  break;
             }
+
+            // CK-lite: governor opinion drives loyalty contribution
+            // Tick opinion first (decays modifiers), then get loyalty effect
+            governor.TickOpinion();
+            governorBonus += governor.GetLoyaltyContribution();
         }
 
         loyalty = loyalty - warPenaltyPercent - faminePenaltyPercent + governorBonus;

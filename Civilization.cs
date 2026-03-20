@@ -529,6 +529,7 @@ public class Civilization : MonoBehaviour
             return null; // No available slots
         int newId = governors.Count > 0 ? governors[governors.Count - 1].Id + 1 : 1;
         var gov = new Governor(newId, name, specialization);
+        gov.AssignRandomPersonality();
         governors.Add(gov);
         return gov;
     }

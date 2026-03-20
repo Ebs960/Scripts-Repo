@@ -36,6 +36,12 @@ public class Governor
     // Stat tracking for trait unlocking
     private Dictionary<TraitTrigger, int> stats = new Dictionary<TraitTrigger, int>();
 
+    // --- CK-Lite Personality & Opinion System ---
+    public List<PersonalityTrait> PersonalityTraits { get; private set; } = new List<PersonalityTrait>();
+    /// <summary>Opinion of the ruling player, -100 (hostile) to +100 (devoted). Starts at 50.</summary>
+    public float Opinion { get; set; } = 50f;
+    public List<OpinionModifier> OpinionModifiers { get; private set; } = new List<OpinionModifier>();
+
     public Governor(int id, string name, Specialization spec)
     {
         Id = id;
@@ -46,6 +52,9 @@ public class Governor
         Cities = new List<City>();
         Herds = new List<Herd>();
         Traits = new List<GovernorTrait>();
+        PersonalityTraits = new List<PersonalityTrait>();
+        OpinionModifiers = new List<OpinionModifier>();
+        Opinion = 50f;
         stats = new Dictionary<TraitTrigger, int>();
         
         // Initialize all stats to 0
@@ -171,6 +180,133 @@ public class Governor
             default:
                 return new GovernorBonuses();
         }
+    }
+
+    // ===================== CK-Lite Personality & Opinion =====================
+
+    public bool HasPersonality(PersonalityTrait trait) => PersonalityTraits.Contains(trait);
+
+    /// <summary>
+    /// Assign 2-3 random personality traits. Called once at governor creation.
+    /// Avoids contradictory pairs (Loyal/Ambitious, Brave/Craven, etc.).
+    /// </summary>
+    public void AssignRandomPersonality()
+    {
+        var pool = new List<PersonalityTrait>((PersonalityTrait[])System.Enum.GetValues(typeof(PersonalityTrait)));
+        int count = Random.Range(2, 4); // 2 or 3 traits
+        PersonalityTraits.Clear();
+
+        for (int i = 0; i < count && pool.Count > 0; i++)
+        {
+            int idx = Random.Range(0, pool.Count);
+            var picked = pool[idx];
+            PersonalityTraits.Add(picked);
+            pool.RemoveAt(idx);
+
+            // Remove contradictions
+            switch (picked)
+            {
+                case PersonalityTrait.Loyal:     pool.Remove(PersonalityTrait.Ambitious); break;
+                case PersonalityTrait.Ambitious:  pool.Remove(PersonalityTrait.Loyal); pool.Remove(PersonalityTrait.Content); break;
+                case PersonalityTrait.Generous:   pool.Remove(PersonalityTrait.Greedy); break;
+                case PersonalityTrait.Greedy:     pool.Remove(PersonalityTrait.Generous); break;
+                case PersonalityTrait.Brave:      pool.Remove(PersonalityTrait.Craven); break;
+                case PersonalityTrait.Craven:     pool.Remove(PersonalityTrait.Brave); break;
+                case PersonalityTrait.Honest:     pool.Remove(PersonalityTrait.Deceitful); break;
+                case PersonalityTrait.Deceitful:  pool.Remove(PersonalityTrait.Honest); break;
+                case PersonalityTrait.Zealous:    pool.Remove(PersonalityTrait.Cynical); break;
+                case PersonalityTrait.Cynical:    pool.Remove(PersonalityTrait.Zealous); break;
+                case PersonalityTrait.Content:    pool.Remove(PersonalityTrait.Ambitious); break;
+            }
+        }
+
+        // Set initial opinion from personality baseline
+        Opinion = GetPersonalityBaselineOpinion();
+    }
+
+    /// <summary>
+    /// Permanent opinion baseline from personality traits.
+    /// </summary>
+    public float GetPersonalityBaselineOpinion()
+    {
+        float baseline = 50f;
+        foreach (var t in PersonalityTraits)
+        {
+            switch (t)
+            {
+                case PersonalityTrait.Loyal:     baseline += 20f; break;
+                case PersonalityTrait.Ambitious:  baseline -= 10f; break;
+                case PersonalityTrait.Content:    baseline += 15f; break;
+                case PersonalityTrait.Greedy:     baseline -= 5f;  break;
+                case PersonalityTrait.Cruel:      baseline -= 8f;  break;
+            }
+        }
+        return Mathf.Clamp(baseline, -100f, 100f);
+    }
+
+    /// <summary>
+    /// Add a temporary or permanent opinion modifier (e.g. "Received Gift" +15, 10 turns).
+    /// </summary>
+    public void AddOpinionModifier(string reason, float value, int duration = -1)
+    {
+        // Personality modifies gift effectiveness
+        if (reason.Contains("Gift") || reason.Contains("gift"))
+        {
+            if (HasPersonality(PersonalityTrait.Generous)) value *= 1.5f;
+            if (HasPersonality(PersonalityTrait.Greedy))   value *= 0.5f;
+        }
+        if (reason.Contains("Threat") || reason.Contains("threat"))
+        {
+            if (HasPersonality(PersonalityTrait.Craven))  value = Mathf.Abs(value); // threats work on cowards
+            if (HasPersonality(PersonalityTrait.Brave))   value *= 0.3f; // brave ones shrug off threats
+        }
+
+        OpinionModifiers.Add(new OpinionModifier(reason, value, duration));
+    }
+
+    /// <summary>
+    /// Called once per turn. Decays temporary modifiers, recalculates opinion.
+    /// Returns the computed opinion value (also stored in Opinion).
+    /// </summary>
+    public float TickOpinion()
+    {
+        // Decay temporary modifiers
+        for (int i = OpinionModifiers.Count - 1; i >= 0; i--)
+        {
+            var mod = OpinionModifiers[i];
+            if (mod.turnsRemaining == 0)
+            {
+                OpinionModifiers.RemoveAt(i);
+                continue;
+            }
+            if (mod.turnsRemaining > 0)
+            {
+                mod.turnsRemaining--;
+                OpinionModifiers[i] = mod;
+            }
+        }
+
+        // Recalculate: baseline + sum of active modifiers
+        float total = GetPersonalityBaselineOpinion();
+        foreach (var mod in OpinionModifiers)
+            total += mod.value;
+
+        // Ambitious governors slowly drift negative if not appeased
+        if (HasPersonality(PersonalityTrait.Ambitious))
+            total -= 1f; // -1 per turn passive drift
+
+        Opinion = Mathf.Clamp(total, -100f, 100f);
+        return Opinion;
+    }
+
+    /// <summary>
+    /// Opinion mapped to loyalty contribution for city: high opinion = big loyalty bonus, negative = loyalty drain.
+    /// Range: roughly -15 to +20.
+    /// </summary>
+    public float GetLoyaltyContribution()
+    {
+        // Map -100..100 opinion to -15..+20 loyalty per turn
+        return Mathf.Lerp(-15f, 20f, (Opinion + 100f) / 200f);
     }
 }
 

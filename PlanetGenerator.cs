@@ -1586,9 +1586,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             {
                 // Lakes: compute what the land elevation WOULD be, then subtract lakeDepth
                 // so the lake bed sits below the surrounding terrain surface.
+                // Floor: lake beds must stay above coast elevation to prevent visual sinking.
                 float landElev = TierElevation(normalizedNoise);
                 finalElevation = landElev - lakeDepth;
-                finalElevation = Mathf.Max(0f, finalElevation); // Don't go negative
+                finalElevation = Mathf.Max(coastElevation + 0.1f, finalElevation);
             }
             else if (isLand)
             {
@@ -2618,6 +2619,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
                 // Apply river tiles (do NOT include termination tiles)
                 riversGenerated++;
+                var stampedPath = new List<int>(); // ordered list of tiles actually stamped as river
                 foreach (int tileIdx in path)
                 {
                     if (!tileData.TryGetValue(tileIdx, out var td)) continue;
@@ -2629,12 +2631,153 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     td.isLake = false;
                     td.isRiver = true;
                     td.isHill = false;
-                    td.elevation = td.elevation - riverDepth; // world-space: river carves into terrain
+                    // Don't carve yet — erosion pass will set final elevations
                     tileData[tileIdx] = td;
                     baseData[tileIdx] = td;
                     riverTiles.Add(tileIdx);
                     isLandTile[tileIdx] = true;
                     isRiverTile[tileIdx] = true;
+                    stampedPath.Add(tileIdx);
+                }
+
+                // --- Erosion Simulation ---
+                // Instead of subtracting a fixed depth and hoping for the best,
+                // simulate water eroding a smooth channel from source to mouth.
+                if (stampedPath.Count > 1)
+                {
+                    // Elevation floor: river beds must never go below coast level
+                    // This prevents rivers from sinking the terrain below sea level
+                    float riverBedFloor = coastElevation + 0.1f;
+
+                    // Step 1: Determine anchor elevations
+                    // Source anchor: if from a lake, match the lake bed elevation; otherwise use terrain
+                    float sourceAnchor = tileData[stampedPath[0]].elevation;
+                    if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out int srcLakeId))
+                    {
+                        // Find the lowest adjacent lake tile elevation to pin the river start
+                        float lowestLakeBed = float.MaxValue;
+                        foreach (int n in grid.neighbors[stampedPath[0]])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!tileData.TryGetValue(n, out var ntd)) continue;
+                            if (ntd.isLake && ntd.elevation < lowestLakeBed)
+                                lowestLakeBed = ntd.elevation;
+                        }
+                        if (lowestLakeBed < float.MaxValue * 0.5f)
+                            sourceAnchor = lowestLakeBed;
+                    }
+                    // Apply initial carve to source anchor, but respect floor
+                    sourceAnchor = Mathf.Max(sourceAnchor - riverDepth, riverBedFloor);
+
+                    // Mouth anchor: slightly above coast elevation (river flows INTO coast, not below it)
+                    float mouthAnchor = Mathf.Max(coastElevation + 0.05f, riverBedFloor);
+
+                    // Step 2: Initialize river bed elevations with terrain-aware baseline
+                    // Each tile starts at its natural terrain minus riverDepth, 
+                    // then erosion smooths everything. Respect the floor.
+                    float[] bedElev = new float[stampedPath.Count];
+                    for (int si = 0; si < stampedPath.Count; si++)
+                    {
+                        bedElev[si] = Mathf.Max(tileData[stampedPath[si]].elevation - riverDepth, riverBedFloor);
+                    }
+                    // Pin anchors
+                    bedElev[0] = sourceAnchor;
+                    bedElev[stampedPath.Count - 1] = mouthAnchor;
+
+                    // Step 3: Iterative erosion
+                    // Water flows downstream, eroding tiles that are too high relative to their
+                    // downstream neighbor. Multiple passes converge to a smooth channel.
+                    int erosionPasses = 30;
+                    float erosionRate = 0.5f; // how quickly tiles erode toward target (0-1)
+                    for (int ep = 0; ep < erosionPasses; ep++)
+                    {
+                        bool anyChange = false;
+
+                        // Forward pass (source → mouth): enforce downhill flow
+                        // Each tile should be at most slightly higher than the next
+                        float idealDropPerTile = Mathf.Max(0.001f, (sourceAnchor - mouthAnchor) / stampedPath.Count);
+                        for (int si = 1; si < stampedPath.Count; si++)
+                        {
+                            float targetElev = bedElev[si - 1] - idealDropPerTile;
+                            // If terrain is naturally lower, follow the valley
+                            float terrainBed = tileData[stampedPath[si]].elevation - riverDepth;
+                            // Use whichever is lower: the smooth ramp or the natural valley
+                            float desired = Mathf.Min(targetElev, terrainBed);
+                            // But never go above the upstream tile (monotonic descent)
+                            desired = Mathf.Min(desired, bedElev[si - 1] - 0.001f);
+
+                            if (bedElev[si] > desired)
+                            {
+                                bedElev[si] = Mathf.Lerp(bedElev[si], desired, erosionRate);
+                                anyChange = true;
+                            }
+                        }
+
+                        // Backward pass (mouth → source): smooth out any steep drops
+                        // If a downstream tile is much lower, gently pull it toward a smooth gradient
+                        for (int si = stampedPath.Count - 2; si >= 1; si--)
+                        {
+                            float avgNeighbor = (bedElev[si - 1] + bedElev[si + 1]) * 0.5f;
+                            // If this tile is much higher than its average neighbors, erode it
+                            if (bedElev[si] > avgNeighbor + idealDropPerTile)
+                            {
+                                bedElev[si] = Mathf.Lerp(bedElev[si], avgNeighbor, erosionRate * 0.5f);
+                                anyChange = true;
+                            }
+                        }
+
+                        // Re-pin anchors and enforce floor each pass
+                        bedElev[0] = sourceAnchor;
+                        bedElev[stampedPath.Count - 1] = mouthAnchor;
+                        for (int fi = 0; fi < stampedPath.Count; fi++)
+                            bedElev[fi] = Mathf.Max(bedElev[fi], riverBedFloor);
+
+                        if (!anyChange) break;
+                    }
+
+                    // Step 4: Final monotonic enforcement — absolute guarantee of no uphill
+                    // But never drop below the floor
+                    for (int si = 1; si < stampedPath.Count; si++)
+                    {
+                        if (bedElev[si] > bedElev[si - 1] - 0.001f)
+                            bedElev[si] = Mathf.Max(bedElev[si - 1] - 0.001f, riverBedFloor);
+                    }
+
+                    // Step 5: Apply eroded elevations to tile data
+                    for (int si = 0; si < stampedPath.Count; si++)
+                    {
+                        var td = tileData[stampedPath[si]];
+                        td.elevation = bedElev[si];
+                        tileData[stampedPath[si]] = td;
+                        baseData[stampedPath[si]] = td;
+                    }
+
+                    // Step 6: Corridor erosion — erode neighbor tiles toward the river bed
+                    // to create natural valley banks instead of cliff walls
+                    for (int si = 0; si < stampedPath.Count; si++)
+                    {
+                        int riverIdx = stampedPath[si];
+                        float riverElev = tileData[riverIdx].elevation;
+
+                        foreach (int n in grid.neighbors[riverIdx])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!tileData.TryGetValue(n, out var ntd)) continue;
+                            if (ntd.isRiver || ntd.isLake) continue; // don't touch other water
+                            if (!ntd.isLand) continue;
+
+                            // Blend neighbor 40% toward the river bed — creates a gentle bank
+                            // But never drop land below flatElevationMin (flat terrain floor)
+                            float bankTarget = riverElev + riverDepth * 1.5f; // bank sits above water
+                            float landFloor = flatElevationMin;
+                            if (ntd.elevation > bankTarget)
+                            {
+                                ntd.elevation = Mathf.Max(Mathf.Lerp(ntd.elevation, bankTarget, 0.4f), landFloor);
+                                tileData[n] = ntd;
+                                baseData[n] = ntd;
+                            }
+                        }
+                    }
                 }
 
                 if (sourceFromLake && sourceToLakeId.TryGetValue(sourceIndex, out var usedLake))
@@ -3546,21 +3689,48 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             riverTileIndices.Add(i);
         }
         
-        // Phase B: Propagate water levels upstream so the surface is continuous.
-        // Sort river tiles from lowest to highest water elevation (downstream first).
-        // Then propagate upward: each river tile's water must be >= its lowest river neighbor's water,
-        // ensuring the surface connects smoothly between tiles at different terrain heights.
-        // Multiple passes handle long chains where propagation needs to ripple upstream.
+        // Phase B: Set water elevation from eroded bed.
+        // Erosion already guarantees smooth downhill beds, so water simply sits a fixed
+        // height above each tile's bed. Also sync river tiles adjacent to lakes.
         if (riverTileIndices.Count > 0)
         {
-            // Sort by water elevation ascending (downstream/lowest tiles first)
-            riverTileIndices.Sort((a, b) => tileData[a].waterElevation.CompareTo(tileData[b].waterElevation));
-            
-            // Propagate: for each river tile, ensure it's at least as high as its
-            // lowest downstream river neighbor's water level. This fills in the gaps
-            // where a high tile's water would float above a low neighbor's water.
+            // First pass: set baseline water from bed
+            foreach (int ri in riverTileIndices)
+            {
+                var td = tileData[ri];
+                td.waterElevation = td.elevation + (riverDepth * 0.75f);
+                tileData[ri] = td;
+            }
+
+            // Second pass: pin river tiles adjacent to lakes to the lake's water level
+            // so there's no cliff at the junction
+            foreach (int ri in riverTileIndices)
+            {
+                var td = tileData[ri];
+                foreach (int n in hexGrid.neighbors[ri])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!tileData.TryGetValue(n, out var ntd)) continue;
+                    if (ntd.isLake && ntd.waterElevation > 0f)
+                    {
+                        // Pin this river tile's water to the lake's water level
+                        if (Mathf.Abs(td.waterElevation - ntd.waterElevation) > 0.01f)
+                        {
+                            td.waterElevation = ntd.waterElevation;
+                            // Also ensure bed sits below lake water
+                            if (td.elevation > ntd.waterElevation - riverDepth * 0.5f)
+                                td.elevation = ntd.waterElevation - riverDepth * 0.5f;
+                            tileData[ri] = td;
+                        }
+                        break; // only need one lake neighbor
+                    }
+                }
+            }
+
+            // Third pass: smooth water elevation along connected river tiles
+            // so the junction pinning blends naturally into the rest of the river
             bool changed = true;
-            int maxPasses = 20; // safety limit
+            int maxPasses = 15;
             int pass = 0;
             while (changed && pass < maxPasses)
             {
@@ -3569,39 +3739,142 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 foreach (int ri in riverTileIndices)
                 {
                     var td = tileData[ri];
-                    
-                    // Find the highest water elevation among adjacent river neighbors
-                    // that are lower in terrain (upstream neighbors whose water we should match)
-                    float maxNeighborWater = td.waterElevation;
+                    float sumWater = td.waterElevation;
+                    int count = 1;
                     foreach (int n in hexGrid.neighbors[ri])
                     {
                         if (n < 0 || n >= tileCount) continue;
                         if (!tileData.TryGetValue(n, out var ntd)) continue;
                         if (!ntd.isRiver) continue;
-                        
-                        // If a neighbor's water is higher than ours, we need to rise to meet it
-                        // (water flows downhill — the upstream tile pushes water down to us)
-                        if (ntd.waterElevation > maxNeighborWater)
-                        {
-                            maxNeighborWater = ntd.waterElevation;
-                        }
+                        sumWater += ntd.waterElevation;
+                        count++;
                     }
-                    
-                    // Only raise water level, never lower it — ensures continuity
-                    // Allow water to rise up to 3x riverDepth above the carved bed.
-                    // This gives headroom to bridge moderate elevation transitions
-                    // between adjacent river tiles (the mesh blending handles the rest).
-                    float maxAllowed = td.elevation + riverDepth * 3f;
-                    float newWaterElev = Mathf.Min(maxNeighborWater, maxAllowed);
-                    
-                    if (newWaterElev > td.waterElevation + 0.001f)
+                    float avg = sumWater / count;
+                    // Only lower water to smooth, never raise it (water flows downhill)
+                    if (avg < td.waterElevation - 0.005f)
                     {
-                        td.waterElevation = newWaterElev;
+                        td.waterElevation = Mathf.Lerp(td.waterElevation, avg, 0.3f);
                         tileData[ri] = td;
                         changed = true;
                     }
                 }
             }
+
+            // Final safety: ensure bed is always below water
+            foreach (int ri in riverTileIndices)
+            {
+                var td = tileData[ri];
+                float margin = Mathf.Max(0.02f, riverDepth * 0.25f);
+                if (td.elevation > td.waterElevation - margin)
+                {
+                    td.elevation = td.waterElevation - margin;
+                    tileData[ri] = td;
+                }
+            }
+        }
+
+        // --- Pass 4: Terrain Skirt — smooth land toward water edges ---
+        // BFS outward from water-edge land tiles, gradually blending elevation toward water level
+        // to eliminate cliff faces at shorelines and riverbanks.
+        {
+            int skirtRings = 3;
+            float[] ringBlend = { 0.7f, 0.4f, 0.15f }; // blend strength per ring distance
+            float skirtFloor = flatElevationMin; // never drop land below the flat tier minimum
+
+            // Find all land tiles adjacent to water (lake or river)
+            var waterEdgeLand = new Dictionary<int, float>(); // tileIndex -> nearest water elevation
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!tileData.TryGetValue(i, out var td)) continue;
+                if (!td.isLand || td.isLake || td.isRiver) continue;
+
+                float nearestWaterElev = float.MaxValue;
+                foreach (int n in hexGrid.neighbors[i])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!tileData.TryGetValue(n, out var ntd)) continue;
+                    if ((ntd.isLake || ntd.isRiver) && ntd.waterElevation < nearestWaterElev)
+                    {
+                        nearestWaterElev = ntd.waterElevation;
+                    }
+                }
+                if (nearestWaterElev < float.MaxValue * 0.5f)
+                {
+                    waterEdgeLand[i] = nearestWaterElev;
+                }
+            }
+
+            // BFS ring expansion
+            var currentRing = new Dictionary<int, float>(waterEdgeLand);
+            var visited = new HashSet<int>(waterEdgeLand.Keys);
+
+            for (int ring = 0; ring < skirtRings; ring++)
+            {
+                float blend = ringBlend[ring];
+                var nextRing = new Dictionary<int, float>();
+
+                foreach (var kvp in currentRing)
+                {
+                    int tileIdx = kvp.Key;
+                    float targetWaterElev = kvp.Value;
+
+                    if (!tileData.TryGetValue(tileIdx, out var td)) continue;
+                    if (!td.isLand || td.isLake || td.isRiver) continue;
+
+                    // Only lower land, never raise it, and respect the land floor
+                    float blended = Mathf.Lerp(td.elevation, targetWaterElev, blend);
+                    if (blended < td.elevation)
+                    {
+                        td.elevation = Mathf.Max(blended, skirtFloor);
+                        tileData[tileIdx] = td;
+                    }
+
+                    // Expand to next ring neighbors
+                    foreach (int n in hexGrid.neighbors[tileIdx])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (visited.Contains(n)) continue;
+                        if (!tileData.TryGetValue(n, out var ntd)) continue;
+                        if (!ntd.isLand || ntd.isLake || ntd.isRiver) continue;
+
+                        visited.Add(n);
+                        nextRing[n] = targetWaterElev;
+                    }
+                }
+
+                currentRing = nextRing;
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Terrain Skirt: smoothed {visited.Count} land tiles near water edges ({skirtRings} rings).");
+        }
+
+        // --- Pass 5: Elevation Floor Enforcement ---
+        // Final safety pass: ensure no land tile has been eroded below its tier minimum.
+        // Rivers and lakes are water features and can sit lower, but non-water land must
+        // maintain minimum elevation for its classification.
+        {
+            int floorFixCount = 0;
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!tileData.TryGetValue(i, out var td)) continue;
+                if (!td.isLand) continue;
+                if (td.isRiver || td.isLake) continue; // water features are exempt
+
+                float floor;
+                if (td.isMountain) floor = mountainElevationMin;
+                else if (td.isHill) floor = hillElevationMin;
+                else floor = flatElevationMin;
+
+                if (td.elevation < floor)
+                {
+                    td.elevation = floor;
+                    tileData[i] = td;
+                    floorFixCount++;
+                }
+            }
+            if (ShouldLogDiagnostics() && floorFixCount > 0)
+                Debug.Log($"[PlanetGenerator] Elevation Floor Enforcement: raised {floorFixCount} land tiles to their tier minimum.");
         }
 
         int abyssalCount = 0;

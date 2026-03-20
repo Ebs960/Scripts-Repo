@@ -3266,10 +3266,7 @@ public class HexMapChunkManager : MonoBehaviour
                 Mathf.Lerp(y01, y11, tx),
                 ty);
 
-            // Ensure water never dips below the displaced terrain surface
-            float terrainElev = heightmapTexture != null ? heightmapTexture.GetPixelBilinear(u, v).r : 0f;
-            float terrainY = flatY + terrainElev * displacementStrength + waterYOffset + riverSurfaceLift;
-            return Mathf.Max(blendedY, terrainY);
+            return blendedY;
         }
 
         int GetCorner(int x, int y)

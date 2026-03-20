@@ -101,10 +101,10 @@ MonoBehaviour:
   continuousWaterIncludesOcean: 1
   riverSdfWidth: 768
   riverSdfHeight: 384
-  riverHalfWidthMultiplier: 0.77
+  riverHalfWidthMultiplier: 1.1
   lakeHalfWidthMultiplier: 1
   oceanHalfWidthMultiplier: 1
-  riverSurfaceLift: 0.5
+  riverSurfaceLift: 0
   extrudeInlandWaterToVolume: 0
   inlandWaterVolumeDepth: 3
   preBuildOnPlanetReady: 1
@@ -114,7 +114,7 @@ MonoBehaviour:
   enableSeasonMasks: 1
   cliffAlbedoArray: {fileID: 18700000, guid: daeb8191437aa2848b04e74ca96f371e, type: 3}
   cliffNormalArray: {fileID: 18700000, guid: 3abed21faa8fdf2468299ad31c305893, type: 3}
-  cliffTiling: 31
+  cliffTiling: 19
   cliffStrength: 0.9
   cliffSlopeThreshold: 0.2
   cliffSlopeBlend: 0

@@ -233,7 +233,7 @@ MonoBehaviour:
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
-  riverDepth: 2.7
+  riverDepth: 1
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
@@ -246,7 +246,7 @@ MonoBehaviour:
   coastSpurRadiusMin: 2
   coastSpurRadiusMax: 4
   minLandTilesForCoastStamps: 100
-  lakeDepth: 0.55
+  lakeDepth: 1
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 5.87
   numberOfIslands: 8
