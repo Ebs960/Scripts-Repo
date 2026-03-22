@@ -166,8 +166,8 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 10; maxContinentWidthTilesStandard = 30;
-        minContinentHeightTilesStandard = 15; maxContinentHeightTilesStandard = 30;
+        minContinentWidthTilesStandard = 15; maxContinentWidthTilesStandard = 35;
+        minContinentHeightTilesStandard = 15; maxContinentHeightTilesStandard = 40;
 
         minContinentWidthTilesLarge = 300; maxContinentWidthTilesLarge = 400;
         minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;

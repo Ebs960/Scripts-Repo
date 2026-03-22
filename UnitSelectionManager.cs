@@ -1508,7 +1508,6 @@ public class UnitSelectionManager : MonoBehaviour
                     renderer.sharedMaterial = s_selectionIndicatorMaterial;
 
                 // Set color using MaterialPropertyBlock to avoid creating instance materials
-                float hue = 0f;
                 if (selectedUnit != null) s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
                 else s_selectionMPB.SetColor("_Color", selectedUnitHighlightColor);
                 renderer.SetPropertyBlock(s_selectionMPB);

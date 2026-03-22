@@ -81,7 +81,8 @@ public class AnimalManager : MonoBehaviour
     private void HandleNeutralTurn(int round)
     {
         // Animals run during the neutral/world phase (once per round).
-        ProcessTurn();
+        // Use a coroutine so we can yield between animals and avoid freezing.
+        StartCoroutine(ProcessTurnCoroutine());
     }
 
     // Backwards-compatible entry: spawns on the current planet
@@ -381,6 +382,10 @@ public class AnimalManager : MonoBehaviour
         return Mathf.Clamp(movePoints * 3, minimumRange, maximumRange);
     }
 
+    // Reusable BFS collections to avoid per-call allocations
+    private readonly HashSet<int> _bfsVisited = new HashSet<int>();
+    private readonly Queue<(int tile, int dist)> _bfsQueue = new Queue<(int, int)>();
+
     private List<int> GetTilesWithinRange(CombatUnit unit, int maxRange)
     {
         var result = new List<int>();
@@ -389,13 +394,14 @@ public class AnimalManager : MonoBehaviour
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         if (ts == null) return result;
 
-        var visited = new HashSet<int> { unit.currentTileIndex };
-        var queue = new Queue<(int tile, int dist)>();
-        queue.Enqueue((unit.currentTileIndex, 0));
+        _bfsVisited.Clear();
+        _bfsQueue.Clear();
+        _bfsVisited.Add(unit.currentTileIndex);
+        _bfsQueue.Enqueue((unit.currentTileIndex, 0));
 
-        while (queue.Count > 0)
+        while (_bfsQueue.Count > 0)
         {
-            var (tile, dist) = queue.Dequeue();
+            var (tile, dist) = _bfsQueue.Dequeue();
             if (dist >= maxRange) continue;
 
             var neighbors = ts.GetNeighbors(tile);
@@ -403,9 +409,9 @@ public class AnimalManager : MonoBehaviour
 
             foreach (int neighbor in neighbors)
             {
-                if (!visited.Add(neighbor)) continue;
+                if (!_bfsVisited.Add(neighbor)) continue;
                 result.Add(neighbor);
-                queue.Enqueue((neighbor, dist + 1));
+                _bfsQueue.Enqueue((neighbor, dist + 1));
             }
         }
 
@@ -448,10 +454,15 @@ public class AnimalManager : MonoBehaviour
         var reachable = new List<int>();
         if (unit == null || unit.currentMovePoints <= 0) return reachable;
 
+        // Cap candidates to avoid pathfinding hundreds of tiles
+        const int MAX_CANDIDATES = 12;
         foreach (int candidate in GetTilesWithinRange(unit, maxRange))
         {
             if (TryGetReachablePathThisTurn(unit, candidate, out _))
+            {
                 reachable.Add(candidate);
+                if (reachable.Count >= MAX_CANDIDATES) break;
+            }
         }
 
         return reachable;
@@ -463,6 +474,13 @@ public class AnimalManager : MonoBehaviour
         MoveAllAnimals();
     }
 
+    private IEnumerator ProcessTurnCoroutine()
+    {
+        SpawnNewAnimals();
+        yield return null;
+        yield return StartCoroutine(MoveAllAnimalsCoroutine());
+    }
+
     void SpawnNewAnimals()
     {
         int prevalence = GameManager.Instance != null ? GameManager.Instance.animalPrevalence : 3;
@@ -470,9 +488,20 @@ public class AnimalManager : MonoBehaviour
         float mult = multipliers[Mathf.Clamp(prevalence, 0, multipliers.Length - 1)];
         if (mult == 0f) return;
 
+        // Pre-count animals per data type to avoid O(n) LINQ Count per rule
+        var countByType = new Dictionary<CombatUnitData, int>();
+        foreach (var animal in activeAnimals)
+        {
+            if (animal == null || animal.data == null) continue;
+            if (countByType.ContainsKey(animal.data))
+                countByType[animal.data]++;
+            else
+                countByType[animal.data] = 1;
+        }
+
         foreach (var rule in spawnRules)
         {
-            int already = activeAnimals.Count(u => u != null && u.data == rule.unitData);
+            countByType.TryGetValue(rule.unitData, out int already);
             int maxCount = Mathf.CeilToInt(rule.maxCount * mult);
             if (maxCount < 1 && mult > 0f) maxCount = 1;
             int spawnRate = Mathf.CeilToInt(rule.spawnRate * mult);
@@ -531,56 +560,68 @@ public class AnimalManager : MonoBehaviour
 
     void MoveAllAnimals()
     {
-        // Clean up old attack records first
+        MoveAllAnimalsSync();
+    }
+
+    private void MoveAllAnimalsSync()
+    {
         CleanupOldAttackRecords();
-        
         foreach (var unit in activeAnimals.ToList())
         {
-            if (unit == null)
+            if (unit == null) { activeAnimals.Remove(unit); continue; }
+            ProcessSingleAnimalTurn(unit);
+        }
+    }
+
+    /// <summary>
+    /// Coroutine version of MoveAllAnimals that yields every N animals to prevent freezing.
+    /// </summary>
+    private IEnumerator MoveAllAnimalsCoroutine()
+    {
+        CleanupOldAttackRecords();
+        const int BATCH_SIZE = 8; // Process this many animals per frame
+        int processed = 0;
+        foreach (var unit in activeAnimals.ToList())
+        {
+            if (unit == null) { activeAnimals.Remove(unit); continue; }
+            ProcessSingleAnimalTurn(unit);
+            processed++;
+            if (processed >= BATCH_SIZE)
             {
-                activeAnimals.Remove(unit);
-                continue;
+                processed = 0;
+                yield return null;
             }
+        }
+    }
 
-            unit.ResetForNewTurn();
-            
-            // Restore movement points for this animal using BaseUnit API (respects animalMovePoints fallback in GetStartingMovePoints)
-            try { unit.RestoreMovePointsForNewTurn(); } catch { /* ignore if override not present */ }
+    private void ProcessSingleAnimalTurn(CombatUnit unit)
+    {
+        unit.ResetForNewTurn();
+        try { unit.RestoreMovePointsForNewTurn(); } catch { }
 
-            var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
-            var tileData = ts != null ? ts.GetTileData(unit.currentTileIndex) : null;
-            if (tileData == null) continue;
+        var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(unit.currentTileIndex) : null;
+        if (tileData == null) return;
 
-            // Animals can move multiple times per turn based on their movement points
-            while (unit.currentMovePoints > 0)
+        while (unit.currentMovePoints > 0)
+        {
+            bool moved = false;
+            switch (unit.data.animalBehavior)
             {
-                // Determine movement behavior based on animal type
-                bool moved = false;
-                switch (unit.data.animalBehavior)
-                {
-                    case AnimalBehaviorType.Predator:
-                        moved = HandlePredatorMovement(unit);
-                        break;
-                        
-                    case AnimalBehaviorType.Prey:
-                        moved = HandlePreyMovement(unit);
-                        break;
-                        
-                    case AnimalBehaviorType.Neutral:
-                    default:
-                        moved = HandleNeutralMovement(unit);
-                        break;
-                }
-                
-                // If behavior had nothing to do (no target, nowhere to flee), still move: wander randomly so animals are always active
-                if (!moved)
-                    moved = HandleNeutralMovement(unit);
-                
-                if (!moved)
+                case AnimalBehaviorType.Predator:
+                    moved = HandlePredatorMovement(unit);
                     break;
-                // If movement started and the unit is now moving (coroutine started), stop issuing more orders this update
-                try { if (unit.isMoving) break; } catch { }
+                case AnimalBehaviorType.Prey:
+                    moved = HandlePreyMovement(unit);
+                    break;
+                case AnimalBehaviorType.Neutral:
+                default:
+                    moved = HandleNeutralMovement(unit);
+                    break;
             }
+            if (!moved) moved = HandleNeutralMovement(unit);
+            if (!moved) break;
+            try { if (unit.isMoving) break; } catch { }
         }
     }
     

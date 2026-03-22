@@ -228,6 +228,8 @@ public class HexMapChunkManager : MonoBehaviour
     [SerializeField] private Material waterMaterial;
     [Tooltip("Small Y offset above the computed water surface to prevent z-fighting with terrain.")]
     [SerializeField] private float waterYOffset = 0.01f;
+    [Tooltip("Additional offset applied only to ocean/coast/seas water. Use a small negative value to keep shoreline water slightly below the coast mesh.")]
+    [SerializeField] private float shorelineWaterOffset = 0.15f;
     [Tooltip("Manual world-space Y position for ocean water surface. Set this to sit just below your coastline terrain. Overrides the computed SeaLevelWorldY.")]
     [SerializeField] private float manualOceanWaterY = 4.5f;
     [Tooltip("When true, use manualOceanWaterY for ocean water height instead of PlanetGenerator.SeaLevelWorldY.")]
@@ -350,8 +352,10 @@ public class HexMapChunkManager : MonoBehaviour
     [Range(0f, 1f)]
     [Tooltip("How quickly the step mask falls off (in normalized heightmap units).")]
     private float cliffStepBlend = 0.08f;
-    // Mapping from biome -> surface start/variant counts: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
+    // Base surface mapping: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
     private Vector4[] biomeSurfaceMapArray;
+    // Mountain override mapping: x=startSlice, y=variantCount, z=surfaceIndex, w=forcedVariant
+    private Vector4[] biomeMountainSurfaceMapArray;
     private Texture2D biomeSurfaceMapTexture;
     private Texture2D biomeEmissiveMapTexture;
     private Vector4[] biomeTintArray;
@@ -934,8 +938,9 @@ public class HexMapChunkManager : MonoBehaviour
                 biomeEmissiveArray = lib.emissiveArray;
             biomeHeightArray = lib.heightArray;
 
-            // Build per-biome mapping vector: x = startSlice, y = variantCount, z = surfaceIndex, w = forcedVariant
+            // Build per-biome mapping vectors for base and optional mountain overrides.
             biomeSurfaceMapArray = new Vector4[count];
+            biomeMountainSurfaceMapArray = new Vector4[count];
             for (int i = 0; i < count; i++)
             {
                 int surfaceIndex = (lib.biomeToSurfaceIndex != null && i < lib.biomeToSurfaceIndex.Length) ? lib.biomeToSurfaceIndex[i] : -1;
@@ -943,12 +948,16 @@ public class HexMapChunkManager : MonoBehaviour
                 {
                     int start = lib.surfaceStartSlice[surfaceIndex];
                     int variants = lib.surfaceVariantCounts[surfaceIndex];
+                    int mountainStart = (lib.surfaceMountainStartSlice != null && surfaceIndex < lib.surfaceMountainStartSlice.Length) ? lib.surfaceMountainStartSlice[surfaceIndex] : start;
+                    int mountainVariants = (lib.surfaceMountainVariantCounts != null && surfaceIndex < lib.surfaceMountainVariantCounts.Length) ? lib.surfaceMountainVariantCounts[surfaceIndex] : 0;
                     int forced = (lib.biomeForcedVariant != null && i < lib.biomeForcedVariant.Length) ? lib.biomeForcedVariant[i] : -1;
                     biomeSurfaceMapArray[i] = new Vector4(start, variants, surfaceIndex, forced);
+                    biomeMountainSurfaceMapArray[i] = new Vector4(mountainStart, mountainVariants, surfaceIndex, forced);
                 }
                 else
                 {
                     biomeSurfaceMapArray[i] = new Vector4(0, 1, 0, -1);
+                    biomeMountainSurfaceMapArray[i] = new Vector4(0, 0, 0, -1);
                 }
             }
 
@@ -1054,6 +1063,17 @@ public class HexMapChunkManager : MonoBehaviour
                     if (si >= 0 && si < totalSlices)
                         slicePixels[si] = new Color(bi, 0, 0, 1);
                 }
+
+                if (biomeMountainSurfaceMapArray == null || bi >= biomeMountainSurfaceMapArray.Length) continue;
+                var mountainMap = biomeMountainSurfaceMapArray[bi];
+                int mountainStart = Mathf.Max(0, Mathf.RoundToInt(mountainMap.x));
+                int mountainVariantCount = Mathf.Max(0, Mathf.RoundToInt(mountainMap.y));
+                for (int v = 0; v < mountainVariantCount; v++)
+                {
+                    int si = mountainStart + v;
+                    if (si >= 0 && si < totalSlices)
+                        slicePixels[si] = new Color(bi, 0, 0, 1);
+                }
             }
             sliceToBiomeMap.SetPixels(slicePixels);
             sliceToBiomeMap.Apply(false, false);
@@ -1073,9 +1093,67 @@ public class HexMapChunkManager : MonoBehaviour
         biomeTintArray = null;
         biomeParamsArray = null;
         biomeSurfaceMapArray = null;
+        biomeMountainSurfaceMapArray = null;
         biomeSurfaceMapTexture = null;
         biomeEmissiveMapTexture = null;
         return;
+    }
+
+    private static int ChooseSurfaceVariant(int stableSeed, int variantCount, int forcedVariant)
+    {
+        if (variantCount <= 1) return 0;
+        if (forcedVariant >= 0 && forcedVariant < variantCount)
+            return forcedVariant;
+
+        unchecked
+        {
+            int h = stableSeed * 1103515245 + 12345;
+            return Mathf.Abs(h) % variantCount;
+        }
+    }
+
+    private float GetOceanWaterSurfaceY(float additionalOffset = 0f)
+    {
+        float baseOceanY = useManualOceanWaterY
+            ? manualOceanWaterY
+            : (planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f);
+        return baseOceanY + waterYOffset + shorelineWaterOffset + additionalOffset;
+    }
+
+    private float GetTileWaterSurfaceY(HexTileData tile, float additionalOffset = 0f)
+    {
+        if (tile.waterType == TileWaterType.Ocean)
+            return GetOceanWaterSurfaceY(additionalOffset);
+
+        return flatY + tile.waterElevation * displacementStrength + waterYOffset + additionalOffset;
+    }
+
+    private int ResolveSurfaceSliceIndex(HexTileData tile, int stableSeed, int biomeIndex)
+    {
+        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
+        int sliceIndex = 0;
+
+        Vector4[] sourceMapArray = biomeSurfaceMapArray;
+        if (tile.isMountain && biomeMountainSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeMountainSurfaceMapArray.Length)
+        {
+            var mountainMap = biomeMountainSurfaceMapArray[biomeIndex];
+            if (Mathf.RoundToInt(mountainMap.y) > 0)
+                sourceMapArray = biomeMountainSurfaceMapArray;
+        }
+
+        if (sourceMapArray != null && biomeIndex >= 0 && biomeIndex < sourceMapArray.Length)
+        {
+            var map = sourceMapArray[biomeIndex];
+            int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
+            int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
+            int forcedVariant = Mathf.RoundToInt(map.w);
+            int chosenVariant = ChooseSurfaceVariant(stableSeed, variantCount, forcedVariant);
+            sliceIndex = startSlice + chosenVariant;
+        }
+
+        if (maxSlice >= 0 && sliceIndex > maxSlice) sliceIndex = maxSlice;
+        if (sliceIndex < 0) sliceIndex = 0;
+        return sliceIndex;
     }
 
     private void BuildBiomeIndexMap(int width, int height)
@@ -1095,11 +1173,8 @@ public class HexMapChunkManager : MonoBehaviour
             };
         }
 
-        bool warnedSliceOutOfRange = false;
         int minVal = int.MaxValue;
         int maxVal = 0;
-
-        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
         int rowsPerStrip = 64;
         var stripPixels = new Color[width * rowsPerStrip];
@@ -1127,42 +1202,7 @@ public class HexMapChunkManager : MonoBehaviour
 
                 var visual = biomeVisualDatabase.Get(tile.biome);
                 int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
-
-                int sliceIndex = 0;
-                if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
-                {
-                    var map = biomeSurfaceMapArray[biomeIndex];
-                    int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
-                    int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
-                    int forcedVariant = Mathf.RoundToInt(map.w);
-
-                    int chosenVariant = 0;
-                    if (forcedVariant >= 0 && forcedVariant < variantCount)
-                    {
-                        chosenVariant = forcedVariant;
-                    }
-                    else
-                    {
-                        unchecked
-                        {
-                            int h = tileIndex * 1103515245 + 12345;
-                            chosenVariant = Mathf.Abs(h) % variantCount;
-                        }
-                    }
-
-                    sliceIndex = startSlice + chosenVariant;
-                }
-
-                if (maxSlice >= 0 && sliceIndex > maxSlice)
-                {
-                    if (!warnedSliceOutOfRange)
-                    {
-                        Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
-                        warnedSliceOutOfRange = true;
-                    }
-                    sliceIndex = maxSlice;
-                }
-                if (sliceIndex < 0) sliceIndex = 0;
+                int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
 
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
@@ -1201,11 +1241,8 @@ public class HexMapChunkManager : MonoBehaviour
             };
         }
 
-        bool warnedSliceOutOfRange = false;
         int minVal = int.MaxValue;
         int maxVal = 0;
-
-        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
         int rowsPerStrip = 64;
         var stripPixels = new Color[width * rowsPerStrip];
@@ -1233,42 +1270,7 @@ public class HexMapChunkManager : MonoBehaviour
 
                 var visual = biomeVisualDatabase.Get(tile.biome);
                 int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
-
-                int sliceIndex = 0;
-                if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
-                {
-                    var map = biomeSurfaceMapArray[biomeIndex];
-                    int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
-                    int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
-                    int forcedVariant = Mathf.RoundToInt(map.w);
-
-                    int chosenVariant = 0;
-                    if (forcedVariant >= 0 && forcedVariant < variantCount)
-                    {
-                        chosenVariant = forcedVariant;
-                    }
-                    else
-                    {
-                        unchecked
-                        {
-                            int h = tileIndex * 1103515245 + 12345;
-                            chosenVariant = Mathf.Abs(h) % variantCount;
-                        }
-                    }
-
-                    sliceIndex = startSlice + chosenVariant;
-                }
-
-                if (maxSlice >= 0 && sliceIndex > maxSlice)
-                {
-                    if (!warnedSliceOutOfRange)
-                    {
-                        Debug.LogWarning($"[HexMapChunkManager] Surface slice index out of range for texture arrays (slice={sliceIndex}, maxSlice={maxSlice}). Clamping to avoid invalid sampling.");
-                        warnedSliceOutOfRange = true;
-                    }
-                    sliceIndex = maxSlice;
-                }
-                if (sliceIndex < 0) sliceIndex = 0;
+                int sliceIndex = ResolveSurfaceSliceIndex(tile, tileIndex, biomeIndex);
 
                 if (sliceIndex < minVal) minVal = sliceIndex;
                 if (sliceIndex > maxVal) maxVal = sliceIndex;
@@ -1442,7 +1444,6 @@ public class HexMapChunkManager : MonoBehaviour
         int tileCount = grid.TileCount;
         sliceIndices = ArrayPoolUtils.RentInt(tileCount);
         biomeIndices = ArrayPoolUtils.RentInt(tileCount);
-        int maxSlice = (biomeAlbedoArray != null) ? Mathf.Max(0, biomeAlbedoArray.depth - 1) : -1;
 
         for (int ti = 0; ti < tileCount; ti++)
         {
@@ -1467,34 +1468,7 @@ public class HexMapChunkManager : MonoBehaviour
 
             int biomeIndex = visual != null && biomeIndexLookup.TryGetValue(visual.biome, out var idx) ? idx : 0;
             biomeIndices[ti] = biomeIndex;
-
-            int sliceIndex = 0;
-            if (biomeSurfaceMapArray != null && biomeIndex >= 0 && biomeIndex < biomeSurfaceMapArray.Length)
-            {
-                var map = biomeSurfaceMapArray[biomeIndex];
-                int startSlice = Mathf.Max(0, Mathf.RoundToInt(map.x));
-                int variantCount = Mathf.Max(1, Mathf.RoundToInt(map.y));
-                int forcedVariant = Mathf.RoundToInt(map.w);
-
-                int chosenVariant = 0;
-                if (forcedVariant >= 0 && forcedVariant < variantCount)
-                {
-                    chosenVariant = forcedVariant;
-                }
-                else
-                {
-                    unchecked
-                    {
-                        int h = ti * 1103515245 + 12345;
-                        chosenVariant = Mathf.Abs(h) % variantCount;
-                    }
-                }
-                sliceIndex = startSlice + chosenVariant;
-            }
-
-            if (maxSlice >= 0 && sliceIndex > maxSlice) sliceIndex = maxSlice;
-            if (sliceIndex < 0) sliceIndex = 0;
-            sliceIndices[ti] = sliceIndex;
+            sliceIndices[ti] = ResolveSurfaceSliceIndex(tile, ti, biomeIndex);
         }
     }
 
@@ -2594,17 +2568,7 @@ public class HexMapChunkManager : MonoBehaviour
             var td = planetGenerator.data[tileIdx];
             Vector3 tileCenter = grid.tileCenters[tileIdx];
 
-            // Water world Y: use manual ocean water Y when enabled, otherwise computed sea level.
-            // Lakes/rivers fall back to per-tile waterElevation (scaled).
-            float waterWorldY;
-            if (td.waterType == TileWaterType.Ocean)
-            {
-                waterWorldY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset;
-            }
-            else
-            {
-                waterWorldY = flatY + td.waterElevation * displacementStrength + waterYOffset;
-            }
+            float waterWorldY = GetTileWaterSurfaceY(td);
 
             // Convert to chunk-local
             Vector3 localCenter = new Vector3(
@@ -2675,13 +2639,7 @@ public class HexMapChunkManager : MonoBehaviour
                     {
                         nbrIsWater = nbrTd.waterType != TileWaterType.None;
                         if (nbrIsWater)
-                        {
-                            // Note: neighbor might not be in this chunk; compute its water height on the fly.
-                            if (nbrTd.waterType == TileWaterType.Ocean)
-                                nbrWaterY = (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset;
-                            else
-                                nbrWaterY = flatY + nbrTd.waterElevation * displacementStrength + waterYOffset;
-                        }
+                            nbrWaterY = GetTileWaterSurfaceY(nbrTd);
                     }
 
                     // Build wall if bordering land/empty, or if neighbor water is significantly lower (step).
@@ -3242,7 +3200,7 @@ public class HexMapChunkManager : MonoBehaviour
             int wType = ClassifyWaterAt(u, v);
 
             if (wType == 2) // ocean — flat at sea level
-                return (useManualOceanWaterY ? manualOceanWaterY : planetGenerator.SeaLevelWorldY) + waterYOffset + riverSurfaceLift;
+                return GetOceanWaterSurfaceY(riverSurfaceLift);
 
             // Bilinear blend of water elevation from 4 nearest SDF grid corners.
             // Smooths the Y staircase that occurs at tile-ownership boundaries
@@ -3760,7 +3718,7 @@ public class HexMapChunkManager : MonoBehaviour
         minX -= pad; maxX += pad;
         minZ -= pad; maxZ += pad;
 
-        float y = (useManualOceanWaterY ? manualOceanWaterY : (planetGenerator != null ? planetGenerator.SeaLevelWorldY : 0f)) + waterYOffset;
+        float y = GetOceanWaterSurfaceY();
         Vector3 mgrPos = transform.position;
 
         // Ensure object

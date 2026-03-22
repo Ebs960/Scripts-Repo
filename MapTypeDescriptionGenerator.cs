@@ -94,7 +94,11 @@ public static class MapTypeDescriptionGenerator
         // Pangaea (4)
         "A single colossal supercontinent sprawls across the world, its borders touching every climate from frozen pole to blistering equator. " +
         "There are no distant shores to discover here—all peoples share the same immense landmass, " +
-        "and events that occur at one edge inevitably ripple across the entire world."
+        "and events that occur at one edge inevitably ripple across the entire world.",
+
+        // Terrestrial (5)
+        "Land overwhelms sea on this world, with broad continental interiors broken only by inland seas, narrow straits, and a handful of distant coasts. " +
+        "Campaigns unfold across enormous connected fronts, where geography favors long marches, continental rivalries, and wars fought over the few true maritime chokepoints."
     };
 
     // Elevation descriptions - terrain character

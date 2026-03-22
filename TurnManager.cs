@@ -149,6 +149,10 @@ public class TurnManager : MonoBehaviour
                 OnRoundEnded?.Invoke(round);
                 OnNeutralTurn?.Invoke(round);
 
+                // Yield a frame so any coroutines started by neutral-turn subscribers
+                // (e.g. AnimalManager) can begin processing before the next round.
+                yield return null;
+
                 round++;
 
                 var gmRoundAdvance = GameManager.Instance;

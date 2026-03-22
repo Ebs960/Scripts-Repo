@@ -171,14 +171,20 @@ public class CivilizationManager : MonoBehaviour
         // ───── Phase 1: Command-based tactical AI (plan-then-execute) ─────
         // The AIPlanner handles: danger maps, unstoring, army groups,
         // and per-unit decisions (attack, move, forage, hunt, build, settle, retreat, fortify).
-        aiPlanner.ExecuteTurn(civ);
+        // Split planning and execution across frames to avoid single-frame freeze.
+        aiPlanner.PlanTurn(civ);
+        yield return null;
+        aiPlanner.ExecuteCommands();
+        yield return null;
 
         // ───── Phase 2: High-level strategic decisions (retained) ─────
         // These handle empire-wide choices that don't map to single-unit commands.
         PerformSeasonalDecisions(civ);
         PerformImprovementUpgradeDecisions(civ);
+        yield return null;
         PerformStrategicDecisions(civ);
         PerformDiplomaticDecisions(civ);
+        yield return null;
         PerformTechnologicalDecisions(civ);
         PerformCulturalDecisions(civ);
         PerformReligiousDecisions(civ);

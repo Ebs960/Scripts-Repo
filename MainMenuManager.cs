@@ -100,8 +100,8 @@ public class MainMenuManager : MonoBehaviour
     public Sprite[] climateFallbackIcons = new Sprite[6];
     
     [Header("Land Type Fallback Icons (secondary fallback)")]
-    [Tooltip("Fallback icons by land type: 0=Archipelago, 1=Islands, 2=Standard, 3=Continents, 4=Pangaea")]
-    public Sprite[] landTypeFallbackIcons = new Sprite[5];
+    [Tooltip("Fallback icons by land type: 0=Archipelago, 1=Islands, 2=Standard, 3=Continents, 4=Pangaea, 5=Terrestrial")]
+    public Sprite[] landTypeFallbackIcons = new Sprite[6];
 
     [Header("Animal Settings")]
     public TMP_Dropdown animalPrevalenceDropdown;
@@ -161,7 +161,8 @@ public class MainMenuManager : MonoBehaviour
         new LandPresetData { name = "Islands", continents = 2, islands = 15, continentSizeMultiplier = 1.0f, description = "A few large islands with smaller ones" },
         new LandPresetData { name = "Standard", continents = 4, islands = 8, continentSizeMultiplier = 1.05f, description = "Balanced continents and islands" },
         new LandPresetData { name = "Large Continents", continents = 4, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
-        new LandPresetData { name = "Pangaea", continents = 1, islands = 5, continentSizeMultiplier = 7.5f, description = "One massive supercontinent" }
+        new LandPresetData { name = "Pangaea", continents = 1, islands = 2, continentSizeMultiplier = 2.3f, description = "One massive supercontinent" },
+        new LandPresetData { name = "Terrestrial", continents = 2, islands = 2, continentSizeMultiplier = 1.85f, description = "A world dominated by sprawling landmasses" }
     };
 
     // Moisture preset values
@@ -263,7 +264,8 @@ public class MainMenuManager : MonoBehaviour
                 "Islands",        // land == 1
                 "Standard",       // land == 2 (classic fallback)
                 "Large Continents",     // land == 3 (two-word)
-                "Pangaea"         // land == 4 (three-word)
+                "Pangaea",        // land == 4
+                "Terrestrial"     // land == 5
             });
             landPresetDropdown.value = selectedLandPreset;
             landPresetDropdown.onValueChanged.AddListener(OnLandPresetChanged);
@@ -543,10 +545,10 @@ public class MainMenuManager : MonoBehaviour
     {
         if (planetPreview == null) return;
 
-        // Land shape: map selectedLandPreset (0-4) to scale/threshold.
+        // Land shape: map selectedLandPreset to scale/threshold.
         //  
-        float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.8f };
-        float[] landThresholds = { 0.70f, 0.69f, 0.585f, 0.55f, 0.47f };
+        float[] landScales     = { 4.5f, 3.2f, 2.2f, 1.4f, 0.82f, 0.65f };
+        float[] landThresholds = { 0.70f, 0.69f, 0.585f, 0.55f, 0.45f, 0.34f };
         int landIdx = Mathf.Clamp(selectedLandPreset, 0, landScales.Length - 1);
         planetPreview.SetLandPreset(landScales[landIdx], landThresholds[landIdx]);
 
@@ -905,7 +907,7 @@ public class MainMenuManager : MonoBehaviour
         // Lake settings - influenced by moisture AND land type
         // Lakes need inland area, so islands/archipelagos get fewer/no lakes
         // moisturePresets: 0=Desert, 1=Arid, 2=Standard, 3=Moist, 4=Wet, 5=Oceanic
-        // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea
+        // landPresets: 0=Archipelago, 1=Islands, 2=Standard, 3=Large Continents, 4=Pangaea, 5=Terrestrial
         
         // Base lake counts by moisture (halved)
         int[] baseLakeCounts = { 1, 2, 3, 7, 8, 9 };      // Desert=none, Oceanic=moderate
@@ -913,11 +915,11 @@ public class MainMenuManager : MonoBehaviour
         int[] maxLakeSizes = { 1, 1, 2, 2, 4, 5 };        
         
         // Land type multipliers for lake count (islands have less inland area)
-        // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=2.0
-        float[] landTypeMultipliers = { 0f, 0.25f, 1.0f, 1.5f, 2.0f };
+        // Archipelago=0, Islands=0.25, Standard=1.0, Large Continents=1.5, Pangaea=1.8, Terrestrial=2.3
+        float[] landTypeMultipliers = { 0f, 0.25f, 1.0f, 1.5f, 1.8f, 2.3f };
         
         int moistIdx = Mathf.Clamp(selectedMoisturePreset, 0, 5);
-        int landIdx = Mathf.Clamp(selectedLandPreset, 0, 4);
+        int landIdx = Mathf.Clamp(selectedLandPreset, 0, landTypeMultipliers.Length - 1);
         
         float landMultiplier = landTypeMultipliers[landIdx];
         int adjustedLakeCount = Mathf.RoundToInt(baseLakeCounts[moistIdx] * landMultiplier);

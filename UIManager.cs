@@ -550,7 +550,7 @@ public class UIManager : MonoBehaviour
         if (herdPanel == null)
         {
             Debug.LogWarning("UIManager.ShowHerdPanelForHerd: herdPanel is not assigned in Inspector. Attempting to locate in scene.");
-            var found = FindObjectOfType<HerdPanel>();
+            var found = FindFirstObjectByType<HerdPanel>();
             if (found != null)
                 herdPanel = found.gameObject;
             else

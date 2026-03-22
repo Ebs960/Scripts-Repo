@@ -30,6 +30,8 @@ public static class MapTypeNameGenerator
 
     private static readonly string[] pangaeaTypes = { "Expanse", "Vastness", "Frontier", "Wilderness", "Dominion", "Heartland", "Realm", "Union" };
 
+    private static readonly string[] terrestrialTypes = { "Supercontinent", "Mainland", "Overworld", "Crownlands", "Breadth", "Greatland", "Worldland", "Marches" };
+
     private static readonly string[][] pangaeaMods = {
         new[] { "Great", "Endless", "Vast", "Boundless", "Sweeping", "Ancient", "Primal", "Primeval" },
         new[] { "Rolling", "Rugged", "Forested", "Windswept", "Untamed", "Wild", "Verdant", "Broad" },
@@ -53,6 +55,8 @@ public static class MapTypeNameGenerator
             return $"{baseNames[climate][moisture]} {elevationTerrainContinents[elevation][moisture]}";
         if (land == 4) // Pangaea
             return $"{pangaeaMods[elevation][moisture]} {baseNames[climate][moisture]} {pangaeaTypes[moisture]}";
+        if (land == 5) // Terrestrial
+            return $"{pangaeaMods[elevation][moisture]} {baseNames[climate][moisture]} {terrestrialTypes[moisture]}";
         // Default to standard/classic if out of range
         return $"{baseNames[climate][moisture]} {elevationTerrain[elevation][moisture]}";
     }
@@ -63,7 +67,7 @@ public static class MapTypeNameGenerator
 
         for (int climate = 0; climate < baseNames.Length; climate++)
             for (int moisture = 0; moisture < waterTerrain.Length; moisture++)
-                for (int land = 0; land <= 4; land++)
+                for (int land = 0; land <= 5; land++)
                     for (int elev = 0; elev < elevationTerrain.Length; elev++)
                     {
                         try

@@ -26,6 +26,14 @@ public class ReligionManager : MonoBehaviour
     // Track founded religions in the game
     private List<(ReligionData religion, Civilization founder)> foundedReligions = new List<(ReligionData, Civilization)>();
     
+    // Reusable BFS structures to avoid per-call allocations
+    private readonly Queue<(int index, int dist)> _bfsQueue = new Queue<(int, int)>();
+    private readonly HashSet<int> _bfsVisited = new HashSet<int>();
+    private readonly List<int> _bfsResult = new List<int>();
+    // Separate BFS structures for SpreadPressure (since it runs nested inside radius iteration)
+    private readonly Queue<(int index, int dist)> _spreadQueue = new Queue<(int, int)>();
+    private readonly HashSet<int> _spreadVisited = new HashSet<int>();
+
     // References (kept for now, but neighbors/data are via TileSystem)
     private PlanetGenerator planetGenerator;
     private HexGrid grid;
@@ -82,15 +90,20 @@ public class ReligionManager : MonoBehaviour
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
             if (ts == null || !ts.IsReady()) continue;
 
-            // Get tiles within city radius
+            // Get tiles within city radius — snapshot the list since SpreadPressure
+            // will reuse shared BFS structures
             var centerTileIndex = city.centerTileIndex;
-            var cityTiles = GetTilesInRadius(ts, centerTileIndex, city.TerritoryRadius);
-            
-            foreach (int tileIndex in cityTiles)
+            GetTilesInRadius(ts, centerTileIndex, city.TerritoryRadius);
+            // Copy holy site indices before calling SpreadPressure
+            var holySiteTiles = new List<int>();
+            foreach (int tileIndex in _bfsResult)
             {
-                if (!ts.HasHolySite(tileIndex))
-                    continue;
+                if (ts.HasHolySite(tileIndex))
+                    holySiteTiles.Add(tileIndex);
+            }
 
+            foreach (int tileIndex in holySiteTiles)
+            {
                 ts.AddReligionPressure(tileIndex, civ.foundedReligion, holySitePressurePerTurn);
                 SpreadPressure(ts, tileIndex, civ.foundedReligion);
             }
@@ -102,36 +115,36 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     private List<int> GetTilesInRadius(TileSystem ts, int centerTileIndex, int radius)
     {
-        List<int> result = new List<int>();
+        _bfsResult.Clear();
         if (ts == null || !ts.IsReady() || radius <= 0)
-            return result;
+            return _bfsResult;
             
-        Queue<(int index, int dist)> queue = new Queue<(int, int)>();
-        HashSet<int> visited = new HashSet<int>();
+        _bfsQueue.Clear();
+        _bfsVisited.Clear();
 
-        queue.Enqueue((centerTileIndex, 0));
-        visited.Add(centerTileIndex);
+        _bfsQueue.Enqueue((centerTileIndex, 0));
+        _bfsVisited.Add(centerTileIndex);
 
-        while (queue.Count > 0)
+        while (_bfsQueue.Count > 0)
         {
-            var (currentIndex, currentDist) = queue.Dequeue();
-            result.Add(currentIndex);
+            var (currentIndex, currentDist) = _bfsQueue.Dequeue();
+            _bfsResult.Add(currentIndex);
 
             if (currentDist < radius)
             {
                 var neighbors = ts.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
-                    if (!visited.Contains(neighbor))
+                    if (!_bfsVisited.Contains(neighbor))
                     {
-                        visited.Add(neighbor);
-                        queue.Enqueue((neighbor, currentDist + 1));
+                        _bfsVisited.Add(neighbor);
+                        _bfsQueue.Enqueue((neighbor, currentDist + 1));
                     }
                 }
             }
         }
         
-        return result;
+        return _bfsResult;
     }
     
     /// <summary>
@@ -146,15 +159,15 @@ public class ReligionManager : MonoBehaviour
         if (ts == null || !ts.IsReady())
             return;
             
-        Queue<(int index, int dist)> queue = new Queue<(int, int)>();
-        HashSet<int> visited = new HashSet<int>();
+        _spreadQueue.Clear();
+        _spreadVisited.Clear();
 
-        queue.Enqueue((sourceTileIndex, 0));
-        visited.Add(sourceTileIndex);
+        _spreadQueue.Enqueue((sourceTileIndex, 0));
+        _spreadVisited.Add(sourceTileIndex);
 
-        while (queue.Count > 0)
+        while (_spreadQueue.Count > 0)
         {
-            var (currentIndex, currentDist) = queue.Dequeue();
+            var (currentIndex, currentDist) = _spreadQueue.Dequeue();
 
             if (currentDist > 0) // Don't apply pressure to the source tile itself
             {
@@ -170,10 +183,10 @@ public class ReligionManager : MonoBehaviour
                 var neighbors = ts.GetNeighbors(currentIndex);
                 foreach (int neighbor in neighbors)
                 {
-                    if (!visited.Contains(neighbor))
+                    if (!_spreadVisited.Contains(neighbor))
                     {
-                        visited.Add(neighbor);
-                        queue.Enqueue((neighbor, currentDist + 1));
+                        _spreadVisited.Add(neighbor);
+                        _spreadQueue.Enqueue((neighbor, currentDist + 1));
                     }
                 }
             }

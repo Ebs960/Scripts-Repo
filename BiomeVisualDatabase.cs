@@ -77,6 +77,8 @@ public class BiomeVisualDatabase : ScriptableObject
         // per-surface
         public int[] surfaceStartSlice;
         public int[] surfaceVariantCounts;
+        public int[] surfaceMountainStartSlice;
+        public int[] surfaceMountainVariantCounts;
 
         // per-biome mapping
         public int[] biomeToSurfaceIndex;
@@ -248,6 +250,7 @@ public class BiomeVisualDatabase : ScriptableObject
 
         // Calculate total slices + validate families
         var variantCounts = new int[families.Count];
+        var mountainVariantCounts = new int[families.Count];
         int total = 0;
         var errors = new List<string>(16);
 
@@ -264,6 +267,14 @@ public class BiomeVisualDatabase : ScriptableObject
             int variants = Mathf.Max(1, sf.VariantCount);
             variantCounts[i] = variants;
             total += variants;
+
+            int mountainVariants = 0;
+            if (sf.HasMountainVariants)
+            {
+                mountainVariants = Mathf.Max(1, sf.MountainVariantCount);
+                total += mountainVariants;
+            }
+            mountainVariantCounts[i] = mountainVariants;
 
             void CheckArray(string kind, Texture2DArray arr, TextureFormat expectedFmt, int expectedMipCount)
             {
@@ -294,6 +305,44 @@ public class BiomeVisualDatabase : ScriptableObject
             CheckArray("normal", sf.normalArray, normalFmt, normalMipCount);
             CheckArray("mask", sf.maskArray, maskFmt, maskMipCount);
             if (includeHeight) CheckArray("height", sf.heightArray, heightFmt, heightMipCount);
+
+            if (sf.HasMountainVariants)
+            {
+                void CheckMountainArray(string kind, Texture2DArray arr, TextureFormat expectedFmt, int expectedMipCount)
+                {
+                    if (arr == null)
+                    {
+                        errors.Add($"SurfaceFamily '{sf.name}' has mountain overrides but is missing mountain {kind} Texture2DArray.");
+                        return;
+                    }
+                    if (arr.width != targetW || arr.height != targetH)
+                    {
+                        errors.Add($"SurfaceFamily '{sf.name}' mountain {kind} size is {arr.width}x{arr.height}, expected {targetW}x{targetH}.");
+                    }
+                    if (arr.format != expectedFmt)
+                    {
+                        errors.Add($"SurfaceFamily '{sf.name}' mountain {kind} format is {arr.format}, expected {expectedFmt}.");
+                    }
+                    if (arr.mipmapCount != expectedMipCount)
+                    {
+                        errors.Add($"SurfaceFamily '{sf.name}' mountain {kind} mipmapCount is {arr.mipmapCount}, expected {expectedMipCount}.");
+                    }
+                    if (arr.depth < mountainVariants)
+                    {
+                        errors.Add($"SurfaceFamily '{sf.name}' mountain {kind} depth is {arr.depth}, but MountainVariantCount is {mountainVariants}.");
+                    }
+                }
+
+                CheckMountainArray("albedo", sf.mountainAlbedoArray, albedoFmt, albedoMipCount);
+                CheckMountainArray("normal", sf.mountainNormalArray, normalFmt, normalMipCount);
+                CheckMountainArray("mask", sf.mountainMaskArray, maskFmt, maskMipCount);
+
+                if (sf.mountainHeightArray != null)
+                    CheckMountainArray("height", sf.mountainHeightArray, heightFmt, heightMipCount);
+
+                if (sf.mountainEmissiveArray != null)
+                    CheckMountainArray("emissive", sf.mountainEmissiveArray, emissiveFmt, emissiveMipCount);
+            }
 
             if (includeEmissive)
             {
@@ -330,6 +379,7 @@ public class BiomeVisualDatabase : ScriptableObject
         string signature =
             $"{name}|biomes={biomes.Count}|families={families.Count}|size={targetW}x{targetH}|totalSlices={total}" +
             $"|A={albedoFmt}/{albedoMipCount}|N={normalFmt}/{normalMipCount}|M={maskFmt}/{maskMipCount}" +
+            $"|Mt={string.Join(",", mountainVariantCounts)}" +
             (includeEmissive ? $"|E={emissiveFmt}/{emissiveMipCount}" : "|E=none");
 
         if (_surfaceLibraryCacheByDb.TryGetValue(dbId, out var cached) &&
@@ -378,6 +428,7 @@ public class BiomeVisualDatabase : ScriptableObject
 
         int writeSlice = 0;
         var surfaceStart = new int[families.Count];
+        var surfaceMountainStart = new int[families.Count];
 
         for (int s = 0; s < families.Count; s++)
         {
@@ -406,6 +457,36 @@ public class BiomeVisualDatabase : ScriptableObject
                 }
                 writeSlice++;
             }
+
+            surfaceMountainStart[s] = writeSlice;
+            int mountainVariants = mountainVariantCounts[s];
+            if (mountainVariants <= 0)
+                continue;
+
+            for (int v = 0; v < mountainVariants; v++)
+            {
+                for (int mip = 0; mip < albedoMipCount; mip++)
+                    Graphics.CopyTexture(sf.mountainAlbedoArray, v, mip, albedoArray, writeSlice, mip);
+                for (int mip = 0; mip < normalMipCount; mip++)
+                    Graphics.CopyTexture(sf.mountainNormalArray, v, mip, normalArray, writeSlice, mip);
+                for (int mip = 0; mip < maskMipCount; mip++)
+                    Graphics.CopyTexture(sf.mountainMaskArray, v, mip, maskArray, writeSlice, mip);
+                if (includeEmissive && emissiveArray != null)
+                {
+                    Texture2DArray emissiveSource = sf.mountainEmissiveArray != null ? sf.mountainEmissiveArray : sf.emissiveArray;
+                    int emissiveSlice = emissiveSource != null && emissiveSource.depth > 0 ? (v % emissiveSource.depth) : 0;
+                    for (int mip = 0; mip < emissiveMipCount; mip++)
+                        Graphics.CopyTexture(emissiveSource, emissiveSlice, mip, emissiveArray, writeSlice, mip);
+                }
+                if (includeHeight && heightArray != null)
+                {
+                    Texture2DArray heightSource = sf.mountainHeightArray != null ? sf.mountainHeightArray : sf.heightArray;
+                    int heightSlice = heightSource != null && heightSource.depth > 0 ? (v % heightSource.depth) : 0;
+                    for (int mip = 0; mip < heightMipCount; mip++)
+                        Graphics.CopyTexture(heightSource, heightSlice, mip, heightArray, writeSlice, mip);
+                }
+                writeSlice++;
+            }
         }
 
         var lib = new SurfaceLibrary
@@ -418,6 +499,8 @@ public class BiomeVisualDatabase : ScriptableObject
             totalSlices = writeSlice,
             surfaceStartSlice = surfaceStart,
             surfaceVariantCounts = variantCounts,
+            surfaceMountainStartSlice = surfaceMountainStart,
+            surfaceMountainVariantCounts = mountainVariantCounts,
             biomeToSurfaceIndex = biomeToSurface,
             biomeForcedVariant = biomeForced
         };
@@ -449,6 +532,11 @@ public class BiomeVisualDatabase : ScriptableObject
             if (sf.maskArray != null) { Resources.UnloadAsset(sf.maskArray); unloaded++; }
             if (sf.heightArray != null) { Resources.UnloadAsset(sf.heightArray); unloaded++; }
             if (sf.emissiveArray != null) { Resources.UnloadAsset(sf.emissiveArray); unloaded++; }
+            if (sf.mountainAlbedoArray != null) { Resources.UnloadAsset(sf.mountainAlbedoArray); unloaded++; }
+            if (sf.mountainNormalArray != null) { Resources.UnloadAsset(sf.mountainNormalArray); unloaded++; }
+            if (sf.mountainMaskArray != null) { Resources.UnloadAsset(sf.mountainMaskArray); unloaded++; }
+            if (sf.mountainHeightArray != null) { Resources.UnloadAsset(sf.mountainHeightArray); unloaded++; }
+            if (sf.mountainEmissiveArray != null) { Resources.UnloadAsset(sf.mountainEmissiveArray); unloaded++; }
         }
     }
 }

@@ -205,9 +205,31 @@ MonoBehaviour:
   seedPositionVariance: 0.8
   elevationExponent: 1
   ridgeStrength: 0.116
+  terrainWarpStrength: 0.25
+  terrainWarpFrequencyMultiplier: 0.7
+  terrainProvinceFrequencyMultiplier: 0.76
+  terrainProvinceStrength: 0.2
+  hillNoiseFrequencyMultiplier: 2.6
+  hillNoiseStrength: 0.11
+  mountainNoiseFrequencyMultiplier: 1.55
+  mountainNoiseStrength: 0.16
+  basinFrequencyMultiplier: 0.85
+  basinCarvingStrength: 0.12
+  valleyFrequencyMultiplier: 3.1
+  valleyCarvingStrength: 0.08
+  mesaStrength: 0.1
+  escarpmentStrength: 0.09
+  erosionStrength: 0.22
+  enableAdvancedGeologyFramework: 1
+  geologyFrameworkStrength: 0.38
+  tectonicProvinceFrequencyMultiplier: 0.42
+  drainageBasinStrength: 0.42
+  crustAgeStrength: 0.45
+  sedimentationStrength: 0.32
+  glaciationStrength: 0.35
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 8
+  elevationFreq: 2
   moistureFreq: 0.3
   moistureBias: 0
   temperatureBias: 0
@@ -229,24 +251,31 @@ MonoBehaviour:
   mountainElevationMax: 17.8
   oceanElevation: 0
   seasElevation: 23
-  coastElevation: 29
+  coastElevation: 30
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
-  riverDepth: 1
+  riverDepth: 0.83
+  riverMeanderAmplitude: 0.18
+  riverMeanderFrequency: 1.15
+  riverTurnResistance: 0.8
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
   lakeMaxRadiusTiles: 3
   lakeMinDistanceFromCoast: 6
-  coastBiteCount: 13
-  coastBiteRadiusMin: 1
-  coastBiteRadiusMax: 2
-  coastSpurCount: 12
-  coastSpurRadiusMin: 2
-  coastSpurRadiusMax: 4
+  lakeShoreIrregularity: 0.65
+  lakeElongationStrength: 0.55
+  lakeCoveStrength: 0.45
+  smartEmbaymentCount: 6
+  smartEmbaymentMinLength: 2
+  smartEmbaymentMaxLength: 5
+  smartPeninsulaCount: 4
+  smartPeninsulaMinLength: 2
+  smartPeninsulaMaxLength: 4
+  smartCoastFeatureSpacing: 5
   minLandTilesForCoastStamps: 100
-  lakeDepth: 1
+  lakeDepth: 0.83
   seaLevelMatchCoast: 1
   manualSeaLevelWorldY: 5.87
   numberOfIslands: 8
@@ -265,10 +294,6 @@ MonoBehaviour:
   maxIslandHeightTilesLarge: 24
   generateIslandChains: 1
   islandsPerChain: 3
-  decorationManager:
-    biomeDecorations: []
-    enableDecorations: 1
-    globalScaleMultiplier: 1
   planetType: 0
   mapType: 0
   currentMapTypeName: 

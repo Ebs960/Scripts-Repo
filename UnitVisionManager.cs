@@ -313,6 +313,10 @@ public class UnitVisionManager : MonoBehaviour
         return false;
     }
     
+    // Reusable BFS structures to avoid per-call allocations
+    private readonly Queue<(int tile, int dist)> bfsQueue = new Queue<(int, int)>();
+    private readonly HashSet<int> bfsVisited = new HashSet<int>();
+
     private void AddVisibleTilesInRange(int centerTile, int range, HashSet<int> result)
     {
         if (grid == null || centerTile < 0 || centerTile >= grid.TileCount) return;
@@ -321,16 +325,16 @@ public class UnitVisionManager : MonoBehaviour
         
         if (range <= 0) return;
         
-        // BFS to find all tiles within range
-        Queue<(int tile, int dist)> queue = new Queue<(int, int)>();
-        HashSet<int> visited = new HashSet<int>();
+        // BFS to find all tiles within range (reuse structures)
+        bfsQueue.Clear();
+        bfsVisited.Clear();
         
-        queue.Enqueue((centerTile, 0));
-        visited.Add(centerTile);
+        bfsQueue.Enqueue((centerTile, 0));
+        bfsVisited.Add(centerTile);
         
-        while (queue.Count > 0)
+        while (bfsQueue.Count > 0)
         {
-            var (currentTile, currentDist) = queue.Dequeue();
+            var (currentTile, currentDist) = bfsQueue.Dequeue();
             
             if (currentDist >= range) continue;
             
@@ -339,15 +343,15 @@ public class UnitVisionManager : MonoBehaviour
             {
                 foreach (int neighbor in grid.neighbors[currentTile])
                 {
-                    if (neighbor >= 0 && neighbor < grid.TileCount && !visited.Contains(neighbor))
+                    if (neighbor >= 0 && neighbor < grid.TileCount && !bfsVisited.Contains(neighbor))
                     {
-                        visited.Add(neighbor);
+                        bfsVisited.Add(neighbor);
                         result.Add(neighbor);
                         
                         // Check for blocking terrain (mountains block vision beyond them)
                         if (!BlocksVision(neighbor))
                         {
-                            queue.Enqueue((neighbor, currentDist + 1));
+                            bfsQueue.Enqueue((neighbor, currentDist + 1));
                         }
                     }
                 }

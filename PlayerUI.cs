@@ -438,49 +438,17 @@ UpdateTurnChangePanel(civ, round);
         if (roundText != null) roundText.text = $"Round {displayRound}";
         // Age display removed
 
-        // Yields - Calculate from cities
-        int totalFood = SumCityYield(civ, city => city.GetFoodPerTurn());
-        int totalGold = SumCityYield(civ, city => city.GetGoldPerTurn());
-        int totalScience = SumCityYield(civ, city => city.GetSciencePerTurn());
-        int totalCulture = SumCityYield(civ, city => city.GetCulturePerTurn());
-        int totalPolicyPoints = SumCityYield(civ, city => city.GetPolicyPointPerTurn());
-        int totalFaith = SumCityYield(civ, city => city.GetFaithPerTurn());
-
-        // Add per-turn yields from combat units
-        if (civ.combatUnits != null)
-        {
-            foreach (var u in civ.combatUnits)
-            {
-                if (u == null || u.data == null) continue;
-                var y = civ.ComputeUnitPerTurnYield(u.data, u.Weapon, u.Shield, u.Armor, u.Miscellaneous);
-                totalFood += y.food;
-                totalGold += y.gold;
-                totalScience += y.science;
-                totalCulture += y.culture;
-                totalFaith += y.faith;
-                totalPolicyPoints += y.policy;
-            }
-        }
-
-        // Add per-turn yields from worker units
-        if (civ.workerUnits != null)
-        {
-            foreach (var w in civ.workerUnits)
-            {
-                if (w == null || w.data == null) continue;
-                var y = civ.ComputeWorkerPerTurnYield(w.data);
-                totalFood += y.food;
-                totalGold += y.gold;
-                totalScience += y.science;
-                totalCulture += y.culture;
-                totalFaith += y.faith;
-                totalPolicyPoints += y.policy;
-            }
-        }
+        // Yields - read from cached per-turn values computed in BeginTurn
+        int totalFood = civ.cachedFoodPerTurn;
+        int totalGold = civ.cachedGoldPerTurn;
+        int totalScience = civ.cachedSciencePerTurn;
+        int totalCulture = civ.cachedCulturePerTurn;
+        int totalPolicyPoints = civ.cachedPolicyPerTurn;
+        int totalFaith = civ.cachedFaithPerTurn;
 
         string FormatRate(int rate) => rate >= 0 ? $"+{rate}" : rate.ToString();
 
-        int consumption = civ.GetFoodConsumptionPerTurn();
+        int consumption = civ.cachedFoodConsumption;
         int netFood = totalFood - consumption;
         if (foodYieldText != null) foodYieldText.text = $"{civ.food}\n{FormatRate(netFood)}";
         if (goldYieldText != null) goldYieldText.text = $"{civ.gold}\n{FormatRate(totalGold)}";

@@ -13,6 +13,18 @@ public class SurfaceFamilyData : ScriptableObject
     // Optional per-variant height/displacement maps (single-channel, RHalf recommended)
     public Texture2DArray heightArray;
 
+    [Header("Mountain Variant Texture Arrays (optional)")]
+    [Tooltip("Optional mountain-only albedo variants for this surface family. If omitted, mountains use the base arrays.")]
+    public Texture2DArray mountainAlbedoArray;
+    [Tooltip("Optional mountain-only normal variants for this surface family. If omitted, mountains use the base arrays.")]
+    public Texture2DArray mountainNormalArray;
+    [Tooltip("Optional mountain-only mask variants for this surface family. If omitted, mountains use the base arrays.")]
+    public Texture2DArray mountainMaskArray;
+    [Tooltip("Optional mountain-only height/displacement variants. If omitted, mountains use the base height array.")]
+    public Texture2DArray mountainHeightArray;
+    [Tooltip("Optional mountain-only emissive variants. If omitted, mountains use the base emissive array.")]
+    public Texture2DArray mountainEmissiveArray;
+
     [Header("Emissive (optional)")]
     public Texture2DArray emissiveArray;
     public bool supportsEmission = false;
@@ -33,4 +45,18 @@ public class SurfaceFamilyData : ScriptableObject
             return 0;
         }
     }
+
+    public int MountainVariantCount
+    {
+        get
+        {
+            if (mountainAlbedoArray != null) return mountainAlbedoArray.depth;
+            if (mountainNormalArray != null) return mountainNormalArray.depth;
+            if (mountainMaskArray != null) return mountainMaskArray.depth;
+            return 0;
+        }
+    }
+
+    public bool HasMountainVariants =>
+        mountainAlbedoArray != null || mountainNormalArray != null || mountainMaskArray != null;
 }

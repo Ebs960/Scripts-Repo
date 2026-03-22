@@ -7,227 +7,6 @@ using System.Buffers;
 using TMPro;
 using System.Threading.Tasks;
 
-/// <summary>
-/// This handles decoration prefabs for each biome type independently
-/// </summary>
-[System.Serializable]
-public struct BiomeDecorationEntry
-{
-    [Header("Biome Configuration")]
-    public Biome biome;
-    
-    [Header("Decoration Prefabs")]
-    [Tooltip("Decoration prefabs for this biome (trees, bushes, rocks, etc.)")]
-    public GameObject[] decorationPrefabs;
-    
-    [Header("Spawn Settings")]
-    [Range(0f, 1f)]
-    [Tooltip("Chance this biome will get decorations (0 = never, 1 = always)")]
-    public float spawnChance;
-    
-    [Range(1, 8)]
-    [Tooltip("Minimum decorations to spawn on tiles of this biome")]
-    public int minDecorations;
-    
-    [Range(1, 12)]
-    [Tooltip("Maximum decorations to spawn on tiles of this biome")]
-    public int maxDecorations;
-    
-    [Header("Positioning")]
-    [Range(0.1f, 0.9f)]
-    [Tooltip("Minimum distance from tile center (as fraction of tile size)")]
-    public float minDistanceFromCenter;
-    
-    [Range(0.1f, 0.95f)]
-    [Tooltip("Maximum distance from tile center (as fraction of tile size)")]
-    public float maxDistanceFromCenter;
-    
-    [Header("Scale and Rotation")]
-    [Range(0.1f, 15.0f)]
-    [Tooltip("Scale multiplier for decorations in this biome")]
-    public float scaleMultiplier;
-    
-    [Range(0f, 1f)]
-    [Tooltip("Random scale variation (0 = no variation, 1 = ±100% variation)")]
-    public float scaleVariation;
-    
-    [Tooltip("Should decorations randomly rotate around their up axis?")]
-    public bool randomRotation;
-    
-    /// <summary>
-    /// Get default settings for a biome
-    /// </summary>
-    public static BiomeDecorationEntry GetDefault(Biome biome)
-    {
-        return new BiomeDecorationEntry
-        {
-            biome = biome,
-            decorationPrefabs = new GameObject[0],
-            spawnChance = GetDefaultSpawnChance(biome),
-            minDecorations = GetDefaultMinDecorations(biome),
-            maxDecorations = GetDefaultMaxDecorations(biome),
-            minDistanceFromCenter = 0.4f,
-            maxDistanceFromCenter = 0.85f,
-            scaleMultiplier = 1.0f,
-            scaleVariation = 0.2f,
-            randomRotation = true
-        };
-    }
-    
-    private static float GetDefaultSpawnChance(Biome biome)
-    {
-        return biome switch
-        {
-            // Water biomes - no decorations
-            Biome.Ocean or Biome.Coast or Biome.Seas => 0f,
-            
-            // Lush biomes - high decoration chance
-            Biome.Temperate or Biome.Tropical => 0.9f,
-            Biome.Plains or Biome.Savannah => 0.8f,
-            
-            // Moderate decoration biomes
-            Biome.Swamp => 0.6f,
-            
-            // Sparse decoration biomes
-            Biome.Desert or Biome.Tundra => 0.4f,
-            Biome.Arctic => 0.3f,
-            
-            // Hostile biomes - minimal decorations
-            Biome.Volcanic or Biome.Steamlands => 0.2f,
-            Biome.Hellscape => 0.1f,
-            
-            // Moon biomes
-            Biome.MoonDunes => 0.5f,
-            
-            // Default
-            _ => 0.5f
-        };
-    }
-    
-    private static int GetDefaultMinDecorations(Biome biome)
-    {
-        return biome switch
-        {
-            // Lush biomes
-            Biome.Temperate or Biome.Tropical => 2,
-            Biome.Plains => 1,
-            
-            // Sparse biomes
-            Biome.Desert or Biome.Tundra => 1,
-            
-            // Very sparse biomes
-            Biome.Volcanic or Biome.Hellscape => 1,
-            
-            // Default
-            _ => 1
-        };
-    }
-    
-    private static int GetDefaultMaxDecorations(Biome biome)
-    {
-        return biome switch
-        {
-            // Lush biomes - lots of decorations
-            Biome.Temperate or Biome.Tropical => 5,
-            Biome.Plains or Biome.Savannah => 4,
-            
-            // Moderate biomes
-            Biome.Swamp => 3,
-            
-            // Sparse biomes
-            Biome.Desert or Biome.Tundra => 2,
-            
-            // Very sparse biomes
-            Biome.Volcanic or Biome.Hellscape => 1,
-            
-            // Default
-            _ => 3
-        };
-    }
-}
-
-/// <summary>
-/// Component that manages decoration spawning for both planet and moon generators
-/// </summary>
-[System.Serializable]
-public class BiomeDecorationManager
-{
-    [Header("Biome Decoration Configuration")]
-    [Tooltip("Decoration settings for each biome type")]
-    public BiomeDecorationEntry[] biomeDecorations = new BiomeDecorationEntry[0];
-    
-    [Header("Global Decoration Settings")]
-    [Tooltip("Enable decoration spawning")]
-    public bool enableDecorations = true;
-    
-    [Range(0.5f, 3.0f)]
-    [Tooltip("Global scale multiplier applied to all decorations")]
-    public float globalScaleMultiplier = 1.0f;
-    
-    private Dictionary<Biome, BiomeDecorationEntry> decorationLookup;
-    
-    /// <summary>
-    /// Initialize the decoration lookup dictionary
-    /// </summary>
-    public void Initialize()
-    {
-        decorationLookup = new Dictionary<Biome, BiomeDecorationEntry>();
-        
-        foreach (var entry in biomeDecorations)
-        {
-            decorationLookup[entry.biome] = entry;
-        }
-    }
-    
-    /// <summary>
-    /// Get decoration settings for a specific biome
-    /// </summary>
-    public BiomeDecorationEntry GetDecorationSettings(Biome biome)
-    {
-        if (decorationLookup == null)
-            Initialize();
-            
-        if (decorationLookup.TryGetValue(biome, out var settings))
-            return settings;
-            
-        // Return default settings if not found
-        return BiomeDecorationEntry.GetDefault(biome);
-    }
-    
-    /// <summary>
-    /// Check if a biome should have decorations spawned
-    /// </summary>
-    public bool ShouldSpawnDecorations(Biome biome)
-    {
-        if (!enableDecorations)
-            return false;
-            
-        var settings = GetDecorationSettings(biome);
-        return settings.decorationPrefabs.Length > 0 && UnityEngine.Random.value < settings.spawnChance;
-    }
-    
-    /// <summary>
-    /// Get a random decoration prefab for a biome
-    /// </summary>
-    public GameObject GetRandomDecorationPrefab(Biome biome)
-    {
-        var settings = GetDecorationSettings(biome);
-        if (settings.decorationPrefabs.Length == 0)
-            return null;
-            
-        return settings.decorationPrefabs[UnityEngine.Random.Range(0, settings.decorationPrefabs.Length)];
-    }
-    
-    /// <summary>
-    /// Get the number of decorations to spawn for a tile
-    /// </summary>
-    public int GetDecorationCount(Biome biome)
-    {
-        var settings = GetDecorationSettings(biome);
-        return UnityEngine.Random.Range(settings.minDecorations, settings.maxDecorations + 1);
-    }
-}
-
 public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 {
     public static PlanetGenerator Instance { get; private set; }
@@ -469,6 +248,75 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Ridged noise strength for mountains. Blends sharp ridgeline character into high-elevation tiles. 0 = smooth hills everywhere, 0.4 = dramatic mountain ridges.")]
     public float ridgeStrength = 0.35f;
 
+    [Header("Advanced Terrain Variety")]
+    [Range(0f, 0.5f)]
+    [Tooltip("How strongly low-frequency warp noise bends the main land elevation sampling coordinates.")]
+    public float terrainWarpStrength = 0.18f;
+    [Range(0.1f, 2f)]
+    [Tooltip("Frequency multiplier for the domain warp field. Lower values create broader bent landforms.")]
+    public float terrainWarpFrequencyMultiplier = 0.7f;
+    [Range(0.05f, 1.5f)]
+    [Tooltip("Frequency multiplier for large terrain provinces that bias land toward plains, uplands, or rough interiors.")]
+    public float terrainProvinceFrequencyMultiplier = 0.3f;
+    [Range(0f, 0.25f)]
+    [Tooltip("How strongly terrain provinces bias the main land signal.")]
+    public float terrainProvinceStrength = 0.1f;
+    [Range(0.5f, 6f)]
+    [Tooltip("Frequency multiplier for the separate hill signal.")]
+    public float hillNoiseFrequencyMultiplier = 2.6f;
+    [Range(0f, 0.3f)]
+    [Tooltip("Contribution of the hill signal to overall terrain roughness.")]
+    public float hillNoiseStrength = 0.11f;
+    [Range(0.5f, 6f)]
+    [Tooltip("Frequency multiplier for the separate mountain-core signal.")]
+    public float mountainNoiseFrequencyMultiplier = 1.55f;
+    [Range(0f, 0.35f)]
+    [Tooltip("Contribution of the mountain-core signal to overall terrain roughness.")]
+    public float mountainNoiseStrength = 0.16f;
+    [Range(0.5f, 4f)]
+    [Tooltip("Frequency multiplier for broad interior basins.")]
+    public float basinFrequencyMultiplier = 0.85f;
+    [Range(0f, 0.25f)]
+    [Tooltip("Depth of interior basin carving as a fraction of terrain tier ranges.")]
+    public float basinCarvingStrength = 0.12f;
+    [Range(1f, 8f)]
+    [Tooltip("Frequency multiplier for narrow valley carving.")]
+    public float valleyFrequencyMultiplier = 3.1f;
+    [Range(0f, 0.2f)]
+    [Tooltip("Strength of narrow valley carving.")]
+    public float valleyCarvingStrength = 0.08f;
+    [Range(0f, 0.25f)]
+    [Tooltip("How strongly some inland highlands are flattened into mesas or plateaus.")]
+    public float mesaStrength = 0.1f;
+    [Range(0f, 0.2f)]
+    [Tooltip("Strength of broken escarpment and step-terrain shaping in rough provinces.")]
+    public float escarpmentStrength = 0.09f;
+    [Range(0f, 0.6f)]
+    [Tooltip("Strength of erosion-like redistribution that softens isolated spikes while preserving larger forms.")]
+    public float erosionStrength = 0.22f;
+
+    [Header("Advanced Geology Framework")]
+    [Tooltip("Enables tectonic provinces, crust age, margin types, drainage basins, sedimentation, glaciation, and trench/uplift coupling. When off, the legacy terrain pipeline is preserved.")]
+    public bool enableAdvancedGeologyFramework = false;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly the tectonic framework influences terrain uplift, basin placement, and coastal margin behavior.")]
+    public float geologyFrameworkStrength = 0.42f;
+    [Range(0.05f, 1f)]
+    [Tooltip("Frequency multiplier for tectonic provinces and crustal structure.")]
+    public float tectonicProvinceFrequencyMultiplier = 0.3f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly precomputed drainage basins influence valleys, river corridors, and depositional lowlands.")]
+    public float drainageBasinStrength = 0.38f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly crust age affects terrain smoothing, shield flattening, and erosion resistance.")]
+    public float crustAgeStrength = 0.45f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly depositional smoothing builds deltas, foreland plains, and basin fills.")]
+    public float sedimentationStrength = 0.4f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly cold, wet highlands are reshaped into glaciated valleys and fjord-prone coasts.")]
+    public float glaciationStrength = 0.35f;
+
     [Header("Tier-Based Elevation")]
     [Range(0f, 1f)]
     [Tooltip("Normalized noise value (0-1) above which a land tile becomes a Hill. Lower = more hills.")]
@@ -576,6 +424,30 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Range(0.01f, 3.0f)]
     [Tooltip("Elevation drop applied along river tiles (world units subtracted from terrain height).")]
     public float riverDepth = 0.15f;
+    [Range(0f, 0.4f)]
+    [Tooltip("How far rivers are allowed to meander sideways away from the direct source-to-coast line.")]
+    public float riverMeanderAmplitude = 0.18f;
+    [Range(0.5f, 3f)]
+    [Tooltip("How many broad bends a river prefers along its route. Higher values create more wiggles.")]
+    public float riverMeanderFrequency = 1.15f;
+    [Range(0f, 3f)]
+    [Tooltip("Penalty against abrupt river turns. Higher values produce smoother sweeping bends instead of zig-zags.")]
+    public float riverTurnResistance = 0.8f;
+    [Header("Floodplains")]
+    [Tooltip("When enabled, low river-adjacent land is flattened and enriched into fertile floodplain belts.")]
+    public bool enableFloodplains = true;
+    [Range(1, 4)]
+    [Tooltip("How many land tiles outward from a river can receive floodplain effects.")]
+    public int floodplainRange = 2;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly river-adjacent land is flattened toward broad alluvial lowlands.")]
+    public float floodplainFlattenStrength = 0.38f;
+    [Range(0f, 0.5f)]
+    [Tooltip("Moisture added to floodplain-eligible tiles near rivers.")]
+    public float floodplainMoistureBoost = 0.16f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly floodplains bias dry banks into plains/temperate/swamp style fertile land.")]
+    public float floodplainFertilityBias = 0.5f;
 
     // --- Lake Generation ---
     [Header("Lake Generation")]
@@ -591,20 +463,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int lakeMaxRadiusTiles = 12;
     [Tooltip("Minimum distance (tiles) a lake center must be from coast")]
     public int lakeMinDistanceFromCoast = 3;
-    [Header("Coast Irregularity")]
-    [Tooltip("Number of random coastal 'bites' (water) to stamp per map)")]
-    public int coastBiteCount = 3;
-    [Tooltip("Min radius (tiles) for coastal bite stamps")]
-    public int coastBiteRadiusMin = 2;
-    [Tooltip("Max radius (tiles) for coastal bite stamps")]
-    public int coastBiteRadiusMax = 5;
+    [Header("Lake Shape")]
+    [Range(0f, 1f)]
+    [Tooltip("How irregular lake shorelines become. Higher values create more coves, peninsulas, and broken shore edges.")]
+    public float lakeShoreIrregularity = 0.65f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly lakes stretch into long basins instead of round bowls.")]
+    public float lakeElongationStrength = 0.55f;
+    [Range(0f, 1f)]
+    [Tooltip("How strongly shoreline growth favors coves and embayments instead of smooth outlines.")]
+    public float lakeCoveStrength = 0.45f;
+    [Header("Smart Coast Shaping")]
+    [Tooltip("How many embayment candidates to carve per map. Higher values create more bays and inlets.")]
+    public int smartEmbaymentCount = 3;
+    [Tooltip("Minimum inland length for a smart embayment.")]
+    public int smartEmbaymentMinLength = 2;
+    [Tooltip("Maximum inland length for a smart embayment.")]
+    public int smartEmbaymentMaxLength = 5;
 
-    [Tooltip("Number of random coastal 'spurs' (land peninsulas) to stamp per map)")]
-    public int coastSpurCount = 2;
-    [Tooltip("Min radius (tiles) for coastal spur stamps")]
-    public int coastSpurRadiusMin = 1;
-    [Tooltip("Max radius (tiles) for coastal spur stamps")]
-    public int coastSpurRadiusMax = 3;
+    [Tooltip("How many peninsula candidates to grow per map. Higher values create more coherent coastal land fingers.")]
+    public int smartPeninsulaCount = 2;
+    [Tooltip("Minimum offshore length for a smart peninsula.")]
+    public int smartPeninsulaMinLength = 2;
+    [Tooltip("Maximum offshore length for a smart peninsula.")]
+    public int smartPeninsulaMaxLength = 4;
+    [Tooltip("Minimum wrapped hex distance between accepted smart coast features.")]
+    public int smartCoastFeatureSpacing = 5;
 
     [Tooltip("Minimum total land tiles required to allow coast stamping")]
     public int minLandTilesForCoastStamps = 24;
@@ -661,10 +545,6 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int islandsPerChain = 3;
 
 
-    [Header("Decoration System")]
-    [Tooltip("Modern decoration system for spawning biome-specific decorations")]
-    public BiomeDecorationManager decorationManager = new BiomeDecorationManager();
-
     [Header("Planet & Map Type")]
     [Tooltip("Which celestial body this planet represents. Controls biome assignment rules.")]
     public PlanetType planetType = PlanetType.Earth;
@@ -678,11 +558,37 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
 
     // --------------------------- Private fields -----------------------------
+    private enum TectonicProvinceType
+    {
+        StableShield = 0,
+        FoldBelt = 1,
+        RiftZone = 2,
+        ForelandBasin = 3,
+        VolcanicArc = 4,
+        PassiveMargin = 5
+    }
+
+    private enum CoastalMarginType
+    {
+        None = 0,
+        Passive = 1,
+        Active = 2,
+        Rifted = 3,
+        Deltaic = 4,
+        Glaciated = 5
+    }
+
     HexGrid grid;
     public HexGrid Grid => grid;
     NoiseSampler noise;
     public Dictionary<int, HexTileData> data = new();
     public Dictionary<int, HexTileData> baseData = new();
+    private int[] geologyProvinceMap;
+    private int[] geologyMarginTypeMap;
+    private float[] geologyStressMap;
+    private float[] geologyAgeMap;
+    private float[] geologyDrainageMap;
+    private float[] geologySedimentMap;
     private Vector3 noiseOffset;
     // tileElevation dictionary removed — use data[i].elevation directly (world-space)
     public int landTilesGenerated = 0; // Moved to class scope to be accessible by local coroutines
@@ -766,6 +672,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     void OnDestroy()
     {
         ClimateManager.OnPlanetSeasonChanged -= HandlePlanetSeasonChanged;
+        ReleaseGeologyCaches();
 
         // Ensure GPU resources are released when this generator is destroyed (planet unload)
         try
@@ -902,13 +809,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float mapWidth = grid.Width;
         float mapHeight = grid.Height;
         // Single elevation frequency — scales with map width for consistent terrain scale
-        float elevFreqPeriodic = 1f / (mapWidth * 0.45f);
+        float elevFreqPeriodic = 1f / (mapWidth * 0.38f);
+        var terrainMotifRand = new System.Random(unchecked(seed ^ 0x71A9C5));
+        float motifFoldedRanges = Mathf.Lerp(0.85f, 1.25f, (float)terrainMotifRand.NextDouble());
+        float motifBasins = Mathf.Lerp(0.8f, 1.25f, (float)terrainMotifRand.NextDouble());
+        float motifPlateaus = Mathf.Lerp(0.75f, 1.3f, (float)terrainMotifRand.NextDouble());
+        float motifEscarpments = Mathf.Lerp(0.8f, 1.25f, (float)terrainMotifRand.NextDouble());
+        float motifRuggedness = Mathf.Lerp(0.9f, 1.2f, (float)terrainMotifRand.NextDouble());
 
         // DIAGNOSTICS: report key settings and grid stats
         if (enableDiagnostics)
         {
             Debug.Log($"[PlanetGenerator][Diag] mapWidth={mapWidth:F1} mapHeight={mapHeight:F1} tiles={tileCount}");
             Debug.Log($"[PlanetGenerator][Diag] latitudeInfluence={latitudeInfluence} latitudeExponent={latitudeExponent} temperatureBias={temperatureBias} moistureBias={moistureBias}");
+            Debug.Log($"[PlanetGenerator][Diag] terrain motifs folded={motifFoldedRanges:F2} basins={motifBasins:F2} plateaus={motifPlateaus:F2} escarpments={motifEscarpments:F2} rugged={motifRuggedness:F2}");
 
         }
         
@@ -951,6 +865,111 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 delta = delta > 0 ? delta - width : delta + width;
             }
             return delta;
+        }
+
+        List<int> BuildOrganicLakeTiles(int centerIdx, int radius, System.Random lakeRand, int minLakeTiles, int maxLakeTiles)
+        {
+            if (centerIdx < 0 || centerIdx >= tileCount || !isLandTile[centerIdx])
+                return null;
+
+            Vector2Int centerCoord = tileCoords[centerIdx];
+            float angle = (float)(lakeRand.NextDouble() * Mathf.PI * 2f);
+            Vector2 majorAxis = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            Vector2 minorAxis = new Vector2(-majorAxis.y, majorAxis.x);
+            float elongation = Mathf.Lerp(1f, 1.55f, lakeElongationStrength * Mathf.Lerp(0.5f, 1f, (float)lakeRand.NextDouble()));
+            float majorRadius = Mathf.Max(1.2f, radius * elongation);
+            float minorRadius = Mathf.Max(1.0f, radius * Mathf.Lerp(0.72f, 1.05f, 1f - lakeElongationStrength * 0.75f));
+            float lobeOffset = majorRadius * Mathf.Lerp(0.12f, 0.38f, lakeElongationStrength);
+            float phase = (float)(lakeRand.NextDouble() * Mathf.PI * 2f);
+            int targetLakeTiles = Mathf.Clamp(
+                Mathf.RoundToInt((1 + 3 * radius * (radius + 1)) * Mathf.Lerp(0.7f, 1.02f, (float)lakeRand.NextDouble())),
+                minLakeTiles,
+                maxLakeTiles);
+            int hardMaxTiles = Mathf.Max(targetLakeTiles + 2, Mathf.RoundToInt(targetLakeTiles * 1.2f));
+
+            var lakeSet = new HashSet<int> { centerIdx };
+            var frontier = new HashSet<int>();
+            foreach (int neighbor in grid.neighbors[centerIdx])
+            {
+                if (neighbor >= 0 && neighbor < tileCount && isLandTile[neighbor] && !isLakeTile[neighbor])
+                    frontier.Add(neighbor);
+            }
+
+            float minAcceptance = -0.12f;
+            while (frontier.Count > 0 && lakeSet.Count < hardMaxTiles)
+            {
+                int bestIdx = -1;
+                float bestScore = float.NegativeInfinity;
+
+                foreach (int candidate in frontier)
+                {
+                    if (candidate < 0 || candidate >= tileCount || !isLandTile[candidate] || isLakeTile[candidate])
+                        continue;
+
+                    Vector2Int coord = tileCoords[candidate];
+                    Vector2 local = new Vector2(WrappedDelta(coord.x, centerCoord.x, tilesX), coord.y - centerCoord.y);
+                    float major = Vector2.Dot(local, majorAxis);
+                    float minor = Vector2.Dot(local, minorAxis);
+
+                    float primaryDist = Mathf.Sqrt((major * major) / Mathf.Max(1f, majorRadius * majorRadius) + (minor * minor) / Mathf.Max(1f, minorRadius * minorRadius));
+                    Vector2 forwardLobeOffset = majorAxis * lobeOffset;
+                    Vector2 backwardLobeOffset = -majorAxis * lobeOffset * 0.6f;
+                    Vector2 toForwardLobe = local - forwardLobeOffset;
+                    Vector2 toBackwardLobe = local - backwardLobeOffset;
+                    float forwardLobeDist = Mathf.Sqrt((Vector2.Dot(toForwardLobe, majorAxis) * Vector2.Dot(toForwardLobe, majorAxis)) / Mathf.Max(1f, majorRadius * majorRadius * 0.9f)
+                        + (Vector2.Dot(toForwardLobe, minorAxis) * Vector2.Dot(toForwardLobe, minorAxis)) / Mathf.Max(1f, minorRadius * minorRadius * 0.72f));
+                    float backwardLobeDist = Mathf.Sqrt((Vector2.Dot(toBackwardLobe, majorAxis) * Vector2.Dot(toBackwardLobe, majorAxis)) / Mathf.Max(1f, majorRadius * majorRadius * 0.65f)
+                        + (Vector2.Dot(toBackwardLobe, minorAxis) * Vector2.Dot(toBackwardLobe, minorAxis)) / Mathf.Max(1f, minorRadius * minorRadius * 0.82f));
+                    float combinedDist = Mathf.Min(primaryDist, Mathf.Min(forwardLobeDist * 1.04f, backwardLobeDist * 1.1f));
+                    if (combinedDist > 1.35f)
+                        continue;
+
+                    float shoreNoiseA = noise.GetElevationPeriodic(new Vector2(coord.x + 500f, coord.y + 500f), mapWidth, mapHeight, elevFreqPeriodic * 5.5f);
+                    float shoreNoiseB = noise.GetElevationPeriodic(new Vector2(coord.x + 1740f, coord.y + 320f), mapWidth, mapHeight, elevFreqPeriodic * 8.75f);
+                    float localAngle = Mathf.Atan2(minor, major);
+                    float embaymentMask = Mathf.Sin(localAngle * (2.25f + lakeCoveStrength * 2.75f) + phase) * 0.5f + 0.5f;
+                    int touchingLakeNeighbors = 0;
+                    foreach (int neighbor in grid.neighbors[candidate])
+                    {
+                        if (neighbor >= 0 && neighbor < tileCount && lakeSet.Contains(neighbor))
+                            touchingLakeNeighbors++;
+                    }
+
+                    float radialCore = 1f - combinedDist;
+                    float shorelineBias = (shoreNoiseA - 0.5f) * (0.55f + lakeShoreIrregularity * 0.75f)
+                        + (shoreNoiseB - 0.5f) * 0.28f * lakeShoreIrregularity;
+                    float coveBias = (embaymentMask - 0.5f) * lakeCoveStrength * 0.4f;
+                    float cohesionBias = touchingLakeNeighbors * 0.16f;
+                    float fillBias = lakeSet.Count < targetLakeTiles ? 0.08f : -0.06f;
+                    float score = radialCore * 1.6f + shorelineBias + coveBias + cohesionBias + fillBias;
+
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestIdx = candidate;
+                    }
+                }
+
+                if (bestIdx < 0 || bestScore < minAcceptance)
+                    break;
+
+                frontier.Remove(bestIdx);
+                lakeSet.Add(bestIdx);
+
+                foreach (int neighbor in grid.neighbors[bestIdx])
+                {
+                    if (neighbor >= 0 && neighbor < tileCount && isLandTile[neighbor] && !isLakeTile[neighbor] && !lakeSet.Contains(neighbor))
+                        frontier.Add(neighbor);
+                }
+
+                if (lakeSet.Count >= targetLakeTiles && bestScore < 0.18f)
+                    break;
+            }
+
+            if (lakeSet.Count < minLakeTiles || lakeSet.Count > maxLakeTiles)
+                return null;
+
+            return lakeSet.ToList();
         }
 
         System.Collections.IEnumerator StampEllipseBatched(ContinentData continent)
@@ -1038,30 +1057,84 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             int attempts = 0;
             int maxAttempts = numberOfIslands * 50;
 
-            while (islandsStamped < numberOfIslands && attempts < maxAttempts)
+            if (generateIslandChains && islandsPerChain >= 2)
             {
-                attempts++;
-                int idx = islandRand.Next(0, tileCount);
-                if (isLandTile[idx]) continue;
-                if (HasLandWithinDistance(idx, islandMinDistance, isLandTile)) continue;
+                // --- Arc-based island chains ---
+                // Group islands into chains that follow curved arcs (like volcanic arcs).
+                int chainsNeeded = Mathf.Max(1, numberOfIslands / islandsPerChain);
+                int islandsRemaining = numberOfIslands;
 
-                int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
-                // Use batching coroutine for island stamping
-                var stamp = StampCircleBatched(tileCoords[idx], radius, true, false);
-                while (stamp.MoveNext())
+                for (int chain = 0; chain < chainsNeeded && islandsRemaining > 0; chain++)
                 {
-                    yield return null;
-                }
-                islandsStamped++;
-            }
+                    // Find a suitable ocean seed far from land
+                    int chainSeed = -1;
+                    for (int att = 0; att < 200; att++)
+                    {
+                        attempts++;
+                        int idx = islandRand.Next(0, tileCount);
+                        if (isLandTile[idx]) continue;
+                        if (HasLandWithinDistance(idx, islandMinDistance, isLandTile)) continue;
+                        chainSeed = idx;
+                        break;
+                    }
+                    if (chainSeed < 0) continue;
 
-            if (islandsStamped < numberOfIslands)
-            {
-                while (islandsStamped < numberOfIslands && attempts < maxAttempts * 2)
+                    // Pick an arc direction using noise for natural curve
+                    Vector2Int seedCoord = tileCoords[chainSeed];
+                    float arcAngle = (float)(islandRand.NextDouble() * Mathf.PI * 2f);
+                    float arcCurve = 0.15f + (float)(islandRand.NextDouble() * 0.2f); // gentle curve per step
+                    int chainLength = Mathf.Min(islandsPerChain, islandsRemaining);
+                    int spacing = Mathf.Max(islandMaxRadius * 2 + 2, 4);
+
+                    Vector2 pos = new Vector2(seedCoord.x, seedCoord.y);
+                    float angle = arcAngle;
+
+                    for (int ci = 0; ci < chainLength; ci++)
+                    {
+                        // Wrap X coordinate for cylindrical map
+                        int px = ((int)Mathf.Round(pos.x) % tilesX + tilesX) % tilesX;
+                        int py = Mathf.Clamp((int)Mathf.Round(pos.y), 0, tilesZ - 1);
+                        int idx = py * tilesX + px;
+
+                        if (idx >= 0 && idx < tileCount && !isLandTile[idx])
+                        {
+                            int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
+                            var stamp = StampCircleBatched(tileCoords[idx], radius, true, false);
+                            while (stamp.MoveNext()) yield return null;
+                            islandsStamped++;
+                            islandsRemaining--;
+                        }
+
+                        // Advance along arc
+                        angle += arcCurve;
+                        pos.x += Mathf.Cos(angle) * spacing;
+                        pos.y += Mathf.Sin(angle) * spacing;
+                    }
+                }
+
+                // Fill remaining with scattered islands
+                while (islandsStamped < numberOfIslands && attempts < maxAttempts)
                 {
                     attempts++;
                     int idx = islandRand.Next(0, tileCount);
                     if (isLandTile[idx]) continue;
+                    if (HasLandWithinDistance(idx, islandMinDistance, isLandTile)) continue;
+                    int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
+                    var stamp = StampCircleBatched(tileCoords[idx], radius, true, false);
+                    while (stamp.MoveNext()) yield return null;
+                    islandsStamped++;
+                }
+            }
+            else
+            {
+                // --- Original scattered placement ---
+                while (islandsStamped < numberOfIslands && attempts < maxAttempts)
+                {
+                    attempts++;
+                    int idx = islandRand.Next(0, tileCount);
+                    if (isLandTile[idx]) continue;
+                    if (HasLandWithinDistance(idx, islandMinDistance, isLandTile)) continue;
+
                     int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
                     var stamp = StampCircleBatched(tileCoords[idx], radius, true, false);
                     while (stamp.MoveNext())
@@ -1070,118 +1143,381 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     }
                     islandsStamped++;
                 }
+
+                if (islandsStamped < numberOfIslands)
+                {
+                    while (islandsStamped < numberOfIslands && attempts < maxAttempts * 2)
+                    {
+                        attempts++;
+                        int idx = islandRand.Next(0, tileCount);
+                        if (isLandTile[idx]) continue;
+                        int radius = islandRand.Next(islandMinRadius, islandMaxRadius + 1);
+                        var stamp = StampCircleBatched(tileCoords[idx], radius, true, false);
+                        while (stamp.MoveNext())
+                        {
+                            yield return null;
+                        }
+                        islandsStamped++;
+                    }
+                }
             }
         }
 
         // (Stamping debug logs removed)
 
-        // ---------- 2.75. Coastal irregularity passes (bays & peninsulas) ----------
-        // compute current land count (islands/stamps applied so far)
+        BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
+
+        // ---------- 2.75. Smart coastal shaping ----------
+        // Replace random bite/spur stamps with scored embayment and peninsula roots
+        // so coastlines respond to nearby land depth and offshore exposure.
         int _currentLandCount = 0;
         for (int _i = 0; _i < tileCount; _i++) if (isLandTile[_i]) _currentLandCount++;
         if (_currentLandCount >= minLandTilesForCoastStamps)
         {
             System.Random coastRand = new System.Random(unchecked((int)(seed ^ 0xBEEF)));
+            float coastShapeFreq = 1f / Mathf.Max(1f, mapWidth * 0.35f);
+            int minFeatureSpacing = Mathf.Max(2, smartCoastFeatureSpacing);
 
-            // Build coast candidate lists
-            List<int> coastLandCandidates = new List<int>();
-            List<int> coastWaterCandidates = new List<int>();
-            for (int i = 0; i < tileCount; i++) {
-                bool anyWaterNeighbor = false;
-                foreach (int n in grid.neighbors[i]) {
+            int CountLandNeighbors(int idx)
+            {
+                int count = 0;
+                foreach (int n in grid.neighbors[idx])
+                    if (n >= 0 && n < tileCount && isLandTile[n]) count++;
+                return count;
+            }
+
+            int CountWaterNeighbors(int idx)
+            {
+                int count = 0;
+                foreach (int n in grid.neighbors[idx])
+                    if (n >= 0 && n < tileCount && !isLandTile[n]) count++;
+                return count;
+            }
+
+            Vector2 AverageDirectionToState(int idx, bool towardLand)
+            {
+                Vector2 dir = Vector2.zero;
+                foreach (int n in grid.neighbors[idx])
+                {
                     if (n < 0 || n >= tileCount) continue;
-                    if (!isLandTile[n]) { anyWaterNeighbor = true; break; }
+                    bool matches = towardLand ? isLandTile[n] : !isLandTile[n];
+                    if (!matches) continue;
+                    dir += new Vector2(tileCoords[n].x - tileCoords[idx].x, tileCoords[n].y - tileCoords[idx].y);
                 }
-                if (isLandTile[i] && anyWaterNeighbor) coastLandCandidates.Add(i);
-                if (!isLandTile[i] && anyWaterNeighbor) coastWaterCandidates.Add(i);
+                return dir.sqrMagnitude > 0.001f ? dir.normalized : Vector2.zero;
             }
 
-            int ApplyWalkInland(int startIdx, int steps) {
-                int cur = startIdx;
-                for (int s = 0; s < steps; s++) {
-                    int best = -1; int bestCount = -1;
-                    foreach (int n in grid.neighbors[cur]) {
-                        if (n < 0 || n >= tileCount) continue;
-                        if (!isLandTile[n]) continue;
-                        int cnt = 0;
-                        foreach (int nn in grid.neighbors[n]) { if (nn >= 0 && nn < tileCount && isLandTile[nn]) cnt++; }
-                        if (cnt > bestCount) { bestCount = cnt; best = n; }
-                    }
-                    if (best == -1) break;
-                    cur = best;
-                }
-                return cur;
-            }
-
-            int ApplyWalkOffshore(int startIdx, int steps) {
-                int cur = startIdx;
-                for (int s = 0; s < steps; s++) {
-                    int best = -1; int bestCount = -1;
-                    foreach (int n in grid.neighbors[cur]) {
-                        if (n < 0 || n >= tileCount) continue;
-                        if (isLandTile[n]) continue;
-                        int cnt = 0;
-                        foreach (int nn in grid.neighbors[n]) { if (nn >= 0 && nn < tileCount && !isLandTile[nn]) cnt++; }
-                        if (cnt > bestCount) { bestCount = cnt; best = n; }
-                    }
-                    if (best == -1) break;
-                    cur = best;
-                }
-                return cur;
-            }
-
-            // Apply bites (carve water into land)
-            for (int b = 0; b < coastBiteCount && coastLandCandidates.Count > 0; b++) {
-                int pick = coastRand.Next(coastLandCandidates.Count);
-                int startIdx = coastLandCandidates[pick];
-                int r = coastRand.Next(Mathf.Max(1, coastBiteRadiusMin), Mathf.Max(coastBiteRadiusMin, coastBiteRadiusMax) + 1);
-                int walkSteps = Mathf.Max(1, r / 2);
-                int centerIdx = ApplyWalkInland(startIdx, walkSteps);
-
-                // Simulate removal size and skip if too aggressive
-                int removed = 0;
-                for (int t = 0; t < tileCount; t++) {
-                    int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
-                    if (dist <= r && isLandTile[t]) removed++;
-                }
-                if (removed == 0) continue;
-                if ((float)removed / Mathf.Max(1, _currentLandCount) > 0.15f) continue; // don't remove >15% of land
-
-                var stamp = StampCircleBatched(tileCoords[centerIdx], r, false, false);
-                while (stamp.MoveNext())
+            bool IsFarEnoughFromChosen(int idx, List<int> chosenRoots)
+            {
+                foreach (int root in chosenRoots)
                 {
-                    yield return null;
+                    if (HexDistanceWrapped(tileCoords[idx], tileCoords[root], tilesX) < minFeatureSpacing)
+                        return false;
                 }
+                return true;
             }
 
-            // Apply spurs (add small land peninsulas)
-            for (int s = 0; s < coastSpurCount && coastWaterCandidates.Count > 0; s++) {
-                int pick = coastRand.Next(coastWaterCandidates.Count);
-                int startIdx = coastWaterCandidates[pick];
-                int r = coastRand.Next(Mathf.Max(1, coastSpurRadiusMin), Mathf.Max(coastSpurRadiusMin, coastSpurRadiusMax) + 1);
-                int walkSteps = Mathf.Max(1, r / 3);
-                int centerIdx = ApplyWalkOffshore(startIdx, walkSteps);
-
-                // Simulate added tiles and ensure at least one connects to existing land
-                List<int> added = new List<int>();
-                for (int t = 0; t < tileCount; t++) {
-                    int dist = HexDistanceWrapped(tileCoords[t], tileCoords[centerIdx], tilesX);
-                    if (dist <= r && !isLandTile[t]) added.Add(t);
-                }
-                if (added.Count == 0) continue;
-                bool connects = false;
-                foreach (int at in added) {
-                    foreach (int n in grid.neighbors[at]) { if (n >= 0 && n < tileCount && isLandTile[n]) { connects = true; break; } }
-                    if (connects) break;
-                }
-                if (!connects) continue;
-
-                var stamp = StampCircleBatched(tileCoords[centerIdx], r, true, false);
-                while (stamp.MoveNext())
+            int WalkTowardContext(int startIdx, int steps, bool seekLand, Vector2 preferredDir)
+            {
+                int current = startIdx;
+                Vector2 currentDir = preferredDir;
+                for (int step = 0; step < steps; step++)
                 {
-                    yield return null;
+                    int bestNext = -1;
+                    float bestScore = float.NegativeInfinity;
+                    foreach (int n in grid.neighbors[current])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (seekLand != isLandTile[n]) continue;
+
+                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                        float align = currentDir.sqrMagnitude > 0.001f ? Vector2.Dot(currentDir, stepDir) : 0f;
+                        int support = seekLand ? CountLandNeighbors(n) : CountWaterNeighbors(n);
+                        float noiseBias = noise != null
+                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[n].x + 530f, tileCoords[n].y + 890f), mapWidth, mapHeight, coastShapeFreq * 1.4f) - 0.5f
+                            : 0f;
+                        float score = support + align * 2f + noiseBias;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestNext = n;
+                        }
+                    }
+
+                    if (bestNext < 0) break;
+                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                    if (currentDir.sqrMagnitude > 0.001f)
+                        currentDir = (currentDir * 0.65f + chosenDir * 0.35f).normalized;
+                    else
+                        currentDir = chosenDir;
+                    current = bestNext;
+                }
+                return current;
+            }
+
+            bool TryCarveEmbayment(int rootIdx)
+            {
+                if (!isLandTile[rootIdx]) return false;
+                int length = coastRand.Next(Mathf.Max(1, smartEmbaymentMinLength), Mathf.Max(smartEmbaymentMinLength, smartEmbaymentMaxLength) + 1);
+                Vector2 inlandDir = -AverageDirectionToState(rootIdx, false);
+                int current = rootIdx;
+                var carved = new HashSet<int> { rootIdx };
+                var carvedList = new List<int> { rootIdx };
+
+                for (int step = 0; step < length; step++)
+                {
+                    int bestNext = -1;
+                    float bestScore = float.NegativeInfinity;
+                    foreach (int n in grid.neighbors[current])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!isLandTile[n] || carved.Contains(n)) continue;
+
+                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                        float align = inlandDir.sqrMagnitude > 0.001f ? Vector2.Dot(inlandDir, stepDir) : 0f;
+                        int landSupport = CountLandNeighbors(n);
+                        int waterSupport = CountWaterNeighbors(n);
+                        float weakness = Mathf.Clamp01((4f - landSupport) / 4f);
+                        float geologyBias = 0f;
+                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                        {
+                            var province = (TectonicProvinceType)geologyProvinceMap[n];
+                            var margin = (CoastalMarginType)geologyMarginTypeMap[n];
+                            if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 0.8f;
+                            if (margin == CoastalMarginType.Deltaic || margin == CoastalMarginType.Passive) geologyBias += 0.55f;
+                            if (margin == CoastalMarginType.Active) geologyBias -= 0.35f;
+                        }
+                        float score = align * 2.2f + waterSupport * 0.7f + weakness + geologyBias;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestNext = n;
+                        }
+                    }
+
+                    if (bestNext < 0) break;
+                    carved.Add(bestNext);
+                    carvedList.Add(bestNext);
+
+                    if (step < length - 1)
+                    {
+                        int flank = -1;
+                        int flankWater = -1;
+                        foreach (int n in grid.neighbors[bestNext])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!isLandTile[n] || carved.Contains(n)) continue;
+                            int waterSupport = CountWaterNeighbors(n);
+                            if (waterSupport > flankWater)
+                            {
+                                flankWater = waterSupport;
+                                flank = n;
+                            }
+                        }
+                        if (flank >= 0 && flankWater >= 2 && coastRand.NextDouble() < 0.35)
+                        {
+                            carved.Add(flank);
+                            carvedList.Add(flank);
+                        }
+                    }
+
+                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                    if (inlandDir.sqrMagnitude > 0.001f)
+                        inlandDir = (inlandDir * 0.7f + chosenDir * 0.3f).normalized;
+                    else
+                        inlandDir = chosenDir;
+                    current = bestNext;
+                }
+
+                if (carvedList.Count < 2) return false;
+                foreach (int idx in carvedList)
+                    isLandTile[idx] = false;
+                return true;
+            }
+
+            bool TryGrowPeninsula(int rootIdx)
+            {
+                if (isLandTile[rootIdx]) return false;
+                int length = coastRand.Next(Mathf.Max(1, smartPeninsulaMinLength), Mathf.Max(smartPeninsulaMinLength, smartPeninsulaMaxLength) + 1);
+                Vector2 outwardDir = AverageDirectionToState(rootIdx, false);
+                int current = rootIdx;
+                var added = new HashSet<int> { rootIdx };
+                var addedList = new List<int> { rootIdx };
+
+                for (int step = 0; step < length; step++)
+                {
+                    int bestNext = -1;
+                    float bestScore = float.NegativeInfinity;
+                    foreach (int n in grid.neighbors[current])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (isLandTile[n] || added.Contains(n)) continue;
+
+                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                        float align = outwardDir.sqrMagnitude > 0.001f ? Vector2.Dot(outwardDir, stepDir) : 0f;
+                        int waterSupport = CountWaterNeighbors(n);
+                        int landSupport = CountLandNeighbors(n);
+                        float geologyBias = 0f;
+                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                        {
+                            var province = (TectonicProvinceType)geologyProvinceMap[n];
+                            var margin = (CoastalMarginType)geologyMarginTypeMap[n];
+                            if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.75f;
+                            if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.55f;
+                            if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
+                        }
+                        float score = align * 2.1f + waterSupport * 0.6f - landSupport * 0.35f + geologyBias;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestNext = n;
+                        }
+                    }
+
+                    if (bestNext < 0) break;
+                    added.Add(bestNext);
+                    addedList.Add(bestNext);
+
+                    if (step == 0)
+                    {
+                        int shoulder = -1;
+                        int shoulderWater = -1;
+                        foreach (int n in grid.neighbors[bestNext])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (isLandTile[n] || added.Contains(n)) continue;
+                            int waterSupport = CountWaterNeighbors(n);
+                            if (waterSupport > shoulderWater)
+                            {
+                                shoulderWater = waterSupport;
+                                shoulder = n;
+                            }
+                        }
+                        if (shoulder >= 0 && shoulderWater >= 3 && coastRand.NextDouble() < 0.45)
+                        {
+                            added.Add(shoulder);
+                            addedList.Add(shoulder);
+                        }
+                    }
+
+                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                    if (outwardDir.sqrMagnitude > 0.001f)
+                        outwardDir = (outwardDir * 0.65f + chosenDir * 0.35f).normalized;
+                    else
+                        outwardDir = chosenDir;
+                    current = bestNext;
+                }
+
+                if (addedList.Count < 2) return false;
+                bool connectsToLand = false;
+                foreach (int idx in addedList)
+                {
+                    foreach (int n in grid.neighbors[idx])
+                    {
+                        if (n >= 0 && n < tileCount && isLandTile[n])
+                        {
+                            connectsToLand = true;
+                            break;
+                        }
+                    }
+                    if (connectsToLand) break;
+                }
+                if (!connectsToLand) return false;
+
+                foreach (int idx in addedList)
+                    isLandTile[idx] = true;
+                return true;
+            }
+
+            var embaymentCandidates = new List<(int idx, float score)>();
+            var peninsulaCandidates = new List<(int idx, float score)>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                int landNeighbors = CountLandNeighbors(i);
+                int waterNeighbors = CountWaterNeighbors(i);
+                if (isLandTile[i] && waterNeighbors > 0)
+                {
+                    Vector2 inlandDir = -AverageDirectionToState(i, false);
+                    int inlandProbe = WalkTowardContext(i, 2, true, inlandDir);
+                    int inlandSupport = CountLandNeighbors(inlandProbe);
+                    if (inlandSupport >= 3)
+                    {
+                        float noiseBias = noise != null
+                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 1500f, tileCoords[i].y + 500f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
+                            : 0f;
+                        float geologyBias = 0f;
+                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                        {
+                            var province = (TectonicProvinceType)geologyProvinceMap[i];
+                            var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                            if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 1.0f;
+                            if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.65f;
+                            if (margin == CoastalMarginType.Active) geologyBias -= 0.45f;
+                        }
+                        float score = waterNeighbors * 2.0f + inlandSupport * 0.8f + noiseBias + geologyBias;
+                        embaymentCandidates.Add((i, score));
+                    }
+                }
+                else if (!isLandTile[i] && landNeighbors > 0)
+                {
+                    Vector2 outwardDir = AverageDirectionToState(i, false);
+                    int offshoreProbe = WalkTowardContext(i, 2, false, outwardDir);
+                    int offshoreSupport = CountWaterNeighbors(offshoreProbe);
+                    if (offshoreSupport >= 3)
+                    {
+                        float noiseBias = noise != null
+                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 2300f, tileCoords[i].y + 1200f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
+                            : 0f;
+                        float geologyBias = 0f;
+                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                        {
+                            var province = (TectonicProvinceType)geologyProvinceMap[i];
+                            var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                            if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.9f;
+                            if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.6f;
+                            if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
+                        }
+                        float score = landNeighbors * 1.8f + offshoreSupport * 0.75f + noiseBias + geologyBias;
+                        peninsulaCandidates.Add((i, score));
+                    }
                 }
             }
+
+            embaymentCandidates.Sort((a, b) => b.score.CompareTo(a.score));
+            peninsulaCandidates.Sort((a, b) => b.score.CompareTo(a.score));
+
+            var chosenEmbaymentRoots = new List<int>();
+            int embaymentsApplied = 0;
+            foreach (var candidate in embaymentCandidates)
+            {
+                if (embaymentsApplied >= Mathf.Max(0, smartEmbaymentCount)) break;
+                if (!IsFarEnoughFromChosen(candidate.idx, chosenEmbaymentRoots)) continue;
+                if (!TryCarveEmbayment(candidate.idx)) continue;
+                chosenEmbaymentRoots.Add(candidate.idx);
+                embaymentsApplied++;
+                yield return null;
+            }
+
+            var chosenPeninsulaRoots = new List<int>();
+            int peninsulasApplied = 0;
+            foreach (var candidate in peninsulaCandidates)
+            {
+                if (peninsulasApplied >= Mathf.Max(0, smartPeninsulaCount)) break;
+                if (!IsFarEnoughFromChosen(candidate.idx, chosenPeninsulaRoots)) continue;
+                if (!TryGrowPeninsula(candidate.idx)) continue;
+                chosenPeninsulaRoots.Add(candidate.idx);
+                peninsulasApplied++;
+                yield return null;
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Smart coast shaping: {embaymentsApplied} embayments, {peninsulasApplied} peninsulas applied.");
         }
 
         // ---------- 3. Generate Lakes (Stamping) ----------
@@ -1238,47 +1574,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 if (!isLandTile[centerIdx]) continue;
 
                 int radius = lakeRand.Next(lakeMinRadius, lakeMaxRadius + 1);
-                List<int> lakeTiles = new List<int>();
-                for (int i = 0; i < tileCount; i++) {
-                    int dist = HexDistanceWrapped(tileCoords[i], tileCoords[centerIdx], tilesX);
-                    if (dist <= radius && isLandTile[i]) {
-                        lakeTiles.Add(i);
-                    }
-                }
+                List<int> lakeTiles = BuildOrganicLakeTiles(centerIdx, radius, lakeRand, minLakeTiles, maxLakeTiles);
 
-                if (lakeTiles.Count < minLakeTiles || lakeTiles.Count > maxLakeTiles) continue;
+                if (lakeTiles == null || lakeTiles.Count < minLakeTiles || lakeTiles.Count > maxLakeTiles) continue;
 
                 foreach (int tileIdx in lakeTiles) {
                     isLandTile[tileIdx] = false;
                     isLakeTile[tileIdx] = true;
-                }
-
-                // Add 1-2 random land neighbors on the lake perimeter so each lake
-                // has a slightly different shape instead of a uniform circle.
-                int extraTiles = lakeRand.Next(1, 3); // 1 or 2 extra tiles
-                var perimeterLand = new List<int>();
-                foreach (int lt in lakeTiles)
-                {
-                    foreach (int nb in grid.neighbors[lt])
-                    {
-                        if (nb >= 0 && nb < tileCount && isLandTile[nb] && !isLakeTile[nb])
-                            perimeterLand.Add(nb);
-                    }
-                }
-                // Shuffle and pick distinct tiles
-                for (int ei = perimeterLand.Count - 1; ei > 0; ei--)
-                {
-                    int ej = lakeRand.Next(ei + 1);
-                    int tmp = perimeterLand[ei]; perimeterLand[ei] = perimeterLand[ej]; perimeterLand[ej] = tmp;
-                }
-                HashSet<int> addedExtra = new HashSet<int>();
-                foreach (int extra in perimeterLand)
-                {
-                    if (addedExtra.Count >= extraTiles) break;
-                    if (addedExtra.Contains(extra)) continue;
-                    isLandTile[extra] = false;
-                    isLakeTile[extra] = true;
-                    addedExtra.Add(extra);
                 }
 
                 lakeCenters.Add(tileCoords[centerIdx]);
@@ -1299,44 +1601,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     if (!isLandTile[centerIdx]) continue;
 
                     int radius = lakeRand.Next(lakeMinRadius, lakeMaxRadius + 1);
-                    List<int> lakeTiles = new List<int>();
-                    for (int i = 0; i < tileCount; i++) {
-                        int dist = HexDistanceWrapped(tileCoords[i], tileCoords[centerIdx], tilesX);
-                        if (dist <= radius && isLandTile[i]) {
-                            lakeTiles.Add(i);
-                        }
-                    }
+                    List<int> lakeTiles = BuildOrganicLakeTiles(centerIdx, radius, lakeRand, minLakeTiles, maxLakeTiles);
 
-                    if (lakeTiles.Count < minLakeTiles) continue;
+                    if (lakeTiles == null || lakeTiles.Count < minLakeTiles || lakeTiles.Count > maxLakeTiles) continue;
                     foreach (int tileIdx in lakeTiles) {
                         isLandTile[tileIdx] = false;
                         isLakeTile[tileIdx] = true;
-                    }
-
-                    // Add 1-2 random land neighbors for shape variety (same as main path)
-                    int fbExtraTiles = lakeRand.Next(1, 3);
-                    var fbPerimeter = new List<int>();
-                    foreach (int lt in lakeTiles)
-                    {
-                        foreach (int nb in grid.neighbors[lt])
-                        {
-                            if (nb >= 0 && nb < tileCount && isLandTile[nb] && !isLakeTile[nb])
-                                fbPerimeter.Add(nb);
-                        }
-                    }
-                    for (int ei = fbPerimeter.Count - 1; ei > 0; ei--)
-                    {
-                        int ej = lakeRand.Next(ei + 1);
-                        int tmp = fbPerimeter[ei]; fbPerimeter[ei] = fbPerimeter[ej]; fbPerimeter[ej] = tmp;
-                    }
-                    HashSet<int> fbAdded = new HashSet<int>();
-                    foreach (int extra in fbPerimeter)
-                    {
-                        if (fbAdded.Count >= fbExtraTiles) break;
-                        if (fbAdded.Contains(extra)) continue;
-                        isLandTile[extra] = false;
-                        isLakeTile[extra] = true;
-                        fbAdded.Add(extra);
                     }
 
                     lakeCenters.Add(tileCoords[centerIdx]);
@@ -1362,6 +1632,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
         // (Stamping debug logs removed)
+
+        BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
+
         // Shape raw 0-1 noise with power curve + optional ridged character.
         // Returns a shaped 0-1 value (NOT yet an elevation — tier assignment happens later).
         float ShapeNoise(float rawNoise)
@@ -1379,10 +1652,33 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return shaped;
         }
 
+        Vector2 WrapTerrainTilePos(Vector2 tilePos)
+        {
+            return new Vector2(
+                Mathf.Repeat(tilePos.x + mapWidth * 0.5f, mapWidth) - mapWidth * 0.5f,
+                Mathf.Clamp(tilePos.y, 0f, Mathf.Max(0f, mapHeight - 1f))
+            );
+        }
+
+        Vector2 ApplyTerrainWarp(Vector2 tilePos)
+        {
+            if (terrainWarpStrength <= 0.0001f)
+                return tilePos;
+
+            float warpFreq = elevFreqPeriodic * Mathf.Max(0.1f, terrainWarpFrequencyMultiplier);
+            float warpScale = Mathf.Max(1f, mapWidth * 0.06f) * terrainWarpStrength;
+            float warpX = noise.GetElevationPeriodic(tilePos + new Vector2(913.7f, 271.3f), mapWidth, mapHeight, warpFreq) - 0.5f;
+            float warpY = noise.GetElevationPeriodic(tilePos + new Vector2(149.2f, 631.8f), mapWidth, mapHeight, warpFreq) - 0.5f;
+            return WrapTerrainTilePos(tilePos + new Vector2(warpX, warpY) * (warpScale * 2f));
+        }
+
         // ---------- PRE-PASS: Compute shaped noise for every tile, then normalize ----------
         // This guarantees the full 0-1 range is used regardless of FBm output limits,
         // so hillNoiseCutoff / mountainNoiseCutoff work as intended.
         float[] shapedNoisePerTile = ArrayPoolUtils.RentFloat(tileCount);
+        float[] provinceNoisePerTile = ArrayPoolUtils.RentFloat(tileCount);
+        float[] hillSignalPerTile = ArrayPoolUtils.RentFloat(tileCount);
+        float[] mountainSignalPerTile = ArrayPoolUtils.RentFloat(tileCount);
         float noiseMin = float.MaxValue;
         float noiseMax = float.MinValue;
 
@@ -1391,9 +1687,63 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             if (!isLandTile[i] && !isLakeTile[i]) continue; // ocean tiles stay 0
             Vector2Int coord = tileCoords[i];
             Vector2 tilePos = new Vector2(coord.x, coord.y);
-            float rawNoise = noise.GetElevationPeriodic(tilePos, mapWidth, mapHeight, elevFreqPeriodic);
+            Vector2 warpedPos = ApplyTerrainWarp(tilePos);
+            float rawNoise = noise.GetElevationPeriodic(warpedPos, mapWidth, mapHeight, elevFreqPeriodic);
+            float provinceNoise = noise.GetElevationPeriodic(tilePos + new Vector2(611f, 197f), mapWidth, mapHeight, elevFreqPeriodic * Mathf.Max(0.05f, terrainProvinceFrequencyMultiplier));
+            float hillSignal = noise.GetElevationPeriodic(warpedPos + new Vector2(1240f, 480f), mapWidth, mapHeight, elevFreqPeriodic * Mathf.Max(0.5f, hillNoiseFrequencyMultiplier));
+            float mountainSignal = noise.GetElevationPeriodic(warpedPos + new Vector2(2080f, 1320f), mapWidth, mapHeight, elevFreqPeriodic * Mathf.Max(0.5f, mountainNoiseFrequencyMultiplier));
             float shaped = ShapeNoise(rawNoise);
+            float provinceBias = (provinceNoise - 0.5f) * 2f * terrainProvinceStrength;
+            float hillContribution = Mathf.Clamp01((hillSignal - 0.5f) / 0.5f) * hillNoiseStrength * motifRuggedness;
+            float mountainContribution = Mathf.Clamp01((mountainSignal - 0.6f) / 0.4f) * mountainNoiseStrength * motifFoldedRanges;
+                float geologyBias = 0f;
+                if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null && geologyStressMap != null && geologyAgeMap != null && geologyDrainageMap != null && geologySedimentMap != null)
+                {
+                    var province = (TectonicProvinceType)geologyProvinceMap[i];
+                    var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                    float stress = geologyStressMap[i];
+                    float age = geologyAgeMap[i];
+                    float drainage = geologyDrainageMap[i];
+                    float sediment = geologySedimentMap[i];
+
+                    switch (province)
+                    {
+                        case TectonicProvinceType.FoldBelt:
+                            geologyBias += geologyFrameworkStrength * (0.08f + stress * 0.11f);
+                            break;
+                        case TectonicProvinceType.VolcanicArc:
+                            geologyBias += geologyFrameworkStrength * (0.1f + stress * 0.12f);
+                            break;
+                        case TectonicProvinceType.RiftZone:
+                            geologyBias -= geologyFrameworkStrength * (0.02f + drainage * 0.08f * drainageBasinStrength);
+                            geologyBias += geologyFrameworkStrength * (1f - age) * 0.03f;
+                            break;
+                        case TectonicProvinceType.ForelandBasin:
+                            geologyBias -= geologyFrameworkStrength * (0.04f + drainage * 0.1f * drainageBasinStrength + sediment * 0.05f * sedimentationStrength);
+                            break;
+                        case TectonicProvinceType.PassiveMargin:
+                            geologyBias -= geologyFrameworkStrength * (0.015f + sediment * 0.04f * sedimentationStrength);
+                            break;
+                        case TectonicProvinceType.StableShield:
+                            geologyBias += geologyFrameworkStrength * ((0.5f - age) * 0.04f * crustAgeStrength);
+                            break;
+                    }
+
+                    if (margin == CoastalMarginType.Active)
+                        geologyBias += geologyFrameworkStrength * 0.04f;
+                    else if (margin == CoastalMarginType.Rifted)
+                        geologyBias -= geologyFrameworkStrength * 0.03f;
+                    else if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic)
+                        geologyBias -= geologyFrameworkStrength * 0.025f;
+                    else if (margin == CoastalMarginType.Glaciated)
+                        geologyBias += geologyFrameworkStrength * 0.02f;
+                }
+
+                shaped = Mathf.Clamp01(shaped + provinceBias + hillContribution + mountainContribution + geologyBias);
             shapedNoisePerTile[i] = shaped;
+            provinceNoisePerTile[i] = provinceNoise;
+            hillSignalPerTile[i] = hillSignal;
+            mountainSignalPerTile[i] = mountainSignal;
             if (shaped < noiseMin) noiseMin = shaped;
             if (shaped > noiseMax) noiseMax = shaped;
         }
@@ -1409,6 +1759,151 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         if (ShouldLogDiagnostics())
             Debug.Log($"[PlanetGenerator] Noise pre-pass: raw shaped range [{noiseMin:F4}..{noiseMax:F4}], normalized to [0..1]");
+
+        // --- Mountain Range Ridgeline Generation ---
+        // Trace spline-based fault lines across continents and boost noise along them
+        // to form coherent mountain chains with foothills instead of scattered peaks.
+        {
+            // BFS distance from coast for this pass (reused concept from continental bias, scoped here)
+            int[] ridgeDist = new int[tileCount];
+            for (int i = 0; i < tileCount; i++) ridgeDist[i] = -1;
+            var ridgeBfsQueue = new Queue<int>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] && !isLakeTile[i])
+                {
+                    ridgeDist[i] = 0;
+                    ridgeBfsQueue.Enqueue(i);
+                }
+            }
+            while (ridgeBfsQueue.Count > 0)
+            {
+                int cur = ridgeBfsQueue.Dequeue();
+                int nd = ridgeDist[cur] + 1;
+                foreach (int n in grid.neighbors[cur])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (ridgeDist[n] >= 0) continue;
+                    ridgeDist[n] = nd;
+                    ridgeBfsQueue.Enqueue(n);
+                }
+            }
+
+            int ridgeMaxDist = 0;
+            for (int i = 0; i < tileCount; i++)
+                if (ridgeDist[i] > ridgeMaxDist) ridgeMaxDist = ridgeDist[i];
+
+            // Only generate ridges if there's enough inland depth
+            if (ridgeMaxDist >= 4)
+            {
+                var ridgeRand = new System.Random(unchecked((int)(seed ^ 0xD15EA5E)));
+                int ridgeCount = Mathf.Max(1, continentDataList.Count); // ~1 range per continent
+
+                for (int r = 0; r < ridgeCount; r++)
+                {
+                    // Pick a random deep-inland seed tile (inner 40-80% of max distance)
+                    int minDist = Mathf.Max(3, (int)(ridgeMaxDist * 0.4f));
+                    int maxDistForSeed = Mathf.Max(minDist + 1, (int)(ridgeMaxDist * 0.8f));
+                    var deepCandidates = new List<int>();
+                    for (int i = 0; i < tileCount; i++)
+                    {
+                        if (isLandTile[i] && !isLakeTile[i] && ridgeDist[i] >= minDist && ridgeDist[i] <= maxDistForSeed)
+                            deepCandidates.Add(i);
+                    }
+                    if (deepCandidates.Count == 0) continue;
+
+                    // Random walk to create a ridgeline path
+                    int pathSeed = deepCandidates[ridgeRand.Next(deepCandidates.Count)];
+                    int ridgeLength = Mathf.Clamp(ridgeRand.Next(8, 20), 8, tileCount / 100);
+                    var ridgePath = new List<int> { pathSeed };
+                    var ridgeVisited = new HashSet<int> { pathSeed };
+
+                    // Pick an initial walk direction using noise for consistency
+                    Vector2Int seedCoord = tileCoords[pathSeed];
+                    float dirNoise = noise.GetElevationPeriodic(
+                        new Vector2(seedCoord.x + 2000f, seedCoord.y + 2000f),
+                        mapWidth, mapHeight, elevFreqPeriodic * 0.5f);
+                    float walkAngle = dirNoise * Mathf.PI * 2f;
+                    Vector2 walkDir = new Vector2(Mathf.Cos(walkAngle), Mathf.Sin(walkAngle));
+
+                    int current = pathSeed;
+                    for (int step = 0; step < ridgeLength; step++)
+                    {
+                        int bestNext = -1;
+                        float bestScore = float.NegativeInfinity;
+                        foreach (int n in grid.neighbors[current])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!isLandTile[n] || isLakeTile[n] || ridgeVisited.Contains(n)) continue;
+                            if (ridgeDist[n] < 2) continue; // stay inland
+
+                            Vector2Int nc = tileCoords[n];
+                            Vector2 stepDir = new Vector2(nc.x - tileCoords[current].x, nc.y - tileCoords[current].y);
+                            if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                            float forward = Vector2.Dot(walkDir, stepDir); // prefer continuing direction
+                            float inlandBias = ridgeDist[n] * 0.15f;
+                            float noiseBias = noise.GetElevationPeriodic(
+                                new Vector2(nc.x + 3000f, nc.y + 3000f),
+                                mapWidth, mapHeight, elevFreqPeriodic * 2f) * 0.5f;
+                            float score = forward * 2f + inlandBias + noiseBias;
+                            if (score > bestScore) { bestScore = score; bestNext = n; }
+                        }
+
+                        if (bestNext < 0) break;
+                        ridgePath.Add(bestNext);
+                        ridgeVisited.Add(bestNext);
+                        // Gently curve the walk direction (smooth turns)
+                        Vector2Int bc = tileCoords[bestNext];
+                        Vector2 newDir = new Vector2(bc.x - tileCoords[current].x, bc.y - tileCoords[current].y);
+                        if (newDir.sqrMagnitude > 0.001f) newDir.Normalize();
+                        walkDir = (walkDir * 0.7f + newDir * 0.3f).normalized;
+                        current = bestNext;
+                    }
+
+                    if (ridgePath.Count < 4) continue;
+
+                    // BFS outward from ridgeline to create foothills falloff
+                    int foothillRadius = 3;
+                    int[] ridgeProximity = new int[tileCount];
+                    for (int i = 0; i < tileCount; i++) ridgeProximity[i] = int.MaxValue;
+
+                    var foothillQueue = new Queue<int>();
+                    foreach (int rt in ridgePath)
+                    {
+                        ridgeProximity[rt] = 0;
+                        foothillQueue.Enqueue(rt);
+                    }
+                    while (foothillQueue.Count > 0)
+                    {
+                        int cur = foothillQueue.Dequeue();
+                        int nd2 = ridgeProximity[cur] + 1;
+                        if (nd2 > foothillRadius) continue;
+                        foreach (int n in grid.neighbors[cur])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (ridgeProximity[n] <= nd2) continue;
+                            if (!isLandTile[n] || isLakeTile[n]) continue;
+                            ridgeProximity[n] = nd2;
+                            foothillQueue.Enqueue(n);
+                        }
+                    }
+
+                    // Boost shapedNoisePerTile along the ridgeline and foothills
+                    float ridgePeakBoost = 0.35f; // center of ridge gets this much noise boost
+                    for (int i = 0; i < tileCount; i++)
+                    {
+                        if (ridgeProximity[i] >= int.MaxValue) continue;
+                        float falloff = 1f - (float)ridgeProximity[i] / (foothillRadius + 1);
+                        falloff = falloff * falloff; // quadratic falloff for natural profile
+                        float boost = ridgePeakBoost * falloff;
+                        shapedNoisePerTile[i] = Mathf.Clamp01(shapedNoisePerTile[i] + boost);
+                    }
+                }
+
+                if (ShouldLogDiagnostics())
+                    Debug.Log($"[PlanetGenerator] Mountain ridgelines: {ridgeCount} ranges traced, foothills radius=3");
+            }
+        }
 
         // Convert a normalized 0-1 noise value into a world-space elevation using
         // the discrete tier system: Flat / Hill / Mountain.
@@ -1575,10 +2070,42 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             float latCurve = 1f - lat;
             latCurve = latCurve * 2f - 1f;
             // Step 3: apply exponent symmetrically and scale by influence
-            float latEffect = Mathf.Sign(latCurve) * Mathf.Pow(Mathf.Abs(latCurve), latitudeExponent) * latitudeInfluence;
+            // Strengthened: use a minimum influence of 0.55 to guarantee visible climate bands
+            float effectiveLatInfluence = Mathf.Max(latitudeInfluence, 0.55f);
+            float latEffect = Mathf.Sign(latCurve) * Mathf.Pow(Mathf.Abs(latCurve), latitudeExponent) * effectiveLatInfluence;
             // Step 4: combine with base temperature
             float temperature = noiseTemp + latEffect + temperatureBias;
             temperature = Mathf.Clamp01(temperature);
+
+            // Step 5: Latitude-based moisture modulation (Hadley cell pattern)
+            // Equator (~lat 0.0): wet (ITCZ convergence zone)
+            // Subtropics (~lat 0.3): dry (descending air → deserts at ~30°N/S)
+            // Mid-latitudes (~lat 0.6): moderate moisture (frontal systems)
+            // Poles (~lat 1.0): dry (cold air holds little moisture)
+            {
+                float subtropLat = 0.3f;   // deserts form here
+                float midLat = 0.6f;       // temperate rain belt
+                float latMoistureShift;
+                if (lat < subtropLat)
+                {
+                    // Equator to subtropics: wet → dry
+                    float t = lat / subtropLat;
+                    latMoistureShift = Mathf.Lerp(0.12f, -0.15f, t);
+                }
+                else if (lat < midLat)
+                {
+                    // Subtropics to mid-latitudes: dry → moderate
+                    float t = (lat - subtropLat) / (midLat - subtropLat);
+                    latMoistureShift = Mathf.Lerp(-0.15f, 0.05f, t);
+                }
+                else
+                {
+                    // Mid-latitudes to poles: moderate → dry
+                    float t = (lat - midLat) / (1f - midLat);
+                    latMoistureShift = Mathf.Lerp(0.05f, -0.10f, t);
+                }
+                moisture = Mathf.Clamp01(moisture + latMoistureShift);
+            }
 
             // Compute final elevation using discrete tier system
             float finalElevation;
@@ -1703,6 +2230,323 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 Debug.Log($"[PlanetGenerator] Coastal moisture boost applied: boost={coastalMoistureBoost} range={coastalMoistureRange} tiles");
         }
 
+        // --- Continental Distance Elevation Bias ---
+        // Tiles deeper inside a continent get a gentle elevation boost,
+        // creating natural mountain interiors and flatter coastlines.
+        int[] distFromEdge = new int[tileCount];
+        {
+            for (int i = 0; i < tileCount; i++) distFromEdge[i] = int.MaxValue;
+
+            var edgeQueue = new Queue<int>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] && !isLakeTile[i]) // ocean/coast seeds
+                {
+                    distFromEdge[i] = 0;
+                    edgeQueue.Enqueue(i);
+                }
+            }
+
+            while (edgeQueue.Count > 0)
+            {
+                int cur = edgeQueue.Dequeue();
+                int nextDist = distFromEdge[cur] + 1;
+                foreach (int n in grid.neighbors[cur])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (distFromEdge[n] <= nextDist) continue;
+                    distFromEdge[n] = nextDist;
+                    edgeQueue.Enqueue(n);
+                }
+            }
+
+            // Find max inland distance for normalization
+            int maxDist = 0;
+            for (int i = 0; i < tileCount; i++)
+                if (distFromEdge[i] < int.MaxValue && distFromEdge[i] > maxDist)
+                    maxDist = distFromEdge[i];
+
+            if (maxDist > 0)
+            {
+                float maxBoost = (flatElevationMax - flatElevationMin) * 0.24f; // keep interior uplift selective instead of swelling whole continents
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!isLandTile[i] || isLakeTile[i]) continue;
+                    if (distFromEdge[i] <= 0 || distFromEdge[i] >= int.MaxValue) continue;
+
+                    float t = (float)distFromEdge[i] / maxDist;
+                    t = Mathf.Pow(t, 1.35f); // keep uplift concentrated deeper inland rather than inflating most interiors
+                    sampledElev[i] += maxBoost * t;
+                    sampledElev[i] = Mathf.Min(sampledElev[i], mountainElevationMax);
+                }
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Continental elevation bias: maxDist={maxDist} tiles, boost up to {(flatElevationMax - flatElevationMin) * 0.5f:F2} units");
+        }
+
+        // --- Basin / Valley / Plateau / Escarpment Shaping ---
+        {
+            float[] terrainAdjust = ArrayPoolUtils.RentFloat(tileCount);
+            try
+            {
+                float basinFreq = elevFreqPeriodic * Mathf.Max(0.5f, basinFrequencyMultiplier);
+                float valleyFreq = elevFreqPeriodic * Mathf.Max(1f, valleyFrequencyMultiplier);
+                float reliefRange = Mathf.Max(0.5f, mountainElevationMax - flatElevationMin);
+
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!isLandTile[i] || isLakeTile[i]) continue;
+
+                    Vector2 tilePos = new Vector2(tileCoords[i].x, tileCoords[i].y);
+                    Vector2 warpedPos = ApplyTerrainWarp(tilePos);
+                    float province = provinceNoisePerTile[i];
+                    float inland01 = distFromEdge[i] >= int.MaxValue ? 0f : Mathf.Clamp01(distFromEdge[i] / 10f);
+
+                    float basinNoise = noise.GetElevationPeriodic(warpedPos + new Vector2(3510f, 920f), mapWidth, mapHeight, basinFreq);
+                    float valleyNoise = noise.GetElevationPeriodic(warpedPos + new Vector2(2870f, 1770f), mapWidth, mapHeight, valleyFreq);
+                    float plateauNoise = noise.GetElevationPeriodic(warpedPos + new Vector2(4190f, 260f), mapWidth, mapHeight, basinFreq * 1.4f);
+                    float escarpNoise = noise.GetElevationPeriodic(warpedPos + new Vector2(5200f, 810f), mapWidth, mapHeight, basinFreq * 1.8f);
+
+                    float basinMask = Mathf.Clamp01((0.42f - basinNoise) / 0.42f) * inland01 * motifBasins;
+                    float valleyMask = Mathf.Clamp01(1f - Mathf.Abs(valleyNoise - 0.5f) * 4f) * inland01;
+                    float plateauMask = Mathf.Clamp01((plateauNoise - 0.58f) / 0.42f) * Mathf.Clamp01((province - 0.45f) / 0.55f) * motifPlateaus;
+                    float escarpMask = Mathf.Clamp01((escarpNoise - 0.55f) / 0.45f) * Mathf.Clamp01((province - 0.4f) / 0.6f) * motifEscarpments;
+
+                    float delta = 0f;
+                    delta -= basinMask * basinCarvingStrength * reliefRange;
+                    delta -= valleyMask * valleyCarvingStrength * reliefRange;
+
+                    if (mesaStrength > 0.001f && plateauMask > 0.001f)
+                    {
+                        float targetMesa = Mathf.Lerp(hillElevationMin, hillElevationMax, 0.75f);
+                        sampledElev[i] = Mathf.Lerp(sampledElev[i], targetMesa, plateauMask * mesaStrength);
+                    }
+
+                    if (escarpmentStrength > 0.001f && escarpMask > 0.001f)
+                    {
+                        float normalizedStep = Mathf.InverseLerp(flatElevationMin, mountainElevationMax, sampledElev[i]);
+                        float stepped = Mathf.Round(normalizedStep * 5f) / 5f;
+                        float targetEscarp = Mathf.Lerp(flatElevationMin, mountainElevationMax, stepped);
+                        sampledElev[i] = Mathf.Lerp(sampledElev[i], targetEscarp, escarpMask * escarpmentStrength);
+                        delta += escarpMask * escarpmentStrength * reliefRange * 0.08f;
+                    }
+
+                    terrainAdjust[i] = delta;
+                }
+
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!isLandTile[i] || isLakeTile[i]) continue;
+                    sampledElev[i] = Mathf.Clamp(sampledElev[i] + terrainAdjust[i], flatElevationMin - 0.25f, mountainElevationMax);
+                }
+            }
+            finally
+            {
+                ArrayPoolUtils.ReturnFloat(terrainAdjust);
+            }
+        }
+
+        // --- Rain Shadow ---
+        // Mountains block moisture from the prevailing wind direction.
+        // Windward slopes get a moisture boost; leeward slopes get dried out.
+        {
+            // Prevailing wind: seeded noise picks a per-map direction (mostly west-to-east with variation)
+            var windRand = new System.Random(unchecked((int)(seed ^ 0xC1052)));
+            float windAngle = (float)(windRand.NextDouble() * 0.6 - 0.3); // -0.3..+0.3 radians off east
+            Vector2 windDir = new Vector2(Mathf.Cos(windAngle), Mathf.Sin(windAngle)); // mostly +X (west to east)
+
+            float shadowStrength = 0.25f; // max moisture reduction behind mountains
+            float boostStrength = 0.10f;  // max moisture boost on windward side
+            int shadowRange = 4;          // how many tiles the shadow extends downwind
+
+            // Identify mountain/high-hill tiles as blockers
+            bool[] isBlocker = new bool[tileCount];
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isLandTile[i] || isLakeTile[i]) continue;
+                if (sampledElev[i] >= hillElevationMin + (hillElevationMax - hillElevationMin) * 0.5f)
+                    isBlocker[i] = true;
+            }
+
+            // For each blocker, cast a shadow downwind
+            float[] moistureOffset = new float[tileCount];
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!isBlocker[i]) continue;
+
+                // Boost windward neighbors (upwind side)
+                foreach (int n in grid.neighbors[i])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!isLandTile[n] || isLakeTile[n]) continue;
+                    Vector2 toNeighbor = new Vector2(tileCoords[n].x - tileCoords[i].x, tileCoords[n].y - tileCoords[i].y);
+                    if (toNeighbor.sqrMagnitude > 0.001f) toNeighbor.Normalize();
+                    float dot = Vector2.Dot(toNeighbor, windDir);
+                    if (dot < -0.3f) // upwind neighbor
+                        moistureOffset[n] = Mathf.Max(moistureOffset[n], boostStrength * Mathf.Abs(dot));
+                }
+
+                // BFS downwind to cast shadow
+                var shadowQueue = new Queue<(int idx, int depth)>();
+                var shadowVisited = new HashSet<int> { i };
+                foreach (int n in grid.neighbors[i])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!isLandTile[n] && !isLakeTile[n]) continue;
+                    Vector2 toN = new Vector2(tileCoords[n].x - tileCoords[i].x, tileCoords[n].y - tileCoords[i].y);
+                    if (toN.sqrMagnitude > 0.001f) toN.Normalize();
+                    if (Vector2.Dot(toN, windDir) > 0.3f) // downwind
+                    {
+                        shadowQueue.Enqueue((n, 1));
+                        shadowVisited.Add(n);
+                    }
+                }
+
+                while (shadowQueue.Count > 0)
+                {
+                    var (cur, depth) = shadowQueue.Dequeue();
+                    float falloff = 1f - (float)depth / (shadowRange + 1);
+                    float reduction = -shadowStrength * falloff;
+                    if (reduction < moistureOffset[cur])
+                        moistureOffset[cur] = reduction;
+
+                    if (depth < shadowRange)
+                    {
+                        foreach (int n in grid.neighbors[cur])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (shadowVisited.Contains(n)) continue;
+                            if (!isLandTile[n] && !isLakeTile[n]) continue;
+                            if (isBlocker[n]) continue; // another mountain blocks the shadow
+                            Vector2 toN = new Vector2(tileCoords[n].x - tileCoords[cur].x, tileCoords[n].y - tileCoords[cur].y);
+                            if (toN.sqrMagnitude > 0.001f) toN.Normalize();
+                            if (Vector2.Dot(toN, windDir) > 0.1f)
+                            {
+                                shadowQueue.Enqueue((n, depth + 1));
+                                shadowVisited.Add(n);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply moisture offsets
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (Mathf.Abs(moistureOffset[i]) > 0.001f)
+                    sampledMoist[i] = Mathf.Clamp01(sampledMoist[i] + moistureOffset[i]);
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Rain shadow: wind angle={windAngle:F2}rad, shadow range={shadowRange}, strength={shadowStrength}");
+        }
+
+        // --- Elevation Smoothing Pass ---
+        // Average each land tile's elevation with its neighbors to eliminate harsh
+        // tier boundary cliffs and produce natural-looking gradients.
+        {
+            int elevSmoothPasses = 3;
+            float elevSmoothStrength = 0.35f;
+            for (int pass = 0; pass < elevSmoothPasses; pass++)
+            {
+                float[] smoothed = new float[tileCount];
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!isLandTile[i] && !isLakeTile[i])
+                    {
+                        smoothed[i] = sampledElev[i];
+                        continue;
+                    }
+
+                    float sum = 0f;
+                    int cnt = 0;
+                    foreach (int n in grid.neighbors[i])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!isLandTile[n] && !isLakeTile[n]) continue; // don't blend with ocean
+                        sum += sampledElev[n];
+                        cnt++;
+                    }
+
+                    if (cnt > 0)
+                    {
+                        float avg = sum / cnt;
+                        smoothed[i] = Mathf.Lerp(sampledElev[i], avg, elevSmoothStrength);
+                    }
+                    else
+                    {
+                        smoothed[i] = sampledElev[i];
+                    }
+                }
+                sampledElev = smoothed;
+
+                if (loadingPanelController != null)
+                {
+                    loadingPanelController.SetProgress(0.38f + (float)pass / elevSmoothPasses * 0.02f);
+                    loadingPanelController.SetStatus($"Smoothing elevation (pass {pass + 1}/{elevSmoothPasses})...");
+                }
+                yield return null;
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Elevation smoothing: {elevSmoothPasses} passes at {elevSmoothStrength} strength");
+        }
+
+        // --- Erosion-Style Redistribution ---
+        if (erosionStrength > 0.001f)
+        {
+            float[] eroded = ArrayPoolUtils.RentFloat(tileCount);
+            try
+            {
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!isLandTile[i] || isLakeTile[i])
+                    {
+                        eroded[i] = sampledElev[i];
+                        continue;
+                    }
+
+                    float center = sampledElev[i];
+                    float lowerSum = 0f;
+                    float higherSum = 0f;
+                    int lowerCount = 0;
+                    int higherCount = 0;
+                    foreach (int n in grid.neighbors[i])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (!isLandTile[n] || isLakeTile[n]) continue;
+                        float neighbor = sampledElev[n];
+                        if (neighbor < center)
+                        {
+                            lowerSum += neighbor;
+                            lowerCount++;
+                        }
+                        else
+                        {
+                            higherSum += neighbor;
+                            higherCount++;
+                        }
+                    }
+
+                    float downhillAvg = lowerCount > 0 ? lowerSum / lowerCount : center;
+                    float uphillAvg = higherCount > 0 ? higherSum / higherCount : center;
+                    float spikeFactor = Mathf.Clamp01((center - downhillAvg) / Mathf.Max(0.5f, mountainElevationMax - flatElevationMin));
+                    float depositTarget = Mathf.Lerp(center, (downhillAvg + uphillAvg) * 0.5f, 0.7f);
+                    eroded[i] = Mathf.Lerp(center, depositTarget, erosionStrength * spikeFactor * motifRuggedness);
+                }
+
+                sampledElev = eroded;
+                eroded = null;
+            }
+            finally
+            {
+                if (eroded != null) ArrayPoolUtils.ReturnFloat(eroded);
+            }
+        }
+
+        ApplyAdvancedGeologyClimateAdjustments(sampledTemp, sampledMoist, sampledElev, isLandTile, isLakeTile, tileCount);
+
         // Second pass: assign biomes and build HexTileData using smoothed climate
         for (int i = 0; i < tileCount; i++)
         {
@@ -1725,19 +2569,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             {
                 biome = GetBiomeForTile(i, true, temperature, moisture);
 
-                if (finalElevation >= mountainElevationMin)
+                float hillSignal = hillSignalPerTile[i];
+                float mountainSignal = mountainSignalPerTile[i];
+                float province = provinceNoisePerTile[i];
+                float hillThreshold = Mathf.Clamp01(hillNoiseCutoff + 0.14f - (province - 0.5f) * 0.08f);
+                float mountainThreshold = Mathf.Clamp01(mountainNoiseCutoff + 0.05f - (province - 0.5f) * 0.08f);
+                float hillSignalFloor = Mathf.Lerp(flatElevationMax, hillElevationMin, 0.55f);
+                bool separateMountainSignal = mountainSignal > mountainThreshold && finalElevation >= hillElevationMin + (hillElevationMax - hillElevationMin) * 0.8f;
+                bool separateHillSignal = hillSignal > hillThreshold && finalElevation >= hillSignalFloor;
+
+                if (finalElevation >= mountainElevationMin || separateMountainSignal)
                 {
                     if (biome != Biome.Glacier && biome != Biome.Arctic)
                     {
                         isMountain = true;
+                        if (finalElevation < mountainElevationMin)
+                            finalElevation = Mathf.Lerp(finalElevation, mountainElevationMin, 0.55f);
                     }
                 }
-                else if (finalElevation >= hillElevationMin)
+                else if (finalElevation >= hillElevationMin || separateHillSignal)
                 {
                     bool biomeIsWater = (biome == Biome.Coast || biome == Biome.Seas || biome == Biome.Ocean || biome == Biome.Lake || biome == Biome.River);
                     if (!biomeIsWater)
                     {
                         isHill = true;
+                        if (finalElevation < hillElevationMin)
+                            finalElevation = Mathf.Lerp(finalElevation, hillElevationMin, 0.5f);
                     }
                 }
                 // Track land elevation range for later normalization
@@ -1769,8 +2626,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             var y = BiomeHelper.Yields(biome);
             int moveCost = BiomeHelper.GetMovementCost(biome);
             ElevationTier elevTier = ElevationTier.Flat;
-            if (finalElevation >= mountainElevationMin) elevTier = ElevationTier.Mountain;
-            else if (finalElevation >= hillElevationMin) elevTier = ElevationTier.Hill;
+            if (isMountain || finalElevation >= mountainElevationMin) elevTier = ElevationTier.Mountain;
+            else if (isHill || finalElevation >= hillElevationMin) elevTier = ElevationTier.Hill;
 
             #pragma warning disable 612, 618  // Suppress obsolete warning for occupantId initialization
             var td = new HexTileData
@@ -1930,6 +2787,181 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // Identify all coast tiles after the first pass
         HashSet<int> coastTiles = new HashSet<int>();
+
+        // --- Fjord & Peninsula Carving ---
+        // Cut narrow water channels into coastlines (fjords) and extend thin
+        // land fingers outward (peninsulas) for more interesting shorelines.
+        {
+            var fjordRand = new System.Random(unchecked((int)(seed ^ 0xF10AD)));
+            int fjordCount = Mathf.Max(1, tileCount / 4000); // ~1 per 4000 tiles
+            int peninsulaCount = Mathf.Max(1, tileCount / 5000);
+
+            // Collect coast tiles for seeding
+            var coastSeedList = new List<int>();
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (data.ContainsKey(i) && data[i].biome == Biome.Coast)
+                    coastSeedList.Add(i);
+            }
+
+            if (coastSeedList.Count > 0)
+            {
+                // --- Fjords: narrow water channels cutting into land ---
+                for (int f = 0; f < fjordCount && coastSeedList.Count > 0; f++)
+                {
+                    int startIdx = coastSeedList[fjordRand.Next(coastSeedList.Count)];
+                    // Walk inland: prefer tiles that continue roughly straight + noise variation
+                    int fjordLength = fjordRand.Next(3, 6);
+                    int current = startIdx;
+                    var fjordVisited = new HashSet<int> { current };
+                    var fjordTiles = new List<int>();
+
+                    // Initial direction: from ocean toward land
+                    Vector2 inlandDir = Vector2.zero;
+                    foreach (int n in grid.neighbors[startIdx])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (data.ContainsKey(n) && data[n].isLand && !data[n].isLake && !data[n].isRiver)
+                        {
+                            inlandDir += new Vector2(tileCoords[n].x - tileCoords[startIdx].x, tileCoords[n].y - tileCoords[startIdx].y);
+                        }
+                    }
+                    if (inlandDir.sqrMagnitude < 0.001f) continue;
+                    inlandDir.Normalize();
+
+                    for (int step = 0; step < fjordLength; step++)
+                    {
+                        int bestNext = -1;
+                        float bestScore = float.NegativeInfinity;
+                        foreach (int n in grid.neighbors[current])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (fjordVisited.Contains(n)) continue;
+                            if (!data.ContainsKey(n)) continue;
+                            var ntd = data[n];
+                            if (!ntd.isLand || ntd.isLake || ntd.isRiver || ntd.isMountain) continue;
+
+                            Vector2 toN = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                            if (toN.sqrMagnitude > 0.001f) toN.Normalize();
+                            float forward = Vector2.Dot(inlandDir, toN);
+                            float noiseBias = noise.GetElevationPeriodic(
+                                new Vector2(tileCoords[n].x + 4000f, tileCoords[n].y + 4000f),
+                                mapWidth, mapHeight, elevFreqPeriodic * 6f) - 0.5f;
+                            float score = forward * 1.5f + noiseBias;
+                            if (score > bestScore) { bestScore = score; bestNext = n; }
+                        }
+                        if (bestNext < 0) break;
+                        fjordTiles.Add(bestNext);
+                        fjordVisited.Add(bestNext);
+                        // Gently curve
+                        Vector2 stepDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                        inlandDir = (inlandDir * 0.65f + stepDir * 0.35f).normalized;
+                        current = bestNext;
+                    }
+
+                    // Convert fjord tiles to coast (water channel)
+                    foreach (int ft in fjordTiles)
+                    {
+                        if (!data.ContainsKey(ft)) continue;
+                        var td = data[ft];
+                        td.biome = Biome.Coast;
+                        td.isLand = false;
+                        td.isHill = false;
+                        td.isMountain = false;
+                        td.elevationTier = ElevationTier.Flat;
+                        td.elevation = coastElevation;
+                        data[ft] = td;
+                        baseData[ft] = td;
+                        isLandTile[ft] = false;
+                    }
+                }
+
+                // --- Peninsulas: thin land fingers extending into water ---
+                // Collect ocean tiles adjacent to coast for peninsula roots
+                var oceanNearCoast = new List<int>();
+                for (int i = 0; i < tileCount; i++)
+                {
+                    if (!data.ContainsKey(i)) continue;
+                    if (data[i].biome != Biome.Ocean && data[i].biome != Biome.Seas) continue;
+                    foreach (int n in grid.neighbors[i])
+                    {
+                        if (n >= 0 && n < tileCount && data.ContainsKey(n) && data[n].biome == Biome.Coast)
+                        {
+                            oceanNearCoast.Add(i);
+                            break;
+                        }
+                    }
+                }
+
+                for (int p = 0; p < peninsulaCount && oceanNearCoast.Count > 0; p++)
+                {
+                    int startIdx = oceanNearCoast[fjordRand.Next(oceanNearCoast.Count)];
+                    int penLength = fjordRand.Next(2, 5);
+                    int current = startIdx;
+                    var penVisited = new HashSet<int> { current };
+                    var penTiles = new List<int> { current };
+
+                    // Direction: away from coast, into ocean
+                    Vector2 outDir = Vector2.zero;
+                    foreach (int n in grid.neighbors[startIdx])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (data.ContainsKey(n) && (data[n].biome == Biome.Ocean || data[n].biome == Biome.Seas))
+                        {
+                            outDir += new Vector2(tileCoords[n].x - tileCoords[startIdx].x, tileCoords[n].y - tileCoords[startIdx].y);
+                        }
+                    }
+                    if (outDir.sqrMagnitude < 0.001f) continue;
+                    outDir.Normalize();
+
+                    for (int step = 0; step < penLength; step++)
+                    {
+                        int bestNext = -1;
+                        float bestScore = float.NegativeInfinity;
+                        foreach (int n in grid.neighbors[current])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (penVisited.Contains(n)) continue;
+                            if (!data.ContainsKey(n)) continue;
+                            if (data[n].biome != Biome.Ocean && data[n].biome != Biome.Seas) continue;
+
+                            Vector2 toN = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                            if (toN.sqrMagnitude > 0.001f) toN.Normalize();
+                            float forward = Vector2.Dot(outDir, toN);
+                            float score = forward * 1.5f + (float)(fjordRand.NextDouble() * 0.4);
+                            if (score > bestScore) { bestScore = score; bestNext = n; }
+                        }
+                        if (bestNext < 0) break;
+                        penTiles.Add(bestNext);
+                        penVisited.Add(bestNext);
+                        Vector2 stepDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                        outDir = (outDir * 0.6f + stepDir * 0.4f).normalized;
+                        current = bestNext;
+                    }
+
+                    // Convert peninsula tiles to coast (land in water)
+                    foreach (int pt in penTiles)
+                    {
+                        if (!data.ContainsKey(pt)) continue;
+                        var td = data[pt];
+                        td.biome = Biome.Coast;
+                        td.isLand = false; // coast tiles are not "land" in this system
+                        td.isHill = false;
+                        td.isMountain = false;
+                        td.elevationTier = ElevationTier.Flat;
+                        td.elevation = coastElevation;
+                        data[pt] = td;
+                        baseData[pt] = td;
+                    }
+                }
+
+                if (ShouldLogDiagnostics())
+                    Debug.Log($"[PlanetGenerator] Fjord/peninsula carving: {fjordCount} fjords, {peninsulaCount} peninsulas attempted");
+            }
+        }
+
         for (int i = 0; i < tileCount; i++) {
             if (data.ContainsKey(i) && data[i].biome == Biome.Coast) coastTiles.Add(i);
             
@@ -2019,59 +3051,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        // ---------- 6.2 Flatten land tiles within 2 tiles of coastal water ----------
-        // BFS from ocean/seas/coast tiles outward into land (NOT lakes or rivers).
-        // Any land tile within 2 hops of coastal water gets flattened to flatElevationMin.
-        // This creates a natural shoreline buffer — no hills or mountains right at the waterline.
-        {
-            int flattenRadius = 2;
-            int[] waterDist = new int[tileCount];
-            for (int i = 0; i < tileCount; i++) waterDist[i] = -1;
-
-            var bfsQueue = new Queue<int>();
-            // Seed BFS from ocean/seas/coast tiles only (exclude lakes and rivers)
-            for (int i = 0; i < tileCount; i++)
-            {
-                if (!data.ContainsKey(i)) continue;
-                Biome b = data[i].biome;
-                if (b == Biome.Ocean || b == Biome.Seas || b == Biome.Coast)
-                {
-                    waterDist[i] = 0;
-                    bfsQueue.Enqueue(i);
-                }
-            }
-
-            while (bfsQueue.Count > 0)
-            {
-                int cur = bfsQueue.Dequeue();
-                int nextDist = waterDist[cur] + 1;
-                if (nextDist > flattenRadius) continue;
-                foreach (int n in grid.neighbors[cur])
-                {
-                    if (n < 0 || n >= tileCount) continue;
-                    if (waterDist[n] >= 0) continue; // already visited
-                    waterDist[n] = nextDist;
-                    bfsQueue.Enqueue(n);
-                }
-            }
-
-            // Flatten any land tile within the radius
-            for (int i = 0; i < tileCount; i++)
-            {
-                if (waterDist[i] <= 0 || waterDist[i] > flattenRadius) continue;
-                if (!data.ContainsKey(i)) continue;
-                var td = data[i];
-                if (!td.isLand || td.isLake || td.isRiver) continue;
-                if (td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas) continue;
-
-                td.elevation = flatElevationMin;
-                td.elevationTier = ElevationTier.Flat;
-                td.isHill = false;
-                td.isMountain = false;
-                data[i] = td;
-                baseData[i] = td;
-            }
-        }
+        // (6.2 Forced coastal flattening removed — continental distance bias and
+        //  elevation smoothing now create natural coastal-to-inland gradients.)
 
         // Snapshot the finalized land elevation BEFORE freshwater metadata/river surfaces are built.
         // Heightmap rendering uses this on land adjacent to rivers/lakes so banks stay aligned with
@@ -2087,9 +3068,144 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             baseData[i] = td;
         }
 
+        void ApplyFloodplainBehavior()
+        {
+            if (!enableFloodplains || floodplainRange <= 0)
+                return;
+
+            bool isSpecialHeatWorld = mapType == MapType.Infernal || mapType == MapType.Demonic;
+            int range = Mathf.Max(1, floodplainRange);
+            float[] floodplainInfluence = new float[tileCount];
+            var queue = new Queue<(int idx, int depth)>();
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                if (!data.TryGetValue(i, out var td) || !td.isRiver)
+                    continue;
+
+                queue.Enqueue((i, 0));
+                floodplainInfluence[i] = 1f;
+            }
+
+            while (queue.Count > 0)
+            {
+                var (current, depth) = queue.Dequeue();
+                if (depth >= range)
+                    continue;
+
+                foreach (int neighbor in grid.neighbors[current])
+                {
+                    if (neighbor < 0 || neighbor >= tileCount)
+                        continue;
+                    if (!data.TryGetValue(neighbor, out var ntd))
+                        continue;
+                    if (!ntd.isLand || ntd.isLake || ntd.isRiver)
+                        continue;
+                    if (ntd.biome == Biome.Coast || ntd.biome == Biome.Ocean || ntd.biome == Biome.Seas)
+                        continue;
+
+                    float influence = 1f - (float)(depth + 1) / (range + 1f);
+                    if (influence <= floodplainInfluence[neighbor])
+                        continue;
+
+                    floodplainInfluence[neighbor] = influence;
+                    queue.Enqueue((neighbor, depth + 1));
+                }
+            }
+
+            float floodplainCeiling = Mathf.Lerp(flatElevationMax, hillElevationMin, 0.18f);
+            float hillSoftCeiling = hillElevationMin + Mathf.Max(0.35f, (hillElevationMax - hillElevationMin) * 0.12f);
+            int floodplainTiles = 0;
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                float influence = floodplainInfluence[i];
+                if (influence <= 0f)
+                    continue;
+                if (!data.TryGetValue(i, out var td))
+                    continue;
+                if (!td.isLand || td.isLake || td.isRiver || td.biome == Biome.Coast || td.biome == Biome.Ocean || td.biome == Biome.Seas)
+                    continue;
+                if (td.isMountain || td.elevation >= mountainElevationMin)
+                    continue;
+
+                bool isEligibleLowland = td.elevation <= hillSoftCeiling;
+                bool canSoftenHill = td.isHill && td.elevation <= hillSoftCeiling;
+                if (!isEligibleLowland && !canSoftenHill)
+                    continue;
+
+                float newElevation = td.elevation;
+                if (newElevation > floodplainCeiling)
+                {
+                    float flattenT = influence * floodplainFlattenStrength;
+                    newElevation = Mathf.Lerp(newElevation, floodplainCeiling, flattenT);
+                }
+
+                td.elevation = Mathf.Max(flatElevationMin, newElevation);
+                td.originalElevation = td.elevation;
+                td.moisture = Mathf.Clamp01(td.moisture + floodplainMoistureBoost * influence);
+
+                if (td.elevation < hillElevationMin)
+                {
+                    td.isHill = false;
+                    td.isMountain = false;
+                    td.elevationTier = ElevationTier.Flat;
+                }
+                else if (td.elevation < mountainElevationMin)
+                {
+                    td.isMountain = false;
+                    td.isHill = true;
+                    td.elevationTier = ElevationTier.Hill;
+                }
+
+                if (!isSpecialHeatWorld && td.biome != Biome.Arctic && td.biome != Biome.Glacier && td.biome != Biome.Tundra)
+                {
+                    Biome newBiome = td.biome;
+                    float fertility = td.moisture + influence * floodplainFertilityBias * 0.2f;
+
+                    if (td.temperature > 0.78f)
+                    {
+                        if (fertility > 0.46f) newBiome = Biome.Plains;
+                        else if (fertility > 0.2f) newBiome = Biome.Savannah;
+                    }
+                    else if (td.temperature > 0.38f)
+                    {
+                        if (fertility > 0.72f) newBiome = Biome.Swamp;
+                        else if (fertility > 0.42f) newBiome = Biome.Temperate;
+                        else newBiome = Biome.Plains;
+                    }
+                    else if (td.temperature > 0.22f && fertility > 0.35f)
+                    {
+                        newBiome = Biome.Plains;
+                    }
+
+                    if (newBiome != td.biome)
+                    {
+                        td.biome = newBiome;
+                        var y = BiomeHelper.Yields(newBiome);
+                        td.food = y.food;
+                        td.production = y.prod;
+                        td.gold = y.gold;
+                        td.science = y.sci;
+                        td.culture = y.cult;
+                        td.movementCost = BiomeHelper.GetMovementCost(newBiome);
+                    }
+                }
+
+                data[i] = td;
+                baseData[i] = td;
+                floodplainTiles++;
+            }
+
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] Floodplains applied to {floodplainTiles} river-adjacent tiles (range={range}, moistureBoost={floodplainMoistureBoost:F2}).");
+        }
+
         // ---------- 6.5 River Generation Pass (after coasts are defined) ----
         if (enableRivers && allowOceansThisRun && GameSetupData.riverCount > 0)
             yield return StartCoroutine(GenerateRivers(isLandTile, data, lakeCenters));
+
+        ApplyFloodplainBehavior();
 
         // ---------- 6.55 Compute Water Metadata for chunk-based water mesh system ----------
         ComputeWaterMetadata(data, grid, tileCount);
@@ -2149,6 +3265,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             try { ArrayPoolUtils.ReturnBool(isLakeTile); } catch { }
             try { ArrayPoolUtils.ReturnBool(isRiverTile); } catch { }
             try { ArrayPoolUtils.ReturnFloat(shapedNoisePerTile); } catch { }
+            try { ArrayPoolUtils.ReturnFloat(provinceNoisePerTile); } catch { }
+            try { ArrayPoolUtils.ReturnFloat(hillSignalPerTile); } catch { }
+            try { ArrayPoolUtils.ReturnFloat(mountainSignalPerTile); } catch { }
             try { ArrayPoolUtils.ReturnFloat(sampledTemp); } catch { }
             try { ArrayPoolUtils.ReturnFloat(sampledMoist); } catch { }
             try { ArrayPoolUtils.ReturnFloat(sampledElev); } catch { }
@@ -2394,6 +3513,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     return HexDistanceWrapped(tileCoords[a], tileCoords[b], tilesX);
                 }
 
+                Vector2Int sourceCoord = tileCoords[startIdx];
+                Vector2Int goalCoord = tileCoords[goalIdx];
+                Vector2 sourceToGoal = new Vector2(WrappedDelta(goalCoord.x, sourceCoord.x, tilesX), goalCoord.y - sourceCoord.y);
+                float pathLength = Mathf.Max(1f, sourceToGoal.magnitude);
+                Vector2 pathDir = sourceToGoal / pathLength;
+                Vector2 pathNormal = new Vector2(-pathDir.y, pathDir.x);
+                var riverShapeRand = new System.Random(unchecked(seed ^ (startIdx * 73856093) ^ (goalIdx * 19349663)));
+                float meanderPhase = (float)(riverShapeRand.NextDouble() * Mathf.PI * 2.0);
+                float meanderAmplitudeTiles = Mathf.Clamp(pathLength * riverMeanderAmplitude, 1f, 6.5f);
+                float meanderCycles = Mathf.Max(0.4f, Mathf.Lerp(0.8f, 2.4f, Mathf.Clamp01(pathLength / 60f)) * riverMeanderFrequency);
+                float corridorStrength = 0.18f + riverMeanderAmplitude * 1.8f;
+
                 openSet.Add(startIdx);
                 gScore[startIdx] = 0f;
                 fScore[startIdx] = Heuristic(startIdx, goalIdx);
@@ -2444,7 +3575,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                         float elevN = nt.elevation;
                         float uphill = Mathf.Clamp((elevN - elevCur) * 6f, 0f, 5f);
                         tentativeG += uphill;
-                        tentativeG += (float)(rand.NextDouble() * 0.2 - 0.1);
+                        Vector2Int nCoord = tileCoords[n];
+                        Vector2 sourceToCandidate = new Vector2(WrappedDelta(nCoord.x, sourceCoord.x, tilesX), nCoord.y - sourceCoord.y);
+                        float along01 = Mathf.Clamp01(Vector2.Dot(sourceToCandidate, pathDir) / pathLength);
+                        float lateral = Vector2.Dot(sourceToCandidate, pathNormal);
+                        float meanderNoise = noise.GetElevationPeriodic(
+                            new Vector2(nCoord.x + 1000f, nCoord.y + 1000f),
+                            mapWidth, mapHeight, elevFreqPeriodic * 1.85f);
+                        float desiredLateral = Mathf.Sin(along01 * Mathf.PI * 2f * meanderCycles + meanderPhase) * meanderAmplitudeTiles;
+                        desiredLateral += (meanderNoise - 0.5f) * meanderAmplitudeTiles * 0.7f;
+                        tentativeG += Mathf.Abs(lateral - desiredLateral) * corridorStrength;
+
+                        if (cameFrom.TryGetValue(current, out int previous))
+                        {
+                            Vector2Int prevCoord = tileCoords[previous];
+                            Vector2 incoming = new Vector2(WrappedDelta(tileCoords[current].x, prevCoord.x, tilesX), tileCoords[current].y - prevCoord.y);
+                            Vector2 outgoing = new Vector2(WrappedDelta(nCoord.x, tileCoords[current].x, tilesX), nCoord.y - tileCoords[current].y);
+                            if (incoming.sqrMagnitude > 0.001f && outgoing.sqrMagnitude > 0.001f)
+                            {
+                                incoming.Normalize();
+                                outgoing.Normalize();
+                                float turnPenalty = 1f - Mathf.Clamp01((Vector2.Dot(incoming, outgoing) + 1f) * 0.5f);
+                                tentativeG += turnPenalty * riverTurnResistance;
+                            }
+                        }
+
+                        tentativeG += (float)(rand.NextDouble() * 0.05);
 
                         if (!gScore.ContainsKey(n) || tentativeG < gScore[n])
                         {
@@ -2638,6 +3794,73 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     isLandTile[tileIdx] = true;
                     isRiverTile[tileIdx] = true;
                     stampedPath.Add(tileIdx);
+                }
+
+                // --- Oxbow Lake Detection ---
+                // Scan the river path for sharp bends (tight U-turns). Where the river
+                // curves sharply, convert a land tile on the inside of the bend into a
+                // small lake — simulating meander cutoff / oxbow lake formation.
+                if (stampedPath.Count >= 6)
+                {
+                    int oxbowsCreated = 0;
+                    int maxOxbows = Mathf.Max(1, stampedPath.Count / 12); // ~1 per 12 tiles
+                    for (int si = 2; si < stampedPath.Count - 2 && oxbowsCreated < maxOxbows; si++)
+                    {
+                        // Measure bend angle at tile si using tiles si-2 and si+2
+                        Vector2Int prev2 = tileCoords[stampedPath[si - 2]];
+                        Vector2Int curr = tileCoords[stampedPath[si]];
+                        Vector2Int next2 = tileCoords[stampedPath[si + 2]];
+                        Vector2 dirIn = new Vector2(curr.x - prev2.x, curr.y - prev2.y);
+                        Vector2 dirOut = new Vector2(next2.x - curr.x, next2.y - curr.y);
+                        if (dirIn.sqrMagnitude < 0.001f || dirOut.sqrMagnitude < 0.001f) continue;
+                        dirIn.Normalize();
+                        dirOut.Normalize();
+                        float dot = Vector2.Dot(dirIn, dirOut);
+                        // Sharp bend: dot < 0.1 means >~84 degree turn
+                        if (dot > 0.1f) continue;
+
+                        // Find the inside of the bend: perpendicular to the average direction, on the turning side
+                        Vector2 avgDir = (dirIn + dirOut);
+                        if (avgDir.sqrMagnitude < 0.001f) avgDir = dirIn;
+                        avgDir.Normalize();
+                        // Cross product sign tells us turning direction (2D: perp = (-y, x) or (y, -x))
+                        float cross = dirIn.x * dirOut.y - dirIn.y * dirOut.x;
+                        Vector2 insideDir = cross > 0f ? new Vector2(-avgDir.y, avgDir.x) : new Vector2(avgDir.y, -avgDir.x);
+
+                        // Find a neighbor in that direction that's land (not river/lake)
+                        int bendTile = stampedPath[si];
+                        int bestOxbow = -1;
+                        float bestOxbowScore = float.NegativeInfinity;
+                        foreach (int n in grid.neighbors[bendTile])
+                        {
+                            if (n < 0 || n >= tileCount) continue;
+                            if (!tileData.TryGetValue(n, out var ntd)) continue;
+                            if (ntd.isRiver || ntd.isLake || !ntd.isLand) continue;
+                            if (ntd.biome == Biome.Coast || ntd.biome == Biome.Ocean) continue;
+
+                            Vector2 toN = new Vector2(tileCoords[n].x - tileCoords[bendTile].x, tileCoords[n].y - tileCoords[bendTile].y);
+                            if (toN.sqrMagnitude > 0.001f) toN.Normalize();
+                            float score = Vector2.Dot(toN, insideDir);
+                            if (score > bestOxbowScore) { bestOxbowScore = score; bestOxbow = n; }
+                        }
+
+                        if (bestOxbow >= 0 && bestOxbowScore > 0.2f)
+                        {
+                            var otd = tileData[bestOxbow];
+                            otd.biome = Biome.Lake;
+                            otd.isLand = false;
+                            otd.isLake = true;
+                            otd.isRiver = false;
+                            otd.isHill = false;
+                            otd.isMountain = false;
+                            tileData[bestOxbow] = otd;
+                            baseData[bestOxbow] = otd;
+                            isLandTile[bestOxbow] = false;
+                            isLakeTile[bestOxbow] = true;
+                            oxbowsCreated++;
+                            si += 4; // skip ahead to avoid overlapping oxbows
+                        }
+                    }
                 }
 
                 // --- Erosion Simulation ---
@@ -2968,76 +4191,166 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         switch (presetIndex)
         {
             case 0: // Flat — vast plains, very rare hills, almost no mountains
-                elevationExponent = 1.8f;
-                hillNoiseCutoff = 0.75f;
-                mountainNoiseCutoff = 0.95f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 39.5f;
+                elevationExponent = 2.0f;
+                hillNoiseCutoff = 0.87f;
+                mountainNoiseCutoff = 0.975f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 33.5f;
+                hillElevationMax = 36.0f;
+                mountainElevationMin = 35.5f;
                 mountainElevationMax = 41.0f;
-                ridgeStrength = 0.05f;
+                ridgeStrength = 0.06f;
+                terrainWarpStrength = 0.02f;
+                terrainWarpFrequencyMultiplier = 0.45f;
+                terrainProvinceFrequencyMultiplier = 0.18f;
+                terrainProvinceStrength = 0.03f;
+                hillNoiseFrequencyMultiplier = 1.8f;
+                hillNoiseStrength = 0.025f;
+                mountainNoiseFrequencyMultiplier = 1.1f;
+                mountainNoiseStrength = 0.04f;
+                basinFrequencyMultiplier = 0.65f;
+                basinCarvingStrength = 0.03f;
+                valleyFrequencyMultiplier = 2.0f;
+                valleyCarvingStrength = 0.02f;
+                mesaStrength = 0.02f;
+                escarpmentStrength = 0.015f;
+                erosionStrength = 0.12f;
                 break;
             case 1: // Smooth — gentle rolling terrain, some hills, rare mountains
-                elevationExponent = 1.2f;
-                hillNoiseCutoff = 0.45f;
-                mountainNoiseCutoff = 0.80f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 39.5f;
+                elevationExponent = 1.55f;
+                hillNoiseCutoff = 0.8f;
+                mountainNoiseCutoff = 0.95f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 33.5f;
+                hillElevationMax = 36.0f;
+                mountainElevationMin = 35.5f;
                 mountainElevationMax = 41.0f;
-                ridgeStrength = 0.05f;
+                ridgeStrength = 0.07f;
+                terrainWarpStrength = 0.06f;
+                terrainWarpFrequencyMultiplier = 0.55f;
+                terrainProvinceFrequencyMultiplier = 0.22f;
+                terrainProvinceStrength = 0.04f;
+                hillNoiseFrequencyMultiplier = 2.1f;
+                hillNoiseStrength = 0.04f;
+                mountainNoiseFrequencyMultiplier = 1.25f;
+                mountainNoiseStrength = 0.07f;
+                basinFrequencyMultiplier = 0.72f;
+                basinCarvingStrength = 0.06f;
+                valleyFrequencyMultiplier = 2.4f;
+                valleyCarvingStrength = 0.045f;
+                mesaStrength = 0.035f;
+                escarpmentStrength = 0.03f;
+                erosionStrength = 0.16f;
                 break;
             case 2: // Standard — balanced mix
-                elevationExponent = 1.03f;
-                hillNoiseCutoff = 0.65f;
+                elevationExponent = 1.00f;
+                hillNoiseCutoff = 0.75f;
                 mountainNoiseCutoff = 0.90f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 37.0f;
-                mountainElevationMax = 39.0f;
-                ridgeStrength = 0.05f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 38.5f;
+                hillElevationMax = 39.5f;
+                mountainElevationMin = 41.5f;
+                mountainElevationMax = 43.0f;
+                ridgeStrength = 0.06f;
+                terrainWarpStrength = 0.15f;
+                terrainWarpFrequencyMultiplier = 0.7f;
+                terrainProvinceFrequencyMultiplier = 0.3f;
+                terrainProvinceStrength = 0.2f;
+                hillNoiseFrequencyMultiplier = 2.6f;
+                hillNoiseStrength = 0.06f;
+                mountainNoiseFrequencyMultiplier = 1.5f;
+                mountainNoiseStrength = 0.14f;
+                basinFrequencyMultiplier = 0.85f;
+                basinCarvingStrength = 0.11f;
+                valleyFrequencyMultiplier = 3.0f;
+                valleyCarvingStrength = 0.08f;
+                mesaStrength = 0.1f;
+                escarpmentStrength = 0.07f;
+                erosionStrength = 0.22f;
                 break;
             case 3: // Mountainous — lots of hills, frequent mountains
-                elevationExponent = 1.0f;
-                hillNoiseCutoff = 0.55f;
-                mountainNoiseCutoff = 0.75f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 38.0f;
-                mountainElevationMax = 40.0f;
-                ridgeStrength = 0.05f;
+                elevationExponent = 1.1f;
+                hillNoiseCutoff = 0.66f;
+                mountainNoiseCutoff = 0.84f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 33.5f;
+                hillElevationMax = 36.0f;
+                mountainElevationMin = 35.5f;
+                mountainElevationMax = 41.5f;
+                ridgeStrength = 0.14f;
+                terrainWarpStrength = 0.14f;
+                terrainWarpFrequencyMultiplier = 0.85f;
+                terrainProvinceFrequencyMultiplier = 0.38f;
+                terrainProvinceStrength = 0.08f;
+                hillNoiseFrequencyMultiplier = 3.1f;
+                hillNoiseStrength = 0.09f;
+                mountainNoiseFrequencyMultiplier = 1.75f;
+                mountainNoiseStrength = 0.18f;
+                basinFrequencyMultiplier = 1.0f;
+                basinCarvingStrength = 0.13f;
+                valleyFrequencyMultiplier = 3.5f;
+                valleyCarvingStrength = 0.1f;
+                mesaStrength = 0.09f;
+                escarpmentStrength = 0.1f;
+                erosionStrength = 0.28f;
                 break;
             case 4: // Alpine — extremely mountainous, dramatic peaks
                 elevationExponent = 1.0f;
-                hillNoiseCutoff = 0.35f;
-                mountainNoiseCutoff = 0.65f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 39.5f;
-                mountainElevationMax = 41.0f;
-                ridgeStrength = 0.05f;
+                hillNoiseCutoff = 0.55f;
+                mountainNoiseCutoff = 0.75f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 33.5f;
+                hillElevationMax = 36.0f;
+                mountainElevationMin = 35.5f;
+                mountainElevationMax = 42.5f;
+                ridgeStrength = 0.18f;
+                terrainWarpStrength = 0.18f;
+                terrainWarpFrequencyMultiplier = 1.0f;
+                terrainProvinceFrequencyMultiplier = 0.45f;
+                terrainProvinceStrength = 0.12f;
+                hillNoiseFrequencyMultiplier = 3.6f;
+                hillNoiseStrength = 0.12f;
+                mountainNoiseFrequencyMultiplier = 2.0f;
+                mountainNoiseStrength = 0.24f;
+                basinFrequencyMultiplier = 1.1f;
+                basinCarvingStrength = 0.15f;
+                valleyFrequencyMultiplier = 4.0f;
+                valleyCarvingStrength = 0.12f;
+                mesaStrength = 0.11f;
+                escarpmentStrength = 0.13f;
+                erosionStrength = 0.32f;
                 break;
             default: // Fallback to Standard
-                elevationExponent = 1.2f;
-                hillNoiseCutoff = 0.40f;
-                mountainNoiseCutoff = 0.70f;
-                flatElevationMin = 30.5f;
-                flatElevationMax = 32.25f;
-                hillElevationMin = 33.75f;
-                hillElevationMax = 35.0f;
-                mountainElevationMin = 39.5f;
+                elevationExponent = 1.4f;
+                hillNoiseCutoff = 0.8f;
+                mountainNoiseCutoff = 0.91f;
+                flatElevationMin = 32.0f;
+                flatElevationMax = 34.0f;
+                hillElevationMin = 33.5f;
+                hillElevationMax = 36.0f;
+                mountainElevationMin = 35.5f;
                 mountainElevationMax = 41.0f;
-                ridgeStrength = 0.05f;
+                ridgeStrength = 0.09f;
+                terrainWarpStrength = 0.08f;
+                terrainWarpFrequencyMultiplier = 0.7f;
+                terrainProvinceFrequencyMultiplier = 0.3f;
+                terrainProvinceStrength = 0.05f;
+                hillNoiseFrequencyMultiplier = 2.6f;
+                hillNoiseStrength = 0.06f;
+                mountainNoiseFrequencyMultiplier = 1.5f;
+                mountainNoiseStrength = 0.14f;
+                basinFrequencyMultiplier = 0.85f;
+                basinCarvingStrength = 0.1f;
+                valleyFrequencyMultiplier = 3.0f;
+                valleyCarvingStrength = 0.075f;
+                mesaStrength = 0.07f;
+                escarpmentStrength = 0.07f;
+                erosionStrength = 0.22f;
                 break;
         }
     }
@@ -3101,6 +4414,61 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     ) {
         var continents = new List<ContinentData>();
         if (count <= 0) return continents;
+
+        bool isPangaeaPreset = GameSetupData.selectedLandPreset == 4;
+        bool isMostlyLandPreset = GameSetupData.selectedLandPreset == 5;
+
+        if (isPangaeaPreset)
+        {
+            int widthTiles = Mathf.Clamp(Mathf.RoundToInt(mapWidthTiles * 0.9f), Mathf.Max(1, minContinentWidth), mapWidthTiles);
+            int heightTiles = Mathf.Clamp(Mathf.RoundToInt(mapHeightTiles * 0.68f), Mathf.Max(1, minContinentHeight), mapHeightTiles);
+            int centerYJitter = Mathf.Max(1, Mathf.RoundToInt(mapHeightTiles * 0.04f));
+            var pangaeaRand = new System.Random(rndSeed ^ 0x51A9);
+
+            continents.Add(new ContinentData {
+                name = "Pangaea",
+                center = new Vector2Int(
+                    pangaeaRand.Next(0, Mathf.Max(1, mapWidthTiles)),
+                    Mathf.Clamp(mapHeightTiles / 2 + pangaeaRand.Next(-centerYJitter, centerYJitter + 1), 0, Mathf.Max(0, mapHeightTiles - 1))
+                ),
+                widthTiles = widthTiles,
+                heightTiles = heightTiles
+            });
+
+            return continents;
+        }
+
+        if (isMostlyLandPreset)
+        {
+            var landHeavyRand = new System.Random(rndSeed ^ 0x7B31);
+            int continentCount = Mathf.Max(2, count);
+            int baseWidth = Mathf.Clamp(Mathf.RoundToInt(mapWidthTiles * 0.62f), Mathf.Max(1, minContinentWidth), mapWidthTiles);
+            int altWidth = Mathf.Clamp(Mathf.RoundToInt(mapWidthTiles * 0.48f), Mathf.Max(1, minContinentWidth), mapWidthTiles);
+            int baseHeight = Mathf.Clamp(Mathf.RoundToInt(mapHeightTiles * 0.56f), Mathf.Max(1, minContinentHeight), mapHeightTiles);
+            int altHeight = Mathf.Clamp(Mathf.RoundToInt(mapHeightTiles * 0.44f), Mathf.Max(1, minContinentHeight), mapHeightTiles);
+            int yJitter = Mathf.Max(1, Mathf.RoundToInt(mapHeightTiles * 0.06f));
+
+            for (int i = 0; i < continentCount; i++)
+            {
+                float t = continentCount == 1 ? 0.5f : (float)i / continentCount;
+                int centerX = Mathf.RoundToInt(t * mapWidthTiles + mapWidthTiles * 0.12f) % Mathf.Max(1, mapWidthTiles);
+                int targetY = (i % 2 == 0)
+                    ? Mathf.RoundToInt(mapHeightTiles * 0.42f)
+                    : Mathf.RoundToInt(mapHeightTiles * 0.58f);
+
+                continents.Add(new ContinentData {
+                    name = $"Mainland {i + 1}",
+                    center = new Vector2Int(
+                        centerX,
+                        Mathf.Clamp(targetY + landHeavyRand.Next(-yJitter, yJitter + 1), 0, Mathf.Max(0, mapHeightTiles - 1))
+                    ),
+                    widthTiles = i == 0 ? baseWidth : altWidth,
+                    heightTiles = i == 0 ? baseHeight : altHeight
+                });
+            }
+
+            return continents;
+        }
 
         System.Random rand = new System.Random(rndSeed);
         int minW = Mathf.Max(1, minContinentWidth);
@@ -3244,6 +4612,203 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
         return distances;
     }
+
+    private void ReleaseGeologyCaches()
+    {
+        if (geologyProvinceMap != null) { ArrayPoolUtils.ReturnInt(geologyProvinceMap); geologyProvinceMap = null; }
+        if (geologyMarginTypeMap != null) { ArrayPoolUtils.ReturnInt(geologyMarginTypeMap); geologyMarginTypeMap = null; }
+        if (geologyStressMap != null) { ArrayPoolUtils.ReturnFloat(geologyStressMap); geologyStressMap = null; }
+        if (geologyAgeMap != null) { ArrayPoolUtils.ReturnFloat(geologyAgeMap); geologyAgeMap = null; }
+        if (geologyDrainageMap != null) { ArrayPoolUtils.ReturnFloat(geologyDrainageMap); geologyDrainageMap = null; }
+        if (geologySedimentMap != null) { ArrayPoolUtils.ReturnFloat(geologySedimentMap); geologySedimentMap = null; }
+    }
+
+    private void EnsureGeologyCaches(int tileCount)
+    {
+        if (geologyProvinceMap != null && geologyProvinceMap.Length >= tileCount &&
+            geologyMarginTypeMap != null && geologyMarginTypeMap.Length >= tileCount &&
+            geologyStressMap != null && geologyStressMap.Length >= tileCount &&
+            geologyAgeMap != null && geologyAgeMap.Length >= tileCount &&
+            geologyDrainageMap != null && geologyDrainageMap.Length >= tileCount &&
+            geologySedimentMap != null && geologySedimentMap.Length >= tileCount)
+            return;
+
+        ReleaseGeologyCaches();
+        geologyProvinceMap = ArrayPoolUtils.RentInt(tileCount);
+        geologyMarginTypeMap = ArrayPoolUtils.RentInt(tileCount);
+        geologyStressMap = ArrayPoolUtils.RentFloat(tileCount);
+        geologyAgeMap = ArrayPoolUtils.RentFloat(tileCount);
+        geologyDrainageMap = ArrayPoolUtils.RentFloat(tileCount);
+        geologySedimentMap = ArrayPoolUtils.RentFloat(tileCount);
+    }
+
+    private void BuildAdvancedGeologyFramework(Vector2Int[] tileCoords, bool[] isLandTile, bool[] isLakeTile, int tilesX, float mapWidth, float mapHeight, float elevFreqPeriodic)
+    {
+        if (!enableAdvancedGeologyFramework || grid == null || noise == null)
+        {
+            ReleaseGeologyCaches();
+            return;
+        }
+
+        int tileCount = grid.TileCount;
+        EnsureGeologyCaches(tileCount);
+
+        var landSources = new List<int>();
+        var waterSources = new List<int>();
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (isLandTile[i] || isLakeTile[i]) landSources.Add(i);
+            else waterSources.Add(i);
+        }
+
+        int[] distToWater = BuildDistanceMap(waterSources.Count > 0 ? waterSources : landSources);
+        int[] distToLand = BuildDistanceMap(landSources.Count > 0 ? landSources : waterSources);
+
+        try
+        {
+            float provinceFreq = elevFreqPeriodic * Mathf.Max(0.03f, tectonicProvinceFrequencyMultiplier);
+            float stressFreq = provinceFreq * 1.6f;
+            float riftFreq = provinceFreq * 1.25f;
+            float basinFreq = provinceFreq * 2.2f;
+            float ageFreq = provinceFreq * 0.8f;
+
+            for (int i = 0; i < tileCount; i++)
+            {
+                Vector2 tilePos = new Vector2(tileCoords[i].x, tileCoords[i].y);
+                bool isLand = isLandTile[i] || isLakeTile[i];
+                float provinceNoise = noise.GetElevationPeriodic(tilePos + new Vector2(700f, 150f), mapWidth, mapHeight, provinceFreq);
+                float stressNoise = noise.GetElevationPeriodic(tilePos + new Vector2(1500f, 450f), mapWidth, mapHeight, stressFreq);
+                float divergenceNoise = noise.GetElevationPeriodic(tilePos + new Vector2(2200f, 980f), mapWidth, mapHeight, riftFreq);
+                float basinNoise = noise.GetElevationPeriodic(tilePos + new Vector2(2900f, 1280f), mapWidth, mapHeight, basinFreq);
+                float ageNoise = noise.GetElevationPeriodic(tilePos + new Vector2(3600f, 1720f), mapWidth, mapHeight, ageFreq);
+
+                float coastal01 = 0f;
+                if (isLand)
+                {
+                    int d = distToWater[i];
+                    if (d >= 0) coastal01 = 1f - Mathf.Clamp01((d - 1f) / 8f);
+                }
+                else
+                {
+                    int d = distToLand[i];
+                    if (d >= 0) coastal01 = 1f - Mathf.Clamp01((d - 1f) / 6f);
+                }
+
+                float stress = Mathf.Clamp01(Mathf.Lerp(stressNoise, 1f - divergenceNoise, 0.25f));
+                float age = Mathf.Clamp01(ageNoise + (provinceNoise < 0.35f ? 0.18f : 0f) - stress * 0.25f);
+                float drainage = Mathf.Clamp01(
+                    Mathf.Clamp01((0.55f - basinNoise) / 0.55f) * 0.5f +
+                    coastal01 * 0.18f +
+                    (1f - age) * 0.18f +
+                    Mathf.Clamp01((stress - 0.55f) / 0.45f) * 0.12f);
+
+                TectonicProvinceType province = TectonicProvinceType.StableShield;
+                if (isLand)
+                {
+                    if (divergenceNoise > 0.74f && stress < 0.6f)
+                        province = TectonicProvinceType.RiftZone;
+                    else if (coastal01 > 0.45f && stress > 0.7f)
+                        province = TectonicProvinceType.VolcanicArc;
+                    else if (stress > 0.72f)
+                        province = TectonicProvinceType.FoldBelt;
+                    else if (basinNoise < 0.34f || (provinceNoise < 0.4f && stress > 0.55f))
+                        province = TectonicProvinceType.ForelandBasin;
+                    else if (coastal01 > 0.5f && age > 0.55f)
+                        province = TectonicProvinceType.PassiveMargin;
+                }
+
+                CoastalMarginType margin = CoastalMarginType.None;
+                if (coastal01 > 0.3f)
+                {
+                    switch (province)
+                    {
+                        case TectonicProvinceType.VolcanicArc:
+                        case TectonicProvinceType.FoldBelt:
+                            margin = CoastalMarginType.Active;
+                            break;
+                        case TectonicProvinceType.RiftZone:
+                            margin = CoastalMarginType.Rifted;
+                            break;
+                        case TectonicProvinceType.PassiveMargin:
+                        case TectonicProvinceType.StableShield:
+                            margin = CoastalMarginType.Passive;
+                            break;
+                        case TectonicProvinceType.ForelandBasin:
+                            margin = CoastalMarginType.Deltaic;
+                            break;
+                    }
+
+                    if (drainage > 0.72f && margin == CoastalMarginType.Passive)
+                        margin = CoastalMarginType.Deltaic;
+                }
+
+                geologyProvinceMap[i] = (int)province;
+                geologyMarginTypeMap[i] = (int)margin;
+                geologyStressMap[i] = stress;
+                geologyAgeMap[i] = age;
+                geologyDrainageMap[i] = drainage;
+                geologySedimentMap[i] = Mathf.Clamp01(
+                    ((margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic || province == TectonicProvinceType.ForelandBasin) ? 0.42f : 0.08f) +
+                    drainage * 0.35f +
+                    age * 0.08f -
+                    stress * 0.2f);
+            }
+        }
+        finally
+        {
+            ArrayPoolUtils.ReturnInt(distToWater);
+            ArrayPoolUtils.ReturnInt(distToLand);
+        }
+    }
+
+    private void ApplyAdvancedGeologyClimateAdjustments(float[] sampledTemp, float[] sampledMoist, float[] sampledElev, bool[] isLandTile, bool[] isLakeTile, int tileCount)
+    {
+        if (!enableAdvancedGeologyFramework || geologyProvinceMap == null || geologyStressMap == null)
+            return;
+
+        float reliefRange = Mathf.Max(0.5f, mountainElevationMax - flatElevationMin);
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!isLandTile[i] || isLakeTile[i])
+                continue;
+
+            var province = (TectonicProvinceType)geologyProvinceMap[i];
+            var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+            float stress = geologyStressMap[i];
+            float age = geologyAgeMap[i];
+            float drainage = geologyDrainageMap[i];
+            float sediment = geologySedimentMap[i];
+
+            if (province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.VolcanicArc)
+                sampledElev[i] += reliefRange * geologyFrameworkStrength * (0.06f + stress * 0.08f);
+            else if (province == TectonicProvinceType.RiftZone)
+                sampledElev[i] -= reliefRange * geologyFrameworkStrength * 0.05f;
+            else if (province == TectonicProvinceType.ForelandBasin)
+                sampledElev[i] -= reliefRange * geologyFrameworkStrength * 0.045f;
+            else if (province == TectonicProvinceType.StableShield)
+                sampledElev[i] = Mathf.Lerp(sampledElev[i], Mathf.Lerp(flatElevationMin, hillElevationMin, 0.35f), crustAgeStrength * age * 0.18f);
+
+            float glacialMask = sampledTemp[i] < 0.22f && sampledMoist[i] > 0.42f && sampledElev[i] >= hillElevationMin
+                ? Mathf.Clamp01((0.22f - sampledTemp[i]) / 0.22f)
+                : 0f;
+            if (glacialMask > 0.001f)
+            {
+                float valleyFloor = Mathf.Lerp(hillElevationMin, mountainElevationMin, 0.25f);
+                sampledElev[i] = Mathf.Lerp(sampledElev[i], Mathf.Max(valleyFloor, sampledElev[i] - reliefRange * 0.08f), glaciationStrength * glacialMask);
+                if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Passive)
+                    geologyMarginTypeMap[i] = (int)CoastalMarginType.Glaciated;
+            }
+
+            float sedimentMask = Mathf.Clamp01(sediment * sedimentationStrength + drainage * drainageBasinStrength * 0.4f);
+            if (sedimentMask > 0.001f && sampledElev[i] <= hillElevationMin + reliefRange * 0.12f)
+            {
+                float depositionalTarget = Mathf.Lerp(flatElevationMin, hillElevationMin, 0.12f);
+                sampledElev[i] = Mathf.Lerp(sampledElev[i], depositionalTarget, sedimentMask * 0.22f);
+            }
+
+            sampledElev[i] = Mathf.Clamp(sampledElev[i], flatElevationMin - 0.25f, mountainElevationMax);
+        }
+    }
     
     // =====================================================================================
     //  WATER METADATA — populates TileWaterType, lakeId, waterElevation, riverFlowDirXZ
@@ -3322,6 +4887,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return (h & 0x00FFFFFFu) / 16777215f;
         }
 
+            bool useAdvancedGeology =
+                enableAdvancedGeologyFramework &&
+                geologyProvinceMap != null &&
+                geologyMarginTypeMap != null &&
+                geologyStressMap != null &&
+                geologyAgeMap != null &&
+                geologySedimentMap != null;
+
         bool IsDeepOceanCandidate(int idx)
         {
             if (idx < 0 || idx >= tileCount) return false;
@@ -3386,6 +4959,15 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                             Hash01(n, seed ^ path.Count) * 1.25f +
                             forwardBias * 1.5f;
 
+                        if (useAdvancedGeology)
+                        {
+                            var province = (TectonicProvinceType)geologyProvinceMap[n];
+                            var margin = (CoastalMarginType)geologyMarginTypeMap[n];
+                            score += geologyStressMap[n] * 0.9f + (1f - geologyAgeMap[n]) * 0.45f;
+                            if (province == TectonicProvinceType.RiftZone) score += 0.6f;
+                            if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted) score += 0.7f;
+                        }
+
                         if (score > bestScore)
                         {
                             bestScore = score;
@@ -3418,6 +5000,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     if (usedCenterlineTiles.Contains(candidate)) continue;
 
                     float candidateScore = waterDistanceFromCoast[candidate] + Hash01(candidate, seed ^ 0x2D1);
+                    if (useAdvancedGeology)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[candidate];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[candidate];
+                        float stress = geologyStressMap[candidate];
+                        float age = geologyAgeMap[candidate];
+
+                        if (province == TectonicProvinceType.RiftZone) candidateScore += 0.9f;
+                        if (margin == CoastalMarginType.Active) candidateScore += 1.15f;
+                        else if (margin == CoastalMarginType.Rifted) candidateScore += 0.8f;
+                        candidateScore += stress * 1.2f + (1f - age) * 0.6f;
+                    }
                     if (candidateScore > bestSeedScore)
                     {
                         bestSeedScore = candidateScore;
@@ -3500,6 +5094,194 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
                     if (secondFlank >= 0 && Hash01(centerTile, seed ^ 0x6A09) > 0.6f)
                         StampTrenchTile(secondFlank, centerDepth * 0.55f);
+                }
+            }
+        }
+
+        // --- Pass 1b: Underwater terrain variety (elevation only) ---
+        // Continental shelves: gradual shallow slope near coastlines (distance 1-3)
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (!tileData.TryGetValue(i, out var td)) continue;
+            if (td.biome != Biome.Ocean && td.biome != Biome.Seas) continue;
+            int dist = waterDistanceFromCoast[i];
+            if (dist < 1 || dist > 3) continue;
+            if (td.underwaterBiome == Biome.Trench) continue; // don't overwrite trenches
+
+            // Gradual depth: shelf is shallower near coast
+            float shelfFactor = 1f - (dist - 1) / 3f; // 1.0 at dist=1, 0.33 at dist=3
+            float shelfTarget = oceanWaterElev - 0.3f;
+            float shelfBlend = shelfFactor * 0.6f;
+            if (useAdvancedGeology)
+            {
+                var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                float sediment = geologySedimentMap[i];
+
+                if (margin == CoastalMarginType.Passive)
+                {
+                    shelfTarget = oceanWaterElev - 0.22f;
+                    shelfBlend += 0.08f;
+                }
+                else if (margin == CoastalMarginType.Deltaic)
+                {
+                    shelfTarget = oceanWaterElev - 0.16f;
+                    shelfBlend += 0.14f;
+                }
+                else if (margin == CoastalMarginType.Glaciated)
+                {
+                    shelfTarget = oceanWaterElev - 0.2f;
+                    shelfBlend += 0.06f;
+                }
+                else if (margin == CoastalMarginType.Active)
+                {
+                    shelfTarget = oceanWaterElev - 0.42f;
+                    shelfBlend *= 0.78f;
+                }
+                else if (margin == CoastalMarginType.Rifted)
+                {
+                    shelfTarget = oceanWaterElev - 0.47f;
+                    shelfBlend *= 0.72f;
+                }
+
+                shelfBlend = Mathf.Clamp01(shelfBlend + sediment * 0.12f * sedimentationStrength);
+            }
+
+            td.elevation = Mathf.Lerp(td.elevation, shelfTarget, shelfBlend);
+            tileData[i] = td;
+            baseData[i] = td;
+        }
+
+        // Mid-ocean ridges: elevated paths through deep ocean
+        if (deepOceanCandidates.Count > 20)
+        {
+            var ridgeRand = new System.Random(unchecked(seed ^ 0xA7B3C1));
+            var usedRidgeTiles = new HashSet<int>();
+            int ridgeCount = Mathf.Clamp(tileCount / 5000, 1, 3);
+
+            for (int ri = 0; ri < ridgeCount; ri++)
+            {
+                // Pick a seed tile far from coast
+                int bestSeed = -1;
+                float bestScore = float.NegativeInfinity;
+                int attempts = Mathf.Min(20, deepOceanCandidates.Count);
+                for (int a = 0; a < attempts; a++)
+                {
+                    int cand = deepOceanCandidates[ridgeRand.Next(deepOceanCandidates.Count)];
+                    if (usedRidgeTiles.Contains(cand)) continue;
+                    float sc = waterDistanceFromCoast[cand] * 0.8f + Hash01(cand, seed ^ 0xD2E5) * 1.5f;
+                    if (useAdvancedGeology)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[cand];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[cand];
+                        sc += (1f - geologyAgeMap[cand]) * 1.25f + geologyStressMap[cand] * 0.35f;
+                        if (province == TectonicProvinceType.RiftZone) sc += 0.9f;
+                        if (margin == CoastalMarginType.Rifted) sc += 0.55f;
+                    }
+                    if (sc > bestScore) { bestScore = sc; bestSeed = cand; }
+                }
+                if (bestSeed < 0) continue;
+
+                // Walk a ridge path
+                int ridgeLen = 6 + ridgeRand.Next(4, 12);
+                var ridgePath = new List<int>();
+                var ridgeVisited = new HashSet<int>();
+                int cur = bestSeed;
+                Vector2 prevDir = Vector2.zero;
+
+                while (ridgePath.Count < ridgeLen)
+                {
+                    ridgePath.Add(cur);
+                    ridgeVisited.Add(cur);
+                    usedRidgeTiles.Add(cur);
+
+                    int bestNext = -1;
+                    float bestNextScore = float.NegativeInfinity;
+                    Vector3 curCenter = hexGrid.tileCenters[cur];
+
+                    foreach (int n in hexGrid.neighbors[cur])
+                    {
+                        if (!IsDeepOceanCandidate(n)) continue;
+                        if (ridgeVisited.Contains(n) || usedRidgeTiles.Contains(n)) continue;
+
+                        Vector3 d3 = hexGrid.tileCenters[n] - curCenter;
+                        d3.y = 0f;
+                        if (d3.sqrMagnitude <= 0.0001f) continue;
+                        Vector2 dir = new Vector2(d3.x, d3.z).normalized;
+
+                        float fwd = prevDir == Vector2.zero ? 0f : Vector2.Dot(prevDir, dir);
+                        float ns = Hash01(n, seed ^ 0xE3F7 ^ ridgePath.Count) * 1.2f + fwd * 1.8f;
+                        if (useAdvancedGeology)
+                        {
+                            ns += (1f - geologyAgeMap[n]) * 0.85f + geologyStressMap[n] * 0.3f;
+                            if ((TectonicProvinceType)geologyProvinceMap[n] == TectonicProvinceType.RiftZone) ns += 0.6f;
+                        }
+                        if (ns > bestNextScore) { bestNextScore = ns; bestNext = n; }
+                    }
+
+                    if (bestNext < 0) break;
+
+                    Vector3 step = hexGrid.tileCenters[bestNext] - curCenter;
+                    step.y = 0f;
+                    prevDir = new Vector2(step.x, step.z).normalized;
+                    cur = bestNext;
+                }
+
+                if (ridgePath.Count < 4) continue;
+
+                // Stamp ridge tiles with elevation bump
+                foreach (int ridgeTile in ridgePath)
+                {
+                    if (!tileData.TryGetValue(ridgeTile, out var rtd)) continue;
+                    if (rtd.underwaterBiome == Biome.Trench) continue;
+                    float ridgeLift = 0.25f + Hash01(ridgeTile, seed ^ 0xF1A2) * 0.15f;
+                    if (useAdvancedGeology)
+                        ridgeLift += (1f - geologyAgeMap[ridgeTile]) * 0.12f + geologyStressMap[ridgeTile] * 0.04f;
+                    rtd.elevation += ridgeLift;
+                    tileData[ridgeTile] = rtd;
+                    baseData[ridgeTile] = rtd;
+                }
+            }
+        }
+
+        // Seamounts: isolated underwater peaks scattered in deep ocean
+        if (deepOceanCandidates.Count > 10)
+        {
+            var seamountRand = new System.Random(unchecked(seed ^ 0xBE47D9));
+            int seamountCount = Mathf.Clamp(tileCount / 2500, 2, useAdvancedGeology ? 10 : 8);
+
+            for (int si = 0; si < seamountCount; si++)
+            {
+                int idx = deepOceanCandidates[seamountRand.Next(deepOceanCandidates.Count)];
+                if (!tileData.TryGetValue(idx, out var std)) continue;
+                if (std.underwaterBiome == Biome.Trench) continue;
+
+                float seamountLift = 0.35f + Hash01(idx, seed ^ 0x4C8A) * 0.25f;
+                if (useAdvancedGeology)
+                {
+                    seamountLift += geologyStressMap[idx] * 0.08f;
+                    if ((TectonicProvinceType)geologyProvinceMap[idx] == TectonicProvinceType.RiftZone)
+                        seamountLift += 0.12f;
+                    if ((CoastalMarginType)geologyMarginTypeMap[idx] == CoastalMarginType.Active)
+                        seamountLift += 0.08f;
+                }
+                std.elevation += seamountLift;
+                tileData[idx] = std;
+                baseData[idx] = std;
+
+                // Optionally bump one neighbor for a broader seamount base
+                if (Hash01(idx, seed ^ 0x5D9B) > 0.5f)
+                {
+                    foreach (int n in hexGrid.neighbors[idx])
+                    {
+                        if (!IsDeepOceanCandidate(n)) continue;
+                        if (!tileData.TryGetValue(n, out var ntd)) continue;
+                        if (ntd.underwaterBiome == Biome.Trench) continue;
+
+                        ntd.elevation += 0.15f + Hash01(n, seed ^ 0x6EA3) * 0.1f;
+                        tileData[n] = ntd;
+                        baseData[n] = ntd;
+                        break; // only one neighbor
+                    }
                 }
             }
         }

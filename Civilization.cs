@@ -256,6 +256,15 @@ public class Civilization : MonoBehaviour
     public int culture;
     public int policyPoints;
     public int faith;
+
+    /// <summary>Cached per-turn yield rates computed by BeginTurn. UI can read these instead of recomputing.</summary>
+    [HideInInspector] public int cachedGoldPerTurn;
+    [HideInInspector] public int cachedFoodPerTurn;
+    [HideInInspector] public int cachedSciencePerTurn;
+    [HideInInspector] public int cachedCulturePerTurn;
+    [HideInInspector] public int cachedPolicyPerTurn;
+    [HideInInspector] public int cachedFaithPerTurn;
+    [HideInInspector] public int cachedFoodConsumption;
     
     [Header("Herds")]
     public bool herdsEnabled = false; // set by techs/cultures when herd mechanic becomes available
@@ -983,6 +992,11 @@ public class Civilization : MonoBehaviour
         // Compute science and culture as per-turn yields (do not accumulate them across turns).
         int totalScienceThisTurn = 0;
         int totalCultureThisTurn = 0;
+        // Track per-turn income rates for UI caching
+        int totalGoldThisTurn = 0;
+        int totalFoodThisTurn = 0;
+        int totalPolicyThisTurn = 0;
+        int totalFaithThisTurn = 0;
 
         foreach (var city in cities)
         {
@@ -990,12 +1004,20 @@ public class Civilization : MonoBehaviour
             {
                 try
                 {
-                    gold         += Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
-                    food         += Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
+                    int cityGold = Mathf.RoundToInt(city.GetGoldPerTurn() * (1 + goldModifier));
+                    int cityFood = Mathf.RoundToInt(city.GetFoodPerTurn() * (1 + foodModifier));
+                    int cityPolicy = city.GetPolicyPointPerTurn();
+                    int cityFaith = Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+                    gold         += cityGold;
+                    food         += cityFood;
                     totalScienceThisTurn += Mathf.RoundToInt(city.GetSciencePerTurn() * (1 + scienceModifier));
                     totalCultureThisTurn += Mathf.RoundToInt(city.GetCulturePerTurn() * (1 + cultureModifier));
-                    policyPoints += city.GetPolicyPointPerTurn(); // Assuming no direct modifier for policy points yet
-                    faith        += Mathf.RoundToInt(city.GetFaithPerTurn() * (1 + faithModifier));
+                    policyPoints += cityPolicy;
+                    faith        += cityFaith;
+                    totalGoldThisTurn += cityGold;
+                    totalFoodThisTurn += cityFood;
+                    totalPolicyThisTurn += cityPolicy;
+                    totalFaithThisTurn += cityFaith;
                 }
                 catch (System.Exception e)
                 {
@@ -1009,7 +1031,9 @@ public class Civilization : MonoBehaviour
         {
             if (tradeRoute != null && tradeRoute.isInterplanetaryRoute)
             {
-                gold += Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+                int tradeGold = Mathf.RoundToInt(tradeRoute.goldPerTurn * (1 + goldModifier));
+                gold += tradeGold;
+                totalGoldThisTurn += tradeGold;
 }
         }
 
@@ -1053,6 +1077,10 @@ public class Civilization : MonoBehaviour
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
             policyPoints += addPol; // no global modifier currently
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            totalPolicyThisTurn += addPol;
         }
 
         // 3.7) Per-unit yields (workers)
@@ -1076,7 +1104,11 @@ public class Civilization : MonoBehaviour
             totalScienceThisTurn += Mathf.RoundToInt(addSci  * (1 + scienceModifier));
             totalCultureThisTurn += Mathf.RoundToInt(addCul  * (1 + cultureModifier));
             faith   += Mathf.RoundToInt(addFai  * (1 + faithModifier));
-            policyPoints += addPol; // no global modifier currently
+            policyPoints += addPol;
+            totalGoldThisTurn += Mathf.RoundToInt(addGold * (1 + goldModifier));
+            totalFoodThisTurn += Mathf.RoundToInt(addFood * (1 + foodModifier));
+            totalFaithThisTurn += Mathf.RoundToInt(addFai  * (1 + faithModifier));
+            totalPolicyThisTurn += addPol;
         }
 
         // 3.75) Herd yields & grazing
@@ -1105,12 +1137,19 @@ public class Civilization : MonoBehaviour
                     // Animal yields (food/gold/production) computed by herd per-100 rules
                     var ay = h.GetAnimalYields();
                     // Apply civilization modifiers to herd yields (food/gold/science/culture/faith)
-                    gold += Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
-                    food += Mathf.RoundToInt(ay.Food * (1 + foodModifier));
+                    int herdGold = Mathf.RoundToInt(ay.Gold * (1 + goldModifier));
+                    int herdFood = Mathf.RoundToInt(ay.Food * (1 + foodModifier));
+                    int herdFaith = Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
+                    gold += herdGold;
+                    food += herdFood;
                     totalScienceThisTurn += Mathf.RoundToInt(ay.Science * (1 + scienceModifier));
                     totalCultureThisTurn += Mathf.RoundToInt(ay.Culture * (1 + cultureModifier));
-                    faith += Mathf.RoundToInt(ay.Faith * (1 + faithModifier));
+                    faith += herdFaith;
                     policyPoints += ay.Policy;
+                    totalGoldThisTurn += herdGold;
+                    totalFoodThisTurn += herdFood;
+                    totalFaithThisTurn += herdFaith;
+                    totalPolicyThisTurn += ay.Policy;
                     // Herd production may be consumed locally for herd builds; add its production to civ stats as well
                     // (optional display/aggregation)
                     // production += h.GetProductionPerTurn();
@@ -1159,14 +1198,19 @@ public class Civilization : MonoBehaviour
                                 }
 
                                 // If rounding left some remaining, remove from largest stacks
-                                while (remainingToRemove > 0 && h.animals.Count > 0)
+                                if (remainingToRemove > 0 && h.animals.Count > 0)
                                 {
-                                    var largest = h.animals[0];
-                                    foreach (var ae in h.animals) if (ae.count > largest.count) largest = ae;
-                                    if (largest == null) break;
-                                    largest.count = Mathf.Max(0, largest.count - 1);
-                                    if (largest.count == 0) h.animals.Remove(largest);
-                                    remainingToRemove--;
+                                    // Sort descending by count once, then trim from the top — O(m log m) instead of O(m*k)
+                                    h.animals.Sort((a, b) => b.count.CompareTo(a.count));
+                                    for (int i = 0; i < h.animals.Count && remainingToRemove > 0; i++)
+                                    {
+                                        var ae = h.animals[i];
+                                        if (ae == null) continue;
+                                        int take = Mathf.Min(remainingToRemove, ae.count);
+                                        ae.count -= take;
+                                        remainingToRemove -= take;
+                                    }
+                                    h.animals.RemoveAll(ae => ae == null || ae.count <= 0);
                                 }
                             }
                         }
@@ -1226,6 +1270,15 @@ public class Civilization : MonoBehaviour
         // Clamp to minimum (allows small negative buffer before critical famine)
         if (food < minimumFoodStockpile)
             food = minimumFoodStockpile;
+
+        // Cache per-turn rates so UI doesn't need to recompute them
+        cachedGoldPerTurn = totalGoldThisTurn;
+        cachedFoodPerTurn = totalFoodThisTurn;
+        cachedSciencePerTurn = totalScienceThisTurn;
+        cachedCulturePerTurn = totalCultureThisTurn;
+        cachedPolicyPerTurn = totalPolicyThisTurn;
+        cachedFaithPerTurn = totalFaithThisTurn;
+        cachedFoodConsumption = totalFoodConsumption;
 
         Debug.Log($"[Civilization][BeginTurn] {civData?.civName}: turn={round} cities={cities?.Count} combatUnits={combatUnits?.Count} workers={workerUnits?.Count} | gold={gold} food={food} science={science} culture={culture} faith={faith}");
 
