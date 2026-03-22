@@ -151,12 +151,6 @@ public class AIPlanner
                       $"timing: danger={TimeDangerMap:F0}ms ctx={TimeContext:F0}ms " +
                       $"strat={TimeStrategic:F0}ms ops={TimeOperational:F0}ms " +
                       $"tact={TimeTactical:F0}ms total={TimeTotal:F0}ms");
-            if (plannedCommands.Count > 0)
-            {
-                var top = plannedCommands.Take(5)
-                    .Select(cmd => $"{cmd.GetType().Name}:{cmd.unit?.name ?? "<null>"}:{cmd.score:F1}");
-                Debug.Log($"[AIPlanner] {civName} top cmds -> {string.Join(", ", top)}");
-            }
         }
     }
 
@@ -176,14 +170,10 @@ public class AIPlanner
                 {
                     cmd.Execute();
                     executed++;
-                    if (Debug.isDebugBuild)
-                        Debug.Log($"[AIPlanner] Executed {DescribeCommand(cmd)}");
                 }
                 else
                 {
                     skipped++;
-                    if (Debug.isDebugBuild)
-                        Debug.LogWarning($"[AIPlanner] Skipped {DescribeCommand(cmd)} because CanExecute() returned false.");
                 }
             }
             catch (System.Exception ex)

@@ -166,7 +166,7 @@ public class CivilizationManager : MonoBehaviour
     /// </summary>
     private IEnumerator CompleteAITurn(Civilization civ)
     {
-        yield return new WaitForSeconds(0.5f);
+        yield return null;
 
         // ───── Phase 1: Command-based tactical AI (plan-then-execute) ─────
         // The AIPlanner handles: danger maps, unstoring, army groups,
@@ -378,7 +378,8 @@ public class CivilizationManager : MonoBehaviour
         float modifier = 0f;
         
         // Check for warmonger trait
-        int warCount = target.relations.Values.Count(r => r == DiplomaticState.War);
+        int warCount = 0;
+        foreach (var r in target.relations.Values) if (r == DiplomaticState.War) warCount++;
         if (warCount >= 2)
         {
             modifier += leader.GetTraitModifier(CivilizationTrait.Warmonger, false);
@@ -397,8 +398,10 @@ public class CivilizationManager : MonoBehaviour
         }
         
         // Check for wealth
-        int targetGold = target.cities.Sum(c => c.GetGoldPerTurn());
-        int evaluatorGold = evaluator.cities.Sum(c => c.GetGoldPerTurn());
+        int targetGold = 0;
+        foreach (var c in target.cities) if (c != null) targetGold += c.GetGoldPerTurn();
+        int evaluatorGold = 0;
+        foreach (var c in evaluator.cities) if (c != null) evaluatorGold += c.GetGoldPerTurn();
         if (targetGold > evaluatorGold * 1.5f)
         {
             modifier += leader.GetTraitModifier(CivilizationTrait.Wealthy, true);
@@ -2221,7 +2224,10 @@ return civ;
         // Example: player presses End Turn (Enter key to avoid conflict with Space for space travel)
         var kb = Keyboard.current;
         if (kb != null && (kb[Key.Enter].wasPressedThisFrame || kb[Key.NumpadEnter].wasPressedThisFrame))
-            AdvanceTurn();
+        {
+            if (TurnManager.Instance != null)
+                TurnManager.Instance.EndPlayerTurn();
+        }
     }
 
     public IEnumerator PerformAITurnCoroutine(Civilization civ)

@@ -210,6 +210,7 @@ public abstract class BaseUnit : MonoBehaviour
 
     public bool TryConsumeAttackPoint()
     {
+        int oldAttackPoints = currentAttackPoints;
         if (currentAttackPoints <= 0) return false;
         currentAttackPoints = Mathf.Max(0, currentAttackPoints - 1);
         if (currentAttackPoints <= 0)
@@ -217,12 +218,15 @@ public abstract class BaseUnit : MonoBehaviour
             var cu = this as CombatUnit;
             if (cu != null) cu.ConsumeAction();
         }
+        try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
         return true;
     }
 
     public virtual void ResetAttackPointsForNewTurn()
     {
+        int oldAttackPoints = currentAttackPoints;
         currentAttackPoints = attackPointsPerTurn;
+        try { GameEventManager.Instance?.RaiseAttackPointsChanged(this, oldAttackPoints, currentAttackPoints, MaxAttackPoints); } catch { }
     }
 
     // Public accessor for the per-turn max AP (configurable per-unit via data assets)
@@ -999,6 +1003,7 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     public virtual bool ApplyDamage(int damageAmount, BaseUnit attacker, bool attackerIsMelee)
     {
+        int previousHealth = currentHealth;
         if (attackerIsMelee)
         {
             // Mark engaged in melee — duration handling deprecated; engagement state should be managed
@@ -1035,6 +1040,7 @@ public abstract class BaseUnit : MonoBehaviour
 
         currentHealth -= damageAmount;
         ShowHealthChangePopup(-Mathf.Abs(damageAmount));
+        try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
 
         // Animals remember recent attacks for predator/prey behavior.
         try
@@ -1101,6 +1107,7 @@ public abstract class BaseUnit : MonoBehaviour
         if (actualHealed <= 0) return;
 
         ShowHealthChangePopup(actualHealed);
+        try { GameEventManager.Instance?.RaiseHealthChanged(this, previousHealth, currentHealth, MaxHealth); } catch { }
         UpdateUnitLabel();
     }
 

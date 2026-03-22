@@ -1,7 +1,9 @@
 // Assets/Scripts/Managers/TurnManager.cs
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using System.Collections;
 
 public class TurnManager : MonoBehaviour
@@ -25,8 +27,6 @@ public class TurnManager : MonoBehaviour
     public event Action<int> OnNeutralTurn;
     /// <summary> Fired when a civilization is about to begin its turn (before BeginTurn). </summary>
     public event Action<Civilization, int> OnCivTurnStarting;
-    /// <summary> Fired when a civilization has begun its turn (after BeginTurn). </summary>
-    public event Action<Civilization, int> OnCivTurnStarted;
     /// <summary> Fired when a civilization ends its turn (triggered by turn advance). </summary>
     public event Action<Civilization, int> OnCivTurnEnded;
     /// <summary> Fired when AI processing begins or ends. </summary>
@@ -129,6 +129,37 @@ public class TurnManager : MonoBehaviour
         StartCoroutine(AdvanceTurnCoroutine());
     }
 
+    private IEnumerator InvokeTurnChangedHandlers(Civilization civ, int round, bool isPlayer, string civType, string civLabel)
+    {
+        var handlers = OnTurnChanged;
+        if (handlers == null)
+            yield break;
+
+        foreach (Action<Civilization, int> handler in handlers.GetInvocationList())
+        {
+            var handlerSw = Stopwatch.StartNew();
+            try
+            {
+                handler(civ, round);
+            }
+            catch (Exception ex)
+            {
+                string owner = handler.Method.DeclaringType != null ? handler.Method.DeclaringType.Name : "<unknown>";
+                Debug.LogError($"[TurnManager] OnTurnChanged handler {owner}.{handler.Method.Name} failed for {civType} '{civLabel}' round={round}: {ex}");
+            }
+
+            long handlerMs = handlerSw.ElapsedMilliseconds;
+            if (handlerMs > 10)
+            {
+                string owner = handler.Method.DeclaringType != null ? handler.Method.DeclaringType.Name : "<unknown>";
+                Debug.Log($"[TurnProfile] {civType} '{civLabel}' OnTurnChanged handler {owner}.{handler.Method.Name}={handlerMs}ms");
+            }
+
+            if (!isPlayer)
+                yield return null;
+        }
+    }
+
     private IEnumerator AdvanceTurnCoroutine()
     {
         if (!turnsStarted)
@@ -146,12 +177,16 @@ public class TurnManager : MonoBehaviour
             // If we just ended the last civ in the list, run end-of-round phases.
             if (currentIndex == civs.Count - 1)
             {
+                var roundSw = Stopwatch.StartNew();
                 OnRoundEnded?.Invoke(round);
+                long msRoundEnded = roundSw.ElapsedMilliseconds;
                 OnNeutralTurn?.Invoke(round);
-
-                // Yield a frame so any coroutines started by neutral-turn subscribers
-                // (e.g. AnimalManager) can begin processing before the next round.
-                yield return null;
+                // Wait for animal processing to complete before advancing to next round
+                // (previously fire-and-forget — animals kept moving through civ turns).
+                if (AnimalManager.Instance != null)
+                    yield return StartCoroutine(AnimalManager.Instance.ProcessTurnCoroutine());
+                long msNeutralTurn = roundSw.ElapsedMilliseconds;
+                Debug.Log($"[TurnProfile] ROUND-END round={round} | OnRoundEnded={msRoundEnded}ms OnNeutralTurn={msNeutralTurn - msRoundEnded}ms");
 
                 round++;
 
@@ -165,52 +200,46 @@ public class TurnManager : MonoBehaviour
                 }
 
                 OnRoundStarted?.Invoke(round);
-            }
-        }
 
-        // Prune civilizations that have no cities and no units to avoid stalled turns
-        if (civs.Count > 0)
-        {
-            var snapshot = civs.ToArray();
-            bool removedAny = false;
-            foreach (var c in snapshot)
-            {
-                if (c == null)
+                // --- Prune dead civs once per round (not every advance) ---
+                bool removedAny = false;
+                for (int pi = civs.Count - 1; pi >= 0; pi--)
                 {
-                    civs.Remove(c);
-                    removedAny = true;
-                    continue;
+                    var c = civs[pi];
+                    if (c == null)
+                    {
+                        civs.RemoveAt(pi);
+                        removedAny = true;
+                        continue;
+                    }
+
+                    bool hasCities = c.cities != null && c.cities.Count > 0;
+                    bool hasCombat = c.combatUnits != null && c.combatUnits.Count > 0;
+                    bool hasWorkers = c.workerUnits != null && c.workerUnits.Count > 0;
+
+                    if (!hasCities && !hasCombat && !hasWorkers)
+                    {
+                        Debug.Log($"TurnManager: Removing empty civilization '{c.civData?.civName ?? "(unknown)"}'");
+                        civs.RemoveAt(pi);
+                        try { CivilizationManager.Instance?.UnregisterCiv(c); } catch { }
+                        try { if (c.gameObject != null) Destroy(c.gameObject); } catch { }
+                        if (playerCiv == c) playerCiv = null;
+                        removedAny = true;
+                    }
                 }
 
-                // Remove any null entries that may have accumulated in the civ's lists
-                try { c.cities?.RemoveAll(x => x == null); } catch { }
-                try { c.combatUnits?.RemoveAll(x => x == null); } catch { }
-                try { c.workerUnits?.RemoveAll(x => x == null); } catch { }
-
-                bool hasCities = c.cities != null && c.cities.Count > 0;
-                bool hasCombat = c.combatUnits != null && c.combatUnits.Count > 0;
-                bool hasWorkers = c.workerUnits != null && c.workerUnits.Count > 0;
-
-                if (!hasCities && !hasCombat && !hasWorkers)
+                if (civs.Count == 0)
                 {
-                    Debug.Log($"TurnManager: Removing empty civilization '{c.civData?.civName ?? "(unknown)"}'");
-                    // Remove from turn list and unregister with CivilizationManager, then destroy object
-                    civs.Remove(c);
-                    try { CivilizationManager.Instance?.UnregisterCiv(c); } catch { }
-                    try { if (c.gameObject != null) Destroy(c.gameObject); } catch { }
-                    if (playerCiv == c) playerCiv = null;
-                    removedAny = true;
+                    Debug.LogWarning("TurnManager: No civilizations remain after pruning. Stopping turns.");
+                    yield break;
                 }
-            }
 
-            if (civs.Count == 0)
-            {
-                Debug.LogWarning("TurnManager: No civilizations remain after pruning. Stopping turns.");
-                yield break;
-            }
+                if (removedAny) currentIndex = -1;
 
-            // If we removed any civs, reset index so turn order remains valid
-            if (removedAny) currentIndex = -1;
+                // Yield another frame after round-end housekeeping so the player turn
+                // doesn't share a frame with pruning + OnRoundStarted work.
+                yield return null;
+            }
         }
 
         // Advance to next civ
@@ -232,35 +261,57 @@ public class TurnManager : MonoBehaviour
             Debug.LogWarning("TurnManager: GameManager instance not found when advancing turns.");
         }
 
+        string civLabel = civ.civData != null ? civ.civData.civName : "?";
+        bool isTribe = civ.civData != null && civ.civData.isTribe;
+        bool isCityState = civ.civData != null && civ.civData.isCityState;
+        string civType = isTribe ? "TRIBE" : isCityState ? "CITYSTATE" : isPlayer ? "PLAYER" : "AI";
+        var sw = Stopwatch.StartNew();
+
         OnCivTurnStarting?.Invoke(civ, round);
         OnAIProcessingChanged?.Invoke(!isPlayer, civ);
 
         civ.BeginTurn(round);
+        long msBeginTurn = sw.ElapsedMilliseconds;
+
+        // Guard: if BeginTurn flagged this civ for removal (lost all units/cities via famine, etc.)
+        // skip the rest of its turn — it will be pruned at end of round.
+        if (civ == null || civ.markedForRemoval)
+        {
+            Debug.Log($"[TurnProfile] {civType} '{civLabel}' SKIPPED (marked for removal after BeginTurn)");
+            if (!isPlayer)
+            {
+                yield return null;
+                AdvanceTurn();
+            }
+            yield break;
+        }
 
         // Simple automatic worker contribution: call the same public methods the UI uses.
-        // Keeps logic minimal (no new scripts) — workers will attempt to contribute work at their turn start.
         if (civ != null && civ.workerUnits != null)
         {
             foreach (var w in civ.workerUnits)
             {
                 if (w == null) continue;
-                // Call the public contribution methods (these already guard for no-job / no-points)
                 w.ContributeWork();
                 w.ContributeWorkToUnit();
                 w.ContributeWorkToWorker();
             }
         }
+        long msWorkerContrib = sw.ElapsedMilliseconds;
 
-        OnCivTurnStarted?.Invoke(civ, round);
-        // Legacy: many systems subscribe here.
-        OnTurnChanged?.Invoke(civ, round);
+        long msBeforeTurnChanged = sw.ElapsedMilliseconds;
+        yield return StartCoroutine(InvokeTurnChangedHandlers(civ, round, isPlayer, civType, civLabel));
+        long msOnTurnChanged = sw.ElapsedMilliseconds;
+
+        Debug.Log($"[TurnProfile] {civType} '{civLabel}' round={round} | BeginTurn={msBeginTurn}ms Workers={msWorkerContrib - msBeginTurn}ms OnTurnChanged={msOnTurnChanged - msBeforeTurnChanged}ms total={msOnTurnChanged}ms | cities={civ.cities?.Count ?? 0} combat={civ.combatUnits?.Count ?? 0} workers={civ.workerUnits?.Count ?? 0}");
 
         if (!isPlayer)
         {
+            long msBeforeAI = sw.ElapsedMilliseconds;
             if (CivilizationManager.Instance != null)
                 yield return CivilizationManager.Instance.PerformAITurnCoroutine(civ);
-            // FIXED: Remove recursive StartCoroutine to prevent infinite call stack
-            // Instead, yield return null then call AdvanceTurn() normally
+            long msAfterAI = sw.ElapsedMilliseconds;
+            Debug.Log($"[TurnProfile] {civType} '{civLabel}' AI={msAfterAI - msBeforeAI}ms");
             yield return null;
             AdvanceTurn();
         }

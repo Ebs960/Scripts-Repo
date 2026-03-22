@@ -180,7 +180,7 @@ public class ClimateManager : MonoBehaviour
         {
             if (TurnManager.Instance != null)
             {
-                TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+                TurnManager.Instance.OnRoundStarted += HandleRoundStarted;
             }
             else
             {
@@ -206,7 +206,7 @@ public class ClimateManager : MonoBehaviour
         {
             if (TurnManager.Instance != null)
             {
-                TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+                TurnManager.Instance.OnRoundStarted -= HandleRoundStarted;
             }
         }
         else
@@ -215,8 +215,9 @@ public class ClimateManager : MonoBehaviour
         }
     }
 
-    private void HandleTurnChanged(Civilization civ, int turnNumber)
+    private void HandleRoundStarted(int turnNumber)
     {
+        if (turnNumber == currentTurn) return;
         currentTurn = turnNumber;
         CheckSeasonChange();
     }

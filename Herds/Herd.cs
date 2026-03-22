@@ -160,6 +160,7 @@ public class Herd : MonoBehaviour
         {
             try { foodReserve = Mathf.Min(storageCapacity, foodReserve + lastGrazedAmount); } catch { foodReserve += lastGrazedAmount; }
         }
+        if (worldUI != null) worldUI.MarkDirty();
     }
 
     /// <summary>
@@ -469,6 +470,9 @@ public class Herd : MonoBehaviour
 
         currentTileIndex = tileIndex;
 
+        // Notify spatial index that a herd moved
+        if (HerdManager.Instance != null) HerdManager.Instance.MarkDirty();
+
         try { (TileOccupancyManager.GetForPlanet(planetIndex) ?? TileOccupancyManager.Instance)?.SetOccupant(tileIndex, this.gameObject, TileLayer.Surface); } catch { }
 
         // Re-register with chunk manager for wrapping if present
@@ -482,6 +486,7 @@ public class Herd : MonoBehaviour
         catch { }
 
         UpdateLabelUI();
+        if (worldUI != null) worldUI.MarkDirty();
         return true;
     }
 

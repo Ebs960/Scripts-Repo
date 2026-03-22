@@ -82,6 +82,7 @@ public class ReligionManager : MonoBehaviour
     /// </summary>
     private void UpdateReligiousPressure(Civilization civ)
     {
+        if (civ == null || civ.cities == null) return;
         // Find all Holy Sites belonging to this civilization
         foreach (City city in civ.cities)
         {

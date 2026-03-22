@@ -125,6 +125,9 @@ public class UnitInfoPanel : MonoBehaviour
         {
             GameEventManager.Instance.OnUnitMoved += HandleUnitMovedEvent;
             GameEventManager.Instance.OnMovementCompleted += HandleUnitMovedEvent;
+            GameEventManager.Instance.OnMovePointsChanged += HandleMovePointsChanged;
+            GameEventManager.Instance.OnAttackPointsChanged += HandleAttackPointsChanged;
+            GameEventManager.Instance.OnHealthChanged += HandleHealthChanged;
             GameEventManager.Instance.OnDamageApplied += HandleCombatEvent;
             GameEventManager.Instance.OnUnitKilled += HandleCombatEvent;
         }
@@ -652,6 +655,9 @@ PopulateForWorkerUnit(currentWorkerUnit);
         {
             GameEventManager.Instance.OnUnitMoved -= HandleUnitMovedEvent;
             GameEventManager.Instance.OnMovementCompleted -= HandleUnitMovedEvent;
+            GameEventManager.Instance.OnMovePointsChanged -= HandleMovePointsChanged;
+            GameEventManager.Instance.OnAttackPointsChanged -= HandleAttackPointsChanged;
+            GameEventManager.Instance.OnHealthChanged -= HandleHealthChanged;
             GameEventManager.Instance.OnDamageApplied -= HandleCombatEvent;
             GameEventManager.Instance.OnUnitKilled -= HandleCombatEvent;
         }
@@ -663,6 +669,48 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (args == null || args.Unit == null) return;
 
         // If the moved unit is the one currently displayed, refresh its info
+        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
+        {
+            UpdateUnitInfoForWorkerUnit();
+        }
+        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
+        {
+            UpdateUnitInfoForCombatUnit();
+        }
+    }
+
+    private void HandleMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
+    {
+        if (args == null || args.Unit == null) return;
+
+        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
+        {
+            UpdateUnitInfoForWorkerUnit();
+        }
+        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
+        {
+            UpdateUnitInfoForCombatUnit();
+        }
+    }
+
+    private void HandleAttackPointsChanged(GameEventManager.UnitValueChangedEventArgs args)
+    {
+        if (args == null || args.Unit == null) return;
+
+        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
+        {
+            UpdateUnitInfoForWorkerUnit();
+        }
+        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
+        {
+            UpdateUnitInfoForCombatUnit();
+        }
+    }
+
+    private void HandleHealthChanged(GameEventManager.UnitValueChangedEventArgs args)
+    {
+        if (args == null || args.Unit == null) return;
+
         if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
         {
             UpdateUnitInfoForWorkerUnit();

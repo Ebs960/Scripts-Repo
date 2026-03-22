@@ -11,13 +11,18 @@ public class HerdWorldUI : MonoBehaviour
 
     private Herd herd;
     private Camera cam;
+    private bool _dirty = true;
 
     public void Initialize(Herd h)
     {
         herd = h;
         cam = Camera.main;
-        UpdateUI();
+        _dirty = true;
+        RefreshUIData();
     }
+
+    /// <summary>Call this when yields/data change (turn change, herd move, production).</summary>
+    public void MarkDirty() { _dirty = true; }
 
     void LateUpdate()
     {
@@ -28,10 +33,15 @@ public class HerdWorldUI : MonoBehaviour
         {
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
         }
-        UpdateUI();
+        // Only recalculate yields when marked dirty
+        if (_dirty)
+        {
+            _dirty = false;
+            RefreshUIData();
+        }
     }
 
-    private void UpdateUI()
+    private void RefreshUIData()
     {
         if (herd == null) return;
         if (populationText != null) populationText.text = $"Pop: {herd.GetPopulation()}";

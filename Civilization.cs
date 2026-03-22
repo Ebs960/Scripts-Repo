@@ -1347,8 +1347,43 @@ public class Civilization : MonoBehaviour
         // 6) Fire turn‐started event
         OnTurnStarted?.Invoke(this, round);
 
-        // After all per-turn effects (which may have killed units), check if this civ is now empty
-        CheckAndDestroyIfEmpty();
+        // After all per-turn effects (which may have killed units), check if this civ is now empty.
+        // NOTE: Do NOT self-destruct here — TurnManager's coroutine still holds a reference to us
+        // and will fire turn-change events after BeginTurn returns.
+        // Instead just flag ourselves; TurnManager's per-round prune will clean us up safely.
+        CheckAndFlagIfEmpty();
+    }
+
+    /// <summary>
+    /// Set to true when the civ has no cities or units left. TurnManager will prune it at end of round.
+    /// </summary>
+    [HideInInspector] public bool markedForRemoval = false;
+
+    /// <summary>
+    /// Prune null entries and flag this civ for removal if empty.
+    /// Does NOT destroy the GameObject — TurnManager does that safely during its prune pass.
+    /// </summary>
+    public void CheckAndFlagIfEmpty()
+    {
+        try
+        {
+            cities?.RemoveAll(x => x == null);
+            combatUnits?.RemoveAll(x => x == null);
+            workerUnits?.RemoveAll(x => x == null);
+
+            bool hasCities = cities != null && cities.Count > 0;
+            bool hasCombat = combatUnits != null && combatUnits.Count > 0;
+            bool hasWorkers = workerUnits != null && workerUnits.Count > 0;
+
+            if (!hasCities && !hasCombat && !hasWorkers)
+            {
+                markedForRemoval = true;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[Civilization] CheckAndFlagIfEmpty failed: {ex.Message}");
+        }
     }
 
     /// <summary>

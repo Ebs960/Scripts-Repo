@@ -16,6 +16,7 @@ public class GameEventManager : MonoBehaviour
     private Queue<ResourceEventArgs> resourceEventPool = new Queue<ResourceEventArgs>();
     private Queue<TileEventArgs> tileEventPool = new Queue<TileEventArgs>();
     private Queue<MovePointsChangedEventArgs> movePointsEventPool = new Queue<MovePointsChangedEventArgs>();
+    private Queue<UnitValueChangedEventArgs> unitValueChangedEventPool = new Queue<UnitValueChangedEventArgs>();
     
     #region Event Declarations
     
@@ -25,6 +26,8 @@ public class GameEventManager : MonoBehaviour
     public event Action<UnitMovementEventArgs> OnMovementCompleted;
     // Move points changed (unit-level)
     public event Action<MovePointsChangedEventArgs> OnMovePointsChanged;
+    public event Action<UnitValueChangedEventArgs> OnAttackPointsChanged;
+    public event Action<UnitValueChangedEventArgs> OnHealthChanged;
     
     // Combat Events
     public event Action<CombatEventArgs> OnCombatStarted;
@@ -110,6 +113,31 @@ public class GameEventManager : MonoBehaviour
             Unit = null;
             OldPoints = 0;
             NewPoints = 0;
+        }
+    }
+
+    public class UnitValueChangedEventArgs : GameEventArgs
+    {
+        public MonoBehaviour Unit { get; private set; }
+        public int OldValue { get; private set; }
+        public int NewValue { get; private set; }
+        public int MaxValue { get; private set; }
+
+        public void Setup(MonoBehaviour unit, int oldValue, int newValue, int maxValue)
+        {
+            Initialize();
+            Unit = unit;
+            OldValue = oldValue;
+            NewValue = newValue;
+            MaxValue = maxValue;
+        }
+
+        public override void Reset()
+        {
+            Unit = null;
+            OldValue = 0;
+            NewValue = 0;
+            MaxValue = 0;
         }
     }
     
@@ -236,6 +264,7 @@ public class GameEventManager : MonoBehaviour
             resourceEventPool.Enqueue(new ResourceEventArgs());
             tileEventPool.Enqueue(new TileEventArgs());
             movePointsEventPool.Enqueue(new MovePointsChangedEventArgs());
+            unitValueChangedEventPool.Enqueue(new UnitValueChangedEventArgs());
         }
     }
     
@@ -260,6 +289,26 @@ public class GameEventManager : MonoBehaviour
         args.Setup(unit, oldPts, newPts);
         OnMovePointsChanged.Invoke(args);
         ReturnMovePointsEventArgs(args);
+    }
+
+    public void RaiseAttackPointsChanged(MonoBehaviour unit, int oldPts, int newPts, int maxPts)
+    {
+        if (OnAttackPointsChanged == null) return;
+
+        var args = GetUnitValueChangedEventArgs();
+        args.Setup(unit, oldPts, newPts, maxPts);
+        OnAttackPointsChanged.Invoke(args);
+        ReturnUnitValueChangedEventArgs(args);
+    }
+
+    public void RaiseHealthChanged(MonoBehaviour unit, int oldHealth, int newHealth, int maxHealth)
+    {
+        if (OnHealthChanged == null) return;
+
+        var args = GetUnitValueChangedEventArgs();
+        args.Setup(unit, oldHealth, newHealth, maxHealth);
+        OnHealthChanged.Invoke(args);
+        ReturnUnitValueChangedEventArgs(args);
     }
     
     public void RaiseMovementStartedEvent(MonoBehaviour unit, int fromTile, int toTile, int cost)
@@ -424,6 +473,13 @@ public class GameEventManager : MonoBehaviour
             return movePointsEventPool.Dequeue();
         return new MovePointsChangedEventArgs();
     }
+
+    private UnitValueChangedEventArgs GetUnitValueChangedEventArgs()
+    {
+        if (unitValueChangedEventPool.Count > 0)
+            return unitValueChangedEventPool.Dequeue();
+        return new UnitValueChangedEventArgs();
+    }
     
     // Return event args to pools
     private void ReturnMovementEventArgs(UnitMovementEventArgs args)
@@ -454,6 +510,12 @@ public class GameEventManager : MonoBehaviour
     {
         args.Reset();
         movePointsEventPool.Enqueue(args);
+    }
+
+    private void ReturnUnitValueChangedEventArgs(UnitValueChangedEventArgs args)
+    {
+        args.Reset();
+        unitValueChangedEventPool.Enqueue(args);
     }
     
     #endregion

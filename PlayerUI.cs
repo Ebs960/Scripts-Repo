@@ -342,6 +342,7 @@ return true;
 
         if (TurnManager.Instance != null)
         {
+            TurnManager.Instance.OnTurnChanged -= HandleTurnChanged; // prevent double-sub
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
 
             // Initialize immediately using current turn info if available
@@ -362,6 +363,7 @@ return true;
         while (TurnManager.Instance == null)
             yield return null;
 
+        TurnManager.Instance.OnTurnChanged -= HandleTurnChanged; // prevent double-sub
         TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
 
         var civ = TurnManager.Instance.GetCurrentCivilization();

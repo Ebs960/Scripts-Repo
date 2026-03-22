@@ -161,6 +161,13 @@ public class OperationalPlanner
 
     private void PruneAssignments(Civilization civ, int currentTurn)
     {
+        // Build a HashSet of alive unit IDs for O(1) lookup instead of O(n) scan
+        var aliveIds = new HashSet<int>();
+        if (civ.combatUnits != null)
+            foreach (var u in civ.combatUnits) if (u != null) aliveIds.Add(u.GetInstanceID());
+        if (civ.workerUnits != null)
+            foreach (var w in civ.workerUnits) if (w != null) aliveIds.Add(w.GetInstanceID());
+
         var toRemove = new List<int>();
         foreach (var kv in assignments)
         {
@@ -168,14 +175,7 @@ public class OperationalPlanner
             // Stale?
             if (a.IsStale(currentTurn)) { toRemove.Add(kv.Key); continue; }
             // Unit still alive and belongs to civ?
-            bool found = false;
-            if (civ.combatUnits != null)
-                foreach (var u in civ.combatUnits)
-                    if (u != null && u.GetInstanceID() == kv.Key) { found = true; break; }
-            if (!found && civ.workerUnits != null)
-                foreach (var w in civ.workerUnits)
-                    if (w != null && w.GetInstanceID() == kv.Key) { found = true; break; }
-            if (!found) { toRemove.Add(kv.Key); continue; }
+            if (!aliveIds.Contains(kv.Key)) { toRemove.Add(kv.Key); continue; }
             // Settler whose target got taken?
             if (a.Role == UnitRole.Settler && a.TargetTile >= 0)
             {

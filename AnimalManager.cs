@@ -35,8 +35,6 @@ public class AnimalManager : MonoBehaviour
 
     // Diagnostics: store spawn-time component dumps by instance id so OnDestroy can report what was attached.
     private readonly Dictionary<int, string> _spawnComponentDumpById = new Dictionary<int, string>(256);
-    // Track whether we've subscribed to TurnManager.OnNeutralTurn
-    private bool _subscribedToTurnManager = false;
 
     void Awake()
     {
@@ -44,46 +42,9 @@ public class AnimalManager : MonoBehaviour
         else { Destroy(gameObject); return; }
     }
 
-    void OnEnable()
-    {
-        TrySubscribeToTurnManager();
-        // Animals are spawned by GameManager during the dedicated spawning phase
-        // (SpawnCivsAndAnimalsOnAllPlanets) to avoid early-generation spawns being wiped out
-        // and then incorrectly blocked by the "already spawned" guard.
-    }
-
-    void OnDisable()
-    {
-        if (_subscribedToTurnManager && TurnManager.Instance != null)
-        {
-            TurnManager.Instance.OnNeutralTurn -= HandleNeutralTurn;
-            _subscribedToTurnManager = false;
-        }
-    }
-
-    void Update()
-    {
-        // If TurnManager wasn't available at OnEnable time, attempt to subscribe until successful.
-        if (!_subscribedToTurnManager)
-            TrySubscribeToTurnManager();
-    }
-
-    private void TrySubscribeToTurnManager()
-    {
-        if (_subscribedToTurnManager) return;
-        if (TurnManager.Instance != null)
-        {
-            TurnManager.Instance.OnNeutralTurn += HandleNeutralTurn;
-            _subscribedToTurnManager = true;
-        }
-    }
-
-    private void HandleNeutralTurn(int round)
-    {
-        // Animals run during the neutral/world phase (once per round).
-        // Use a coroutine so we can yield between animals and avoid freezing.
-        StartCoroutine(ProcessTurnCoroutine());
-    }
+    // Animal processing is now driven directly by TurnManager, which yield-returns
+    // ProcessTurnCoroutine() during the neutral turn phase. This ensures animals
+    // finish moving before the next round begins (previously fire-and-forget).
 
     // Backwards-compatible entry: spawns on the current planet
     public void SpawnInitialAnimals()
@@ -474,7 +435,7 @@ public class AnimalManager : MonoBehaviour
         MoveAllAnimals();
     }
 
-    private IEnumerator ProcessTurnCoroutine()
+    public IEnumerator ProcessTurnCoroutine()
     {
         SpawnNewAnimals();
         yield return null;
@@ -594,17 +555,74 @@ public class AnimalManager : MonoBehaviour
         }
     }
 
+    private bool TryMoveAnimalTo(CombatUnit unit, int targetTileIndex)
+    {
+        if (unit == null || targetTileIndex < 0 || targetTileIndex == unit.currentTileIndex)
+            return false;
+
+        int tileBefore = unit.currentTileIndex;
+        int movePointsBefore = unit.currentMovePoints;
+        bool wasMovingBefore = unit.isMoving;
+
+        unit.MoveTo(targetTileIndex);
+
+        return unit.currentTileIndex != tileBefore
+            || unit.currentMovePoints != movePointsBefore
+            || (!wasMovingBefore && unit.isMoving);
+    }
+
+    private bool TryAnimalAttack(CombatUnit attacker, BaseUnit defender)
+    {
+        if (attacker == null || defender == null || !attacker.HasAttackPoints())
+            return false;
+
+        int attackPointsBefore = attacker.CurrentAttackPoints;
+        int movePointsBefore = attacker.currentMovePoints;
+
+        var dmg = attacker.CurrentAttack;
+        var ctx = new BaseUnit.AttackContext
+        {
+            attacker = attacker,
+            defender = defender,
+            weapon = null,
+            damage = dmg,
+            isRanged = false,
+            isMelee = true
+        };
+
+        attacker.PerformAttack(ctx);
+
+        return attacker.CurrentAttackPoints < attackPointsBefore
+            || attacker.currentMovePoints != movePointsBefore
+            || attacker.hasActedThisTurn;
+    }
+
     private void ProcessSingleAnimalTurn(CombatUnit unit)
     {
+        if (unit == null || unit.data == null)
+            return;
+
         unit.ResetForNewTurn();
-        try { unit.RestoreMovePointsForNewTurn(); } catch { }
 
         var ts = TileSystem.GetForPlanet(unit.planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(unit.currentTileIndex) : null;
         if (tileData == null) return;
 
+        int maxIterations = Mathf.Max(8, unit.currentMovePoints * 4);
+        int iterations = 0;
+
         while (unit.currentMovePoints > 0)
         {
+            iterations++;
+            if (iterations > maxIterations)
+            {
+                Debug.LogWarning($"[AnimalManager] Breaking possible infinite animal turn loop for {unit.name} on tile {unit.currentTileIndex} with mp={unit.currentMovePoints}");
+                break;
+            }
+
+            int tileBefore = unit.currentTileIndex;
+            int movePointsBefore = unit.currentMovePoints;
+            bool wasMovingBefore = unit.isMoving;
             bool moved = false;
             switch (unit.data.animalBehavior)
             {
@@ -621,6 +639,16 @@ public class AnimalManager : MonoBehaviour
             }
             if (!moved) moved = HandleNeutralMovement(unit);
             if (!moved) break;
+
+            bool madeProgress = unit.currentTileIndex != tileBefore
+                || unit.currentMovePoints != movePointsBefore
+                || (!wasMovingBefore && unit.isMoving);
+            if (!madeProgress)
+            {
+                Debug.LogWarning($"[AnimalManager] Animal action reported success without progress for {unit.name} at tile {unit.currentTileIndex}; breaking loop.");
+                break;
+            }
+
             try { if (unit.isMoving) break; } catch { }
         }
     }
@@ -661,20 +689,7 @@ public class AnimalManager : MonoBehaviour
         float distToTarget = ts != null ? ts.GetTileDistance(predator.currentTileIndex, target.currentTileIndex) : float.MaxValue;
         if (distToTarget <= 1f)
         {
-            var dmg = predator is CombatUnit cu ? cu.CurrentAttack : predator.BaseAttack;
-            var ctx = new BaseUnit.AttackContext
-            {
-                attacker = predator,
-                defender = target,
-                weapon = null,
-                damage = dmg,
-                isRanged = false,
-                isMelee = true
-            };
-
-            // Perform attack — PerformAttack will consume attack points itself.
-            predator.PerformAttack(ctx);
-            return true;
+            return TryAnimalAttack(predator, target);
         }
 
         // Not adjacent: choose the best reachable tile this turn, not just a neighbor.
@@ -696,8 +711,7 @@ public class AnimalManager : MonoBehaviour
             }
         }
 
-        predator.MoveTo(bestDestination);
-        return true;
+        return TryMoveAnimalTo(predator, bestDestination);
     }
     
     /// <summary>
@@ -727,8 +741,7 @@ public class AnimalManager : MonoBehaviour
                 ts = TileSystem.GetForPlanet(prey.planetIndex) ?? TileSystem.Instance;
                 if (TryGetReachablePathThisTurn(prey, trapTile.Value, out _))
                 {
-                    prey.MoveTo(trapTile.Value);
-                    return true;
+                    return TryMoveAnimalTo(prey, trapTile.Value);
                 }
 
                 var validDestinations = GetReachableAnimalDestinations(prey, GetAnimalSearchRange(prey, 4, 8));
@@ -747,8 +760,7 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    prey.MoveTo(bestDestination);
-                    return true;
+                    return TryMoveAnimalTo(prey, bestDestination);
                 }
             }
         }
@@ -757,8 +769,7 @@ public class AnimalManager : MonoBehaviour
         int? fleeDestination = GetFleeDirection(prey);
         if (fleeDestination.HasValue)
         {
-            prey.MoveTo(fleeDestination.Value);
-            return true;
+            return TryMoveAnimalTo(prey, fleeDestination.Value);
         }
         
         return false;
@@ -781,8 +792,7 @@ public class AnimalManager : MonoBehaviour
             {
                 if (TryGetReachablePathThisTurn(unit, trapTile.Value, out _))
                 {
-                    unit.MoveTo(trapTile.Value);
-                    return true;
+                    return TryMoveAnimalTo(unit, trapTile.Value);
                 }
 
                 var trapValidDestinations = GetReachableAnimalDestinations(unit, GetAnimalSearchRange(unit, 4, 8));
@@ -801,8 +811,7 @@ public class AnimalManager : MonoBehaviour
                         }
                     }
 
-                    unit.MoveTo(bestDestination);
-                    return true;
+                    return TryMoveAnimalTo(unit, bestDestination);
                 }
             }
         }
@@ -812,8 +821,7 @@ public class AnimalManager : MonoBehaviour
         if (validDestinations.Count > 0)
         {
             int targetTile = validDestinations[Random.Range(0, validDestinations.Count)];
-            unit.MoveTo(targetTile);
-            return true;
+            return TryMoveAnimalTo(unit, targetTile);
         }
         
         return false;
@@ -821,61 +829,40 @@ public class AnimalManager : MonoBehaviour
 
     void TrySpawn(AnimalSpawnRule rule, int pIndex = -1)
     {
-        var candidates = new List<int>();
         if (debugSpawning) Debug.Log($"[AnimalManager] TrySpawn for rule={rule?.unitData?.unitName ?? "<null>"} planet={pIndex}");
         // Determine target planet (default to current)
         if (pIndex < 0) pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
+        if (tileCount == 0) return;
         if (debugSpawning) Debug.Log($"[AnimalManager] PlanetIndex={pIndex} tileCount={tileCount}");
         var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
         if (ts == null || !ts.IsReady())
         {
             Debug.LogWarning("[AnimalManager] TileSystem not ready; cannot spawn animals.");
-            if (debugSpawning) Debug.LogWarning($"[AnimalManager] TileSystem null or not ready for planet {pIndex}");
             return;
         }
 
-        for (int i = 0; i < tileCount; i++)
+        // Rejection sampling: randomly probe tiles instead of scanning every tile on the planet.
+        // This turns O(tileCount) into O(maxAttempts) which is bounded and much cheaper.
+        bool allowsWater = rule.allowedBiomes != null && (
+            System.Array.Exists(rule.allowedBiomes, b => b == Biome.Ocean || b == Biome.Seas || b == Biome.Lake || b == Biome.River)
+        );
+        int maxAttempts = Mathf.Min(200, tileCount);
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
+            int i = Random.Range(0, tileCount);
             var tile = ts.GetTileData(i);
-            if (tile == null)
-            {
-                if (debugSpawning) Debug.Log($"[AnimalManager] Skipping tile {i}: tile data null");
-                continue;
-            }
+            if (tile == null) continue;
 
-
-            // Preserve previous behavior: skip tiles that are not land unless the allowedBiomes includes water biomes
-            bool isWaterTile = !tile.isLand;
-            if (isWaterTile)
-            {
-                // Only allow water tiles if rule explicitly permits water biomes
-                bool allowsWater = rule.allowedBiomes != null && (
-                    System.Array.Exists(rule.allowedBiomes, b => b == Biome.Ocean || b == Biome.Seas || b == Biome.Lake || b == Biome.River)
-                );
-                if (!allowsWater)
-                {
-                    continue;
-                }
-            }
-
-            // One unit per tile: do not spawn on tiles already occupied by a unit or city
+            if (!tile.isLand && !allowsWater) continue;
             if (IsTileOccupiedByUnitOrCity(pIndex, i)) continue;
 
-            candidates.Add(i);
-        }
-
-        if (debugSpawning) Debug.Log($"[AnimalManager] Found {candidates.Count} candidate tiles for rule {rule?.unitData?.unitName}");
-
-        if (candidates.Count == 0)
-        {
-            if (debugSpawning) Debug.LogWarning($"[AnimalManager] No candidate tiles to spawn for {rule?.unitData?.unitName}");
+            SpawnAnimalAtTile(rule, pIndex, i);
             return;
         }
 
-        int chosenIndex = candidates[Random.Range(0, candidates.Count)];
-        SpawnAnimalAtTile(rule, pIndex, chosenIndex);
+        if (debugSpawning) Debug.LogWarning($"[AnimalManager] No valid tile found after {maxAttempts} attempts for {rule?.unitData?.unitName}");
     }
 
     // Instantiate and register an animal at the specified tile index (shared helper)

@@ -213,11 +213,6 @@ public class AIContext
                 if (n >= 0 && n < fog.Length && fog[n] == 0) { frontier.Add(i); break; }
         }
         FrontierTiles[planetIndex] = frontier;
-        if (Debug.isDebugBuild)
-        {
-            string civName = civ != null && civ.civData != null ? civ.civData.civName : "?";
-            Debug.Log($"[AIContext] {civName} planet={planetIndex} fogSummary: enableFog={(ts.enableFogOfWar ? "on" : "off")} total={fog.Length} unseen={unseen} dim={dim} visible={visible} explored={explored} frontier={frontier.Count}");
-        }
         return (explored, fog.Length);
     }
 

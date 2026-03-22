@@ -13,6 +13,9 @@ public class ResourceManager : MonoBehaviour
 
     // all spawned nodes in the world
     private readonly List<ResourceInstance> spawnedResources = new List<ResourceInstance>();
+    // Spatial index for O(1) tile lookup: (planetIndex, tileIndex) -> ResourceInstance
+    private readonly Dictionary<long, ResourceInstance> _tileLookup = new Dictionary<long, ResourceInstance>();
+    private static long ResKey(int planetIndex, int tileIndex) => ((long)planetIndex << 32) | (uint)tileIndex;
 
     private PlanetGenerator planetGenerator;
     private HexGrid grid;
@@ -151,7 +154,10 @@ public class ResourceManager : MonoBehaviour
         
         // Start listening to events
         if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnRoundStarted += HandleRoundStarted;
             TurnManager.Instance.OnTurnChanged += HandleTurnChanged;
+        }
 
         // Spawn batching settings (tweak in inspector)
         resourceSpawnBatchSize = Mathf.Max(1, resourceSpawnBatchSize);
@@ -177,7 +183,10 @@ public class ResourceManager : MonoBehaviour
     void OnDestroy()
     {
         if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.OnRoundStarted -= HandleRoundStarted;
             TurnManager.Instance.OnTurnChanged -= HandleTurnChanged;
+        }
     }
     
     /// <summary>
@@ -192,6 +201,7 @@ public class ResourceManager : MonoBehaviour
                 Destroy(resource.gameObject);
         }
         spawnedResources.Clear();
+        _tileLookup.Clear();
         
         // Reset initialization flag
         _isInitialized = false;
@@ -325,14 +335,46 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+    // Per-round inventory cache: built once on first civ turn of each round
+    private int _inventoryCacheRound = -1;
+    private Dictionary<Civilization, Dictionary<ResourceData, int>> _inventoryCache
+        = new Dictionary<Civilization, Dictionary<ResourceData, int>>();
+
+    private void HandleRoundStarted(int round)
+    {
+        if (round == _inventoryCacheRound) return;
+
+        _inventoryCacheRound = round;
+        _inventoryCache.Clear();
+        foreach (var inst in spawnedResources)
+        {
+            if (inst == null || inst.data == null) continue;
+            var ts = TileSystem.GetForPlanet(inst.planetIndex) ?? TileSystem.Instance;
+            var tileData = ts != null ? ts.GetTileDataFromPlanet(inst.tileIndex, inst.planetIndex) : null;
+            if (tileData == null || tileData.owner == null) continue;
+            var owner = tileData.owner;
+            if (!_inventoryCache.TryGetValue(owner, out var dict))
+            {
+                dict = new Dictionary<ResourceData, int>();
+                _inventoryCache[owner] = dict;
+            }
+            if (dict.TryGetValue(inst.data, out int cnt))
+                dict[inst.data] = cnt + 1;
+            else
+                dict[inst.data] = 1;
+        }
+    }
+
     /// <summary>
     /// At the start of each civ's turn, grant per-turn yields for resources within its territory.
     /// </summary>
     private void HandleTurnChanged(Civilization civ, int round)
     {
-        // Only grant at the start of a civ's own turn
-        // (TurnManager invokes OnTurnChanged before civ.BeginTurn)
-        var inv = GetInventory(civ);
+        if (round != _inventoryCacheRound)
+            HandleRoundStarted(round);
+
+        // Look up this civ's cached inventory in O(1)
+        if (!_inventoryCache.TryGetValue(civ, out var inv)) return;
         foreach (var kv in inv)
         {
             var rd = kv.Key;
@@ -344,8 +386,6 @@ public class ResourceManager : MonoBehaviour
             civ.policyPoints  += rd.policyPointsPerTurn * count;
             civ.faith         += rd.faithPerTurn * count;
         }
-
-        // Improvement yields are handled centrally by ImprovementManager to cover non-resource improvements.
     }
 
     /// <summary>
@@ -386,8 +426,8 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     public ResourceInstance GetResourceInstanceAtTile(int tileIndex, int planetIndex)
     {
-        if (spawnedResources.Count == 0) return null;
-        return spawnedResources.FirstOrDefault(r => r != null && r.tileIndex == tileIndex && r.planetIndex == planetIndex);
+        _tileLookup.TryGetValue(ResKey(planetIndex, tileIndex), out var inst);
+        return inst;
     }
 
     /// <summary>
@@ -516,6 +556,7 @@ public class ResourceManager : MonoBehaviour
             inst.tileIndex = tileIndex;
             inst.planetIndex = planetIndex;
             spawnedResources.Add(inst);
+            _tileLookup[ResKey(planetIndex, tileIndex)] = inst;
 
             // Register resource instance with HexMapChunkManager so it moves during wrap teleport
             try
@@ -539,6 +580,7 @@ public class ResourceManager : MonoBehaviour
             if (inst != null)
             {
                 spawnedResources.Remove(inst);
+                _tileLookup.Remove(ResKey(planetIndex, tileIndex));
                 try { Destroy(inst.gameObject); } catch { }
             }
         }

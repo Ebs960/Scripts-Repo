@@ -131,44 +131,16 @@ public class UnitMovementController : MonoBehaviour
     {
         if (civ == null) return;
 
-        string civName = civ.civData != null ? civ.civData.civName : "null";
-        int civCombatCount = civ.combatUnits != null ? civ.combatUnits.Count : -1;
-        int civWorkerCount = civ.workerUnits != null ? civ.workerUnits.Count : -1;
-        int registryCombatCount = 0;
-        int registryWorkerCount = 0;
-        foreach (var cu in UnitRegistry.GetCombatUnits()) if (cu != null && cu.owner == civ) registryCombatCount++;
-        foreach (var wu in UnitRegistry.GetWorkerUnits()) if (wu != null && wu.owner == civ) registryWorkerCount++;
-        Debug.Log($"[UnitMoveCtrl] HandleTurnChanged START civ={civName} round={round} | civCombat={civCombatCount} civWorkers={civWorkerCount} registryCombat={registryCombatCount} registryWorkers={registryWorkerCount}");
-
-        int combatChecked = 0, combatContinued = 0;
-        int workerChecked = 0, workerContinued = 0;
-
         try
         {
             if (civ.combatUnits != null)
             {
                 foreach (var cu in civ.combatUnits)
                 {
-                    if (cu == null)
+                    if (cu == null) continue;
+                    if (cu.moveOrderPath != null && cu.moveOrderNextStep < cu.moveOrderPath.Count && !cu.isMoving)
                     {
-                        Debug.LogWarning($"[UnitMoveCtrl] SKIPPED null combat unit entry for civ={civName}");
-                        continue;
-                    }
-                    combatChecked++;
-                    bool hasPath = cu.moveOrderPath != null;
-                    bool hasSteps = hasPath && cu.moveOrderNextStep < cu.moveOrderPath.Count;
-                    bool notMoving = !cu.isMoving;
-                    int mp = cu.currentMovePoints;
-
-                    if (hasPath && hasSteps && notMoving)
-                    {
-                        Debug.Log($"[UnitMoveCtrl] CONTINUING combat unit '{cu.name}' | mp={mp} step={cu.moveOrderNextStep}/{cu.moveOrderPath.Count} isMoving={cu.isMoving} tile={cu.currentTileIndex}");
-                        combatContinued++;
                         ExecuteMovement(cu);
-                    }
-                    else if (hasPath)
-                    {
-                        Debug.LogWarning($"[UnitMoveCtrl] SKIPPED combat unit '{cu.name}' — hasPath={hasPath} hasSteps={hasSteps} notMoving={notMoving} isMoving={cu.isMoving} mp={mp} step={cu.moveOrderNextStep}/{(cu.moveOrderPath?.Count ?? -1)} tile={cu.currentTileIndex}");
                     }
                 }
             }
@@ -177,36 +149,18 @@ public class UnitMovementController : MonoBehaviour
             {
                 foreach (var wu in civ.workerUnits)
                 {
-                    if (wu == null)
+                    if (wu == null) continue;
+                    if (wu.moveOrderPath != null && wu.moveOrderNextStep < wu.moveOrderPath.Count && !wu.isMoving)
                     {
-                        Debug.LogWarning($"[UnitMoveCtrl] SKIPPED null worker unit entry for civ={civName}");
-                        continue;
-                    }
-                    workerChecked++;
-                    bool hasPath = wu.moveOrderPath != null;
-                    bool hasSteps = hasPath && wu.moveOrderNextStep < wu.moveOrderPath.Count;
-                    bool notMoving = !wu.isMoving;
-                    int mp = wu.currentMovePoints;
-
-                    if (hasPath && hasSteps && notMoving)
-                    {
-                        Debug.Log($"[UnitMoveCtrl] CONTINUING worker unit '{wu.name}' | mp={mp} step={wu.moveOrderNextStep}/{wu.moveOrderPath.Count} isMoving={wu.isMoving} tile={wu.currentTileIndex}");
-                        workerContinued++;
                         ExecuteMovement(wu);
-                    }
-                    else if (hasPath)
-                    {
-                        Debug.LogWarning($"[UnitMoveCtrl] SKIPPED worker unit '{wu.name}' — hasPath={hasPath} hasSteps={hasSteps} notMoving={notMoving} isMoving={wu.isMoving} mp={mp} step={wu.moveOrderNextStep}/{(wu.moveOrderPath?.Count ?? -1)} tile={wu.currentTileIndex}");
                     }
                 }
             }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[UnitMoveCtrl] HandleTurnChanged EXCEPTION (aborted remaining units!): {ex.Message}\n{ex.StackTrace}");
+            Debug.LogError($"[UnitMoveCtrl] HandleTurnChanged EXCEPTION: {ex.Message}\n{ex.StackTrace}");
         }
-
-        Debug.Log($"[UnitMoveCtrl] HandleTurnChanged END civ={civName} round={round} | combatChecked={combatChecked} combatContinued={combatContinued} workerChecked={workerChecked} workerContinued={workerContinued}");
     }
     
     /// <summary>
