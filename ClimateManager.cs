@@ -86,6 +86,9 @@ public class ClimateManager : MonoBehaviour
     private Dictionary<int, bool> planetDroughtActive = new Dictionary<int, bool>();
     private Dictionary<int, float> planetDroughtSeverity = new Dictionary<int, float>();
 
+    // Mission-driven season duration override (-1 = no override)
+    private int winterDurationOverride = -1;
+
     public event Action<Season> OnSeasonChanged;
 
     void Awake()
@@ -220,6 +223,27 @@ public class ClimateManager : MonoBehaviour
         if (turnNumber == currentTurn) return;
         currentTurn = turnNumber;
         CheckSeasonChange();
+        ApplyPerTurnWinterAttrition();
+    }
+
+    /// <summary>
+    /// Applies winter attrition damage every turn for each planet currently in Winter.
+    /// </summary>
+    private void ApplyPerTurnWinterAttrition()
+    {
+        if (!enableWinterAttrition) return;
+
+        var planetData = GameManager.Instance?.GetPlanetData();
+        if (planetData == null) return;
+
+        foreach (var kvp in planetData)
+        {
+            int planetIndex = kvp.Key;
+            if (GetSeasonForPlanet(planetIndex) == Season.Winter)
+            {
+                ApplyWinterAttrition(planetIndex);
+            }
+        }
     }
 
     private void CheckSeasonChange()
@@ -232,7 +256,8 @@ public class ClimateManager : MonoBehaviour
 
     private void CheckSinglePlanetSeasonChange()
     {
-        if (currentTurn - seasonStartTurn >= turnsPerSeason || forceSeasonChange)
+        int effectiveDuration = GetEffectiveTurnsForSeason(currentSeason);
+        if (currentTurn - seasonStartTurn >= effectiveDuration || forceSeasonChange)
         {
             seasonStartTurn = currentTurn;
             currentSeason = forceSeasonChange ? debugTargetSeason : GetNextSeason(currentSeason);
@@ -256,7 +281,8 @@ public class ClimateManager : MonoBehaviour
             }
 
             int seasonStart = planetSeasonStartTurns[planetIndex];
-            if (currentTurn - seasonStart >= turnsPerSeason || forceSeasonChange)
+            int effectiveDuration = GetEffectiveTurnsForSeason(planetSeasons[planetIndex]);
+            if (currentTurn - seasonStart >= effectiveDuration || forceSeasonChange)
             {
                 planetSeasonStartTurns[planetIndex] = currentTurn;
                 var newSeason = forceSeasonChange ? debugTargetSeason : GetNextSeason(planetSeasons[planetIndex]);
@@ -274,10 +300,35 @@ public class ClimateManager : MonoBehaviour
 
     private void InitializeMultiPlanetClimate()
     {
-planetSeasons.Clear();
+        planetSeasons.Clear();
         planetSeasonStartTurns.Clear();
-        
         // Climate data will be initialized per-planet as they become available
+    }
+
+    /// <summary>
+    /// Returns how many turns the given season should last, accounting for mission overrides.
+    /// </summary>
+    public int GetEffectiveTurnsForSeason(Season season)
+    {
+        if (season == Season.Winter && winterDurationOverride > 0)
+            return winterDurationOverride;
+        return turnsPerSeason;
+    }
+
+    /// <summary>
+    /// Set a mission-driven override for winter duration. Pass -1 to clear.
+    /// </summary>
+    public void SetWinterDurationOverride(int turns)
+    {
+        winterDurationOverride = turns;
+        if (verboseLogs) Debug.Log($"[ClimateManager] Winter duration override set to {turns}");
+    }
+
+    /// <summary>Clear the winter duration override, reverting to turnsPerSeason.</summary>
+    public void ClearWinterDurationOverride()
+    {
+        winterDurationOverride = -1;
+        if (verboseLogs) Debug.Log("[ClimateManager] Winter duration override cleared");
     }
 
     private Season GetNextSeason(Season current)
@@ -320,12 +371,9 @@ planetSeasons.Clear();
 
         if (season == Season.Winter)
         {
-            if (verboseLogs) Debug.Log("[ClimateManager] Applying winter-specific snow effects and attrition.");
+            if (verboseLogs) Debug.Log("[ClimateManager] Applying winter-specific snow effects.");
             ApplyWinterMovementPenalty(planetIndex);
-            if (enableWinterAttrition)
-            {
-                ApplyWinterAttrition(planetIndex);
-            }
+            // Winter attrition is now applied every turn via ApplyPerTurnWinterAttrition()
         }
         else
         {
@@ -574,8 +622,9 @@ planetSeasons.Clear();
         Season s = GetSeasonForPlanet(planetIndex);
         if (s == Season.Winter) return 0;
         if (!planetSeasonStartTurns.TryGetValue(planetIndex, out int start)) return turnsPerSeason * 3;
+        int effectiveDuration = GetEffectiveTurnsForSeason(s);
         int turnsInCurrentSeason = currentTurnNow - start;
-        int turnsLeftInSeason = Mathf.Max(0, turnsPerSeason - turnsInCurrentSeason);
+        int turnsLeftInSeason = Mathf.Max(0, effectiveDuration - turnsInCurrentSeason);
         int seasonsUntilWinter = 2 - (int)s; // Autumn=0, Summer=1, Spring=2
         return turnsLeftInSeason + Mathf.Max(0, seasonsUntilWinter) * turnsPerSeason;
     }

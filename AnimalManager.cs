@@ -15,6 +15,20 @@ public class AnimalManager : MonoBehaviour
         public int spawnRate;
         public int maxCount;
         public Biome[] allowedBiomes;
+
+        [Header("Turn Appearance Window")]
+        [Tooltip("Earliest turn this animal can start spawning. 0 = available from the start.")]
+        public int earliestSpawnTurn = 0;
+        [Tooltip("Last turn this animal can spawn. 0 = no limit (spawns forever).")]
+        public int latestSpawnTurn = 0;
+
+        /// <summary>Returns true if the animal is allowed to spawn on the given turn.</summary>
+        public bool IsAvailableOnTurn(int turn)
+        {
+            if (turn < earliestSpawnTurn) return false;
+            if (latestSpawnTurn > 0 && turn > latestSpawnTurn) return false;
+            return true;
+        }
     }
 
     [Header("Configure each animal type here")]
@@ -121,8 +135,17 @@ public class AnimalManager : MonoBehaviour
         if (spawnedPlanetIndices.Contains(pIndex)) yield break;
         int processed = 0;
 
+        int currentTurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+
         foreach (var rule in spawnRules)
         {
+            // Skip animals outside their turn appearance window
+            if (!rule.IsAvailableOnTurn(currentTurnNumber))
+            {
+                if (debugSpawning) Debug.Log($"[AnimalManager] Skipping initial spawn of {rule.unitData?.unitName}: outside turn window ({rule.earliestSpawnTurn}-{(rule.latestSpawnTurn > 0 ? rule.latestSpawnTurn.ToString() : "∞")}) at turn {currentTurnNumber}");
+                continue;
+            }
+
             int count = Mathf.CeilToInt(rule.initialCount * mult);
             if (count < 1 && mult > 0f) count = 1;
 
@@ -460,8 +483,17 @@ public class AnimalManager : MonoBehaviour
                 countByType[animal.data] = 1;
         }
 
+        int currentTurnNumber = GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
+
         foreach (var rule in spawnRules)
         {
+            // Skip animals outside their turn appearance window
+            if (!rule.IsAvailableOnTurn(currentTurnNumber))
+            {
+                if (debugSpawning) Debug.Log($"[AnimalManager] Skipping per-turn spawn of {rule.unitData?.unitName}: outside turn window ({rule.earliestSpawnTurn}-{(rule.latestSpawnTurn > 0 ? rule.latestSpawnTurn.ToString() : "∞")}) at turn {currentTurnNumber}");
+                continue;
+            }
+
             countByType.TryGetValue(rule.unitData, out int already);
             int maxCount = Mathf.CeilToInt(rule.maxCount * mult);
             if (maxCount < 1 && mult > 0f) maxCount = 1;

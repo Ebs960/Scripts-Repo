@@ -236,6 +236,14 @@ public class Civilization : MonoBehaviour
     public List<GovernmentData>  unlockedGovernments    = new List<GovernmentData>();
     public GovernmentData        currentGovernment;
 
+    [Header("Legacies")]
+    [Tooltip("All legacies this civilization has ever earned from missions")]
+    public List<LegacyData> earnedLegacies = new List<LegacyData>();
+    [Tooltip("Currently promoted legacies (max governed by maxActiveLegacies)")]
+    public List<LegacyData> activeLegacies = new List<LegacyData>();
+    [Tooltip("Maximum number of legacies that can be promoted at once")]
+    public int maxActiveLegacies = 3;
+
     [Header("Unrest & Famine")]
     [Tooltip("0–1 scale. Increases when at war, reduces loyalty city-wide.")]
     [Range(0f, 1f)]

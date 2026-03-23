@@ -104,6 +104,7 @@ public class Herd : MonoBehaviour
         {
             try { owner.herds.Remove(this); } catch { }
         }
+        try { if (worldUIInstance != null) Destroy(worldUIInstance); worldUIInstance = null; worldUI = null; } catch { }
         try { if (visualInstance != null) Destroy(visualInstance); visualInstance = null; } catch { }
     }
 
@@ -321,10 +322,16 @@ public class Herd : MonoBehaviour
     [Header("Label Prefab")]
     [Tooltip("Optional prefab to use for herd world labels. Prefab should contain child objects named 'HerdName' (Text), 'HerdOwner' (Text) and optional 'HerdIcon' (Image). If not assigned, a default generated label is created.")]
     public GameObject herdLabelPrefab;
+    [Header("World UI Prefab")]
+    [Tooltip("Optional prefab for the herd's floating stats UI. Assign this on the root herd prefab if you want a dedicated plug-in slot similar to unit labels. If left null, the active packed/settled visual is searched for a HerdWorldUI component.")]
+    public GameObject herdWorldUIPrefab;
+    [Tooltip("Optional transform used as the parent/anchor when instantiating `herdWorldUIPrefab`. If null the herd root transform is used.")]
+    public Transform herdWorldUIAnchor;
     
     // Runtime visual instance for this herd (packed/settled prefab)
     [HideInInspector] public GameObject visualInstance;
     [HideInInspector] public HerdWorldUI worldUI;
+    private GameObject worldUIInstance;
 
     private void CreateLabelUI()
     {
@@ -881,7 +888,11 @@ public class Herd : MonoBehaviour
         if (visualInstance != null)
         {
             // If current visual is same prefab name, keep it
-            if (visualInstance.name.StartsWith(prefab.name)) return;
+            if (visualInstance.name.StartsWith(prefab.name))
+            {
+                EnsureWorldUI();
+                return;
+            }
             Destroy(visualInstance);
             visualInstance = null;
             worldUI = null;
@@ -889,6 +900,37 @@ public class Herd : MonoBehaviour
 
         visualInstance = Instantiate(prefab, transform.position, Quaternion.identity, transform);
         visualInstance.name = prefab.name + "_inst";
+
+        EnsureWorldUI();
+    }
+
+    private void EnsureWorldUI()
+    {
+        if (herdWorldUIPrefab != null)
+        {
+            if (worldUIInstance == null)
+            {
+                var parent = herdWorldUIAnchor != null ? herdWorldUIAnchor : transform;
+                worldUIInstance = Instantiate(herdWorldUIPrefab, parent);
+                worldUIInstance.name = herdWorldUIPrefab.name + "_inst";
+            }
+
+            worldUI = worldUIInstance.GetComponentInChildren<HerdWorldUI>(true);
+            if (worldUI == null)
+            {
+                Debug.LogWarning($"[Herd] herdWorldUIPrefab '{herdWorldUIPrefab.name}' does not contain a HerdWorldUI component.");
+                return;
+            }
+
+            worldUI.Initialize(this);
+            return;
+        }
+
+        if (worldUIInstance != null)
+        {
+            Destroy(worldUIInstance);
+            worldUIInstance = null;
+        }
 
         // Try to find or create a world UI component
         worldUI = visualInstance.GetComponentInChildren<HerdWorldUI>(true);

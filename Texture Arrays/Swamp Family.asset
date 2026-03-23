@@ -17,6 +17,11 @@ MonoBehaviour:
   normalArray: {fileID: 18700000, guid: 4c3ba15fa4b38cf44a2ca39d448b1a76, type: 3}
   maskArray: {fileID: 18700000, guid: c9a97f66321bcb1469f8d7ff2208fdea, type: 3}
   heightArray: {fileID: 18700000, guid: e84eecbfcc976334fa9a1c3298b14be0, type: 3}
+  mountainAlbedoArray: {fileID: 18700000, guid: c3dda66594708214c8fd4981af199748, type: 3}
+  mountainNormalArray: {fileID: 18700000, guid: 149349648fcff1241991f396e047dca1, type: 3}
+  mountainMaskArray: {fileID: 18700000, guid: d68a4548b77805340bba958987488c8b, type: 3}
+  mountainHeightArray: {fileID: 18700000, guid: acf8eb4622fe0e74bb788168300d30f9, type: 3}
+  mountainEmissiveArray: {fileID: 0}
   emissiveArray: {fileID: 0}
   supportsEmission: 0
   defaultTiling: 1
