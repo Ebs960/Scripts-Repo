@@ -15,6 +15,9 @@ public class ImprovementUpgradeUI : MonoBehaviour
     [SerializeField] private Transform storedUnitsContainer;
     [SerializeField] private GameObject storedUnitButtonPrefab;
     [SerializeField] private TextMeshProUGUI capacityText;
+    [Header("Dismantle UI")]
+    [SerializeField] private Button dismantleButton;
+    [SerializeField] private TextMeshProUGUI dismantleRefundText;
         
     [SerializeField] private Transform upgradeButtonContainer;
     [SerializeField] private GameObject upgradeButtonPrefab;
@@ -103,6 +106,7 @@ public class ImprovementUpgradeUI : MonoBehaviour
             improvementNameText.text = improvement.improvementName;
 
         PopulateUpgradeOptions();
+        RefreshDismantleUI();
 
         // Populate yields summary
         if (improvementYieldsText != null)
@@ -277,6 +281,54 @@ public class ImprovementUpgradeUI : MonoBehaviour
 
             CreateUpgradeButton(upgrade);
         }
+    }
+
+    private void RefreshDismantleUI()
+    {
+        bool canDismantle = currentImprovement != null
+            && currentImprovement.canBeDismantled
+            && currentCiv != null
+            && ImprovementManager.Instance != null;
+
+        if (dismantleButton != null)
+        {
+            dismantleButton.gameObject.SetActive(canDismantle);
+            dismantleButton.onClick.RemoveAllListeners();
+            if (canDismantle)
+                dismantleButton.onClick.AddListener(OnDismantleClicked);
+        }
+
+        if (dismantleRefundText != null)
+        {
+            dismantleRefundText.gameObject.SetActive(canDismantle);
+            dismantleRefundText.text = canDismantle ? BuildDismantleRefundText(currentImprovement) : string.Empty;
+        }
+    }
+
+    private string BuildDismantleRefundText(ImprovementData improvement)
+    {
+        if (improvement == null) return string.Empty;
+        List<string> parts = new List<string>();
+        if (improvement.dismantleGoldRefund > 0)
+            parts.Add($"Gold: {improvement.dismantleGoldRefund}");
+        if (improvement.dismantleResourceRefunds != null)
+        {
+            foreach (var cost in improvement.dismantleResourceRefunds)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                parts.Add($"{cost.resource.resourceName}: {cost.amount}");
+            }
+        }
+        return parts.Count > 0 ? "Dismantle Refund\n" + string.Join("\n", parts) : "Dismantle Refund\nNone";
+    }
+
+    private void OnDismantleClicked()
+    {
+        if (currentImprovement == null || currentCiv == null || currentTileIndex < 0) return;
+        if (ImprovementManager.Instance == null) return;
+
+        if (ImprovementManager.Instance.DismantleImprovement(currentTileIndex, currentCiv, currentPlanetIndex))
+            HidePanel();
     }
 
     private void CreateUpgradeButton(ImprovementUpgradeData upgrade)

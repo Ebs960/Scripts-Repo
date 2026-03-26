@@ -1,10 +1,33 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
+    private enum ModalKind
+    {
+        Narrative,
+        Selection,
+    }
+
+    private sealed class ModalRequest
+    {
+        public ModalKind kind;
+        public string title;
+        public string body;
+        public Sprite image;
+        public string rewardTitle;
+        public string rewardBody;
+        public Sprite rewardImage;
+        public bool allowClose = true;
+        public Action onConfirm;
+        public CrisisData crisis;
+        public List<MissionData> missions;
+    }
+
     public static UIManager Instance { get; private set; }
 
     [Header("UI Panels")]
@@ -24,6 +47,10 @@ public class UIManager : MonoBehaviour
     public GameObject pauseMenuPanel;
     public GameObject playerUI;
     public SpaceMapUI spaceMapUI;
+
+    [Header("Mission and Crisis UI")]
+    public MissionNarrativePopupUI missionNarrativePopupPrefab;
+    public MissionSelectionPopupUI missionSelectionPopupPrefab;
 
     [Header("UI Audio")]
     [Tooltip("Click sound played for all UI Buttons.")]
@@ -45,6 +72,31 @@ public class UIManager : MonoBehaviour
     private bool _wasLoadingLastFrame = false;
 
     private Dictionary<string, GameObject> panelDict;
+    private CrisisManager subscribedCrisisManager;
+    private TurnManager subscribedTurnManager;
+    private readonly Queue<ModalRequest> modalQueue = new Queue<ModalRequest>();
+    private bool modalVisible;
+    private bool handlingSelectionReminder;
+    private CrisisData pendingSelectionCrisis;
+    private MissionNarrativePopupUI narrativePopupInstance;
+    private MissionSelectionPopupUI selectionPopupInstance;
+    private Canvas rootCanvas;
+    private GameObject rootObject;
+    private GameObject backdropObject;
+    private GameObject narrativePanel;
+    private Image narrativeImage;
+    private TextMeshProUGUI narrativeTitle;
+    private TextMeshProUGUI narrativeBody;
+    private Button narrativeCloseButton;
+    private TextMeshProUGUI narrativeCloseText;
+    private Action narrativeCloseAction;
+    private GameObject selectionPanel;
+    private TextMeshProUGUI selectionTitle;
+    private TextMeshProUGUI selectionSubtitle;
+    private Transform selectionGrid;
+    private Button selectionCloseButton;
+    private TextMeshProUGUI selectionCloseText;
+    private TMP_FontAsset defaultFont;
 
     void Awake()
     {
@@ -55,6 +107,7 @@ public class UIManager : MonoBehaviour
         }
         UIManager.Instance = this;
         DontDestroyOnLoad(gameObject);
+        defaultFont = TMP_Settings.defaultFontAsset;
         panelDict = new Dictionary<string, GameObject>
         {
             { "NotificationPanel", notificationPanel },
@@ -115,6 +168,8 @@ public class UIManager : MonoBehaviour
             TradeManager.Instance.OnGlobalTradeEnabled += HandleGlobalTradeEnabled;
             TradeManager.Instance.OnCivilizationTradeEnabled += HandleCivilizationTradeEnabled;
         }
+
+        TrySubscribeMissionCrisisUi();
     }
 
     void OnDestroy()
@@ -124,6 +179,8 @@ public class UIManager : MonoBehaviour
             TradeManager.Instance.OnGlobalTradeEnabled -= HandleGlobalTradeEnabled;
             TradeManager.Instance.OnCivilizationTradeEnabled -= HandleCivilizationTradeEnabled;
         }
+
+        UnsubscribeMissionCrisisUi();
     }
     
     /// <summary>
@@ -251,6 +308,8 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
+        TrySubscribeMissionCrisisUi();
+
         bool loadingNow = IsLoadingActive();
         // If we transitioned from loading->not loading, try to flush queued notifications
         if (_wasLoadingLastFrame && !loadingNow)
@@ -684,5 +743,801 @@ public class UIManager : MonoBehaviour
         {
             Debug.LogWarning("[UIManager] GameManager not found; cannot switch to Earth's moon.");
         }
+    }
+
+    private void TrySubscribeMissionCrisisUi()
+    {
+        if (subscribedCrisisManager == null && CrisisManager.Instance != null)
+        {
+            subscribedCrisisManager = CrisisManager.Instance;
+            subscribedCrisisManager.OnCrisisOminousWarning += HandleCrisisOminousWarning;
+            subscribedCrisisManager.OnCrisisObviousWarning += HandleCrisisObviousWarning;
+            subscribedCrisisManager.OnCrisisStarted += HandleCrisisStarted;
+            subscribedCrisisManager.OnCrisisPhaseChanged += HandleCrisisPhaseChanged;
+            subscribedCrisisManager.OnCrisisEnded += HandleCrisisEnded;
+            subscribedCrisisManager.OnMissionStarted += HandleMissionStarted;
+            subscribedCrisisManager.OnMissionCompleted += HandleMissionCompleted;
+            subscribedCrisisManager.OnMissionFailed += HandleMissionFailed;
+        }
+
+        if (subscribedTurnManager == null && TurnManager.Instance != null)
+        {
+            subscribedTurnManager = TurnManager.Instance;
+            subscribedTurnManager.OnTurnChanged += HandleMissionCrisisTurnChanged;
+        }
+    }
+
+    private void UnsubscribeMissionCrisisUi()
+    {
+        if (subscribedCrisisManager != null)
+        {
+            subscribedCrisisManager.OnCrisisOminousWarning -= HandleCrisisOminousWarning;
+            subscribedCrisisManager.OnCrisisObviousWarning -= HandleCrisisObviousWarning;
+            subscribedCrisisManager.OnCrisisStarted -= HandleCrisisStarted;
+            subscribedCrisisManager.OnCrisisPhaseChanged -= HandleCrisisPhaseChanged;
+            subscribedCrisisManager.OnCrisisEnded -= HandleCrisisEnded;
+            subscribedCrisisManager.OnMissionStarted -= HandleMissionStarted;
+            subscribedCrisisManager.OnMissionCompleted -= HandleMissionCompleted;
+            subscribedCrisisManager.OnMissionFailed -= HandleMissionFailed;
+            subscribedCrisisManager = null;
+        }
+
+        if (subscribedTurnManager != null)
+        {
+            subscribedTurnManager.OnTurnChanged -= HandleMissionCrisisTurnChanged;
+            subscribedTurnManager = null;
+        }
+    }
+
+    private void HandleCrisisOminousWarning(CrisisData crisis)
+    {
+        QueueNarrative(crisis?.crisisName, crisis?.ominousWarningText, crisis?.ominousWarningSplash);
+    }
+
+    private void HandleCrisisObviousWarning(CrisisData crisis)
+    {
+        QueueNarrative(crisis?.crisisName, crisis?.obviousWarningText, crisis?.obviousWarningSplash);
+    }
+
+    private void HandleCrisisStarted(CrisisData crisis)
+    {
+        QueueNarrative(crisis?.crisisName, crisis?.crisisStartText, crisis?.crisisStartSplash);
+
+        var missions = GetAvailableCrisisMissions(crisis);
+        if (missions.Count > 0)
+        {
+            pendingSelectionCrisis = crisis;
+            QueueSelection(crisis, missions);
+        }
+    }
+
+    private void HandleCrisisPhaseChanged(CrisisData crisis, CrisisData.CrisisPhase phase)
+    {
+        if (crisis == null) return;
+
+        switch (phase)
+        {
+            case CrisisData.CrisisPhase.Escalation:
+                QueueNarrative(crisis.crisisName, crisis.escalationText, crisis.escalationSplash);
+                break;
+            case CrisisData.CrisisPhase.Climax:
+                QueueNarrative(crisis.crisisName, crisis.climaxText, crisis.climaxSplash);
+                break;
+            case CrisisData.CrisisPhase.Resolution:
+                QueueNarrative(crisis.crisisName, crisis.resolutionText, crisis.resolutionSplash);
+                break;
+        }
+    }
+
+    private void HandleCrisisEnded(CrisisData crisis)
+    {
+        if (pendingSelectionCrisis == crisis)
+            pendingSelectionCrisis = null;
+    }
+
+    private void HandleMissionStarted(Civilization civ, MissionData mission)
+    {
+        if (!IsPlayerCivilization(civ) || mission == null) return;
+
+        pendingSelectionCrisis = null;
+        QueueNarrative(mission.missionName, ResolveMissionStartBody(mission), mission.splashImage);
+    }
+
+    private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
+    {
+        if (!IsPlayerCivilization(civ) || mission == null) return;
+
+        string body = !string.IsNullOrWhiteSpace(mission.victoryFlavorText)
+            ? mission.victoryFlavorText
+            : mission.description;
+
+        TryGetRewardDisplay(state, out string rewardTitle, out string rewardBody, out Sprite rewardImage);
+
+        QueueNarrative(
+            $"Mission Complete: {mission.missionName}",
+            body,
+            mission.victorySplashImage != null ? mission.victorySplashImage : mission.splashImage,
+            rewardTitle,
+            rewardBody,
+            rewardImage);
+    }
+
+    private void HandleMissionFailed(Civilization civ, MissionData mission, string reason)
+    {
+        if (!IsPlayerCivilization(civ) || mission == null) return;
+
+        string body = string.IsNullOrWhiteSpace(reason)
+            ? mission.failureFlavorText
+            : reason;
+
+        if (!string.IsNullOrWhiteSpace(mission.failureFlavorText) && !string.Equals(body, mission.failureFlavorText, StringComparison.Ordinal))
+            body = mission.failureFlavorText + "\n\n" + body;
+
+        QueueNarrative($"Mission Failed: {mission.missionName}", body, mission.failureSplashImage != null ? mission.failureSplashImage : mission.splashImage);
+    }
+
+    private void HandleMissionCrisisTurnChanged(Civilization civ, int round)
+    {
+        if (handlingSelectionReminder || !IsPlayerCivilization(civ) || pendingSelectionCrisis == null) return;
+
+        if (subscribedCrisisManager == null || subscribedCrisisManager.GetActiveMission(civ) != null) return;
+
+        var available = GetAvailableCrisisMissions(pendingSelectionCrisis);
+        if (available.Count == 0)
+        {
+            pendingSelectionCrisis = null;
+            return;
+        }
+
+        handlingSelectionReminder = true;
+        try
+        {
+            QueueSelection(pendingSelectionCrisis, available);
+        }
+        finally
+        {
+            handlingSelectionReminder = false;
+        }
+    }
+
+    private void QueueNarrative(
+        string title,
+        string body,
+        Sprite image,
+        string rewardTitle = null,
+        string rewardBody = null,
+        Sprite rewardImage = null)
+    {
+        if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(body) && image == null) return;
+
+        EnqueueModal(new ModalRequest
+        {
+            kind = ModalKind.Narrative,
+            title = string.IsNullOrWhiteSpace(title) ? "Notification" : title,
+            body = string.IsNullOrWhiteSpace(body) ? string.Empty : body,
+            image = image,
+            rewardTitle = rewardTitle,
+            rewardBody = rewardBody,
+            rewardImage = rewardImage,
+        });
+    }
+
+    private void QueueSelection(CrisisData crisis, List<MissionData> missions)
+    {
+        if (crisis == null || missions == null || missions.Count == 0) return;
+
+        EnqueueModal(new ModalRequest
+        {
+            kind = ModalKind.Selection,
+            title = string.IsNullOrWhiteSpace(crisis.crisisName) ? "Choose a Mission" : crisis.crisisName,
+            body = "Choose one mission to pursue during this crisis.",
+            crisis = crisis,
+            missions = missions,
+            allowClose = false,
+        });
+    }
+
+    private void EnqueueModal(ModalRequest request)
+    {
+        if (request == null) return;
+        modalQueue.Enqueue(request);
+        TryShowNextModal();
+    }
+
+    private void TryShowNextModal()
+    {
+        if (modalVisible || modalQueue.Count == 0) return;
+
+        var request = modalQueue.Peek();
+        if (TryShowPrefabModal(request))
+        {
+            modalQueue.Dequeue();
+            modalVisible = true;
+            return;
+        }
+
+        EnsureMissionCrisisFallbackUi();
+        if (rootObject == null || backdropObject == null) return;
+
+        request = modalQueue.Dequeue();
+        backdropObject.SetActive(true);
+        modalVisible = true;
+
+        if (request.kind == ModalKind.Selection)
+            ShowMissionCrisisFallbackSelection(request);
+        else
+            ShowMissionCrisisFallbackNarrative(request);
+    }
+
+    private void CloseCurrentMissionCrisisModal()
+    {
+        narrativeCloseAction = null;
+
+        if (narrativePopupInstance != null)
+            narrativePopupInstance.Hide();
+        if (selectionPopupInstance != null)
+            selectionPopupInstance.Hide();
+
+        if (narrativePanel != null) narrativePanel.SetActive(false);
+        if (selectionPanel != null) selectionPanel.SetActive(false);
+        if (backdropObject != null) backdropObject.SetActive(false);
+
+        modalVisible = false;
+        TryShowNextModal();
+    }
+
+    private bool TryShowPrefabModal(ModalRequest request)
+    {
+        EnsureMissionCrisisPrefabViews();
+        if (request == null) return false;
+
+        if (request.kind == ModalKind.Narrative && narrativePopupInstance != null)
+        {
+            narrativePopupInstance.Show(
+                request.title,
+                request.body,
+                request.image,
+                request.rewardTitle,
+                request.rewardBody,
+                request.rewardImage,
+                CloseCurrentMissionCrisisModal);
+            return true;
+        }
+
+        if (request.kind == ModalKind.Selection && selectionPopupInstance != null)
+        {
+            selectionPopupInstance.Show(
+                request.title,
+                request.body,
+                BuildSelectionOptions(request),
+                index => OnSelectionOptionChosen(request, index));
+            return true;
+        }
+
+        return false;
+    }
+
+    private void EnsureMissionCrisisPrefabViews()
+    {
+        if (narrativePopupInstance == null && missionNarrativePopupPrefab != null)
+        {
+            narrativePopupInstance = Instantiate(missionNarrativePopupPrefab);
+            narrativePopupInstance.gameObject.name = missionNarrativePopupPrefab.gameObject.name;
+            narrativePopupInstance.Hide();
+        }
+
+        if (selectionPopupInstance == null && missionSelectionPopupPrefab != null)
+        {
+            selectionPopupInstance = Instantiate(missionSelectionPopupPrefab);
+            selectionPopupInstance.gameObject.name = missionSelectionPopupPrefab.gameObject.name;
+            selectionPopupInstance.Hide();
+        }
+    }
+
+    // Prefabs are standalone and contain their own Canvas; no popup parent resolution required.
+
+    private void EnsureMissionCrisisFallbackUi()
+    {
+        if (rootObject != null) return;
+
+        rootCanvas = ResolveMissionCrisisFallbackCanvas();
+        if (rootCanvas == null)
+        {
+            Debug.LogWarning("UIManager: No Canvas found for mission/crisis fallback UI.");
+            return;
+        }
+
+        rootObject = new GameObject("MissionCrisisRuntimeUI", typeof(RectTransform), typeof(CanvasRenderer));
+        var rootRect = rootObject.GetComponent<RectTransform>();
+        rootRect.SetParent(rootCanvas.transform, false);
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+        rootRect.SetAsLastSibling();
+
+        backdropObject = CreateMissionCrisisFallbackPanel("Backdrop", rootRect, new Color(0f, 0f, 0f, 0.78f));
+        var backdropRect = backdropObject.GetComponent<RectTransform>();
+        backdropRect.anchorMin = Vector2.zero;
+        backdropRect.anchorMax = Vector2.one;
+        backdropRect.offsetMin = Vector2.zero;
+        backdropRect.offsetMax = Vector2.zero;
+        backdropObject.SetActive(false);
+
+        narrativePanel = BuildMissionCrisisFallbackNarrativePanel(rootRect);
+        selectionPanel = BuildMissionCrisisFallbackSelectionPanel(rootRect);
+    }
+
+    private GameObject BuildMissionCrisisFallbackNarrativePanel(RectTransform parent)
+    {
+        var panel = CreateMissionCrisisFallbackPanel("NarrativePanel", parent, new Color(0.1f, 0.11f, 0.13f, 0.98f));
+        var rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.2f, 0.12f);
+        rect.anchorMax = new Vector2(0.8f, 0.88f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        var layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(24, 24, 24, 24);
+        layout.spacing = 16;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        panel.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+        narrativeTitle = CreateMissionCrisisFallbackText("Title", panel.transform, 30, FontStyles.Bold, TextAlignmentOptions.Center);
+        narrativeTitle.color = Color.white;
+
+        narrativeImage = CreateMissionCrisisFallbackImage("Image", panel.transform, true);
+        var imageLayout = narrativeImage.gameObject.AddComponent<LayoutElement>();
+        imageLayout.preferredHeight = 260f;
+        imageLayout.minHeight = 180f;
+
+        var scrollObject = new GameObject("BodyScroll", typeof(RectTransform), typeof(Image), typeof(Mask), typeof(ScrollRect), typeof(LayoutElement));
+        scrollObject.transform.SetParent(panel.transform, false);
+        var scrollRect = scrollObject.GetComponent<RectTransform>();
+        scrollRect.anchorMin = new Vector2(0f, 0f);
+        scrollRect.anchorMax = new Vector2(1f, 1f);
+        scrollRect.offsetMin = Vector2.zero;
+        scrollRect.offsetMax = Vector2.zero;
+        scrollObject.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.04f);
+        scrollObject.GetComponent<Mask>().showMaskGraphic = false;
+        scrollObject.GetComponent<LayoutElement>().flexibleHeight = 1f;
+        scrollObject.GetComponent<LayoutElement>().minHeight = 180f;
+
+        var viewport = scrollObject.GetComponent<ScrollRect>();
+        viewport.horizontal = false;
+        viewport.movementType = ScrollRect.MovementType.Clamped;
+
+        var content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        content.transform.SetParent(scrollObject.transform, false);
+        var contentRect = content.GetComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = new Vector2(1f, 1f);
+        contentRect.pivot = new Vector2(0.5f, 1f);
+        contentRect.offsetMin = new Vector2(16f, 16f);
+        contentRect.offsetMax = new Vector2(-16f, -16f);
+        content.GetComponent<VerticalLayoutGroup>().childControlHeight = true;
+        content.GetComponent<VerticalLayoutGroup>().childControlWidth = true;
+        content.GetComponent<VerticalLayoutGroup>().childForceExpandHeight = false;
+        content.GetComponent<VerticalLayoutGroup>().childForceExpandWidth = true;
+        content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        narrativeBody = CreateMissionCrisisFallbackText("Body", content.transform, 22, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+        narrativeBody.textWrappingMode = TextWrappingModes.Normal;
+        narrativeBody.color = new Color(0.92f, 0.92f, 0.92f, 1f);
+
+        viewport.content = contentRect;
+        viewport.viewport = scrollObject.GetComponent<RectTransform>();
+
+        narrativeCloseButton = CreateMissionCrisisFallbackButton("CloseButton", panel.transform, out narrativeCloseText);
+        narrativeCloseText.text = "Continue";
+        narrativeCloseButton.onClick.AddListener(OnMissionCrisisFallbackNarrativeCloseClicked);
+
+        panel.SetActive(false);
+        return panel;
+    }
+
+    private GameObject BuildMissionCrisisFallbackSelectionPanel(RectTransform parent)
+    {
+        var panel = CreateMissionCrisisFallbackPanel("SelectionPanel", parent, new Color(0.1f, 0.11f, 0.13f, 0.98f));
+        var rect = panel.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.08f, 0.08f);
+        rect.anchorMax = new Vector2(0.92f, 0.92f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        var layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(24, 24, 24, 24);
+        layout.spacing = 16;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        selectionTitle = CreateMissionCrisisFallbackText("SelectionTitle", panel.transform, 30, FontStyles.Bold, TextAlignmentOptions.Center);
+        selectionTitle.color = Color.white;
+
+        selectionSubtitle = CreateMissionCrisisFallbackText("SelectionSubtitle", panel.transform, 22, FontStyles.Normal, TextAlignmentOptions.Center);
+        selectionSubtitle.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+
+        var gridObject = new GameObject("MissionGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter), typeof(LayoutElement));
+        gridObject.transform.SetParent(panel.transform, false);
+        selectionGrid = gridObject.transform;
+
+        var gridRect = gridObject.GetComponent<RectTransform>();
+        gridRect.anchorMin = new Vector2(0f, 0f);
+        gridRect.anchorMax = new Vector2(1f, 1f);
+        gridRect.offsetMin = Vector2.zero;
+        gridRect.offsetMax = Vector2.zero;
+
+        var grid = gridObject.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new Vector2(360f, 300f);
+        grid.spacing = new Vector2(16f, 16f);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 2;
+        grid.childAlignment = TextAnchor.UpperCenter;
+
+        gridObject.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        gridObject.GetComponent<LayoutElement>().flexibleHeight = 1f;
+
+        selectionCloseButton = CreateMissionCrisisFallbackButton("SelectionCloseButton", panel.transform, out selectionCloseText);
+        selectionCloseText.text = "Decide Later";
+        selectionCloseButton.onClick.AddListener(CloseCurrentMissionCrisisModal);
+
+        panel.SetActive(false);
+        return panel;
+    }
+
+    private void ShowMissionCrisisFallbackNarrative(ModalRequest request)
+    {
+        selectionPanel.SetActive(false);
+        narrativePanel.SetActive(true);
+
+        narrativeTitle.text = request.title;
+        narrativeBody.text = BuildRuntimeNarrativeBody(request);
+        narrativeCloseAction = request.onConfirm;
+        narrativeCloseText.text = request.onConfirm != null ? "Accept" : "Continue";
+
+        if (request.image != null)
+        {
+            narrativeImage.sprite = request.image;
+            narrativeImage.preserveAspect = true;
+            narrativeImage.gameObject.SetActive(true);
+        }
+        else
+        {
+            narrativeImage.sprite = null;
+            narrativeImage.gameObject.SetActive(false);
+        }
+    }
+
+    private void ShowMissionCrisisFallbackSelection(ModalRequest request)
+    {
+        narrativePanel.SetActive(false);
+        selectionPanel.SetActive(true);
+
+        selectionTitle.text = string.IsNullOrWhiteSpace(request.title)
+            ? "Choose a Mission"
+            : request.title;
+        selectionSubtitle.text = string.IsNullOrWhiteSpace(request.body)
+            ? string.Empty
+            : request.body;
+
+        foreach (Transform child in selectionGrid)
+            Destroy(child.gameObject);
+
+        var missions = request.missions ?? new List<MissionData>();
+        foreach (var mission in missions)
+            BuildMissionCrisisFallbackMissionCard(selectionGrid, mission, request.crisis);
+
+        // Selection must be chosen; hide the close/defer button.
+        selectionCloseButton.gameObject.SetActive(false);
+    }
+
+    private string BuildRuntimeNarrativeBody(ModalRequest request)
+    {
+        if (request == null) return string.Empty;
+
+        var builder = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(request.body))
+            builder.Append(request.body.Trim());
+
+        if (!string.IsNullOrWhiteSpace(request.rewardTitle) || !string.IsNullOrWhiteSpace(request.rewardBody))
+        {
+            if (builder.Length > 0) builder.Append("\n\n");
+            if (!string.IsNullOrWhiteSpace(request.rewardTitle))
+                builder.AppendLine(request.rewardTitle.Trim());
+            if (!string.IsNullOrWhiteSpace(request.rewardBody))
+                builder.Append(request.rewardBody.Trim());
+        }
+
+        return builder.ToString();
+    }
+
+    private List<MissionSelectionPopupUI.OptionData> BuildSelectionOptions(ModalRequest request)
+    {
+        var options = new List<MissionSelectionPopupUI.OptionData>(4);
+        if (request?.missions == null) return options;
+
+        int count = Mathf.Min(4, request.missions.Count);
+        for (int i = 0; i < count; i++)
+        {
+            var mission = request.missions[i];
+            options.Add(new MissionSelectionPopupUI.OptionData
+            {
+                title = mission != null ? mission.missionName : string.Empty,
+                body = BuildMissionCardText(mission),
+                splash = mission != null && mission.splashImage != null ? mission.splashImage : mission != null ? mission.icon : null,
+                interactable = mission != null,
+            });
+        }
+
+        return options;
+    }
+
+    private void OnSelectionOptionChosen(ModalRequest request, int index)
+    {
+        if (request?.missions == null || index < 0 || index >= request.missions.Count)
+        {
+            ShowNotification("That mission option is not available.");
+            return;
+        }
+
+        OnChooseMissionClicked(request.crisis, request.missions[index]);
+    }
+
+    private void BuildMissionCrisisFallbackMissionCard(Transform parent, MissionData mission, CrisisData crisis)
+    {
+        var card = CreateMissionCrisisFallbackPanel(mission != null ? mission.missionName : "MissionCard", parent as RectTransform, new Color(0.15f, 0.18f, 0.2f, 1f));
+        var layout = card.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(16, 16, 16, 16);
+        layout.spacing = 10;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        var image = CreateMissionCrisisFallbackImage("Splash", card.transform, true);
+        image.sprite = mission != null && mission.splashImage != null ? mission.splashImage : mission != null ? mission.icon : null;
+        image.gameObject.SetActive(image.sprite != null);
+        var imageLayout = image.gameObject.AddComponent<LayoutElement>();
+        imageLayout.preferredHeight = 110f;
+
+        var title = CreateMissionCrisisFallbackText("Title", card.transform, 24, FontStyles.Bold, TextAlignmentOptions.Center);
+        title.text = mission != null && !string.IsNullOrWhiteSpace(mission.missionName) ? mission.missionName : "Unnamed Mission";
+        title.color = Color.white;
+
+        var body = CreateMissionCrisisFallbackText("Body", card.transform, 18, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+        body.text = BuildMissionCardText(mission);
+        body.color = new Color(0.92f, 0.92f, 0.92f, 1f);
+
+        var spacer = new GameObject("Spacer", typeof(RectTransform), typeof(LayoutElement));
+        spacer.transform.SetParent(card.transform, false);
+        spacer.GetComponent<LayoutElement>().flexibleHeight = 1f;
+
+        var chooseButton = CreateMissionCrisisFallbackButton("ChooseButton", card.transform, out var chooseText);
+        chooseText.text = "Choose Mission";
+        chooseButton.onClick.AddListener(() => OnChooseMissionClicked(crisis, mission));
+    }
+
+    private void OnChooseMissionClicked(CrisisData crisis, MissionData mission)
+    {
+        var civ = GetPlayerCivilization();
+        if (civ == null || mission == null || subscribedCrisisManager == null)
+        {
+            ShowNotification("Mission selection is not ready yet.");
+            return;
+        }
+
+        if (subscribedCrisisManager.StartMission(civ, mission))
+        {
+            pendingSelectionCrisis = null;
+            CloseCurrentMissionCrisisModal();
+            return;
+        }
+
+        ShowNotification($"Could not start mission '{mission.missionName}'.");
+    }
+
+    private void OnMissionCrisisFallbackNarrativeCloseClicked()
+    {
+        var action = narrativeCloseAction;
+        CloseCurrentMissionCrisisModal();
+        action?.Invoke();
+    }
+
+    private List<MissionData> GetAvailableCrisisMissions(CrisisData crisis)
+    {
+        var result = new List<MissionData>();
+        if (crisis == null || subscribedCrisisManager == null) return result;
+
+        var civ = GetPlayerCivilization();
+        if (civ == null) return result;
+
+        return subscribedCrisisManager.GetAvailableMissions(civ, crisis);
+    }
+
+    private Civilization GetPlayerCivilization()
+    {
+        if (CivilizationManager.Instance != null && CivilizationManager.Instance.playerCiv != null)
+            return CivilizationManager.Instance.playerCiv;
+
+        if (TurnManager.Instance != null)
+            return TurnManager.Instance.playerCiv;
+
+        return null;
+    }
+
+    private bool IsPlayerCivilization(Civilization civ)
+    {
+        var player = GetPlayerCivilization();
+        return civ != null && player != null && civ == player;
+    }
+
+    private string ResolveMissionStartBody(MissionData mission)
+    {
+        if (mission == null) return string.Empty;
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(mission.flavorText)) parts.Add(mission.flavorText.Trim());
+        if (!string.IsNullOrWhiteSpace(mission.description)) parts.Add(mission.description.Trim());
+
+        return string.Join("\n\n", parts);
+    }
+
+    private string BuildMissionCardText(MissionData mission)
+    {
+        if (mission == null) return string.Empty;
+
+        var sb = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(mission.description))
+            sb.AppendLine(mission.description.Trim());
+
+        if (mission.objectives != null && mission.objectives.Count > 0)
+        {
+            if (sb.Length > 0) sb.AppendLine();
+            sb.AppendLine("Objectives:");
+            int count = Mathf.Min(3, mission.objectives.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var objective = mission.objectives[i];
+                if (objective == null) continue;
+
+                string label = !string.IsNullOrWhiteSpace(objective.objectiveName)
+                    ? objective.objectiveName.Trim()
+                    : objective.type.ToString();
+                sb.Append("• ").AppendLine(label);
+            }
+        }
+
+        if (mission.constraints != null && mission.constraints.Length > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Constraints apply while active.");
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private bool TryGetRewardDisplay(CrisisManager.MissionState state, out string rewardTitle, out string rewardBody, out Sprite rewardSprite)
+    {
+        rewardTitle = null;
+        rewardBody = null;
+        rewardSprite = null;
+
+        var mission = state?.mission;
+        var tiers = mission?.rewardTiers;
+        if (tiers == null || tiers.Length == 0) return false;
+
+        MissionData.RewardTier chosenTier = null;
+        foreach (var tier in tiers)
+        {
+            if (tier == null || tier.rewardLegacy == null) continue;
+            if (state.CompletedObjectiveCount < tier.requiredObjectivesCompleted) continue;
+
+            if (chosenTier == null || tier.requiredObjectivesCompleted > chosenTier.requiredObjectivesCompleted)
+                chosenTier = tier;
+        }
+
+        if (chosenTier == null || chosenTier.rewardLegacy == null) return false;
+
+        var legacy = chosenTier.rewardLegacy;
+        rewardTitle = string.IsNullOrWhiteSpace(chosenTier.tierName)
+            ? legacy.legacyName
+            : $"{chosenTier.tierName}: {legacy.legacyName}";
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(chosenTier.completionFlavorText))
+            parts.Add(chosenTier.completionFlavorText.Trim());
+        if (!string.IsNullOrWhiteSpace(legacy.flavorText))
+            parts.Add(legacy.flavorText.Trim());
+        else if (!string.IsNullOrWhiteSpace(legacy.description))
+            parts.Add(legacy.description.Trim());
+
+        rewardBody = string.Join("\n\n", parts);
+        rewardSprite = legacy.bannerImage != null ? legacy.bannerImage : legacy.icon;
+        return true;
+    }
+
+    private Canvas ResolveMissionCrisisFallbackCanvas()
+    {
+        if (playerUI != null)
+        {
+            var canvas = playerUI.GetComponentInParent<Canvas>();
+            if (canvas != null) return canvas;
+        }
+
+        if (notificationPanel != null)
+        {
+            var canvas = notificationPanel.GetComponentInParent<Canvas>();
+            if (canvas != null) return canvas;
+        }
+
+        return FindFirstObjectByType<Canvas>();
+    }
+
+    private GameObject CreateMissionCrisisFallbackPanel(string name, RectTransform parent, Color color)
+    {
+        var panel = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        panel.transform.SetParent(parent, false);
+        panel.GetComponent<Image>().color = color;
+        return panel;
+    }
+
+    private Image CreateMissionCrisisFallbackImage(string name, Transform parent, bool preserveAspect)
+    {
+        var imageObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        imageObject.transform.SetParent(parent, false);
+        var image = imageObject.GetComponent<Image>();
+        image.color = Color.white;
+        image.preserveAspect = preserveAspect;
+        return image;
+    }
+
+    private TextMeshProUGUI CreateMissionCrisisFallbackText(string name, Transform parent, float fontSize, FontStyles style, TextAlignmentOptions alignment)
+    {
+        var textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+        textObject.transform.SetParent(parent, false);
+        var text = textObject.GetComponent<TextMeshProUGUI>();
+        text.font = defaultFont;
+        text.fontSize = fontSize;
+        text.fontStyle = style;
+        text.alignment = alignment;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.text = string.Empty;
+        return text;
+    }
+
+    private Button CreateMissionCrisisFallbackButton(string name, Transform parent, out TextMeshProUGUI buttonText)
+    {
+        var buttonObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
+        buttonObject.transform.SetParent(parent, false);
+        buttonObject.GetComponent<Image>().color = new Color(0.66f, 0.48f, 0.23f, 1f);
+
+        var layout = buttonObject.GetComponent<LayoutElement>();
+        layout.preferredHeight = 44f;
+
+        var button = buttonObject.GetComponent<Button>();
+
+        var textObject = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(buttonObject.transform, false);
+        var textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        buttonText = textObject.GetComponent<TextMeshProUGUI>();
+        buttonText.font = defaultFont;
+        buttonText.fontSize = 20f;
+        buttonText.fontStyle = FontStyles.Bold;
+        buttonText.alignment = TextAlignmentOptions.Center;
+        buttonText.color = new Color(0.08f, 0.08f, 0.08f, 1f);
+
+        return button;
     }
 }

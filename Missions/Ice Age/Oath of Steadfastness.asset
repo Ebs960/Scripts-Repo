@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Oath of Steadfastness
+  m_EditorClassIdentifier: Assembly-CSharp::MissionData
+  missionName: Oath of Steadfastness
+  icon: {fileID: 0}
+  description: 
+  flavorText: "The cold tightens around us. Snow buries the paths we once followed,
+    and hunger waits beyond every frozen hill. If we wander, we weaken. If we scatter,
+    we die. Here we build our shelter. Here we defend our fire. Predators will test
+    us. Storms will break upon us. We will not abandon this ground. \n\nWe swear
+    the Oath of Steadfastness."
+  splashImage: {fileID: 21300000, guid: bf80f9063330ae849959c6cd15321f7d, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 8c523111647d2614b8809259f920c5e0, type: 3}
+  victoryFlavorText: "The shelter stands where storms once raged. Snow drifts melt
+    around hardened walls and trampled ground where predators dared to come. The
+    tribe does not scatter when danger rises. We hold fast. We defend what we build.
+    Hunger, cold, and fear test us, yet we remain. \n\nStrength is not only found
+    in movement, but in standing firm when the world demands surrender."
+  failureSplashImage: {fileID: 21300000, guid: ad09dc0f1d4955d498bee12e96ab064b, type: 3}
+  failureFlavorText: "The shelter does not hold. Storms break our defenses and hunger
+    weakens our resolve. At last the tribe abandons the ground we swore to defend,
+    leaving behind trampled snow and dying embers. We wander once more through a
+    world that shows no mercy. \n\nEndurance alone cannot defeat the great cold."
+  earliestTurn: 0
+  latestTurn: 0
+  requiredTechs: []
+  requiredCultures: []
+  objectives:
+  - objectiveName: Protect the Tribe
+    description: Don't let anyone fall to the wayside
+    icon: {fileID: 0}
+    type: 0
+    targetValue: 13
+    biomeFilter: 
+    specificTech: {fileID: 0}
+    specificCulture: {fileID: 0}
+    specificUnit: {fileID: 0}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  constraints:
+  - type: 1
+    activatesAfterObjectiveIndex: -1
+    targetValue: 1
+    comparison: 0
+    failureFlavorText: 
+    specificUnit: {fileID: 0}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements:
+    - {fileID: 11400000, guid: 30aae2b8223c4524ba8b5f890b3f8d45, type: 2}
+    - {fileID: 11400000, guid: 92093c864b27103459bfe482443a77b5, type: 2}
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  narrativeBeats: []
+  rewardTiers: []

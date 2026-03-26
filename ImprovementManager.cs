@@ -7,6 +7,16 @@ public class ImprovementManager : MonoBehaviour
 {
     public static ImprovementManager Instance { get; private set; }
 
+    public enum ImprovementRemovalReason
+    {
+        Dismantled,
+        Destroyed,
+        Replaced,
+    }
+
+    public event System.Action<Civilization, ImprovementData, int, int> OnImprovementBuilt;
+    public event System.Action<Civilization, ImprovementData, int, int, ImprovementRemovalReason> OnImprovementRemoved;
+
     [Header("Runtime")]
     [Tooltip("Incremented whenever road improvements change so cached road-network data can be invalidated")]
     public int roadNetworkVersion = 0;
@@ -246,6 +256,9 @@ public class ImprovementManager : MonoBehaviour
         if (data.requiresControlledTerritory && !isOwnedByBuilder) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: requiresControlledTerritory not owned tile={tileIndex}"); return false; }
         if (isNeutral && !data.canBuildInNeutralTerritory) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: neutral territory not allowed tile={tileIndex}"); return false; }
         if (isEnemyTerritory && !data.canBuildInEnemyTerritory) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: enemy territory not allowed tile={tileIndex}"); return false; }
+
+        if (!data.CanPayBuildCosts(owner)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: insufficient build costs for {data.improvementName}"); return false; }
+        if (!data.ConsumeBuildCosts(owner)) { Debug.Log($"[ImprovementManager] CreateBuildJob rejected: failed to consume build costs for {data.improvementName}"); return false; }
 
         var job = new BuildJob(tileIndex, planetIndex, owner, data);
         jobs.Add(job);
@@ -692,6 +705,7 @@ public class ImprovementManager : MonoBehaviour
         }
 
         jobs.Remove(job);
+        OnImprovementBuilt?.Invoke(job.owner, job.data, job.tileIndex, job.planetIndex);
     }
 
     // Legacy herd job completion removed; herds handle their own build completion.
@@ -1054,15 +1068,36 @@ public class ImprovementManager : MonoBehaviour
     /// </summary>
     public void RemoveImprovement(int tileIndex, int planetIndex = -1)
     {
+        RemoveImprovementInternal(tileIndex, planetIndex, null, ImprovementRemovalReason.Destroyed, false);
+    }
+
+    public bool DismantleImprovement(int tileIndex, Civilization actor, int planetIndex = -1)
+    {
+        int resolvedPlanet = planetIndex >= 0 ? planetIndex : (GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0);
+        var ts = TileSystem.GetForPlanet(resolvedPlanet) ?? TileSystem.Instance;
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        if (tileData == null || tileData.improvement == null) return false;
+        if (!tileData.improvement.canBeDismantled) return false;
+        if (actor != null && tileData.improvementOwner != null && tileData.improvementOwner != actor) return false;
+
+        var refundCiv = tileData.improvementOwner ?? actor;
+        RemoveImprovementInternal(tileIndex, resolvedPlanet, refundCiv, ImprovementRemovalReason.Dismantled, true);
+        return true;
+    }
+
+    private void RemoveImprovementInternal(int tileIndex, int planetIndex, Civilization refundCiv, ImprovementRemovalReason reason, bool refundCosts)
+    {
         if (planetIndex < 0) planetIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
         var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
         if (tileData == null) return;
         var data = tileData.improvement;
         if (data == null) return;
+        var owner = tileData.improvementOwner;
+        var instanceObject = tileData.improvementInstanceObject;
 
         // Optional destroyed prefab
-        if (data.destroyedPrefab != null)
+        if (reason == ImprovementRemovalReason.Destroyed && data.destroyedPrefab != null)
         {
             var go = Instantiate(data.destroyedPrefab, ts != null ? ts.GetTileSurfacePosition(tileIndex) : Vector3.zero, Quaternion.identity);
             try { var mgr = FindObjectsByType<HexMapChunkManager>(FindObjectsSortMode.None).FirstOrDefault(m => m.PlanetGenerator == planetGenerator); if (mgr != null) mgr.RegisterObjectForWrapAtTile(tileIndex, go); } catch { }
@@ -1070,11 +1105,25 @@ public class ImprovementManager : MonoBehaviour
             if (planetGen != null) go.transform.SetParent(planetGen.transform, true);
         }
 
+        if (instanceObject != null)
+            Destroy(instanceObject);
+
+        if (refundCosts && refundCiv != null)
+            data.RefundDismantleCosts(refundCiv);
+
         tileData.improvement = null;
+        tileData.improvementOwner = null;
+        tileData.improvementInstanceObject = null;
+        tileData.builtUpgrades = null;
         ts?.SetTileData(tileIndex, tileData);
+
+        if (data.isRoad)
+            roadNetworkVersion++;
 
         long trapKey = ((long)planetIndex << 32) ^ (uint)tileIndex;
         traps.Remove(trapKey);
+
+        OnImprovementRemoved?.Invoke(owner, data, tileIndex, planetIndex, reason);
     }
 
     /// <summary>

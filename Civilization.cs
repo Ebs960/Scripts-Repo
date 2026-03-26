@@ -51,6 +51,14 @@ public class Civilization : MonoBehaviour
     public List<CombatUnit> combatUnits     = new List<CombatUnit>();
     public List<WorkerUnit> workerUnits     = new List<WorkerUnit>();
 
+    /// <summary>Register a newly trained combat unit and fire the OnUnitTrained event.</summary>
+    public void RegisterTrainedCombatUnit(CombatUnit unit)
+    {
+        if (unit == null) return;
+        combatUnits.Add(unit);
+        OnUnitTrained?.Invoke(this, unit.data);
+    }
+
     // -------------------- Owned biome aggregates (multi-planet) --------------------
     // Motivation: Tech/Culture requirements used to scan ownedTilesByPlanet and then query tile data for each tile.
     // That becomes O(tiles) per check on large worlds. We maintain incremental counts instead.
@@ -407,6 +415,12 @@ public class Civilization : MonoBehaviour
     public event Action<TechData> OnTechResearched;  // The event
     // Fired after research/culture changes that may affect availability (units/buildings/improvements)
     public event Action OnUnlocksChanged;
+    // Mission-system hooks
+    public event Action<Civilization, PolicyData> OnPolicyAdopted;
+    public event Action<Civilization, GovernmentData> OnGovernmentChanged;
+    public event Action<Civilization, City> OnCityFounded;
+    public event Action<Civilization, PantheonData> OnPantheonFounded;
+    public event Action<Civilization, CombatUnitData> OnUnitTrained;
 
     private int turnCount;
 
@@ -1689,6 +1703,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         {
             activePolicies.Add(p);
             ApplyPolicyBonuses(p); // Apply bonuses when adopted
+            OnPolicyAdopted?.Invoke(this, p);
             // TODO: UI update, notifications
         }
     }
@@ -1764,6 +1779,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
             city.UpdateAvailableBuildings();
         }
 
+        OnGovernmentChanged?.Invoke(this, g);
         // TODO: UI update, notifications
     }
 
@@ -1817,6 +1833,23 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         
         return standardBuilding;
     }
+
+    /// <summary>
+    /// Given a resolved/actual building asset, return the standard archetype it replaces.
+    /// If this is not a unique replacement, returns the same building.
+    /// </summary>
+    public BuildingData GetBaseBuildingData(BuildingData actualBuilding)
+    {
+        if (actualBuilding == null) return null;
+
+        foreach (var kvp in uniqueBuildingReplacements)
+        {
+            if (kvp.Value == actualBuilding)
+                return kvp.Key;
+        }
+
+        return actualBuilding;
+    }
     
     /// <summary>
     /// Gets the appropriate unit data, using unique unit if available
@@ -1857,6 +1890,7 @@ OnCultureStarted?.Invoke(cult); // Fire event for UI
         if (!cities.Contains(city))
         {
             cities.Add(city);
+            OnCityFounded?.Invoke(this, city);
 }
     }
     
@@ -2011,6 +2045,7 @@ return false;
 
     // Apply any faith yield modifiers from beliefs (recompute across all)
     UpdateFaithYieldModifier();
+    OnPantheonFounded?.Invoke(this, pantheon);
 return true;
     }
     

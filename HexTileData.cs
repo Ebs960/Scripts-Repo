@@ -73,6 +73,12 @@ public class HexTileData
     [Tooltip("Which city exerts control over this tile")]
     public City controllingCity;
 
+    // --- Continent Identity ---
+    [Tooltip("Persistent continent identifier for this tile. -1 means the tile is not assigned to a continent.")]
+    public int continentId = -1;
+    [Tooltip("Display name of the continent this tile belongs to.")]
+    public string continentName;
+
     // --- Static Features ---
     [Tooltip("Improvement built here, if any")]
     public ImprovementData improvement;
@@ -133,6 +139,7 @@ public class HexTileData
     public bool HasCity => controllingCity != null;
     public bool HasDistrict => district != null;
     public bool HasHolySite => HasDistrict && district.isHolySite;
+    public bool HasContinent => continentId >= 0 && !string.IsNullOrWhiteSpace(continentName);
 
     /// <summary>
     /// True when this tile is an ocean/seas tile that has a meaningful underwater floor biome

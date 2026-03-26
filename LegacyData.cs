@@ -28,6 +28,12 @@ public class LegacyData : ScriptableObject
     public float attackBonus;
     public float defenseBonus;
     public float movementBonus;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float attackModifier;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float defenseModifier;
+    [Tooltip("Percentage modifier (e.g. 0.1 = +10%)")]
+    public float movementModifier;
     public float foodModifier;
     public float productionModifier;
     public float goldModifier;

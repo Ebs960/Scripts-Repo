@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Oath of the Spear
+  m_EditorClassIdentifier: Assembly-CSharp::MissionData
+  missionName: Oath of the Spear
+  icon: {fileID: 0}
+  description: 
+  flavorText: 'The great beasts still walk the frozen plains. We will hunt the great
+    beasts. We will prove our strength. The cold will learn to fear us. We will feed
+    the little ones.
+
+
+    We swear the Oath of the Spear'
+  splashImage: {fileID: 21300000, guid: afe226772073a214894824e1f8251ed3, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: ac980255a89e24c4caae6e921317c850, type: 3}
+  victoryFlavorText: "The giants fall upon the frozen earth. Their thunderous steps
+    no longer shake the plains, and their hides feed and clothe the tribe through
+    the endless winter. Hunters return marked by frost and triumph, their names spoken
+    with pride. The tribe learns that the world yields to those who face its greatest
+    dangers without fear. We are no longer wanderers in the snow. \n\nWe are masters
+    of the hunt."
+  failureSplashImage: {fileID: 21300000, guid: 1185d29664f499d4398cfbb7640df529, type: 3}
+  failureFlavorText: "The great beasts remain beyond our reach. Hunts end in exhaustion,
+    injury, and empty hands. Spears break. Hunters fall. The tribe watches the giants
+    move across the plains as winter tightens its grip. We endure, but not through
+    triumph. \n\nThe world does not always yield to courage."
+  earliestTurn: 0
+  latestTurn: 0
+  requiredTechs: []
+  requiredCultures: []
+  objectives:
+  - objectiveName: Hunt 8 Mammoth Herds
+    description: The people must be fed
+    icon: {fileID: 0}
+    type: 2
+    targetValue: 8
+    biomeFilter: 
+    specificTech: {fileID: 0}
+    specificCulture: {fileID: 0}
+    specificUnit: {fileID: 11400000, guid: 92f67b8ac6e8cd6419033fe19c304add, type: 2}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  constraints: []
+  narrativeBeats: []
+  rewardTiers:
+  - tierName: Big Game Hunters
+    completionFlavorText: We have the power to kill big things.
+    tierBadge: {fileID: 0}
+    requiredObjectivesCompleted: 1
+    rewardLegacy: {fileID: 11400000, guid: a38ae70635a81c04ea34ff8744a14773, type: 2}

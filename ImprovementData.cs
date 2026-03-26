@@ -127,12 +127,21 @@ public class ImprovementData : ScriptableObject
     [Header("Construction")]
     [Tooltip("How many work points required to finish")]
     public int workCost;
+    [Tooltip("Gold consumed when this improvement build starts.")]
+    public int buildGoldCost;
+    [Tooltip("Resources consumed when this improvement build starts.")]
+    public ResourceCost[] buildResourceCosts;
     [Tooltip("Prefab to show while building")]
     public GameObject constructionPrefab;
     [Tooltip("Prefab to spawn when complete")]
     public GameObject completePrefab;
     [Tooltip("Prefab to spawn if destroyed")]
     public GameObject destroyedPrefab;
+
+    [Header("Dismantle")]
+    public bool canBeDismantled = true;
+    public int dismantleGoldRefund;
+    public ResourceCost[] dismantleResourceRefunds;
     
     [Header("Shelter")]
     [Tooltip("If true, units on this tile are considered sheltered from weather (e.g., winter attrition)")]
@@ -244,5 +253,49 @@ public class ImprovementData : ScriptableObject
                 if (culture != null && !civ.researchedCultures.Contains(culture))
                     return false;
         return true;
+    }
+
+    public bool CanPayBuildCosts(Civilization civ)
+    {
+        if (civ == null) return false;
+        if (buildGoldCost > 0 && civ.gold < buildGoldCost) return false;
+        if (buildResourceCosts != null)
+        {
+            foreach (var cost in buildResourceCosts)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                if (civ.GetResourceCount(cost.resource) < cost.amount) return false;
+            }
+        }
+        return true;
+    }
+
+    public bool ConsumeBuildCosts(Civilization civ)
+    {
+        if (!CanPayBuildCosts(civ)) return false;
+        if (buildGoldCost > 0) civ.gold -= buildGoldCost;
+        if (buildResourceCosts != null)
+        {
+            foreach (var cost in buildResourceCosts)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                civ.ConsumeResource(cost.resource, cost.amount);
+            }
+        }
+        return true;
+    }
+
+    public void RefundDismantleCosts(Civilization civ)
+    {
+        if (civ == null) return;
+        if (dismantleGoldRefund > 0) civ.AddGold(dismantleGoldRefund);
+        if (dismantleResourceRefunds != null)
+        {
+            foreach (var cost in dismantleResourceRefunds)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                civ.AddResource(cost.resource, cost.amount);
+            }
+        }
     }
 }

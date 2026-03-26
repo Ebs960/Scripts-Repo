@@ -652,6 +652,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         resourcesRoot = new GameObject("ResourcesRoot");
         resourcesRoot.transform.SetParent(this.transform, false);
     }
+
+    if (GetComponent<ContinentManager>() == null)
+    {
+        gameObject.AddComponent<ContinentManager>();
+    }
     }
     
     public int planetIndex = 0;
@@ -4396,6 +4401,89 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         public int heightTiles;       // Height in tiles
     }
 
+    private static readonly string[] ContinentNamePrefixes =
+    {
+           "Ael", "Ald", "Alm", "An", "Ar", "Ari", "Bel", "Bren", "Cael", "Caer",
+           "Cal", "Cyr", "Del", "Dra", "Eld", "Eren", "Fen", "Gal", "Galen", "Hal",
+           "Ilan", "Ith", "Kael", "Kor", "Lor", "Lun", "Mar", "Mor", "Ner", "Nor",
+           "Oren", "Or", "Pel", "Quel", "Rha", "Riv", "Sel", "Ser", "Tal", "Tor",
+           "Ul", "Val", "Var", "Vel", "Vor", "Wyn", "Xel", "Yor", "Zel"
+    };
+
+    private static readonly string[] ContinentNameSuffixes =
+    {
+           "ador", "aia", "aine", "akar", "alon", "amar", "andor", "ara", "aran", "aris",
+           "eia", "eira", "elle", "emar", "enia", "enor", "eran", "eria", "eron", "essa",
+           "eth", "etha", "evar", "ia", "ien", "ilar", "imar", "ira", "is", "mere",
+           "onar", "oran", "ora", "orin", "oria", "orne", "or", "os", "ovar", "une",
+           "yra", "yth"
+    };
+
+    public readonly struct ContinentSeedInfo
+    {
+        public ContinentSeedInfo(int id, string name, Vector2Int center, int widthTiles, int heightTiles)
+        {
+            Id = id;
+            Name = name;
+            Center = center;
+            WidthTiles = widthTiles;
+            HeightTiles = heightTiles;
+        }
+
+        public int Id { get; }
+        public string Name { get; }
+        public Vector2Int Center { get; }
+        public int WidthTiles { get; }
+        public int HeightTiles { get; }
+    }
+
+    public List<ContinentSeedInfo> GetGeneratedContinents()
+    {
+        var result = new List<ContinentSeedInfo>();
+        if (continents == null) return result;
+
+        for (int i = 0; i < continents.Count; i++)
+        {
+            var continent = continents[i];
+            result.Add(new ContinentSeedInfo(i, continent.name, continent.center, continent.widthTiles, continent.heightTiles));
+        }
+
+        return result;
+    }
+
+    public int GetContinentIndexForTile(int tileIndex)
+    {
+        if (continents == null || grid == null || tileIndex < 0 || tileIndex >= grid.TileCount)
+            return -1;
+
+        int width = grid.Width;
+        if (width <= 0)
+            return -1;
+
+        var coord = new Vector2Int(tileIndex % width, tileIndex / width);
+        for (int i = 0; i < continents.Count; i++)
+        {
+            var continent = continents[i];
+            float halfW = Mathf.Max(0.5f, continent.widthTiles * 0.5f);
+            float halfH = Mathf.Max(0.5f, continent.heightTiles * 0.5f);
+            float dx = WrappedDelta(coord.x, continent.center.x, width) / halfW;
+            float dy = (coord.y - continent.center.y) / halfH;
+            if ((dx * dx + dy * dy) <= 1f)
+                return i;
+        }
+
+        return -1;
+    }
+
+    public string GetContinentNameForTile(int tileIndex)
+    {
+        int continentIndex = GetContinentIndexForTile(tileIndex);
+        if (continentIndex < 0 || continents == null || continentIndex >= continents.Count)
+            return null;
+
+        return continents[continentIndex].name;
+    }
+
     // --- Helper methods moved to class scope ---
     /// <summary>
     /// Generate continent seeds with per-continent randomized sizes and rotations.
@@ -4457,7 +4545,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     : Mathf.RoundToInt(mapHeightTiles * 0.58f);
 
                 continents.Add(new ContinentData {
-                    name = $"Mainland {i + 1}",
+                    name = GenerateContinentName(landHeavyRand, i, true),
                     center = new Vector2Int(
                         centerX,
                         Mathf.Clamp(targetY + landHeavyRand.Next(-yJitter, yJitter + 1), 0, Mathf.Max(0, mapHeightTiles - 1))
@@ -4531,16 +4619,29 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             // (Stamping debug asserts removed)
 
             continents.Add(new ContinentData {
-                name = $"Continent {continentIndex++}",
+                name = GenerateContinentName(rand, continentIndex - 1, false),
                 center = center,
                 widthTiles = chosenWidthTiles,
                 heightTiles = chosenHeightTiles
             });
+            continentIndex++;
         }
 
         // (Stamping debug logs removed)
 
         return continents;
+    }
+
+    private string GenerateContinentName(System.Random rand, int index, bool mainlandStyle)
+    {
+        if (rand == null)
+            rand = new System.Random(seed ^ 0xC017);
+
+        string prefix = ContinentNamePrefixes[rand.Next(ContinentNamePrefixes.Length)];
+        string suffix = ContinentNameSuffixes[rand.Next(ContinentNameSuffixes.Length)];
+        string root = prefix + suffix;
+
+        return root;
     }
     
     private Vector2Int OffsetToAxial(Vector2Int offset) {
@@ -4549,6 +4650,14 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         int q = col - ((row - (row & 1)) / 2);
         int r = row;
         return new Vector2Int(q, r);
+    }
+
+    private int WrappedDelta(int a, int b, int width)
+    {
+        int delta = a - b;
+        if (Mathf.Abs(delta) > width / 2)
+            delta = delta > 0 ? delta - width : delta + width;
+        return delta;
     }
 
     private int HexDistance(Vector2Int a, Vector2Int b) {

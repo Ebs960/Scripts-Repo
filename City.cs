@@ -1,10 +1,22 @@
 // Assets/Scripts/Cities/City.cs
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
 public class City : MonoBehaviour
 {
+    // ─── Events ───
+    public event Action<City, BuildingData> OnBuildingCompleted;
+    public event Action<City, BuildingData, BuildingRemovalReason> OnBuildingRemoved;
+
+    public enum BuildingRemovalReason
+    {
+        Dismantled,
+        Replaced,
+        Destroyed,
+    }
+
     // Production Queue Entry Definition
     public class ProdEntry {
         public enum Type { Unit, Worker, Building, District, Equipment, Projectile }
@@ -35,6 +47,7 @@ public class City : MonoBehaviour
     [Header("Core Data")]
     public string cityName;
     public Civilization owner;
+    public Civilization OriginalOwner;
     public int centerTileIndex;
     [Tooltip("Which planet this city belongs to (multi-planet gameplay).")]
     public int planetIndex = -1;
@@ -135,6 +148,9 @@ public class City : MonoBehaviour
         // If owner isn't set, this object is probably a template/prefab, do nothing.
         if (owner == null) return; 
 
+        if (OriginalOwner == null)
+            OriginalOwner = owner;
+
         owner.AddCity(this);
 
         // Determine planet context early (city prefab may not be parented under a planet)
@@ -175,8 +191,146 @@ public class City : MonoBehaviour
     {
         cityName = name;
         owner = civ;
+        if (OriginalOwner == null)
+            OriginalOwner = civ;
         governor = gov;
         loyalty = 100f;
+    }
+
+    public Civilization GetProductionHeritageOwner()
+    {
+        return OriginalOwner != null ? OriginalOwner : owner;
+    }
+
+    public CombatUnitData ResolveCombatUnitForProduction(CombatUnitData unitData)
+    {
+        if (unitData == null)
+            return null;
+
+        var heritageOwner = GetProductionHeritageOwner();
+        if (heritageOwner == null)
+            return unitData;
+
+        var baseUnit = heritageOwner.GetBaseUnitData(unitData);
+        return heritageOwner.GetUnitData(baseUnit);
+    }
+
+    public BuildingData ResolveBuildingForProduction(BuildingData buildingData)
+    {
+        if (buildingData == null)
+            return null;
+
+        var heritageOwner = GetProductionHeritageOwner();
+        if (heritageOwner == null)
+            return buildingData;
+
+        var baseBuilding = heritageOwner.GetBaseBuildingData(buildingData);
+        return heritageOwner.GetBuildingData(baseBuilding);
+    }
+
+    public bool IsCombatUnitAvailableForProduction(CombatUnitData unitData)
+    {
+        if (owner == null || unitData == null)
+            return false;
+
+        var resolvedUnit = ResolveCombatUnitForProduction(unitData);
+        return resolvedUnit != null && owner.IsCombatUnitAvailable(resolvedUnit);
+    }
+
+    public List<CombatUnitData> GetAvailableCombatUnitsForProduction()
+    {
+        var available = new List<CombatUnitData>();
+        if (owner == null)
+            return available;
+
+        var seen = new HashSet<CombatUnitData>();
+        foreach (var baseUnit in ResourceCache.GetAllCombatUnits())
+        {
+            if (baseUnit == null)
+                continue;
+
+            var resolvedUnit = ResolveCombatUnitForProduction(baseUnit);
+            if (resolvedUnit == null || seen.Contains(resolvedUnit) || !owner.IsCombatUnitAvailable(resolvedUnit))
+                continue;
+
+            seen.Add(resolvedUnit);
+            available.Add(resolvedUnit);
+        }
+
+        return available;
+    }
+
+    public List<BuildingData> GetAvailableBuildingsForProduction()
+    {
+        var available = new List<BuildingData>();
+        if (owner == null)
+            return available;
+
+        var seen = new HashSet<BuildingData>();
+        foreach (var baseBuilding in ResourceCache.GetAllBuildings())
+        {
+            if (baseBuilding == null)
+                continue;
+
+            var resolvedBuilding = ResolveBuildingForProduction(baseBuilding);
+            if (resolvedBuilding == null || seen.Contains(resolvedBuilding))
+                continue;
+
+            if (!resolvedBuilding.AreRequirementsMet(owner))
+                continue;
+
+            bool alreadyBuilt = false;
+            foreach (var (builtData, _) in builtBuildings)
+            {
+                if (builtData == null)
+                    continue;
+
+                if (builtData == resolvedBuilding ||
+                    builtData == baseBuilding ||
+                    (builtData.replacesBuilding != null && builtData.replacesBuilding == baseBuilding) ||
+                    (resolvedBuilding.replacesBuilding != null && resolvedBuilding.replacesBuilding == builtData))
+                {
+                    alreadyBuilt = true;
+                    break;
+                }
+            }
+
+            if (alreadyBuilt)
+                continue;
+
+            seen.Add(resolvedBuilding);
+            available.Add(resolvedBuilding);
+        }
+
+        return available;
+    }
+
+    public void RestoreBuiltBuildingsForSave(IEnumerable<BuildingData> savedBuildings)
+    {
+        foreach (var (_, instance) in builtBuildings)
+        {
+            if (instance != null)
+                Destroy(instance);
+        }
+
+        builtBuildings.Clear();
+        defenseRating = maxDefense;
+        moraleRating = maxMorale;
+
+        if (savedBuildings == null)
+            return;
+
+        foreach (var building in savedBuildings)
+        {
+            if (building != null)
+                AddBuilding(building);
+        }
+    }
+
+    public void RestoreProductionQueueForSave(List<ProdEntry> savedQueue, Dictionary<DistrictData, int> savedDistrictTargets)
+    {
+        productionQueue = savedQueue ?? new List<ProdEntry>();
+        districtTileTargets = savedDistrictTargets ?? new Dictionary<DistrictData, int>();
     }
 
     private void CreateLabelUI()
@@ -593,16 +747,19 @@ if (UIManager.Instance != null)
     public bool QueueProduction(ScriptableObject d) {
         // Extract info based on type
         if (d is CombatUnitData u) {
-            bool requiresCoast = u.requiresCoastalCity;
-            bool requiresHarbor = u.requiresHarbor;
+            var resolvedUnit = ResolveCombatUnitForProduction(u);
+            if (resolvedUnit == null || !IsCombatUnitAvailableForProduction(resolvedUnit)) return false;
+
+            bool requiresCoast = resolvedUnit.requiresCoastalCity;
+            bool requiresHarbor = resolvedUnit.requiresHarbor;
             
             // Check naval requirements
             if (requiresCoast && !ControlsCoast()) return false;
             if (requiresHarbor && !HasHarbor()) return false;
             
-            if (!CanProduce(u.requiredResources, u.requiredTerrains)) return false;
-            productionQueue.Add(new ProdEntry(u, u.productionCost, u.goldCost,
-                                            u.requiredResources, u.requiredTerrains,
+            if (!CanProduce(resolvedUnit.requiredResources, resolvedUnit.requiredTerrains)) return false;
+            productionQueue.Add(new ProdEntry(resolvedUnit, resolvedUnit.productionCost, resolvedUnit.goldCost,
+                                            resolvedUnit.requiredResources, resolvedUnit.requiredTerrains,
                                             requiresCoast, requiresHarbor,
                                             ProdEntry.Type.Unit));
             return true;
@@ -623,35 +780,23 @@ if (UIManager.Instance != null)
             return true;
         }
         if (d is BuildingData b) {
+            b = ResolveBuildingForProduction(b);
+            if (b == null) return false;
+
             // Harbor buildings can only be built in coastal cities
             if (b.providesHarbor && !ControlsCoast()) {
                 Debug.LogWarning($"Cannot build {b.buildingName} - city is not coastal!");
                 return false;
             }
-            // Tech requirements
-            if (b.requiredTechs != null && b.requiredTechs.Length > 0) {
-                foreach (var tech in b.requiredTechs) {
-                    if (tech == null || owner == null || owner.researchedTechs == null || !owner.researchedTechs.Contains(tech)) {
-                        Debug.LogWarning($"Cannot build {b.buildingName} - missing required tech: {tech?.techName ?? "(null)"}");
-                        return false;
-                    }
-                }
-            }
-            // Culture requirements
-            if (b.requiredCultures != null && b.requiredCultures.Length > 0) {
-                foreach (var culture in b.requiredCultures) {
-                    if (culture == null || owner == null || owner.researchedCultures == null || !owner.researchedCultures.Contains(culture)) {
-                        Debug.LogWarning($"Cannot build {b.buildingName} - missing required culture: {culture?.cultureName ?? "(null)"}");
-                        return false;
-                    }
-                }
-            }
+            if (!b.AreRequirementsMet(owner)) return false;
             // Population requirement
             if (b.requiredPopulation > 0 && level < b.requiredPopulation) {
                 Debug.LogWarning($"Cannot build {b.buildingName} - requires population level {b.requiredPopulation}, current {level}");
                 return false;
             }
             if (!CanProduce(b.requiredResources, b.requiredTerrains)) return false;
+            if (!b.CanPayBuildCosts(owner)) return false;
+            if (!b.ConsumeBuildCosts(owner)) return false;
             productionQueue.Add(new ProdEntry(b, b.productionCost, b.goldCost,
                                             b.requiredResources, b.requiredTerrains,
                                             false, false, // Buildings don't need coast/harbor
@@ -722,6 +867,15 @@ if (UIManager.Instance != null)
         districtTileTargets[district] = tileIndex;
         
         return true;
+    }
+
+    public bool TryGetQueuedDistrictTile(DistrictData district, out int tileIndex)
+    {
+        if (district != null && districtTileTargets.TryGetValue(district, out tileIndex))
+            return true;
+
+        tileIndex = -1;
+        return false;
     }
 
     /// <summary>
@@ -855,11 +1009,14 @@ if (UIManager.Instance != null)
         
         // Get cost and requirements based on type without using dynamic
         if (d is CombatUnitData u) {
-            cost = u.goldCost;
-            reqRes = u.requiredResources;
-            reqTerr = u.requiredTerrains;
-            requiresCoast = u.requiresCoastalCity;
-            requiresHarbor = u.requiresHarbor;
+            var resolvedUnit = ResolveCombatUnitForProduction(u);
+            if (resolvedUnit == null || !IsCombatUnitAvailableForProduction(resolvedUnit)) return false;
+            cost = resolvedUnit.goldCost;
+            reqRes = resolvedUnit.requiredResources;
+            reqTerr = resolvedUnit.requiredTerrains;
+            requiresCoast = resolvedUnit.requiresCoastalCity;
+            requiresHarbor = resolvedUnit.requiresHarbor;
+            d = resolvedUnit;
         }
         else if (d is WorkerUnitData w) {
             cost = w.goldCost;
@@ -934,6 +1091,12 @@ if (UIManager.Instance != null)
         
         // Validate other requirements
         if (!CanProduce(reqRes, reqTerr)) return false;
+
+        if (d is BuildingData buildingToBuy)
+        {
+            if (!buildingToBuy.CanPayBuildCosts(owner)) return false;
+            if (!buildingToBuy.ConsumeBuildCosts(owner)) return false;
+        }
         
         owner.gold -= cost;
         CompleteItem(d);
@@ -1005,8 +1168,8 @@ if (UIManager.Instance != null)
         unit.Initialize(unitData, owner);
         unit.planetIndex = planetIndex;
         
-        // Add to owner's units
-        owner.combatUnits.Add(unit);
+        // Add to owner's units and fire training event
+        owner.RegisterTrainedCombatUnit(unit);
         
         // Set tile index and register occupancy
         if (unit.currentTileIndex < 0)
@@ -1073,10 +1236,13 @@ if (UIManager.Instance != null)
 
         switch (d) {
             case CombatUnitData u:
-                var unitPrefab = u.GetPrefab();
+                var resolvedUnit = ResolveCombatUnitForProduction(u);
+                if (resolvedUnit == null)
+                    break;
+                var unitPrefab = resolvedUnit.GetPrefab();
                 if (unitPrefab == null)
                 {
-                    Debug.LogError($"[City] Cannot spawn unit {u.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
+                    Debug.LogError($"[City] Cannot spawn unit {resolvedUnit.unitName}: prefab not found in Addressables. Make sure prefab is marked as Addressable with address matching unitName.");
                     break;
                 }
                 var unitGO = Instantiate(unitPrefab, pos, Quaternion.identity);
@@ -1090,14 +1256,14 @@ if (UIManager.Instance != null)
                 var unit = unitGO.GetComponent<CombatUnit>();
                 if (unit == null)
                 {
-                    Debug.LogError($"[City] Spawned prefab for {u.unitName} is missing CombatUnit component.");
+                    Debug.LogError($"[City] Spawned prefab for {resolvedUnit.unitName} is missing CombatUnit component.");
                     Destroy(unitGO);
                     break;
                 }
-                unit.Initialize(u, owner);
+                unit.Initialize(resolvedUnit, owner);
                 unit.planetIndex = planetIndex;
-                owner.combatUnits.Add(unit);
-                producedUnits.Add(u);
+                owner.RegisterTrainedCombatUnit(unit);
+                producedUnits.Add(resolvedUnit);
 
                 // Set tile index and register occupancy
                 if (unit.currentTileIndex < 0)
@@ -1147,6 +1313,7 @@ if (UIManager.Instance != null)
 
             case BuildingData b:
                 AddBuilding(b);
+                OnBuildingCompleted?.Invoke(this, b);
                 
                 // Award governor experience for building construction
                 if (governor != null)
@@ -1197,17 +1364,14 @@ if (UIManager.Instance != null)
 
     void AddBuilding(BuildingData b)
     {
-        // Use civilization's method to get the appropriate building data
-        // (will use unique building if available)
-        if (owner != null)
-        {
-            b = owner.GetBuildingData(b);
-        }
+        b = ResolveBuildingForProduction(b);
+        if (b == null)
+            return;
         
         // If this building upgrades an old one, destroy that instance
         if (b.replacesBuilding != null)
         {
-            var oldTuple = builtBuildings.Find(tuple => tuple.data == b.replacesBuilding);
+            var oldTuple = builtBuildings.Find(tuple => tuple.data == b.replacesBuilding || tuple.data?.replacesBuilding == b.replacesBuilding);
             
             if (oldTuple.instance != null)
             {
@@ -1215,7 +1379,8 @@ Destroy(oldTuple.instance);
             }
             
             // Remove from list
-            builtBuildings.RemoveAll(tuple => tuple.data == b.replacesBuilding);
+            builtBuildings.RemoveAll(tuple => tuple.data == b.replacesBuilding || tuple.data?.replacesBuilding == b.replacesBuilding);
+            OnBuildingRemoved?.Invoke(this, b.replacesBuilding, BuildingRemovalReason.Replaced);
         }
         
         // Instantiate the new building
@@ -1264,11 +1429,32 @@ Destroy(oldTuple.instance);
                             }
                             productionQueue.Add(new ProdEntry(production.equipment, prodCost, goldCost, null, null, false, false, ProdEntry.Type.Equipment));
                         }
-}
+                    }
                 }
             }
         }
-}
+    }
+
+    public bool DismantleBuilding(BuildingData building)
+    {
+        if (building == null || owner == null) return false;
+
+        var resolved = ResolveBuildingForProduction(building);
+        int idx = builtBuildings.FindIndex(tuple => tuple.data == resolved || tuple.data == building);
+        if (idx < 0) return false;
+
+        var built = builtBuildings[idx];
+        if (built.data == null || !built.data.canBeDismantled) return false;
+
+        if (built.instance != null)
+            Destroy(built.instance);
+
+        builtBuildings.RemoveAt(idx);
+        built.data.RefundDismantleCosts(owner);
+        try { LimitManager.Instance?.RemoveBuilding(owner, built.data); } catch { }
+        OnBuildingRemoved?.Invoke(this, built.data, BuildingRemovalReason.Dismantled);
+        return true;
+    }
     
     /// <summary>
     /// Adds a district to the city on a specific tile
@@ -2017,6 +2203,7 @@ cityUI.ShowForCity(this);
         // 3. Copy over relevant data
         newCity.cityName = this.cityName;
         newCity.owner = this.owner;
+        newCity.OriginalOwner = this.OriginalOwner != null ? this.OriginalOwner : this.owner;
         newCity.centerTileIndex = this.centerTileIndex;
         // Copy label prefab if needed
 

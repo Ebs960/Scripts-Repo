@@ -17,6 +17,7 @@ public class GameEventManager : MonoBehaviour
     private Queue<TileEventArgs> tileEventPool = new Queue<TileEventArgs>();
     private Queue<MovePointsChangedEventArgs> movePointsEventPool = new Queue<MovePointsChangedEventArgs>();
     private Queue<UnitValueChangedEventArgs> unitValueChangedEventPool = new Queue<UnitValueChangedEventArgs>();
+    private Queue<UnitLostEventArgs> unitLostEventPool = new Queue<UnitLostEventArgs>();
     
     #region Event Declarations
     
@@ -33,6 +34,7 @@ public class GameEventManager : MonoBehaviour
     public event Action<CombatEventArgs> OnCombatStarted;
     public event Action<CombatEventArgs> OnDamageApplied;
     public event Action<CombatEventArgs> OnUnitKilled;
+    public event Action<UnitLostEventArgs> OnUnitLost;
     
     // Resource Events
     public event Action<ResourceEventArgs> OnResourceHarvested;
@@ -138,6 +140,31 @@ public class GameEventManager : MonoBehaviour
             OldValue = 0;
             NewValue = 0;
             MaxValue = 0;
+        }
+    }
+
+    public class UnitLostEventArgs : GameEventArgs
+    {
+        public MonoBehaviour Unit { get; private set; }
+        public MonoBehaviour Killer { get; private set; }
+        public int TileIndex { get; private set; }
+        public int PlanetIndex { get; private set; }
+
+        public void Setup(MonoBehaviour unit, MonoBehaviour killer, int tileIndex, int planetIndex)
+        {
+            Initialize();
+            Unit = unit;
+            Killer = killer;
+            TileIndex = tileIndex;
+            PlanetIndex = planetIndex;
+        }
+
+        public override void Reset()
+        {
+            Unit = null;
+            Killer = null;
+            TileIndex = -1;
+            PlanetIndex = -1;
         }
     }
     
@@ -265,6 +292,7 @@ public class GameEventManager : MonoBehaviour
             tileEventPool.Enqueue(new TileEventArgs());
             movePointsEventPool.Enqueue(new MovePointsChangedEventArgs());
             unitValueChangedEventPool.Enqueue(new UnitValueChangedEventArgs());
+            unitLostEventPool.Enqueue(new UnitLostEventArgs());
         }
     }
     
@@ -360,6 +388,16 @@ public class GameEventManager : MonoBehaviour
         args.Setup(attacker, defender, damage, false, true);
         OnUnitKilled.Invoke(args);
         ReturnCombatEventArgs(args);
+    }
+
+    public void RaiseUnitLostEvent(MonoBehaviour unit, MonoBehaviour killer = null, int tileIndex = -1, int planetIndex = -1)
+    {
+        if (OnUnitLost == null) return;
+
+        var args = GetUnitLostEventArgs();
+        args.Setup(unit, killer, tileIndex, planetIndex);
+        OnUnitLost.Invoke(args);
+        ReturnUnitLostEventArgs(args);
     }
     
     // Resource events
@@ -480,6 +518,13 @@ public class GameEventManager : MonoBehaviour
             return unitValueChangedEventPool.Dequeue();
         return new UnitValueChangedEventArgs();
     }
+
+    private UnitLostEventArgs GetUnitLostEventArgs()
+    {
+        if (unitLostEventPool.Count > 0)
+            return unitLostEventPool.Dequeue();
+        return new UnitLostEventArgs();
+    }
     
     // Return event args to pools
     private void ReturnMovementEventArgs(UnitMovementEventArgs args)
@@ -516,6 +561,12 @@ public class GameEventManager : MonoBehaviour
     {
         args.Reset();
         unitValueChangedEventPool.Enqueue(args);
+    }
+
+    private void ReturnUnitLostEventArgs(UnitLostEventArgs args)
+    {
+        args.Reset();
+        unitLostEventPool.Enqueue(args);
     }
     
     #endregion

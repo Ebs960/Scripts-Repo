@@ -21,12 +21,21 @@ public class BuildingData : ScriptableObject
     public int productionCost;
     [Tooltip("Gold cost for instant buy")]
     public int goldCost;
+    [Tooltip("Gold consumed when this building is queued or completed through normal construction.")]
+    public int buildGoldCost;
+    [Tooltip("Resources consumed when this building is queued through normal construction.")]
+    public ResourceCost[] buildResourceCosts;
     public bool requiresAdjacentTile;    // e.g., walls, farms
     [Tooltip("Must have these resources in empire stockpile")]
     public ResourceData[] requiredResources;
     [Tooltip("City must control at least one tile of these biomes")]
     public Biome[] requiredTerrains;
     public Biome[] allowedBiomes;
+
+    [Header("Dismantle")]
+    public bool canBeDismantled = true;
+    public int dismantleGoldRefund;
+    public ResourceCost[] dismantleResourceRefunds;
 
     [Header("Equipment Production")]
     [Tooltip("Equipment produced when this building is completed (one-time, not recurring)")]
@@ -149,6 +158,50 @@ public static class BuildingDataExtensions
         }
 
         return true;
+    }
+
+    public static bool CanPayBuildCosts(this BuildingData building, Civilization civ)
+    {
+        if (building == null || civ == null) return false;
+        if (building.buildGoldCost > 0 && civ.gold < building.buildGoldCost) return false;
+        if (building.buildResourceCosts != null)
+        {
+            foreach (var cost in building.buildResourceCosts)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                if (civ.GetResourceCount(cost.resource) < cost.amount) return false;
+            }
+        }
+        return true;
+    }
+
+    public static bool ConsumeBuildCosts(this BuildingData building, Civilization civ)
+    {
+        if (!building.CanPayBuildCosts(civ)) return false;
+        if (building.buildGoldCost > 0) civ.gold -= building.buildGoldCost;
+        if (building.buildResourceCosts != null)
+        {
+            foreach (var cost in building.buildResourceCosts)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                civ.ConsumeResource(cost.resource, cost.amount);
+            }
+        }
+        return true;
+    }
+
+    public static void RefundDismantleCosts(this BuildingData building, Civilization civ)
+    {
+        if (building == null || civ == null) return;
+        if (building.dismantleGoldRefund > 0) civ.AddGold(building.dismantleGoldRefund);
+        if (building.dismantleResourceRefunds != null)
+        {
+            foreach (var cost in building.dismantleResourceRefunds)
+            {
+                if (cost == null || cost.resource == null || cost.amount <= 0) continue;
+                civ.AddResource(cost.resource, cost.amount);
+            }
+        }
     }
 }
 

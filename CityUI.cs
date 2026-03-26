@@ -283,46 +283,19 @@ if (currentCity == null)
         if (currentCity.owner == null) return;
 
         var ownerCiv = currentCity.owner;
-        
-        // Get all buildings that meet requirements (like equipment system)
-        var allBuildings = ResourceCache.GetAllBuildings();
-        foreach (var building in allBuildings)
+
+        foreach (var building in currentCity.GetAvailableBuildingsForProduction())
         {
-            if (building == null || !building.AreRequirementsMet(ownerCiv)) continue;
-            
-            // Skip if already built
-            bool alreadyBuilt = false;
-            foreach (var (builtData, _) in currentCity.builtBuildings)
-            {
-                if (builtData == building || 
-                   (builtData.replacesBuilding != null && builtData.replacesBuilding == building) ||
-                   (building.replacesBuilding != null && building.replacesBuilding == builtData))
-                {
-                    alreadyBuilt = true;
-                    break;
-                }
-            }
-            
-            if (!alreadyBuilt)
-            {
-                // Check if the civilization has a unique version
-                BuildingData actualBuildingToAdd = ownerCiv.GetBuildingData(building);
-                if (!availableBuildings.Contains(actualBuildingToAdd))
-                {
-                    availableBuildings.Add(actualBuildingToAdd);
-                }
-            }
+            if (building != null && !availableBuildings.Contains(building))
+                availableBuildings.Add(building);
         }
         
-        // Get all combat units that meet requirements (like equipment system)
-        var allCombatUnits = ResourceCache.GetAllCombatUnits();
-        foreach (var unit in allCombatUnits)
+        // Use the city's production rules so conquered cities can surface units
+        // based on their original owner while still checking current-owner requirements.
+        foreach (var unit in currentCity.GetAvailableCombatUnitsForProduction())
         {
-            if (unit == null || !unit.AreRequirementsMet(ownerCiv)) continue;
-            if (!availableUnits.Contains(unit))
-            {
+            if (unit != null && !availableUnits.Contains(unit))
                 availableUnits.Add(unit);
-            }
         }
         
         // Get all worker units that meet requirements (like equipment system)
@@ -336,18 +309,6 @@ if (currentCity == null)
             }
         }
         
-        // Add unique units from CivData if applicable
-        if (ownerCiv.civData != null && ownerCiv.civData.uniqueUnits != null)
-        {
-            foreach (var unit in ownerCiv.civData.uniqueUnits)
-            {
-                if (!availableUnits.Contains(unit))
-                {
-                    availableUnits.Add(unit);
-                }
-            }
-        }
-
         // Equipment: show equipment unlocked by civ/effects
         availableEquipment.Clear();
         // From civilization inventory and unlocked equipment via civ data
@@ -363,11 +324,6 @@ if (currentCity == null)
                 }
             }
 
-            // Also include equipment unlocked from CivData
-            if (ownerCiv.civData != null && ownerCiv.civData.uniqueUnits != null)
-            {
-                // no-op: uniqueness handled elsewhere
-            }
         }
         
         // NEW: Projectiles - Load all projectiles that can be produced by this civilization

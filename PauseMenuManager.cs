@@ -87,6 +87,11 @@ public class PauseMenuManager : MonoBehaviour
     public List<CombatUnitSaveData> combatUnits;
     public List<WorkerUnitSaveData> workerUnits;
     public List<CivilizationProgressSaveData> civilizationProgress;
+    public List<CitySaveData> cities;
+    // Mission/Legacy/Crisis system
+    public List<CrisisManager.MissionStateSaveData> missionStates;
+    public CrisisManager.CrisisSaveData crisisState;
+    public List<SaveParticipantStateData> participantStates;
         
         public GameSaveData()
         {
@@ -129,6 +134,9 @@ public class PauseMenuManager : MonoBehaviour
         public List<GovernorSaveData> governors = new List<GovernorSaveData>();
         // Herd queues owned by this civilization (per-herd, identified by planet & tile)
         public List<HerdQueueSaveData> herdQueues = new List<HerdQueueSaveData>();
+        // Legacy state
+        public List<string> earnedLegacyNames = new List<string>();
+        public List<string> activeLegacyNames = new List<string>();
     }
 
     [Serializable]
@@ -201,6 +209,41 @@ public class PauseMenuManager : MonoBehaviour
         public int currentWorkPoints;
         public int currentMovePoints;
         public float posX, posY, posZ;
+    }
+
+    [Serializable]
+    public class CitySaveData
+    {
+        public int ownerCivIndex = -1;
+        public int originalOwnerCivIndex = -1;
+        public int ownerCityListIndex = -1;
+        public int centerTileIndex = -1;
+        public int planetIndex = -1;
+        public string cityName;
+        public int level;
+        public int foodStorage;
+        public int foodGrowthRequirement;
+        public float loyalty;
+        public int productionPerTurn;
+        public List<string> builtBuildingNames = new List<string>();
+        public List<CityProductionEntrySaveData> productionQueue = new List<CityProductionEntrySaveData>();
+    }
+
+    [Serializable]
+    public class CityProductionEntrySaveData
+    {
+        public City.ProdEntry.Type type;
+        public string dataName;
+        public int remainingPts;
+        public int goldCost;
+        public int districtTileIndex = -1;
+    }
+
+    [Serializable]
+    public class SaveParticipantStateData
+    {
+        public string key;
+        public string json;
     }
 
     [Serializable]
@@ -567,186 +610,13 @@ HideSaveLoadUI();
 
     private GameSaveData CreateSaveData()
     {
-        GameSaveData saveData = new GameSaveData();
-        
         if (GameManager.Instance != null)
         {
-            saveData.currentTurn = GameManager.Instance.currentTurn;
-            saveData.mapSize = GameManager.Instance.mapSize;
-            saveData.enableMultiPlanetSystem = true; // Legacy: always true, kept for save compatibility
-            saveData.currentPlanetIndex = GameManager.Instance.currentPlanetIndex;
-            saveData.gameInProgress = GameManager.Instance.gameInProgress;
-
-            // Get player civilization info
-            if (CivilizationManager.Instance?.playerCiv != null)
-            {
-                saveData.playerCivName = CivilizationManager.Instance.playerCiv.civData.civName;
-                // Find the index of the player civilization in the civilizations list
-                saveData.playerCivIndex = CivilizationManager.Instance.GetCivIndex(CivilizationManager.Instance.playerCiv);
-            }
+            return GameManager.Instance.BuildSaveData(GenerateSaveName());
         }
 
-        // Get camera position/rotation if available
-        Camera mainCamera = Camera.main;
-        if (mainCamera != null)
-        {
-            saveData.cameraPosition = mainCamera.transform.position;
-            saveData.cameraRotation = mainCamera.transform.eulerAngles;
-        }
-
-        // Generate save name based on current game state
+        GameSaveData saveData = new GameSaveData();
         saveData.saveName = GenerateSaveName();
-
-        // Export improvement manager job assignments if available
-        try
-        {
-            saveData.jobAssignments = ImprovementManager.Instance?.ExportJobAssignments();
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to export job assignments: {e.Message}");
-            saveData.jobAssignments = null;
-        }
-
-        // ===== Serialize all units across all civilizations =====
-        try
-        {
-            saveData.combatUnits = new List<CombatUnitSaveData>();
-            saveData.workerUnits = new List<WorkerUnitSaveData>();
-
-            if (CivilizationManager.Instance != null)
-            {
-                var allCivs = CivilizationManager.Instance.GetAllCivs();
-                saveData.civilizationProgress = new List<CivilizationProgressSaveData>();
-                for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
-                {
-                    var civ = allCivs[civIdx];
-                    if (civ == null) continue;
-
-                    var civProgress = new CivilizationProgressSaveData
-                    {
-                        civIndex = civIdx,
-                        currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
-                        currentTechProgress = civ.currentTechProgress,
-                        currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
-                        currentCultureProgress = civ.currentCultureProgress,
-                        tradeEnabled = civ.tradeEnabled,
-                        governorsEnabled = civ.governorsEnabled,
-                        governorCount = civ.governorCount,
-                        cityCapFromBonuses = civ.GetCityCapBonusForSave(),
-                        pantheonCapFromBonuses = civ.pantheonCapFromBonuses,
-                        attackBonus = civ.attackBonus,
-                        defenseBonus = civ.defenseBonus,
-                        movementBonus = civ.movementBonus,
-                        foodModifier = civ.foodModifier,
-                        productionModifier = civ.productionModifier,
-                        goldModifier = civ.goldModifier,
-                        scienceModifier = civ.scienceModifier,
-                        cultureModifier = civ.cultureModifier,
-                        faithModifier = civ.faithModifier
-                    };
-
-                    if (civ.researchedTechs != null)
-                        foreach (var tech in civ.researchedTechs)
-                            if (tech != null) civProgress.researchedTechNames.Add(tech.name);
-                    if (civ.researchedCultures != null)
-                        foreach (var culture in civ.researchedCultures)
-                            if (culture != null) civProgress.researchedCultureNames.Add(culture.name);
-                    if (civ.unlockedGovernorTraits != null)
-                        foreach (var trait in civ.unlockedGovernorTraits)
-                            if (trait != null) civProgress.unlockedGovernorTraitNames.Add(trait.name);
-                    if (civ.cultureUnlockedPantheons != null)
-                        foreach (var pantheon in civ.cultureUnlockedPantheons)
-                            if (pantheon != null) civProgress.cultureUnlockedPantheonNames.Add(pantheon.name);
-                    if (civ.cultureUnlockedBeliefs != null)
-                        foreach (var belief in civ.cultureUnlockedBeliefs)
-                            if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
-
-                    saveData.civilizationProgress.Add(civProgress);
-                    // Export herd production queues for this civ
-                    try
-                    {
-                        if (civ.herds != null)
-                        {
-                            foreach (var h in civ.herds)
-                            {
-                                if (h == null) continue;
-                                var hq = new HerdQueueSaveData();
-                                hq.planetIndex = h.planetIndex;
-                                hq.tileIndex = h.currentTileIndex;
-                                if (h.productionQueue != null && h.productionQueue.Count > 0)
-                                {
-                                    foreach (var e in h.productionQueue)
-                                    {
-                                        if (e == null || e.data == null) continue;
-                                        var pe = new HerdProdEntrySaveData();
-                                        pe.dataName = e.data.name;
-                                        pe.remainingPts = e.remainingPts;
-                                        pe.goldCost = e.goldCost;
-                                        hq.queue.Add(pe);
-                                    }
-                                }
-                                civProgress.herdQueues.Add(hq);
-                            }
-                        }
-                    }
-                    catch { }
-
-                    // Combat units
-                    if (civ.combatUnits != null)
-                    {
-                        foreach (var unit in civ.combatUnits)
-                        {
-                            if (unit == null || unit.data == null) continue;
-                            saveData.combatUnits.Add(new CombatUnitSaveData
-                            {
-                                unitDataName = unit.data.unitName,
-                                ownerCivIndex = civIdx,
-                                currentTileIndex = unit.currentTileIndex,
-                                planetIndex = unit.planetIndex,
-                                currentLayer = (int)unit.currentLayer,
-                                currentHealth = unit.currentHealth,
-                                experience = unit.experience,
-                                level = unit.level,
-                                currentAmmo = unit.currentAmmo,
-                                hasActedThisTurn = unit.hasActedThisTurn,
-                                posX = unit.transform.position.x,
-                                posY = unit.transform.position.y,
-                                posZ = unit.transform.position.z,
-                            });
-                        }
-                    }
-
-                    // Worker units
-                    if (civ.workerUnits != null)
-                    {
-                        foreach (var worker in civ.workerUnits)
-                        {
-                            if (worker == null || worker.data == null) continue;
-                            saveData.workerUnits.Add(new WorkerUnitSaveData
-                            {
-                                unitDataName = worker.data.unitName,
-                                ownerCivIndex = civIdx,
-                                currentTileIndex = worker.currentTileIndex,
-                                planetIndex = worker.planetIndex,
-                                currentLayer = (int)worker.currentLayer,
-                                currentHealth = worker.currentHealth,
-                                currentWorkPoints = worker.currentWorkPoints,
-                                currentMovePoints = worker.currentMovePoints,
-                                posX = worker.transform.position.x,
-                                posY = worker.transform.position.y,
-                                posZ = worker.transform.position.z,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to serialize unit state: {e.Message}");
-        }
-
         return saveData;
     }
 

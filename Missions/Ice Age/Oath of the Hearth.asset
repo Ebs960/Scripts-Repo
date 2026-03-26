@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Oath of the Hearth
+  m_EditorClassIdentifier: Assembly-CSharp::MissionData
+  missionName: Oath of the Hearth
+  icon: {fileID: 0}
+  description: 
+  flavorText: 'The cold takes the careless and the slow. Hunger divides the selfish
+    from the strong. If we leave our wounded behind, the tribe grows smaller with
+    every storm. We gather close to the fire. We share what we hunt. We carry those
+    who cannot walk. No one is lost to the night. No one is left for the predators.
+    We survive as one people, or not at all.
+
+
+    We swear the Oath of the Hearth.'
+  splashImage: {fileID: 21300000, guid: 28c26122733f402448edad1a403f69b9, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 28c26122733f402448edad1a403f69b9, type: 3}
+  victoryFlavorText: 'The storms pass, but the tribe still stands. No one is lost
+    to the cold or left for the beasts. Fires burn through the longest nights, and
+    food is shared until even the weakest endure. Children who should have perished
+    now run beside the hunters. The tribe learns that survival is not won by strength
+    alone, but by refusing to abandon one another. This is how our people live.
+
+
+    We
+    live and die as one.'
+  failureSplashImage: {fileID: 21300000, guid: 1463f5113e62708408f1f5d5f591c427, type: 3}
+  failureFlavorText: "We tried to protect everyone.\n\nWe could not.\n\nThe cold
+    takes those who cannot keep pace. Fires die in the wind, and hunger forces hard
+    choices the tribe does not wish to make. Some are left behind. Some do not rise
+    when morning comes. The survivors carry both food and silence as they move across
+    the frozen land.\n \nSurvival can demand a terrible price. It is not guaranteed"
+  earliestTurn: 0
+  latestTurn: 0
+  requiredTechs: []
+  requiredCultures: []
+  objectives:
+  - objectiveName: Keep Everyone Alive
+    description: Lose no one. Not even one member of our people
+    icon: {fileID: 0}
+    type: 0
+    targetValue: 0
+    biomeFilter: 
+    specificTech: {fileID: 0}
+    specificCulture: {fileID: 0}
+    specificUnit: {fileID: 0}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  constraints:
+  - type: 0
+    activatesAfterObjectiveIndex: -1
+    targetValue: 0
+    comparison: 0
+    failureFlavorText: 
+    specificUnit: {fileID: 0}
+    specificUnits: []
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  narrativeBeats: []
+  rewardTiers: []

@@ -118,9 +118,16 @@ public class LegacyManager : MonoBehaviour
 
     private void ApplyLegacyBonuses(Civilization civ, LegacyData legacy)
     {
+        // Flat/legacy bonuses (backwards-compatible)
         civ.attackBonus += legacy.attackBonus;
         civ.defenseBonus += legacy.defenseBonus;
         civ.movementBonus += legacy.movementBonus;
+        // Percentage-style modifiers: legacy fields are fractional (0.1 = +10%).
+        // Convert to the existing civ attack/defense/movement scale by multiplying by 100 so
+        // that inspector/tooltip displays (which expect percent-like numbers) remain meaningful.
+        civ.attackBonus += legacy.attackModifier * 100f;
+        civ.defenseBonus += legacy.defenseModifier * 100f;
+        civ.movementBonus += legacy.movementModifier * 100f;
         civ.foodModifier += legacy.foodModifier;
         civ.productionModifier += legacy.productionModifier;
         civ.goldModifier += legacy.goldModifier;
@@ -131,9 +138,14 @@ public class LegacyManager : MonoBehaviour
 
     private void RemoveLegacyBonuses(Civilization civ, LegacyData legacy)
     {
+        // Remove flat/legacy bonuses
         civ.attackBonus -= legacy.attackBonus;
         civ.defenseBonus -= legacy.defenseBonus;
         civ.movementBonus -= legacy.movementBonus;
+        // Remove percentage-style modifiers (converted the same way as when applied)
+        civ.attackBonus -= legacy.attackModifier * 100f;
+        civ.defenseBonus -= legacy.defenseModifier * 100f;
+        civ.movementBonus -= legacy.movementModifier * 100f;
         civ.foodModifier -= legacy.foodModifier;
         civ.productionModifier -= legacy.productionModifier;
         civ.goldModifier -= legacy.goldModifier;

@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
+  m_Name: The Long Cold
+  m_EditorClassIdentifier: Assembly-CSharp::CrisisData
+  crisisName: The Long Cold
+  icon: {fileID: 0}
+  ominousWarningSplash: {fileID: 21300000, guid: 2020a30362680ab49afbc3dd3d501402, type: 3}
+  ominousWarningText: "The elders say the air feels wrong.\n\nHerds move in strange
+    directions, vanishing into distant mists as if fleeing something unseen. The
+    rivers grow quiet. \n\nAt night, the elders sit close to the fire and whisper
+    of signs older than memory. The spirits are angry"
+  obviousWarningSplash: {fileID: 21300000, guid: 415b2c00ade026a4298812911be23aab, type: 3}
+  obviousWarningText: 'The elders no longer speak in whispers. They warn that this
+    is something evil. The cold deepens each day, and the sky shows no mercy.
+
+
+
+    The
+    grass grows brittle beneath our feet. The herds are afraid. Some vanish into
+    the south. Others fall where they stand, ribs showing through thick winter coats.
+
+
+    The
+    cold is coming.
+
+'
+  crisisStartSplash: {fileID: 21300000, guid: 1dccb808118c4734eb9e33d0f335bb37, type: 3}
+  crisisStartText: "The cold is not leaving\n\nSnow falls without rest. The rivers
+    freeze from bank to bank, and the earth grows hard beneath every step. The old
+    ways of living no longer bring safety or food.\n\nThis is no ordinary winter.
+    The elders name it the Long Cold. It will last many seasons, longer than any
+    living memory. During this time, movement across the land becomes slow and dangerous.
+    Food grows scarce. Predators grow bold with hunger. Storms strike without warning,
+    and the weak are claimed by the cold.\n\nThe tribe must endure. Shelters must
+    be built. Hunts must be planned with care. Tor educe the anger of the wind spirits,
+    we must choose to swear a sacred oath. \n\nProtect every life? Hunt the great
+    beast?  Stand firm against the night? Or do we swear to take vengeance upon the
+    predators that stalk us. These choices will shape who we become when the world
+    grows warm again.\n\nWe must survive the Long Winter."
+  escalationSplash: {fileID: 0}
+  escalationText: 
+  climaxSplash: {fileID: 0}
+  climaxText: 
+  resolutionSplash: {fileID: 21300000, guid: f127d8e863042234f9cac4863e3d985d, type: 3}
+  resolutionText: "The snow is melting.\n\nFor the first time in many seasons, the
+    wind no longer carries the bite of death. Ice cracks along the rivers, and dark
+    water moves again beneath the thawing sky. The ground softens. \n\nChildren who
+    knew only cold now feel warmth upon their faces. The world is changing once more.
+    Herds return from distant horizons. Birds fill the morning with sound. Paths
+    that were lost to snow are found again.\n\nWe survived,\n\nWhat we have learned
+    in the Long Winter will shape us forever.  Ahead lies a new age one that will
+    belong to those who survived."
+  ominousWarningTurns: 5
+  obviousWarningTurns: 2
+  durationTurns: 13
+  escalationAtTurn: 0
+  climaxAtTurn: 0
+  earliestTurn: 22
+  latestTurn: 24
+  requiredTechs: []
+  requiredCultures: []
+  crisisMissions:
+  - {fileID: 11400000, guid: 8c65ad5029a1c8e4fb2323a62f32aeee, type: 2}
+  - {fileID: 11400000, guid: c1ffbe886cef2b249b52f5b283ec1b46, type: 2}
+  - {fileID: 11400000, guid: 5c922e0ed6564ef478a71ae33b589741, type: 2}
+  - {fileID: 11400000, guid: 2e6de8be33ecf95418a7d45c951f5277, type: 2}
+  worldOverrides:
+  - type: 0
+    value: 13
+  - type: 5
+    value: 5
+  - type: 3
+    value: 0.5
+  - type: 4
+    value: 1.5

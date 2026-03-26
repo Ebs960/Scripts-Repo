@@ -33,6 +33,11 @@ public class AnimalManager : MonoBehaviour
 
     [Header("Configure each animal type here")]
     public AnimalSpawnRule[] spawnRules;
+    [Header("Crisis Override")]
+    [Tooltip("Multiplier applied to prey animal spawns by CrisisManager. 1 = normal.")]
+    public float crisisPreySpawnMultiplier = 1f;
+    [Tooltip("Multiplier applied to predator animal spawns by CrisisManager. 1 = normal.")]
+    public float crisisPredatorSpawnMultiplier = 1f;
     [Header("Debug")]
     [Tooltip("Enable verbose logging for animal spawning decisions")]
     public bool debugSpawning = false;
@@ -146,12 +151,15 @@ public class AnimalManager : MonoBehaviour
                 continue;
             }
 
-            int count = Mathf.CeilToInt(rule.initialCount * mult);
-            if (count < 1 && mult > 0f) count = 1;
+            float effectiveMult = mult * GetCrisisMultiplierForBehavior(rule.unitData);
+            if (effectiveMult <= 0f) continue;
+            int count = Mathf.CeilToInt(rule.initialCount * effectiveMult);
+            if (count < 1 && effectiveMult > 0f) count = 1;
 
             // Build candidate list once for this rule (avoid rescanning the map per spawn)
             var candidates = new List<int>();
             var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
+            var continentManager = planet != null ? planet.GetComponent<global::ContinentManager>() : null;
             int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
             if (ts == null || !ts.IsReady())
@@ -180,6 +188,9 @@ public class AnimalManager : MonoBehaviour
                     bool biomeAllowed = System.Array.Exists(rule.allowedBiomes, b => b == tile.biome);
                     if (!biomeAllowed) continue;
                 }
+
+                if (continentManager != null && !continentManager.CanAnimalSpawnOnTile(rule.unitData, i))
+                    continue;
 
                 // One unit per tile: do not spawn on tiles already occupied by a unit or city
                 if (IsTileOccupiedByUnitOrCity(pIndex, i)) continue;
@@ -452,6 +463,21 @@ public class AnimalManager : MonoBehaviour
         return reachable;
     }
 
+    /// <summary>
+    /// Returns the crisis spawn multiplier for a given animal based on its behavior type.
+    /// Predators and Prey each have their own crisis multiplier; Neutral defaults to 1 (unaffected).
+    /// </summary>
+    private float GetCrisisMultiplierForBehavior(CombatUnitData unitData)
+    {
+        if (unitData == null) return 1f;
+        switch (unitData.animalBehavior)
+        {
+            case AnimalBehaviorType.Predator: return crisisPredatorSpawnMultiplier;
+            case AnimalBehaviorType.Prey:     return crisisPreySpawnMultiplier;
+            default:                          return 1f;
+        }
+    }
+
     public void ProcessTurn()
     {
         SpawnNewAnimals();
@@ -494,11 +520,13 @@ public class AnimalManager : MonoBehaviour
                 continue;
             }
 
+            float effectiveMult = mult * GetCrisisMultiplierForBehavior(rule.unitData);
+            if (effectiveMult <= 0f) continue;
             countByType.TryGetValue(rule.unitData, out int already);
-            int maxCount = Mathf.CeilToInt(rule.maxCount * mult);
-            if (maxCount < 1 && mult > 0f) maxCount = 1;
-            int spawnRate = Mathf.CeilToInt(rule.spawnRate * mult);
-            if (spawnRate < 1 && mult > 0f) spawnRate = 1;
+            int maxCount = Mathf.CeilToInt(rule.maxCount * effectiveMult);
+            if (maxCount < 1 && effectiveMult > 0f) maxCount = 1;
+            int spawnRate = Mathf.CeilToInt(rule.spawnRate * effectiveMult);
+            if (spawnRate < 1 && effectiveMult > 0f) spawnRate = 1;
             int toSpawn = Mathf.Min(spawnRate, maxCount - already);
 
             for (int i = 0; i < toSpawn; i++)
@@ -865,6 +893,7 @@ public class AnimalManager : MonoBehaviour
         // Determine target planet (default to current)
         if (pIndex < 0) pIndex = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         var planet = GameManager.Instance?.GetPlanetGenerator(pIndex);
+        var continentManager = planet != null ? planet.GetComponent<global::ContinentManager>() : null;
         int tileCount = planet != null && planet.Grid != null ? planet.Grid.TileCount : 0;
         if (tileCount == 0) return;
         if (debugSpawning) Debug.Log($"[AnimalManager] PlanetIndex={pIndex} tileCount={tileCount}");
@@ -888,6 +917,7 @@ public class AnimalManager : MonoBehaviour
             if (tile == null) continue;
 
             if (!tile.isLand && !allowsWater) continue;
+            if (continentManager != null && !continentManager.CanAnimalSpawnOnTile(rule.unitData, i)) continue;
             if (IsTileOccupiedByUnitOrCity(pIndex, i)) continue;
 
             SpawnAnimalAtTile(rule, pIndex, i);

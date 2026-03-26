@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8457553d7570b1146a94bd661e6d7528, type: 3}
+  m_Name: Oath of Blood
+  m_EditorClassIdentifier: Assembly-CSharp::MissionData
+  missionName: Oath of Blood
+  icon: {fileID: 0}
+  description: 
+  flavorText: 'Eyes shine beyond the firelight. Shadows move where no wind blows.
+    The predators grow bold with hunger. They circle. They wait. The cries of the
+    taken echo through the night. Our people cannot keep living as prey. We must
+    kill them before they take our lives.
+
+
+    We swear the Oath of Blood.'
+  splashImage: {fileID: 21300000, guid: f043c74386acceb4f84f864433c875e0, type: 3}
+  victorySplashImage: {fileID: 21300000, guid: 66a443d5393e483428c50b6532760f4c, type: 3}
+  victoryFlavorText: 'The night grows quieter. Fewer eyes shine beyond the firelight,
+    and the howls of predators fade into distant valleys. Broken fangs and scarred
+    hides lie as proof of battles fought in darkness and snow. Fear changes its shape
+    within the tribe. We no longer wait to be hunted. We strike first. We endure
+    because others fall before us.
+
+
+    We are no longer in dangerous. We are the
+    ones who are dangerous.'
+  failureSplashImage: {fileID: 21300000, guid: 3d5dd876a5317ba4cbf90b850234ed97, type: 3}
+  failureFlavorText: "Predators still circle the fire. The night is filled with sudden
+    cries and the sound of fleeing feet across hard snow. We strike when we can,
+    but fear lingers in every shadow. The tribe lives, yet never rests. \n\nThe bitter
+    cold is not the only enemy that stalks us in the dark."
+  earliestTurn: 0
+  latestTurn: 0
+  requiredTechs: []
+  requiredCultures: []
+  objectives:
+  - objectiveName: Get Vengeance
+    description: Kill the beasts who kill our tribe
+    icon: {fileID: 0}
+    type: 2
+    targetValue: 9
+    biomeFilter: 
+    specificTech: {fileID: 0}
+    specificCulture: {fileID: 0}
+    specificUnit: {fileID: 0}
+    specificUnits:
+    - {fileID: 11400000, guid: 833915041baa8db4ea6d2d01e1df614b, type: 2}
+    - {fileID: 11400000, guid: cb5f6325b7f612240afec3401ae65710, type: 2}
+    specificWorkerUnits: []
+    specificCategories: 
+    specificImprovement: {fileID: 0}
+    specificImprovements: []
+    specificBuilding: {fileID: 0}
+    specificBuildings: []
+  constraints: []
+  narrativeBeats: []
+  rewardTiers: []

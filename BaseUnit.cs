@@ -1118,6 +1118,8 @@ public abstract class BaseUnit : MonoBehaviour
     /// </summary>
     protected virtual void Die()
     {
+        try { GameEventManager.Instance?.RaiseUnitLostEvent(this, null, currentTileIndex, planetIndex); } catch { }
+
         // DIAGNOSTIC (animal-only): if animals are dying, this stack trace will include the real caller chain.
         try
         {

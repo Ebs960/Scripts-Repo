@@ -2456,208 +2456,304 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Save the current game state to a file
     /// </summary>
+    public PauseMenuManager.GameSaveData BuildSaveData(string saveName = null, bool isAutosave = false)
+    {
+        PauseMenuManager.GameSaveData saveData = new PauseMenuManager.GameSaveData
+        {
+            saveName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}" : saveName,
+            currentTurn = currentTurn,
+            mapSize = mapSize,
+            enableMultiPlanetSystem = true,
+            currentPlanetIndex = currentPlanetIndex,
+            gameInProgress = gameInProgress,
+            flatMapWidth = GetFlatMapWidth(),
+            flatMapHeight = GetFlatMapHeight(),
+            isAutosave = isAutosave,
+            combatUnits = new List<PauseMenuManager.CombatUnitSaveData>(),
+            workerUnits = new List<PauseMenuManager.WorkerUnitSaveData>(),
+            civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>(),
+            cities = new List<PauseMenuManager.CitySaveData>(),
+            participantStates = new List<PauseMenuManager.SaveParticipantStateData>()
+        };
+
+        if (civilizationManager != null && civilizationManager.playerCiv != null)
+        {
+            saveData.playerCivName = civilizationManager.playerCiv.civData.civName;
+            saveData.playerCivIndex = civilizationManager.GetCivIndex(civilizationManager.playerCiv);
+        }
+
+        if (Camera.main != null)
+        {
+            saveData.cameraPosition = Camera.main.transform.position;
+            saveData.cameraRotation = Camera.main.transform.eulerAngles;
+        }
+
+        if (ImprovementManager.Instance != null)
+        {
+            saveData.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
+        }
+
+        if (civilizationManager != null)
+        {
+            var allCivs = civilizationManager.GetAllCivs();
+            for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
+            {
+                var civ = allCivs[civIdx];
+                if (civ == null) continue;
+
+                var civProgress = new PauseMenuManager.CivilizationProgressSaveData
+                {
+                    civIndex = civIdx,
+                    currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
+                    currentTechProgress = civ.currentTechProgress,
+                    currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
+                    currentCultureProgress = civ.currentCultureProgress,
+                    tradeEnabled = civ.tradeEnabled,
+                    governorsEnabled = civ.governorsEnabled,
+                    governorCount = civ.governorCount,
+                    cityCapFromBonuses = civ.GetCityCapBonusForSave(),
+                    pantheonCapFromBonuses = civ.pantheonCapFromBonuses,
+                    attackBonus = civ.attackBonus,
+                    defenseBonus = civ.defenseBonus,
+                    movementBonus = civ.movementBonus,
+                    foodModifier = civ.foodModifier,
+                    productionModifier = civ.productionModifier,
+                    goldModifier = civ.goldModifier,
+                    scienceModifier = civ.scienceModifier,
+                    cultureModifier = civ.cultureModifier,
+                    faithModifier = civ.faithModifier
+                };
+
+                if (civ.researchedTechs != null)
+                    foreach (var tech in civ.researchedTechs)
+                        if (tech != null) civProgress.researchedTechNames.Add(tech.name);
+                if (civ.researchedCultures != null)
+                    foreach (var culture in civ.researchedCultures)
+                        if (culture != null) civProgress.researchedCultureNames.Add(culture.name);
+                if (civ.unlockedGovernorTraits != null)
+                    foreach (var trait in civ.unlockedGovernorTraits)
+                        if (trait != null) civProgress.unlockedGovernorTraitNames.Add(trait.name);
+                if (civ.cultureUnlockedPantheons != null)
+                    foreach (var pantheon in civ.cultureUnlockedPantheons)
+                        if (pantheon != null) civProgress.cultureUnlockedPantheonNames.Add(pantheon.name);
+                if (civ.cultureUnlockedBeliefs != null)
+                    foreach (var belief in civ.cultureUnlockedBeliefs)
+                        if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
+                if (civ.earnedLegacies != null)
+                    foreach (var leg in civ.earnedLegacies)
+                        if (leg != null) civProgress.earnedLegacyNames.Add(leg.legacyName);
+                if (civ.activeLegacies != null)
+                    foreach (var leg in civ.activeLegacies)
+                        if (leg != null) civProgress.activeLegacyNames.Add(leg.legacyName);
+
+                if (civ.governors != null)
+                {
+                    for (int g = 0; g < civ.governors.Count; g++)
+                    {
+                        var gov = civ.governors[g];
+                        if (gov == null) continue;
+                        var gsd = new PauseMenuManager.GovernorSaveData();
+                        gsd.id = gov.Id;
+                        gsd.name = gov.Name;
+                        gsd.specialization = gov.specialization;
+                        gsd.level = gov.Level;
+                        gsd.experience = gov.Experience;
+                        if (gov.Cities != null && civ.cities != null)
+                        {
+                            foreach (var city in gov.Cities)
+                            {
+                                if (city == null) continue;
+                                int idx = civ.cities.IndexOf(city);
+                                if (idx >= 0) gsd.assignedCityIndices.Add(idx);
+                            }
+                        }
+                        if (gov.Herds != null)
+                        {
+                            foreach (var herd in gov.Herds)
+                            {
+                                if (herd == null) continue;
+                                var hr = new PauseMenuManager.HerdRef();
+                                hr.planetIndex = herd.planetIndex;
+                                hr.tileIndex = herd.currentTileIndex;
+                                gsd.assignedHerdRefs.Add(hr);
+                            }
+                        }
+                        if (gov.Traits != null)
+                        {
+                            foreach (var t in gov.Traits)
+                            {
+                                if (t != null) gsd.traitNames.Add(t.traitName);
+                            }
+                        }
+                        civProgress.governors.Add(gsd);
+                    }
+                }
+
+                try
+                {
+                    if (civ.herds != null)
+                    {
+                        foreach (var h in civ.herds)
+                        {
+                            if (h == null) continue;
+                            var hq = new PauseMenuManager.HerdQueueSaveData();
+                            hq.planetIndex = h.planetIndex;
+                            hq.tileIndex = h.currentTileIndex;
+                            if (h.productionQueue != null && h.productionQueue.Count > 0)
+                            {
+                                foreach (var e in h.productionQueue)
+                                {
+                                    if (e == null || e.data == null) continue;
+                                    var pe = new PauseMenuManager.HerdProdEntrySaveData();
+                                    pe.dataName = e.data.name;
+                                    pe.remainingPts = e.remainingPts;
+                                    pe.goldCost = e.goldCost;
+                                    hq.queue.Add(pe);
+                                }
+                            }
+                            civProgress.herdQueues.Add(hq);
+                        }
+                    }
+                }
+                catch { }
+
+                saveData.civilizationProgress.Add(civProgress);
+
+                if (civ.cities != null)
+                {
+                    for (int cityIdx = 0; cityIdx < civ.cities.Count; cityIdx++)
+                    {
+                        var city = civ.cities[cityIdx];
+                        if (city == null) continue;
+
+                        var citySave = new PauseMenuManager.CitySaveData
+                        {
+                            ownerCivIndex = civIdx,
+                            originalOwnerCivIndex = civilizationManager.GetCivIndex(city.OriginalOwner),
+                            ownerCityListIndex = cityIdx,
+                            centerTileIndex = city.centerTileIndex,
+                            planetIndex = city.planetIndex,
+                            cityName = city.cityName,
+                            level = city.level,
+                            foodStorage = city.foodStorage,
+                            foodGrowthRequirement = city.foodGrowthRequirement,
+                            loyalty = city.loyalty,
+                            productionPerTurn = city.productionPerTurn
+                        };
+
+                        if (city.builtBuildings != null)
+                        {
+                            foreach (var (data, _) in city.builtBuildings)
+                            {
+                                if (data != null)
+                                    citySave.builtBuildingNames.Add(data.name);
+                            }
+                        }
+
+                        if (city.productionQueue != null)
+                        {
+                            foreach (var entry in city.productionQueue)
+                            {
+                                if (entry == null || entry.data == null) continue;
+                                citySave.productionQueue.Add(new PauseMenuManager.CityProductionEntrySaveData
+                                {
+                                    type = entry.type,
+                                    dataName = entry.data.name,
+                                    remainingPts = entry.remainingPts,
+                                    goldCost = entry.goldCost,
+                                    districtTileIndex = entry.data is DistrictData district && city.TryGetQueuedDistrictTile(district, out int tileIndex)
+                                        ? tileIndex
+                                        : -1
+                                });
+                            }
+                        }
+
+                        saveData.cities.Add(citySave);
+                    }
+                }
+
+                if (civ.combatUnits != null)
+                {
+                    foreach (var unit in civ.combatUnits)
+                    {
+                        if (unit == null || unit.data == null) continue;
+                        saveData.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
+                        {
+                            unitDataName = unit.data.unitName,
+                            ownerCivIndex = civIdx,
+                            currentTileIndex = unit.currentTileIndex,
+                            planetIndex = unit.planetIndex,
+                            currentLayer = (int)unit.currentLayer,
+                            currentHealth = unit.currentHealth,
+                            experience = unit.experience,
+                            level = unit.level,
+                            currentAmmo = unit.currentAmmo,
+                            hasActedThisTurn = unit.hasActedThisTurn,
+                            posX = unit.transform.position.x,
+                            posY = unit.transform.position.y,
+                            posZ = unit.transform.position.z,
+                        });
+                    }
+                }
+
+                if (civ.workerUnits != null)
+                {
+                    foreach (var worker in civ.workerUnits)
+                    {
+                        if (worker == null || worker.data == null) continue;
+                        saveData.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
+                        {
+                            unitDataName = worker.data.unitName,
+                            ownerCivIndex = civIdx,
+                            currentTileIndex = worker.currentTileIndex,
+                            planetIndex = worker.planetIndex,
+                            currentLayer = (int)worker.currentLayer,
+                            currentHealth = worker.currentHealth,
+                            currentWorkPoints = worker.currentWorkPoints,
+                            currentMovePoints = worker.currentMovePoints,
+                            posX = worker.transform.position.x,
+                            posY = worker.transform.position.y,
+                            posZ = worker.transform.position.z,
+                        });
+                    }
+                }
+            }
+        }
+
+        try
+        {
+            if (CrisisManager.Instance != null)
+            {
+                saveData.missionStates = CrisisManager.Instance.ExportMissionStates();
+                saveData.crisisState = CrisisManager.Instance.ExportCrisisState();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to serialize crisis and mission state: {e.Message}");
+        }
+
+        saveData.participantStates = SaveGameRegistry.CaptureAll();
+        return saveData;
+    }
+
     public void SaveGame(string saveName)
     {
         try
         {
-            // Create save data
-            PauseMenuManager.GameSaveData saveData = new PauseMenuManager.GameSaveData
-            {
-                saveName = saveName,
-                currentTurn = currentTurn,
-                mapSize = mapSize,
-                enableMultiPlanetSystem = true, // Legacy: always true, kept for save compatibility
-                currentPlanetIndex = currentPlanetIndex,
-                gameInProgress = gameInProgress,
-                flatMapWidth = GetFlatMapWidth(),
-                flatMapHeight = GetFlatMapHeight(),
-            };
-            
-            // Get player civilization info
-            if (civilizationManager != null && civilizationManager.playerCiv != null)
-            {
-                saveData.playerCivName = civilizationManager.playerCiv.civData.civName;
-                saveData.playerCivIndex = civilizationManager.GetCivIndex(civilizationManager.playerCiv);
-            }
-            
-            // Get camera position/rotation
-            if (Camera.main != null)
-            {
-                saveData.cameraPosition = Camera.main.transform.position;
-                saveData.cameraRotation = Camera.main.transform.eulerAngles;
-            }
-            
-            // Export improvement manager job assignments
-            if (ImprovementManager.Instance != null)
-            {
-                saveData.jobAssignments = ImprovementManager.Instance.ExportJobAssignments();
-            }
+            PauseMenuManager.GameSaveData saveData = BuildSaveData(saveName);
 
-            // ===== Serialize all units across all civilizations =====
-            saveData.combatUnits = new System.Collections.Generic.List<PauseMenuManager.CombatUnitSaveData>();
-            saveData.workerUnits = new System.Collections.Generic.List<PauseMenuManager.WorkerUnitSaveData>();
-            if (civilizationManager != null)
-            {
-                var allCivs = civilizationManager.GetAllCivs();
-                saveData.civilizationProgress = new List<PauseMenuManager.CivilizationProgressSaveData>();
-                for (int civIdx = 0; civIdx < allCivs.Count; civIdx++)
-                {
-                    var civ = allCivs[civIdx];
-                    if (civ == null) continue;
-
-                    var civProgress = new PauseMenuManager.CivilizationProgressSaveData
-                    {
-                        civIndex = civIdx,
-                        currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
-                        currentTechProgress = civ.currentTechProgress,
-                        currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
-                        currentCultureProgress = civ.currentCultureProgress,
-                        tradeEnabled = civ.tradeEnabled,
-                        governorsEnabled = civ.governorsEnabled,
-                        governorCount = civ.governorCount,
-                        cityCapFromBonuses = civ.GetCityCapBonusForSave(),
-                        pantheonCapFromBonuses = civ.pantheonCapFromBonuses,
-                        attackBonus = civ.attackBonus,
-                        defenseBonus = civ.defenseBonus,
-                        movementBonus = civ.movementBonus,
-                        foodModifier = civ.foodModifier,
-                        productionModifier = civ.productionModifier,
-                        goldModifier = civ.goldModifier,
-                        scienceModifier = civ.scienceModifier,
-                        cultureModifier = civ.cultureModifier,
-                        faithModifier = civ.faithModifier
-                    };
-
-                    if (civ.researchedTechs != null)
-                        foreach (var tech in civ.researchedTechs)
-                            if (tech != null) civProgress.researchedTechNames.Add(tech.name);
-                    if (civ.researchedCultures != null)
-                        foreach (var culture in civ.researchedCultures)
-                            if (culture != null) civProgress.researchedCultureNames.Add(culture.name);
-                    if (civ.unlockedGovernorTraits != null)
-                        foreach (var trait in civ.unlockedGovernorTraits)
-                            if (trait != null) civProgress.unlockedGovernorTraitNames.Add(trait.name);
-                    if (civ.cultureUnlockedPantheons != null)
-                        foreach (var pantheon in civ.cultureUnlockedPantheons)
-                            if (pantheon != null) civProgress.cultureUnlockedPantheonNames.Add(pantheon.name);
-                    if (civ.cultureUnlockedBeliefs != null)
-                        foreach (var belief in civ.cultureUnlockedBeliefs)
-                            if (belief != null) civProgress.cultureUnlockedBeliefNames.Add(belief.name);
-
-                    // Serialize governors for this civilization
-                    if (civ.governors != null)
-                    {
-                        for (int g = 0; g < civ.governors.Count; g++)
-                        {
-                            var gov = civ.governors[g];
-                            if (gov == null) continue;
-                            var gsd = new PauseMenuManager.GovernorSaveData();
-                            gsd.id = gov.Id;
-                            gsd.name = gov.Name;
-                            gsd.specialization = gov.specialization;
-                            gsd.level = gov.Level;
-                            gsd.experience = gov.Experience;
-                            // Assigned cities as indices into this civ's cities list
-                            if (gov.Cities != null && civ.cities != null)
-                            {
-                                foreach (var city in gov.Cities)
-                                {
-                                    if (city == null) continue;
-                                    int idx = civ.cities.IndexOf(city);
-                                    if (idx >= 0) gsd.assignedCityIndices.Add(idx);
-                                }
-                            }
-                            // Assigned herds as refs (planet+tile)
-                            if (gov.Herds != null)
-                            {
-                                foreach (var herd in gov.Herds)
-                                {
-                                    if (herd == null) continue;
-                                    var hr = new PauseMenuManager.HerdRef();
-                                    hr.planetIndex = herd.planetIndex;
-                                    hr.tileIndex = herd.currentTileIndex;
-                                    gsd.assignedHerdRefs.Add(hr);
-                                }
-                            }
-                            // Traits
-                            if (gov.Traits != null)
-                            {
-                                foreach (var t in gov.Traits)
-                                {
-                                    if (t != null) gsd.traitNames.Add(t.traitName);
-                                }
-                            }
-                            civProgress.governors.Add(gsd);
-                        }
-                    }
-
-                    saveData.civilizationProgress.Add(civProgress);
-                    if (civ.combatUnits != null)
-                    {
-                        foreach (var unit in civ.combatUnits)
-                        {
-                            if (unit == null || unit.data == null) continue;
-                            saveData.combatUnits.Add(new PauseMenuManager.CombatUnitSaveData
-                            {
-                                unitDataName = unit.data.unitName,
-                                ownerCivIndex = civIdx,
-                                currentTileIndex = unit.currentTileIndex,
-                                planetIndex = unit.planetIndex,
-                                currentLayer = (int)unit.currentLayer,
-                                currentHealth = unit.currentHealth,
-                                experience = unit.experience,
-                                level = unit.level,
-                                currentAmmo = unit.currentAmmo,
-                                hasActedThisTurn = unit.hasActedThisTurn,
-                                posX = unit.transform.position.x,
-                                posY = unit.transform.position.y,
-                                posZ = unit.transform.position.z,
-                            });
-                        }
-                    }
-                    if (civ.workerUnits != null)
-                    {
-                        foreach (var worker in civ.workerUnits)
-                        {
-                            if (worker == null || worker.data == null) continue;
-                            saveData.workerUnits.Add(new PauseMenuManager.WorkerUnitSaveData
-                            {
-                                unitDataName = worker.data.unitName,
-                                ownerCivIndex = civIdx,
-                                currentTileIndex = worker.currentTileIndex,
-                                planetIndex = worker.planetIndex,
-                                currentLayer = (int)worker.currentLayer,
-                                currentHealth = worker.currentHealth,
-                                currentWorkPoints = worker.currentWorkPoints,
-                                currentMovePoints = worker.currentMovePoints,
-                                posX = worker.transform.position.x,
-                                posY = worker.transform.position.y,
-                                posZ = worker.transform.position.z,
-                            });
-                        }
-                    }
-                }
-            }
-            
-            // Override save name if provided
-            if (!string.IsNullOrEmpty(saveName))
-            {
-                saveData.saveName = saveName;
-            }
-            
-            // Create save directory if it doesn't exist
             string saveDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Saves");
             if (!System.IO.Directory.Exists(saveDirectory))
             {
                 System.IO.Directory.CreateDirectory(saveDirectory);
             }
-            
-            // Save to file
+
             string fileName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}.json" : $"{saveName}.json";
             string filePath = System.IO.Path.Combine(saveDirectory, fileName);
             string jsonData = JsonUtility.ToJson(saveData, true);
             System.IO.File.WriteAllText(filePath, jsonData);
-// Show notification if UIManager is available
+
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowNotification($"Game saved: {saveData.saveName}");
@@ -2788,6 +2884,15 @@ public class GameManager : MonoBehaviour
 
         try
         {
+            RestoreCityStatesFromSaveData(saveData);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore city state: {e.Message}\n{e.StackTrace}");
+        }
+
+        try
+        {
             RestoreCivilizationProgressFromSaveData(saveData);
         }
         catch (System.Exception e)
@@ -2821,7 +2926,163 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"Failed to restore units from save data: {e.Message}\n{e.StackTrace}");
         }
 
+        // ===== Restore active mission states =====
+        try
+        {
+            if (CrisisManager.Instance != null)
+                CrisisManager.Instance.ImportMissionStates(saveData.missionStates);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore mission states: {e.Message}");
+        }
+
+        // ===== Restore active crisis state =====
+        try
+        {
+            if (CrisisManager.Instance != null)
+                CrisisManager.Instance.ImportCrisisState(saveData.crisisState);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore crisis state: {e.Message}");
+        }
+
+        try
+        {
+            SaveGameRegistry.RestoreAll(saveData.participantStates);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Failed to restore save participants: {e.Message}");
+        }
+
         
+    }
+
+    private void RestoreCityStatesFromSaveData(PauseMenuManager.GameSaveData saveData)
+    {
+        if (saveData?.cities == null || saveData.cities.Count == 0) return;
+
+        var allCivs = CivilizationManager.Instance?.GetAllCivs();
+        if (allCivs == null) return;
+
+        var cityLookup = new Dictionary<(int planetIndex, int tileIndex), City>();
+        foreach (var city in FindObjectsByType<City>(FindObjectsSortMode.None))
+        {
+            if (city == null) continue;
+            cityLookup[(city.planetIndex, city.centerTileIndex)] = city;
+        }
+
+        var buildingLookup = BuildAssetLookup(ResourceCache.GetAllBuildings(), b => b.buildingName);
+        var combatUnitLookup = BuildAssetLookup(ResourceCache.GetAllCombatUnits(), u => u.unitName);
+        var workerLookup = BuildAssetLookup(ResourceCache.GetAllWorkerUnits(), w => w.unitName);
+        var equipmentLookup = BuildAssetLookup(ResourceCache.GetAllEquipment(), e => e.equipmentName);
+        var projectileLookup = BuildAssetLookup(ResourceCache.GetAllProjectiles(), p => p.projectileName);
+        var districtLookup = BuildAssetLookup(ResourceCache.GetAllDistricts(), d => d.districtName);
+
+        foreach (var civ in allCivs)
+        {
+            civ?.cities?.Clear();
+        }
+
+        foreach (var cityData in saveData.cities.OrderBy(c => c.ownerCivIndex).ThenBy(c => c.ownerCityListIndex))
+        {
+            if (cityData == null) continue;
+            if (!cityLookup.TryGetValue((cityData.planetIndex, cityData.centerTileIndex), out var city) || city == null)
+            {
+                Debug.LogWarning($"[SaveLoad] Could not find city at planet {cityData.planetIndex}, tile {cityData.centerTileIndex}.");
+                continue;
+            }
+
+            Civilization ownerCiv = cityData.ownerCivIndex >= 0 && cityData.ownerCivIndex < allCivs.Count ? allCivs[cityData.ownerCivIndex] : city.owner;
+            Civilization originalOwnerCiv = cityData.originalOwnerCivIndex >= 0 && cityData.originalOwnerCivIndex < allCivs.Count ? allCivs[cityData.originalOwnerCivIndex] : ownerCiv;
+
+            city.owner = ownerCiv;
+            city.OriginalOwner = originalOwnerCiv ?? ownerCiv;
+            city.cityName = cityData.cityName;
+            city.level = cityData.level;
+            city.foodStorage = cityData.foodStorage;
+            city.foodGrowthRequirement = cityData.foodGrowthRequirement;
+            city.loyalty = cityData.loyalty;
+            city.productionPerTurn = cityData.productionPerTurn;
+
+            if (ownerCiv != null)
+            {
+                ownerCiv.cities ??= new List<City>();
+                if (!ownerCiv.cities.Contains(city))
+                    ownerCiv.cities.Add(city);
+            }
+
+            var savedBuildings = new List<BuildingData>();
+            if (cityData.builtBuildingNames != null)
+            {
+                foreach (var buildingName in cityData.builtBuildingNames)
+                {
+                    if (string.IsNullOrWhiteSpace(buildingName)) continue;
+                    if (buildingLookup.TryGetValue(buildingName, out var building) && building != null)
+                        savedBuildings.Add(building);
+                }
+            }
+            city.RestoreBuiltBuildingsForSave(savedBuildings);
+
+            var restoredQueue = new List<City.ProdEntry>();
+            var districtTargets = new Dictionary<DistrictData, int>();
+            if (cityData.productionQueue != null)
+            {
+                foreach (var entryData in cityData.productionQueue)
+                {
+                    if (entryData == null || string.IsNullOrWhiteSpace(entryData.dataName)) continue;
+
+                    ScriptableObject resolvedData = entryData.type switch
+                    {
+                        City.ProdEntry.Type.Unit when combatUnitLookup.TryGetValue(entryData.dataName, out var unit) => unit,
+                        City.ProdEntry.Type.Worker when workerLookup.TryGetValue(entryData.dataName, out var worker) => worker,
+                        City.ProdEntry.Type.Building when buildingLookup.TryGetValue(entryData.dataName, out var building) => building,
+                        City.ProdEntry.Type.District when districtLookup.TryGetValue(entryData.dataName, out var district) => district,
+                        City.ProdEntry.Type.Equipment when equipmentLookup.TryGetValue(entryData.dataName, out var equipment) => equipment,
+                        City.ProdEntry.Type.Projectile when projectileLookup.TryGetValue(entryData.dataName, out var projectile) => projectile,
+                        _ => null
+                    };
+
+                    if (resolvedData == null) continue;
+
+                    var restoredEntry = CreateCityProductionEntryForRestore(resolvedData, entryData.type, entryData.goldCost);
+                    if (restoredEntry == null) continue;
+                    restoredEntry.remainingPts = entryData.remainingPts;
+                    restoredEntry.goldCost = entryData.goldCost;
+                    restoredQueue.Add(restoredEntry);
+
+                    if (resolvedData is DistrictData districtData && entryData.districtTileIndex >= 0)
+                    {
+                        districtTargets[districtData] = entryData.districtTileIndex;
+                    }
+                }
+            }
+
+            city.RestoreProductionQueueForSave(restoredQueue, districtTargets);
+        }
+    }
+
+    private static City.ProdEntry CreateCityProductionEntryForRestore(ScriptableObject data, City.ProdEntry.Type type, int goldCost)
+    {
+        switch (data)
+        {
+            case CombatUnitData unit:
+                return new City.ProdEntry(unit, unit.productionCost, goldCost, unit.requiredResources, unit.requiredTerrains, unit.requiresCoastalCity, unit.requiresHarbor, type);
+            case WorkerUnitData worker:
+                return new City.ProdEntry(worker, worker.productionCost, goldCost, worker.requiredResources, worker.requiredTerrains, worker.requiresCoastalCity, worker.requiresHarbor, type);
+            case BuildingData building:
+                return new City.ProdEntry(building, building.productionCost, goldCost, building.requiredResources, building.requiredTerrains, false, false, type);
+            case DistrictData district:
+                return new City.ProdEntry(district, district.productionCost, goldCost, null, district.allowedBiomes, district.requiresCoastal, false, type);
+            case EquipmentData equipment:
+                return new City.ProdEntry(equipment, equipment.productionCost, goldCost, null, null, false, false, type);
+            case GameCombat.ProjectileData projectile:
+                return new City.ProdEntry(projectile, projectile.productionCost, goldCost, projectile.requiredResources, null, false, false, type);
+            default:
+                return null;
+        }
     }
 
     private void RestoreCivilizationProgressFromSaveData(PauseMenuManager.GameSaveData saveData)
@@ -3035,6 +3296,22 @@ public class GameManager : MonoBehaviour
             catch (System.Exception ex)
             {
                 Debug.LogWarning($"[SaveLoad] Failed to restore governors for civ {civ.civData?.civName ?? progress.civIndex.ToString()}: {ex}");
+            }
+
+            // Restore legacy state
+            try
+            {
+                IEnumerable<LegacyData> legacySources = LegacyManager.Instance != null
+                    ? (IEnumerable<LegacyData>)LegacyManager.Instance.allLegacies
+                    : Resources.LoadAll<LegacyData>("");
+                var legacyLookup = BuildAssetLookup<LegacyData>(legacySources, l => l.legacyName);
+
+                civ.earnedLegacies = ResolveAssets<LegacyData>(progress.earnedLegacyNames, legacyLookup);
+                civ.activeLegacies = ResolveAssets<LegacyData>(progress.activeLegacyNames, legacyLookup);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[SaveLoad] Failed to restore legacies for civ {civ.civData?.civName ?? progress.civIndex.ToString()}: {ex}");
             }
         }
     }

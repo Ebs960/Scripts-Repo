@@ -2,8 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// A Mission is a multi-step event with objectives, narrative, world overrides, and legacy rewards.
-/// All supporting types are nested inside to keep the file count low.
+/// A Mission is a player-driven goal (oath, achievement, era goal, strategic objective)
+/// with multi-step objectives, narrative beats, and legacy rewards.
+///
+/// Missions can exist standalone or be injected by CrisisManager during a crisis.
+/// World-scale overrides and crisis narratives live on CrisisData, NOT here.
 /// </summary>
 [CreateAssetMenu(fileName = "New Mission", menuName = "Data/Mission Data")]
 public class MissionData : ScriptableObject
@@ -17,6 +20,16 @@ public class MissionData : ScriptableObject
     public string flavorText;
     public Sprite splashImage;
 
+    [Header("Victory")]
+    public Sprite victorySplashImage;
+    [TextArea(4, 10)]
+    public string victoryFlavorText;
+
+    [Header("Failure")]
+    public Sprite failureSplashImage;
+    [TextArea(4, 10)]
+    public string failureFlavorText;
+
     [Header("Activation")]
     [Tooltip("Earliest turn this mission can begin. 0 = available immediately.")]
     public int earliestTurn;
@@ -28,12 +41,13 @@ public class MissionData : ScriptableObject
     [Header("Objectives (completed sequentially)")]
     public List<Objective> objectives = new List<Objective>();
 
+    [Header("Mission Constraints")]
+    [Tooltip("Failure conditions monitored while this mission is active.")]
+    public MissionConstraint[] constraints;
+
     [Header("Narrative Beats")]
     [Tooltip("Flavor text shown at each stage transition")]
     public NarrativeBeat[] narrativeBeats;
-
-    [Header("World Overrides (active while mission runs)")]
-    public WorldOverride[] worldOverrides;
 
     [Header("Rewards")]
     public RewardTier[] rewardTiers;
@@ -63,8 +77,20 @@ public class MissionData : ScriptableObject
         public CultureData specificCulture;
         [Tooltip("If set, only kills of this unit type count")]
         public CombatUnitData specificUnit;
+        [Tooltip("If set, only kills of these specific unit types count")]
+        public CombatUnitData[] specificUnits;
+        [Tooltip("If set, only kills of these specific worker unit types count")]
+        public WorkerUnitData[] specificWorkerUnits;
+        [Tooltip("If set, only kills of these combat categories count (e.g. Animal, Spearman)")]
+        public CombatCategory[] specificCategories;
         [Tooltip("If set, only this improvement type counts")]
         public ImprovementData specificImprovement;
+        [Tooltip("If set, only these improvement types count")]
+        public ImprovementData[] specificImprovements;
+        [Tooltip("If set, only this specific building counts")]
+        public BuildingData specificBuilding;
+        [Tooltip("If set, only these specific buildings count")]
+        public BuildingData[] specificBuildings;
     }
 
     public enum ObjectiveType
@@ -89,6 +115,43 @@ public class MissionData : ScriptableObject
         FoundPantheon,
     }
 
+    [System.Serializable]
+    public class MissionConstraint
+    {
+        public ConstraintType type;
+        [Tooltip("Constraint becomes active after this objective index is completed. -1 = active immediately.")]
+        public int activatesAfterObjectiveIndex = -1;
+        [Tooltip("Target count used by count-based constraints.")]
+        public int targetValue = 1;
+        public CountComparison comparison = CountComparison.EqualTo;
+        [TextArea(2, 4)]
+        public string failureFlavorText;
+
+        [Header("Optional Filters")]
+        public CombatUnitData specificUnit;
+        public CombatUnitData[] specificUnits;
+        public WorkerUnitData[] specificWorkerUnits;
+        public CombatCategory[] specificCategories;
+        public ImprovementData specificImprovement;
+        public ImprovementData[] specificImprovements;
+        public BuildingData specificBuilding;
+        public BuildingData[] specificBuildings;
+    }
+
+    public enum ConstraintType
+    {
+        NoUnitLosses,
+        MaintainImprovementCount,
+        MaintainBuildingCount,
+    }
+
+    public enum CountComparison
+    {
+        EqualTo,
+        AtLeast,
+        AtMost,
+    }
+
     // ─────────────────────────────────────────────
     //  Narrative Beat
     // ─────────────────────────────────────────────
@@ -102,27 +165,6 @@ public class MissionData : ScriptableObject
         [TextArea(3, 8)]
         public string narrativeText;
         public Sprite stageImage;
-    }
-
-    // ─────────────────────────────────────────────
-    //  World Override
-    // ─────────────────────────────────────────────
-
-    [System.Serializable]
-    public class WorldOverride
-    {
-        public WorldOverrideType type;
-        public float value;
-    }
-
-    public enum WorldOverrideType
-    {
-        WinterDurationTurns,
-        DroughtChance,
-        DroughtSeverity,
-        AnimalSpawnMultiplier,
-        WinterAttritionDamage,
-        FoodYieldMultiplier,
     }
 
     // ─────────────────────────────────────────────
