@@ -108,5 +108,6 @@ public class CrisisData : ScriptableObject
         PredatorSpawnMultiplier,
         WinterAttritionDamage,
         FoodYieldMultiplier,
+        ForceWinter,
     }
 }

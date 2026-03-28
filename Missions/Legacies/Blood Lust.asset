@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Blood Lust
+  m_EditorClassIdentifier: Assembly-CSharp::LegacyData
+  legacyName: Blood Lust
+  icon: {fileID: 21300000, guid: 4d11798e5e8fcd643b7bf724d89d3130, type: 3}
+  description: Fight. Kill. Repeat
+  flavorText: 
+  bannerImage: {fileID: 21300000, guid: 4d11798e5e8fcd643b7bf724d89d3130, type: 3}
+  policyPointCost: 50
+  goldCost: 50
+  attackBonus: 10
+  defenseBonus: 0
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  movementModifier: 0
+  foodModifier: 0
+  productionModifier: 0.1
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0.05
+  policyBiases:
+  - policy: {fileID: 11400000, guid: 1593fb683dba5f047ac58f2d3a77cf21, type: 2}
+    opinionModifier: 8.9
+    reason: 
+  - policy: {fileID: 11400000, guid: 028c7a8365967f84c943805993951876, type: 2}
+    opinionModifier: 8.9
+    reason: 
+  governmentBiases:
+  - government: {fileID: 11400000, guid: f0edbcbede4a85340bba0325c37d8596, type: 2}
+    opinionModifier: 6.6
+    reason: 
+  personalityMultipliers:
+  - trait: 1
+    multiplier: 1.1
+  - trait: 8
+    multiplier: 1.3
+  - trait: 4
+    multiplier: 1.15

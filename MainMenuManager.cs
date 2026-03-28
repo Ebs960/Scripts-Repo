@@ -91,6 +91,13 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Terrain Settings")]
     public TMP_Dropdown terrainRoughnessDropdown;
+    [Header("New World Settings")]
+    public Toggle enableNewWorldToggle;
+    public TMP_InputField newWorldContinentCountInput;
+    public TMP_InputField newWorldBufferInput;
+    public Toggle enableSecondNewWorldToggle;
+    public TMP_InputField secondNewWorldBufferInput;
+    public Toggle carveNewWorldOnTerrestrialToggle;
 
     [Header("Map Type Visualization")]
     public List<MapTypeSpriteEntry> mapTypeSpriteEntries = new List<MapTypeSpriteEntry>();
@@ -159,7 +166,7 @@ public class MainMenuManager : MonoBehaviour
     private readonly LandPresetData[] landPresets = new[] {
         new LandPresetData { name = "Archipelago", continents = 0, islands = 25, continentSizeMultiplier = 1.0f, description = "Many small scattered islands" },
         new LandPresetData { name = "Islands", continents = 2, islands = 15, continentSizeMultiplier = 1.0f, description = "A few large islands with smaller ones" },
-        new LandPresetData { name = "Standard", continents = 4, islands = 8, continentSizeMultiplier = 1.05f, description = "Balanced continents and islands" },
+        new LandPresetData { name = "Standard", continents = 3, islands = 6, continentSizeMultiplier = 1.00f, description = "Balanced continents and islands" },
         new LandPresetData { name = "Large Continents", continents = 4, islands = 5, continentSizeMultiplier = 1.3f, description = "Multiple large continents" },
         new LandPresetData { name = "Pangaea", continents = 1, islands = 2, continentSizeMultiplier = 2.3f, description = "One massive supercontinent" },
         new LandPresetData { name = "Terrestrial", continents = 2, islands = 2, continentSizeMultiplier = 1.85f, description = "A world dominated by sprawling landmasses" }
@@ -324,6 +331,8 @@ public class MainMenuManager : MonoBehaviour
 
         // Initialize map size dropdown
         InitializeMapSizeDropdown();
+        // Initialize New World UI controls
+        InitializeNewWorldControls();
     }
     
     private void InitializeControls()
@@ -1125,6 +1134,99 @@ public class MainMenuManager : MonoBehaviour
         mapSizeDropdown.value = (int)GameSetupData.mapSize;
         mapSizeDropdown.onValueChanged.AddListener(OnMapSizeChanged);
         UpdatePlanetSizeText();
+    }
+
+    private void InitializeNewWorldControls()
+    {
+        if (enableNewWorldToggle != null)
+        {
+            enableNewWorldToggle.isOn = GameSetupData.enableNewWorld;
+            enableNewWorldToggle.onValueChanged.AddListener(OnEnableNewWorldChanged);
+        }
+        if (newWorldBufferInput != null)
+        {
+            newWorldBufferInput.text = GameSetupData.newWorldBufferTiles.ToString();
+            newWorldBufferInput.onEndEdit.AddListener(OnNewWorldBufferChanged);
+        }
+        if (newWorldContinentCountInput != null)
+        {
+            newWorldContinentCountInput.text = Mathf.Max(1, GameSetupData.newWorldContinentCount).ToString();
+            newWorldContinentCountInput.onEndEdit.AddListener(OnNewWorldContinentCountChanged);
+        }
+        if (enableSecondNewWorldToggle != null)
+        {
+            enableSecondNewWorldToggle.isOn = GameSetupData.enableSecondNewWorld;
+            enableSecondNewWorldToggle.onValueChanged.AddListener(OnEnableSecondNewWorldChanged);
+        }
+        if (secondNewWorldBufferInput != null)
+        {
+            secondNewWorldBufferInput.text = GameSetupData.secondNewWorldBufferTiles.ToString();
+            secondNewWorldBufferInput.onEndEdit.AddListener(OnSecondNewWorldBufferChanged);
+        }
+        if (carveNewWorldOnTerrestrialToggle != null)
+        {
+            carveNewWorldOnTerrestrialToggle.isOn = GameSetupData.carveNewWorldOnTerrestrial;
+            carveNewWorldOnTerrestrialToggle.onValueChanged.AddListener(OnCarveNewWorldChanged);
+        }
+
+        if (PlanetGenerator.Instance != null)
+        {
+            var pg = PlanetGenerator.Instance;
+            if (enableNewWorldToggle != null) enableNewWorldToggle.isOn = pg.enableNewWorld;
+            if (newWorldContinentCountInput != null) newWorldContinentCountInput.text = Mathf.Max(1, pg.newWorldContinentCount).ToString();
+            if (newWorldBufferInput != null) newWorldBufferInput.text = pg.newWorldBufferTiles.ToString();
+            if (enableSecondNewWorldToggle != null) enableSecondNewWorldToggle.isOn = pg.enableSecondNewWorld;
+            if (secondNewWorldBufferInput != null) secondNewWorldBufferInput.text = pg.secondNewWorldBufferTiles.ToString();
+            if (carveNewWorldOnTerrestrialToggle != null) carveNewWorldOnTerrestrialToggle.isOn = pg.carveNewWorldOnTerrestrial;
+        }
+    }
+
+    private void OnEnableNewWorldChanged(bool val)
+    {
+        GameSetupData.enableNewWorld = val;
+        if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.enableNewWorld = val;
+    }
+
+    private void OnNewWorldBufferChanged(string text)
+    {
+        if (int.TryParse(text, out int v))
+        {
+            v = Mathf.Clamp(v, 1, 64);
+            GameSetupData.newWorldBufferTiles = v;
+            if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.newWorldBufferTiles = v;
+        }
+    }
+
+    private void OnNewWorldContinentCountChanged(string text)
+    {
+        if (int.TryParse(text, out int v))
+        {
+            v = Mathf.Clamp(v, 1, 8);
+            GameSetupData.newWorldContinentCount = v;
+            if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.newWorldContinentCount = v;
+        }
+    }
+
+    private void OnEnableSecondNewWorldChanged(bool val)
+    {
+        GameSetupData.enableSecondNewWorld = val;
+        if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.enableSecondNewWorld = val;
+    }
+
+    private void OnSecondNewWorldBufferChanged(string text)
+    {
+        if (int.TryParse(text, out int v))
+        {
+            v = Mathf.Clamp(v, 0, 128);
+            GameSetupData.secondNewWorldBufferTiles = v;
+            if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.secondNewWorldBufferTiles = v;
+        }
+    }
+
+    private void OnCarveNewWorldChanged(bool val)
+    {
+        GameSetupData.carveNewWorldOnTerrestrial = val;
+        if (PlanetGenerator.Instance != null) PlanetGenerator.Instance.carveNewWorldOnTerrestrial = val;
     }
 
     #region Options Menu Methods

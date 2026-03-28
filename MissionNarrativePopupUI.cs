@@ -92,6 +92,12 @@ public class MissionNarrativePopupUI : MonoBehaviour
     public void Hide()
     {
         closeCallback = null;
+        if (rewardSection != null)
+            rewardSection.SetActive(false);
+        if (rewardImage != null)
+            rewardImage.gameObject.SetActive(false);
+        if (splashImage != null)
+            splashImage.gameObject.SetActive(false);
         if (popupRoot != null)
             popupRoot.SetActive(false);
     }

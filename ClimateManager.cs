@@ -89,7 +89,18 @@ public class ClimateManager : MonoBehaviour
     // Mission-driven season duration override (-1 = no override)
     private int winterDurationOverride = -1;
 
+    private struct FrozenSeasonSnapshot
+    {
+        public Season season;
+        public int elapsedTurns;
+    }
+
+    private readonly Dictionary<int, FrozenSeasonSnapshot> frozenSeasonSnapshots = new Dictionary<int, FrozenSeasonSnapshot>();
+    private bool forceWinterOverrideActive;
+
     public event Action<Season> OnSeasonChanged;
+
+    public bool IsWinterForced => forceWinterOverrideActive;
 
     void Awake()
     {
@@ -249,6 +260,7 @@ public class ClimateManager : MonoBehaviour
     private void CheckSeasonChange()
     {
         if (turnsPerSeason <= 0) return;
+        if (forceWinterOverrideActive) return;
 
         // Always evaluate multi-planet season changes (single-planet is deprecated)
         CheckMultiPlanetSeasonChanges();
@@ -329,6 +341,70 @@ public class ClimateManager : MonoBehaviour
     {
         winterDurationOverride = -1;
         if (verboseLogs) Debug.Log("[ClimateManager] Winter duration override cleared");
+    }
+
+    public void SetForceWinterOverride(bool enabled)
+    {
+        if (enabled)
+        {
+            if (forceWinterOverrideActive)
+                return;
+
+            forceWinterOverrideActive = true;
+            frozenSeasonSnapshots.Clear();
+
+            foreach (int planetIndex in GetKnownPlanetIndices())
+            {
+                if (!planetSeasons.TryGetValue(planetIndex, out var season))
+                    season = Season.Spring;
+
+                int startTurn = planetSeasonStartTurns.TryGetValue(planetIndex, out var savedStartTurn)
+                    ? savedStartTurn
+                    : currentTurn;
+
+                frozenSeasonSnapshots[planetIndex] = new FrozenSeasonSnapshot
+                {
+                    season = season,
+                    elapsedTurns = Mathf.Max(0, currentTurn - startTurn)
+                };
+
+                planetSeasons[planetIndex] = Season.Winter;
+                planetSeasonStartTurns[planetIndex] = currentTurn;
+                ApplySeasonalEffects(Season.Winter, planetIndex);
+            }
+
+            if (verboseLogs || seasonChangeDebug)
+                Debug.Log($"[ClimateManager] ForceWinter override enabled for {frozenSeasonSnapshots.Count} planets.");
+            return;
+        }
+
+        if (!forceWinterOverrideActive)
+            return;
+
+        forceWinterOverrideActive = false;
+
+        foreach (int planetIndex in GetKnownPlanetIndices())
+        {
+            if (frozenSeasonSnapshots.TryGetValue(planetIndex, out var snapshot))
+            {
+                planetSeasons[planetIndex] = snapshot.season;
+                planetSeasonStartTurns[planetIndex] = currentTurn - snapshot.elapsedTurns;
+            }
+            else
+            {
+                if (!planetSeasons.ContainsKey(planetIndex))
+                    planetSeasons[planetIndex] = Season.Spring;
+                if (!planetSeasonStartTurns.ContainsKey(planetIndex))
+                    planetSeasonStartTurns[planetIndex] = currentTurn;
+            }
+
+            ApplySeasonalEffects(GetSeasonForPlanet(planetIndex), planetIndex);
+        }
+
+        frozenSeasonSnapshots.Clear();
+
+        if (verboseLogs || seasonChangeDebug)
+            Debug.Log("[ClimateManager] ForceWinter override cleared.");
     }
 
     private Season GetNextSeason(Season current)
@@ -608,6 +684,8 @@ public class ClimateManager : MonoBehaviour
     /// </summary>
     public Season GetSeasonForPlanet(int planetIndex = 0)
     {
+        if (forceWinterOverrideActive)
+            return Season.Winter;
         return planetSeasons.TryGetValue(planetIndex, out var season) ? season : Season.Spring;
     }
 
@@ -617,6 +695,7 @@ public class ClimateManager : MonoBehaviour
     /// </summary>
     public int GetTurnsUntilWinter(int planetIndex = 0)
     {
+        if (forceWinterOverrideActive) return 0;
         if (turnsPerSeason <= 0) return 999;
         int currentTurnNow = GameManager.Instance != null ? GameManager.Instance.currentTurn : currentTurn;
         Season s = GetSeasonForPlanet(planetIndex);
@@ -761,6 +840,23 @@ public class ClimateManager : MonoBehaviour
         }
 
         ApplySeasonalEffects(GetSeasonForPlanet(generator.planetIndex), generator.planetIndex);
+    }
+
+    private IEnumerable<int> GetKnownPlanetIndices()
+    {
+        HashSet<int> indices = new HashSet<int>(planetSeasons.Keys);
+
+        var planetData = GameManager.Instance?.GetPlanetData();
+        if (planetData != null)
+        {
+            foreach (var kvp in planetData)
+                indices.Add(kvp.Key);
+        }
+
+        if (indices.Count == 0)
+            indices.Add(0);
+
+        return indices;
     }
 
     private void HandlePlanetSeasonChanged(int idx, Season season)

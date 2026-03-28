@@ -113,6 +113,9 @@ public class MissionData : ScriptableObject
         ChangeGovernment,
         FormAlliance,
         FoundPantheon,
+        DeclareWar,
+        MakePeace,
+        EstablishTrade,
     }
 
     [System.Serializable]

@@ -70,4 +70,9 @@ MonoBehaviour:
     specificBuilding: {fileID: 0}
     specificBuildings: []
   narrativeBeats: []
-  rewardTiers: []
+  rewardTiers:
+  - tierName: Hold the Fort
+    completionFlavorText: We dont run. Ever
+    tierBadge: {fileID: 0}
+    requiredObjectivesCompleted: 0
+    rewardLegacy: {fileID: 11400000, guid: 65a301742ca26e64183c49a5db45c45d, type: 2}

@@ -259,12 +259,17 @@ MonoBehaviour:
   riverMeanderAmplitude: 0.18
   riverMeanderFrequency: 1.15
   riverTurnResistance: 0.8
+  enableFloodplains: 1
+  floodplainRange: 1
+  floodplainFlattenStrength: 0.155
+  floodplainMoistureBoost: 0.105
+  floodplainFertilityBias: 0.5
   enableLakes: 1
   numberOfLakes: 2
   lakeMinRadiusTiles: 2
   lakeMaxRadiusTiles: 3
   lakeMinDistanceFromCoast: 6
-  lakeShoreIrregularity: 0.65
+  lakeShoreIrregularity: 1
   lakeElongationStrength: 0.55
   lakeCoveStrength: 0.45
   smartEmbaymentCount: 6
@@ -294,6 +299,13 @@ MonoBehaviour:
   maxIslandHeightTilesLarge: 24
   generateIslandChains: 1
   islandsPerChain: 3
+  islandEdgeIrregularity: 0.45
+  islandNoiseFrequency: 0.018
+  enableNewWorld: 1
+  newWorldBufferTiles: 15
+  enableSecondNewWorld: 1
+  secondNewWorldBufferTiles: 30
+  carveNewWorldOnTerrestrial: 1
   planetType: 0
   mapType: 0
   currentMapTypeName: 

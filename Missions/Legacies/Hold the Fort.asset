@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: Hold the Fort
+  m_EditorClassIdentifier: Assembly-CSharp::LegacyData
+  legacyName: Hold the Fort
+  icon: {fileID: 21300000, guid: ec90a3e1becc6be4daf44eb42bd0b268, type: 3}
+  description: We dont run we bunker down and hold out.
+  flavorText: 
+  bannerImage: {fileID: 21300000, guid: ec90a3e1becc6be4daf44eb42bd0b268, type: 3}
+  policyPointCost: 50
+  goldCost: 50
+  attackBonus: 0
+  defenseBonus: 10
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  movementModifier: 0
+  foodModifier: 0.05
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  policyBiases:
+  - policy: {fileID: 11400000, guid: 1593fb683dba5f047ac58f2d3a77cf21, type: 2}
+    opinionModifier: 8.9
+    reason: 
+  - policy: {fileID: 11400000, guid: 79ed95e0443cb3647b22bd738fe261a3, type: 2}
+    opinionModifier: 8.9
+    reason: 
+  governmentBiases:
+  - government: {fileID: 11400000, guid: f9040b7ec65e61c4f93a94a00b7d7ab4, type: 2}
+    opinionModifier: 6
+    reason: 
+  personalityMultipliers:
+  - trait: 0
+    multiplier: 1.3
+  - trait: 6
+    multiplier: 1.05

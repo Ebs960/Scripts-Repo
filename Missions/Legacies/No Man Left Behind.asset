@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 075ae7a4e0c44354e9959697c9e269fc, type: 3}
+  m_Name: No Man Left Behind
+  m_EditorClassIdentifier: Assembly-CSharp::LegacyData
+  legacyName: No Man Left Behind
+  icon: {fileID: 21300000, guid: b92e050d96a6de14a9667f8e6cb95726, type: 3}
+  description: No matter what we never abandon our own.
+  flavorText: 
+  bannerImage: {fileID: 21300000, guid: b92e050d96a6de14a9667f8e6cb95726, type: 3}
+  policyPointCost: 50
+  goldCost: 50
+  attackBonus: 0
+  defenseBonus: 3
+  movementBonus: 0
+  attackModifier: 0
+  defenseModifier: 0
+  movementModifier: 0
+  foodModifier: 0.05
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  policyBiases:
+  - policy: {fileID: 11400000, guid: 3dc619635f28bb544b17579357aba52b, type: 2}
+    opinionModifier: 5.5
+    reason: 
+  - policy: {fileID: 11400000, guid: a98db68b2d0179842a246190aedd3191, type: 2}
+    opinionModifier: 7.2
+    reason: 
+  governmentBiases:
+  - government: {fileID: 11400000, guid: f9040b7ec65e61c4f93a94a00b7d7ab4, type: 2}
+    opinionModifier: 9.5
+    reason: 
+  - government: {fileID: 11400000, guid: 7a5e8ce6e86aecd4988d7495d8b0fddc, type: 2}
+    opinionModifier: 17
+    reason: 
+  personalityMultipliers:
+  - trait: 0
+    multiplier: 1.3
+  - trait: 6
+    multiplier: 1.1
+  - trait: 2
+    multiplier: 1.15

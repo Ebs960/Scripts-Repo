@@ -26,6 +26,10 @@ public class CrisisManager : MonoBehaviour
     [Tooltip("Every crisis available in the game.")]
     public List<CrisisData> allCrises = new List<CrisisData>();
 
+    [Header("Debug")]
+    [Tooltip("Logs the full crisis lifecycle, mission progress, and trigger evaluation.")]
+    public bool enableCrisisDebugLogging = true;
+
     // ─── Events ───
     public event Action<CrisisData> OnCrisisOminousWarning;
     public event Action<CrisisData> OnCrisisObviousWarning;
@@ -66,6 +70,7 @@ public class CrisisManager : MonoBehaviour
     private struct OriginalWorldValues
     {
         public int winterDuration;
+        public bool winterForced;
         public float droughtChance;
         public float droughtSeverity;
         public int winterAttritionDamage;
@@ -77,7 +82,11 @@ public class CrisisManager : MonoBehaviour
     private OriginalWorldValues originalWorld;
     private readonly Dictionary<int, MissionState> activeMissions = new Dictionary<int, MissionState>();
     private readonly HashSet<int> subscribedCivs = new HashSet<int>();
+    private bool subscribedToTurnManager;
     private bool subscribedToImprovementManager;
+    private bool subscribedToGameEvents;
+    private bool subscribedToDiplomacy;
+    private bool warnedAboutMissingCrises;
 
     [Serializable]
     public class MissionStateSaveData
@@ -118,30 +127,33 @@ public class CrisisManager : MonoBehaviour
 
     void Start()
     {
-        if (TurnManager.Instance != null)
-            TurnManager.Instance.OnRoundStarted += HandleRoundStarted;
-        if (GameEventManager.Instance != null)
-        {
-            GameEventManager.Instance.OnUnitKilled += HandleUnitKilled;
-            GameEventManager.Instance.OnUnitLost += HandleUnitLost;
-        }
+        TrySubscribeToTurnManager();
+        TrySubscribeToGameEvents();
         TrySubscribeToImprovementManager();
-        if (DiplomacyManager.Instance != null)
-            DiplomacyManager.Instance.OnDiplomacyChanged += HandleDiplomacyChanged;
+        TrySubscribeToDiplomacy();
         SubscribeToAllCivs();
+    }
+
+    void Update()
+    {
+        // Retry subscriptions that failed in Start() due to singletons not yet existing
+        if (!subscribedToTurnManager) TrySubscribeToTurnManager();
+        if (!subscribedToGameEvents) TrySubscribeToGameEvents();
+        if (!subscribedToImprovementManager) TrySubscribeToImprovementManager();
+        if (!subscribedToDiplomacy) TrySubscribeToDiplomacy();
     }
 
     void OnDestroy()
     {
-        if (TurnManager.Instance != null)
+        if (subscribedToTurnManager && TurnManager.Instance != null)
             TurnManager.Instance.OnRoundStarted -= HandleRoundStarted;
-        if (GameEventManager.Instance != null)
+        if (subscribedToGameEvents && GameEventManager.Instance != null)
         {
             GameEventManager.Instance.OnUnitKilled -= HandleUnitKilled;
             GameEventManager.Instance.OnUnitLost -= HandleUnitLost;
         }
         TryUnsubscribeFromImprovementManager();
-        if (DiplomacyManager.Instance != null)
+        if (subscribedToDiplomacy && DiplomacyManager.Instance != null)
             DiplomacyManager.Instance.OnDiplomacyChanged -= HandleDiplomacyChanged;
         UnsubscribeFromAllCivs();
     }
@@ -156,34 +168,61 @@ public class CrisisManager : MonoBehaviour
     /// </summary>
     public bool TriggerCrisis(CrisisData crisis)
     {
-        if (crisis == null) return false;
-        if (activeCrisis != null) return false; // one at a time
-        if (crisisHistory.Contains(crisis.crisisName)) return false; // already happened
+        LogCrisisDebug("TriggerCrisis", $"Request received for {DescribeCrisis(crisis)} at turn={CurrentTurn} while active={DescribeCrisis(activeCrisis)} phase={currentPhase}");
+
+        if (crisis == null)
+        {
+            LogCrisisDebug("TriggerCrisis", "Rejected: crisis is null.");
+            return false;
+        }
+        if (activeCrisis != null)
+        {
+            LogCrisisDebug("TriggerCrisis", $"Rejected: another crisis is already active ({DescribeCrisis(activeCrisis)} phase={currentPhase}).");
+            return false; // one at a time
+        }
+        if (crisisHistory.Contains(crisis.crisisName))
+        {
+            LogCrisisDebug("TriggerCrisis", $"Rejected: '{crisis.crisisName}' is already in crisis history.");
+            return false; // already happened
+        }
 
         int turn = CurrentTurn;
-        if (turn < crisis.earliestTurn) return false;
-        if (crisis.latestTurn > 0 && turn > crisis.latestTurn) return false;
+        if (turn < crisis.earliestTurn)
+        {
+            LogCrisisDebug("TriggerCrisis", $"Rejected: current turn {turn} is earlier than earliestTurn {crisis.earliestTurn}.");
+            return false;
+        }
+        if (crisis.latestTurn > 0 && turn > crisis.latestTurn)
+        {
+            LogCrisisDebug("TriggerCrisis", $"Rejected: current turn {turn} is later than latestTurn {crisis.latestTurn}.");
+            return false;
+        }
 
         activeCrisis = crisis;
         crisisTriggerTurn = turn;
+        LogCrisisDebug("TriggerCrisis", $"Accepted: activeCrisis set to {DescribeCrisis(crisis)} with triggerTurn={crisisTriggerTurn}.");
 
         if (crisis.ominousWarningTurns > 0)
         {
+            LogCrisisDebug("TriggerCrisis", $"Entering ominous warning for {crisis.ominousWarningTurns} turns.");
             SetPhase(CrisisData.CrisisPhase.OminousWarning);
             OnCrisisOminousWarning?.Invoke(crisis);
             Debug.Log($"[CrisisManager] Ominous warning for '{crisis.crisisName}' — {crisis.ominousWarningTurns} turns");
         }
         else if (crisis.obviousWarningTurns > 0)
         {
+            LogCrisisDebug("TriggerCrisis", $"Skipping ominous warning and entering obvious warning for {crisis.obviousWarningTurns} turns.");
             SetPhase(CrisisData.CrisisPhase.ObviousWarning);
             OnCrisisObviousWarning?.Invoke(crisis);
             Debug.Log($"[CrisisManager] Obvious warning for '{crisis.crisisName}' — {crisis.obviousWarningTurns} turns");
         }
         else
         {
+            LogCrisisDebug("TriggerCrisis", "No warning phases configured; activating immediately.");
             ActivateCrisis();
         }
 
+        LogCrisisDebug("TriggerCrisis", $"Completed trigger request for {DescribeCrisis(crisis)}. Current phase={currentPhase}.");
         return true;
     }
 
@@ -191,7 +230,10 @@ public class CrisisManager : MonoBehaviour
     public void ForceEndCrisis()
     {
         if (activeCrisis != null)
+        {
+            LogCrisisDebug("ForceEndCrisis", $"Force ending {DescribeCrisis(activeCrisis)} at phase={currentPhase} turn={CurrentTurn}.");
             EndCrisis();
+        }
     }
 
     /// <summary>Which crises could be triggered right now?</summary>
@@ -217,6 +259,53 @@ public class CrisisManager : MonoBehaviour
         return idx >= 0 && activeMissions.TryGetValue(idx, out var state) ? state : null;
     }
 
+    public int GetDisplayTurnsRemaining()
+    {
+        if (activeCrisis == null) return -1;
+
+        switch (currentPhase)
+        {
+            case CrisisData.CrisisPhase.OminousWarning:
+            {
+                int elapsed = CurrentTurn - crisisTriggerTurn;
+                return Mathf.Max(0, activeCrisis.ominousWarningTurns - elapsed);
+            }
+            case CrisisData.CrisisPhase.ObviousWarning:
+            {
+                int elapsed = CurrentTurn - crisisTriggerTurn;
+                int totalWarning = activeCrisis.ominousWarningTurns + activeCrisis.obviousWarningTurns;
+                return Mathf.Max(0, totalWarning - elapsed);
+            }
+            case CrisisData.CrisisPhase.Active:
+            case CrisisData.CrisisPhase.Escalation:
+            case CrisisData.CrisisPhase.Climax:
+                return TurnsRemaining;
+            default:
+                return -1;
+        }
+    }
+
+    public int GetCurrentObjectiveProgress(MissionState state)
+    {
+        if (state?.objectiveProgress == null) return 0;
+        int idx = state.currentObjectiveIndex;
+        if (idx < 0 || idx >= state.objectiveProgress.Length) return 0;
+        return state.objectiveProgress[idx];
+    }
+
+    public int GetCurrentObjectiveTarget(MissionState state)
+    {
+        var objective = state?.CurrentObjective;
+        return objective != null ? Mathf.Max(0, objective.targetValue) : 0;
+    }
+
+    public float GetCurrentObjectiveProgress01(MissionState state)
+    {
+        int target = GetCurrentObjectiveTarget(state);
+        if (target <= 0) return 0f;
+        return Mathf.Clamp01((float)GetCurrentObjectiveProgress(state) / target);
+    }
+
     public List<MissionData> GetAvailableMissions(Civilization civ, CrisisData crisis = null)
     {
         var result = new List<MissionData>();
@@ -239,21 +328,34 @@ public class CrisisManager : MonoBehaviour
 
     public bool StartMission(Civilization civ, MissionData mission)
     {
+        LogCrisisDebug("StartMission", $"Request civ={DescribeCiv(civ)} mission={DescribeMission(mission)} activeCrisis={DescribeCrisis(activeCrisis)}");
+
         if (civ == null || mission == null || activeCrisis == null || activeCrisis.crisisMissions == null)
+        {
+            LogCrisisDebug("StartMission", "Rejected: civ, mission, active crisis, or crisis mission list is missing.");
             return false;
+        }
 
         int civIdx = GetCivIndex(civ);
         if (civIdx < 0 || activeMissions.ContainsKey(civIdx))
+        {
+            LogCrisisDebug("StartMission", $"Rejected: civIdx={civIdx}, alreadyHasMission={activeMissions.ContainsKey(civIdx)}.");
             return false;
+        }
 
         if (!activeCrisis.crisisMissions.Contains(mission) || !MeetsPrerequisites(civ, mission))
+        {
+            LogCrisisDebug("StartMission", $"Rejected: mission not part of active crisis or prerequisites failed for civ={DescribeCiv(civ)} mission={DescribeMission(mission)}.");
             return false;
+        }
 
         var state = CreateState(mission);
         activeMissions[civIdx] = state;
+        LogCrisisDebug("StartMission", $"Mission state created for civIdx={civIdx} objectiveCount={state.objectiveProgress.Length} startTurn={state.startTurn}.");
         OnMissionStarted?.Invoke(civ, mission);
         Debug.Log($"[CrisisManager] {civ.civData?.civName} started mission '{mission.missionName}'");
         ValidateAllActiveConstraints(civ, civIdx, state);
+        LogCrisisDebug("StartMission", $"Mission start completed for civ={DescribeCiv(civ)} mission={DescribeMission(mission)}.");
         return true;
     }
 
@@ -261,10 +363,20 @@ public class CrisisManager : MonoBehaviour
     {
         int civIdx = GetCivIndex(civ);
         if (civIdx < 0)
+        {
+            LogCrisisDebug("AddProgress", $"Ignored progress update because civ index is invalid. civ={DescribeCiv(civ)} type={type} amount={amount}");
             return;
+        }
 
         if (activeMissions.TryGetValue(civIdx, out var state) && !state.AllObjectivesComplete)
+        {
+            LogCrisisDebug("AddProgress", $"Applying progress civ={DescribeCiv(civ)} civIdx={civIdx} mission={DescribeMission(state.mission)} objective={DescribeObjective(state.CurrentObjective)} type={type} amount={amount} filter={DescribeFilter(filter)}");
             TryAdvance(civ, civIdx, state, type, amount, filter);
+        }
+        else
+        {
+            LogCrisisDebug("AddProgress", $"No active mutable mission for civ={DescribeCiv(civ)} civIdx={civIdx}; progress type={type} amount={amount} ignored.");
+        }
     }
 
     public List<MissionStateSaveData> ExportMissionStates()
@@ -335,36 +447,54 @@ public class CrisisManager : MonoBehaviour
 
     private void HandleRoundStarted(int round)
     {
+        LogCrisisDebug("HandleRoundStarted", $"Round start round={round} activeCrisis={DescribeCrisis(activeCrisis)} phase={currentPhase} activeMissionCount={activeMissions.Count}");
         TrySubscribeToImprovementManager();
         SubscribeToAllCivs();
+
+        if (activeCrisis == null)
+        {
+            LogCrisisDebug("HandleRoundStarted", "No active crisis at round start; attempting auto trigger.");
+            TryAutoTriggerCrisis(round);
+        }
 
         foreach (var kvp in activeMissions.ToList())
         {
             var civ = GetCivByIndex(kvp.Key);
             if (civ != null)
             {
+                LogCrisisDebug("HandleRoundStarted", $"Polling turn objectives for civ={DescribeCiv(civ)} civIdx={kvp.Key} mission={DescribeMission(kvp.Value.mission)} currentObjective={DescribeObjective(kvp.Value.CurrentObjective)}");
                 PollTurnObjectives(civ, kvp.Key, kvp.Value, round);
                 if (activeMissions.TryGetValue(kvp.Key, out var stillActive) && stillActive == kvp.Value)
+                {
+                    LogCrisisDebug("HandleRoundStarted", $"Validating active constraints for civ={DescribeCiv(civ)} mission={DescribeMission(kvp.Value.mission)}.");
                     ValidateAllActiveConstraints(civ, kvp.Key, kvp.Value);
+                }
             }
         }
 
-        if (activeCrisis == null) return;
+        if (activeCrisis == null)
+        {
+            LogCrisisDebug("HandleRoundStarted", "No active crisis after auto trigger evaluation; exiting round crisis processing.");
+            return;
+        }
 
         switch (currentPhase)
         {
             case CrisisData.CrisisPhase.OminousWarning:
             {
                 int elapsed = round - crisisTriggerTurn;
+                LogCrisisDebug("HandleRoundStarted", $"Ominous warning processing elapsed={elapsed}/{activeCrisis.ominousWarningTurns}.");
                 if (elapsed >= activeCrisis.ominousWarningTurns)
                 {
                     if (activeCrisis.obviousWarningTurns > 0)
                     {
+                        LogCrisisDebug("HandleRoundStarted", $"Ominous warning complete; transitioning to obvious warning for {activeCrisis.obviousWarningTurns} turns.");
                         SetPhase(CrisisData.CrisisPhase.ObviousWarning);
                         OnCrisisObviousWarning?.Invoke(activeCrisis);
                     }
                     else
                     {
+                        LogCrisisDebug("HandleRoundStarted", "Ominous warning complete and no obvious warning configured; activating crisis.");
                         ActivateCrisis();
                     }
                 }
@@ -374,25 +504,209 @@ public class CrisisManager : MonoBehaviour
             {
                 int totalWarning = activeCrisis.ominousWarningTurns + activeCrisis.obviousWarningTurns;
                 int elapsed = round - crisisTriggerTurn;
+                LogCrisisDebug("HandleRoundStarted", $"Obvious warning processing elapsed={elapsed}/{totalWarning}.");
                 if (elapsed >= totalWarning)
+                {
+                    LogCrisisDebug("HandleRoundStarted", "Warning window complete; activating crisis.");
                     ActivateCrisis();
+                }
                 break;
             }
             case CrisisData.CrisisPhase.Active:
             case CrisisData.CrisisPhase.Escalation:
             case CrisisData.CrisisPhase.Climax:
+                LogCrisisDebug("HandleRoundStarted", $"Advancing active phase for {DescribeCrisis(activeCrisis)} phase={currentPhase}.");
                 AdvanceActivePhase(round);
                 break;
         }
     }
 
+    private void TryAutoTriggerCrisis(int round)
+    {
+        if (activeCrisis != null)
+        {
+            LogCrisisDebug("TryAutoTriggerCrisis", $"Skipped because crisis already active: {DescribeCrisis(activeCrisis)}.");
+            return;
+        }
+
+        var candidates = GetAutoTriggerCandidates(round);
+        LogCrisisDebug("TryAutoTriggerCrisis", $"Round={round} candidateCount={candidates.Count} configuredCrises={(allCrises != null ? allCrises.Count : 0)}");
+        if (candidates.Count == 0)
+        {
+            if (!warnedAboutMissingCrises && (allCrises == null || allCrises.Count == 0))
+            {
+                warnedAboutMissingCrises = true;
+                Debug.LogWarning("[CrisisManager] No crises are configured in allCrises, so no crisis can trigger.");
+            }
+            else
+            {
+                LogCrisisDebug("TryAutoTriggerCrisis", "No eligible crises found this round.");
+            }
+            return;
+        }
+
+        candidates.Sort(CompareAutoTriggerPriority);
+        LogCrisisDebug("TryAutoTriggerCrisis", $"Chosen crisis after sorting: {DescribeCrisis(candidates[0])}");
+        TriggerCrisis(candidates[0]);
+    }
+
+    private List<CrisisData> GetAutoTriggerCandidates(int round)
+    {
+        var candidates = new List<CrisisData>();
+        if (allCrises == null || allCrises.Count == 0)
+            return candidates;
+
+        foreach (var crisis in allCrises)
+        {
+            if (!CanAutoTrigger(crisis, round, out string rejectionReason))
+            {
+                LogCrisisDebug("GetAutoTriggerCandidates", $"Rejected candidate {DescribeCrisis(crisis)} at round={round}: {rejectionReason}");
+                continue;
+            }
+
+            LogCrisisDebug("GetAutoTriggerCandidates", $"Accepted candidate {DescribeCrisis(crisis)} at round={round}.");
+            candidates.Add(crisis);
+        }
+
+        return candidates;
+    }
+
+    private bool CanAutoTrigger(CrisisData crisis, int round, out string rejectionReason)
+    {
+        rejectionReason = null;
+        if (crisis == null)
+        {
+            rejectionReason = "crisis is null";
+            return false;
+        }
+        if (crisisHistory.Contains(crisis.crisisName))
+        {
+            rejectionReason = "crisis already completed";
+            return false;
+        }
+        if (round < crisis.earliestTurn)
+        {
+            rejectionReason = $"current round {round} is earlier than earliestTurn {crisis.earliestTurn}";
+            return false;
+        }
+        if (crisis.latestTurn > 0 && round > crisis.latestTurn)
+        {
+            rejectionReason = $"current round {round} is later than latestTurn {crisis.latestTurn}";
+            return false;
+        }
+
+        return MeetsCrisisActivationRequirements(crisis, out rejectionReason);
+    }
+
+    private bool MeetsCrisisActivationRequirements(CrisisData crisis, out string rejectionReason)
+    {
+        rejectionReason = null;
+        if (crisis == null)
+        {
+            rejectionReason = "crisis is null";
+            return false;
+        }
+
+        bool hasTechRequirements = crisis.requiredTechs != null && crisis.requiredTechs.Any(tech => tech != null);
+        bool hasCultureRequirements = crisis.requiredCultures != null && crisis.requiredCultures.Any(culture => culture != null);
+        if (!hasTechRequirements && !hasCultureRequirements)
+        {
+            LogCrisisDebug("MeetsCrisisActivationRequirements", $"{DescribeCrisis(crisis)} has no tech/culture requirements.");
+            return true;
+        }
+
+        var civs = CivilizationManager.Instance?.GetAllCivs();
+        if (civs == null)
+        {
+            rejectionReason = "no civilizations available to validate requirements";
+            return false;
+        }
+
+        foreach (var civ in civs)
+        {
+            if (civ == null)
+                continue;
+
+            if (CivilizationMeetsCrisisRequirements(civ, crisis, out string civReason))
+            {
+                LogCrisisDebug("MeetsCrisisActivationRequirements", $"{DescribeCrisis(crisis)} requirements satisfied by civ={DescribeCiv(civ)}.");
+                return true;
+            }
+
+            LogCrisisDebug("MeetsCrisisActivationRequirements", $"civ={DescribeCiv(civ)} does not satisfy {DescribeCrisis(crisis)} requirements: {civReason}");
+        }
+
+        rejectionReason = "no civilization satisfies the crisis requirements";
+        return false;
+    }
+
+    private bool CivilizationMeetsCrisisRequirements(Civilization civ, CrisisData crisis, out string rejectionReason)
+    {
+        rejectionReason = null;
+        if (civ == null || crisis == null)
+        {
+            rejectionReason = "civ or crisis is null";
+            return false;
+        }
+
+        if (crisis.requiredTechs != null)
+        {
+            foreach (var tech in crisis.requiredTechs)
+            {
+                if (tech != null && (civ.researchedTechs == null || !civ.researchedTechs.Contains(tech)))
+                {
+                    rejectionReason = $"missing tech '{tech.name}'";
+                    return false;
+                }
+            }
+        }
+
+        if (crisis.requiredCultures != null)
+        {
+            foreach (var culture in crisis.requiredCultures)
+            {
+                if (culture != null && (civ.researchedCultures == null || !civ.researchedCultures.Contains(culture)))
+                {
+                    rejectionReason = $"missing culture '{culture.name}'";
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static int CompareAutoTriggerPriority(CrisisData left, CrisisData right)
+    {
+        if (ReferenceEquals(left, right))
+            return 0;
+        if (left == null)
+            return 1;
+        if (right == null)
+            return -1;
+
+        int earliestCompare = left.earliestTurn.CompareTo(right.earliestTurn);
+        if (earliestCompare != 0)
+            return earliestCompare;
+
+        int latestLeft = left.latestTurn > 0 ? left.latestTurn : int.MaxValue;
+        int latestRight = right.latestTurn > 0 ? right.latestTurn : int.MaxValue;
+        int latestCompare = latestLeft.CompareTo(latestRight);
+        if (latestCompare != 0)
+            return latestCompare;
+
+        return string.Compare(left.crisisName, right.crisisName, StringComparison.OrdinalIgnoreCase);
+    }
+
     private void AdvanceActivePhase(int round)
     {
         int elapsed = round - crisisActiveTurn;
+        LogCrisisDebug("AdvanceActivePhase", $"round={round} elapsed={elapsed} phase={currentPhase} duration={activeCrisis.durationTurns} escalationAt={activeCrisis.escalationAtTurn} climaxAt={activeCrisis.climaxAtTurn}");
 
         // Check duration expiry
         if (activeCrisis.durationTurns > 0 && elapsed >= activeCrisis.durationTurns)
         {
+            LogCrisisDebug("AdvanceActivePhase", $"Duration expired for {DescribeCrisis(activeCrisis)}; entering resolution.");
             SetPhase(CrisisData.CrisisPhase.Resolution);
             EndCrisis();
             return;
@@ -402,11 +716,13 @@ public class CrisisManager : MonoBehaviour
         if (activeCrisis.climaxAtTurn > 0 && elapsed >= activeCrisis.climaxAtTurn
             && currentPhase != CrisisData.CrisisPhase.Climax)
         {
+            LogCrisisDebug("AdvanceActivePhase", "Climax threshold reached.");
             SetPhase(CrisisData.CrisisPhase.Climax);
         }
         else if (activeCrisis.escalationAtTurn > 0 && elapsed >= activeCrisis.escalationAtTurn
                  && currentPhase == CrisisData.CrisisPhase.Active)
         {
+            LogCrisisDebug("AdvanceActivePhase", "Escalation threshold reached.");
             SetPhase(CrisisData.CrisisPhase.Escalation);
         }
     }
@@ -417,14 +733,19 @@ public class CrisisManager : MonoBehaviour
 
     private void ActivateCrisis()
     {
+        LogCrisisDebug("ActivateCrisis", $"Activating {DescribeCrisis(activeCrisis)} at turn={CurrentTurn}. triggerTurn={crisisTriggerTurn}");
         crisisActiveTurn = CurrentTurn;
         SetPhase(CrisisData.CrisisPhase.Active);
 
+        LogCrisisDebug("ActivateCrisis", "Capturing original world state.");
         CaptureOriginalWorld();
+        LogCrisisDebug("ActivateCrisis", "Applying world overrides.");
         ApplyWorldOverrides();
 
+        LogCrisisDebug("ActivateCrisis", "Invoking OnCrisisStarted listeners.");
         OnCrisisStarted?.Invoke(activeCrisis);
         Debug.Log($"[CrisisManager] Crisis '{activeCrisis.crisisName}' is now ACTIVE");
+        LogCrisisDebug("ActivateCrisis", $"Activation complete for {DescribeCrisis(activeCrisis)} activeTurn={crisisActiveTurn}");
     }
 
     private void EndCrisis()
@@ -432,15 +753,20 @@ public class CrisisManager : MonoBehaviour
         if (activeCrisis == null) return;
 
         var crisis = activeCrisis;
+        LogCrisisDebug("EndCrisis", $"Ending {DescribeCrisis(crisis)} phase={currentPhase} activeMissionCount={activeMissions.Count}");
         Debug.Log($"[CrisisManager] Crisis '{crisis.crisisName}' has ended");
 
+        LogCrisisDebug("EndCrisis", "Restoring original world state.");
         RestoreOriginalWorld();
+        LogCrisisDebug("EndCrisis", "Cancelling crisis missions.");
         CancelActiveMissionsForCrisis(crisis);
 
         crisisHistory.Add(crisis.crisisName);
+        LogCrisisDebug("EndCrisis", $"Added '{crisis.crisisName}' to crisis history. HistoryCount={crisisHistory.Count}");
         OnCrisisEnded?.Invoke(crisis);
         activeCrisis = null;
         currentPhase = CrisisData.CrisisPhase.Dormant;
+        LogCrisisDebug("EndCrisis", "Crisis state cleared; manager returned to Dormant.");
     }
 
     private void HandleUnitKilled(GameEventManager.CombatEventArgs args)
@@ -568,10 +894,24 @@ public class CrisisManager : MonoBehaviour
 
     private void HandleDiplomacyChanged(Civilization from, Civilization to, DiplomaticState newState)
     {
-        if (newState == DiplomaticState.Alliance)
+        switch (newState)
         {
-            if (from != null) AddProgress(from, MissionData.ObjectiveType.FormAlliance, 1);
-            if (to != null) AddProgress(to, MissionData.ObjectiveType.FormAlliance, 1);
+            case DiplomaticState.Alliance:
+                if (from != null) AddProgress(from, MissionData.ObjectiveType.FormAlliance, 1);
+                if (to != null) AddProgress(to, MissionData.ObjectiveType.FormAlliance, 1);
+                break;
+            case DiplomaticState.War:
+                if (from != null) AddProgress(from, MissionData.ObjectiveType.DeclareWar, 1);
+                if (to != null) AddProgress(to, MissionData.ObjectiveType.DeclareWar, 1);
+                break;
+            case DiplomaticState.Peace:
+                if (from != null) AddProgress(from, MissionData.ObjectiveType.MakePeace, 1);
+                if (to != null) AddProgress(to, MissionData.ObjectiveType.MakePeace, 1);
+                break;
+            case DiplomaticState.Trade:
+                if (from != null) AddProgress(from, MissionData.ObjectiveType.EstablishTrade, 1);
+                if (to != null) AddProgress(to, MissionData.ObjectiveType.EstablishTrade, 1);
+                break;
         }
     }
 
@@ -587,6 +927,7 @@ public class CrisisManager : MonoBehaviour
         originalWorld = new OriginalWorldValues
         {
             winterDuration = climate != null ? climate.turnsPerSeason : 3,
+            winterForced = climate != null && climate.IsWinterForced,
             droughtChance = climate != null ? climate.summerDroughtChance : 0f,
             droughtSeverity = climate != null ? climate.summerDroughtSeverity : 0f,
             winterAttritionDamage = climate != null ? climate.winterAttritionDamage : 0,
@@ -595,16 +936,20 @@ public class CrisisManager : MonoBehaviour
             foodMultiplier = 0f, // we store the delta we applied
             captured = true
         };
+        LogCrisisDebug("CaptureOriginalWorld", $"Captured original world: winterDuration={originalWorld.winterDuration}, winterForced={originalWorld.winterForced}, droughtChance={originalWorld.droughtChance:F3}, droughtSeverity={originalWorld.droughtSeverity:F3}, winterAttrition={originalWorld.winterAttritionDamage}, preyMul={originalWorld.preySpawnMultiplier:F3}, predatorMul={originalWorld.predatorSpawnMultiplier:F3}");
     }
 
     private void RestoreOriginalWorld()
     {
         if (!originalWorld.captured) return;
 
+        LogCrisisDebug("RestoreOriginalWorld", $"Restoring original world values. foodDelta={originalWorld.foodMultiplier:F3}");
+
         // Climate
         if (ClimateManager.Instance != null)
         {
             ClimateManager.Instance.ClearWinterDurationOverride();
+            ClimateManager.Instance.SetForceWinterOverride(originalWorld.winterForced);
             ClimateManager.Instance.summerDroughtChance = originalWorld.droughtChance;
             ClimateManager.Instance.summerDroughtSeverity = originalWorld.droughtSeverity;
             ClimateManager.Instance.winterAttritionDamage = originalWorld.winterAttritionDamage;
@@ -627,19 +972,29 @@ public class CrisisManager : MonoBehaviour
         }
 
         originalWorld.captured = false;
+        LogCrisisDebug("RestoreOriginalWorld", "Original world restoration complete.");
     }
 
     private void ApplyWorldOverrides()
     {
-        if (activeCrisis.worldOverrides == null || activeCrisis.worldOverrides.Length == 0) return;
+        if (activeCrisis.worldOverrides == null || activeCrisis.worldOverrides.Length == 0)
+        {
+            LogCrisisDebug("ApplyWorldOverrides", $"No world overrides configured for {DescribeCrisis(activeCrisis)}.");
+            return;
+        }
 
         foreach (var ov in activeCrisis.worldOverrides)
         {
+            LogCrisisDebug("ApplyWorldOverrides", $"Applying override type={ov.type} value={ov.value:F3}");
             switch (ov.type)
             {
                 case CrisisData.WorldOverrideType.WinterDurationTurns:
                     if (ClimateManager.Instance != null)
                         ClimateManager.Instance.SetWinterDurationOverride(Mathf.RoundToInt(ov.value));
+                    break;
+                case CrisisData.WorldOverrideType.ForceWinter:
+                    if (ClimateManager.Instance != null && ov.value > 0f)
+                        ClimateManager.Instance.SetForceWinterOverride(true);
                     break;
                 case CrisisData.WorldOverrideType.DroughtChance:
                     if (ClimateManager.Instance != null)
@@ -677,6 +1032,8 @@ public class CrisisManager : MonoBehaviour
                 }
             }
         }
+
+        LogCrisisDebug("ApplyWorldOverrides", $"Finished applying {activeCrisis.worldOverrides.Length} overrides for {DescribeCrisis(activeCrisis)}.");
     }
 
     // ═══════════════════════════════════════════════
@@ -686,6 +1043,7 @@ public class CrisisManager : MonoBehaviour
     private void SetPhase(CrisisData.CrisisPhase phase)
     {
         if (currentPhase == phase) return;
+        LogCrisisDebug("SetPhase", $"Phase transition {currentPhase} -> {phase} for {DescribeCrisis(activeCrisis)}");
         currentPhase = phase;
         OnCrisisPhaseChanged?.Invoke(activeCrisis, phase);
         LogPhaseNarrative(phase);
@@ -816,6 +1174,7 @@ public class CrisisManager : MonoBehaviour
 
     private MissionState CreateState(MissionData mission)
     {
+        LogCrisisDebug("CreateState", $"Creating mission state for {DescribeMission(mission)} objectiveCount={(mission != null && mission.objectives != null ? mission.objectives.Count : 0)} at turn={CurrentTurn}");
         return new MissionState
         {
             mission = mission,
@@ -829,9 +1188,21 @@ public class CrisisManager : MonoBehaviour
     private void TryAdvance(Civilization civ, int civIdx, MissionState state, MissionData.ObjectiveType type, int amount, object filter)
     {
         var objective = state.CurrentObjective;
-        if (objective == null || objective.type != type) return;
-        if (!MatchesFilter(objective, filter)) return;
+        if (objective == null)
+        {
+            LogCrisisDebug("TryAdvance", $"No current objective for civ={DescribeCiv(civ)} mission={DescribeMission(state?.mission)}.");
+            return;
+        }
+        if (objective.type != type) return;
+        if (!MatchesFilter(objective, filter))
+        {
+            LogCrisisDebug("TryAdvance", $"Filter mismatch for civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} objective={DescribeObjective(objective)} filter={DescribeFilter(filter)}");
+            return;
+        }
+
+        int before = state.objectiveProgress[state.currentObjectiveIndex];
         state.objectiveProgress[state.currentObjectiveIndex] += amount;
+        LogCrisisDebug("TryAdvance", $"Progress updated for civ={DescribeCiv(civ)} objective={DescribeObjective(objective)} before={before} after={state.objectiveProgress[state.currentObjectiveIndex]} target={objective.targetValue}");
         CheckObjectiveCompletion(civ, civIdx, state);
     }
 
@@ -840,6 +1211,8 @@ public class CrisisManager : MonoBehaviour
         if (state.AllObjectivesComplete) return;
         var objective = state.CurrentObjective;
         if (objective == null) return;
+
+        int before = state.objectiveProgress[state.currentObjectiveIndex];
 
         switch (objective.type)
         {
@@ -880,6 +1253,10 @@ public class CrisisManager : MonoBehaviour
                 break;
         }
 
+        int after = state.objectiveProgress[state.currentObjectiveIndex];
+        if (before != after)
+            LogCrisisDebug("PollTurnObjectives", $"civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} objective={DescribeObjective(objective)} progress {before}->{after} on round={round}");
+
         CheckObjectiveCompletion(civ, civIdx, state);
     }
 
@@ -889,6 +1266,7 @@ public class CrisisManager : MonoBehaviour
         if (idx >= state.mission.objectives.Count) return;
 
         var objective = state.mission.objectives[idx];
+        LogCrisisDebug("CheckObjectiveCompletion", $"Checking civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} objectiveIndex={idx} progress={state.objectiveProgress[idx]} target={objective.targetValue} completed={state.objectiveCompleted[idx]}");
         if (state.objectiveProgress[idx] >= objective.targetValue && !state.objectiveCompleted[idx])
         {
             state.objectiveCompleted[idx] = true;
@@ -902,16 +1280,19 @@ public class CrisisManager : MonoBehaviour
                 if (!state.objectiveCompleted[i])
                 {
                     state.currentObjectiveIndex = i;
+                    LogCrisisDebug("CheckObjectiveCompletion", $"Advancing to next objective index={i} for civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)}");
                     return;
                 }
             }
 
+            LogCrisisDebug("CheckObjectiveCompletion", $"All objectives complete for civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)}");
             CompleteMission(civ, civIdx, state);
         }
     }
 
     private void CompleteMission(Civilization civ, int civIdx, MissionState state)
     {
+        LogCrisisDebug("CompleteMission", $"Completing mission for civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} completedObjectives={state.CompletedObjectiveCount}/{state.mission.objectives.Count}");
         Debug.Log($"[CrisisManager] {civ.civData?.civName} completed mission '{state.mission.missionName}' ({state.CompletedObjectiveCount}/{state.mission.objectives.Count} objectives)");
 
         if (!string.IsNullOrEmpty(state.mission.victoryFlavorText))
@@ -928,6 +1309,7 @@ public class CrisisManager : MonoBehaviour
                     if (LegacyManager.Instance != null)
                         LegacyManager.Instance.AwardLegacy(civ, tier.rewardLegacy);
                     Debug.Log($"[CrisisManager] Awarded '{tier.rewardLegacy.legacyName}' ({tier.tierName}) to {civ.civData?.civName}");
+                    LogCrisisDebug("CompleteMission", $"Awarded reward tier '{tier.tierName}' legacy='{tier.rewardLegacy.legacyName}' to civ={DescribeCiv(civ)}");
                     break;
                 }
             }
@@ -935,6 +1317,7 @@ public class CrisisManager : MonoBehaviour
 
         OnMissionCompleted?.Invoke(civ, state.mission, state);
         activeMissions.Remove(civIdx);
+        LogCrisisDebug("CompleteMission", $"Mission removed from active mission map for civIdx={civIdx}");
     }
 
     private bool MatchesFilter(MissionData.Objective objective, object filter)
@@ -977,11 +1360,13 @@ public class CrisisManager : MonoBehaviour
     private void FailMission(Civilization civ, int civIdx, MissionState state, string reason)
     {
         if (civ == null || state?.mission == null) return;
+        LogCrisisDebug("FailMission", $"Failing mission civ={DescribeCiv(civ)} mission={DescribeMission(state.mission)} reason={reason}");
         Debug.Log($"[CrisisManager] {civ.civData?.civName} failed mission '{state.mission.missionName}': {reason}");
         if (!string.IsNullOrEmpty(state.mission.failureFlavorText))
             Debug.Log($"[CrisisManager] Failure flavor: {state.mission.failureFlavorText}");
         activeMissions.Remove(civIdx);
         OnMissionFailed?.Invoke(civ, state.mission, reason);
+        LogCrisisDebug("FailMission", $"Mission removed from active mission map for civIdx={civIdx}");
     }
 
     private bool IsConstraintActive(MissionState state, MissionData.MissionConstraint constraint)
@@ -1190,6 +1575,29 @@ public class CrisisManager : MonoBehaviour
         return CivilizationManager.Instance.GetCivIndex(civ);
     }
 
+    private void TrySubscribeToTurnManager()
+    {
+        if (subscribedToTurnManager || TurnManager.Instance == null) return;
+        TurnManager.Instance.OnRoundStarted += HandleRoundStarted;
+        subscribedToTurnManager = true;
+        LogCrisisDebug("TrySubscribeToTurnManager", "Successfully subscribed to TurnManager.OnRoundStarted.");
+    }
+
+    private void TrySubscribeToGameEvents()
+    {
+        if (subscribedToGameEvents || GameEventManager.Instance == null) return;
+        GameEventManager.Instance.OnUnitKilled += HandleUnitKilled;
+        GameEventManager.Instance.OnUnitLost += HandleUnitLost;
+        subscribedToGameEvents = true;
+    }
+
+    private void TrySubscribeToDiplomacy()
+    {
+        if (subscribedToDiplomacy || DiplomacyManager.Instance == null) return;
+        DiplomacyManager.Instance.OnDiplomacyChanged += HandleDiplomacyChanged;
+        subscribedToDiplomacy = true;
+    }
+
     private void TrySubscribeToImprovementManager()
     {
         if (subscribedToImprovementManager || ImprovementManager.Instance == null) return;
@@ -1216,6 +1624,52 @@ public class CrisisManager : MonoBehaviour
     // ═══════════════════════════════════════════════
     //  Utility
     // ═══════════════════════════════════════════════
+
+    private void LogCrisisDebug(string step, string message)
+    {
+        if (!enableCrisisDebugLogging)
+            return;
+
+        Debug.Log($"[CrisisDebug][{step}] {message}");
+    }
+
+    private string DescribeCrisis(CrisisData crisis)
+    {
+        return crisis != null ? $"'{crisis.crisisName}'" : "<none>";
+    }
+
+    private string DescribeMission(MissionData mission)
+    {
+        return mission != null ? $"'{mission.missionName}'" : "<none>";
+    }
+
+    private string DescribeObjective(MissionData.Objective objective)
+    {
+        if (objective == null)
+            return "<none>";
+
+        string name = !string.IsNullOrWhiteSpace(objective.objectiveName) ? objective.objectiveName : objective.type.ToString();
+        return $"'{name}'(type={objective.type}, target={objective.targetValue})";
+    }
+
+    private string DescribeCiv(Civilization civ)
+    {
+        if (civ == null)
+            return "<null civ>";
+
+        return !string.IsNullOrWhiteSpace(civ.civData?.civName) ? civ.civData.civName : civ.name;
+    }
+
+    private string DescribeFilter(object filter)
+    {
+        if (filter == null)
+            return "<none>";
+
+        if (filter is UnityEngine.Object unityObject)
+            return $"{unityObject.GetType().Name}('{unityObject.name}')";
+
+        return $"{filter.GetType().Name}({filter})";
+    }
 
     private int CurrentTurn => GameManager.Instance != null ? GameManager.Instance.currentTurn : 0;
 }

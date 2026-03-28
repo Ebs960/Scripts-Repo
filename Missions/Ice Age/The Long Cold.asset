@@ -60,13 +60,13 @@ MonoBehaviour:
     that were lost to snow are found again.\n\nWe survived,\n\nWhat we have learned
     in the Long Winter will shape us forever.  Ahead lies a new age one that will
     belong to those who survived."
-  ominousWarningTurns: 5
-  obviousWarningTurns: 2
+  ominousWarningTurns: 2
+  obviousWarningTurns: 1
   durationTurns: 13
   escalationAtTurn: 0
   climaxAtTurn: 0
-  earliestTurn: 22
-  latestTurn: 24
+  earliestTurn: 4
+  latestTurn: 6
   requiredTechs: []
   requiredCultures: []
   crisisMissions:
@@ -75,10 +75,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5c922e0ed6564ef478a71ae33b589741, type: 2}
   - {fileID: 11400000, guid: 2e6de8be33ecf95418a7d45c951f5277, type: 2}
   worldOverrides:
-  - type: 0
-    value: 13
+  - type: 7
+    value: 1
   - type: 5
-    value: 5
+    value: 4
   - type: 3
     value: 0.5
   - type: 4

@@ -63,4 +63,9 @@ MonoBehaviour:
     specificBuildings: []
   constraints: []
   narrativeBeats: []
-  rewardTiers: []
+  rewardTiers:
+  - tierName: Blood Lust
+    completionFlavorText: We fight and win. Lets fight some more!
+    tierBadge: {fileID: 0}
+    requiredObjectivesCompleted: 0
+    rewardLegacy: {fileID: 11400000, guid: 7e663299e87ac824a9f10404b4623d29, type: 2}

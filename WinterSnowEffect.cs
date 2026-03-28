@@ -75,10 +75,6 @@ public class WinterSnowEffect : MonoBehaviour
     private HexGrid _grid;
     private float _nextTileUpdate;
     private int _lastPlanetIndex = int.MinValue;
-    // Debug logging throttle
-    private float _lastSnowDebugLogTime = -999f;
-    private float _lastLoggedEffectiveRate = -1f;
-
     // ================================================================
     //  Lifecycle
     // ================================================================
@@ -141,18 +137,6 @@ public class WinterSnowEffect : MonoBehaviour
 
         // Turn system off entirely when fully faded so it doesn't tick
         float effectiveRate = _fadeT * _biomeMultiplier;
-        // Throttled debug log: only print during winter (_shouldSnow true),
-        // and then only when effectiveRate changes significantly or every 2s
-        if (_shouldSnow)
-        {
-            if (Time.time - _lastSnowDebugLogTime > 2f || Mathf.Abs(effectiveRate - _lastLoggedEffectiveRate) > 0.01f)
-            {
-                _lastSnowDebugLogTime = Time.time;
-                _lastLoggedEffectiveRate = effectiveRate;
-                bool orbitOrUnder = IsOrbitOrUnderwater();
-                Debug.Log($"[WinterSnowEffect] shouldSnow={_shouldSnow} fadeT={_fadeT:F3} biomeMul={_biomeMultiplier:F3} biomeTarget={_biomeMultiplierTarget:F3} effectiveRate={effectiveRate:F3} psPlaying={_ps != null && _ps.isPlaying} orbitOrUnder={orbitOrUnder}");
-            }
-        }
 
         if (effectiveRate <= 0f && _ps.isPlaying && _ps.particleCount == 0)
             _ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

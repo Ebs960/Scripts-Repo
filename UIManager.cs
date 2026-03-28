@@ -97,6 +97,9 @@ public class UIManager : MonoBehaviour
     private Button selectionCloseButton;
     private TextMeshProUGUI selectionCloseText;
     private TMP_FontAsset defaultFont;
+    private CrisisMissionTrackerUI crisisMissionTrackerUI;
+    private LegacyTrackerUI legacyTrackerUI;
+    private bool startupMissionCrisisViewsHidden;
 
     void Awake()
     {
@@ -170,6 +173,8 @@ public class UIManager : MonoBehaviour
         }
 
         TrySubscribeMissionCrisisUi();
+        EnsureCrisisMissionTrackerUi();
+        EnsureLegacyTrackerUi();
     }
 
     void OnDestroy()
@@ -309,6 +314,8 @@ public class UIManager : MonoBehaviour
     void Update()
     {
         TrySubscribeMissionCrisisUi();
+        EnsureCrisisMissionTrackerUi();
+        EnsureLegacyTrackerUi();
 
         bool loadingNow = IsLoadingActive();
         // If we transitioned from loading->not loading, try to flush queued notifications
@@ -324,6 +331,12 @@ public class UIManager : MonoBehaviour
             var next = _pendingNotifications.Dequeue();
             DisplayNotification(next);
         }
+
+        if (!startupMissionCrisisViewsHidden)
+        {
+            HideStartupMissionCrisisViews();
+            startupMissionCrisisViewsHidden = true;
+        }
     }
 
     private void TryFlushPendingNotifications()
@@ -333,6 +346,69 @@ public class UIManager : MonoBehaviour
         {
             var next = _pendingNotifications.Dequeue();
             DisplayNotification(next);
+        }
+    }
+
+    private void EnsureCrisisMissionTrackerUi()
+    {
+        if (crisisMissionTrackerUI != null) return;
+        if (playerUI == null) return;
+
+        var parentRect = playerUI.GetComponent<RectTransform>();
+        if (parentRect == null)
+            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+        if (parentRect == null) return;
+
+        var trackerObject = new GameObject("CrisisMissionTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(CrisisMissionTrackerUI));
+        var trackerRect = trackerObject.GetComponent<RectTransform>();
+        trackerRect.SetParent(parentRect, false);
+        trackerRect.anchorMin = new Vector2(1f, 1f);
+        trackerRect.anchorMax = new Vector2(1f, 1f);
+        trackerRect.pivot = new Vector2(1f, 1f);
+        trackerRect.anchoredPosition = new Vector2(-16f, -96f);
+        trackerRect.sizeDelta = new Vector2(360f, 0f);
+
+        crisisMissionTrackerUI = trackerObject.GetComponent<CrisisMissionTrackerUI>();
+    }
+
+    private void EnsureLegacyTrackerUi()
+    {
+        if (legacyTrackerUI != null) return;
+        if (playerUI == null) return;
+
+        var parentRect = playerUI.GetComponent<RectTransform>();
+        if (parentRect == null)
+            parentRect = playerUI.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
+        if (parentRect == null) return;
+
+        var legacyObject = new GameObject("LegacyTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(LegacyTrackerUI));
+        var legacyRect = legacyObject.GetComponent<RectTransform>();
+        legacyRect.SetParent(parentRect, false);
+        legacyRect.anchorMin = new Vector2(0f, 1f);
+        legacyRect.anchorMax = new Vector2(0f, 1f);
+        legacyRect.pivot = new Vector2(0f, 1f);
+        legacyRect.anchoredPosition = new Vector2(16f, -96f);
+        legacyRect.sizeDelta = new Vector2(320f, 0f);
+
+        legacyTrackerUI = legacyObject.GetComponent<LegacyTrackerUI>();
+    }
+
+    private void HideStartupMissionCrisisViews()
+    {
+        foreach (var popup in Resources.FindObjectsOfTypeAll<MissionNarrativePopupUI>())
+        {
+            if (popup == null || !popup.gameObject.scene.IsValid())
+                continue;
+
+            popup.Hide();
+        }
+
+        foreach (var popup in Resources.FindObjectsOfTypeAll<MissionSelectionPopupUI>())
+        {
+            if (popup == null || !popup.gameObject.scene.IsValid())
+                continue;
+
+            popup.Hide();
         }
     }
 
@@ -756,14 +832,32 @@ public class UIManager : MonoBehaviour
             subscribedCrisisManager.OnCrisisPhaseChanged += HandleCrisisPhaseChanged;
             subscribedCrisisManager.OnCrisisEnded += HandleCrisisEnded;
             subscribedCrisisManager.OnMissionStarted += HandleMissionStarted;
+            subscribedCrisisManager.OnObjectiveCompleted += HandleObjectiveCompleted;
             subscribedCrisisManager.OnMissionCompleted += HandleMissionCompleted;
             subscribedCrisisManager.OnMissionFailed += HandleMissionFailed;
+            Debug.Log("[UIManager] Subscribed to CrisisManager mission events");
         }
 
         if (subscribedTurnManager == null && TurnManager.Instance != null)
         {
             subscribedTurnManager = TurnManager.Instance;
             subscribedTurnManager.OnTurnChanged += HandleMissionCrisisTurnChanged;
+        }
+
+        // If we subscribed late, re-evaluate any active crisis so we don't miss the initial selection window.
+        if (subscribedCrisisManager != null)
+        {
+            var active = subscribedCrisisManager.ActiveCrisis;
+            if (active != null && pendingSelectionCrisis == null)
+            {
+                var available = GetAvailableCrisisMissions(active);
+                if (available != null && available.Count > 0 && subscribedCrisisManager.GetActiveMission(GetPlayerCivilization()) == null)
+                {
+                    Debug.Log($"[UIManager] Queueing mission selection for crisis={active.crisisName} availableCount={available.Count}");
+                    pendingSelectionCrisis = active;
+                    QueueSelection(active, available);
+                }
+            }
         }
     }
 
@@ -777,6 +871,7 @@ public class UIManager : MonoBehaviour
             subscribedCrisisManager.OnCrisisPhaseChanged -= HandleCrisisPhaseChanged;
             subscribedCrisisManager.OnCrisisEnded -= HandleCrisisEnded;
             subscribedCrisisManager.OnMissionStarted -= HandleMissionStarted;
+            subscribedCrisisManager.OnObjectiveCompleted -= HandleObjectiveCompleted;
             subscribedCrisisManager.OnMissionCompleted -= HandleMissionCompleted;
             subscribedCrisisManager.OnMissionFailed -= HandleMissionFailed;
             subscribedCrisisManager = null;
@@ -835,8 +930,19 @@ public class UIManager : MonoBehaviour
             pendingSelectionCrisis = null;
     }
 
+    private void HandleObjectiveCompleted(Civilization civ, MissionData mission, int objectiveIndex)
+    {
+        Debug.Log($"[UIManager] HandleObjectiveCompleted civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} index={objectiveIndex} isPlayer={IsPlayerCivilization(civ)}");
+        if (!IsPlayerCivilization(civ) || mission == null) return;
+        if (objectiveIndex < 0 || objectiveIndex >= mission.objectives.Count) return;
+        var objective = mission.objectives[objectiveIndex];
+        string objName = !string.IsNullOrWhiteSpace(objective.objectiveName) ? objective.objectiveName : $"Objective {objectiveIndex + 1}";
+        ShowNotification($"Objective Complete: {objName}");
+    }
+
     private void HandleMissionStarted(Civilization civ, MissionData mission)
     {
+        Debug.Log($"[UIManager] HandleMissionStarted civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)}");
         if (!IsPlayerCivilization(civ) || mission == null) return;
 
         pendingSelectionCrisis = null;
@@ -845,6 +951,7 @@ public class UIManager : MonoBehaviour
 
     private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
     {
+        Debug.Log($"[UIManager] HandleMissionCompleted civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)} completedObjectives={state?.CompletedObjectiveCount}");
         if (!IsPlayerCivilization(civ) || mission == null) return;
 
         string body = !string.IsNullOrWhiteSpace(mission.victoryFlavorText)
@@ -864,6 +971,7 @@ public class UIManager : MonoBehaviour
 
     private void HandleMissionFailed(Civilization civ, MissionData mission, string reason)
     {
+        Debug.Log($"[UIManager] HandleMissionFailed civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)} reason={reason}");
         if (!IsPlayerCivilization(civ) || mission == null) return;
 
         string body = string.IsNullOrWhiteSpace(reason)

@@ -23,6 +23,8 @@ public class LegacyManager : MonoBehaviour
 
     private const string LEGACY_OPINION_PREFIX = "[Legacy] ";
 
+    private bool subscribedToTurnManager;
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -31,15 +33,25 @@ public class LegacyManager : MonoBehaviour
 
     void Start()
     {
-        // Recalculate legacy opinion modifiers when policies change
-        if (TurnManager.Instance != null)
-            TurnManager.Instance.OnCivTurnStarting += HandleCivTurnStarting;
+        TrySubscribeToTurnManager();
+    }
+
+    void Update()
+    {
+        if (!subscribedToTurnManager) TrySubscribeToTurnManager();
     }
 
     void OnDestroy()
     {
-        if (TurnManager.Instance != null)
+        if (subscribedToTurnManager && TurnManager.Instance != null)
             TurnManager.Instance.OnCivTurnStarting -= HandleCivTurnStarting;
+    }
+
+    private void TrySubscribeToTurnManager()
+    {
+        if (subscribedToTurnManager || TurnManager.Instance == null) return;
+        TurnManager.Instance.OnCivTurnStarting += HandleCivTurnStarting;
+        subscribedToTurnManager = true;
     }
 
     // ─── Public API ───

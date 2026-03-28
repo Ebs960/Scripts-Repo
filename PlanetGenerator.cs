@@ -544,6 +544,32 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     [Tooltip("Number of islands per chain.")]
     public int islandsPerChain = 3;
 
+    [Header("Island Shape")]
+    [Range(0f, 1f)]
+    [Tooltip("How irregular island edges become. 0 = perfect circle, 1 = highly fractal edges.")]
+    public float islandEdgeIrregularity = 0.45f;
+
+    [Range(0.001f, 0.2f)]
+    [Tooltip("Noise frequency used to perturb island edges.")]
+    public float islandNoiseFrequency = 0.018f;
+
+    [Header("New World Generation")]
+    [Tooltip("When enabled, reserve a region deep in the ocean for a separate New World continent.")]
+    public bool enableNewWorld = true;
+    [Tooltip("How many primary New World continents to place in the reserved New World region.")]
+    [Range(1, 8)]
+    public int newWorldContinentCount = 2;
+    [Tooltip("Minimum wrapped-hex tile distance to keep between the Old World and the New World seed (best-effort).")]
+    [Range(1, 64)]
+    public int newWorldBufferTiles = 15;
+    [Tooltip("When enabled, also place a secondary New World (e.g., Australia-like) even farther from the main mass.")]
+    public bool enableSecondNewWorld = true;
+    [Tooltip("Minimum wrapped-hex tile distance for the secondary New World (best-effort). If zero, uses 2x newWorldBufferTiles.")]
+    [Range(0, 128)]
+    public int secondNewWorldBufferTiles = 30;
+    [Tooltip("When true and the map preset is terrestrial/mostly-land, carve an ocean basin inside the New World band before stamping the New World continent.")]
+    public bool carveNewWorldOnTerrestrial = true;
+
 
     [Header("Planet & Map Type")]
     [Tooltip("Which celestial body this planet represents. Controls biome assignment rules.")]
@@ -834,9 +860,10 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         int tilesX = grid.Width;
         int tilesZ = grid.Height;
         // ---------- 2. Generate Deterministic Continent Seeds with Per-Continent Sizes ------------------
+        int continentSeed = seed ^ 0xD00D;
         List<ContinentData> continentDataList = GenerateContinentData(
             numberOfContinents,
-            seed ^ 0xD00D,
+            continentSeed,
             tilesX,
             tilesZ,
             GameSetupData.continentMinWidthTiles,
@@ -1024,8 +1051,21 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             int batch = Mathf.Max(1, stampingBatchSize);
             for (int i = 0; i < tileCount; i++)
             {
-                int dist = HexDistanceWrapped(tileCoords[i], center, tilesX);
-                if (dist <= maxRadius)
+                // Use a noise-perturbed continuous radius to avoid perfect circular stamps.
+                var coord = tileCoords[i];
+                float dx = WrappedDelta(coord.x, center.x, tilesX);
+                float dy = (coord.y - center.y);
+                float distApprox = Mathf.Sqrt(dx * dx + dy * dy);
+
+                float radiusScale = 1f;
+                if (noise != null && islandEdgeIrregularity > 0f)
+                {
+                    float n = noise.GetElevationPeriodic(new Vector2(coord.x, coord.y), mapWidth, mapHeight, islandNoiseFrequency);
+                    radiusScale += (n * 2f - 1f) * Mathf.Clamp01(islandEdgeIrregularity);
+                    radiusScale = Mathf.Max(0.2f, radiusScale);
+                }
+
+                if (distApprox <= maxRadius * radiusScale)
                 {
                     if (makeLand)
                     {
@@ -1048,6 +1088,9 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         foreach (var continent in continentDataList)
         {
+            if (continent.category != ContinentCategory.Main)
+                continue;
+
             yield return StartCoroutine(StampEllipseBatched(continent));
         }
 
@@ -1175,355 +1218,99 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // ---------- 2.75. Smart coastal shaping ----------
         // Replace random bite/spur stamps with scored embayment and peninsula roots
         // so coastlines respond to nearby land depth and offshore exposure.
-        int _currentLandCount = 0;
-        for (int _i = 0; _i < tileCount; _i++) if (isLandTile[_i]) _currentLandCount++;
-        if (_currentLandCount >= minLandTilesForCoastStamps)
+        yield return StartCoroutine(ApplySmartCoastShapingPass(isLandTile, tileCoords, tileCount, tilesX, mapWidth, mapHeight, unchecked((int)(seed ^ 0xBEEF))));
+        BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
+
+        bool deferredContinentsStamped = false;
+        bool isMostlyLandPresetRun = GameSetupData.selectedLandPreset == 5;
+        ResolveDeferredContinentPlacementPlans(
+            tilesX,
+            tilesZ,
+            GameSetupData.continentMinWidthTiles,
+            GameSetupData.continentMaxWidthTiles,
+            GameSetupData.continentMinHeightTiles,
+            GameSetupData.continentMaxHeightTiles,
+            continentSeed,
+            out DeferredContinentPlacementPlan primaryDeferredPlan,
+            out DeferredContinentPlacementPlan secondaryDeferredPlan);
+
+        System.Random deferredRand = new System.Random(unchecked(continentSeed ^ 0x51D5EA));
+        int deferredContinentIndex = continentDataList.Count + 1;
+
+        IEnumerator StampDeferredContinent(DeferredContinentPlacementPlan plan)
         {
-            System.Random coastRand = new System.Random(unchecked((int)(seed ^ 0xBEEF)));
-            float coastShapeFreq = 1f / Mathf.Max(1f, mapWidth * 0.35f);
-            int minFeatureSpacing = Mathf.Max(2, smartCoastFeatureSpacing);
+            if (!plan.enabled || plan.continentCount <= 0)
+                yield break;
 
-            int CountLandNeighbors(int idx)
+            for (int placementIndex = 0; placementIndex < plan.continentCount; placementIndex++)
             {
-                int count = 0;
-                foreach (int n in grid.neighbors[idx])
-                    if (n >= 0 && n < tileCount && isLandTile[n]) count++;
-                return count;
-            }
+                List<int> oldWorldSeaRing = BuildOuterSeaRingTiles(isLandTile, 3);
+                int widthCap = plan.preferredBandWidth > 0
+                    ? Mathf.Max(1, plan.preferredBandWidth - Mathf.Max(2, plan.requiredSeaGapTiles))
+                    : tilesX;
+                int widthTiles = RollDimensionWithCap(deferredRand, plan.minWidthTiles, plan.maxWidthTiles, widthCap);
+                int heightTiles = RollDimensionWithCap(deferredRand, plan.minHeightTiles, plan.maxHeightTiles, tilesZ);
 
-            int CountWaterNeighbors(int idx)
-            {
-                int count = 0;
-                foreach (int n in grid.neighbors[idx])
-                    if (n >= 0 && n < tileCount && !isLandTile[n]) count++;
-                return count;
-            }
+                Vector2Int center = FindFarthestSeedFromSeaRing(
+                    tilesX,
+                    tilesZ,
+                    oldWorldSeaRing,
+                    continentDataList,
+                    isLandTile,
+                    widthTiles,
+                    heightTiles,
+                    plan.requiredSeaGapTiles,
+                    deferredRand,
+                    true,
+                    plan.preferredBandStart,
+                    plan.preferredBandWidth);
 
-            Vector2 AverageDirectionToState(int idx, bool towardLand)
-            {
-                Vector2 dir = Vector2.zero;
-                foreach (int n in grid.neighbors[idx])
+                if (center.x < 0 || center.y < 0)
+                    continue;
+
+                if (carveNewWorldOnTerrestrial && isMostlyLandPresetRun && plan.category == ContinentCategory.NewWorld)
                 {
-                    if (n < 0 || n >= tileCount) continue;
-                    bool matches = towardLand ? isLandTile[n] : !isLandTile[n];
-                    if (!matches) continue;
-                    dir += new Vector2(tileCoords[n].x - tileCoords[idx].x, tileCoords[n].y - tileCoords[idx].y);
-                }
-                return dir.sqrMagnitude > 0.001f ? dir.normalized : Vector2.zero;
-            }
-
-            bool IsFarEnoughFromChosen(int idx, List<int> chosenRoots)
-            {
-                foreach (int root in chosenRoots)
-                {
-                    if (HexDistanceWrapped(tileCoords[idx], tileCoords[root], tilesX) < minFeatureSpacing)
-                        return false;
-                }
-                return true;
-            }
-
-            int WalkTowardContext(int startIdx, int steps, bool seekLand, Vector2 preferredDir)
-            {
-                int current = startIdx;
-                Vector2 currentDir = preferredDir;
-                for (int step = 0; step < steps; step++)
-                {
-                    int bestNext = -1;
-                    float bestScore = float.NegativeInfinity;
-                    foreach (int n in grid.neighbors[current])
+                    int carveRadius = Mathf.Max(plan.requiredSeaGapTiles, Mathf.RoundToInt(Mathf.Max(widthTiles * 0.6f, heightTiles * 0.6f)));
+                    for (int carveIndex = 0; carveIndex < tileCount; carveIndex++)
                     {
-                        if (n < 0 || n >= tileCount) continue;
-                        if (seekLand != isLandTile[n]) continue;
-
-                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
-                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
-                        float align = currentDir.sqrMagnitude > 0.001f ? Vector2.Dot(currentDir, stepDir) : 0f;
-                        int support = seekLand ? CountLandNeighbors(n) : CountWaterNeighbors(n);
-                        float noiseBias = noise != null
-                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[n].x + 530f, tileCoords[n].y + 890f), mapWidth, mapHeight, coastShapeFreq * 1.4f) - 0.5f
-                            : 0f;
-                        float score = support + align * 2f + noiseBias;
-                        if (score > bestScore)
+                        var coord = tileCoords[carveIndex];
+                        float dx = WrappedDelta(coord.x, center.x, tilesX);
+                        float dy = coord.y - center.y;
+                        float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                        if (dist <= carveRadius)
                         {
-                            bestScore = score;
-                            bestNext = n;
+                            isLandTile[carveIndex] = false;
+                            isLakeTile[carveIndex] = false;
                         }
                     }
-
-                    if (bestNext < 0) break;
-                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
-                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
-                    if (currentDir.sqrMagnitude > 0.001f)
-                        currentDir = (currentDir * 0.65f + chosenDir * 0.35f).normalized;
-                    else
-                        currentDir = chosenDir;
-                    current = bestNext;
                 }
-                return current;
-            }
 
-            bool TryCarveEmbayment(int rootIdx)
-            {
-                if (!isLandTile[rootIdx]) return false;
-                int length = coastRand.Next(Mathf.Max(1, smartEmbaymentMinLength), Mathf.Max(smartEmbaymentMinLength, smartEmbaymentMaxLength) + 1);
-                Vector2 inlandDir = -AverageDirectionToState(rootIdx, false);
-                int current = rootIdx;
-                var carved = new HashSet<int> { rootIdx };
-                var carvedList = new List<int> { rootIdx };
-
-                for (int step = 0; step < length; step++)
+                var deferredContinent = new ContinentData
                 {
-                    int bestNext = -1;
-                    float bestScore = float.NegativeInfinity;
-                    foreach (int n in grid.neighbors[current])
-                    {
-                        if (n < 0 || n >= tileCount) continue;
-                        if (!isLandTile[n] || carved.Contains(n)) continue;
+                    name = plan.labelPrefix + GenerateContinentName(deferredRand, deferredContinentIndex - 1, false),
+                    center = center,
+                    widthTiles = widthTiles,
+                    heightTiles = heightTiles,
+                    category = plan.category
+                };
 
-                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
-                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
-                        float align = inlandDir.sqrMagnitude > 0.001f ? Vector2.Dot(inlandDir, stepDir) : 0f;
-                        int landSupport = CountLandNeighbors(n);
-                        int waterSupport = CountWaterNeighbors(n);
-                        float weakness = Mathf.Clamp01((4f - landSupport) / 4f);
-                        float geologyBias = 0f;
-                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                        {
-                            var province = (TectonicProvinceType)geologyProvinceMap[n];
-                            var margin = (CoastalMarginType)geologyMarginTypeMap[n];
-                            if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 0.8f;
-                            if (margin == CoastalMarginType.Deltaic || margin == CoastalMarginType.Passive) geologyBias += 0.55f;
-                            if (margin == CoastalMarginType.Active) geologyBias -= 0.35f;
-                        }
-                        float score = align * 2.2f + waterSupport * 0.7f + weakness + geologyBias;
-                        if (score > bestScore)
-                        {
-                            bestScore = score;
-                            bestNext = n;
-                        }
-                    }
-
-                    if (bestNext < 0) break;
-                    carved.Add(bestNext);
-                    carvedList.Add(bestNext);
-
-                    if (step < length - 1)
-                    {
-                        int flank = -1;
-                        int flankWater = -1;
-                        foreach (int n in grid.neighbors[bestNext])
-                        {
-                            if (n < 0 || n >= tileCount) continue;
-                            if (!isLandTile[n] || carved.Contains(n)) continue;
-                            int waterSupport = CountWaterNeighbors(n);
-                            if (waterSupport > flankWater)
-                            {
-                                flankWater = waterSupport;
-                                flank = n;
-                            }
-                        }
-                        if (flank >= 0 && flankWater >= 2 && coastRand.NextDouble() < 0.35)
-                        {
-                            carved.Add(flank);
-                            carvedList.Add(flank);
-                        }
-                    }
-
-                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
-                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
-                    if (inlandDir.sqrMagnitude > 0.001f)
-                        inlandDir = (inlandDir * 0.7f + chosenDir * 0.3f).normalized;
-                    else
-                        inlandDir = chosenDir;
-                    current = bestNext;
-                }
-
-                if (carvedList.Count < 2) return false;
-                foreach (int idx in carvedList)
-                    isLandTile[idx] = false;
-                return true;
+                continentDataList.Add(deferredContinent);
+                yield return StartCoroutine(StampEllipseBatched(deferredContinent));
+                BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
+                int coastSalt = unchecked((int)(seed ^ (deferredContinentIndex * 7919) ^ ((int)plan.category * 104729) ^ (placementIndex * 15485863)));
+                yield return StartCoroutine(ApplySmartCoastShapingPass(isLandTile, tileCoords, tileCount, tilesX, mapWidth, mapHeight, coastSalt));
+                deferredContinentIndex++;
+                deferredContinentsStamped = true;
             }
-
-            bool TryGrowPeninsula(int rootIdx)
-            {
-                if (isLandTile[rootIdx]) return false;
-                int length = coastRand.Next(Mathf.Max(1, smartPeninsulaMinLength), Mathf.Max(smartPeninsulaMinLength, smartPeninsulaMaxLength) + 1);
-                Vector2 outwardDir = AverageDirectionToState(rootIdx, false);
-                int current = rootIdx;
-                var added = new HashSet<int> { rootIdx };
-                var addedList = new List<int> { rootIdx };
-
-                for (int step = 0; step < length; step++)
-                {
-                    int bestNext = -1;
-                    float bestScore = float.NegativeInfinity;
-                    foreach (int n in grid.neighbors[current])
-                    {
-                        if (n < 0 || n >= tileCount) continue;
-                        if (isLandTile[n] || added.Contains(n)) continue;
-
-                        Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
-                        if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
-                        float align = outwardDir.sqrMagnitude > 0.001f ? Vector2.Dot(outwardDir, stepDir) : 0f;
-                        int waterSupport = CountWaterNeighbors(n);
-                        int landSupport = CountLandNeighbors(n);
-                        float geologyBias = 0f;
-                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                        {
-                            var province = (TectonicProvinceType)geologyProvinceMap[n];
-                            var margin = (CoastalMarginType)geologyMarginTypeMap[n];
-                            if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.75f;
-                            if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.55f;
-                            if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
-                        }
-                        float score = align * 2.1f + waterSupport * 0.6f - landSupport * 0.35f + geologyBias;
-                        if (score > bestScore)
-                        {
-                            bestScore = score;
-                            bestNext = n;
-                        }
-                    }
-
-                    if (bestNext < 0) break;
-                    added.Add(bestNext);
-                    addedList.Add(bestNext);
-
-                    if (step == 0)
-                    {
-                        int shoulder = -1;
-                        int shoulderWater = -1;
-                        foreach (int n in grid.neighbors[bestNext])
-                        {
-                            if (n < 0 || n >= tileCount) continue;
-                            if (isLandTile[n] || added.Contains(n)) continue;
-                            int waterSupport = CountWaterNeighbors(n);
-                            if (waterSupport > shoulderWater)
-                            {
-                                shoulderWater = waterSupport;
-                                shoulder = n;
-                            }
-                        }
-                        if (shoulder >= 0 && shoulderWater >= 3 && coastRand.NextDouble() < 0.45)
-                        {
-                            added.Add(shoulder);
-                            addedList.Add(shoulder);
-                        }
-                    }
-
-                    Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
-                    if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
-                    if (outwardDir.sqrMagnitude > 0.001f)
-                        outwardDir = (outwardDir * 0.65f + chosenDir * 0.35f).normalized;
-                    else
-                        outwardDir = chosenDir;
-                    current = bestNext;
-                }
-
-                if (addedList.Count < 2) return false;
-                bool connectsToLand = false;
-                foreach (int idx in addedList)
-                {
-                    foreach (int n in grid.neighbors[idx])
-                    {
-                        if (n >= 0 && n < tileCount && isLandTile[n])
-                        {
-                            connectsToLand = true;
-                            break;
-                        }
-                    }
-                    if (connectsToLand) break;
-                }
-                if (!connectsToLand) return false;
-
-                foreach (int idx in addedList)
-                    isLandTile[idx] = true;
-                return true;
-            }
-
-            var embaymentCandidates = new List<(int idx, float score)>();
-            var peninsulaCandidates = new List<(int idx, float score)>();
-            for (int i = 0; i < tileCount; i++)
-            {
-                int landNeighbors = CountLandNeighbors(i);
-                int waterNeighbors = CountWaterNeighbors(i);
-                if (isLandTile[i] && waterNeighbors > 0)
-                {
-                    Vector2 inlandDir = -AverageDirectionToState(i, false);
-                    int inlandProbe = WalkTowardContext(i, 2, true, inlandDir);
-                    int inlandSupport = CountLandNeighbors(inlandProbe);
-                    if (inlandSupport >= 3)
-                    {
-                        float noiseBias = noise != null
-                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 1500f, tileCoords[i].y + 500f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
-                            : 0f;
-                        float geologyBias = 0f;
-                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                        {
-                            var province = (TectonicProvinceType)geologyProvinceMap[i];
-                            var margin = (CoastalMarginType)geologyMarginTypeMap[i];
-                            if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 1.0f;
-                            if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.65f;
-                            if (margin == CoastalMarginType.Active) geologyBias -= 0.45f;
-                        }
-                        float score = waterNeighbors * 2.0f + inlandSupport * 0.8f + noiseBias + geologyBias;
-                        embaymentCandidates.Add((i, score));
-                    }
-                }
-                else if (!isLandTile[i] && landNeighbors > 0)
-                {
-                    Vector2 outwardDir = AverageDirectionToState(i, false);
-                    int offshoreProbe = WalkTowardContext(i, 2, false, outwardDir);
-                    int offshoreSupport = CountWaterNeighbors(offshoreProbe);
-                    if (offshoreSupport >= 3)
-                    {
-                        float noiseBias = noise != null
-                            ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 2300f, tileCoords[i].y + 1200f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
-                            : 0f;
-                        float geologyBias = 0f;
-                        if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                        {
-                            var province = (TectonicProvinceType)geologyProvinceMap[i];
-                            var margin = (CoastalMarginType)geologyMarginTypeMap[i];
-                            if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.9f;
-                            if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.6f;
-                            if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
-                        }
-                        float score = landNeighbors * 1.8f + offshoreSupport * 0.75f + noiseBias + geologyBias;
-                        peninsulaCandidates.Add((i, score));
-                    }
-                }
-            }
-
-            embaymentCandidates.Sort((a, b) => b.score.CompareTo(a.score));
-            peninsulaCandidates.Sort((a, b) => b.score.CompareTo(a.score));
-
-            var chosenEmbaymentRoots = new List<int>();
-            int embaymentsApplied = 0;
-            foreach (var candidate in embaymentCandidates)
-            {
-                if (embaymentsApplied >= Mathf.Max(0, smartEmbaymentCount)) break;
-                if (!IsFarEnoughFromChosen(candidate.idx, chosenEmbaymentRoots)) continue;
-                if (!TryCarveEmbayment(candidate.idx)) continue;
-                chosenEmbaymentRoots.Add(candidate.idx);
-                embaymentsApplied++;
-                yield return null;
-            }
-
-            var chosenPeninsulaRoots = new List<int>();
-            int peninsulasApplied = 0;
-            foreach (var candidate in peninsulaCandidates)
-            {
-                if (peninsulasApplied >= Mathf.Max(0, smartPeninsulaCount)) break;
-                if (!IsFarEnoughFromChosen(candidate.idx, chosenPeninsulaRoots)) continue;
-                if (!TryGrowPeninsula(candidate.idx)) continue;
-                chosenPeninsulaRoots.Add(candidate.idx);
-                peninsulasApplied++;
-                yield return null;
-            }
-
-            if (ShouldLogDiagnostics())
-                Debug.Log($"[PlanetGenerator] Smart coast shaping: {embaymentsApplied} embayments, {peninsulasApplied} peninsulas applied.");
         }
+
+        if (enableNewWorld)
+            yield return StartCoroutine(StampDeferredContinent(primaryDeferredPlan));
+        if (enableSecondNewWorld)
+            yield return StartCoroutine(StampDeferredContinent(secondaryDeferredPlan));
+
+        if (deferredContinentsStamped)
+            BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
 
         // ---------- 3. Generate Lakes (Stamping) ----------
         int lakesStamped = 0;
@@ -4392,6 +4179,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
     // --- Per-Continent Data Structure ---
     /// <summary>
+    /// Category for generated continents (used to label New World vs Main mass)
+    /// </summary>
+    private enum ContinentCategory { Main = 0, NewWorld = 1, NewWorldSecondary = 2 }
+
+    /// <summary>
     /// Holds per-continent data for varied size/rotation per continent
     /// </summary>
     private struct ContinentData {
@@ -4399,6 +4191,22 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         public Vector2Int center;     // Tile-space center (col,row)
         public int widthTiles;        // Width in tiles
         public int heightTiles;       // Height in tiles
+        public ContinentCategory category; // Category / labeling hint
+    }
+
+    private struct DeferredContinentPlacementPlan
+    {
+        public bool enabled;
+        public int continentCount;
+        public string labelPrefix;
+        public ContinentCategory category;
+        public int minWidthTiles;
+        public int maxWidthTiles;
+        public int minHeightTiles;
+        public int maxHeightTiles;
+        public int preferredBandStart;
+        public int preferredBandWidth;
+        public int requiredSeaGapTiles;
     }
 
     private static readonly string[] ContinentNamePrefixes =
@@ -4521,6 +4329,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 ),
                 widthTiles = widthTiles,
                 heightTiles = heightTiles
+                ,
+                category = ContinentCategory.Main
             });
 
             return continents;
@@ -4552,6 +4362,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     ),
                     widthTiles = i == 0 ? baseWidth : altWidth,
                     heightTiles = i == 0 ? baseHeight : altHeight
+                    ,
+                    category = ContinentCategory.Main
                 });
             }
 
@@ -4566,6 +4378,55 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         int minDistance = Mathf.Max(0, minDistanceTiles);
         float connectionChance = Mathf.Clamp01(GameSetupData.continentConnectionChance);
         int maxAttemptsPerContinent = 50;
+
+        ResolveDeferredContinentPlacementPlans(
+            mapWidthTiles,
+            mapHeightTiles,
+            minW,
+            maxW,
+            minH,
+            maxH,
+            rndSeed,
+            out DeferredContinentPlacementPlan primaryDeferredPlan,
+            out DeferredContinentPlacementPlan secondaryDeferredPlan);
+
+        // Partition map into horizontal (wrapped) bands when New World features are enabled.
+        // Main continents will be preferentially placed inside the Old World band; New World seeds
+        // will be sampled inside their reserved bands later.
+        bool usePartitionBands = primaryDeferredPlan.enabled || secondaryDeferredPlan.enabled;
+        int nwBandStart = primaryDeferredPlan.preferredBandStart;
+        int nwBandWidth = primaryDeferredPlan.preferredBandWidth;
+        int swBandStart = secondaryDeferredPlan.preferredBandStart;
+        int swBandWidth = secondaryDeferredPlan.preferredBandWidth;
+        bool[] oldWorldAllowedX = null;
+        if (usePartitionBands)
+        {
+            // Precompute allowed X columns for the Old World (columns not inside reserved NW/SW bands)
+            oldWorldAllowedX = new bool[mapWidthTiles];
+            for (int x = 0; x < mapWidthTiles; x++) oldWorldAllowedX[x] = true;
+
+            // helper to mark band columns
+            void MarkBand(int start, int width)
+            {
+                if (width <= 0) return;
+                for (int i = 0; i < width; i++)
+                {
+                    int x = (start + i) % mapWidthTiles;
+                    oldWorldAllowedX[x] = false;
+                }
+            }
+
+            MarkBand(nwBandStart, nwBandWidth);
+            if (swBandWidth > 0) MarkBand(swBandStart, swBandWidth);
+
+            // If reserved bands cover entire map (degenerate small maps), allow full range fallback.
+            bool anyAllowed = false;
+            for (int x = 0; x < mapWidthTiles; x++) if (oldWorldAllowedX[x]) { anyAllowed = true; break; }
+            if (!anyAllowed)
+            {
+                for (int x = 0; x < mapWidthTiles; x++) oldWorldAllowedX[x] = true;
+            }
+        }
 
         int continentIndex = 1;
         for (int i = 0; i < count; i++) {
@@ -4593,7 +4454,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             bool accepted = false;
 
             for (int attempt = 0; attempt < maxAttemptsPerContinent; attempt++) {
-                var candidate = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(yMin, yMax + 1));
+                int candX = rand.Next(0, mapWidthTiles);
+                // If partitioning is active, bias main-continent X to allowed Old World columns.
+                if (usePartitionBands && oldWorldAllowedX != null)
+                {
+                    int triesX = 0;
+                    while (!oldWorldAllowedX[candX] && triesX < 120)
+                    {
+                        candX = rand.Next(0, mapWidthTiles);
+                        triesX++;
+                    }
+                }
+                var candidate = new Vector2Int(candX, rand.Next(yMin, yMax + 1));
                 bool farEnough = true;
                 foreach (var c in continents) {
                     int dist = HexDistanceWrapped(candidate, c.center, mapWidthTiles);
@@ -4622,14 +4494,431 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 name = GenerateContinentName(rand, continentIndex - 1, false),
                 center = center,
                 widthTiles = chosenWidthTiles,
-                heightTiles = chosenHeightTiles
+                heightTiles = chosenHeightTiles,
+                category = ContinentCategory.Main
             });
             continentIndex++;
         }
 
         // (Stamping debug logs removed)
-
         return continents;
+    }
+
+    private void ResolveDeferredContinentPlacementPlans(
+        int mapWidthTiles,
+        int mapHeightTiles,
+        int minContinentWidth,
+        int maxContinentWidth,
+        int minContinentHeight,
+        int maxContinentHeight,
+        int rndSeed,
+        out DeferredContinentPlacementPlan primaryPlan,
+        out DeferredContinentPlacementPlan secondaryPlan)
+    {
+        primaryPlan = default;
+        secondaryPlan = default;
+
+        int minW = Mathf.Max(1, minContinentWidth);
+        int maxW = Mathf.Max(minW, maxContinentWidth);
+        int minH = Mathf.Max(1, minContinentHeight);
+        int maxH = Mathf.Max(minH, maxContinentHeight);
+
+        BuildScaledContinentRange(
+            minW,
+            maxW,
+            minH,
+            maxH,
+            0.8f,
+            1.0f,
+            mapWidthTiles,
+            mapHeightTiles,
+            out int newWorldMinW,
+            out int newWorldMaxW,
+            out int newWorldMinH,
+            out int newWorldMaxH);
+
+        BuildScaledContinentRange(
+            minW,
+            maxW,
+            minH,
+            maxH,
+            0.55f,
+            0.72f,
+            mapWidthTiles,
+            mapHeightTiles,
+            out int secondWorldMinW,
+            out int secondWorldMaxW,
+            out int secondWorldMinH,
+            out int secondWorldMaxH);
+
+        System.Random bandRand = new System.Random(unchecked(rndSeed ^ 0x4E57));
+        int jitterRange = Mathf.Max(0, Mathf.RoundToInt(mapWidthTiles * seedPositionVariance * 0.25f));
+        int resolvedPrimaryCount = Mathf.Clamp(
+            GameSetupData.newWorldContinentCount > 0 ? GameSetupData.newWorldContinentCount : newWorldContinentCount,
+            1,
+            8);
+
+        int primaryBandPadding = Mathf.Max(newWorldBufferTiles * 2, Mathf.RoundToInt(newWorldMaxW * 0.15f));
+        int primaryBandWidth = Mathf.Clamp(
+            Mathf.Max(Mathf.RoundToInt(mapWidthTiles * 0.18f) + newWorldBufferTiles, newWorldMaxW + primaryBandPadding),
+            1,
+            mapWidthTiles);
+        int primaryCenter = (Mathf.RoundToInt(mapWidthTiles * 0.66f) + bandRand.Next(-jitterRange, jitterRange + 1) + mapWidthTiles) % mapWidthTiles;
+
+        primaryPlan = new DeferredContinentPlacementPlan
+        {
+            enabled = enableNewWorld,
+            continentCount = enableNewWorld ? resolvedPrimaryCount : 0,
+            labelPrefix = "New World - ",
+            category = ContinentCategory.NewWorld,
+            minWidthTiles = newWorldMinW,
+            maxWidthTiles = newWorldMaxW,
+            minHeightTiles = newWorldMinH,
+            maxHeightTiles = newWorldMaxH,
+            preferredBandStart = (primaryCenter - primaryBandWidth / 2 + mapWidthTiles) % mapWidthTiles,
+            preferredBandWidth = primaryBandWidth,
+            requiredSeaGapTiles = Mathf.Max(1, newWorldBufferTiles)
+        };
+
+        int secondBuffer = secondNewWorldBufferTiles > 0 ? secondNewWorldBufferTiles : newWorldBufferTiles * 2;
+        int secondaryBandPadding = Mathf.Max(secondBuffer * 2, Mathf.RoundToInt(secondWorldMaxW * 0.2f));
+        int secondaryBandWidth = Mathf.Clamp(
+            Mathf.Max(Mathf.RoundToInt(mapWidthTiles * 0.12f) + secondBuffer, secondWorldMaxW + secondaryBandPadding),
+            1,
+            mapWidthTiles);
+        int secondaryCenter = (Mathf.RoundToInt(mapWidthTiles * 0.33f) + bandRand.Next(-jitterRange, jitterRange + 1) + mapWidthTiles) % mapWidthTiles;
+
+        secondaryPlan = new DeferredContinentPlacementPlan
+        {
+            enabled = enableSecondNewWorld,
+            continentCount = enableSecondNewWorld ? 1 : 0,
+            labelPrefix = "New World II - ",
+            category = ContinentCategory.NewWorldSecondary,
+            minWidthTiles = secondWorldMinW,
+            maxWidthTiles = secondWorldMaxW,
+            minHeightTiles = secondWorldMinH,
+            maxHeightTiles = secondWorldMaxH,
+            preferredBandStart = (secondaryCenter - secondaryBandWidth / 2 + mapWidthTiles) % mapWidthTiles,
+            preferredBandWidth = enableSecondNewWorld ? secondaryBandWidth : 0,
+            requiredSeaGapTiles = Mathf.Max(1, secondBuffer)
+        };
+    }
+
+    // Best-effort helper: sample candidates and pick the tile with maximal minimum wrapped distance
+    private Vector2Int FindFarthestSeed(int mapWidthTiles, int mapHeightTiles, List<ContinentData> existing, int minBuffer, System.Random rand, bool preferOppositeHemisphere)
+    {
+        int samples = Mathf.Clamp(mapWidthTiles * mapHeightTiles / 8, 200, 1200);
+        Vector2Int best = new Vector2Int(-1, -1);
+        int bestScore = -1;
+        // compute main mass average Y to prefer opposite hemisphere
+        float avgY = 0f;
+        if (existing != null && existing.Count > 0)
+        {
+            foreach (var c in existing) avgY += c.center.y;
+            avgY /= existing.Count;
+        }
+
+        for (int i = 0; i < samples; i++)
+        {
+            var cand = new Vector2Int(rand.Next(0, mapWidthTiles), rand.Next(0, mapHeightTiles));
+            // compute minimum wrapped hex distance to any existing center
+            int minDist = int.MaxValue;
+            foreach (var c in existing)
+            {
+                int d = HexDistanceWrapped(cand, c.center, mapWidthTiles);
+                if (d < minDist) minDist = d;
+            }
+            int score = minDist;
+            if (preferOppositeHemisphere && existing != null && existing.Count > 0)
+            {
+                bool candOpp = cand.y > mapHeightTiles / 2; // southern half
+                bool avgOpp = avgY > mapHeightTiles / 2;
+                if (candOpp == avgOpp) score -= 2; // slightly penalize same hemisphere
+                else score += 2; // reward opposite hemisphere
+            }
+
+            if (minDist >= minBuffer)
+            {
+                // prefer candidate meeting buffer immediately
+                return cand;
+            }
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = cand;
+            }
+        }
+
+        return best;
+    }
+
+    private int ApproxContinentRadiusTiles(int widthTiles, int heightTiles)
+    {
+        return Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(widthTiles, heightTiles) * 0.5f));
+    }
+
+    private void BuildScaledContinentRange(
+        int baseMinWidth,
+        int baseMaxWidth,
+        int baseMinHeight,
+        int baseMaxHeight,
+        float minScale,
+        float maxScale,
+        int maxWidthCap,
+        int maxHeightCap,
+        out int minWidth,
+        out int maxWidth,
+        out int minHeight,
+        out int maxHeight)
+    {
+        int scaledMinWidth = Mathf.Max(1, Mathf.RoundToInt(baseMinWidth * minScale));
+        int scaledMaxWidth = Mathf.Max(scaledMinWidth, Mathf.RoundToInt(baseMaxWidth * maxScale));
+        int scaledMinHeight = Mathf.Max(1, Mathf.RoundToInt(baseMinHeight * minScale));
+        int scaledMaxHeight = Mathf.Max(scaledMinHeight, Mathf.RoundToInt(baseMaxHeight * maxScale));
+
+        maxWidth = Mathf.Clamp(scaledMaxWidth, 1, Mathf.Max(1, maxWidthCap));
+        minWidth = Mathf.Clamp(scaledMinWidth, 1, maxWidth);
+        maxHeight = Mathf.Clamp(scaledMaxHeight, 1, Mathf.Max(1, maxHeightCap));
+        minHeight = Mathf.Clamp(scaledMinHeight, 1, maxHeight);
+    }
+
+    private int RollDimensionWithCap(System.Random rand, int minValue, int maxValue, int cap)
+    {
+        int resolvedMax = Mathf.Clamp(maxValue, 1, Mathf.Max(1, cap));
+        int resolvedMin = Mathf.Clamp(minValue, 1, resolvedMax);
+        return rand.Next(resolvedMin, resolvedMax + 1);
+    }
+
+    private List<int> BuildOuterSeaRingTiles(bool[] isLandTile, int seaRings)
+    {
+        int totalTiles = grid != null ? grid.TileCount : 0;
+        var currentFrontier = new HashSet<int>();
+        var visitedWater = new HashSet<int>();
+
+        if (grid == null || isLandTile == null || totalTiles <= 0)
+            return new List<int>();
+
+        for (int i = 0; i < totalTiles; i++)
+        {
+            if (!isLandTile[i])
+                continue;
+
+            foreach (int neighbor in grid.neighbors[i])
+            {
+                if (neighbor < 0 || neighbor >= totalTiles)
+                    continue;
+
+                if (isLandTile[neighbor])
+                    continue;
+                if (visitedWater.Add(neighbor))
+                    currentFrontier.Add(neighbor);
+            }
+        }
+
+        if (currentFrontier.Count == 0)
+            return new List<int>();
+
+        int ringCount = Mathf.Max(1, seaRings);
+        List<int> lastNonEmptyRing = currentFrontier.ToList();
+        for (int ring = 1; ring < ringCount; ring++)
+        {
+            var nextFrontier = new HashSet<int>();
+            foreach (int idx in currentFrontier)
+            {
+                foreach (int neighbor in grid.neighbors[idx])
+                {
+                    if (neighbor < 0 || neighbor >= totalTiles)
+                        continue;
+                    if (isLandTile[neighbor] || !visitedWater.Add(neighbor))
+                        continue;
+                    nextFrontier.Add(neighbor);
+                }
+            }
+
+            if (nextFrontier.Count == 0)
+                break;
+
+            currentFrontier = nextFrontier;
+            lastNonEmptyRing = currentFrontier.ToList();
+        }
+
+        return lastNonEmptyRing;
+    }
+
+    private Vector2Int FindFarthestSeedFromSeaRing(
+        int mapWidthTiles,
+        int mapHeightTiles,
+        List<int> outerSeaRingTiles,
+        List<ContinentData> existing,
+        bool[] isLandTile,
+        int candidateWidthTiles,
+        int candidateHeightTiles,
+        int seaGapTiles,
+        System.Random rand,
+        bool preferOppositeHemisphere,
+        int preferredBandStart,
+        int preferredBandWidth)
+    {
+        if (outerSeaRingTiles == null || outerSeaRingTiles.Count == 0)
+        {
+            return FindFarthestSeedForCandidate(
+                mapWidthTiles,
+                mapHeightTiles,
+                existing,
+                candidateWidthTiles,
+                candidateHeightTiles,
+                seaGapTiles,
+                rand,
+                preferOppositeHemisphere,
+                preferredBandStart,
+                preferredBandWidth);
+        }
+
+        int samples = Mathf.Clamp(mapWidthTiles * mapHeightTiles / 8, 240, 1400);
+        int candidateSeaRadius = ApproxContinentRadiusTiles(candidateWidthTiles, candidateHeightTiles) + 3;
+        int candidateHalfH = Mathf.Max(0, Mathf.CeilToInt(candidateHeightTiles * 0.5f));
+        int yMin = Mathf.Clamp(candidateHalfH, 0, Mathf.Max(0, mapHeightTiles - 1));
+        int yMax = Mathf.Clamp((mapHeightTiles - 1) - candidateHalfH, 0, Mathf.Max(0, mapHeightTiles - 1));
+        if (yMax < yMin)
+        {
+            yMin = 0;
+            yMax = Mathf.Max(0, mapHeightTiles - 1);
+        }
+
+        Vector2Int best = new Vector2Int(-1, -1);
+        int bestScore = int.MinValue;
+        float avgY = 0f;
+        if (existing != null && existing.Count > 0)
+        {
+            foreach (var c in existing) avgY += c.center.y;
+            avgY /= existing.Count;
+        }
+
+        bool usePreferredBand = preferredBandStart >= 0 && preferredBandWidth > 0;
+        for (int i = 0; i < samples; i++)
+        {
+            int candX = usePreferredBand
+                ? (preferredBandStart + rand.Next(0, preferredBandWidth)) % mapWidthTiles
+                : rand.Next(0, mapWidthTiles);
+            int candY = rand.Next(yMin, yMax + 1);
+            int candIdx = candY * mapWidthTiles + candX;
+            if (candIdx < 0 || candIdx >= isLandTile.Length || isLandTile[candIdx])
+                continue;
+
+            var candidate = new Vector2Int(candX, candY);
+            int minSeaGap = int.MaxValue;
+            foreach (int seaIdx in outerSeaRingTiles)
+            {
+                if (seaIdx < 0)
+                    continue;
+                int seaX = seaIdx % mapWidthTiles;
+                int seaY = seaIdx / mapWidthTiles;
+                int edgeGap = HexDistanceWrapped(candidate, new Vector2Int(seaX, seaY), mapWidthTiles) - candidateSeaRadius;
+                if (edgeGap < minSeaGap)
+                    minSeaGap = edgeGap;
+            }
+
+            int score = minSeaGap;
+            if (preferOppositeHemisphere && existing != null && existing.Count > 0)
+            {
+                bool candSouth = candidate.y > mapHeightTiles / 2;
+                bool avgSouth = avgY > mapHeightTiles / 2;
+                score += candSouth == avgSouth ? -2 : 2;
+            }
+
+            if (minSeaGap >= seaGapTiles)
+                return candidate;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        if (best.x < 0 || best.y < 0)
+        {
+            return FindFarthestSeedForCandidate(
+                mapWidthTiles,
+                mapHeightTiles,
+                existing,
+                candidateWidthTiles,
+                candidateHeightTiles,
+                seaGapTiles,
+                rand,
+                preferOppositeHemisphere,
+                preferredBandStart,
+                preferredBandWidth);
+        }
+
+        return best;
+    }
+
+    private Vector2Int FindFarthestSeedForCandidate(
+        int mapWidthTiles,
+        int mapHeightTiles,
+        List<ContinentData> existing,
+        int candidateWidthTiles,
+        int candidateHeightTiles,
+        int shorelineBufferTiles,
+        System.Random rand,
+        bool preferOppositeHemisphere,
+        int preferredBandStart,
+        int preferredBandWidth)
+    {
+        int samples = Mathf.Clamp(mapWidthTiles * mapHeightTiles / 8, 200, 1200);
+        int candidateRadius = ApproxContinentRadiusTiles(candidateWidthTiles, candidateHeightTiles);
+        Vector2Int best = new Vector2Int(-1, -1);
+        int bestScore = int.MinValue;
+
+        float avgY = 0f;
+        if (existing != null && existing.Count > 0)
+        {
+            foreach (var c in existing) avgY += c.center.y;
+            avgY /= existing.Count;
+        }
+
+        bool usePreferredBand = preferredBandStart >= 0 && preferredBandWidth > 0;
+        for (int i = 0; i < samples; i++)
+        {
+            int candX = usePreferredBand
+                ? (preferredBandStart + rand.Next(0, preferredBandWidth)) % mapWidthTiles
+                : rand.Next(0, mapWidthTiles);
+            int candY = rand.Next(0, mapHeightTiles);
+            var cand = new Vector2Int(candX, candY);
+
+            int minEdgeGap = int.MaxValue;
+            foreach (var c in existing)
+            {
+                int centerDist = HexDistanceWrapped(cand, c.center, mapWidthTiles);
+                int otherRadius = ApproxContinentRadiusTiles(c.widthTiles, c.heightTiles);
+                int edgeGap = centerDist - otherRadius - candidateRadius;
+                if (edgeGap < minEdgeGap) minEdgeGap = edgeGap;
+            }
+
+            int score = minEdgeGap;
+            if (preferOppositeHemisphere && existing != null && existing.Count > 0)
+            {
+                bool candSouth = cand.y > mapHeightTiles / 2;
+                bool avgSouth = avgY > mapHeightTiles / 2;
+                score += candSouth == avgSouth ? -2 : 2;
+            }
+
+            if (minEdgeGap >= shorelineBufferTiles)
+                return cand;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = cand;
+            }
+        }
+
+        if (best.x < 0 || best.y < 0)
+            return FindFarthestSeed(mapWidthTiles, mapHeightTiles, existing, shorelineBufferTiles, rand, preferOppositeHemisphere);
+
+        return best;
     }
 
     private string GenerateContinentName(System.Random rand, int index, bool mainlandStyle)
@@ -4671,84 +4960,520 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         var a = OffsetToAxial(aOffset);
         int best = int.MaxValue;
         int[] offsets = { 0, -width, width };
-        foreach (int colOffset in offsets) {
+        foreach (int colOffset in offsets)
+        {
             var bWrapped = new Vector2Int(bOffset.x + colOffset, bOffset.y);
             var b = OffsetToAxial(bWrapped);
             int dist = HexDistance(a, b);
             if (dist < best) best = dist;
         }
+
         return best;
-    }
 
-    private bool HasLandWithinDistance(int startIndex, int maxDistance, bool[] isLandTile) {
-        if (maxDistance <= 0) return false;
-        Queue<(int idx, int dist)> queue = new Queue<(int, int)>();
-        HashSet<int> visited = new HashSet<int>();
-        queue.Enqueue((startIndex, 0));
-        visited.Add(startIndex);
-
-        while (queue.Count > 0) {
-            var (current, dist) = queue.Dequeue();
-            if (dist >= maxDistance) continue;
-            foreach (int neighbor in grid.neighbors[current]) {
-                if (visited.Contains(neighbor)) continue;
-                if (isLandTile[neighbor]) return true;
-                visited.Add(neighbor);
-                queue.Enqueue((neighbor, dist + 1));
-            }
-        }
-        return false;
-    }
-
-    private int[] BuildDistanceMap(List<int> sources) {
-        int tileCount = grid.TileCount;
-        int[] distances = ArrayPoolUtils.RentInt(tileCount);
-        for (int i = 0; i < tileCount; i++) distances[i] = -1;
-        Queue<int> queue = new Queue<int>();
-        foreach (int src in sources) {
-            distances[src] = 0;
-            queue.Enqueue(src);
-        }
-
-        while (queue.Count > 0) {
-            int current = queue.Dequeue();
-            int nextDistance = distances[current] + 1;
-            foreach (int neighbor in grid.neighbors[current]) {
-                if (distances[neighbor] >= 0) continue;
-                distances[neighbor] = nextDistance;
-                queue.Enqueue(neighbor);
-            }
-        }
-        return distances;
-    }
-
-    private void ReleaseGeologyCaches()
-    {
-        if (geologyProvinceMap != null) { ArrayPoolUtils.ReturnInt(geologyProvinceMap); geologyProvinceMap = null; }
-        if (geologyMarginTypeMap != null) { ArrayPoolUtils.ReturnInt(geologyMarginTypeMap); geologyMarginTypeMap = null; }
-        if (geologyStressMap != null) { ArrayPoolUtils.ReturnFloat(geologyStressMap); geologyStressMap = null; }
-        if (geologyAgeMap != null) { ArrayPoolUtils.ReturnFloat(geologyAgeMap); geologyAgeMap = null; }
-        if (geologyDrainageMap != null) { ArrayPoolUtils.ReturnFloat(geologyDrainageMap); geologyDrainageMap = null; }
-        if (geologySedimentMap != null) { ArrayPoolUtils.ReturnFloat(geologySedimentMap); geologySedimentMap = null; }
     }
 
     private void EnsureGeologyCaches(int tileCount)
     {
-        if (geologyProvinceMap != null && geologyProvinceMap.Length >= tileCount &&
-            geologyMarginTypeMap != null && geologyMarginTypeMap.Length >= tileCount &&
-            geologyStressMap != null && geologyStressMap.Length >= tileCount &&
-            geologyAgeMap != null && geologyAgeMap.Length >= tileCount &&
-            geologyDrainageMap != null && geologyDrainageMap.Length >= tileCount &&
-            geologySedimentMap != null && geologySedimentMap.Length >= tileCount)
-            return;
+        if (geologyProvinceMap == null || geologyProvinceMap.Length != tileCount)
+        {
+            if (geologyProvinceMap != null) ArrayPoolUtils.ReturnInt(geologyProvinceMap);
+            geologyProvinceMap = ArrayPoolUtils.RentInt(tileCount);
+        }
 
-        ReleaseGeologyCaches();
-        geologyProvinceMap = ArrayPoolUtils.RentInt(tileCount);
-        geologyMarginTypeMap = ArrayPoolUtils.RentInt(tileCount);
-        geologyStressMap = ArrayPoolUtils.RentFloat(tileCount);
-        geologyAgeMap = ArrayPoolUtils.RentFloat(tileCount);
-        geologyDrainageMap = ArrayPoolUtils.RentFloat(tileCount);
-        geologySedimentMap = ArrayPoolUtils.RentFloat(tileCount);
+        if (geologyMarginTypeMap == null || geologyMarginTypeMap.Length != tileCount)
+        {
+            if (geologyMarginTypeMap != null) ArrayPoolUtils.ReturnInt(geologyMarginTypeMap);
+            geologyMarginTypeMap = ArrayPoolUtils.RentInt(tileCount);
+        }
+
+        if (geologyStressMap == null || geologyStressMap.Length != tileCount)
+        {
+            if (geologyStressMap != null) ArrayPoolUtils.ReturnFloat(geologyStressMap);
+            geologyStressMap = ArrayPoolUtils.RentFloat(tileCount);
+        }
+
+        if (geologyAgeMap == null || geologyAgeMap.Length != tileCount)
+        {
+            if (geologyAgeMap != null) ArrayPoolUtils.ReturnFloat(geologyAgeMap);
+            geologyAgeMap = ArrayPoolUtils.RentFloat(tileCount);
+        }
+
+        if (geologyDrainageMap == null || geologyDrainageMap.Length != tileCount)
+        {
+            if (geologyDrainageMap != null) ArrayPoolUtils.ReturnFloat(geologyDrainageMap);
+            geologyDrainageMap = ArrayPoolUtils.RentFloat(tileCount);
+        }
+
+        if (geologySedimentMap == null || geologySedimentMap.Length != tileCount)
+        {
+            if (geologySedimentMap != null) ArrayPoolUtils.ReturnFloat(geologySedimentMap);
+            geologySedimentMap = ArrayPoolUtils.RentFloat(tileCount);
+        }
+    }
+
+    private void ReleaseGeologyCaches()
+    {
+        if (geologyProvinceMap != null)
+        {
+            ArrayPoolUtils.ReturnInt(geologyProvinceMap);
+            geologyProvinceMap = null;
+        }
+
+        if (geologyMarginTypeMap != null)
+        {
+            ArrayPoolUtils.ReturnInt(geologyMarginTypeMap);
+            geologyMarginTypeMap = null;
+        }
+
+        if (geologyStressMap != null)
+        {
+            ArrayPoolUtils.ReturnFloat(geologyStressMap);
+            geologyStressMap = null;
+        }
+
+        if (geologyAgeMap != null)
+        {
+            ArrayPoolUtils.ReturnFloat(geologyAgeMap);
+            geologyAgeMap = null;
+        }
+
+        if (geologyDrainageMap != null)
+        {
+            ArrayPoolUtils.ReturnFloat(geologyDrainageMap);
+            geologyDrainageMap = null;
+        }
+
+        if (geologySedimentMap != null)
+        {
+            ArrayPoolUtils.ReturnFloat(geologySedimentMap);
+            geologySedimentMap = null;
+        }
+    }
+
+    private bool HasLandWithinDistance(int startIndex, int maxDistance, bool[] isLandTile)
+    {
+        if (grid == null || isLandTile == null || startIndex < 0 || startIndex >= isLandTile.Length)
+            return false;
+
+        if (maxDistance <= 0)
+            return isLandTile[startIndex];
+
+        var visited = new HashSet<int> { startIndex };
+        var frontier = new Queue<(int idx, int dist)>();
+        frontier.Enqueue((startIndex, 0));
+
+        while (frontier.Count > 0)
+        {
+            var (idx, dist) = frontier.Dequeue();
+            if (dist > 0 && isLandTile[idx])
+                return true;
+
+            if (dist >= maxDistance)
+                continue;
+
+            foreach (int neighbor in grid.neighbors[idx])
+            {
+                if (neighbor < 0 || neighbor >= isLandTile.Length)
+                    continue;
+                if (!visited.Add(neighbor))
+                    continue;
+                frontier.Enqueue((neighbor, dist + 1));
+            }
+        }
+
+        return false;
+    }
+
+    private int[] BuildDistanceMap(List<int> sources)
+    {
+        int tileCount = grid != null ? grid.TileCount : 0;
+        int[] distances = ArrayPoolUtils.RentInt(Mathf.Max(1, tileCount));
+        for (int i = 0; i < distances.Length; i++)
+            distances[i] = -1;
+
+        if (grid == null || tileCount <= 0 || sources == null || sources.Count == 0)
+            return distances;
+
+        var frontier = new Queue<int>();
+        foreach (int source in sources)
+        {
+            if (source < 0 || source >= tileCount)
+                continue;
+            if (distances[source] != -1)
+                continue;
+
+            distances[source] = 0;
+            frontier.Enqueue(source);
+        }
+
+        while (frontier.Count > 0)
+        {
+            int current = frontier.Dequeue();
+            int nextDistance = distances[current] + 1;
+            foreach (int neighbor in grid.neighbors[current])
+            {
+                if (neighbor < 0 || neighbor >= tileCount)
+                    continue;
+                if (distances[neighbor] != -1)
+                    continue;
+
+                distances[neighbor] = nextDistance;
+                frontier.Enqueue(neighbor);
+            }
+        }
+
+        return distances;
+    }
+
+    private IEnumerator ApplySmartCoastShapingPass(bool[] isLandTile, Vector2Int[] tileCoords, int tileCount, int tilesX, float mapWidth, float mapHeight, int randomSalt)
+    {
+        int currentLandCount = 0;
+        for (int i = 0; i < tileCount; i++)
+        {
+            if (isLandTile[i]) currentLandCount++;
+        }
+
+        if (currentLandCount < minLandTilesForCoastStamps)
+            yield break;
+
+        System.Random coastRand = new System.Random(randomSalt);
+        float coastShapeFreq = 1f / Mathf.Max(1f, mapWidth * 0.35f);
+        int minFeatureSpacing = Mathf.Max(2, smartCoastFeatureSpacing);
+
+        int CountLandNeighbors(int idx)
+        {
+            int count = 0;
+            foreach (int n in grid.neighbors[idx])
+                if (n >= 0 && n < tileCount && isLandTile[n]) count++;
+            return count;
+        }
+
+        int CountWaterNeighbors(int idx)
+        {
+            int count = 0;
+            foreach (int n in grid.neighbors[idx])
+                if (n >= 0 && n < tileCount && !isLandTile[n]) count++;
+            return count;
+        }
+
+        Vector2 AverageDirectionToState(int idx, bool towardLand)
+        {
+            Vector2 dir = Vector2.zero;
+            foreach (int n in grid.neighbors[idx])
+            {
+                if (n < 0 || n >= tileCount) continue;
+                bool matches = towardLand ? isLandTile[n] : !isLandTile[n];
+                if (!matches) continue;
+                dir += new Vector2(tileCoords[n].x - tileCoords[idx].x, tileCoords[n].y - tileCoords[idx].y);
+            }
+            return dir.sqrMagnitude > 0.001f ? dir.normalized : Vector2.zero;
+        }
+
+        bool IsFarEnoughFromChosen(int idx, List<int> chosenRoots)
+        {
+            foreach (int root in chosenRoots)
+            {
+                if (HexDistanceWrapped(tileCoords[idx], tileCoords[root], tilesX) < minFeatureSpacing)
+                    return false;
+            }
+            return true;
+        }
+
+        int WalkTowardContext(int startIdx, int steps, bool seekLand, Vector2 preferredDir)
+        {
+            int current = startIdx;
+            Vector2 currentDir = preferredDir;
+            for (int step = 0; step < steps; step++)
+            {
+                int bestNext = -1;
+                float bestScore = float.NegativeInfinity;
+                foreach (int n in grid.neighbors[current])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (seekLand != isLandTile[n]) continue;
+
+                    Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                    if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                    float align = currentDir.sqrMagnitude > 0.001f ? Vector2.Dot(currentDir, stepDir) : 0f;
+                    int support = seekLand ? CountLandNeighbors(n) : CountWaterNeighbors(n);
+                    float noiseBias = noise != null
+                        ? noise.GetElevationPeriodic(new Vector2(tileCoords[n].x + 530f, tileCoords[n].y + 890f), mapWidth, mapHeight, coastShapeFreq * 1.4f) - 0.5f
+                        : 0f;
+                    float score = support + align * 2f + noiseBias;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestNext = n;
+                    }
+                }
+
+                if (bestNext < 0) break;
+                Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                if (currentDir.sqrMagnitude > 0.001f)
+                    currentDir = (currentDir * 0.65f + chosenDir * 0.35f).normalized;
+                else
+                    currentDir = chosenDir;
+                current = bestNext;
+            }
+            return current;
+        }
+
+        bool TryCarveEmbayment(int rootIdx)
+        {
+            if (!isLandTile[rootIdx]) return false;
+            int length = coastRand.Next(Mathf.Max(1, smartEmbaymentMinLength), Mathf.Max(smartEmbaymentMinLength, smartEmbaymentMaxLength) + 1);
+            Vector2 inlandDir = -AverageDirectionToState(rootIdx, false);
+            int current = rootIdx;
+            var carved = new HashSet<int> { rootIdx };
+            var carvedList = new List<int> { rootIdx };
+
+            for (int step = 0; step < length; step++)
+            {
+                int bestNext = -1;
+                float bestScore = float.NegativeInfinity;
+                foreach (int n in grid.neighbors[current])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (!isLandTile[n] || carved.Contains(n)) continue;
+
+                    Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                    if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                    float align = inlandDir.sqrMagnitude > 0.001f ? Vector2.Dot(inlandDir, stepDir) : 0f;
+                    int landSupport = CountLandNeighbors(n);
+                    int waterSupport = CountWaterNeighbors(n);
+                    float weakness = Mathf.Clamp01((4f - landSupport) / 4f);
+                    float geologyBias = 0f;
+                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[n];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[n];
+                        if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 0.85f;
+                        if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.55f;
+                        if (margin == CoastalMarginType.Active) geologyBias -= 0.35f;
+                    }
+                    float score = align * 2.0f + weakness * 1.15f + waterSupport * 0.65f - landSupport * 0.35f + geologyBias;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestNext = n;
+                    }
+                }
+
+                if (bestNext < 0) break;
+                carved.Add(bestNext);
+                carvedList.Add(bestNext);
+
+                Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                if (inlandDir.sqrMagnitude > 0.001f)
+                    inlandDir = (inlandDir * 0.65f + chosenDir * 0.35f).normalized;
+                else
+                    inlandDir = chosenDir;
+                current = bestNext;
+            }
+
+            if (carvedList.Count < 2) return false;
+
+            bool remainsConnectedToWater = false;
+            foreach (int idx in carvedList)
+            {
+                foreach (int n in grid.neighbors[idx])
+                {
+                    if (n >= 0 && n < tileCount && !isLandTile[n] && !carved.Contains(n))
+                    {
+                        remainsConnectedToWater = true;
+                        break;
+                    }
+                }
+                if (remainsConnectedToWater) break;
+            }
+            if (!remainsConnectedToWater) return false;
+
+            foreach (int idx in carvedList)
+                isLandTile[idx] = false;
+            return true;
+        }
+
+        bool TryGrowPeninsula(int rootIdx)
+        {
+            if (isLandTile[rootIdx]) return false;
+            int length = coastRand.Next(Mathf.Max(1, smartPeninsulaMinLength), Mathf.Max(smartPeninsulaMinLength, smartPeninsulaMaxLength) + 1);
+            Vector2 outwardDir = AverageDirectionToState(rootIdx, false);
+            int current = rootIdx;
+            var added = new HashSet<int> { rootIdx };
+            var addedList = new List<int> { rootIdx };
+
+            for (int step = 0; step < length; step++)
+            {
+                int bestNext = -1;
+                float bestScore = float.NegativeInfinity;
+                foreach (int n in grid.neighbors[current])
+                {
+                    if (n < 0 || n >= tileCount) continue;
+                    if (isLandTile[n] || added.Contains(n)) continue;
+
+                    Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
+                    if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
+                    float align = outwardDir.sqrMagnitude > 0.001f ? Vector2.Dot(outwardDir, stepDir) : 0f;
+                    int waterSupport = CountWaterNeighbors(n);
+                    int landSupport = CountLandNeighbors(n);
+                    float geologyBias = 0f;
+                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[n];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[n];
+                        if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.75f;
+                        if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.55f;
+                        if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
+                    }
+                    float score = align * 2.1f + waterSupport * 0.6f - landSupport * 0.35f + geologyBias;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestNext = n;
+                    }
+                }
+
+                if (bestNext < 0) break;
+                added.Add(bestNext);
+                addedList.Add(bestNext);
+
+                if (step == 0)
+                {
+                    int shoulder = -1;
+                    int shoulderWater = -1;
+                    foreach (int n in grid.neighbors[bestNext])
+                    {
+                        if (n < 0 || n >= tileCount) continue;
+                        if (isLandTile[n] || added.Contains(n)) continue;
+                        int waterSupport = CountWaterNeighbors(n);
+                        if (waterSupport > shoulderWater)
+                        {
+                            shoulderWater = waterSupport;
+                            shoulder = n;
+                        }
+                    }
+                    if (shoulder >= 0 && shoulderWater >= 3 && coastRand.NextDouble() < 0.45)
+                    {
+                        added.Add(shoulder);
+                        addedList.Add(shoulder);
+                    }
+                }
+
+                Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
+                if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
+                if (outwardDir.sqrMagnitude > 0.001f)
+                    outwardDir = (outwardDir * 0.65f + chosenDir * 0.35f).normalized;
+                else
+                    outwardDir = chosenDir;
+                current = bestNext;
+            }
+
+            if (addedList.Count < 2) return false;
+            bool connectsToLand = false;
+            foreach (int idx in addedList)
+            {
+                foreach (int n in grid.neighbors[idx])
+                {
+                    if (n >= 0 && n < tileCount && isLandTile[n])
+                    {
+                        connectsToLand = true;
+                        break;
+                    }
+                }
+                if (connectsToLand) break;
+            }
+            if (!connectsToLand) return false;
+
+            foreach (int idx in addedList)
+                isLandTile[idx] = true;
+            return true;
+        }
+
+        var embaymentCandidates = new List<(int idx, float score)>();
+        var peninsulaCandidates = new List<(int idx, float score)>();
+        for (int i = 0; i < tileCount; i++)
+        {
+            int landNeighbors = CountLandNeighbors(i);
+            int waterNeighbors = CountWaterNeighbors(i);
+            if (isLandTile[i] && waterNeighbors > 0)
+            {
+                Vector2 inlandDir = -AverageDirectionToState(i, false);
+                int inlandProbe = WalkTowardContext(i, 2, true, inlandDir);
+                int inlandSupport = CountLandNeighbors(inlandProbe);
+                if (inlandSupport >= 3)
+                {
+                    float noiseBias = noise != null
+                        ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 1500f, tileCoords[i].y + 500f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
+                        : 0f;
+                    float geologyBias = 0f;
+                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[i];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                        if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 1.0f;
+                        if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.65f;
+                        if (margin == CoastalMarginType.Active) geologyBias -= 0.45f;
+                    }
+                    float score = waterNeighbors * 2.0f + inlandSupport * 0.8f + noiseBias + geologyBias;
+                    embaymentCandidates.Add((i, score));
+                }
+            }
+            else if (!isLandTile[i] && landNeighbors > 0)
+            {
+                Vector2 outwardDir = AverageDirectionToState(i, false);
+                int offshoreProbe = WalkTowardContext(i, 2, false, outwardDir);
+                int offshoreSupport = CountWaterNeighbors(offshoreProbe);
+                if (offshoreSupport >= 3)
+                {
+                    float noiseBias = noise != null
+                        ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 2300f, tileCoords[i].y + 1200f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
+                        : 0f;
+                    float geologyBias = 0f;
+                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
+                    {
+                        var province = (TectonicProvinceType)geologyProvinceMap[i];
+                        var margin = (CoastalMarginType)geologyMarginTypeMap[i];
+                        if (province == TectonicProvinceType.VolcanicArc || province == TectonicProvinceType.FoldBelt || province == TectonicProvinceType.RiftZone) geologyBias += 0.9f;
+                        if (margin == CoastalMarginType.Active || margin == CoastalMarginType.Rifted || margin == CoastalMarginType.Glaciated) geologyBias += 0.6f;
+                        if (margin == CoastalMarginType.Deltaic) geologyBias -= 0.4f;
+                    }
+                    float score = landNeighbors * 1.8f + offshoreSupport * 0.75f + noiseBias + geologyBias;
+                    peninsulaCandidates.Add((i, score));
+                }
+            }
+        }
+
+        embaymentCandidates.Sort((a, b) => b.score.CompareTo(a.score));
+        peninsulaCandidates.Sort((a, b) => b.score.CompareTo(a.score));
+
+        var chosenEmbaymentRoots = new List<int>();
+        int embaymentsApplied = 0;
+        foreach (var candidate in embaymentCandidates)
+        {
+            if (embaymentsApplied >= Mathf.Max(0, smartEmbaymentCount)) break;
+            if (!IsFarEnoughFromChosen(candidate.idx, chosenEmbaymentRoots)) continue;
+            if (!TryCarveEmbayment(candidate.idx)) continue;
+            chosenEmbaymentRoots.Add(candidate.idx);
+            embaymentsApplied++;
+            yield return null;
+        }
+
+        var chosenPeninsulaRoots = new List<int>();
+        int peninsulasApplied = 0;
+        foreach (var candidate in peninsulaCandidates)
+        {
+            if (peninsulasApplied >= Mathf.Max(0, smartPeninsulaCount)) break;
+            if (!IsFarEnoughFromChosen(candidate.idx, chosenPeninsulaRoots)) continue;
+            if (!TryGrowPeninsula(candidate.idx)) continue;
+            chosenPeninsulaRoots.Add(candidate.idx);
+            peninsulasApplied++;
+            yield return null;
+        }
+
+        if (ShouldLogDiagnostics())
+            Debug.Log($"[PlanetGenerator] Smart coast shaping: {embaymentsApplied} embayments, {peninsulasApplied} peninsulas applied.");
     }
 
     private void BuildAdvancedGeologyFramework(Vector2Int[] tileCoords, bool[] isLandTile, bool[] isLakeTile, int tilesX, float mapWidth, float mapHeight, float elevFreqPeriodic)

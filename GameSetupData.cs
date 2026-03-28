@@ -166,18 +166,18 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 15; maxContinentWidthTilesStandard = 35;
-        minContinentHeightTilesStandard = 15; maxContinentHeightTilesStandard = 40;
+        minContinentWidthTilesStandard = 11; maxContinentWidthTilesStandard = 28;
+        minContinentHeightTilesStandard = 14; maxContinentHeightTilesStandard = 27;
 
-        minContinentWidthTilesLarge = 300; maxContinentWidthTilesLarge = 400;
-        minContinentHeightTilesLarge = 200; maxContinentHeightTilesLarge = 400;
+        minContinentWidthTilesLarge = 20; maxContinentWidthTilesLarge = 35;
+        minContinentHeightTilesLarge = 22; maxContinentHeightTilesLarge = 40;
 
         // Tile-based island sizing defaults (smaller than continents)
         minIslandWidthTilesSmall = 8; maxIslandWidthTilesSmall = 24;
         minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
 
-        minIslandWidthTilesStandard = 7; maxIslandWidthTilesStandard = 9;
-        minIslandHeightTilesStandard = 7; maxIslandHeightTilesStandard = 11;
+        minIslandWidthTilesStandard = 3; maxIslandWidthTilesStandard = 7;
+        minIslandHeightTilesStandard = 3; maxIslandHeightTilesStandard = 5;
 
         minIslandWidthTilesLarge = 5; maxIslandWidthTilesLarge = 6;
         minIslandHeightTilesLarge = 2; maxIslandHeightTilesLarge = 3;
@@ -191,8 +191,8 @@ public static class GameSetupData
         continentMaxWidthTiles = maxContinentWidthTilesStandard;
         continentMinHeightTiles = minContinentHeightTilesStandard;
         continentMaxHeightTiles = maxContinentHeightTilesStandard;
-        continentMinDistanceTiles = 5;
-        continentConnectionChance = 0.25f;
+        continentMinDistanceTiles = 15;
+        continentConnectionChance = 0.1f;
         continentSizeMultiplier = 1.0f;
 
         islandMinRadiusTiles = Mathf.Max(1, minIslandWidthTilesStandard / 2);
@@ -202,5 +202,21 @@ public static class GameSetupData
         lakeMinRadiusTiles = 1;
         lakeMaxRadiusTiles = 2;
         lakeMinDistanceFromCoast = 4;
+
+        // New World settings
+        enableNewWorld = true;
+        newWorldContinentCount = 2;
+        newWorldBufferTiles = 15;
+        enableSecondNewWorld = true;
+        secondNewWorldBufferTiles = 30;
+        carveNewWorldOnTerrestrial = true;
     }
+
+    // New World UI settings (controlled from Main Menu)
+    public static bool enableNewWorld;
+    public static int newWorldContinentCount;
+    public static int newWorldBufferTiles;
+    public static bool enableSecondNewWorld;
+    public static int secondNewWorldBufferTiles;
+    public static bool carveNewWorldOnTerrestrial;
 }

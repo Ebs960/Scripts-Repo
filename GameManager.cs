@@ -392,7 +392,7 @@ public class GameManager : MonoBehaviour
         switch (size)
         {
             case MapSize.Small: width = 384f; height = 192f; break;
-            case MapSize.Standard: width = 500f; height = 250f; break;
+            case MapSize.Standard: width = 600f; height = 300f; break;
             case MapSize.Large: width = 1024f; height = 514f; break;
             default: width = 592f; height = 296f; break;
         }
@@ -1675,7 +1675,11 @@ public class GameManager : MonoBehaviour
                     Debug.LogWarning("No player civilization selected in GameSetupData. Using default.");
                 }
                 
-                civilizationManager.SpawnCivilizations(playerCivData, 4, 2, 2);
+                civilizationManager.SpawnCivilizations(
+                    playerCivData,
+                    numberOfCivilizations,
+                    numberOfCityStates,
+                    numberOfTribes);
             }
             
             // Spawn animals on Earth (only once!) — uses cached reference. Wait for TileSystem readiness.

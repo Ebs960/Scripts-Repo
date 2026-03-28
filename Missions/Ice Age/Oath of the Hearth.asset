@@ -76,4 +76,9 @@ MonoBehaviour:
     specificBuilding: {fileID: 0}
     specificBuildings: []
   narrativeBeats: []
-  rewardTiers: []
+  rewardTiers:
+  - tierName: No Man Left Behind
+    completionFlavorText: We protected all of us, even the weak/
+    tierBadge: {fileID: 0}
+    requiredObjectivesCompleted: 0
+    rewardLegacy: {fileID: 11400000, guid: fb023f75c2a78a94e8e8db5cc56a2a6d, type: 2}
