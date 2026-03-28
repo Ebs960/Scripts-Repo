@@ -176,8 +176,8 @@ public static class GameSetupData
         minIslandWidthTilesSmall = 8; maxIslandWidthTilesSmall = 24;
         minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
 
-        minIslandWidthTilesStandard = 3; maxIslandWidthTilesStandard = 7;
-        minIslandHeightTilesStandard = 3; maxIslandHeightTilesStandard = 5;
+        minIslandWidthTilesStandard = 5; maxIslandWidthTilesStandard = 8;
+        minIslandHeightTilesStandard = 5; maxIslandHeightTilesStandard = 7;
 
         minIslandWidthTilesLarge = 5; maxIslandWidthTilesLarge = 6;
         minIslandHeightTilesLarge = 2; maxIslandHeightTilesLarge = 3;

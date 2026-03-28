@@ -845,10 +845,15 @@ public class UIManager : MonoBehaviour
         }
 
         // If we subscribed late, re-evaluate any active crisis so we don't miss the initial selection window.
+        // Only queue selection when the crisis is actually Active (not during warning phases).
         if (subscribedCrisisManager != null)
         {
             var active = subscribedCrisisManager.ActiveCrisis;
-            if (active != null && pendingSelectionCrisis == null)
+            var phase = subscribedCrisisManager.CurrentPhase;
+            bool crisisIsActive = phase == CrisisData.CrisisPhase.Active
+                || phase == CrisisData.CrisisPhase.Escalation
+                || phase == CrisisData.CrisisPhase.Climax;
+            if (active != null && crisisIsActive && pendingSelectionCrisis == null)
             {
                 var available = GetAvailableCrisisMissions(active);
                 if (available != null && available.Count > 0 && subscribedCrisisManager.GetActiveMission(GetPlayerCivilization()) == null)
@@ -1065,7 +1070,13 @@ public class UIManager : MonoBehaviour
         }
 
         EnsureMissionCrisisFallbackUi();
-        if (rootObject == null || backdropObject == null) return;
+        if (rootObject == null || backdropObject == null)
+        {
+            // Fallback UI could not be created — discard the modal so the queue is not permanently blocked.
+            Debug.LogWarning("[UIManager] Could not create fallback mission/crisis UI; discarding queued modal.");
+            modalQueue.Dequeue();
+            return;
+        }
 
         request = modalQueue.Dequeue();
         backdropObject.SetActive(true);
@@ -1139,6 +1150,13 @@ public class UIManager : MonoBehaviour
             selectionPopupInstance = Instantiate(missionSelectionPopupPrefab);
             selectionPopupInstance.gameObject.name = missionSelectionPopupPrefab.gameObject.name;
             selectionPopupInstance.Hide();
+        }
+
+        // If the selection popup prefab was not assigned but the narrative popup contains
+        // a MissionSelectionPopupUI child, use it instead of falling back to runtime UI.
+        if (selectionPopupInstance == null && narrativePopupInstance != null)
+        {
+            selectionPopupInstance = narrativePopupInstance.GetComponentInChildren<MissionSelectionPopupUI>(true);
         }
     }
 

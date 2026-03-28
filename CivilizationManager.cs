@@ -2074,6 +2074,21 @@ break; // Only propose one alliance per turn
                 continue;
             }
 
+            // Prevent normal civilizations from spawning inside the New World band(s).
+            // Tribes and city-states may spawn anywhere, so only restrict non-tribe/non-citystate civs.
+            if (!data.isTribe && !data.isCityState)
+            {
+                try
+                {
+                    if (planet != null && planet.IsTileInNewWorld(i))
+                    {
+                        // Skip candidate tiles that belong to the New World
+                        continue;
+                    }
+                }
+                catch { }
+            }
+
             if (enforceClimate && data.climatePreferences.Length > 0)
             {
                 if (!data.climatePreferences.Contains(tile.biome)) {

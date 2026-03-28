@@ -52,12 +52,14 @@ public class ResearchPopupUI : MonoBehaviour
     private void OnTechCompleted(Civilization civ, TechData tech)
     {
         if (tech == null) return;
+        if (!IsPlayerCivilization(civ)) return;
         ShowTechPopup(civ, tech);
     }
 
     private void OnCultureCompleted(Civilization civ, CultureData cult)
     {
         if (cult == null) return;
+        if (!IsPlayerCivilization(civ)) return;
         ShowCulturePopup(civ, cult);
     }
 
@@ -164,5 +166,15 @@ public class ResearchPopupUI : MonoBehaviour
         var details = sb.ToString().Trim();
         if (string.IsNullOrEmpty(details)) details = "(No immediate bonuses)";
         return details;
+    }
+
+    private bool IsPlayerCivilization(Civilization civ)
+    {
+        if (civ == null) return false;
+        if (CivilizationManager.Instance != null && CivilizationManager.Instance.playerCiv != null)
+            return civ == CivilizationManager.Instance.playerCiv;
+        if (TurnManager.Instance != null && TurnManager.Instance.playerCiv != null)
+            return civ == TurnManager.Instance.playerCiv;
+        return false;
     }
 }

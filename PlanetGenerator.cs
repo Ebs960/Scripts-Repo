@@ -326,7 +326,11 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float mountainNoiseCutoff = 0.7f;
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
-    public float elevationFreq = 2f, moistureFreq = 4f;
+    public float elevationFreq = 2f; 
+    [Tooltip("When true, use the inspector 'Elevation Freq' value as the global base elevation frequency instead of deriving it from the map width.")]
+    public bool useManualElevationFreq = false;
+    public float moistureFreq = 4f;
+
 
     [Range(-0.3f, 0.3f)]
     [Tooltip("Bias for moisture levels. Positive values make the planet wetter, negative values make it drier.")]
@@ -840,7 +844,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float mapWidth = grid.Width;
         float mapHeight = grid.Height;
         // Single elevation frequency — scales with map width for consistent terrain scale
-        float elevFreqPeriodic = 1f / (mapWidth * 0.38f);
+        float defaultElevFreq = 1f / (mapWidth * 0.38f);
+        float elevFreqPeriodic = useManualElevationFreq ? elevationFreq : defaultElevFreq;
         var terrainMotifRand = new System.Random(unchecked(seed ^ 0x71A9C5));
         float motifFoldedRanges = Mathf.Lerp(0.85f, 1.25f, (float)terrainMotifRand.NextDouble());
         float motifBasins = Mathf.Lerp(0.8f, 1.25f, (float)terrainMotifRand.NextDouble());
@@ -2773,7 +2778,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         // Pass 1: Ocean adjacent to Coast → Seas
         // Pass 2-3: Ocean adjacent to existing Seas → Seas (extends 2 more tiles out)
         HashSet<int> seasTiles = new HashSet<int>();
-        int seasRings = 3;
+        int seasRings = 2;
         for (int ring = 0; ring < seasRings; ring++)
         {
             List<int> newSeas = new List<int>();
@@ -4290,6 +4295,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return null;
 
         return continents[continentIndex].name;
+    }
+
+    /// <summary>
+    /// Returns true when the given tile belongs to a New World (primary or secondary) continent.
+    /// This is used by gameplay systems that need to treat New World tiles specially.
+    /// </summary>
+    public bool IsTileInNewWorld(int tileIndex)
+    {
+        int continentIndex = GetContinentIndexForTile(tileIndex);
+        if (continentIndex < 0 || continents == null || continentIndex >= continents.Count)
+            return false;
+
+        var category = continents[continentIndex].category;
+        return category == ContinentCategory.NewWorld || category == ContinentCategory.NewWorldSecondary;
     }
 
     // --- Helper methods moved to class scope ---

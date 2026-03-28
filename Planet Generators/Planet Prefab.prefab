@@ -202,7 +202,7 @@ MonoBehaviour:
   maxContinentWidthTilesLarge: 72
   minContinentHeightTilesLarge: 28
   maxContinentHeightTilesLarge: 49
-  seedPositionVariance: 0.8
+  seedPositionVariance: 0.469
   elevationExponent: 1
   ridgeStrength: 0.116
   terrainWarpStrength: 0.25
@@ -229,19 +229,20 @@ MonoBehaviour:
   glaciationStrength: 0.35
   hillNoiseCutoff: 0.645
   mountainNoiseCutoff: 0.855
-  elevationFreq: 2
-  moistureFreq: 0.3
+  elevationFreq: 4
+  useManualElevationFreq: 1
+  moistureFreq: 0.2
   moistureBias: 0
   temperatureBias: 0
-  latitudeInfluence: 0.766
+  latitudeInfluence: 0.867
   latitudeExponent: 1
   temperatureNoiseFrequency: 0.19
-  temperatureDetailMultiplier: 2
-  temperatureDetailStrength: 0.21
+  temperatureDetailMultiplier: 0.8
+  temperatureDetailStrength: 0.088
   usePeriodicClimateNoise: 1
-  climateSmoothingPasses: 3
-  climateSmoothingStrength: 0.156
-  coastalMoistureBoost: 0.1
+  climateSmoothingPasses: 4
+  climateSmoothingStrength: 0.365
+  coastalMoistureBoost: 0.276
   coastalMoistureRange: 2
   flatElevationMin: 5
   flatElevationMax: 5.47
@@ -249,16 +250,16 @@ MonoBehaviour:
   hillElevationMax: 9.5
   mountainElevationMin: 13.5
   mountainElevationMax: 17.8
-  oceanElevation: 0
+  oceanElevation: 9
   seasElevation: 23
-  coastElevation: 30
+  coastElevation: 31.5
   enableRivers: 1
   minRiversPerContinent: 1
   maxRiversPerContinent: 1
   riverDepth: 0.83
   riverMeanderAmplitude: 0.18
   riverMeanderFrequency: 1.15
-  riverTurnResistance: 0.8
+  riverTurnResistance: 0.58
   enableFloodplains: 1
   floodplainRange: 1
   floodplainFlattenStrength: 0.155
@@ -302,6 +303,7 @@ MonoBehaviour:
   islandEdgeIrregularity: 0.45
   islandNoiseFrequency: 0.018
   enableNewWorld: 1
+  newWorldContinentCount: 2
   newWorldBufferTiles: 15
   enableSecondNewWorld: 1
   secondNewWorldBufferTiles: 30
