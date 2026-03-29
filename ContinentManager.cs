@@ -104,8 +104,8 @@ public class ContinentManager : MonoBehaviour, ISaveGameParticipant
     [Header("Runtime Labels")]
     [SerializeField] private float labelHeightOffset = 4f;
     [SerializeField] private float labelScale = 0.6f;
-    [SerializeField] private float labelFontSize = 12f;
-    [SerializeField] private Color labelColor = new Color(1f, 0.95f, 0.78f, 1f);
+    [SerializeField] private float labelFontSize = 30f;
+    [SerializeField] private Color labelColor = new Color(0f, 0f, 0f, 1f);
     [SerializeField] private Color labelOutlineColor = new Color(0f, 0f, 0f, 0.9f);
 
     private PlanetGenerator planetGenerator;

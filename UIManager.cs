@@ -1061,13 +1061,16 @@ public class UIManager : MonoBehaviour
     {
         if (modalVisible || modalQueue.Count == 0) return;
 
+        Debug.Log($"[UIManager] TryShowNextModal: queue={modalQueue.Count} nextKind={modalQueue.Peek().kind}");
         var request = modalQueue.Peek();
         if (TryShowPrefabModal(request))
         {
             modalQueue.Dequeue();
             modalVisible = true;
+            Debug.Log($"[UIManager] Prefab modal shown for kind={request.kind}");
             return;
         }
+        Debug.Log($"[UIManager] TryShowPrefabModal returned false for kind={request.kind}, falling back");
 
         EnsureMissionCrisisFallbackUi();
         if (rootObject == null || backdropObject == null)
@@ -1097,17 +1100,35 @@ public class UIManager : MonoBehaviour
         if (selectionPopupInstance != null)
             selectionPopupInstance.Hide();
 
+        // Also defensively deactivate GameObjects/roots in case Hide() didn't affect the visible root.
+        try
+        {
+            if (narrativePopupInstance != null && narrativePopupInstance.gameObject.activeSelf)
+                narrativePopupInstance.gameObject.SetActive(false);
+        }
+        catch (Exception) { }
+
+        try
+        {
+            if (selectionPopupInstance != null && selectionPopupInstance.gameObject.activeSelf)
+                selectionPopupInstance.gameObject.SetActive(false);
+        }
+        catch (Exception) { }
+
         if (narrativePanel != null) narrativePanel.SetActive(false);
         if (selectionPanel != null) selectionPanel.SetActive(false);
         if (backdropObject != null) backdropObject.SetActive(false);
+        if (rootObject != null) rootObject.SetActive(false);
 
         modalVisible = false;
+        Debug.Log("[UIManager] CloseCurrentMissionCrisisModal: modal closed and UI roots deactivated.");
         TryShowNextModal();
     }
 
     private bool TryShowPrefabModal(ModalRequest request)
     {
         EnsureMissionCrisisPrefabViews();
+        Debug.Log($"[UIManager] TryShowPrefabModal: narrativePopup={narrativePopupInstance != null} selectionPopup={selectionPopupInstance != null} kind={request?.kind}");
         if (request == null) return false;
 
         if (request.kind == ModalKind.Narrative && narrativePopupInstance != null)
@@ -1125,38 +1146,58 @@ public class UIManager : MonoBehaviour
 
         if (request.kind == ModalKind.Selection && selectionPopupInstance != null)
         {
+            var options = BuildSelectionOptions(request);
+            Debug.Log($"[UIManager] Showing selection popup: title={request.title} optionCount={options?.Count} popupRoot={selectionPopupInstance.gameObject.name} active={selectionPopupInstance.gameObject.activeSelf}");
             selectionPopupInstance.Show(
                 request.title,
                 request.body,
-                BuildSelectionOptions(request),
+                options,
                 index => OnSelectionOptionChosen(request, index));
+            Debug.Log($"[UIManager] Selection popup Show() called. IsVisible={selectionPopupInstance.IsVisible} go.activeSelf={selectionPopupInstance.gameObject.activeSelf}");
             return true;
         }
 
+        Debug.Log($"[UIManager] TryShowPrefabModal: no matching handler for kind={request.kind}");
         return false;
     }
 
     private void EnsureMissionCrisisPrefabViews()
     {
-        if (narrativePopupInstance == null && missionNarrativePopupPrefab != null)
+        if (narrativePopupInstance == null)
         {
-            narrativePopupInstance = Instantiate(missionNarrativePopupPrefab);
-            narrativePopupInstance.gameObject.name = missionNarrativePopupPrefab.gameObject.name;
-            narrativePopupInstance.Hide();
+            // Prefer an existing scene instance over instantiating a duplicate.
+            narrativePopupInstance = FindAnyObjectByType<MissionNarrativePopupUI>(FindObjectsInactive.Include);
+            Debug.Log($"[UIManager] EnsurePrefabViews: FindAnyObjectByType<NarrativePopup> = {(narrativePopupInstance != null ? narrativePopupInstance.gameObject.name : "null")}");
+            if (narrativePopupInstance == null && missionNarrativePopupPrefab != null)
+            {
+                narrativePopupInstance = Instantiate(missionNarrativePopupPrefab);
+                narrativePopupInstance.gameObject.name = missionNarrativePopupPrefab.gameObject.name;
+                Debug.Log($"[UIManager] Instantiated narrative popup: {narrativePopupInstance.gameObject.name}");
+            }
+            if (narrativePopupInstance != null)
+                narrativePopupInstance.Hide();
         }
 
-        if (selectionPopupInstance == null && missionSelectionPopupPrefab != null)
+        if (selectionPopupInstance == null)
         {
-            selectionPopupInstance = Instantiate(missionSelectionPopupPrefab);
-            selectionPopupInstance.gameObject.name = missionSelectionPopupPrefab.gameObject.name;
-            selectionPopupInstance.Hide();
+            selectionPopupInstance = FindAnyObjectByType<MissionSelectionPopupUI>(FindObjectsInactive.Include);
+            Debug.Log($"[UIManager] EnsurePrefabViews: FindAnyObjectByType<SelectionPopup> = {(selectionPopupInstance != null ? selectionPopupInstance.gameObject.name : "null")} prefab={(missionSelectionPopupPrefab != null ? missionSelectionPopupPrefab.gameObject.name : "null")}");
+            if (selectionPopupInstance == null && missionSelectionPopupPrefab != null)
+            {
+                selectionPopupInstance = Instantiate(missionSelectionPopupPrefab);
+                selectionPopupInstance.gameObject.name = missionSelectionPopupPrefab.gameObject.name;
+                Debug.Log($"[UIManager] Instantiated selection popup: {selectionPopupInstance.gameObject.name}");
+            }
+            if (selectionPopupInstance != null)
+                selectionPopupInstance.Hide();
         }
 
-        // If the selection popup prefab was not assigned but the narrative popup contains
+        // If the selection popup was still not found but the narrative popup contains
         // a MissionSelectionPopupUI child, use it instead of falling back to runtime UI.
         if (selectionPopupInstance == null && narrativePopupInstance != null)
         {
             selectionPopupInstance = narrativePopupInstance.GetComponentInChildren<MissionSelectionPopupUI>(true);
+            Debug.Log($"[UIManager] EnsurePrefabViews: child fallback selectionPopup = {(selectionPopupInstance != null ? selectionPopupInstance.gameObject.name : "null")}");
         }
     }
 

@@ -166,8 +166,8 @@ public static class GameSetupData
         minContinentWidthTilesSmall = 80; maxContinentWidthTilesSmall = 200;
         minContinentHeightTilesSmall = 40; maxContinentHeightTilesSmall = 100;
 
-        minContinentWidthTilesStandard = 11; maxContinentWidthTilesStandard = 28;
-        minContinentHeightTilesStandard = 14; maxContinentHeightTilesStandard = 27;
+        minContinentWidthTilesStandard = 18; maxContinentWidthTilesStandard = 20;
+        minContinentHeightTilesStandard = 18; maxContinentHeightTilesStandard = 21;
 
         minContinentWidthTilesLarge = 20; maxContinentWidthTilesLarge = 35;
         minContinentHeightTilesLarge = 22; maxContinentHeightTilesLarge = 40;
@@ -176,8 +176,8 @@ public static class GameSetupData
         minIslandWidthTilesSmall = 8; maxIslandWidthTilesSmall = 24;
         minIslandHeightTilesSmall = 4; maxIslandHeightTilesSmall = 12;
 
-        minIslandWidthTilesStandard = 5; maxIslandWidthTilesStandard = 8;
-        minIslandHeightTilesStandard = 5; maxIslandHeightTilesStandard = 7;
+        minIslandWidthTilesStandard = 7; maxIslandWidthTilesStandard = 8;
+        minIslandHeightTilesStandard = 6; maxIslandHeightTilesStandard = 7;
 
         minIslandWidthTilesLarge = 5; maxIslandWidthTilesLarge = 6;
         minIslandHeightTilesLarge = 2; maxIslandHeightTilesLarge = 3;

@@ -326,10 +326,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public float mountainNoiseCutoff = 0.7f;
     // --- Noise Settings --- 
     [Header("Noise Settings")] 
-    public float elevationFreq = 2f; 
-    [Tooltip("When true, use the inspector 'Elevation Freq' value as the global base elevation frequency instead of deriving it from the map width.")]
-    public bool useManualElevationFreq = false;
-    public float moistureFreq = 4f;
+    public float elevationFreq = 2f, moistureFreq = 4f;
 
 
     [Range(-0.3f, 0.3f)]
@@ -565,12 +562,12 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
     public int newWorldContinentCount = 2;
     [Tooltip("Minimum wrapped-hex tile distance to keep between the Old World and the New World seed (best-effort).")]
     [Range(1, 64)]
-    public int newWorldBufferTiles = 15;
+    public int newWorldBufferTiles = 45;
     [Tooltip("When enabled, also place a secondary New World (e.g., Australia-like) even farther from the main mass.")]
     public bool enableSecondNewWorld = true;
     [Tooltip("Minimum wrapped-hex tile distance for the secondary New World (best-effort). If zero, uses 2x newWorldBufferTiles.")]
     [Range(0, 128)]
-    public int secondNewWorldBufferTiles = 30;
+    public int secondNewWorldBufferTiles = 40;
     [Tooltip("When true and the map preset is terrestrial/mostly-land, carve an ocean basin inside the New World band before stamping the New World continent.")]
     public bool carveNewWorldOnTerrestrial = true;
 
@@ -844,8 +841,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         float mapWidth = grid.Width;
         float mapHeight = grid.Height;
         // Single elevation frequency — scales with map width for consistent terrain scale
-        float defaultElevFreq = 1f / (mapWidth * 0.38f);
-        float elevFreqPeriodic = useManualElevationFreq ? elevationFreq : defaultElevFreq;
+        float elevFreqPeriodic = 1f / (mapWidth * 0.38f);
         var terrainMotifRand = new System.Random(unchecked(seed ^ 0x71A9C5));
         float motifFoldedRanges = Mathf.Lerp(0.85f, 1.25f, (float)terrainMotifRand.NextDouble());
         float motifBasins = Mathf.Lerp(0.8f, 1.25f, (float)terrainMotifRand.NextDouble());
@@ -1054,6 +1050,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             int maxRadius = Mathf.Max(0, radius);
             int counter = 0;
             int batch = Mathf.Max(1, stampingBatchSize);
+            int changedCount = 0;
             for (int i = 0; i < tileCount; i++)
             {
                 // Use a noise-perturbed continuous radius to avoid perfect circular stamps.
@@ -1074,12 +1071,20 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                 {
                     if (makeLand)
                     {
-                        isLandTile[i] = true;
+                        if (!isLandTile[i])
+                        {
+                            isLandTile[i] = true;
+                            changedCount++;
+                        }
                     }
                     if (makeLake)
                     {
-                        isLandTile[i] = false;
-                        isLakeTile[i] = true;
+                        if (isLandTile[i] || !isLakeTile[i])
+                        {
+                            if (isLandTile[i]) changedCount++;
+                            isLandTile[i] = false;
+                            isLakeTile[i] = true;
+                        }
                     }
                 }
                 counter++;
@@ -1089,6 +1094,8 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                     yield return null; // Yield after each batch to keep UI responsive
                 }
             }
+            if (ShouldLogDiagnostics())
+                Debug.Log($"[PlanetGenerator] StampCircleBatched: center={center} radius={radius} makeLand={makeLand} makeLake={makeLake} tilesChanged={changedCount}");
         }
 
         foreach (var continent in continentDataList)
@@ -1218,12 +1225,33 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
 
         // (Stamping debug logs removed)
 
+        if (ShouldLogDiagnostics())
+        {
+            int landBeforeIslands = 0;
+            for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landBeforeIslands++;
+            Debug.Log($"[PlanetGenerator] Land count before island stamping: {landBeforeIslands}");
+        }
+
         BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
 
         // ---------- 2.75. Smart coastal shaping ----------
-        // Replace random bite/spur stamps with scored embayment and peninsula roots
-        // so coastlines respond to nearby land depth and offshore exposure.
+        // Replace random bite/spur stamps with scored peninsula roots
+        if (ShouldLogDiagnostics())
+        {
+            int landBeforeCoast = 0;
+            for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landBeforeCoast++;
+            Debug.Log($"[PlanetGenerator] Land count before smart coast shaping: {landBeforeCoast}");
+        }
+
         yield return StartCoroutine(ApplySmartCoastShapingPass(isLandTile, tileCoords, tileCount, tilesX, mapWidth, mapHeight, unchecked((int)(seed ^ 0xBEEF))));
+
+        if (ShouldLogDiagnostics())
+        {
+            int landAfterCoast = 0;
+            for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landAfterCoast++;
+            Debug.Log($"[PlanetGenerator] Land count after smart coast shaping: {landAfterCoast}");
+        }
+
         BuildAdvancedGeologyFramework(tileCoords, isLandTile, isLakeTile, tilesX, mapWidth, mapHeight, elevFreqPeriodic);
 
         bool deferredContinentsStamped = false;
@@ -1288,6 +1316,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
                             isLakeTile[carveIndex] = false;
                         }
                     }
+                }
+
+                if (ShouldLogDiagnostics())
+                {
+                    int landAfterDeferred = 0;
+                    for (int i = 0; i < tileCount; i++) if (isLandTile[i]) landAfterDeferred++;
+                    Debug.Log($"[PlanetGenerator] Land count after deferred continent placement ({placementIndex}): {landAfterDeferred}");
                 }
 
                 var deferredContinent = new ContinentData
@@ -4542,33 +4577,16 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         int minH = Mathf.Max(1, minContinentHeight);
         int maxH = Mathf.Max(minH, maxContinentHeight);
 
-        BuildScaledContinentRange(
-            minW,
-            maxW,
-            minH,
-            maxH,
-            0.8f,
-            1.0f,
-            mapWidthTiles,
-            mapHeightTiles,
-            out int newWorldMinW,
-            out int newWorldMaxW,
-            out int newWorldMinH,
-            out int newWorldMaxH);
+        // New World continents use the same size rules as main continents — no scale factors.
+        int newWorldMinW = Mathf.Clamp(minW, 1, Mathf.Max(1, mapWidthTiles));
+        int newWorldMaxW = Mathf.Clamp(maxW, 1, Mathf.Max(1, mapWidthTiles));
+        int newWorldMinH = Mathf.Clamp(minH, 1, Mathf.Max(1, mapHeightTiles));
+        int newWorldMaxH = Mathf.Clamp(maxH, 1, Mathf.Max(1, mapHeightTiles));
 
-        BuildScaledContinentRange(
-            minW,
-            maxW,
-            minH,
-            maxH,
-            0.55f,
-            0.72f,
-            mapWidthTiles,
-            mapHeightTiles,
-            out int secondWorldMinW,
-            out int secondWorldMaxW,
-            out int secondWorldMinH,
-            out int secondWorldMaxH);
+        int secondWorldMinW = newWorldMinW;
+        int secondWorldMaxW = newWorldMaxW;
+        int secondWorldMinH = newWorldMinH;
+        int secondWorldMaxH = newWorldMaxH;
 
         System.Random bandRand = new System.Random(unchecked(rndSeed ^ 0x4E57));
         int jitterRange = Mathf.Max(0, Mathf.RoundToInt(mapWidthTiles * seedPositionVariance * 0.25f));
@@ -4602,7 +4620,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         int secondBuffer = secondNewWorldBufferTiles > 0 ? secondNewWorldBufferTiles : newWorldBufferTiles * 2;
         int secondaryBandPadding = Mathf.Max(secondBuffer * 2, Mathf.RoundToInt(secondWorldMaxW * 0.2f));
         int secondaryBandWidth = Mathf.Clamp(
-            Mathf.Max(Mathf.RoundToInt(mapWidthTiles * 0.12f) + secondBuffer, secondWorldMaxW + secondaryBandPadding),
+            Mathf.Max(Mathf.RoundToInt(mapWidthTiles * 0.18f) + secondBuffer, secondWorldMaxW + secondaryBandPadding),
             1,
             mapWidthTiles);
         int secondaryCenter = (Mathf.RoundToInt(mapWidthTiles * 0.33f) + bandRand.Next(-jitterRange, jitterRange + 1) + mapWidthTiles) % mapWidthTiles;
@@ -5238,81 +5256,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return current;
         }
 
-        bool TryCarveEmbayment(int rootIdx)
-        {
-            if (!isLandTile[rootIdx]) return false;
-            int length = coastRand.Next(Mathf.Max(1, smartEmbaymentMinLength), Mathf.Max(smartEmbaymentMinLength, smartEmbaymentMaxLength) + 1);
-            Vector2 inlandDir = -AverageDirectionToState(rootIdx, false);
-            int current = rootIdx;
-            var carved = new HashSet<int> { rootIdx };
-            var carvedList = new List<int> { rootIdx };
-
-            for (int step = 0; step < length; step++)
-            {
-                int bestNext = -1;
-                float bestScore = float.NegativeInfinity;
-                foreach (int n in grid.neighbors[current])
-                {
-                    if (n < 0 || n >= tileCount) continue;
-                    if (!isLandTile[n] || carved.Contains(n)) continue;
-
-                    Vector2 stepDir = new Vector2(tileCoords[n].x - tileCoords[current].x, tileCoords[n].y - tileCoords[current].y);
-                    if (stepDir.sqrMagnitude > 0.001f) stepDir.Normalize();
-                    float align = inlandDir.sqrMagnitude > 0.001f ? Vector2.Dot(inlandDir, stepDir) : 0f;
-                    int landSupport = CountLandNeighbors(n);
-                    int waterSupport = CountWaterNeighbors(n);
-                    float weakness = Mathf.Clamp01((4f - landSupport) / 4f);
-                    float geologyBias = 0f;
-                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                    {
-                        var province = (TectonicProvinceType)geologyProvinceMap[n];
-                        var margin = (CoastalMarginType)geologyMarginTypeMap[n];
-                        if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 0.85f;
-                        if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.55f;
-                        if (margin == CoastalMarginType.Active) geologyBias -= 0.35f;
-                    }
-                    float score = align * 2.0f + weakness * 1.15f + waterSupport * 0.65f - landSupport * 0.35f + geologyBias;
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestNext = n;
-                    }
-                }
-
-                if (bestNext < 0) break;
-                carved.Add(bestNext);
-                carvedList.Add(bestNext);
-
-                Vector2 chosenDir = new Vector2(tileCoords[bestNext].x - tileCoords[current].x, tileCoords[bestNext].y - tileCoords[current].y);
-                if (chosenDir.sqrMagnitude > 0.001f) chosenDir.Normalize();
-                if (inlandDir.sqrMagnitude > 0.001f)
-                    inlandDir = (inlandDir * 0.65f + chosenDir * 0.35f).normalized;
-                else
-                    inlandDir = chosenDir;
-                current = bestNext;
-            }
-
-            if (carvedList.Count < 2) return false;
-
-            bool remainsConnectedToWater = false;
-            foreach (int idx in carvedList)
-            {
-                foreach (int n in grid.neighbors[idx])
-                {
-                    if (n >= 0 && n < tileCount && !isLandTile[n] && !carved.Contains(n))
-                    {
-                        remainsConnectedToWater = true;
-                        break;
-                    }
-                }
-                if (remainsConnectedToWater) break;
-            }
-            if (!remainsConnectedToWater) return false;
-
-            foreach (int idx in carvedList)
-                isLandTile[idx] = false;
-            return true;
-        }
+        // Embayment carving removed — only peninsulas will be generated in this pass.
 
         bool TryGrowPeninsula(int rootIdx)
         {
@@ -5410,36 +5354,13 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             return true;
         }
 
-        var embaymentCandidates = new List<(int idx, float score)>();
+        // Only generate peninsulas: build peninsula candidates and apply them.
         var peninsulaCandidates = new List<(int idx, float score)>();
         for (int i = 0; i < tileCount; i++)
         {
             int landNeighbors = CountLandNeighbors(i);
             int waterNeighbors = CountWaterNeighbors(i);
-            if (isLandTile[i] && waterNeighbors > 0)
-            {
-                Vector2 inlandDir = -AverageDirectionToState(i, false);
-                int inlandProbe = WalkTowardContext(i, 2, true, inlandDir);
-                int inlandSupport = CountLandNeighbors(inlandProbe);
-                if (inlandSupport >= 3)
-                {
-                    float noiseBias = noise != null
-                        ? noise.GetElevationPeriodic(new Vector2(tileCoords[i].x + 1500f, tileCoords[i].y + 500f), mapWidth, mapHeight, coastShapeFreq) - 0.5f
-                        : 0f;
-                    float geologyBias = 0f;
-                    if (enableAdvancedGeologyFramework && geologyProvinceMap != null && geologyMarginTypeMap != null)
-                    {
-                        var province = (TectonicProvinceType)geologyProvinceMap[i];
-                        var margin = (CoastalMarginType)geologyMarginTypeMap[i];
-                        if (province == TectonicProvinceType.ForelandBasin || province == TectonicProvinceType.RiftZone) geologyBias += 1.0f;
-                        if (margin == CoastalMarginType.Passive || margin == CoastalMarginType.Deltaic) geologyBias += 0.65f;
-                        if (margin == CoastalMarginType.Active) geologyBias -= 0.45f;
-                    }
-                    float score = waterNeighbors * 2.0f + inlandSupport * 0.8f + noiseBias + geologyBias;
-                    embaymentCandidates.Add((i, score));
-                }
-            }
-            else if (!isLandTile[i] && landNeighbors > 0)
+            if (!isLandTile[i] && landNeighbors > 0)
             {
                 Vector2 outwardDir = AverageDirectionToState(i, false);
                 int offshoreProbe = WalkTowardContext(i, 2, false, outwardDir);
@@ -5464,20 +5385,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
             }
         }
 
-        embaymentCandidates.Sort((a, b) => b.score.CompareTo(a.score));
         peninsulaCandidates.Sort((a, b) => b.score.CompareTo(a.score));
-
-        var chosenEmbaymentRoots = new List<int>();
-        int embaymentsApplied = 0;
-        foreach (var candidate in embaymentCandidates)
-        {
-            if (embaymentsApplied >= Mathf.Max(0, smartEmbaymentCount)) break;
-            if (!IsFarEnoughFromChosen(candidate.idx, chosenEmbaymentRoots)) continue;
-            if (!TryCarveEmbayment(candidate.idx)) continue;
-            chosenEmbaymentRoots.Add(candidate.idx);
-            embaymentsApplied++;
-            yield return null;
-        }
 
         var chosenPeninsulaRoots = new List<int>();
         int peninsulasApplied = 0;
@@ -5492,7 +5400,7 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
 
         if (ShouldLogDiagnostics())
-            Debug.Log($"[PlanetGenerator] Smart coast shaping: {embaymentsApplied} embayments, {peninsulasApplied} peninsulas applied.");
+            Debug.Log($"[PlanetGenerator] Smart coast shaping: {peninsulasApplied} peninsulas applied.");
     }
 
     private void BuildAdvancedGeologyFramework(Vector2Int[] tileCoords, bool[] isLandTile, bool[] isLakeTile, int tilesX, float mapWidth, float mapHeight, float elevFreqPeriodic)
